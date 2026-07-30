@@ -1,0 +1,10696 @@
+import React, { useEffect, useState } from 'react';
+import { LOGO_MITICO_CLUB, FOTO_MITICO_HERO } from './assets/imagenes';
+import {
+  AyudaReporteEntrenador, CampoSelect, PantallaSegura, agendaAccionesSesion, agendaAlumnoLinea,
+  agendaBadgeModalidad, agendaBadgeModalidadColor, agendaBloqueBlanco, agendaBotonDiaCompacto,
+  agendaBotonMes, agendaBotonSemana, agendaCabeceraLinea, agendaControlesGrid, agendaDiaCard,
+  agendaDiaHeader, agendaDiasGrid, agendaDiasSelectorCompacto, agendaGrupoLinea,
+  agendaGrupoPropuesta, agendaGrupoResumen, agendaHero, agendaHeroOcio, agendaHeroTrabajoSemanal,
+  agendaMesesGrid, agendaMiniContador, agendaMiniContadorDiaCompacto, agendaMiniLabel,
+  agendaMiniTexto, agendaPanelControles, agendaPanelRangoSemana, agendaSemanasGrid,
+  agendaSesionCard, agendaSesionCardModalidad, agendaSesionContadores, agendaSesionTop,
+  agendaShellCompacto, agendaTurnoFila, agendaVacio, agendaVacioMini,
+  agruparDisponibilidadPorTurno, agruparDisponibilidadSemanal, agruparGruposEntrenadorSemanal,
+  agruparGruposPorEntrenador, agruparPorEntrenador, agruparReportesPorEntrenador,
+  alumnosLimpiosWhatsapp, avisoCompleto, avisoInline, avisoNeutral, avisoPendiente,
+  avisoReportePendiente, ayudaDesplegableCompacta, ayudaReporteEntrenadorCaja,
+  ayudaReporteEntrenadorContenido, badgeIntensivoEntrenador, badgeModalidadMovil, badgeNoTrabaja,
+  badgePendiente, badgePistaGrandeApp, badgePistaNeutraApp, badgePistaPequenaApp, badgeTrabaja,
+  barraPasosIntensivo, bloqueInfoEntrenador, bloqueSemanaMovil, bloqueTexto,
+  botonAsistenciaAusente, botonAsistenciaOff, botonAsistenciaOk, botonAsistenciaPendiente,
+  botonBaseApp, botonMenu, botonMenuColor, botonMini, botonModalidadAgenda, botonPasoIntensivo,
+  botonPeligro, botonPeligroMini, botonPrincipal, botonSecundario, botonesAsistenciaMovil,
+  buscador, cabeceraAppLimpia, cabeceraEntrenadorMovil, cabeceraMarcaApp, cabeceraPantalla,
+  cabeceraPantallaMovil, cabeceraSemanaMovil, capitalizarPrimera, celdaTextoAyudaReporte,
+  celdaTituloAyudaReporte, chipDiaIntensivo, chipDiaIntensivoVacio, chipResumenCursoIntensivo,
+  chuletaEntrenadorMini, chuletaGeneralApp, chuletaGridApp, cierreJoseCaja, cierreJoseGrid,
+  cierreJoseItem, cierreJoseLabel, coloresModalidadAgenda, contadorGrandeMovil, contadorNinosMovil,
+  diaEntrenadorCard, diaEntrenadorCardLibre, diaEntrenadorHeader, emojiPuntoEncuentro,
+  entrenadorHeroApp, entrenadorHeroChips, errorCaja, esIntensivoGrupo, escaparHtml,
+  estiloBadgePistaApp, estiloGrupoPorPistaApp, etiquetaFechaHoraGrupo, etiquetaPistaVisualApp,
+  etiquetaSuperior, extraerObservacionesVisualesGrupoApp, filaAlumnoAsistencia,
+  filaAlumnoEntrenadorMovil, formatearAlumnosDetalle, formatearAlumnosPlanning, formatearEuros,
+  formatearFecha, formatearObservaciones, formatearTrabajoDiario, formularioCaja,
+  franjaFechasIntensivo, gridFormulario, gridMiniMetricas, gridResumenInicio,
+  grupoEntrenadorCardMovil, grupoEntrenadorTopMovil, grupoNivelAFormulario, inicioSemanaGlobal,
+  inputCampo, inputEntrenadorBusqueda, labelCampo, layout, limpiarDetalleObservacionVisualGrupoApp,
+  lineaDiasIntensivo, listaAlumnosGrupoCompacta, logoMarcaApp, marcaKickerApp, marcaLogoTituloApp,
+  menuBloqueApp, menuBloqueColor, menuPrincipalApp, menuTituloApp, menuTituloColor,
+  metricCardIntensivo, miniBadge, miniBadgeVerde, miniMetrica, miniTarjeta, miniTarjetaBlanca,
+  miniTarjetaCerrada, miniTarjetaCompleta, miniTarjetaPendienteAsistencia,
+  miniTarjetaPendienteReporte, nivelGeneralGrupoVisual, nombreGrupoPropuestaApp,
+  nombreGrupoVisualApp, nombreMes, normalizarModalidadAgenda, panelEntrenadorFiltroApp,
+  panelRevisionIntegradaOcio, panelTrabajoGrupo, perfilAyudaReporteEntrenador, resumenChipsMovil,
+  resumenCursoIntensivoGrid, selectCampo, selectCampoAgenda, semanaTrabajoActivaApp,
+  summaryAyudaReporteEntrenador, summaryChuletaApp, summaryTrabajoGrupo, tabBarEntrenadorModerno,
+  tabEntrenadorModerno, tablaAyudaReporteEntrenador, tarjeta, tarjetaEntrenadorMovil,
+  tarjetaInicioAlerta, tarjetaInicioEstado, tarjetaInicioOk, tarjetaInicioRojo,
+  tarjetaIntensivoCurso, tarjetaModernaIntensivos, tarjetaMovilVacia, tarjetaResaltada, textarea,
+  textareaCampo, tituloMarcaApp, turnoEntrenadorBox, vistaEntrenadorShell
+} from './lib/appHelpers';
+import { PantallaIntensivos } from './screens/IntensivosScreen';
+
+
+type WhatsappPreviewState = {
+  titulo: string;
+  texto: string;
+};
+
+type AvisoJose = {
+  orden: number;
+  bloque: string;
+  contador: number;
+  descripcion: string;
+};
+
+type GrupoPlanning = {
+  grupo_id: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  modalidad: string;
+  nombre_grupo: string;
+  nivel_grupo: string;
+  pista: string;
+  punto_encuentro: string;
+  estado_grupo: string;
+  ratio_ok: boolean;
+  excepcion_ratio: boolean;
+  publicado: boolean;
+  entrenadores: string | null;
+  alumnos: string | null;
+  total_alumnos: number;
+  trabajo_diario: string | null;
+  observaciones_importantes: string | null;
+};
+
+type GrupoEntrenadorApp = {
+  entrenador_id: string;
+  entrenador: string;
+  estado_confirmacion: string;
+  confirmado_at: string | null;
+  grupo_id: string;
+  nombre_grupo: string;
+  nivel_grupo: string;
+  pista: string;
+  punto_encuentro: string;
+  estado_grupo: string;
+  publicado: boolean;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  modalidad: string;
+  tipo_sesion?: string | null;
+  lugar?: string | null;
+  alumnos: string | null;
+  total_alumnos: number;
+  trabajo_diario: string | null;
+  observaciones_importantes: string | null;
+};
+
+type AlumnoReporteEntrenador = {
+  entrenador_id: string;
+  entrenador: string;
+  grupo_id: string;
+  nombre_grupo: string;
+  publicado: boolean;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  modalidad: string;
+  alumno_id: string;
+  alumno: string;
+  estado_asistencia: string;
+  reporte_id: string | null;
+  enviado_at: string | null;
+  estado_reporte: string;
+  nivel_alumno?: string | null;
+  fuente_nivel?: string | null;
+  pista_alumno?: string | null;
+};
+
+type DetalleGrupo = {
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  modalidad: string;
+  grupo_id: string;
+  nombre_grupo: string;
+  nivel_grupo: string;
+  pista: string;
+  punto_encuentro: string;
+  estado_grupo: string;
+  ratio_ok: boolean;
+  excepcion_ratio: boolean;
+  entrenadores: string | null;
+  alumnos_detalle: string | null;
+  total_alumnos: number;
+  trabajo_diario: string | null;
+  trabajo_diario_revisado: boolean;
+  observaciones_importantes: string | null;
+  publicado: boolean;
+  cancelado: boolean;
+};
+
+type AlumnoResumen = {
+  alumno_id: string;
+  alumno: string;
+  nivel_actual: string | null;
+  nivel_estimado: string | null;
+  origen_nivel_estimado: string | null;
+  estado_ficha: string;
+  total_reportes: number;
+  total_entrenamientos_realizados: number;
+  ultima_fecha_reporte: string | null;
+  ultima_modalidad: string | null;
+  ultimo_nivel_reportado: string | null;
+  ultima_actitud: string | null;
+  ultima_tecnica: string | null;
+  ultima_pista: string | null;
+  ultimos_remontes: string[] | null;
+  ultima_autonomia: string | null;
+  ultima_incidencia: string | null;
+  ultima_recomendacion: string | null;
+};
+
+
+type OcioAlumnoApp = {
+  alumno_id: string;
+  alumno: string;
+  nivel: string | null;
+  nivel_usado: string | null;
+  fuente_nivel: string | null;
+  fecha_nacimiento: string | null;
+  estado_ficha: string | null;
+  origen_nivel_estimado: string | null;
+  dia_fijo: string | null;
+  hora_inicio_fija: string | null;
+  hora_fin_fija: string | null;
+  observaciones: string | null;
+  grupo_id: string | null;
+  grupo_estable: string | null;
+  grupo_dia: string | null;
+  grupo_hora_inicio: string | null;
+  grupo_hora_fin: string | null;
+  grupo_nivel: string | null;
+  grupo_pista: string | null;
+  grupo_punto: string | null;
+  total_reportes: number;
+  ultimo_reporte_fecha: string | null;
+};
+
+type OcioGrupoApp = {
+  grupo_id: string;
+  nombre_grupo: string;
+  dia_semana: string;
+  hora_inicio: string;
+  hora_fin: string;
+  nivel_grupo: string | null;
+  pista: string | null;
+  punto_encuentro: string | null;
+  observaciones: string | null;
+  activo: boolean;
+  temporada: string | null;
+  total_alumnos: number;
+  alumnos_lista: string | null;
+};
+
+type OcioImportadoApp = {
+  alumno: string;
+  nivel: string;
+  resultado: string;
+};
+
+type OcioRecomendacionCambioApp = {
+  alumno_id: string;
+  alumno: string;
+  nivel_alumno: string | null;
+  orden_alumno: number;
+  grupo_id: string | null;
+  nombre_grupo: string | null;
+  nivel_grupo: string | null;
+  recomendacion: string;
+};
+
+type OcioPrepararResultadoApp = {
+  grupo_estable: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  alumnos: number;
+  entrenador: string | null;
+  estado: string;
+  sesion_id: string | null;
+  grupo_id: string | null;
+};
+
+type OcioCambioPuntualApp = {
+  reubicacion_id: string;
+  alumno_id: string;
+  alumno: string;
+  nivel_usado: string | null;
+  fecha: string;
+  grupo_origen_id: string | null;
+  grupo_origen: string | null;
+  origen_dia_semana: string | null;
+  origen_hora_inicio: string | null;
+  origen_hora_fin: string | null;
+  grupo_destino_id: string;
+  grupo_destino: string;
+  destino_dia_semana: string | null;
+  destino_hora_inicio: string | null;
+  destino_hora_fin: string | null;
+  destino_punto: string | null;
+  motivo: string | null;
+  estado: string;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type OcioCambioFormState = {
+  id: string | null;
+  alumnoId: string;
+  grupoDestinoId: string;
+  fecha: string;
+  motivo: string;
+};
+
+function ocioCambioFormInicial(): OcioCambioFormState {
+  return {
+    id: null,
+    alumnoId: '',
+    grupoDestinoId: '',
+    fecha: '',
+    motivo: '',
+  };
+}
+
+type OcioGrupoFormState = {
+  id: string | null;
+  nombre: string;
+  dia: string;
+  horaInicio: string;
+  horaFin: string;
+  nivel: string;
+  pista: string;
+  punto: string;
+  observaciones: string;
+};
+
+function ocioGrupoFormInicial(): OcioGrupoFormState {
+  return {
+    id: null,
+    nombre: '',
+    dia: 'Jueves',
+    horaInicio: '18:00',
+    horaFin: '20:00',
+    nivel: 'A',
+    pista: 'Pequeña',
+    punto: '1',
+    observaciones: '',
+  };
+}
+
+
+type EntrenadorResumen = {
+  entrenador_id: string;
+  nombre_completo: string;
+  email: string | null;
+  telefono: string | null;
+  estado_cobro: string;
+  tarifa_por_turno: number;
+  activo: boolean;
+  chaqueta_entregada: boolean;
+  especialidades: string[] | null;
+  titulacion_estado: string | null;
+  titulacion_url: string | null;
+  titulacion_observaciones: string | null;
+  antecedentes_estado: string | null;
+  antecedentes_url: string | null;
+  antecedentes_observaciones: string | null;
+  observaciones_internas: string | null;
+  created_at: string;
+};
+
+type EntrenadorFormState = {
+  id: string | null;
+  nombre: string;
+  email: string;
+  telefono: string;
+  tarifa: string;
+  activo: boolean;
+  chaqueta: boolean;
+  especialidades: string[];
+  titulacionEstado: string;
+  titulacionUrl: string;
+  titulacionObs: string;
+  antecedentesEstado: string;
+  antecedentesUrl: string;
+  antecedentesObs: string;
+  observaciones: string;
+};
+
+type DisponibilidadEntrenador = {
+  id: string;
+  semana: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  entrenador_id: string;
+  entrenador: string;
+  estado_disponibilidad: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  nombre_turno: string;
+  respuesta: string | null;
+  comentario: string | null;
+  aviso_enviado: boolean;
+  aviso_enviado_at: string | null;
+  fecha_limite: string | null;
+  especialidades: string[] | null;
+};
+
+type ReportePendiente = {
+  entrenador_id: string;
+  entrenador: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  modalidad: string;
+  grupo_id: string;
+  nombre_grupo: string;
+  alumno_id: string;
+  alumno: string;
+  estado_asistencia: string;
+  estado_reporte: string;
+  nivel_alumno?: string | null;
+  fuente_nivel?: string | null;
+  pista_alumno?: string | null;
+};
+
+type CobroMensual = {
+  temporada: string;
+  anio: number;
+  mes: number;
+  estado_mes: string;
+  nota_direccion: string | null;
+  entrenador_id: string;
+  entrenador: string;
+  tarifa_por_turno: number;
+  total_turnos_computables: number;
+  total_turnos_baby: number;
+  total_turnos_intensivos: number;
+  total_turnos_ocio: number;
+  subtotal_sesiones: number;
+  ajustes_total: number;
+  total_mes: number;
+  detalle_turnos: string | null;
+  detalle_ajustes: string | null;
+  pendientes_revisar: number;
+};
+
+type CobroDetalleMensual = {
+  entrenador_id: string;
+  entrenador: string;
+  anio: number;
+  mes: number;
+  temporada: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  modalidad: string;
+  grupo_id: string;
+  entreno_manual_id?: string | null;
+  origen_cobro?: string | null;
+  nombre_grupo: string;
+  total_alumnos: number;
+  estado_grupo: string;
+  publicado: boolean;
+  tarifa_por_turno: number;
+  importe_turno: number;
+  observaciones?: string | null;
+};
+
+type CobroManualFormState = {
+  entrenadorId: string;
+  fecha: string;
+  horaInicio: string;
+  horaFin: string;
+  modalidad: string;
+  nombreGrupo: string;
+  totalAlumnos: string;
+  importeOverride: string;
+  observaciones: string;
+};
+
+type CobroPdfPreviewState = {
+  titulo: string;
+  cuerpo: string;
+};
+
+function fechaIsoHoyApp() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function leerStorageApp(clave: string, defecto = '') {
+  if (typeof window === 'undefined') return defecto;
+  return window.localStorage.getItem(clave) || defecto;
+}
+
+function leerStorageNumeroApp(clave: string, defecto: number) {
+  const valor = Number(leerStorageApp(clave, ''));
+  return Number.isFinite(valor) && valor > 0 ? valor : defecto;
+}
+
+function cobroManualInicial(): CobroManualFormState {
+  return {
+    entrenadorId: '',
+    fecha: fechaIsoHoyApp(),
+    horaInicio: '18:00',
+    horaFin: '20:00',
+    modalidad: 'BABY',
+    nombreGrupo: 'Entreno manual',
+    totalAlumnos: '0',
+    importeOverride: '',
+    observaciones: '',
+  };
+}
+
+type IntensivoApp = {
+  intensivo_id: string;
+  temporada: string;
+  intensivo: string;
+  lugar: string;
+  estado: string;
+  total_alumnos: number;
+  total_dias: number;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
+};
+
+type PanelControlIntensivoApp = {
+  intensivo_id: string;
+  temporada: string;
+  intensivo: string;
+  lugar: string;
+  estado: string;
+  total_dias: number;
+  dias_con_sesion: number;
+  dias_sin_sesion: number;
+  total_grupos: number;
+  grupos_publicados: number;
+  grupos_sin_publicar: number;
+  alumnos_inscritos: number;
+  asignaciones_esperadas: number;
+  asignaciones_hechas: number;
+  asignaciones_faltantes_estimadas: number;
+  total_reportes: number;
+  reportes_pendientes_estimados: number;
+  diplomas_pendientes: number;
+  diplomas_revisados: number;
+  total_recuperaciones: number;
+  recuperaciones_pendientes: number;
+  recuperaciones_cerradas: number;
+  estado_operativo: string;
+};
+
+type IntensivoAlumnoApp = {
+  intensivo_alumno_id: string;
+  intensivo_id: string;
+  intensivo: string;
+  alumno_id: string;
+  alumno: string;
+  estado_diploma: string;
+  recomendacion_siguiente_paso: string | null;
+  nivel_final_propuesto_id: string | null;
+  nivel_final_confirmado_id: string | null;
+  created_at: string;
+};
+
+type AlumnoParaIntensivoApp = {
+  alumno_id: string;
+  alumno: string;
+};
+
+type AlumnoResumenParaVolcadoApp = {
+  alumno_id: string;
+  alumno: string;
+  nombre_normalizado: string | null;
+  fecha_nacimiento: string | null;
+  nivel_actual_id: string | null;
+  nivel_actual: string | null;
+  orden_nivel_actual: number | null;
+  pista_nivel_actual: string | null;
+  nivel_estimado_id: string | null;
+  nivel_estimado: string | null;
+  orden_nivel_estimado: number | null;
+  pista_nivel_estimado: string | null;
+  nivel_resumen: string | null;
+  pista_resumen: string | null;
+  origen_nivel_estimado: string | null;
+  estado_ficha: string;
+  observacion_interna: string | null;
+  observacion_visible_entrenador: string | null;
+  mostrar_observacion_entrenador: boolean;
+  activo: boolean;
+};
+
+type VolcadoAlumnoIntensivoApp = {
+  alumno_id: string;
+  alumno: string;
+  resultado: string;
+  nivel_resumen: string | null;
+  pista_resumen: string | null;
+  estado_ficha: string;
+  observacion_visible_entrenador: string | null;
+};
+
+type IntensivoDiaApp = {
+  intensivo_dia_id: string;
+  intensivo_id: string;
+  numero_dia: number;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  sesion_id: string | null;
+  created_at: string;
+};
+
+type IntensivoAsistenciaApp = {
+  intensivo_dia_id: string;
+  intensivo_id: string;
+  intensivo: string;
+  numero_dia: number;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  alumno_id: string;
+  alumno: string;
+  asistencia_id: string | null;
+  estado: string;
+  falta_genera_recuperacion: boolean;
+  estado_diploma: string;
+  recomendacion_siguiente_paso: string | null;
+};
+
+type IntensivoRecuperacionApp = {
+  recuperacion_id: string;
+  intensivo_origen_id: string | null;
+  intensivo_origen: string | null;
+  alumno_id: string;
+  alumno: string;
+  intensivo_destino_id: string | null;
+  intensivo_destino: string | null;
+  grupo_destino_id: string | null;
+  grupo_destino: string | null;
+  estado: string;
+  created_at: string;
+};
+
+type GrupoDestinoRecuperacionApp = {
+  grupo_id: string;
+  nombre_grupo: string;
+  fecha: string;
+  hora_inicio: string;
+  modalidad: string;
+};
+
+
+type GrupoIntensivoDiaApp = {
+  intensivo_dia_id: string;
+  intensivo_id: string;
+  intensivo: string;
+  numero_dia: number;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  sesion_id: string | null;
+  estado_sesion: string | null;
+  grupo_id: string | null;
+  nombre_grupo: string | null;
+  nivel_grupo: string | null;
+  pista: string | null;
+  punto_encuentro: string | null;
+  estado_grupo: string | null;
+  publicado: boolean | null;
+  observaciones_importantes: string | null;
+  entrenador_id: string | null;
+  entrenador: string | null;
+  estado_confirmacion: string | null;
+  total_alumnos: number;
+  alumnos_lista: string | null;
+  trabajo_diario: string | null;
+};
+
+type RecomendacionGrupoIntensivoDiaApp = {
+  intensivo_dia_id: string;
+  intensivo_id: string;
+  numero_dia: number;
+  fecha: string;
+  grupo_recomendado: string;
+  bloque_tecnico: string;
+  orden_bloque: number;
+  pista_recomendada: string;
+  tamanio_grupo: number;
+  alerta_grupo: string;
+  alumno_id: string;
+  alumno: string;
+  nivel_resumen: string;
+  nivel_orden: number;
+  fuente_nivel: string;
+  edad: number | null;
+  estado_ficha: string;
+  observacion_visible_entrenador: string | null;
+  orden_en_grupo: number;
+};
+
+type ResumenReportesIntensivoApp = {
+  intensivo_id: string;
+  intensivo: string;
+  alumno_id: string;
+  alumno: string;
+  total_dias_intensivo: number;
+  total_reportes: number;
+  actitudes_reportadas: string | null;
+  tecnicas_reportadas: string | null;
+  pistas_reportadas: string | null;
+  autonomias_reportadas: string | null;
+  incidencias_reportadas: string | null;
+  recomendaciones_reportadas: string | null;
+  ultimo_reporte_at: string | null;
+};
+
+type ResumenFinalIntensivoApp = {
+  intensivo_alumno_id: string;
+  intensivo_id: string;
+  intensivo: string;
+  alumno_id: string;
+  alumno: string;
+  total_dias_intensivo: number;
+  dias_en_grupo: number;
+  dias_presente: number;
+  dias_ausente: number;
+  dias_pendiente_asistencia: number;
+  total_reportes: number;
+  reportes_pendientes_estimados: number;
+  niveles_reportados: string | null;
+  nivel_mas_alto_id: string | null;
+  nivel_mas_alto_reportado: string | null;
+  nivel_ultimo_reporte: string | null;
+  actitud_ultimo_reporte: string | null;
+  tecnica_ultimo_reporte: string | null;
+  autonomia_ultimo_reporte: string | null;
+  recomendacion_ultimo_reporte: string | null;
+  ultimo_reporte_fecha: string | null;
+  actitudes_reportadas: string | null;
+  tecnicas_reportadas: string | null;
+  pistas_reportadas: string | null;
+  autonomias_reportadas: string | null;
+  incidencias_reportadas: string | null;
+  recomendaciones_reportadas: string | null;
+  comentarios_actitud: string | null;
+  comentarios_tecnica: string | null;
+  comentarios_autonomia: string | null;
+  comentarios_incidencias: string | null;
+  comentarios_recomendacion: string | null;
+  nivel_final_propuesto_id: string | null;
+  nivel_final_propuesto: string | null;
+  nivel_final_confirmado_id: string | null;
+  nivel_final_confirmado: string | null;
+  recomendacion_siguiente_paso: string | null;
+  estado_diploma: string;
+};
+
+type ReporteDetalleIntensivoApp = {
+  intensivo_id: string;
+  intensivo: string;
+  intensivo_dia_id: string;
+  numero_dia: number;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  grupo_id: string;
+  nombre_grupo: string;
+  entrenador: string | null;
+  alumno_id: string;
+  alumno: string;
+  nivel_reportado: string | null;
+  actitud: string | null;
+  actitud_comentario: string | null;
+  tecnica: string | null;
+  tecnica_comentario: string | null;
+  pista: string | null;
+  autonomia: string | null;
+  autonomia_comentario: string | null;
+  incidencia: string | null;
+  incidencia_comentario: string | null;
+  recomendacion_proxima_sesion: string | null;
+  recomendacion_comentario: string | null;
+  enviado_at: string | null;
+};
+
+
+type ListadoApp = {
+  listado_id: string;
+  semana: string | null;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  modalidad: string;
+  estado: string;
+  fuera_de_plazo: boolean;
+  total_nombres_detectados: number;
+  encontrados: number;
+  altas_nuevas: number;
+  no_encontrados: number;
+  pendientes_revisar: number;
+  duplicados: number;
+};
+
+
+type AgendaSesionDirectaApp = {
+  sesion_id: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  lugar: string;
+  tipo_sesion: string;
+  estado_sesion: string;
+  modalidad_codigo: string;
+  modalidad: string;
+  semana: string;
+  semana_inicio: string;
+  semana_fin: string;
+  total_alumnos: number;
+  total_nuevos: number;
+  total_conocidos: number;
+  total_grupos: number;
+  grupos_publicados: number;
+  alumnos_en_grupos: number;
+  alumnos_sin_grupo: number;
+};
+
+type AgendaAlumnoSesionApp = {
+  sesion_alumno_id: string;
+  sesion_id: string;
+  alumno_id: string;
+  alumno: string;
+  orden: number;
+  estado_en_listado: string;
+  nivel_usado: string | null;
+  orden_nivel: number | null;
+  pista_recomendada: string | null;
+  origen_nivel: string | null;
+  estado_ficha: string;
+  observacion: string | null;
+};
+
+type AgendaGrupoSesionApp = {
+  sesion_id: string;
+  grupo_id: string;
+  nombre_grupo: string;
+  nivel_grupo: string | null;
+  pista: string | null;
+  punto_encuentro: string | null;
+  estado_grupo: string;
+  publicado: boolean;
+  trabajo_diario: string | null;
+  observaciones_importantes: string | null;
+  entrenador_id: string | null;
+  entrenador: string | null;
+  estado_confirmacion: string | null;
+  total_alumnos: number;
+  alumnos_lista: string | null;
+};
+
+type AgendaRecomendacionSesionApp = {
+  sesion_id: string;
+  grupo_recomendado: string;
+  bloque_tecnico: string;
+  pista_recomendada: string;
+  alumno_id: string;
+  alumno: string;
+  nivel_resumen: string;
+  pista_alumno: string;
+  orden_en_grupo: number;
+  alertas: string | null;
+  orden_bloque?: number | null;
+  nivel_orden?: number | null;
+  edad?: number | null;
+  fuente_nivel?: string | null;
+  estado_ficha?: string | null;
+};
+
+type AgendaFormState = {
+  fecha: string;
+  modalidad: string;
+  hora_inicio: string;
+  hora_fin: string;
+  lugar: string;
+  texto_listado: string;
+};
+
+type ReporteFormState = {
+  nivel: string;
+  actitud: string;
+  tecnica: string;
+  pista: string;
+  autonomia: string;
+  remontes: string;
+  incidencia: string;
+  recomendacion: string;
+  observaciones: string;
+};
+
+type ReporteActivo = {
+  grupo_id: string;
+  alumno_id: string;
+};
+
+type IntensivoFormState = {
+  temporada: string;
+  nombre: string;
+  lugar: string;
+  estado: string;
+};
+
+type DiaIntensivoFormState = {
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+};
+
+type PlantillaCuatroSesionesIntensivoState = {
+  fechaInicio: string;
+  horaInicio: string;
+  horaFin: string;
+  tipo: 'cuatro_dias' | 'dos_fines_semana' | 'cuatro_sabados' | 'cuatro_domingos';
+};
+
+type GrupoIntensivoFormState = {
+  nombre_grupo: string;
+  nivel_grupo: string;
+  pista: string;
+  punto_encuentro: string;
+  trabajo_diario: string;
+  observaciones_importantes: string;
+  entrenador_id: string;
+  entrenador_apoyo_id: string;
+  alumnos_ids: string[];
+  publicado: boolean;
+};
+
+function intensivoInicial(): IntensivoFormState {
+  return {
+    temporada: '2025/2026',
+    nombre: '',
+    lugar: 'Madrid SnowZone',
+    estado: 'Abierto',
+  };
+}
+
+function diaIntensivoInicial(): DiaIntensivoFormState {
+  return {
+    fecha: '',
+    hora_inicio: '18:00',
+    hora_fin: '20:00',
+  };
+}
+
+function plantillaCuatroSesionesInicial(): PlantillaCuatroSesionesIntensivoState {
+  return {
+    fechaInicio: '',
+    horaInicio: '18:00',
+    horaFin: '20:00',
+    tipo: 'cuatro_dias',
+  };
+}
+
+function sumarDiasIso(fechaIso: string, dias: number) {
+  const fecha = new Date(`${fechaIso}T00:00:00`);
+  fecha.setDate(fecha.getDate() + dias);
+  return fecha.toISOString().slice(0, 10);
+}
+
+function calcularFechasCuatroSesionesIntensivo(
+  fechaInicio: string,
+  tipo: PlantillaCuatroSesionesIntensivoState['tipo']
+) {
+  if (!fechaInicio) return [];
+
+  if (tipo === 'cuatro_dias') {
+    return [0, 1, 2, 3].map((offset) => sumarDiasIso(fechaInicio, offset));
+  }
+
+  if (tipo === 'dos_fines_semana') {
+    return [0, 1, 7, 8].map((offset) => sumarDiasIso(fechaInicio, offset));
+  }
+
+  return [0, 7, 14, 21].map((offset) => sumarDiasIso(fechaInicio, offset));
+}
+
+function nombreTipoCuatroSesionesIntensivo(tipo: PlantillaCuatroSesionesIntensivoState['tipo']) {
+  if (tipo === 'cuatro_dias') return '4 días seguidos';
+  if (tipo === 'dos_fines_semana') return '2 fines de semana consecutivos';
+  if (tipo === 'cuatro_sabados') return '4 sábados';
+  return '4 domingos';
+}
+
+function grupoEdadIntensivo(fechaNacimiento?: string | null) {
+  if (!fechaNacimiento) return 'Sin edad';
+  const hoy = new Date();
+  const nacimiento = new Date(`${fechaNacimiento}T00:00:00`);
+  let edad = hoy.getFullYear() - nacimiento.getFullYear();
+  const m = hoy.getMonth() - nacimiento.getMonth();
+  if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) edad -= 1;
+  return edad >= 7 ? 'Mayores' : 'Pequeños';
+}
+
+function grupoIntensivoInicial(): GrupoIntensivoFormState {
+  return {
+    nombre_grupo: 'Grupo Intensivo',
+    nivel_grupo: '',
+    pista: 'Pequeña/Grande',
+    punto_encuentro: '1',
+    trabajo_diario: '',
+    observaciones_importantes: '',
+    entrenador_id: '',
+    entrenador_apoyo_id: '',
+    alumnos_ids: [],
+    publicado: true,
+  };
+}
+
+type ResumenInicio = {
+  reportesPendientes: number;
+  asistenciasSinConfirmar: number;
+  gruposSinPublicar: number;
+  entrenadoresSinConfirmar: number;
+};
+
+const SUPABASE_URL = 'https://natxwawulodkoauqkwqz.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_xeLKsuImDbVd9tnoBzSxXw_KAqod1bu';
+
+const opcionesNivel = [
+  'INICIACION',
+  'A',
+  'A+',
+  'B',
+  'B+',
+  'C',
+  'C+',
+  'D',
+  'D+',
+];
+
+const nivelesDiplomaIntensivo = [
+  { id: '', codigo: 'Sin seleccionar', orden: -1 },
+  { id: '8b50fa47-80dc-4808-8606-922823b708dd', codigo: 'INICIACION', orden: 0 },
+  { id: '9da86b75-7d1d-45ce-b331-6ed3c1989553', codigo: 'A', orden: 1 },
+  { id: 'b4cc5c49-dcd6-4120-8c2d-ba657bb8dcdd', codigo: 'A+', orden: 2 },
+  { id: '0b6e022a-6d6c-498e-9337-de3c67fdc207', codigo: 'B', orden: 3 },
+  { id: 'ee0eacce-543c-48e5-baca-e0085f7768a5', codigo: 'B+', orden: 4 },
+  { id: 'ec96cd14-556a-431f-846d-74223368388f', codigo: 'C', orden: 5 },
+  { id: 'b0b4e211-71c4-4a55-84bf-351137c6cdbd', codigo: 'C+', orden: 6 },
+  { id: 'b7a9fd7c-7d1d-4357-9bff-c557977db22c', codigo: 'D', orden: 7 },
+  { id: '0f10c6da-f11f-46dd-8211-1d9e1240e161', codigo: 'D+', orden: 8 },
+];
+
+const opcionesActitud = [
+  'Muy buena',
+  'Buena',
+  'Correcta',
+  'Disperso',
+  'Se bloquea',
+  'Miedo',
+  'Cansado',
+  'No escucha',
+  'Llora',
+];
+
+const opcionesTecnica = [
+  'Primer contacto / familiarización',
+  'Deslizamiento directo',
+  'Cuña de frenado',
+  'Control de velocidad en cuña',
+  'Giros en cuña',
+  'Giros en cuña encadenados',
+  'Inicio de paralelo',
+  'Paralelo elemental',
+  'Paralelo consolidado',
+  'Viraje corto inicial',
+  'Viraje conducido / avanzado',
+];
+
+const opcionesPista = ['Pequeña', 'Grande', 'Pequeña/Grande'];
+
+const opcionesAutonomia = [
+  'Necesita ayuda constante',
+  'Necesita ayuda puntual',
+  'Autónomo en llano',
+  'Autónomo en pista pequeña',
+  'Autónomo en pista grande',
+  'Autónomo total',
+];
+
+const opcionesRemontes = [
+  'Cinta',
+  'Percha',
+  'Silla',
+  'Cinta y percha',
+  'Percha y silla',
+  'Sin remontes',
+];
+
+const opcionesIncidencia = [
+  'Sin incidencia',
+  'Llanto',
+  'Miedo / bloqueo',
+  'Caída sin importancia',
+  'Caída con revisión',
+  'Se separa del grupo',
+  'No sigue instrucciones',
+  'Problema con material',
+  'Problema con remonte',
+  'Conflicto con compañero',
+  'Otro',
+];
+
+const opcionesRecomendacion = [
+  'Mantener en el mismo grupo',
+  'Subir de nivel',
+  'Bajar de nivel',
+  'Revisar por coordinador',
+  'Necesita apoyo',
+  'Repetir objetivos',
+  'Probar pista grande',
+  'Volver a pista pequeña',
+  'Revisar remontes',
+  'Hacer seguimiento especial',
+];
+
+
+const opcionesEspecialidadEntrenador = [
+  'Baby',
+  'Ocio',
+  'Intensivos',
+  'Pista pequeña',
+  'Pista grande',
+  'Debutantes',
+  'Apoyo / coordinación',
+];
+
+const opcionesDocumentoEntrenador = [
+  'Pendiente',
+  'Recibido',
+  'Validado',
+  'Caducado',
+  'No aplica',
+];
+
+function entrenadorFormInicial(): EntrenadorFormState {
+  return {
+    id: null,
+    nombre: '',
+    email: '',
+    telefono: '',
+    tarifa: '0',
+    activo: true,
+    chaqueta: false,
+    especialidades: [],
+    titulacionEstado: 'Pendiente',
+    titulacionUrl: '',
+    titulacionObs: '',
+    antecedentesEstado: 'Pendiente',
+    antecedentesUrl: '',
+    antecedentesObs: '',
+    observaciones: '',
+  };
+}
+
+const opcionesEstadoDiplomaIntensivo = ['Pendiente', 'Revisado'];
+
+const opcionesOrigenNivelAlumno = [
+  'Familia',
+  'Jose / Coordinador',
+  'Ventas / compañera',
+  'Clase de prueba pendiente',
+  'Desconocido',
+];
+
+const opcionesRecomendacionIntensivo = [
+  '',
+  'Seguir en Baby',
+  'Pasar a Ocio',
+  'Repetir Intensivo',
+  'Continuar en Intensivos',
+  'Recomendar Particular',
+  'Revisar con coordinador',
+];
+
+const opcionesEstadoAsistenciaIntensivo = [
+  'SIN_CONFIRMAR',
+  'PRESENTE',
+  'NO_PRESENTADO',
+  'LLEGA_TARDE',
+  'BAJA_AVISADA',
+];
+
+const opcionesEstadoRecuperacionIntensivo = [
+  'Pendiente valorar',
+  'Encaja en nuevo intensivo',
+  'No encaja por nivel',
+  'Sin hueco',
+  'Aprobada',
+  'Resuelta',
+  'Descartada',
+];
+
+
+const opcionesPistaGrupoIntensivo = ['', 'Pequeña', 'Grande', 'Pequeña/Grande'];
+
+const puntosEncuentroAgenda = Array.from({ length: 12 }, (_, indice) => `${indice + 1}`);
+
+const modalidadesAgendaTrabajo = [
+  { codigo: 'BABY', nombre: 'Baby' },
+  { codigo: 'OCIO', nombre: 'Ocio' },
+  { codigo: 'INTENSIVOS', nombre: 'Intensivo' },
+];
+
+
+function agendaFormInicial(): AgendaFormState {
+  return {
+    fecha: '',
+    modalidad: 'BABY',
+    hora_inicio: '10:00',
+    hora_fin: '14:00',
+    lugar: 'Madrid SnowZone',
+    texto_listado: '',
+  };
+}
+
+function reporteInicial(): ReporteFormState {
+  return {
+    nivel: 'B',
+    actitud: 'Correcta',
+    tecnica: 'Giros en cuña',
+    pista: 'Pequeña',
+    autonomia: 'Necesita ayuda puntual',
+    remontes: 'Cinta',
+    incidencia: 'Sin incidencia',
+    recomendacion: 'Mantener en el mismo grupo',
+    observaciones: '',
+  };
+}
+
+
+const temporadaInicioDefectoAgenda = (() => {
+  const hoy = new Date();
+  const anio = hoy.getFullYear();
+  const mes = hoy.getMonth() + 1;
+
+  // Temporada real de trabajo: en julio/agosto ya se prepara la temporada siguiente.
+  if (mes >= 7) return anio;
+  return anio - 1;
+})();
+
+function nombreTemporadaAgenda(anioInicio: number) {
+  return `${anioInicio}/${anioInicio + 1}`;
+}
+
+function mesesTemporadaAgenda(anioInicio: number) {
+  return [
+    `${anioInicio}-09`,
+    `${anioInicio}-10`,
+    `${anioInicio}-11`,
+    `${anioInicio}-12`,
+    `${anioInicio + 1}-01`,
+    `${anioInicio + 1}-02`,
+    `${anioInicio + 1}-03`,
+    `${anioInicio + 1}-04`,
+    `${anioInicio + 1}-05`,
+    `${anioInicio + 1}-06`,
+  ];
+}
+
+function AppContenido() {
+  const [pantalla, setPantalla] = useState<
+    | 'agenda'
+    | 'resumenDia'
+    | 'inicio'
+    | 'planning'
+    | 'entrenador'
+    | 'alumnos'
+    | 'ocioAlumnos'
+    | 'ocioGrupos'
+    | 'ocioSemana'
+    | 'ocioCambios'
+    | 'revisionOcio'
+    | 'entrenadores'
+    | 'disponibilidad'
+    | 'reportes'
+    | 'cobros'
+    | 'exportaciones'
+    | 'intensivos'
+    | 'listados'
+  >('agenda');
+
+  const [avisos, setAvisos] = useState<AvisoJose[]>([]);
+  const [resumenInicio, setResumenInicio] = useState<ResumenInicio>({
+    reportesPendientes: 0,
+    asistenciasSinConfirmar: 0,
+    gruposSinPublicar: 0,
+    entrenadoresSinConfirmar: 0,
+  });
+
+  const [anioInicioTemporadaAgenda, setAnioInicioTemporadaAgenda] = useState(() => Math.max(2026, leerStorageNumeroApp('mitico_temporada_trabajo', temporadaInicioDefectoAgenda)));
+  const [mesAgenda, setMesAgenda] = useState(() => leerStorageApp('mitico_mes_trabajo', ''));
+  const [semanaAgendaInicio, setSemanaAgendaInicio] = useState(() => leerStorageApp('mitico_semana_trabajo', ''));
+  const [planning, setPlanning] = useState<GrupoPlanning[]>([]);
+  const [filtroPlanning, setFiltroPlanning] = useState<
+    'todos' | 'pendientes' | 'cerrados' | 'sin_publicar'
+  >('todos');
+  const [detalle, setDetalle] = useState<DetalleGrupo | null>(null);
+
+  const [gruposEntrenador, setGruposEntrenador] = useState<
+    GrupoEntrenadorApp[]
+  >([]);
+  const [alumnosReporteEntrenador, setAlumnosReporteEntrenador] = useState<
+    AlumnoReporteEntrenador[]
+  >([]);
+  const [busquedaGrupoEntrenador, setBusquedaGrupoEntrenador] = useState('');
+  const [tabVistaEntrenador, setTabVistaEntrenador] = useState<'disponibilidad' | 'grupos'>('disponibilidad');
+
+  const [reporteActivo, setReporteActivo] = useState<ReporteActivo | null>(
+    null
+  );
+  const [formReporte, setFormReporte] = useState<ReporteFormState>(
+    reporteInicial()
+  );
+
+  const [alumnos, setAlumnos] = useState<AlumnoResumen[]>([]);
+  const [busquedaAlumno, setBusquedaAlumno] = useState('');
+  const [filtroAlumnos, setFiltroAlumnos] = useState<
+    'todos' | 'sin_nivel' | 'sin_reportes' | 'revision_reciente' | 'seguimiento_especial'
+  >('todos');
+  const [alumnoEditandoId, setAlumnoEditandoId] = useState<string | null>(null);
+  const [alumnoEditNombre, setAlumnoEditNombre] = useState('');
+  const [alumnoEditNivel, setAlumnoEditNivel] = useState('');
+  const [alumnoEditOrigen, setAlumnoEditOrigen] = useState('Jose / Coordinador');
+  const [alumnoEditEstado, setAlumnoEditEstado] = useState('pendiente completar');
+  const [mostrarNuevoAlumnoManual, setMostrarNuevoAlumnoManual] = useState(false);
+  const [nuevoAlumnoNombre, setNuevoAlumnoNombre] = useState('');
+  const [nuevoAlumnoNivel, setNuevoAlumnoNivel] = useState('');
+  const [nuevoAlumnoOrigen, setNuevoAlumnoOrigen] = useState('Jose / Coordinador');
+  const [nuevoAlumnoEstado, setNuevoAlumnoEstado] = useState('pendiente completar');
+  const [evaluacionAlumnoActivaId, setEvaluacionAlumnoActivaId] = useState<string | null>(null);
+  const [evaluacionAlumnoTexto, setEvaluacionAlumnoTexto] = useState('');
+  const [historialAlumnoAbiertoId, setHistorialAlumnoAbiertoId] = useState<string | null>(null);
+
+  const [ocioAlumnos, setOcioAlumnos] = useState<OcioAlumnoApp[]>([]);
+  const [ocioGrupos, setOcioGrupos] = useState<OcioGrupoApp[]>([]);
+  const [ocioRecomendacionesCambio, setOcioRecomendacionesCambio] = useState<OcioRecomendacionCambioApp[]>([]);
+  const [busquedaOcio, setBusquedaOcio] = useState('');
+  const [mostrarNuevoOcio, setMostrarNuevoOcio] = useState(false);
+  const [ocioAlumnoEditandoId, setOcioAlumnoEditandoId] = useState<string | null>(null);
+  const [ocioNombre, setOcioNombre] = useState('');
+  const [ocioNivel, setOcioNivel] = useState('');
+  const [ocioFechaNacimiento, setOcioFechaNacimiento] = useState('');
+  const [ocioDiaFijo, setOcioDiaFijo] = useState('Jueves');
+  const [ocioHoraInicio, setOcioHoraInicio] = useState('18:00');
+  const [ocioHoraFin, setOcioHoraFin] = useState('20:00');
+  const [ocioObservaciones, setOcioObservaciones] = useState('');
+  const [textoImportarOcio, setTextoImportarOcio] = useState('');
+  const [resultadoImportarOcio, setResultadoImportarOcio] = useState<OcioImportadoApp[]>([]);
+  const [ocioGrupoForm, setOcioGrupoForm] = useState<OcioGrupoFormState>(ocioGrupoFormInicial());
+  const [mostrarFormularioOcioGrupo, setMostrarFormularioOcioGrupo] = useState(false);
+  const [evaluacionOcioActivaId, setEvaluacionOcioActivaId] = useState<string | null>(null);
+  const [evaluacionOcioTexto, setEvaluacionOcioTexto] = useState('');
+  const [ocioSemanaAsistencia, setOcioSemanaAsistencia] = useState<Record<string, boolean>>({});
+  const [ocioSemanaEntrenadores, setOcioSemanaEntrenadores] = useState<Record<string, string>>({});
+  const [ocioSemanaResultados, setOcioSemanaResultados] = useState<OcioPrepararResultadoApp[]>([]);
+  const [ocioCambiosPuntuales, setOcioCambiosPuntuales] = useState<OcioCambioPuntualApp[]>([]);
+  const [ocioCambioForm, setOcioCambioForm] = useState<OcioCambioFormState>(ocioCambioFormInicial());
+  const [mostrarFormularioOcioCambio, setMostrarFormularioOcioCambio] = useState(false);
+
+  const [entrenadores, setEntrenadores] = useState<EntrenadorResumen[]>([]);
+  const [busquedaEntrenador, setBusquedaEntrenador] = useState('');
+  const [filtroEntrenadores, setFiltroEntrenadores] = useState<
+    'todos' | 'activos' | 'inactivos' | 'sin_chaqueta' | 'documentacion_pendiente'
+  >('todos');
+  const [mostrarFormularioEntrenador, setMostrarFormularioEntrenador] = useState(false);
+  const [formEntrenador, setFormEntrenador] = useState<EntrenadorFormState>(entrenadorFormInicial());
+
+  const [disponibilidad, setDisponibilidad] = useState<
+    DisponibilidadEntrenador[]
+  >([]);
+  const [busquedaDisponibilidad, setBusquedaDisponibilidad] = useState('');
+  const [filtroDisponibilidad, setFiltroDisponibilidad] = useState<
+    'todos' | 'disponibles' | 'no_puedo' | 'pendientes'
+  >('todos');
+
+  const [reportesPendientes, setReportesPendientes] = useState<
+    ReportePendiente[]
+  >([]);
+  const [busquedaReportes, setBusquedaReportes] = useState('');
+  const [filtroReportes, setFiltroReportes] = useState<
+    'todos' | 'faltan_reportes' | 'asistencias_sin_confirmar'
+  >('todos');
+
+  const [cobros, setCobros] = useState<CobroMensual[]>([]);
+  const [cobrosDetalle, setCobrosDetalle] = useState<CobroDetalleMensual[]>([]);
+  const [anioCobros, setAnioCobros] = useState(new Date().getFullYear());
+  const [mesCobros, setMesCobros] = useState(new Date().getMonth() + 1);
+  const [busquedaCobros, setBusquedaCobros] = useState('');
+  const [filtroCobros, setFiltroCobros] = useState<
+    'todos' | 'pendiente' | 'cerrado' | 'incidencias' | 'este_mes'
+  >('todos');
+  const [tarifasEditadasCobros, setTarifasEditadasCobros] = useState<Record<string, string>>({});
+  const [formCobroManual, setFormCobroManual] = useState<CobroManualFormState>(cobroManualInicial());
+  const [cobroPdfPreview, setCobroPdfPreview] = useState<CobroPdfPreviewState | null>(null);
+
+  const [intensivos, setIntensivos] = useState<IntensivoApp[]>([]);
+  const [panelControlIntensivo, setPanelControlIntensivo] = useState<PanelControlIntensivoApp[]>([]);
+  const [busquedaIntensivos, setBusquedaIntensivos] = useState('');
+  const [filtroIntensivos, setFiltroIntensivos] = useState<
+    'todos' | 'activos' | 'cerrados' | 'sin_alumnos' | 'proximos'
+  >('todos');
+  const [gestionarPanelControlIntensivoId, setGestionarPanelControlIntensivoId] = useState<string | null>(null);
+  const [intensivoCursoAbiertoId, setIntensivoCursoAbiertoId] = useState<string | null>(null);
+
+  const [mostrarFormularioIntensivo, setMostrarFormularioIntensivo] = useState(false);
+  const [formIntensivo, setFormIntensivo] = useState<IntensivoFormState>(
+    intensivoInicial()
+  );
+  const [diaActivoIntensivoId, setDiaActivoIntensivoId] = useState<string | null>(
+    null
+  );
+  const [diaEditandoIntensivoId, setDiaEditandoIntensivoId] = useState<string | null>(
+    null
+  );
+  const [formDiaIntensivo, setFormDiaIntensivo] = useState<DiaIntensivoFormState>(
+    diaIntensivoInicial()
+  );
+  const [plantillaCuatroSesionesIntensivo, setPlantillaCuatroSesionesIntensivo] = useState<PlantillaCuatroSesionesIntensivoState>(
+    plantillaCuatroSesionesInicial()
+  );
+  const [mostrarPlantillaCuatroSesionesIntensivoId, setMostrarPlantillaCuatroSesionesIntensivoId] = useState<string | null>(null);
+  const [intensivoAlumnos, setIntensivoAlumnos] = useState<IntensivoAlumnoApp[]>([]);
+  const [alumnosParaIntensivo, setAlumnosParaIntensivo] = useState<AlumnoParaIntensivoApp[]>([]);
+  const [alumnosResumenVolcado, setAlumnosResumenVolcado] = useState<AlumnoResumenParaVolcadoApp[]>([]);
+  const [gestionarAlumnosIntensivoId, setGestionarAlumnosIntensivoId] = useState<string | null>(null);
+  const [busquedaAlumnoIntensivo, setBusquedaAlumnoIntensivo] = useState('');
+  const [alumnoSeleccionadoIntensivoId, setAlumnoSeleccionadoIntensivoId] = useState('');
+  const [mostrarVolcadoIntensivoId, setMostrarVolcadoIntensivoId] = useState<string | null>(null);
+  const [textoVolcadoIntensivo, setTextoVolcadoIntensivo] = useState('');
+  const [resultadoVolcadoIntensivo, setResultadoVolcadoIntensivo] = useState<VolcadoAlumnoIntensivoApp[]>([]);
+  const [intensivoDias, setIntensivoDias] = useState<IntensivoDiaApp[]>([]);
+  const [intensivoAsistencias, setIntensivoAsistencias] = useState<IntensivoAsistenciaApp[]>([]);
+  const [gestionarAsistenciaIntensivoId, setGestionarAsistenciaIntensivoId] = useState<string | null>(null);
+  const [diaAsistenciaSeleccionadoId, setDiaAsistenciaSeleccionadoId] = useState('');
+  const [intensivoMás, setIntensivoMás] = useState<IntensivoRecuperacionApp[]>([]);
+  const [gruposDestinoRecuperacion, setGruposDestinoRecuperacion] = useState<GrupoDestinoRecuperacionApp[]>([]);
+  const [gestionarMásIntensivoId, setGestionarMásIntensivoId] = useState<string | null>(null);
+
+  const [gruposIntensivoDia, setGruposIntensivoDia] = useState<GrupoIntensivoDiaApp[]>([]);
+  const [resumenReportesIntensivo, setResumenReportesIntensivo] = useState<ResumenReportesIntensivoApp[]>([]);
+  const [resumenFinalIntensivo, setResumenFinalIntensivo] = useState<ResumenFinalIntensivoApp[]>([]);
+  const [reportesDetalleIntensivo, setReportesDetalleIntensivo] = useState<ReporteDetalleIntensivoApp[]>([]);
+  const [gestionarDiplomasIntensivoId, setGestionarDiplomasIntensivoId] = useState<string | null>(null);
+  const [gestionarGruposIntensivoId, setGestionarGruposIntensivoId] = useState<string | null>(null);
+  const [diaGrupoSeleccionadoId, setDiaGrupoSeleccionadoId] = useState('');
+  const [formGrupoIntensivo, setFormGrupoIntensivo] = useState<GrupoIntensivoFormState>(
+    grupoIntensivoInicial()
+  );
+  const [recomendacionesGrupoIntensivo, setRecomendacionesGrupoIntensivo] = useState<RecomendacionGrupoIntensivoDiaApp[]>([]);
+  const [entrenadoresPorGrupoRecomendado, setEntrenadoresPorGrupoRecomendado] = useState<Record<string, string>>({});
+  const [entrenadoresApoyoPorGrupoRecomendado, setEntrenadoresApoyoPorGrupoRecomendado] = useState<Record<string, string>>({});
+  const [responsablesReportePorGrupoRecomendado, setResponsablesReportePorGrupoRecomendado] = useState<Record<string, string>>({});
+  const [destinoAlumnoRecomendado, setDestinoAlumnoRecomendado] = useState<Record<string, string>>({});
+  const [trabajoDiarioPorGrupoRecomendado, setTrabajoDiarioPorGrupoRecomendado] = useState<Record<string, string>>({});
+  const [observacionesPorGrupoRecomendado, setObservacionesPorGrupoRecomendado] = useState<Record<string, string>>({});
+
+  const [listados, setListados] = useState<ListadoApp[]>([]);
+  const [busquedaListados, setBusquedaListados] = useState('');
+  const [filtroListados, setFiltroListados] = useState<
+    'todos' | 'pendientes' | 'altas' | 'no_encontrados' | 'fuera_plazo'
+  >('todos');
+
+  const [agendaSesionesDirectas, setAgendaSesionesDirectas] = useState<AgendaSesionDirectaApp[]>([]);
+  const [agendaSesionActivaId, setAgendaSesionActivaId] = useState('');
+  const [agendaFormularioAbierto, setAgendaFormularioAbierto] = useState(false);
+  const [agendaDiaCompactoActivo, setAgendaDiaCompactoActivo] = useState('');
+  const [gruposAgendaManuales, setGruposAgendaManuales] = useState<string[]>([]);
+  const [agendaForm, setAgendaForm] = useState<AgendaFormState>(agendaFormInicial());
+  const [agendaAlumnosSesion, setAgendaAlumnosSesion] = useState<AgendaAlumnoSesionApp[]>([]);
+  const [agendaGruposSesion, setAgendaGruposSesion] = useState<AgendaGrupoSesionApp[]>([]);
+  const [agendaRecomendaciones, setAgendaRecomendaciones] = useState<AgendaRecomendacionSesionApp[]>([]);
+  const [fechaResumenDia, setFechaResumenDia] = useState(() => leerStorageApp('mitico_fecha_resumen_dia', fechaIsoHoyApp()));
+  const [busquedaRevisionOcio, setBusquedaRevisionOcio] = useState('');
+  const [filtroRevisionOcio, setFiltroRevisionOcio] = useState<'todos' | 'cambios' | 'sin_grupo' | 'sin_reportes'>('cambios');
+  const [destinoRevisionOcio, setDestinoRevisionOcio] = useState<Record<string, string>>({});
+  const [ultimaDescargaBackupSemana, setUltimaDescargaBackupSemana] = useState('');
+  const [destinoAlumnoAgendaGrupo, setDestinoAlumnoAgendaGrupo] = useState<Record<string, string>>({});
+  const [entrenadoresAgendaGrupo, setEntrenadoresAgendaGrupo] = useState<Record<string, string>>({});
+  const [entrenadoresApoyoAgendaGrupo, setEntrenadoresApoyoAgendaGrupo] = useState<Record<string, string>>({});
+  const [responsablesReporteAgendaGrupo, setResponsablesReporteAgendaGrupo] = useState<Record<string, string>>({});
+  const [puntosAgendaGrupo, setPuntosAgendaGrupo] = useState<Record<string, string>>({});
+  const [trabajoAgendaGrupo, setTrabajoAgendaGrupo] = useState<Record<string, string>>({});
+  const [observacionesAgendaGrupo, setObservacionesAgendaGrupo] = useState<Record<string, string>>({});
+  const [trabajoGrupoCreadoEditando, setTrabajoGrupoCreadoEditando] = useState<Record<string, string>>({});
+  const [observacionesGrupoCreadoEditando, setObservacionesGrupoCreadoEditando] = useState<Record<string, string>>({});
+
+
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState('');
+  const [whatsappPreview, setWhatsappPreview] = useState<WhatsappPreviewState | null>(null);
+
+  async function consultarSupabase<T>(
+    tabla: string,
+    query: string
+  ): Promise<T[]> {
+    const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/${tabla}?${query}`, {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+      },
+    });
+
+    if (!respuesta.ok) {
+      const textoError = await respuesta.text();
+      throw new Error(textoError);
+    }
+
+    return respuesta.json();
+  }
+
+  async function ejecutarFuncion(nombreFuncion: string, body: object) {
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
+      {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!respuesta.ok) {
+      const textoError = await respuesta.text();
+      throw new Error(textoError);
+    }
+  }
+
+  async function ejecutarFuncionConRespuesta<T>(
+    nombreFuncion: string,
+    body: object
+  ): Promise<T[]> {
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
+      {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (!respuesta.ok) {
+      const textoError = await respuesta.text();
+      throw new Error(textoError);
+    }
+
+    return respuesta.json();
+  }
+
+  async function cargarInicio() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const avisosData = await consultarSupabase<AvisoJose>(
+        'v_inicio_avisos_jose',
+        'select=*&order=orden.asc'
+      );
+
+      const reportesData = await consultarSupabase<ReportePendiente>(
+        'v_reportes_pendientes_entrenador_dos_entrenadores',
+        'select=*'
+      );
+
+      const planningData = await consultarSupabase<GrupoPlanning>(
+        'v_planning_app',
+        'select=grupo_id,publicado'
+      );
+
+      const gruposEntrenadorData = await consultarSupabase<GrupoEntrenadorApp>(
+        'v_grupos_entrenador_app_dos_entrenadores',
+        'select=grupo_id,entrenador_id,estado_confirmacion,publicado'
+      );
+
+      setAvisos(avisosData);
+      setResumenInicio({
+        reportesPendientes: reportesData.filter(
+          (reporte) => reporte.estado_reporte === 'Falta reporte'
+        ).length,
+        asistenciasSinConfirmar: reportesData.filter(
+          (reporte) => reporte.estado_reporte === 'Asistencia sin confirmar'
+        ).length,
+        gruposSinPublicar: planningData.filter((grupo) => !grupo.publicado).length,
+        entrenadoresSinConfirmar: gruposEntrenadorData.filter(
+          (grupo) => grupo.publicado && grupo.estado_confirmacion !== 'Confirmado'
+        ).length,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setAvisos([]);
+      setResumenInicio({
+        reportesPendientes: 0,
+        asistenciasSinConfirmar: 0,
+        gruposSinPublicar: 0,
+        entrenadoresSinConfirmar: 0,
+      });
+    }
+
+    setCargando(false);
+  }
+
+  async function actualizarTodo() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const [avisosData, reportesData, planningData, gruposEntrenadorData, alumnosEstadoData] =
+        await Promise.all([
+          consultarSupabase<AvisoJose>(
+            'v_inicio_avisos_jose',
+            'select=*&order=orden.asc'
+          ),
+          consultarSupabase<ReportePendiente>(
+            'v_reportes_pendientes_entrenador_dos_entrenadores',
+            'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc,alumno.asc'
+          ),
+          consultarSupabase<GrupoPlanning>(
+            'v_planning_app',
+            'select=*&order=fecha.asc,hora_inicio.asc,nombre_grupo.asc'
+          ),
+          consultarSupabase<GrupoEntrenadorApp>(
+            'v_grupos_entrenador_app_dos_entrenadores',
+            'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc'
+          ),
+          consultarSupabase<AlumnoReporteEntrenador>(
+            'v_alumnos_reporte_entrenador_app_dos_entrenadores',
+            'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc,alumno.asc'
+          ),
+        ]);
+
+      setAvisos(avisosData);
+      setReportesPendientes(reportesData);
+      setPlanning(planningData);
+      setGruposEntrenador(gruposEntrenadorData);
+      setAlumnosReporteEntrenador(alumnosEstadoData);
+
+      setResumenInicio({
+        reportesPendientes: reportesData.filter(
+          (reporte) => reporte.estado_reporte === 'Falta reporte'
+        ).length,
+        asistenciasSinConfirmar: reportesData.filter(
+          (reporte) => reporte.estado_reporte === 'Asistencia sin confirmar'
+        ).length,
+        gruposSinPublicar: planningData.filter((grupo) => !grupo.publicado).length,
+        entrenadoresSinConfirmar: gruposEntrenadorData.filter(
+          (grupo) => grupo.publicado && grupo.estado_confirmacion !== 'Confirmado'
+        ).length,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function cargarPlanning() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const data = await consultarSupabase<GrupoPlanning>(
+        'v_planning_app',
+        'select=*&order=fecha.asc,hora_inicio.asc,nombre_grupo.asc'
+      );
+
+      const gruposEstado = await consultarSupabase<GrupoEntrenadorApp>(
+        'v_grupos_entrenador_app_dos_entrenadores',
+        'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc'
+      );
+
+      const alumnosEstado = await consultarSupabase<AlumnoReporteEntrenador>(
+        'v_alumnos_reporte_entrenador_app_dos_entrenadores',
+        'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc,alumno.asc'
+      );
+
+      setPlanning(data);
+      setGruposEntrenador(gruposEstado);
+      setAlumnosReporteEntrenador(alumnosEstado);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setPlanning([]);
+      setGruposEntrenador([]);
+      setAlumnosReporteEntrenador([]);
+    }
+
+    setCargando(false);
+  }
+
+  async function cargarGruposEntrenador() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const grupos = await consultarSupabase<GrupoEntrenadorApp>(
+        'v_grupos_entrenador_app_dos_entrenadores',
+        'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc'
+      );
+
+      const alumnosEstado = await consultarSupabase<AlumnoReporteEntrenador>(
+        'v_alumnos_reporte_entrenador_app_dos_entrenadores',
+        'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc,alumno.asc'
+      );
+
+      const reportesEstado = await consultarSupabase<ReportePendiente>(
+        'v_reportes_pendientes_entrenador_dos_entrenadores',
+        'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc,alumno.asc'
+      );
+
+      setGruposEntrenador(grupos);
+      setAlumnosReporteEntrenador(alumnosEstado);
+      setReportesPendientes(reportesEstado);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setGruposEntrenador([]);
+      setAlumnosReporteEntrenador([]);
+    }
+
+    setCargando(false);
+  }
+
+  async function publicarGrupo(grupoId: string) {
+    const confirmar = window.confirm(
+      '¿Seguro que quieres PUBLICAR este grupo? El entrenador podrá verlo como grupo publicado.'
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('publicar_grupo_app', {
+        p_grupo_id: grupoId,
+      });
+
+      await cargarPlanning();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function despublicarGrupo(grupoId: string) {
+    const confirmar = window.confirm(
+      '¿Seguro que quieres DESPUBLICAR este grupo? Dejará de aparecer como publicado.'
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('despublicar_grupo_app', {
+        p_grupo_id: grupoId,
+      });
+
+      await cargarPlanning();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function confirmarGrupoEntrenador(
+    grupoId: string,
+    entrenadorId: string
+  ) {
+    const confirmar = window.confirm(
+      '¿Confirmas que este entrenador ha visto y acepta el grupo?'
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('confirmar_grupo_entrenador_app', {
+        p_grupo_id: grupoId,
+        p_entrenador_id: entrenadorId,
+      });
+
+      await cargarGruposEntrenador();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function marcarAsistencia(
+    grupoId: string,
+    alumnoId: string,
+    estado: string
+  ) {
+    const scrollActual = window.scrollY;
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('marcar_asistencia_alumno_app', {
+        p_grupo_id: grupoId,
+        p_alumno_id: alumnoId,
+        p_estado_asistencia: estado,
+      });
+
+      await cargarGruposEntrenador();
+      if (pantalla === 'reportes') await cargarReportesPendientes();
+      setTimeout(() => window.scrollTo({ top: scrollActual, behavior: 'auto' }), 0);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  function abrirFormularioReporte(alumno: AlumnoReporteEntrenador) {
+    setReporteActivo({
+      grupo_id: alumno.grupo_id,
+      alumno_id: alumno.alumno_id,
+    });
+
+    setFormReporte({
+      ...reporteInicial(),
+      nivel: grupoNivelAFormulario(alumno.nombre_grupo),
+      pista: alumno.nombre_grupo.toLowerCase().includes('grande')
+        ? 'Grande'
+        : 'Pequeña',
+      observaciones: '',
+    });
+  }
+
+  function cerrarFormularioReporte() {
+    setReporteActivo(null);
+    setFormReporte(reporteInicial());
+  }
+
+  async function guardarReporteAlumno(alumno: AlumnoReporteEntrenador) {
+    const confirmar = window.confirm(`¿Guardar reporte de ${alumno.alumno}?`);
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('crear_reporte_alumno_app', {
+        p_grupo_id: alumno.grupo_id,
+        p_alumno_id: alumno.alumno_id,
+        p_entrenador_id: alumno.entrenador_id,
+        p_actitud: formReporte.actitud,
+        p_nivel_reportado: formReporte.nivel,
+        p_tecnica: formReporte.tecnica,
+        p_pista: formReporte.pista,
+        p_autonomia: formReporte.autonomia,
+        p_remontes: formReporte.remontes,
+        p_incidencia: formReporte.incidencia,
+        p_recomendacion: formReporte.recomendacion,
+        p_observaciones:
+          formReporte.observaciones || 'Reporte enviado desde la app',
+      });
+
+      cerrarFormularioReporte();
+      await cargarGruposEntrenador();
+      await cargarReportesPendientes();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function cargarAlumnos() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const data = await consultarSupabase<AlumnoResumen>(
+        'v_resumen_alumno',
+        'select=*&order=alumno.asc'
+      );
+      setAlumnos(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setAlumnos([]);
+    }
+
+    setCargando(false);
+  }
+
+  function cerrarEditorAlumnoBase() {
+    setAlumnoEditandoId(null);
+    setAlumnoEditNombre('');
+    setAlumnoEditNivel('');
+    setAlumnoEditOrigen('Jose / Coordinador');
+    setAlumnoEditEstado('pendiente completar');
+  }
+
+  async function guardarAlumnoBaseConDatos(
+    alumnoId: string,
+    nombre: string,
+    nivel: string,
+    origen: string,
+    estado: string
+  ) {
+    const nombreLimpio = nombre.trim().toUpperCase();
+    if (!nombreLimpio) {
+      setError('El nombre del alumno no puede estar vacío.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('actualizar_alumno_base_operativa_app', {
+        p_alumno_id: alumnoId,
+        p_nombre_completo: nombreLimpio,
+        p_nivel_codigo: nivel || null,
+        p_origen_nivel: origen || 'Jose / Coordinador',
+        p_estado_ficha: estado || 'pendiente completar',
+      });
+
+      cerrarEditorAlumnoBase();
+      await cargarAlumnos();
+      await cargarAgendaOperativaDirecta();
+      if (agendaSesionActivaId) {
+        await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      }
+      setAgendaRecomendaciones([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  function editarAlumnoBaseRapido(alumno: AlumnoResumen) {
+    setAlumnoEditandoId(alumno.alumno_id);
+    setAlumnoEditNombre(alumno.alumno || '');
+    setAlumnoEditNivel(alumno.nivel_actual || alumno.nivel_estimado || alumno.ultimo_nivel_reportado || '');
+    setAlumnoEditOrigen(alumno.origen_nivel_estimado || 'Jose / Coordinador');
+    setAlumnoEditEstado(alumno.estado_ficha || 'pendiente completar');
+  }
+
+  async function guardarAlumnoBase(alumnoId: string) {
+    await guardarAlumnoBaseConDatos(
+      alumnoId,
+      alumnoEditNombre,
+      alumnoEditNivel,
+      alumnoEditOrigen,
+      alumnoEditEstado
+    );
+  }
+
+  async function borrarAlumnoBase(alumno: AlumnoResumen) {
+    const confirmar = window.confirm(
+      `¿Borrar definitivamente la ficha de ${alumno.alumno}?\n\nEsto borra al alumno de listados, grupos, reportes e intensivos de prueba. No se puede deshacer.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('borrar_alumno_base_operativa_app', {
+        p_alumno_id: alumno.alumno_id,
+      });
+
+      if (alumnoEditandoId === alumno.alumno_id) cerrarEditorAlumnoBase();
+      await cargarAlumnos();
+      await cargarAgendaOperativaDirecta();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function crearAlumnoManualBase() {
+    const nombreLimpio = nuevoAlumnoNombre.trim().toUpperCase();
+    if (!nombreLimpio) {
+      setError('Escribe el nombre del alumno para crear la ficha manual.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('crear_alumno_manual_operativa_app', {
+        p_nombre_completo: nombreLimpio,
+        p_nivel_codigo: nuevoAlumnoNivel || null,
+        p_origen_nivel: nuevoAlumnoOrigen || 'Jose / Coordinador',
+        p_estado_ficha: nuevoAlumnoEstado || 'pendiente completar',
+      });
+
+      setNuevoAlumnoNombre('');
+      setNuevoAlumnoNivel('');
+      setNuevoAlumnoOrigen('Jose / Coordinador');
+      setNuevoAlumnoEstado('pendiente completar');
+      setMostrarNuevoAlumnoManual(false);
+      await cargarAlumnos();
+      await cargarAgendaOperativaDirecta();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error creando alumno manual');
+    }
+
+    setCargando(false);
+  }
+
+  async function abrirEvaluacionAlumno(alumno: AlumnoResumen) {
+    setCargando(true);
+    setError('');
+    setEvaluacionAlumnoActivaId(alumno.alumno_id);
+    setEvaluacionAlumnoTexto('Cargando evaluación...');
+
+    try {
+      const resultado = await ejecutarFuncionConRespuesta<{ texto: string }>(
+        'extraer_evaluacion_alumno_reportes_app',
+        { p_alumno_id: alumno.alumno_id }
+      );
+      const texto = resultado[0]?.texto || `No hay reportes todavía para ${alumno.alumno}.`;
+      setEvaluacionAlumnoTexto(texto);
+    } catch (err) {
+      setEvaluacionAlumnoTexto('');
+      setError(err instanceof Error ? err.message : 'Error generando evaluación');
+    }
+
+    setCargando(false);
+  }
+
+  async function copiarEvaluacionAlumnoTexto() {
+    if (!evaluacionAlumnoTexto.trim()) return;
+
+    try {
+      await navigator.clipboard.writeText(evaluacionAlumnoTexto);
+      alert('Evaluación copiada. Pégala en ChatGPT para convertirla en mensaje bonito para padres.');
+    } catch {
+      window.prompt('Copia esta evaluación:', evaluacionAlumnoTexto);
+    }
+  }
+
+
+  async function cargarOcioAlumnos() {
+    setCargando(true);
+    setError('');
+    try {
+      const data = await consultarSupabase<OcioAlumnoApp>(
+        'v_ocio_alumnos_app',
+        'select=*&order=alumno.asc'
+      );
+      setOcioAlumnos(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error cargando alumnos de Ocio');
+      setOcioAlumnos([]);
+    }
+    setCargando(false);
+  }
+
+  async function cargarOcioGrupos() {
+    setCargando(true);
+    setError('');
+    try {
+      const data = await consultarSupabase<OcioGrupoApp>(
+        'v_ocio_grupos_estables_app',
+        'select=*&order=dia_semana.asc,hora_inicio.asc,nombre_grupo.asc'
+      );
+      setOcioGrupos(data);
+      const recomendaciones = await consultarSupabase<OcioRecomendacionCambioApp>(
+        'v_ocio_recomendacion_cambios_app',
+        'select=*&order=alumno.asc'
+      );
+      setOcioRecomendacionesCambio(recomendaciones);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error cargando grupos de Ocio');
+      setOcioGrupos([]);
+      setOcioRecomendacionesCambio([]);
+    }
+    setCargando(false);
+  }
+
+  async function cargarOcioCambios() {
+    setCargando(true);
+    setError('');
+    try {
+      const data = await consultarSupabase<OcioCambioPuntualApp>(
+        'v_ocio_reubicaciones_app',
+        'select=*&order=fecha.desc,alumno.asc'
+      );
+      setOcioCambiosPuntuales(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error cargando cambios puntuales de Ocio');
+      setOcioCambiosPuntuales([]);
+    }
+    setCargando(false);
+  }
+
+  function limpiarFormularioOcioAlumno() {
+    setOcioAlumnoEditandoId(null);
+    setOcioNombre('');
+    setOcioNivel('');
+    setOcioFechaNacimiento('');
+    setOcioDiaFijo('Jueves');
+    setOcioHoraInicio('18:00');
+    setOcioHoraFin('20:00');
+    setOcioObservaciones('');
+  }
+
+  function abrirNuevoAlumnoOcio() {
+    limpiarFormularioOcioAlumno();
+    setMostrarNuevoOcio(true);
+  }
+
+  function editarAlumnoOcio(alumno: OcioAlumnoApp) {
+    setOcioAlumnoEditandoId(alumno.alumno_id);
+    setOcioNombre(alumno.alumno || '');
+    setOcioNivel(alumno.nivel_usado && alumno.nivel_usado !== '-' ? alumno.nivel_usado : '');
+    setOcioFechaNacimiento(alumno.fecha_nacimiento || '');
+    setOcioDiaFijo(alumno.dia_fijo || alumno.grupo_dia || 'Jueves');
+    setOcioHoraInicio((alumno.hora_inicio_fija || alumno.grupo_hora_inicio || '18:00').slice(0, 5));
+    setOcioHoraFin((alumno.hora_fin_fija || alumno.grupo_hora_fin || '20:00').slice(0, 5));
+    setOcioObservaciones(alumno.observaciones || '');
+    setMostrarNuevoOcio(true);
+  }
+
+  async function guardarAlumnoOcio() {
+    const nombre = ocioNombre.trim().toUpperCase();
+    if (!nombre) {
+      alert('Pon el nombre del alumno de Ocio.');
+      return;
+    }
+    setCargando(true);
+    setError('');
+    try {
+      if (ocioAlumnoEditandoId) {
+        await ejecutarFuncion('actualizar_alumno_ocio_app', {
+          p_alumno_id: ocioAlumnoEditandoId,
+          p_nombre_completo: nombre,
+          p_nivel_codigo: ocioNivel || null,
+          p_fecha_nacimiento: ocioFechaNacimiento || null,
+          p_dia_fijo: ocioDiaFijo || null,
+          p_hora_inicio: ocioHoraInicio || null,
+          p_hora_fin: ocioHoraFin || null,
+          p_observaciones: ocioObservaciones || null,
+          p_estado_ficha: 'pendiente completar',
+        });
+      } else {
+        await ejecutarFuncion('crear_alumno_ocio_app', {
+          p_nombre_completo: nombre,
+          p_nivel_codigo: ocioNivel || null,
+          p_fecha_nacimiento: ocioFechaNacimiento || null,
+          p_dia_fijo: ocioDiaFijo || null,
+          p_hora_inicio: ocioHoraInicio || null,
+          p_hora_fin: ocioHoraFin || null,
+          p_observaciones: ocioObservaciones || null,
+        });
+      }
+      limpiarFormularioOcioAlumno();
+      setMostrarNuevoOcio(false);
+      await cargarOcioAlumnos();
+      await cargarOcioGrupos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error guardando alumno Ocio');
+    }
+    setCargando(false);
+  }
+
+  async function eliminarAlumnoOcio(alumno: OcioAlumnoApp) {
+    const confirmar = window.confirm(`¿Eliminar la ficha de Ocio de ${alumno.alumno}? No se puede deshacer.`);
+    if (!confirmar) return;
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('eliminar_alumno_ocio_app', { p_alumno_id: alumno.alumno_id });
+      await cargarOcioAlumnos();
+      await cargarOcioGrupos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error eliminando alumno Ocio');
+    }
+    setCargando(false);
+  }
+
+  async function importarOcioAimharder() {
+    if (!textoImportarOcio.trim()) {
+      alert('Pega el listado de Aimharder de Ocio.');
+      return;
+    }
+    setCargando(true);
+    setError('');
+    try {
+      const resultado = await ejecutarFuncionConRespuesta<OcioImportadoApp>('importar_alumnos_ocio_aimharder_app', {
+        p_texto: textoImportarOcio,
+        p_dia_fijo: ocioDiaFijo || null,
+        p_hora_inicio: ocioHoraInicio || null,
+        p_hora_fin: ocioHoraFin || null,
+      });
+      setResultadoImportarOcio(resultado);
+      await cargarOcioAlumnos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error importando listado Ocio');
+    }
+    setCargando(false);
+  }
+
+  function abrirNuevoGrupoOcio() {
+    setOcioGrupoForm(ocioGrupoFormInicial());
+    setMostrarFormularioOcioGrupo(true);
+  }
+
+  function editarGrupoOcio(grupo: OcioGrupoApp) {
+    setOcioGrupoForm({
+      id: grupo.grupo_id,
+      nombre: grupo.nombre_grupo || '',
+      dia: grupo.dia_semana || 'Jueves',
+      horaInicio: (grupo.hora_inicio || '18:00').slice(0, 5),
+      horaFin: (grupo.hora_fin || '20:00').slice(0, 5),
+      nivel: grupo.nivel_grupo || 'A',
+      pista: grupo.pista || 'Pequeña',
+      punto: grupo.punto_encuentro || '1',
+      observaciones: grupo.observaciones || '',
+    });
+    setMostrarFormularioOcioGrupo(true);
+  }
+
+  async function guardarGrupoOcio() {
+    if (!ocioGrupoForm.nombre.trim()) {
+      alert('Pon un nombre al grupo estable de Ocio.');
+      return;
+    }
+    setCargando(true);
+    setError('');
+    try {
+      if (ocioGrupoForm.id) {
+        await ejecutarFuncion('actualizar_grupo_ocio_app', {
+          p_grupo_id: ocioGrupoForm.id,
+          p_nombre_grupo: ocioGrupoForm.nombre.trim(),
+          p_dia_semana: ocioGrupoForm.dia,
+          p_hora_inicio: ocioGrupoForm.horaInicio,
+          p_hora_fin: ocioGrupoForm.horaFin,
+          p_nivel_grupo: ocioGrupoForm.nivel,
+          p_pista: ocioGrupoForm.pista,
+          p_punto_encuentro: ocioGrupoForm.punto,
+          p_observaciones: ocioGrupoForm.observaciones || null,
+        });
+      } else {
+        await ejecutarFuncionConRespuesta<{ crear_grupo_ocio_app: string }>('crear_grupo_ocio_app', {
+          p_anio_inicio: anioInicioTemporadaAgenda,
+          p_nombre_grupo: ocioGrupoForm.nombre.trim(),
+          p_dia_semana: ocioGrupoForm.dia,
+          p_hora_inicio: ocioGrupoForm.horaInicio,
+          p_hora_fin: ocioGrupoForm.horaFin,
+          p_nivel_grupo: ocioGrupoForm.nivel,
+          p_pista: ocioGrupoForm.pista,
+          p_punto_encuentro: ocioGrupoForm.punto,
+          p_observaciones: ocioGrupoForm.observaciones || null,
+        });
+      }
+      setMostrarFormularioOcioGrupo(false);
+      setOcioGrupoForm(ocioGrupoFormInicial());
+      await cargarOcioGrupos();
+      await cargarOcioAlumnos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error guardando grupo Ocio');
+    }
+    setCargando(false);
+  }
+
+  async function eliminarGrupoOcio(grupo: OcioGrupoApp) {
+    const confirmar = window.confirm(`¿Eliminar ${grupo.nombre_grupo}? Se quitarán sus alumnos del grupo estable.`);
+    if (!confirmar) return;
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('eliminar_grupo_ocio_app', { p_grupo_id: grupo.grupo_id });
+      await cargarOcioGrupos();
+      await cargarOcioAlumnos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error eliminando grupo Ocio');
+    }
+    setCargando(false);
+  }
+
+  async function asignarAlumnoGrupoOcio(alumnoId: string, grupoId: string) {
+    if (!grupoId) return;
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('asignar_alumno_grupo_ocio_app', {
+        p_grupo_id: grupoId,
+        p_alumno_id: alumnoId,
+      });
+      await cargarOcioAlumnos();
+      await cargarOcioGrupos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error moviendo alumno Ocio');
+    }
+    setCargando(false);
+  }
+
+  async function quitarAlumnoGrupoOcio(alumnoId: string, grupoId: string | null) {
+    if (!grupoId) return;
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('quitar_alumno_grupo_ocio_app', {
+        p_grupo_id: grupoId,
+        p_alumno_id: alumnoId,
+      });
+      await cargarOcioAlumnos();
+      await cargarOcioGrupos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error quitando alumno del grupo');
+    }
+    setCargando(false);
+  }
+
+  async function abrirEvaluacionOcio(alumno: OcioAlumnoApp) {
+    setEvaluacionOcioActivaId(alumno.alumno_id);
+    setEvaluacionOcioTexto('Cargando evaluación de Ocio...');
+    setCargando(true);
+    setError('');
+    try {
+      const resultado = await ejecutarFuncionConRespuesta<{ texto: string }>('extraer_evaluacion_ocio_app', {
+        p_alumno_id: alumno.alumno_id,
+      });
+      setEvaluacionOcioTexto(resultado[0]?.texto || `No hay reportes de Ocio para ${alumno.alumno}.`);
+    } catch (err) {
+      setEvaluacionOcioTexto('');
+      setError(err instanceof Error ? err.message : 'Error generando evaluación de Ocio');
+    }
+    setCargando(false);
+  }
+
+  async function copiarEvaluacionOcio() {
+    if (!evaluacionOcioTexto.trim()) return;
+    try {
+      await navigator.clipboard.writeText(evaluacionOcioTexto);
+      alert('Evaluación de Ocio copiada. Pégala en ChatGPT para dejarla bonita para los padres.');
+    } catch {
+      window.prompt('Copia esta evaluación:', evaluacionOcioTexto);
+    }
+  }
+
+  function abrirPrevisualizacionWhatsapp(titulo: string, texto: string) {
+    if (!texto.trim()) {
+      setError('No hay mensaje de WhatsApp para revisar todavía.');
+      return;
+    }
+
+    setWhatsappPreview({ titulo, texto });
+  }
+
+  async function copiarWhatsappPrevisualizado() {
+    if (!whatsappPreview?.texto.trim()) return;
+
+    try {
+      await navigator.clipboard.writeText(whatsappPreview.texto);
+      alert('WhatsApp copiado. Revisa que lo pegas en el grupo correcto.');
+    } catch {
+      window.prompt('Copia este WhatsApp:', whatsappPreview.texto);
+    }
+  }
+
+  function copiarWhatsappOcioGrupo(grupo: OcioGrupoApp) {
+    const horaInicio = (grupo.hora_inicio || '').slice(0, 5);
+    const horaFin = (grupo.hora_fin || '').slice(0, 5);
+    const alumnosGrupo = (grupo.alumnos_lista || '')
+      .split(' || ')
+      .map((linea) =>
+        linea
+          .replace(/\s*·\s*Nivel\s.*$/i, '')
+          .replace(/\s+NIVEL\s*.*$/i, '')
+          .trim()
+      )
+      .filter(Boolean);
+
+    let mensaje = `*${(grupo.dia_semana || '').toUpperCase()} · OCIO* ⛷️💨\n`;
+    mensaje += `⏰ horario de ${horaInicio} a ${horaFin} MSZ\n\n`;
+    mensaje += '⛷️ ENTRENADOR\n';
+    mensaje += `📍${grupo.punto_encuentro || '-'}\n`;
+    mensaje += '👶\n';
+    mensaje += `${alumnosGrupo.join('\n')}\n\n`;
+    mensaje += '¡Nos vemos en MSZ equipo!\n';
+    mensaje += '⚠️Papis importante!\n';
+    mensaje += `Como la logística con los peques se puede complicar un poco, os recomiendo estar 20-25 minutos antes de la hora de entrada ya que a las ${horaInicio} el grupo estará entrando en pista con su entrenador.\n`;
+    mensaje += 'Si alguno llegáis tarde, avisad en este número: Jose +34 647 027 692';
+
+    abrirPrevisualizacionWhatsapp(`WhatsApp padres Ocio · ${grupo.dia_semana || ''} ${horaInicio}-${horaFin}`, mensaje);
+  }
+
+
+  function offsetDiaOcio(dia: string | null | undefined) {
+    const normalizado = (dia || '').toLowerCase();
+    if (normalizado.includes('miércoles') || normalizado.includes('miercoles')) return 2;
+    if (normalizado.includes('jueves')) return 3;
+    if (normalizado.includes('viernes')) return 4;
+    if (normalizado.includes('sábado') || normalizado.includes('sabado')) return 5;
+    if (normalizado.includes('domingo')) return 6;
+    return 3;
+  }
+
+
+  const mesesBaseAgenda = mesesTemporadaAgenda(anioInicioTemporadaAgenda);
+  const mesesAgenda = mesesBaseAgenda;
+  const opcionesTemporadaAgenda = Array.from(
+    new Set(Array.from({ length: 12 }, (_, indice) => 2026 + indice).concat([temporadaInicioDefectoAgenda]))
+  ).filter((anio) => anio >= 2026).sort((a, b) => a - b);
+
+  const hoyAgendaClave = claveFechaAgenda(new Date());
+  const mesActualAgenda = claveMesDesdeFecha(hoyAgendaClave);
+
+  const mesAgendaActivo =
+    mesAgenda && mesesAgenda.includes(mesAgenda)
+      ? mesAgenda
+      : mesesAgenda.includes(mesActualAgenda)
+        ? mesActualAgenda
+        : mesesAgenda[0] || '';
+
+  function semanasDelMesAgenda(claveMes: string) {
+    if (!claveMes) return [];
+
+    const [anio, mes] = claveMes.split('-').map(Number);
+    const primeroMes = new Date(anio, mes - 1, 1);
+    const ultimoMes = new Date(anio, mes, 0);
+    const semanas: string[] = [];
+
+    // Bloques semanales reales: siempre lunes-domingo.
+    // Si el mes empieza en martes/miércoles/etc., la primera semana empieza el lunes anterior.
+    // Ejemplo temporada 2026/2027: septiembre empieza con Semana 31 ago - 06 sept.
+    const inicio = crearFechaAgenda(inicioSemanaAgenda(claveFechaAgenda(primeroMes)));
+
+    while (inicio <= ultimoMes) {
+      semanas.push(claveFechaAgenda(inicio));
+      inicio.setDate(inicio.getDate() + 7);
+    }
+
+    return semanas;
+  }
+
+  const semanasAgenda = semanasDelMesAgenda(mesAgendaActivo);
+
+  const semanaActualAgenda = inicioSemanaAgenda(hoyAgendaClave);
+
+  const semanaAgendaActiva =
+    semanaAgendaInicio && semanasAgenda.includes(semanaAgendaInicio)
+      ? semanaAgendaInicio
+      : semanasAgenda.includes(semanaActualAgenda)
+        ? semanaActualAgenda
+        : semanasAgenda[0] || '';
+
+  const diasSemanaAgenda = semanaAgendaActiva
+    ? diasTrabajoSemanaAgenda(semanaAgendaActiva)
+    : [];
+
+
+  function fechaGrupoOcioSemana(grupo: OcioGrupoApp) {
+    const semana = semanaAgendaActiva || semanaActualAgenda;
+    if (!semana) return '';
+    const fecha = crearFechaAgenda(semana);
+    fecha.setDate(fecha.getDate() + offsetDiaOcio(grupo.dia_semana));
+    return claveFechaAgenda(fecha);
+  }
+
+  function lunesSemanaOcioActiva() {
+    return semanaAgendaActiva || semanaActualAgenda || '';
+  }
+
+  function domingoSemanaOcioActiva() {
+    const semana = lunesSemanaOcioActiva();
+    if (!semana) return '';
+    const fecha = crearFechaAgenda(semana);
+    fecha.setDate(fecha.getDate() + 6);
+    return claveFechaAgenda(fecha);
+  }
+
+  function cambiosOcioSemanaActiva() {
+    const inicio = lunesSemanaOcioActiva();
+    const fin = domingoSemanaOcioActiva();
+    if (!inicio || !fin) return [];
+    return ocioCambiosPuntuales.filter((cambio) =>
+      cambio.fecha >= inicio &&
+      cambio.fecha <= fin &&
+      (cambio.estado || 'confirmada') !== 'cancelada'
+    );
+  }
+
+  function cambioEntradaOcio(alumnoId: string, grupoId: string | null | undefined) {
+    if (!grupoId) return null;
+    return cambiosOcioSemanaActiva().find((cambio) =>
+      cambio.alumno_id === alumnoId && cambio.grupo_destino_id === grupoId
+    ) || null;
+  }
+
+  function cambioSalidaOcio(alumnoId: string, grupoId: string | null | undefined) {
+    if (!grupoId) return null;
+    return cambiosOcioSemanaActiva().find((cambio) =>
+      cambio.alumno_id === alumnoId && cambio.grupo_origen_id === grupoId
+    ) || null;
+  }
+
+  function alumnosGrupoOcioEstable(grupoId: string | null | undefined) {
+    if (!grupoId) return [];
+
+    const cambios = cambiosOcioSemanaActiva();
+    const salientes = new Set(
+      cambios
+        .filter((cambio) => cambio.grupo_origen_id === grupoId)
+        .map((cambio) => cambio.alumno_id)
+    );
+    const entrantes = new Set(
+      cambios
+        .filter((cambio) => cambio.grupo_destino_id === grupoId)
+        .map((cambio) => cambio.alumno_id)
+    );
+
+    const mapa = new Map<string, OcioAlumnoApp>();
+
+    ocioAlumnos
+      .filter((alumno) => alumno.grupo_id === grupoId && !salientes.has(alumno.alumno_id))
+      .forEach((alumno) => mapa.set(alumno.alumno_id, alumno));
+
+    ocioAlumnos
+      .filter((alumno) => entrantes.has(alumno.alumno_id))
+      .forEach((alumno) => mapa.set(alumno.alumno_id, alumno));
+
+    return Array.from(mapa.values()).sort((a, b) => a.alumno.localeCompare(b.alumno));
+  }
+
+  function claveAsistenciaOcioSemana(alumnoId: string) {
+    return `${semanaAgendaActiva || semanaActualAgenda || 'sin_semana'}__${alumnoId}`;
+  }
+
+  function alumnoVieneOcioSemana(alumnoId: string) {
+    const clave = claveAsistenciaOcioSemana(alumnoId);
+    return ocioSemanaAsistencia[clave] !== false;
+  }
+
+  function cambiarAsistenciaOcioSemana(alumnoId: string, viene: boolean) {
+    const clave = claveAsistenciaOcioSemana(alumnoId);
+    setOcioSemanaAsistencia((anterior) => ({ ...anterior, [clave]: viene }));
+  }
+
+  function edadOcioAlumnoEnFecha(alumno: OcioAlumnoApp, fechaIso: string) {
+    if (!alumno.fecha_nacimiento || !fechaIso) return null;
+    const nacimiento = crearFechaAgenda(alumno.fecha_nacimiento);
+    const fecha = crearFechaAgenda(fechaIso);
+    let edad = fecha.getFullYear() - nacimiento.getFullYear();
+    const mes = fecha.getMonth() - nacimiento.getMonth();
+    if (mes < 0 || (mes === 0 && fecha.getDate() < nacimiento.getDate())) edad -= 1;
+    return edad;
+  }
+
+  function categoriaOcioGrupo(grupo: OcioGrupoApp) {
+    const fecha = fechaGrupoOcioSemana(grupo);
+    const alumnosGrupo = alumnosGrupoOcioEstable(grupo.grupo_id);
+    const edades = alumnosGrupo
+      .map((alumno) => edadOcioAlumnoEnFecha(alumno, fecha))
+      .filter((edad): edad is number => typeof edad === 'number');
+
+    if (edades.length === 0) return 'Ocio';
+    const media = edades.reduce((total, edad) => total + edad, 0) / edades.length;
+    return media >= 7 ? 'Mayores' : 'Pequeños';
+  }
+
+  function nombreGrupoSemanalOcio(grupo: OcioGrupoApp) {
+    const categoria = categoriaOcioGrupo(grupo);
+    const dia = (grupo.dia_semana || 'Ocio').toUpperCase();
+    return `OCIO ${dia} ${categoria}`;
+  }
+
+  function trabajoDiarioOcioSemana(grupo: OcioGrupoApp) {
+    const categoria = categoriaOcioGrupo(grupo);
+    if (categoria === 'Mayores') {
+      return 'OCIO MAYORES. Objetivo: continuidad anual, autonomía, control de velocidad y dinámica de grupo. Trabajo: calentamiento, bajadas en fila, autonomía en remontes, giros encadenados, ejercicios técnicos adaptados al nivel real y revisión individual para posibles cambios de grupo.';
+    }
+    if ((grupo.pista || '').toLowerCase().includes('grande')) {
+      return 'OCIO PEQUEÑOS EN PISTA GRANDE. Objetivo: seguridad, ritmo de grupo y consolidar autonomía. Trabajo: fila detrás del entrenador, control de velocidad, giros amplios, autonomía en remonte y revisión de confianza.';
+    }
+    return 'OCIO PEQUEÑOS. Objetivo: seguridad, confianza, rutina anual y autonomía básica. Trabajo: entrada tranquila, revisión de material, calentamiento, bajadas controladas, giros adaptados, juegos técnicos y gestión emocional del grupo.';
+  }
+
+  function entrenadorSeleccionadoOcioSemana(grupoId: string) {
+    return ocioSemanaEntrenadores[grupoId] || '';
+  }
+
+  function mensajeWhatsappSemanaOcio() {
+    const semana = semanaAgendaActiva || semanaActualAgenda;
+    if (!semana) return 'Selecciona una semana.';
+
+    let mensaje = `*OCIO · SEMANA ${rangoSemanaAgenda(semana)}* ⛷️💨\n\n`;
+
+    ocioGrupos.forEach((grupo) => {
+      const fecha = fechaGrupoOcioSemana(grupo);
+      const horaInicio = horaCorta(grupo.hora_inicio);
+      const horaFin = horaCorta(grupo.hora_fin);
+      const alumnosPresentes = alumnosGrupoOcioEstable(grupo.grupo_id).filter((alumno) => alumnoVieneOcioSemana(alumno.alumno_id));
+      if (alumnosPresentes.length === 0) return;
+      const entrenadorId = entrenadorSeleccionadoOcioSemana(grupo.grupo_id);
+      const entrenador = entrenadores.find((item) => item.entrenador_id === entrenadorId)?.nombre_completo || 'ENTRENADOR PENDIENTE';
+
+      mensaje += `*${(grupo.dia_semana || '').toUpperCase()} · ${formatearFecha(fecha)}*\n`;
+      mensaje += `⏰ horario de ${horaInicio} a ${horaFin} MSZ\n\n`;
+      mensaje += `⛷️ ${entrenador}\n`;
+      mensaje += `📍${grupo.punto_encuentro || '-'}\n`;
+      mensaje += `👶\n`;
+      alumnosPresentes.forEach((alumno) => {
+        mensaje += `${alumno.alumno}\n`;
+      });
+      mensaje += '\n';
+    });
+
+    const primerGrupoConAlumnos = ocioGrupos.find((grupo) =>
+      alumnosGrupoOcioEstable(grupo.grupo_id).some((alumno) => alumnoVieneOcioSemana(alumno.alumno_id))
+    );
+    const horaEntrada = primerGrupoConAlumnos ? horaCorta(primerGrupoConAlumnos.hora_inicio) : 'la hora de entrada';
+
+    mensaje += '¡Nos vemos en MSZ equipo!\n';
+    mensaje += '⚠️Papis importante!\n';
+    mensaje += `Como la logística con los peques se puede complicar un poco, os recomiendo estar 20-25 minutos antes de la hora de entrada ya que a las ${horaEntrada} el grupo estará entrando en pista con su entrenador.\n`;
+    mensaje += 'Si alguno llegáis tarde, avisad en este número: Jose +34 647 027 692';
+
+    return mensaje;
+  }
+
+  function abrirWhatsappSemanaOcio() {
+    abrirPrevisualizacionWhatsapp(
+      `WhatsApp padres Ocio · semana ${rangoSemanaAgenda(semanaAgendaActiva || semanaActualAgenda)}`,
+      mensajeWhatsappSemanaOcio()
+    );
+  }
+
+  async function prepararGrupoOcioSemana(grupo: OcioGrupoApp) {
+    const fecha = fechaGrupoOcioSemana(grupo);
+    const alumnosPresentes = alumnosGrupoOcioEstable(grupo.grupo_id).filter((alumno) => alumnoVieneOcioSemana(alumno.alumno_id));
+
+    if (!fecha) {
+      setError('Selecciona una semana antes de preparar Ocio.');
+      return;
+    }
+
+    if (alumnosPresentes.length === 0) {
+      setError(`No hay alumnos marcados como Viene en ${grupo.nombre_grupo}.`);
+      return;
+    }
+
+    const entrenadorId = entrenadorSeleccionadoOcioSemana(grupo.grupo_id) || null;
+    const entrenadorNombre = entrenadorId
+      ? entrenadores.find((entrenador) => entrenador.entrenador_id === entrenadorId)?.nombre_completo || null
+      : null;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      const resultado = await ejecutarFuncionConRespuesta<OcioPrepararResultadoApp>(
+        'preparar_grupo_ocio_semana_app',
+        {
+          p_fecha: fecha,
+          p_hora_inicio: horaCorta(grupo.hora_inicio),
+          p_hora_fin: horaCorta(grupo.hora_fin),
+          p_nombre_grupo: nombreGrupoSemanalOcio(grupo),
+          p_nivel_grupo: categoriaOcioGrupo(grupo),
+          p_pista: grupo.pista || null,
+          p_punto_encuentro: grupo.punto_encuentro || null,
+          p_trabajo_diario: trabajoDiarioOcioSemana(grupo),
+          p_observaciones_importantes: combinarObservacionesGrupoApp(
+            observacionesAutomaticasGrupoOcio(alumnosPresentes),
+            grupo.observaciones || null
+          ),
+          p_entrenador_id: entrenadorId,
+          p_alumnos_ids: alumnosPresentes.map((alumno) => alumno.alumno_id),
+        }
+      );
+
+      setOcioSemanaResultados((anteriores) => [
+        ...resultado,
+        ...anteriores.filter((item) => item.grupo_estable !== grupo.nombre_grupo || item.fecha !== fecha),
+      ]);
+
+      await cargarAgendaOperativaDirecta();
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+      if (entrenadorNombre === null) {
+        setError(`Grupo ${grupo.nombre_grupo} creado como pendiente de entrenador.`);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error preparando grupo Ocio semanal');
+    }
+
+    setCargando(false);
+  }
+
+  async function prepararTodaSemanaOcio() {
+    const gruposConAlumnos = ocioGrupos.filter((grupo) =>
+      alumnosGrupoOcioEstable(grupo.grupo_id).some((alumno) => alumnoVieneOcioSemana(alumno.alumno_id))
+    );
+
+    if (gruposConAlumnos.length === 0) {
+      setError('No hay grupos Ocio con alumnos marcados como Viene.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Preparar ${gruposConAlumnos.length} grupos de Ocio para la semana ${rangoSemanaAgenda(semanaAgendaActiva || semanaActualAgenda)}?`
+    );
+
+    if (!confirmar) return;
+
+    for (const grupo of gruposConAlumnos) {
+      // Se ejecuta grupo a grupo para que, si uno falla, sepamos cuál revisar.
+      await prepararGrupoOcioSemana(grupo);
+    }
+  }
+
+  const cambiosOcioSemana = cambiosOcioSemanaActiva().sort((a, b) =>
+    `${a.fecha} ${a.alumno}`.localeCompare(`${b.fecha} ${b.alumno}`)
+  );
+
+  const ocioAlumnoCambioSeleccionado = ocioAlumnos.find((alumno) => alumno.alumno_id === ocioCambioForm.alumnoId) || null;
+
+  function grupoOcioDestinoCambioSeleccionado() {
+    return ocioGrupos.find((grupo) => grupo.grupo_id === ocioCambioForm.grupoDestinoId) || null;
+  }
+
+  function fechaDestinoCambioOcio(grupoDestinoId: string) {
+    const grupo = ocioGrupos.find((item) => item.grupo_id === grupoDestinoId);
+    return grupo ? fechaGrupoOcioSemana(grupo) : (ocioCambioForm.fecha || lunesSemanaOcioActiva());
+  }
+
+  function limpiarFormularioCambioOcio() {
+    setOcioCambioForm(ocioCambioFormInicial());
+    setMostrarFormularioOcioCambio(false);
+  }
+
+  function abrirFormularioCambioOcio(cambio?: OcioCambioPuntualApp) {
+    if (cambio) {
+      setOcioCambioForm({
+        id: cambio.reubicacion_id,
+        alumnoId: cambio.alumno_id,
+        grupoDestinoId: cambio.grupo_destino_id,
+        fecha: cambio.fecha,
+        motivo: cambio.motivo || '',
+      });
+    } else {
+      setOcioCambioForm({
+        ...ocioCambioFormInicial(),
+        fecha: lunesSemanaOcioActiva(),
+      });
+    }
+    setMostrarFormularioOcioCambio(true);
+  }
+
+  async function guardarCambioPuntualOcio() {
+    if (!ocioCambioForm.alumnoId) {
+      alert('Selecciona el alumno que cambia puntualmente.');
+      return;
+    }
+    if (!ocioCambioForm.grupoDestinoId) {
+      alert('Selecciona el grupo destino.');
+      return;
+    }
+
+    const fecha = ocioCambioForm.fecha || fechaDestinoCambioOcio(ocioCambioForm.grupoDestinoId);
+
+    if (!fecha) {
+      alert('Selecciona una semana y una fecha de cambio.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('crear_reubicacion_ocio_app', {
+        p_alumno_id: ocioCambioForm.alumnoId,
+        p_fecha: fecha,
+        p_grupo_destino_id: ocioCambioForm.grupoDestinoId,
+        p_motivo: ocioCambioForm.motivo || null,
+      });
+      limpiarFormularioCambioOcio();
+      await cargarOcioCambios();
+      await cargarOcioAlumnos();
+      await cargarOcioGrupos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error guardando cambio puntual de Ocio');
+    }
+    setCargando(false);
+  }
+
+  async function eliminarCambioPuntualOcio(cambio: OcioCambioPuntualApp) {
+    const confirmar = window.confirm(`¿Eliminar el cambio puntual de ${cambio.alumno}?`);
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('eliminar_reubicacion_ocio_app', {
+        p_reubicacion_id: cambio.reubicacion_id,
+      });
+      await cargarOcioCambios();
+      await cargarOcioAlumnos();
+      await cargarOcioGrupos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error eliminando cambio puntual de Ocio');
+    }
+    setCargando(false);
+  }
+
+  const ocioAlumnosFiltrados = ocioAlumnos.filter((alumno) =>
+    `${alumno.alumno} ${alumno.nivel_usado || ''} ${alumno.grupo_estable || ''}`
+      .toLowerCase()
+      .includes(busquedaOcio.toLowerCase())
+  );
+
+  async function cargarEntrenadores() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const data = await consultarSupabase<EntrenadorResumen>(
+        'v_panel_entrenadores',
+        'select=*&order=nombre_completo.asc'
+      );
+      setEntrenadores(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setEntrenadores([]);
+    }
+
+    setCargando(false);
+  }
+
+  function abrirNuevoEntrenador() {
+    setFormEntrenador(entrenadorFormInicial());
+    setMostrarFormularioEntrenador(true);
+  }
+
+  function abrirEditarEntrenador(entrenador: EntrenadorResumen) {
+    setFormEntrenador({
+      id: entrenador.entrenador_id,
+      nombre: entrenador.nombre_completo || '',
+      email: entrenador.email || '',
+      telefono: entrenador.telefono || '',
+      tarifa: String(entrenador.tarifa_por_turno ?? 0),
+      activo: !!entrenador.activo,
+      chaqueta: !!entrenador.chaqueta_entregada,
+      especialidades: entrenador.especialidades || [],
+      titulacionEstado: entrenador.titulacion_estado || 'Pendiente',
+      titulacionUrl: entrenador.titulacion_url || '',
+      titulacionObs: entrenador.titulacion_observaciones || '',
+      antecedentesEstado: entrenador.antecedentes_estado || 'Pendiente',
+      antecedentesUrl: entrenador.antecedentes_url || '',
+      antecedentesObs: entrenador.antecedentes_observaciones || '',
+      observaciones: entrenador.observaciones_internas || '',
+    });
+    setMostrarFormularioEntrenador(true);
+  }
+
+  function alternarEspecialidadEntrenador(especialidad: string) {
+    setFormEntrenador((actual) => ({
+      ...actual,
+      especialidades: actual.especialidades.includes(especialidad)
+        ? actual.especialidades.filter((item) => item !== especialidad)
+        : [...actual.especialidades, especialidad],
+    }));
+  }
+
+  async function guardarEntrenadorGestion() {
+    if (!formEntrenador.nombre.trim()) {
+      alert('Pon el nombre del entrenador.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('guardar_entrenador_gestion_app', {
+        p_entrenador_id: formEntrenador.id,
+        p_nombre_completo: formEntrenador.nombre.trim(),
+        p_email: formEntrenador.email.trim() || null,
+        p_telefono: formEntrenador.telefono.trim() || null,
+        p_tarifa_por_turno: Number(formEntrenador.tarifa || 0),
+        p_activo: formEntrenador.activo,
+        p_chaqueta_entregada: formEntrenador.chaqueta,
+        p_especialidades: formEntrenador.especialidades,
+        p_titulacion_estado: formEntrenador.titulacionEstado,
+        p_titulacion_url: formEntrenador.titulacionUrl.trim() || null,
+        p_titulacion_observaciones: formEntrenador.titulacionObs.trim() || null,
+        p_antecedentes_estado: formEntrenador.antecedentesEstado,
+        p_antecedentes_url: formEntrenador.antecedentesUrl.trim() || null,
+        p_antecedentes_observaciones: formEntrenador.antecedentesObs.trim() || null,
+        p_observaciones_internas: formEntrenador.observaciones.trim() || null,
+      });
+      setMostrarFormularioEntrenador(false);
+      setFormEntrenador(entrenadorFormInicial());
+      await cargarEntrenadores();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error guardando entrenador');
+    }
+
+    setCargando(false);
+  }
+
+  async function eliminarEntrenadorGestion(entrenador: EntrenadorResumen) {
+    const confirmar = window.confirm(
+      `¿Eliminar la ficha de ${entrenador.nombre_completo}? Si tiene grupos históricos, primero se quitarán sus asignaciones para no bloquear la app.`
+    );
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('eliminar_entrenador_gestion_app', {
+        p_entrenador_id: entrenador.entrenador_id,
+      });
+      await cargarEntrenadores();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error eliminando entrenador');
+    }
+
+    setCargando(false);
+  }
+
+  async function cargarDisponibilidad() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const data = await consultarSupabase<DisponibilidadEntrenador>(
+        'v_disponibilidad_entrenador',
+        'select=*&order=entrenador.asc,fecha.asc,hora_inicio.asc'
+      );
+      setDisponibilidad(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setDisponibilidad([]);
+    }
+
+    setCargando(false);
+  }
+
+  async function cargarReportesPendientes() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const data = await consultarSupabase<ReportePendiente>(
+        'v_reportes_pendientes_entrenador_dos_entrenadores',
+        'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc,alumno.asc'
+      );
+      setReportesPendientes(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setReportesPendientes([]);
+    }
+
+    setCargando(false);
+  }
+
+  async function cargarCobros() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const [resumenData, detalleData] = await Promise.all([
+        consultarSupabase<CobroMensual>(
+          'v_cobros_mensuales_dos_entrenadores',
+          `select=*&anio=eq.${anioCobros}&mes=eq.${mesCobros}&order=entrenador.asc`
+        ),
+        consultarSupabase<CobroDetalleMensual>(
+          'v_cobros_detalle_mensual_dos_entrenadores',
+          `select=*&anio=eq.${anioCobros}&mes=eq.${mesCobros}&order=entrenador.asc,fecha.asc,hora_inicio.asc,modalidad.asc,nombre_grupo.asc`
+        ),
+      ]);
+      setCobros(resumenData);
+      setCobrosDetalle(detalleData);
+      const tarifas: Record<string, string> = {};
+      resumenData.forEach((cobro) => {
+        tarifas[cobro.entrenador_id] = String(Number(cobro.tarifa_por_turno || 0));
+      });
+      setTarifasEditadasCobros(tarifas);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setCobros([]);
+      setCobrosDetalle([]);
+    }
+
+    setCargando(false);
+  }
+
+  function detallesDeCobro(entrenadorId: string) {
+    return cobrosDetalle.filter((detalleCobro) => detalleCobro.entrenador_id === entrenadorId);
+  }
+
+  async function guardarTarifaCobro(cobro: CobroMensual) {
+    const valor = Number(tarifasEditadasCobros[cobro.entrenador_id] ?? cobro.tarifa_por_turno ?? 0);
+    if (Number.isNaN(valor) || valor < 0) {
+      alert('La tarifa tiene que ser un número válido.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('actualizar_tarifa_cobro_entrenador_app', {
+        p_entrenador_id: cobro.entrenador_id,
+        p_tarifa_por_turno: valor,
+      });
+      await cargarCobros();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error guardando tarifa');
+    }
+    setCargando(false);
+  }
+
+  async function crearAjusteCobro(cobro: CobroMensual) {
+    const concepto = window.prompt(`Concepto del ajuste para ${cobro.entrenador}`, 'Ajuste manual');
+    if (concepto === null) return;
+
+    const importeTexto = window.prompt('Importe del ajuste. Usa negativo si quieres descontar. Ejemplo: 15 o -10', '0');
+    if (importeTexto === null) return;
+
+    const importe = Number(importeTexto.replace(',', '.'));
+    if (Number.isNaN(importe)) {
+      alert('Importe no válido.');
+      return;
+    }
+
+    const observaciones = window.prompt('Observación para dirección, si hace falta:', '') || '';
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('crear_ajuste_cobro_mes_app', {
+        p_entrenador_id: cobro.entrenador_id,
+        p_anio: cobro.anio,
+        p_mes: cobro.mes,
+        p_concepto: concepto.trim() || 'Ajuste manual',
+        p_importe: importe,
+        p_observaciones: observaciones.trim() || null,
+      });
+      await cargarCobros();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error creando ajuste');
+    }
+    setCargando(false);
+  }
+
+  async function limpiarAjustesCobro(cobro: CobroMensual) {
+    if (!window.confirm(`¿Eliminar todos los ajustes manuales de ${cobro.entrenador} en ${nombreMes(cobro.mes)} ${cobro.anio}?`)) return;
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('limpiar_ajustes_cobro_mes_app', {
+        p_entrenador_id: cobro.entrenador_id,
+        p_anio: cobro.anio,
+        p_mes: cobro.mes,
+      });
+      await cargarCobros();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error limpiando ajustes');
+    }
+    setCargando(false);
+  }
+
+  async function cambiarEstadoCobro(cobro: CobroMensual, estado: string) {
+    const nota = window.prompt(`Nota para dirección en ${estado}:`, cobro.nota_direccion || '') || '';
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('guardar_estado_cobro_mes_app', {
+        p_entrenador_id: cobro.entrenador_id,
+        p_anio: cobro.anio,
+        p_mes: cobro.mes,
+        p_estado_mes: estado,
+        p_nota_direccion: nota.trim() || null,
+      });
+      await cargarCobros();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error cambiando estado del cobro');
+    }
+    setCargando(false);
+  }
+
+  function htmlDetalleTurnosCobro(cobro: CobroMensual) {
+    const detalles = detallesDeCobro(cobro.entrenador_id);
+    if (detalles.length === 0) return '<p>Sin turnos detallados.</p>';
+
+    return `
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Hora</th>
+            <th>Modalidad</th>
+            <th>Grupo</th>
+            <th>Niños</th>
+            <th>Importe</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${detalles.map((detalleCobro) => `
+            <tr>
+              <td>${escaparHtml(formatearFecha(detalleCobro.fecha))}</td>
+              <td>${escaparHtml(horaCorta(detalleCobro.hora_inicio))}-${escaparHtml(horaCorta(detalleCobro.hora_fin))}</td>
+              <td>${escaparHtml(detalleCobro.modalidad)}</td>
+              <td>${escaparHtml(detalleCobro.nombre_grupo)}</td>
+              <td>${Number(detalleCobro.total_alumnos || 0)}</td>
+              <td>${formatearEuros(detalleCobro.importe_turno)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function htmlCobroEntrenador(cobro: CobroMensual) {
+    return `
+      <section class="cobro">
+        <h2>${escaparHtml(cobro.entrenador)}</h2>
+        <p><strong>Mes:</strong> ${escaparHtml(nombreMes(cobro.mes))} ${cobro.anio} · ${escaparHtml(cobro.temporada || '')}</p>
+        <p><strong>Estado:</strong> ${escaparHtml(cobro.estado_mes || 'abierto')}</p>
+        ${cobro.nota_direccion ? `<p><strong>Nota dirección:</strong> ${escaparHtml(cobro.nota_direccion)}</p>` : ''}
+        <div class="resumen">
+          <div><strong>Baby</strong><br>${Number(cobro.total_turnos_baby || 0)} turnos</div>
+          <div><strong>Intensivos</strong><br>${Number(cobro.total_turnos_intensivos || 0)} turnos</div>
+          <div><strong>Ocio</strong><br>${Number(cobro.total_turnos_ocio || 0)} turnos</div>
+          <div><strong>Tarifa</strong><br>${formatearEuros(cobro.tarifa_por_turno)}</div>
+          <div><strong>Subtotal</strong><br>${formatearEuros(cobro.subtotal_sesiones)}</div>
+          <div><strong>Ajustes</strong><br>${formatearEuros(cobro.ajustes_total)}</div>
+          <div><strong>Total mes</strong><br>${formatearEuros(cobro.total_mes)}</div>
+        </div>
+        <h3>Detalle de turnos</h3>
+        ${htmlDetalleTurnosCobro(cobro)}
+        ${cobro.detalle_ajustes ? `<h3>Ajustes manuales</h3><pre>${escaparHtml(cobro.detalle_ajustes)}</pre>` : ''}
+      </section>
+    `;
+  }
+
+  function abrirPdfCobroEntrenador(cobro: CobroMensual) {
+    setCobroPdfPreview({
+      titulo: `Cobro ${cobro.entrenador} · ${nombreMes(cobro.mes)} ${cobro.anio}`,
+      cuerpo: htmlCobroEntrenador(cobro),
+    });
+  }
+
+  function abrirPdfCobrosConjunto() {
+    if (cobrosFiltrados.length === 0) {
+      alert('No hay cobros para generar PDF.');
+      return;
+    }
+
+    const totalGeneral = cobrosFiltrados.reduce((total, cobro) => total + Number(cobro.total_mes || 0), 0);
+    const cuerpo = `
+      <section class="portada">
+        <h1>Resumen cobros entrenadores</h1>
+        <p>${escaparHtml(nombreMes(mesCobros))} ${anioCobros}</p>
+        <p><strong>Total dirección:</strong> ${formatearEuros(totalGeneral)}</p>
+        <p><strong>Entrenadores:</strong> ${cobrosFiltrados.length}</p>
+      </section>
+      ${cobrosFiltrados.map((cobro) => htmlCobroEntrenador(cobro)).join('')}
+    `;
+
+    setCobroPdfPreview({ titulo: `Cobros entrenadores · ${nombreMes(mesCobros)} ${anioCobros}`, cuerpo });
+  }
+
+  function imprimirCobroPdfPreview() {
+    setTimeout(() => window.print(), 50);
+  }
+
+  async function crearEntrenoManualCobro() {
+    if (!formCobroManual.entrenadorId) {
+      alert('Elige un entrenador.');
+      return;
+    }
+
+    if (!formCobroManual.fecha || !formCobroManual.horaInicio || !formCobroManual.horaFin) {
+      alert('Completa fecha y horario.');
+      return;
+    }
+
+    const totalAlumnos = Number(formCobroManual.totalAlumnos || 0);
+    const importeOverrideTexto = formCobroManual.importeOverride.trim();
+    const importeOverride = importeOverrideTexto ? Number(importeOverrideTexto.replace(',', '.')) : null;
+
+    if (Number.isNaN(totalAlumnos) || totalAlumnos < 0) {
+      alert('Número de niños no válido.');
+      return;
+    }
+
+    if (importeOverride !== null && Number.isNaN(importeOverride)) {
+      alert('Importe manual no válido. Déjalo vacío para usar la tarifa del entrenador.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('crear_entreno_manual_cobro_app', {
+        p_entrenador_id: formCobroManual.entrenadorId,
+        p_fecha: formCobroManual.fecha,
+        p_hora_inicio: formCobroManual.horaInicio,
+        p_hora_fin: formCobroManual.horaFin,
+        p_modalidad: formCobroManual.modalidad,
+        p_nombre_grupo: formCobroManual.nombreGrupo.trim() || 'Entreno manual',
+        p_total_alumnos: totalAlumnos,
+        p_observaciones: formCobroManual.observaciones.trim() || null,
+        p_importe_override: importeOverride,
+      });
+      setFormCobroManual(cobroManualInicial());
+      await cargarCobros();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error creando entreno manual');
+    }
+    setCargando(false);
+  }
+
+  async function eliminarEntrenoManualCobro(detalleCobro: CobroDetalleMensual) {
+    const entrenoId = detalleCobro.entreno_manual_id || detalleCobro.grupo_id;
+    if (!entrenoId) return;
+    if (!window.confirm(`¿Eliminar este entreno manual de ${detalleCobro.entrenador}?`)) return;
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('eliminar_entreno_manual_cobro_app', {
+        p_entreno_id: entrenoId,
+      });
+      await cargarCobros();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error eliminando entreno manual');
+    }
+    setCargando(false);
+  }
+
+  async function cargarIntensivos() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const [
+        intensivosData,
+        intensivoAlumnosData,
+        alumnosParaIntensivoData,
+        alumnosResumenVolcadoData,
+        intensivoDiasData,
+        intensivoAsistenciasData,
+        intensivoMásData,
+        gruposDestinoRecuperacionData,
+        gruposIntensivoDiaData,
+        resumenReportesIntensivoData,
+        resumenFinalIntensivoData,
+        reportesDetalleIntensivoData,
+        panelControlIntensivoData,
+        entrenadoresData,
+      ] = await Promise.all([
+        consultarSupabase<IntensivoApp>(
+          'v_intensivos_app',
+          'select=*&order=fecha_inicio.desc,intensivo.asc'
+        ),
+        consultarSupabase<IntensivoAlumnoApp>(
+          'v_intensivo_alumnos_app',
+          'select=*&order=intensivo.asc,alumno.asc'
+        ),
+        consultarSupabase<AlumnoParaIntensivoApp>(
+          'v_alumnos_para_intensivo_app',
+          'select=*&order=alumno.asc'
+        ),
+        consultarSupabase<AlumnoResumenParaVolcadoApp>(
+          'v_alumnos_resumen_para_volcado_app',
+          'select=*&order=alumno.asc'
+        ),
+        consultarSupabase<IntensivoDiaApp>(
+          'v_intensivo_dias_app',
+          'select=*&order=fecha.asc,hora_inicio.asc,numero_dia.asc'
+        ),
+        consultarSupabase<IntensivoAsistenciaApp>(
+          'v_intensivo_asistencias_app',
+          'select=*&order=fecha.asc,hora_inicio.asc,alumno.asc'
+        ),
+        consultarSupabase<IntensivoRecuperacionApp>(
+          'v_intensivo_recuperaciones_app',
+          'select=*&order=created_at.desc,alumno.asc'
+        ),
+        consultarSupabase<GrupoDestinoRecuperacionApp>(
+          'v_planning_app',
+          'select=grupo_id,nombre_grupo,fecha,hora_inicio,modalidad&order=fecha.desc,hora_inicio.desc,nombre_grupo.asc'
+        ),
+        consultarSupabase<GrupoIntensivoDiaApp>(
+          'v_grupos_intensivo_dia_app',
+          'select=*&order=fecha.asc,hora_inicio.asc,nombre_grupo.asc'
+        ),
+        consultarSupabase<ResumenReportesIntensivoApp>(
+          'v_resumen_reportes_intensivo_app',
+          'select=*&order=intensivo.asc,alumno.asc'
+        ),
+        consultarSupabase<ResumenFinalIntensivoApp>(
+          'v_resumen_final_intensivo_app',
+          'select=*&order=intensivo.asc,alumno.asc'
+        ),
+        consultarSupabase<ReporteDetalleIntensivoApp>(
+          'v_reportes_detalle_intensivo_app',
+          'select=*&order=intensivo.asc,alumno.asc,fecha.asc,hora_inicio.asc'
+        ),
+        consultarSupabase<PanelControlIntensivoApp>(
+          'v_panel_control_intensivo_app',
+          'select=*&order=intensivo.asc'
+        ),
+        consultarSupabase<EntrenadorResumen>(
+          'v_panel_entrenadores',
+          'select=*&order=nombre_completo.asc'
+        ),
+      ]);
+
+      setIntensivos(intensivosData);
+      setIntensivoAlumnos(intensivoAlumnosData);
+      setAlumnosParaIntensivo(alumnosParaIntensivoData);
+      setAlumnosResumenVolcado(alumnosResumenVolcadoData);
+      setIntensivoDias(intensivoDiasData);
+      setIntensivoAsistencias(intensivoAsistenciasData);
+      setIntensivoMás(intensivoMásData);
+      setGruposDestinoRecuperacion(gruposDestinoRecuperacionData);
+      setGruposIntensivoDia(gruposIntensivoDiaData);
+      setResumenReportesIntensivo(resumenReportesIntensivoData);
+      setResumenFinalIntensivo(resumenFinalIntensivoData);
+      setReportesDetalleIntensivo(reportesDetalleIntensivoData);
+      setPanelControlIntensivo(panelControlIntensivoData);
+      setEntrenadores(entrenadoresData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setIntensivos([]);
+      setIntensivoAlumnos([]);
+      setAlumnosParaIntensivo([]);
+      setAlumnosResumenVolcado([]);
+      setIntensivoDias([]);
+      setIntensivoAsistencias([]);
+      setIntensivoMás([]);
+      setGruposDestinoRecuperacion([]);
+      setGruposIntensivoDia([]);
+      setResumenReportesIntensivo([]);
+      setResumenFinalIntensivo([]);
+      setReportesDetalleIntensivo([]);
+      setPanelControlIntensivo([]);
+    }
+
+    setCargando(false);
+  }
+
+  async function crearIntensivoDesdeApp() {
+    if (!formIntensivo.nombre.trim()) {
+      setError('Pon un nombre para el intensivo.');
+      return;
+    }
+
+    if (!formIntensivo.lugar.trim()) {
+      setError('Pon un lugar para el intensivo.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Crear intensivo ${formIntensivo.nombre}?`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('crear_intensivo_app', {
+        p_temporada_nombre: formIntensivo.temporada,
+        p_nombre: formIntensivo.nombre.trim(),
+        p_lugar: formIntensivo.lugar.trim(),
+        p_estado: formIntensivo.estado,
+      });
+
+      setFormIntensivo(intensivoInicial());
+      setMostrarFormularioIntensivo(false);
+      setFiltroIntensivos('todos');
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function guardarDiaIntensivo(intensivo: IntensivoApp) {
+    if (!formDiaIntensivo.fecha) {
+      setError('Selecciona una fecha para el día del intensivo.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Añadir día al intensivo ${intensivo.intensivo}?`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('crear_dia_intensivo_app', {
+        p_intensivo_id: intensivo.intensivo_id,
+        p_fecha: formDiaIntensivo.fecha,
+        p_hora_inicio: formDiaIntensivo.hora_inicio,
+        p_hora_fin: formDiaIntensivo.hora_fin,
+      });
+
+      setDiaEditandoIntensivoId(null);
+      setFormDiaIntensivo(diaIntensivoInicial());
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function crearCuatroSesionesIntensivo(intensivo: IntensivoApp) {
+    const fechas = calcularFechasCuatroSesionesIntensivo(
+      plantillaCuatroSesionesIntensivo.fechaInicio,
+      plantillaCuatroSesionesIntensivo.tipo
+    );
+
+    if (fechas.length !== 4) {
+      setError('Selecciona la primera fecha para generar las 4 sesiones.');
+      return;
+    }
+
+    const diasExistentes = diasDelIntensivo(intensivo.intensivo_id);
+    const repetidas = fechas.filter((fecha) =>
+      diasExistentes.some((dia) => dia.fecha === fecha)
+    );
+
+    if (repetidas.length > 0) {
+      setError(`Ya existen estos días en el intensivo: ${repetidas.map(formatearFecha).join(', ')}.`);
+      return;
+    }
+
+    if (diasExistentes.length > 0) {
+      const confirmarAñadir = window.confirm(
+        `Este intensivo ya tiene ${diasExistentes.length} día(s). ¿Quieres añadir igualmente estas 4 sesiones?`
+      );
+      if (!confirmarAñadir) return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Crear 4 sesiones para ${intensivo.intensivo}?\n${nombreTipoCuatroSesionesIntensivo(plantillaCuatroSesionesIntensivo.tipo)}\n${fechas.map((fecha) => `- ${formatearFecha(fecha)} ${plantillaCuatroSesionesIntensivo.horaInicio}-${plantillaCuatroSesionesIntensivo.horaFin}`).join('\n')}`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      for (const fecha of fechas) {
+        await ejecutarFuncion('crear_dia_intensivo_app', {
+          p_intensivo_id: intensivo.intensivo_id,
+          p_fecha: fecha,
+          p_hora_inicio: plantillaCuatroSesionesIntensivo.horaInicio,
+          p_hora_fin: plantillaCuatroSesionesIntensivo.horaFin,
+        });
+      }
+
+      setMostrarPlantillaCuatroSesionesIntensivoId(null);
+      setPlantillaCuatroSesionesIntensivo(plantillaCuatroSesionesInicial());
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error creando las 4 sesiones del intensivo');
+    }
+
+    setCargando(false);
+  }
+
+  function prepararEdicionDiaIntensivo(dia: IntensivoDiaApp) {
+    setDiaEditandoIntensivoId(dia.intensivo_dia_id);
+    setFormDiaIntensivo({
+      fecha: dia.fecha || '',
+      hora_inicio: (dia.hora_inicio || '10:00').slice(0, 5),
+      hora_fin: (dia.hora_fin || '14:00').slice(0, 5),
+    });
+  }
+
+  async function actualizarDiaIntensivoDesdeApp(dia: IntensivoDiaApp) {
+    if (!formDiaIntensivo.fecha) {
+      setError('Selecciona una fecha para actualizar el día.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Actualizar el día ${dia.numero_dia} del intensivo? Si ya tiene grupo, también se actualizará su sesión.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('actualizar_dia_intensivo_app', {
+        p_intensivo_dia_id: dia.intensivo_dia_id,
+        p_fecha: formDiaIntensivo.fecha,
+        p_hora_inicio: formDiaIntensivo.hora_inicio,
+        p_hora_fin: formDiaIntensivo.hora_fin,
+      });
+
+      setDiaEditandoIntensivoId(null);
+      setFormDiaIntensivo(diaIntensivoInicial());
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function borrarDiaIntensivoDesdeApp(dia: IntensivoDiaApp) {
+    const confirmar = window.confirm(
+      `¿Borrar el día ${dia.numero_dia} del intensivo? Se borrarán también sus grupos, alumnos de esos grupos, reportes y trabajo diario asociados a ese día.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('borrar_dia_intensivo_app', {
+        p_intensivo_dia_id: dia.intensivo_dia_id,
+      });
+
+      setDiaEditandoIntensivoId(null);
+      setFormDiaIntensivo(diaIntensivoInicial());
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function añadirAlumnoAIntensivo(intensivo: IntensivoApp) {
+    if (!alumnoSeleccionadoIntensivoId) {
+      setError('Selecciona un alumno para añadir al intensivo.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('añadir_alumno_intensivo_app', {
+        p_intensivo_id: intensivo.intensivo_id,
+        p_alumno_id: alumnoSeleccionadoIntensivoId,
+      });
+
+      setAlumnoSeleccionadoIntensivoId('');
+      setBusquedaAlumnoIntensivo('');
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function volcarListadoAlumnosIntensivo(intensivo: IntensivoApp) {
+    if (!textoVolcadoIntensivo.trim()) {
+      setError('Pega el listado de Aimharder antes de volcar alumnos.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Volcar este listado en ${intensivo.intensivo}? Se crearán fichas nuevas si no existen.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      const resultado = await ejecutarFuncionConRespuesta<VolcadoAlumnoIntensivoApp>(
+        'volcar_alumnos_intensivo_app',
+        {
+          p_intensivo_id: intensivo.intensivo_id,
+          p_texto: textoVolcadoIntensivo,
+        }
+      );
+
+      setResultadoVolcadoIntensivo(resultado);
+      setBusquedaAlumnoIntensivo('');
+      setAlumnoSeleccionadoIntensivoId('');
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function quitarAlumnoDeIntensivo(registro: IntensivoAlumnoApp) {
+    const confirmar = window.confirm(
+      `¿Quitar a ${registro.alumno} de este intensivo?`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('quitar_alumno_intensivo_app', {
+        p_intensivo_id: registro.intensivo_id,
+        p_alumno_id: registro.alumno_id,
+      });
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function actualizarAlumnoIntensivo(
+    registro: IntensivoAlumnoApp,
+    estadoEvaluación: string,
+    recomendacionSiguientePaso: string
+  ) {
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('actualizar_alumno_intensivo_app', {
+        p_intensivo_alumno_id: registro.intensivo_alumno_id,
+        p_estado_diploma: estadoDiploma,
+        p_recomendacion_siguiente_paso: recomendacionSiguientePaso,
+      });
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function actualizarNivelAlumnoIntensivo(
+    registro: IntensivoAlumnoApp,
+    nivelCodigo: string,
+    origenNivel: string
+  ) {
+    if (!nivelCodigo) {
+      setError('Selecciona un nivel para el alumno.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('actualizar_nivel_alumno_intensivo_app', {
+        p_intensivo_id: registro.intensivo_id,
+        p_alumno_id: registro.alumno_id,
+        p_nivel_codigo: nivelCodigo,
+        p_origen_nivel: origenNivel || 'Jose / Coordinador',
+      });
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function borrarGrupoIntensivo(grupo: GrupoIntensivoDiaApp) {
+    if (!grupo.grupo_id) return;
+
+    const confirmar = window.confirm(
+      `¿Borrar el grupo ${grupo.nombre_grupo || 'sin nombre'}? Se eliminarán sus alumnos, entrenador, reportes y trabajo diario asociados.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('borrar_grupo_intensivo_app', {
+        p_grupo_id: grupo.grupo_id,
+      });
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function borrarIntensivoCompleto(intensivo: IntensivoApp) {
+    const confirmar = window.confirm(
+      `¿Borrar COMPLETO el intensivo ${intensivo.intensivo}? Se eliminarán días, grupos, alumnos inscritos, asistencias, reportes, recuperaciones y diplomas de este intensivo.`
+    );
+
+    if (!confirmar) return;
+
+    const segundaConfirmacion = window.confirm(
+      'Confirmación final: esto es para borrar pruebas. ¿Seguro que quieres continuar?'
+    );
+
+    if (!segundaConfirmacion) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('borrar_intensivo_completo_app', {
+        p_intensivo_id: intensivo.intensivo_id,
+      });
+
+      setGestionarAlumnosIntensivoId(null);
+      setGestionarGruposIntensivoId(null);
+      setGestionarDiplomasIntensivoId(null);
+      setGestionarMásIntensivoId(null);
+      setGestionarAsistenciaIntensivoId(null);
+      setGestionarPanelControlIntensivoId(null);
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function marcarAsistenciaIntensivo(
+    registro: IntensivoAsistenciaApp,
+    estado: string,
+    faltaGeneraRecuperacion: boolean
+  ) {
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('marcar_asistencia_intensivo_app', {
+        p_intensivo_id: registro.intensivo_id,
+        p_intensivo_dia_id: registro.intensivo_dia_id,
+        p_alumno_id: registro.alumno_id,
+        p_estado: estado,
+        p_falta_genera_recuperacion: faltaGeneraRecuperacion,
+      });
+
+      if (faltaGeneraRecuperacion) {
+        await ejecutarFuncion('generar_recuperaciones_desde_asistencias_app', {
+          p_intensivo_id: registro.intensivo_id,
+        });
+      }
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function generarMásDesdeAsistencias(intensivo: IntensivoApp) {
+    const confirmar = window.confirm(
+      `¿Generar recuperaciones pendientes desde las faltas marcadas de ${intensivo.intensivo}?`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('generar_recuperaciones_desde_asistencias_app', {
+        p_intensivo_id: intensivo.intensivo_id,
+      });
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function actualizarRecuperacionIntensivo(
+    registro: IntensivoRecuperacionApp,
+    estado: string,
+    intensivoDestinoId: string,
+    grupoDestinoId: string
+  ) {
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('actualizar_recuperacion_intensivo_app', {
+        p_recuperacion_id: registro.recuperacion_id,
+        p_estado: estado,
+        p_intensivo_destino_id: intensivoDestinoId || null,
+        p_grupo_destino_id: grupoDestinoId || null,
+      });
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function eliminarRecuperacionIntensivo(registro: IntensivoRecuperacionApp) {
+    const confirmar = window.confirm(
+      `¿Eliminar la recuperación de ${registro.alumno}?`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('eliminar_recuperacion_intensivo_app', {
+        p_recuperacion_id: registro.recuperacion_id,
+      });
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+
+  async function crearGrupoNormalIntensivo(
+    intensivo: IntensivoApp,
+    dia: IntensivoDiaApp | undefined
+  ) {
+    if (!dia) {
+      setError('Primero selecciona un día del intensivo.');
+      return;
+    }
+
+    if (!formGrupoIntensivo.nombre_grupo.trim()) {
+      setError('Pon un nombre para el grupo.');
+      return;
+    }
+
+    if (!formGrupoIntensivo.entrenador_id) {
+      setError('Selecciona un entrenador para el grupo.');
+      return;
+    }
+
+    if (formGrupoIntensivo.alumnos_ids.length === 0) {
+      setError('Selecciona al menos un alumno para el grupo.');
+      return;
+    }
+
+    const alumnosManualRatio = formGrupoIntensivo.alumnos_ids.map((alumnoId) => {
+      const ficha = alumnosResumenVolcado.find((alumno) => alumno.alumno_id === alumnoId);
+      return {
+        nivel_resumen: ficha?.nivel_resumen || ficha?.nivel_actual || ficha?.nivel_estimado || 'A+',
+        pista_recomendada: ficha?.pista_resumen || ficha?.pista_nivel_actual || ficha?.pista_nivel_estimado || formGrupoIntensivo.pista,
+        pista_alumno: ficha?.pista_resumen || ficha?.pista_nivel_actual || ficha?.pista_nivel_estimado || formGrupoIntensivo.pista,
+      };
+    });
+    if (necesitaDosEntrenadoresGrupoApp(alumnosManualRatio) && !formGrupoIntensivo.entrenador_apoyo_id) {
+      const seguirSinApoyo = window.confirm(`${textoNecesidadDosEntrenadoresApp(alumnosManualRatio)}\n\nSolo has seleccionado 1 entrenador. Puedes publicarlo con aviso fuerte si es necesario en pista. ¿Continuar?`);
+      if (!seguirSinApoyo) return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Crear ${formGrupoIntensivo.nombre_grupo} para ${intensivo.intensivo} el ${formatearFecha(dia.fecha)}?`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('crear_grupo_intensivo_dia_app', {
+        p_intensivo_dia_id: dia.intensivo_dia_id,
+        p_nombre_grupo: formGrupoIntensivo.nombre_grupo.trim(),
+        p_nivel_grupo: formGrupoIntensivo.nivel_grupo.trim(),
+        p_pista: formGrupoIntensivo.pista,
+        p_punto_encuentro: formGrupoIntensivo.punto_encuentro.trim(),
+        p_trabajo_diario: formGrupoIntensivo.trabajo_diario.trim(),
+        p_observaciones_importantes: combinarObservacionesGrupoApp(
+          observacionesAutomaticasGrupoIntensivoManual(formGrupoIntensivo.alumnos_ids),
+          formGrupoIntensivo.observaciones_importantes.trim()
+        ),
+        p_entrenador_id: formGrupoIntensivo.entrenador_id,
+        p_alumnos_ids: formGrupoIntensivo.alumnos_ids,
+        p_publicado: formGrupoIntensivo.publicado,
+      });
+
+      await ejecutarFuncion('guardar_apoyo_reportes_grupo_por_contexto_app', {
+        p_contexto: 'intensivo',
+        p_contexto_id: dia.intensivo_dia_id,
+        p_nombre_grupo: formGrupoIntensivo.nombre_grupo.trim(),
+        p_entrenador_apoyo_id: formGrupoIntensivo.entrenador_apoyo_id || null,
+        p_responsables: formGrupoIntensivo.alumnos_ids.map((alumnoId, indice) => ({
+          alumno_id: alumnoId,
+          entrenador_id: responsableAutomaticoReporteApp(indice, formGrupoIntensivo.entrenador_id, formGrupoIntensivo.entrenador_apoyo_id),
+        })),
+      });
+
+      setFormGrupoIntensivo(grupoIntensivoInicial());
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+
+  function claveGrupoRecomendado(diaId: string, grupoRecomendado: string) {
+    return `${diaId}__${grupoRecomendado}`;
+  }
+
+  function claveAlumnoRecomendado(diaId: string, alumnoId: string) {
+    return `${diaId}__alumno__${alumnoId}`;
+  }
+
+  function destinoActualAlumnoRecomendado(diaId: string, alumno: RecomendacionGrupoIntensivoDiaApp) {
+    return destinoAlumnoRecomendado[claveAlumnoRecomendado(diaId, alumno.alumno_id)] || alumno.grupo_recomendado;
+  }
+
+  function nombresGruposBaseRecomendados(diaId: string) {
+    return Array.from(
+      new Set(
+        recomendacionesDelDiaIntensivo(diaId)
+          .map((registro) => registro.grupo_recomendado)
+          .filter(Boolean)
+      )
+    );
+  }
+
+  function recomendacionesDelDiaIntensivo(diaId: string) {
+    return recomendacionesGrupoIntensivo.filter(
+      (registro) => registro.intensivo_dia_id === diaId
+    );
+  }
+
+  function agruparRecomendacionesDia(diaId: string) {
+    const grupos = new Map<string, RecomendacionGrupoIntensivoDiaApp[]>();
+
+    recomendacionesDelDiaIntensivo(diaId).forEach((registro) => {
+      const destino = destinoActualAlumnoRecomendado(diaId, registro);
+      if (destino === '__NO_CREAR__') return;
+
+      const existentes = grupos.get(destino) || [];
+      existentes.push({ ...registro, grupo_recomendado: destino });
+      grupos.set(destino, existentes);
+    });
+
+    return Array.from(grupos.entries())
+      .map(([nombreGrupo, alumnosGrupo]) => ({
+        nombreGrupo,
+        alumnosGrupo: alumnosGrupo.sort((a, b) => {
+          return (
+            Number(a.nivel_orden || 0) - Number(b.nivel_orden || 0) ||
+            Number(a.edad || 99) - Number(b.edad || 99) ||
+            a.alumno.localeCompare(b.alumno)
+          );
+        }),
+      }))
+      .sort((a, b) => {
+        const primeroA = a.alumnosGrupo[0];
+        const primeroB = b.alumnosGrupo[0];
+        if (!primeroA || !primeroB) return 0;
+        return (
+          Number(primeroA.orden_bloque || 0) - Number(primeroB.orden_bloque || 0) ||
+          a.nombreGrupo.localeCompare(b.nombreGrupo)
+        );
+      });
+  }
+
+  async function crearDisponibilidadSemanaActual() {
+    const semana = semanaAgendaActiva || semanaActualAgenda;
+    if (!semana) {
+      setError('Selecciona una semana en Días de entrenamiento antes de pedir disponibilidad.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('crear_disponibilidad_semana_app', {
+        p_semana_inicio: semana,
+      });
+      await cargarDisponibilidad();
+      alert('Turnos de disponibilidad creados para la semana.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error creando disponibilidad semanal');
+    }
+
+    setCargando(false);
+  }
+
+  async function enviarAvisoDisponibilidadSemana() {
+    const semana = semanaAgendaActiva || semanaActualAgenda;
+    if (!semana) {
+      setError('Selecciona una semana en Días de entrenamiento antes de enviar el aviso.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('enviar_aviso_disponibilidad_semana_app', {
+        p_semana_inicio: semana,
+      });
+      await cargarDisponibilidad();
+      alert('Aviso enviado dentro de la app. Los entrenadores lo verán como disponibilidad pendiente.');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error enviando aviso interno de disponibilidad');
+    }
+
+    setCargando(false);
+  }
+
+  async function responderDisponibilidadRapida(
+    turno: DisponibilidadEntrenador,
+    respuesta: 'Disponible' | 'No puedo' | 'Pendiente'
+  ) {
+    const scrollActual = window.scrollY;
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('responder_disponibilidad_turno_por_id_app', {
+        p_disponibilidad_id: turno.id,
+        p_respuesta: respuesta,
+        p_comentario: turno.comentario || null,
+      });
+      await cargarDisponibilidad();
+      setTimeout(() => window.scrollTo({ top: scrollActual, behavior: 'auto' }), 0);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error guardando disponibilidad');
+    }
+
+    setCargando(false);
+  }
+
+  function mensajeDisponibilidadSemana() {
+    const semana = semanaAgendaActiva || semanaActualAgenda;
+    if (!semana) return 'Selecciona una semana antes de copiar el recordatorio.';
+    const dias = diasTrabajoSemanaAgenda(semana);
+    let mensaje = `*Disponibilidad Mítico Baby / Ocio*\nSemana ${rangoSemanaAgenda(semana)}\n\nPor favor confirma tu disponibilidad para estos turnos:\n\n`;
+
+    dias.forEach((dia) => {
+      mensaje += `*${capitalizarPrimera(dia.nombre)} ${formatearFecha(dia.fecha)}*\n`;
+      turnosTrabajoDiaAgenda(dia.fecha).forEach((turno) => {
+        mensaje += `- ${turno.inicio}–${turno.fin}\n`;
+      });
+      mensaje += '\n';
+    });
+
+    mensaje += 'No hace falta responder por WhatsApp: rellenadlo en la app. Gracias equipo.';
+    return mensaje;
+  }
+
+  function copiarMensajeDisponibilidadSemana() {
+    const mensaje = mensajeDisponibilidadSemana();
+    abrirPrevisualizacionWhatsapp(`WhatsApp entrenadores · disponibilidad ${rangoSemanaAgenda(semanaAgendaActiva || semanaActualAgenda)}`, mensaje);
+  }
+
+  function mensajeWhatsappPendientesReportes(items: ReportePendiente[]) {
+    const pendientes = items.filter((reporte) =>
+      reporte.estado_reporte === 'Falta reporte' || reporte.estado_reporte === 'Asistencia sin confirmar'
+    );
+
+    if (pendientes.length === 0) {
+      return 'Todo al día. No hay reportes pendientes ni asistencias sin confirmar.';
+    }
+
+    const porEntrenador = agruparReportesPorEntrenador(pendientes);
+    let mensaje = 'Buenas equipo!\n\n';
+    mensaje += 'Tenéis tareas pendientes en la app. Por favor entrad en Vista entrenador → Grupos / reportes y dejadlo cerrado.\n\n';
+
+    porEntrenador.forEach((grupo) => {
+      const faltanReportes = grupo.reportes.filter((reporte) => reporte.estado_reporte === 'Falta reporte');
+      const faltanAsistencias = grupo.reportes.filter((reporte) => reporte.estado_reporte === 'Asistencia sin confirmar');
+      mensaje += `⛷️ ${grupo.entrenador}\n`;
+      if (faltanAsistencias.length > 0) {
+        mensaje += `- Asistencias sin confirmar: ${faltanAsistencias.length}\n`;
+        faltanAsistencias.slice(0, 6).forEach((reporte) => {
+          mensaje += `  • ${formatearFecha(reporte.fecha)} ${reporte.hora_inicio.slice(0, 5)}-${reporte.hora_fin.slice(0, 5)} · ${reporte.alumno} · ${reporte.nombre_grupo}\n`;
+        });
+      }
+      if (faltanReportes.length > 0) {
+        mensaje += `- Reportes pendientes: ${faltanReportes.length}\n`;
+        faltanReportes.slice(0, 6).forEach((reporte) => {
+          mensaje += `  • ${formatearFecha(reporte.fecha)} ${reporte.hora_inicio.slice(0, 5)}-${reporte.hora_fin.slice(0, 5)} · ${reporte.alumno} · ${reporte.nombre_grupo}\n`;
+        });
+      }
+      mensaje += '\n';
+    });
+
+    mensaje += 'Gracias!';
+    return mensaje;
+  }
+
+  function copiarWhatsappPendientesReportes() {
+    const mensaje = mensajeWhatsappPendientesReportes(reportesFiltrados);
+    abrirPrevisualizacionWhatsapp(`WhatsApp entrenadores · pendientes semana ${rangoSemanaAgenda(semanaAgendaActiva)}`, mensaje);
+  }
+
+  function copiarWhatsappPendientesEntrenador(nombreEntrenador: string, items: ReportePendiente[]) {
+    const mensaje = mensajeWhatsappPendientesReportes(items);
+    abrirPrevisualizacionWhatsapp(`WhatsApp personal · ${nombreEntrenador}`, mensaje);
+  }
+
+  function pendientesEntrenador(entrenadorId: string) {
+    return reportesPendientes.filter((reporte) =>
+      reporte.entrenador_id === entrenadorId &&
+      (reporte.estado_reporte === 'Falta reporte' || reporte.estado_reporte === 'Asistencia sin confirmar')
+    );
+  }
+
+  function mensajeWhatsAppPapisSesionActual() {
+    const sesion = agendaSesionesDirectas.find(
+      (item) => item.sesion_id === agendaSesionActivaId
+    );
+
+    if (!sesion) return '';
+
+    const grupos = agendaGruposSesion.filter((grupo) => grupo.grupo_id);
+    if (grupos.length === 0) return '';
+
+    const diaTexto = capitalizarPrimera(
+      crearFechaAgenda(sesion.fecha).toLocaleDateString('es-ES', {
+        weekday: 'long',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      })
+    );
+
+    let mensaje = `*${diaTexto}* ⛷️💨\n`;
+    mensaje += `⏰ horario de ${sesion.hora_inicio.slice(0, 5)} a ${sesion.hora_fin.slice(0, 5)} MSZ\n\n`;
+
+    grupos.forEach((grupo) => {
+      mensaje += `⛷️ ${(grupo.entrenador || 'ENTRENADOR PENDIENTE').toUpperCase()}\n`;
+      mensaje += `📍${emojiPuntoEncuentro(grupo.punto_encuentro)}\n`;
+      mensaje += '👶\n';
+      alumnosLimpiosWhatsapp(grupo.alumnos_lista).forEach((alumno) => {
+        mensaje += `${alumno}\n`;
+      });
+      mensaje += '\n';
+    });
+
+    mensaje += '¡Nos vemos en MSZ equipo!\n';
+    mensaje += '⚠️Papis importante!\n';
+    mensaje += `Como la logística con los peques se puede complicar un poco, os recomiendo estar 20-25 minutos antes de la hora de entrada ya que a las ${sesion.hora_inicio.slice(0, 5)} el grupo estará entrando en pista con su entrenador.\n`;
+    mensaje += 'Si alguno llegáis tarde, avisad en este número: Jose +34 647 027 692';
+
+    return mensaje;
+  }
+
+  function copiarMensajeWhatsAppPapisSesionActual() {
+    const mensaje = mensajeWhatsAppPapisSesionActual();
+    if (!mensaje) {
+      setError('Primero abre una sesión con grupos creados.');
+      return;
+    }
+
+    const sesion = agendaSesionesDirectas.find((item) => item.sesion_id === agendaSesionActivaId);
+    const titulo = sesion
+      ? `WhatsApp papis · ${sesion.modalidad} ${sesion.hora_inicio.slice(0, 5)}-${sesion.hora_fin.slice(0, 5)}`
+      : 'WhatsApp papis';
+    abrirPrevisualizacionWhatsapp(titulo, mensaje);
+  }
+
+  function generarTrabajoDiarioAutomaticoGrupo(
+    nombreGrupo: string,
+    alumnosGrupo: RecomendacionGrupoIntensivoDiaApp[]
+  ) {
+    const niveles = alumnosGrupo.map((a) => a.nivel_resumen || '').filter(Boolean);
+    const pista = alumnosGrupo[0]?.pista_recomendada || 'Pequeña/Grande';
+    const observaciones = observacionesAutomaticasGrupoIntensivo(alumnosGrupo);
+    const base = trabajoDiarioMSZApp(nombreGrupo, niveles, pista, observaciones);
+    const declaradosFamilia = alumnosGrupo.filter((a) => a.fuente_nivel === 'Nivel declarado familia');
+    const fichasPendientes = alumnosGrupo.filter((a) => a.estado_ficha !== 'completa');
+
+    const avisos = [
+      declaradosFamilia.length > 0
+        ? `Aviso reporte: validar nivel declarado por familia: ${declaradosFamilia.map((a) => `${a.alumno} (${a.nivel_resumen})`).join(', ')}.`
+        : '',
+      fichasPendientes.length > 0
+        ? `Aviso ficha: observar nivel real, autonomía y actitud de ${fichasPendientes.map((a) => a.alumno).join(', ')}.`
+        : '',
+    ].filter(Boolean);
+
+    return [base, ...avisos].filter(Boolean).join('\n');
+  }
+
+  function textoBaseDiplomaIntensivo(
+    registro: ResumenFinalIntensivoApp,
+    reportes: ReporteDetalleIntensivoApp[]
+  ) {
+    const lineasReportes = reportes.map((reporte) => {
+      return [
+        `Día ${reporte.numero_dia} · ${formatearFecha(reporte.fecha)} · ${reporte.nombre_grupo}`,
+        `Entrenador: ${reporte.entrenador || '-'}`,
+        `Nivel: ${reporte.nivel_reportado || '-'}`,
+        `Técnica: ${reporte.tecnica || '-'}${reporte.tecnica_comentario ? ` (${reporte.tecnica_comentario})` : ''}`,
+        `Actitud: ${reporte.actitud || '-'}${reporte.actitud_comentario ? ` (${reporte.actitud_comentario})` : ''}`,
+        `Autonomía: ${reporte.autonomia || '-'}${reporte.autonomia_comentario ? ` (${reporte.autonomia_comentario})` : ''}`,
+        `Incidencia: ${reporte.incidencia || '-'}${reporte.incidencia_comentario ? ` (${reporte.incidencia_comentario})` : ''}`,
+        `Recomendación: ${reporte.recomendacion_proxima_sesion || '-'}${reporte.recomendacion_comentario ? ` (${reporte.recomendacion_comentario})` : ''}`,
+      ].join('\n');
+    });
+
+    return [
+      `BASE DIPLOMA INTENSIVO · ${registro.intensivo}`,
+      `Alumno: ${registro.alumno}`,
+      `Asistencia: ${registro.dias_presente || 0} presente · ${registro.dias_ausente || 0} ausente · ${registro.dias_pendiente_asistencia || 0} pendiente · ${registro.total_dias_intensivo || 0} días totales`,
+      `Reportes enviados: ${registro.total_reportes || 0}`,
+      `Niveles reportados: ${registro.niveles_reportados || '-'}`,
+      `Nivel más alto reportado: ${registro.nivel_mas_alto_reportado || '-'}`,
+      `Último nivel reportado: ${registro.nivel_ultimo_reporte || '-'}`,
+      `Nivel final propuesto: ${codigoNivelPorId(registro.nivel_final_propuesto_id)}`,
+      `Nivel final confirmado: ${codigoNivelPorId(registro.nivel_final_confirmado_id)}`,
+      `Técnicas trabajadas: ${registro.tecnicas_reportadas || '-'}`,
+      `Actitud global: ${registro.actitudes_reportadas || '-'}`,
+      `Autonomía: ${registro.autonomias_reportadas || '-'}`,
+      `Incidencias: ${registro.incidencias_reportadas || '-'}`,
+      `Recomendaciones de entrenadores: ${registro.recomendaciones_reportadas || '-'}`,
+      `Comentarios técnica: ${registro.comentarios_tecnica || '-'}`,
+      `Comentarios actitud: ${registro.comentarios_actitud || '-'}`,
+      `Comentarios autonomía: ${registro.comentarios_autonomia || '-'}`,
+      `Comentarios recomendación: ${registro.comentarios_recomendacion || '-'}`,
+      '',
+      'REPORTES DÍA A DÍA',
+      lineasReportes.length > 0 ? lineasReportes.join('\n\n---\n\n') : 'Sin reportes día a día todavía.',
+      '',
+      'INSTRUCCIÓN PARA CHATGPT: con esta información redactar un diploma/resumen para padres en tono positivo, claro y profesional, sin inventar datos y suavizando incidencias si las hubiera.',
+    ].join('\n');
+  }
+
+
+  async function generarRecomendacionGruposIntensivo(dia: IntensivoDiaApp | undefined) {
+    if (!dia) {
+      setError('Primero selecciona un día del intensivo.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+
+    try {
+      const resultado = await ejecutarFuncionConRespuesta<RecomendacionGrupoIntensivoDiaApp>(
+        'recomendar_grupos_intensivo_dia_app',
+        {
+          p_intensivo_dia_id: dia.intensivo_dia_id,
+        }
+      );
+
+      const resultadoPedagogico = aplicarCinturonPedagogicoAutomaticoIntensivo(resultado);
+
+      setRecomendacionesGrupoIntensivo((anteriores) => [
+        ...anteriores.filter(
+          (registro) => registro.intensivo_dia_id !== dia.intensivo_dia_id
+        ),
+        ...resultadoPedagogico,
+      ]);
+
+      setDestinoAlumnoRecomendado((anteriores) => {
+        const copia = { ...anteriores };
+        Object.keys(copia).forEach((clave) => {
+          if (clave.startsWith(`${dia.intensivo_dia_id}__alumno__`)) delete copia[clave];
+        });
+        resultadoPedagogico.forEach((registro) => {
+          copia[claveAlumnoRecomendado(dia.intensivo_dia_id, registro.alumno_id)] = registro.grupo_recomendado;
+        });
+        return copia;
+      });
+
+      setTrabajoDiarioPorGrupoRecomendado((anteriores) => {
+        const copia = { ...anteriores };
+        Object.keys(copia).forEach((clave) => {
+          if (clave.startsWith(`${dia.intensivo_dia_id}__`)) delete copia[clave];
+        });
+        return copia;
+      });
+
+      setObservacionesPorGrupoRecomendado((anteriores) => {
+        const copia = { ...anteriores };
+        Object.keys(copia).forEach((clave) => {
+          if (clave.startsWith(`${dia.intensivo_dia_id}__`)) delete copia[clave];
+        });
+        return copia;
+      });
+
+      if (resultadoPedagogico.length === 0) {
+        setError('No hay alumnos pendientes para recomendar en este día. Puede que ya estén todos metidos en grupos.');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function crearGrupoDesdeRecomendacion(
+    intensivo: IntensivoApp,
+    dia: IntensivoDiaApp | undefined,
+    nombreGrupo: string,
+    alumnosGrupo: RecomendacionGrupoIntensivoDiaApp[]
+  ) {
+    if (!dia) {
+      setError('Primero selecciona un día del intensivo.');
+      return;
+    }
+
+    if (alumnosGrupo.length === 0) {
+      setError('Este grupo recomendado no tiene alumnos.');
+      return;
+    }
+
+    const clave = claveGrupoRecomendado(dia.intensivo_dia_id, nombreGrupo);
+    const entrenadorId = entrenadoresPorGrupoRecomendado[clave];
+
+    if (!entrenadorId) {
+      setError(`Selecciona entrenador para ${nombreGrupo}.`);
+      return;
+    }
+
+    const primero = alumnosGrupo[0];
+    const nivelesGrupo = Array.from(
+      new Set(alumnosGrupo.map((alumno) => alumno.nivel_resumen).filter(Boolean))
+    ).join(' / ');
+
+    const validacionOk = confirmarCrearGrupoConValidacionPedagogicaApp(alumnosGrupo, nombreGrupo);
+    if (!validacionOk) return;
+
+    const entrenadorApoyoAviso = entrenadoresApoyoPorGrupoRecomendado[clave] || '';
+    if (necesitaDosEntrenadoresGrupoApp(alumnosGrupo) && !entrenadorApoyoAviso) {
+      const seguirSinApoyo = window.confirm(`${textoNecesidadDosEntrenadoresApp(alumnosGrupo)}\n\nSolo has seleccionado 1 entrenador. Puedes publicarlo con aviso fuerte si es necesario en pista. ¿Continuar?`);
+      if (!seguirSinApoyo) return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Crear ${nombreGrupo} con ${alumnosGrupo.length} alumnos y publicarlo para entrenador?`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('crear_grupo_intensivo_dia_app', {
+        p_intensivo_dia_id: dia.intensivo_dia_id,
+        p_nombre_grupo: nombreGrupo,
+        p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
+        p_pista: primero.pista_recomendada,
+        p_punto_encuentro: 'Cristalera',
+        p_trabajo_diario:
+          trabajoDiarioPorGrupoRecomendado[clave] ||
+          generarTrabajoDiarioAutomaticoGrupo(nombreGrupo, alumnosGrupo),
+        p_observaciones_importantes: combinarObservacionesGrupoApp(
+          observacionesAutomaticasGrupoIntensivo(alumnosGrupo),
+          observacionesPorGrupoRecomendado[clave] || formGrupoIntensivo.observaciones_importantes.trim()
+        ),
+        p_entrenador_id: entrenadorId,
+        p_alumnos_ids: alumnosGrupo.map((alumno) => alumno.alumno_id),
+        p_publicado: true,
+      });
+
+      const entrenadorApoyoId = entrenadoresApoyoPorGrupoRecomendado[clave] || '';
+      await ejecutarFuncion('guardar_apoyo_reportes_grupo_por_contexto_app', {
+        p_contexto: 'intensivo',
+        p_contexto_id: dia.intensivo_dia_id,
+        p_nombre_grupo: nombreGrupo,
+        p_entrenador_apoyo_id: entrenadorApoyoId || null,
+        p_responsables: responsablesJsonGrupoRecomendadoApp(clave, alumnosGrupo, entrenadorId, entrenadorApoyoId),
+      });
+
+      setRecomendacionesGrupoIntensivo((anteriores) =>
+        anteriores.filter(
+          (registro) =>
+            !(
+              registro.intensivo_dia_id === dia.intensivo_dia_id &&
+              registro.grupo_recomendado === nombreGrupo
+            )
+        )
+      );
+
+      setEntrenadoresPorGrupoRecomendado((anteriores) => {
+        const copia = { ...anteriores };
+        delete copia[clave];
+        return copia;
+      });
+
+      setEntrenadoresApoyoPorGrupoRecomendado((anteriores) => {
+        const copia = { ...anteriores };
+        delete copia[clave];
+        return copia;
+      });
+
+      setResponsablesReportePorGrupoRecomendado((anteriores) => {
+        const copia = { ...anteriores };
+        alumnosGrupo.forEach((alumno) => delete copia[`${clave}__${alumno.alumno_id}`]);
+        return copia;
+      });
+
+      setTrabajoDiarioPorGrupoRecomendado((anteriores) => {
+        const copia = { ...anteriores };
+        delete copia[clave];
+        return copia;
+      });
+
+      setObservacionesPorGrupoRecomendado((anteriores) => {
+        const copia = { ...anteriores };
+        delete copia[clave];
+        return copia;
+      });
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+
+  async function autoproponerNivelesDiploma(intensivo: IntensivoApp) {
+    const confirmar = window.confirm(
+      `¿Autoproponer niveles finales para ${intensivo.intensivo} según los reportes de los entrenadores?`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('autoproponer_niveles_diploma_intensivo_app', {
+        p_intensivo_id: intensivo.intensivo_id,
+      });
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function actualizarDiplomaIntensivo(
+    registro: ResumenFinalIntensivoApp,
+    nivelPropuestoId: string,
+    nivelConfirmadoId: string,
+    recomendacionSiguientePaso: string,
+    estadoEvaluación: string
+  ) {
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('actualizar_diploma_intensivo_app', {
+        p_intensivo_alumno_id: registro.intensivo_alumno_id,
+        p_nivel_final_propuesto_id: nivelPropuestoId || null,
+        p_nivel_final_confirmado_id: nivelConfirmadoId || null,
+        p_recomendacion_siguiente_paso: recomendacionSiguientePaso || null,
+        p_estado_diploma: estadoDiploma || 'Pendiente',
+      });
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function cargarListados() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const data = await consultarSupabase<ListadoApp>(
+        'v_listados_app',
+        'select=*&order=fecha.desc,hora_inicio.desc'
+      );
+      setListados(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setListados([]);
+    }
+
+    setCargando(false);
+  }
+
+
+
+
+  async function activarTemporadaAgenda(anioInicio: number) {
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('activar_temporada_operativa_app', {
+        p_anio_inicio: anioInicio,
+      });
+      await cargarAgendaOperativaDirecta();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function cargarAgendaOperativaDirecta() {
+    try {
+      const data = await consultarSupabase<AgendaSesionDirectaApp>(
+        'v_agenda_sesiones_operativa_app',
+        'select=*&order=fecha.asc,hora_inicio.asc'
+      );
+      setAgendaSesionesDirectas(data);
+    } catch (err) {
+      // Si el SQL nuevo no está ejecutado todavía, no rompemos la app.
+      setAgendaSesionesDirectas([]);
+    }
+  }
+
+  async function cargarDetalleSesionAgenda(sesionId: string) {
+    if (!sesionId) return;
+
+    setAgendaSesionActivaId(sesionId);
+    irAlTrabajoAgenda('sesion');
+    setCargando(true);
+    setError('');
+
+    try {
+      const filtroSesion = encodeURIComponent(`eq.${sesionId}`);
+
+      const alumnosData = await consultarSupabase<AgendaAlumnoSesionApp>(
+        'v_sesion_alumnos_operativa_app',
+        `select=*&sesion_id=${filtroSesion}&order=orden.asc`
+      );
+
+      const gruposData = await consultarSupabase<AgendaGrupoSesionApp>(
+        'v_grupos_sesion_operativa_app',
+        `select=*&sesion_id=${filtroSesion}&order=nombre_grupo.asc`
+      );
+
+      setAgendaAlumnosSesion(alumnosData);
+      setAgendaGruposSesion(gruposData);
+      setTrabajoGrupoCreadoEditando(Object.fromEntries(gruposData.map((grupo) => [grupo.grupo_id, grupo.trabajo_diario || ''])));
+      setObservacionesGrupoCreadoEditando(Object.fromEntries(gruposData.map((grupo) => [grupo.grupo_id, normalizarLineasObservacionesGrupoApp(grupo.observaciones_importantes || '', 12)])));
+      setAgendaRecomendaciones([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setAgendaAlumnosSesion([]);
+      setAgendaGruposSesion([]);
+    }
+
+    setCargando(false);
+  }
+
+  function irAlTrabajoAgenda(destino: 'formulario' | 'sesion' | 'trabajo' = 'trabajo') {
+    // Scroll controlado: solo cuando Jose pulsa + Baby/Ocio/Intensivo o Abrir sesión.
+    // No salta solo al cambiar semana/día.
+    window.setTimeout(() => {
+      const idDestino = destino === 'formulario' ? 'agenda-formulario-listado' : destino === 'sesion' ? 'agenda-sesion-trabajo' : 'trabajo-agenda';
+      const elemento = document.getElementById(idDestino) || document.getElementById('trabajo-agenda');
+      elemento?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+      if (destino === 'formulario') {
+        window.setTimeout(() => {
+          const textarea = document.getElementById('agenda-textarea-listado') as HTMLTextAreaElement | null;
+          textarea?.focus();
+        }, 180);
+      }
+    }, 90);
+  }
+
+  function abrirFormularioAgendaDia(fecha: string, horaInicio?: string, horaFin?: string, modalidad?: string) {
+    setAgendaDiaCompactoActivo(fecha);
+    setAgendaFormularioAbierto(true);
+    setAgendaSesionActivaId('');
+    setAgendaAlumnosSesion([]);
+    setAgendaGruposSesion([]);
+    setAgendaRecomendaciones([]);
+    const turnoDefecto = turnosTrabajoDiaAgenda(fecha)[0] || { inicio: '18:00', fin: '20:00' };
+    setAgendaForm((anterior) => ({
+      ...anterior,
+      fecha,
+      modalidad: modalidad || anterior.modalidad || 'BABY',
+      hora_inicio: horaInicio || turnoDefecto.inicio,
+      hora_fin: horaFin || turnoDefecto.fin,
+      texto_listado: '',
+    }));
+    irAlTrabajoAgenda('formulario');
+  }
+
+  async function volcarListadoAgendaOperativa() {
+    if (!agendaForm.fecha) {
+      setError('Selecciona un día de la agenda.');
+      return;
+    }
+
+    if (!agendaForm.texto_listado.trim()) {
+      setError('Pega el listado de Aimharder antes de crear grupos.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+
+    try {
+      const resultado = await ejecutarFuncionConRespuesta<{
+        sesion_id: string;
+        total_detectados: number;
+        total_nuevos: number;
+        total_conocidos: number;
+      }>('crear_sesion_operativa_desde_listado_app', {
+        p_fecha: agendaForm.fecha,
+        p_hora_inicio: agendaForm.hora_inicio,
+        p_hora_fin: agendaForm.hora_fin,
+        p_modalidad_codigo: agendaForm.modalidad,
+        p_lugar: agendaForm.lugar,
+        p_texto_listado: agendaForm.texto_listado,
+      });
+
+      const sesionId = resultado[0]?.sesion_id;
+      setAgendaFormularioAbierto(false);
+      setAgendaForm((anterior) => ({ ...anterior, texto_listado: '' }));
+      await cargarAgendaOperativaDirecta();
+      await cargarListados();
+
+      if (sesionId) {
+        await cargarDetalleSesionAgenda(sesionId);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function generarRecomendacionAgendaSesion(sesionId: string) {
+    if (!sesionId) {
+      setError('Primero carga o selecciona una sesión.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+
+    try {
+      const data = await ejecutarFuncionConRespuesta<AgendaRecomendacionSesionApp>(
+        'recomendar_grupos_sesion_operativa_app',
+        { p_sesion_id: sesionId }
+      );
+      const dataPedagogica = aplicarCinturonPedagogicoAutomaticoAgenda(data);
+      setAgendaRecomendaciones(dataPedagogica);
+      setDestinoAlumnoAgendaGrupo({});
+      // No borramos los grupos manuales: si Jose crea "Grupo B+" antes de generar,
+      // debe quedar disponible como destino para mover alumnos.
+      setEntrenadoresAgendaGrupo({});
+      setEntrenadoresApoyoAgendaGrupo({});
+      setResponsablesReporteAgendaGrupo({});
+      setPuntosAgendaGrupo({});
+      setTrabajoAgendaGrupo({});
+      setObservacionesAgendaGrupo({});
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setAgendaRecomendaciones([]);
+    }
+
+    setCargando(false);
+  }
+
+  function claveAlumnoAgendaRecomendado(alumnoId: string) {
+    return `${agendaSesionActivaId || 'sin_sesion'}__${alumnoId}`;
+  }
+
+  function destinoActualAlumnoAgenda(alumno: AgendaRecomendacionSesionApp) {
+    return destinoAlumnoAgendaGrupo[claveAlumnoAgendaRecomendado(alumno.alumno_id)] || alumno.grupo_recomendado;
+  }
+
+  function nombresGruposAgendaBase() {
+    return Array.from(
+      new Set([
+        ...agendaRecomendaciones
+          .map((alumno) => alumno.grupo_recomendado)
+          .filter(Boolean),
+        ...gruposAgendaManuales,
+      ])
+    );
+  }
+
+  function crearGrupoManualAgenda() {
+    if (!agendaSesionActivaId) {
+      setError('Primero abre una sesión antes de crear un grupo manual.');
+      return;
+    }
+
+    const sugerido = `Grupo manual ${gruposAgendaManuales.length + 1}`;
+    const nombre = window.prompt('Nombre del nuevo grupo manual. Ejemplo: Grupo B+ o Grupo C/D', sugerido);
+    const limpio = (nombre || '').trim();
+    if (!limpio) return;
+
+    const yaExiste = gruposAgendaManuales.includes(limpio) || nombresGruposAgendaBase().includes(limpio);
+    if (yaExiste) {
+      setError(`El grupo manual "${limpio}" ya existe.`);
+      return;
+    }
+
+    setError('');
+    setGruposAgendaManuales((anteriores) => [...anteriores, limpio]);
+
+    // Si todavía no hay propuesta, generamos una base para que aparezcan los alumnos
+    // y se puedan mover al grupo manual recién creado.
+    if (agendaRecomendaciones.length === 0) {
+      setTimeout(() => generarRecomendacionAgendaSesion(agendaSesionActivaId), 0);
+    }
+  }
+
+  function moverAlumnoAgendaRecomendado(alumnoId: string, destino: string) {
+    setDestinoAlumnoAgendaGrupo((anterior) => ({
+      ...anterior,
+      [claveAlumnoAgendaRecomendado(alumnoId)]: destino,
+    }));
+  }
+
+  function gruposRecomendadosAgenda() {
+    const mapa = new Map<string, AgendaRecomendacionSesionApp[]>();
+
+    agendaRecomendaciones.forEach((alumno) => {
+      const destino = destinoActualAlumnoAgenda(alumno);
+      if (destino === '__NO_CREAR__') return;
+
+      mapa.set(destino, [
+        ...(mapa.get(destino) || []),
+        { ...alumno, grupo_recomendado: destino },
+      ]);
+    });
+
+    return [...mapa.entries()]
+      .map(([nombreGrupo, alumnosGrupo]) => ([
+        nombreGrupo,
+        alumnosGrupo.sort((a, b) => {
+          return (
+            a.orden_bloque - b.orden_bloque ||
+            a.nivel_orden - b.nivel_orden ||
+            a.alumno.localeCompare(b.alumno)
+          );
+        }),
+      ] as [string, AgendaRecomendacionSesionApp[]]))
+      .sort((a, b) => {
+        const primeroA = a[1][0];
+        const primeroB = b[1][0];
+        if (!primeroA || !primeroB) return 0;
+        return primeroA.orden_bloque - primeroB.orden_bloque || a[0].localeCompare(b[0]);
+      });
+  }
+
+  function ordenNivelTrabajoMSZApp(nivel: string | null | undefined) {
+    const limpio = (nivel || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    if (limpio.includes('D+')) return 8;
+    if (limpio === 'D' || limpio.includes(' D')) return 7;
+    if (limpio.includes('C+')) return 6;
+    if (limpio === 'C' || limpio.includes(' C')) return 5;
+    if (limpio.includes('B+')) return 4;
+    if (limpio === 'B' || limpio.includes(' B')) return 3;
+    if (limpio.includes('A+')) return 2;
+    if (limpio === 'A' || limpio.includes(' A')) return 1;
+    if (limpio.includes('INICIACION') || limpio.includes('DEBUT')) return 0;
+    return 2;
+  }
+
+
+
+  function nivelOrdenPedagogicoApp(nivel: string | null | undefined) {
+    return ordenNivelTrabajoMSZApp(nivel);
+  }
+
+  function nivelEtiquetaPedagogicaApp(orden: number) {
+    if (orden <= 0) return 'INICIACIÓN';
+    if (orden === 1) return 'A';
+    if (orden === 2) return 'A+';
+    if (orden === 3) return 'B';
+    if (orden === 4) return 'B+';
+    if (orden === 5) return 'C';
+    if (orden === 6) return 'C+';
+    if (orden === 7) return 'D';
+    return 'D+';
+  }
+
+  function validacionPedagogicaGrupoApp(alumnosGrupo: { nivel_resumen?: string | null; alumno?: string | null; pista_recomendada?: string | null; pista_alumno?: string | null; fuente_nivel?: string | null; estado_ficha?: string | null; alertas?: string | null; alerta_grupo?: string | null }[]) {
+    const ordenes = alumnosGrupo
+      .map((alumno) => nivelOrdenPedagogicoApp(alumno.nivel_resumen))
+      .filter((orden) => Number.isFinite(orden));
+    const niveles = Array.from(new Set(ordenes.map(nivelEtiquetaPedagogicaApp)));
+    const pistas = alumnosGrupo.map((alumno) => `${alumno.pista_recomendada || ''} ${alumno.pista_alumno || ''}`.toLowerCase()).join(' ');
+    const textos = alumnosGrupo.map((alumno) => `${alumno.fuente_nivel || ''} ${alumno.estado_ficha || ''} ${alumno.alertas || ''} ${alumno.alerta_grupo || ''}`).join(' ').toLowerCase();
+
+    const tieneIniciacion = ordenes.some((orden) => orden <= 0);
+    const tieneA = ordenes.some((orden) => orden === 1);
+    const tieneAPlus = ordenes.some((orden) => orden === 2);
+    const tieneB = ordenes.some((orden) => orden === 3);
+    const tieneBPlus = ordenes.some((orden) => orden === 4);
+    const tieneC = ordenes.some((orden) => orden === 5 || orden === 6);
+    const tieneCoSuperior = ordenes.some((orden) => orden >= 5);
+    const tieneBoSuperior = ordenes.some((orden) => orden >= 3);
+
+    const bloqueos: string[] = [];
+    const supervision: string[] = [];
+    const avisos: string[] = [];
+
+    if (alumnosGrupo.length === 0) bloqueos.push('Grupo sin alumnos.');
+    if (alumnosGrupo.length === 1) bloqueos.push('No crear grupo automático de 1 alumno. Dejar para revisión manual.');
+    if (alumnosGrupo.length === 2) supervision.push('Grupo de 2 alumnos: solo si Jose lo acepta por encaje real o falta de niños.');
+
+    if (tieneIniciacion && tieneBoSuperior) {
+      bloqueos.push('INICIACIÓN no puede mezclarse con B, B+, C, C+, D o D+.');
+    }
+    if (tieneIniciacion && tieneAPlus) {
+      bloqueos.push('INICIACIÓN solo puede mezclarse con A, no con A+.');
+    }
+    if ((tieneIniciacion || tieneA) && tieneCoSuperior) {
+      bloqueos.push('INICIACIÓN/A no puede mezclarse con C, C+, D o D+.');
+    }
+    if (tieneAPlus && tieneCoSuperior) {
+      bloqueos.push('A+ no puede mezclarse con C, C+, D o D+.');
+    }
+    if (tieneAPlus && (tieneB || tieneBPlus)) {
+      supervision.push('A+ con B/B+ requiere Supervisión Jose: solo si el A+ está a punto de pasar y el B es bajito.');
+    }
+    if (tieneBPlus && tieneC) {
+      avisos.push('B+ con C permitido, revisar que el B+ aguante pista grande y ritmo del grupo.');
+    }
+    if (alumnosGrupo.length >= 5 && ordenes.length && Math.max(...ordenes) <= 2) {
+      supervision.push('Grupo bajo de 5 niños: necesita 2 entrenadores. Si solo hay 1, publicar solo con aviso fuerte.');
+    }
+    if (/peque/.test(pistas) && alumnosGrupo.length > 5) {
+      bloqueos.push('Pista pequeña con más de 5 niños: dividir grupo.');
+    }
+    if (/grande/.test(pistas) && alumnosGrupo.length > 7) {
+      supervision.push('Pista grande con más de 7 niños: intentar dividir 4/4 o publicar con 2 entrenadores si Jose lo decide.');
+    }
+    if (/familia|declarado|estimado|sin reporte|pendiente/.test(textos)) {
+      avisos.push('Hay nivel declarado/estimado o ficha pendiente: revisar en primera bajada.');
+    }
+
+    const estado = bloqueos.length > 0 ? 'BLOQUEADO' : supervision.length > 0 ? 'SUPERVISION_JOSE' : avisos.length > 0 ? 'AVISO' : 'OK';
+    return {
+      estado,
+      niveles,
+      mensajes: [...bloqueos, ...supervision, ...avisos],
+    };
+  }
+
+  function textoValidacionPedagogicaGrupoApp(alumnosGrupo: { nivel_resumen?: string | null; alumno?: string | null; pista_recomendada?: string | null; pista_alumno?: string | null; fuente_nivel?: string | null; estado_ficha?: string | null; alertas?: string | null; alerta_grupo?: string | null }[]) {
+    const validacion = validacionPedagogicaGrupoApp(alumnosGrupo);
+    const titulo = validacion.estado === 'BLOQUEADO'
+      ? 'BLOQUEADO · No publicar este grupo'
+      : validacion.estado === 'SUPERVISION_JOSE'
+        ? 'SUPERVISIÓN JOSE'
+        : validacion.estado === 'AVISO'
+          ? 'AVISO PEDAGÓGICO'
+          : 'OK PEDAGÓGICO';
+    return { ...validacion, titulo };
+  }
+
+  function estiloValidacionPedagogicaApp(estado: string): React.CSSProperties {
+    if (estado === 'BLOQUEADO') return avisoPendiente;
+    if (estado === 'SUPERVISION_JOSE') return avisoPendiente;
+    if (estado === 'AVISO') return avisoCompleto;
+    return avisoNeutral;
+  }
+
+  function bandaAutomaticaPedagogicaApp(registro: { nivel_resumen?: string | null }) {
+    const orden = nivelOrdenPedagogicoApp(registro.nivel_resumen);
+    if (orden <= 1) {
+      return { id: 'INICIACION_A', label: 'INICIACIÓN / A', bloque: 'INICIACIÓN / A', pista: 'Pequeña', orden: 0, max: 5 };
+    }
+    if (orden === 2) {
+      return { id: 'APLUS', label: 'A+', bloque: 'A+', pista: 'Pequeña', orden: 2, max: 5 };
+    }
+    if (orden <= 4) {
+      return { id: 'B_BPLUS', label: 'B / B+', bloque: 'B / B+', pista: 'Pequeña/Grande', orden: 3, max: 6 };
+    }
+    return { id: 'C_D', label: 'C / D', bloque: 'C / D', pista: 'Grande', orden: 5, max: 7 };
+  }
+
+  function necesitaDosEntrenadoresGrupoApp(alumnosGrupo: { nivel_resumen?: string | null; pista_recomendada?: string | null; pista_alumno?: string | null }[]) {
+    const ordenes = alumnosGrupo.map((alumno) => nivelOrdenPedagogicoApp(alumno.nivel_resumen));
+    const maxOrden = ordenes.length ? Math.max(...ordenes) : 2;
+    const pistaTexto = alumnosGrupo.map((alumno) => `${alumno.pista_recomendada || ''} ${alumno.pista_alumno || ''}`).join(' ').toLowerCase();
+    if (alumnosGrupo.length >= 5 && maxOrden <= 2) return true;
+    if (alumnosGrupo.length > 7 && /grande/.test(pistaTexto)) return true;
+    return false;
+  }
+
+  function textoNecesidadDosEntrenadoresApp(alumnosGrupo: { nivel_resumen?: string | null; pista_recomendada?: string | null; pista_alumno?: string | null }[]) {
+    const ordenes = alumnosGrupo.map((alumno) => nivelOrdenPedagogicoApp(alumno.nivel_resumen));
+    const maxOrden = ordenes.length ? Math.max(...ordenes) : 2;
+    const pistaTexto = alumnosGrupo.map((alumno) => `${alumno.pista_recomendada || ''} ${alumno.pista_alumno || ''}`).join(' ').toLowerCase();
+    if (alumnosGrupo.length >= 5 && maxOrden <= 2) return 'Ratio: grupo bajo de 5 niños. Recomendado 2 entrenadores.';
+    if (alumnosGrupo.length > 7 && /grande/.test(pistaTexto)) return 'Ratio: pista grande con más de 7 niños. Recomendado 2 entrenadores o dividir.';
+    return '';
+  }
+
+  function responsableAutomaticoReporteApp(indice: number, entrenadorPrincipalId: string, entrenadorApoyoId: string) {
+    if (!entrenadorApoyoId) return entrenadorPrincipalId;
+    const posicion = indice % 5;
+    return posicion < 3 ? entrenadorPrincipalId : entrenadorApoyoId;
+  }
+
+  function responsableReporteRecomendadoApp(claveGrupo: string, alumnoId: string, indice: number, entrenadorPrincipalId: string, entrenadorApoyoId: string) {
+    const clave = `${claveGrupo}__${alumnoId}`;
+    return responsablesReportePorGrupoRecomendado[clave] || responsableAutomaticoReporteApp(indice, entrenadorPrincipalId, entrenadorApoyoId);
+  }
+
+  function responsableReporteAgendaApp(nombreGrupo: string, alumnoId: string, indice: number, entrenadorPrincipalId: string, entrenadorApoyoId: string) {
+    const clave = `${nombreGrupo}__${alumnoId}`;
+    return responsablesReporteAgendaGrupo[clave] || responsableAutomaticoReporteApp(indice, entrenadorPrincipalId, entrenadorApoyoId);
+  }
+
+  function responsablesJsonGrupoRecomendadoApp(claveGrupo: string, alumnosGrupo: { alumno_id: string }[], entrenadorPrincipalId: string, entrenadorApoyoId: string) {
+    return alumnosGrupo.map((alumno, indice) => ({
+      alumno_id: alumno.alumno_id,
+      entrenador_id: responsableReporteRecomendadoApp(claveGrupo, alumno.alumno_id, indice, entrenadorPrincipalId, entrenadorApoyoId),
+    }));
+  }
+
+  function responsablesJsonAgendaApp(nombreGrupo: string, alumnosGrupo: { alumno_id: string }[], entrenadorPrincipalId: string, entrenadorApoyoId: string) {
+    return alumnosGrupo.map((alumno, indice) => ({
+      alumno_id: alumno.alumno_id,
+      entrenador_id: responsableReporteAgendaApp(nombreGrupo, alumno.alumno_id, indice, entrenadorPrincipalId, entrenadorApoyoId),
+    }));
+  }
+
+  function tamanosGruposPedagogicosApp(total: number, maximo: number) {
+    if (total <= maximo) return [total];
+    const numeroGrupos = Math.ceil(total / maximo);
+    const base = Math.floor(total / numeroGrupos);
+    const extra = total % numeroGrupos;
+    const tamanos = Array.from({ length: numeroGrupos }, (_, index) => base + (index < extra ? 1 : 0));
+    if (tamanos.some((tamano) => tamano === 1) && total >= 4) {
+      return tamanosGruposPedagogicosApp(total, Math.max(3, maximo - 1));
+    }
+    return tamanos;
+  }
+
+  function aplicarCinturonPedagogicoAutomaticoAgenda(data: AgendaRecomendacionSesionApp[]) {
+    const porBanda = new Map<string, AgendaRecomendacionSesionApp[]>();
+    data.forEach((registro) => {
+      const banda = bandaAutomaticaPedagogicaApp(registro);
+      porBanda.set(banda.id, [...(porBanda.get(banda.id) || []), registro]);
+    });
+
+    let contador = 1;
+    const salida: AgendaRecomendacionSesionApp[] = [];
+    ['INICIACION_A', 'APLUS', 'B_BPLUS', 'C_D'].forEach((idBanda) => {
+      const alumnos = (porBanda.get(idBanda) || []).sort((a, b) => {
+        return nivelOrdenPedagogicoApp(a.nivel_resumen) - nivelOrdenPedagogicoApp(b.nivel_resumen) || a.alumno.localeCompare(b.alumno);
+      });
+      if (alumnos.length === 0) return;
+      const banda = bandaAutomaticaPedagogicaApp(alumnos[0]);
+      let inicio = 0;
+      tamanosGruposPedagogicosApp(alumnos.length, banda.max).forEach((tamano) => {
+        const alumnosChunk = alumnos.slice(inicio, inicio + tamano);
+        const nombre = tamano === 1
+          ? `REVISIÓN MANUAL · ${banda.label}`
+          : `Grupo ${contador++} · Nivel ${banda.label}`;
+        alumnosChunk.forEach((alumno, indice) => {
+          const alertaExtra = tamano === 1 ? 'No crear grupo de 1. Revisión manual.' : alumno.alertas || null;
+          salida.push({
+            ...alumno,
+            grupo_recomendado: nombre,
+            bloque_tecnico: banda.bloque,
+            pista_recomendada: banda.pista,
+            orden_bloque: banda.orden,
+            orden_en_grupo: indice + 1,
+            alertas: [alumno.alertas, alertaExtra].filter(Boolean).join(' · ') || null,
+          });
+        });
+        inicio += tamano;
+      });
+    });
+    return salida;
+  }
+
+  function aplicarCinturonPedagogicoAutomaticoIntensivo(data: RecomendacionGrupoIntensivoDiaApp[]) {
+    const porBanda = new Map<string, RecomendacionGrupoIntensivoDiaApp[]>();
+    data.forEach((registro) => {
+      const banda = bandaAutomaticaPedagogicaApp(registro);
+      porBanda.set(banda.id, [...(porBanda.get(banda.id) || []), registro]);
+    });
+
+    let contador = 1;
+    const salida: RecomendacionGrupoIntensivoDiaApp[] = [];
+    ['INICIACION_A', 'APLUS', 'B_BPLUS', 'C_D'].forEach((idBanda) => {
+      const alumnos = (porBanda.get(idBanda) || []).sort((a, b) => {
+        return nivelOrdenPedagogicoApp(a.nivel_resumen) - nivelOrdenPedagogicoApp(b.nivel_resumen) || a.alumno.localeCompare(b.alumno);
+      });
+      if (alumnos.length === 0) return;
+      const banda = bandaAutomaticaPedagogicaApp(alumnos[0]);
+      let inicio = 0;
+      tamanosGruposPedagogicosApp(alumnos.length, banda.max).forEach((tamano) => {
+        const alumnosChunk = alumnos.slice(inicio, inicio + tamano);
+        const nombre = tamano === 1
+          ? `REVISIÓN MANUAL · ${banda.label}`
+          : `Grupo ${contador++} · Nivel ${banda.label}`;
+        alumnosChunk.forEach((alumno, indice) => {
+          const alertaExtra = tamano === 1 ? 'No crear grupo de 1. Revisión manual.' : alumno.alerta_grupo || null;
+          salida.push({
+            ...alumno,
+            grupo_recomendado: nombre,
+            bloque_tecnico: banda.bloque,
+            pista_recomendada: banda.pista,
+            orden_bloque: banda.orden,
+            orden_en_grupo: indice + 1,
+            tamanio_grupo: tamano,
+            alerta_grupo: [alumno.alerta_grupo, alertaExtra].filter(Boolean).join(' · ') || 'OK',
+          });
+        });
+        inicio += tamano;
+      });
+    });
+    return salida;
+  }
+
+  function confirmarCrearGrupoConValidacionPedagogicaApp(alumnosGrupo: { nivel_resumen?: string | null; alumno?: string | null; pista_recomendada?: string | null; pista_alumno?: string | null; fuente_nivel?: string | null; estado_ficha?: string | null; alertas?: string | null; alerta_grupo?: string | null }[], nombreGrupo: string) {
+    const validacion = textoValidacionPedagogicaGrupoApp(alumnosGrupo);
+    if (validacion.estado === 'BLOQUEADO') {
+      setError(`${nombreGrupo} bloqueado: ${validacion.mensajes.join(' ')}`);
+      return false;
+    }
+    if (validacion.estado === 'SUPERVISION_JOSE' || validacion.estado === 'AVISO') {
+      return window.confirm(`${validacion.titulo}\n\n${validacion.mensajes.join('\n')}\n\n¿Quieres crear el grupo igualmente?`);
+    }
+    return true;
+  }
+
+  function perfilTrabajoMSZApp(niveles: string[], pistaTexto: string) {
+    const ordenes = niveles.map(ordenNivelTrabajoMSZApp).filter((orden) => Number.isFinite(orden));
+    const min = ordenes.length ? Math.min(...ordenes) : 2;
+    const max = ordenes.length ? Math.max(...ordenes) : 2;
+
+    if (min <= 1 && max <= 1) return 'INICIACION_A';
+    if (max <= 2) return 'APLUS';
+    if (max <= 4) return 'B_BPLUS';
+    if (max <= 6) return 'C_CPLUS';
+    return 'D_DPLUS';
+  }
+
+  function trabajoDiarioMSZApp(nombreGrupo: string, niveles: string[], pistaTexto: string, observacionesTexto?: string | null) {
+    const perfil = perfilTrabajoMSZApp(niveles, pistaTexto);
+    const pista = pistaTexto || 'Pequeña/Grande';
+    const nivelesTexto = Array.from(new Set(niveles.filter(Boolean))).join(' / ') || '-';
+    const obs = textoSinAcentosGrupoApp(observacionesTexto || '');
+    const ajustes: string[] = [];
+
+    if (/miedo|llor|bloque|asust|nervi|agobia/.test(obs)) {
+      ajustes.push('Ajuste emocional: entrada muy progresiva, pocas consignas y primera bajada fácil para generar confianza.');
+    }
+    if (/fila|despista|atencion|adelant|escapa|separa/.test(obs)) {
+      ajustes.push('Ajuste de grupo: prioridad a fila, distancia entre niños y salir solo cuando lo indique el entrenador.');
+    }
+    if (/rigid|sentad|equilibr|postura/.test(obs)) {
+      ajustes.push('Ajuste técnico: ejercicios de movilidad, manos delante y equilibrio antes de subir ritmo.');
+    }
+    if (/remonte|percha|silla|cinta/.test(obs)) {
+      ajustes.push('Ajuste remonte: revisar entrada y salida; no forzar percha/silla si aparece bloqueo.');
+    }
+
+    const cabecera = `Grupo ${nombreGrupo}. Nivel: ${nivelesTexto} · Pista: ${pista} · Madrid SnowZone.`;
+
+    const planes: Record<string, string[]> = {
+      INICIACION_A: [
+        'Objetivo principal: confianza, deslizamiento y cuña básica. El niño tiene que acabar la sesión seguro y con ganas de repetir.',
+        '1. Entrada: revisión de material, explicación muy corta y desplazamiento tranquilo hasta la zona de trabajo.',
+        '2. Autonomía fija: ponerse/quitarse esquís con ayuda mínima, levantarse si se cae, entrar/salir de cinta y esperar turno.',
+        '3. Deslizamiento: bajadas muy sencillas, postura equilibrada, manos delante y parada en zona marcada.',
+        '4. Cuña básica: abrir cuña para frenar, frenar antes de la cola y repetir hasta que salga sin tensión.',
+        '5. Giros solo si procede: serpiente detrás del profesor, giro muy amplio y sin exigir continuidad si todavía no frena bien.',
+        '6. Cierre: última bajada fácil y positiva; no forzar pista grande ni remonte si hay dudas.',
+      ],
+      APLUS: [
+        'Objetivo principal: cuña sólida, giros aislados y autonomía real en pista pequeña.',
+        '1. Calentamiento: 2 bajadas suaves para comprobar freno, equilibrio y atención.',
+        '2. Cuña sólida: frenar donde diga el entrenador y controlar velocidad sin sentarse.',
+        '3. Giros aislados: trabajar giro a un lado, luego giro al otro; todavía no exigir buenos giros continuados.',
+        '4. Referencias: manos delante, mirada hacia donde quiere girar y acabar el giro antes de cruzar la pista.',
+        '5. Autonomía pista pequeña: entrar/salir de cinta, mantener fila, no adelantar y parar detrás del profesor.',
+        '6. Progresión: solo valorar transición a zona más larga si el grupo gira, frena y emocionalmente está estable.',
+      ],
+      B_BPLUS: [
+        'Objetivo principal: buenos giros continuados, control de velocidad y transición ordenada a pista grande.',
+        '1. Diagnóstico: primera bajada en fila para ver ritmo, distancia, freno y autonomía real.',
+        '2. Giros continuados: encadenar curvas, terminar cada giro y controlar velocidad con giros, no bajando recto.',
+        '3. Técnica base: manos delante, tronco estable, mirada al siguiente giro y presión progresiva exterior.',
+        '4. Ejercicios: palmada en rodilla exterior, avión, manos en rodillas y levantar pie interior solo si el grupo está preparado.',
+        '5. Remontes y fila: percha/silla/cinta según nivel, salidas ordenadas y mantener sitio dentro del grupo.',
+        '6. Cierre: una bajada fluida con ritmo cómodo; si hay mucho desnivel interno, proponer separar B+ de C/D.',
+      ],
+      C_CPLUS: [
+        'Objetivo principal: técnica limpia, autonomía, precisión y ritmo estable en pista grande.',
+        '1. Activación: 2 bajadas en fila para medir ritmo y detectar diferencias dentro del grupo.',
+        '2. Técnica: giros redondos, presión exterior, brazos estables, mirada anticipada y control de trayectoria.',
+        '3. Precisión: pasillo de giros medios, parada exacta y cambios de ritmo controlados.',
+        '4. Autonomía: remontes sin ayuda, espera ordenada y escucha antes de iniciar ejercicio.',
+        '5. Ejercicios: avión, palmada exterior, levantar pie interior, twister solo si hay espacio y control.',
+        '6. Cierre: bajada con objetivo individual para cada niño y nota clara para reporte.',
+      ],
+      D_DPLUS: [
+        'Objetivo principal: ritmo alto, trazado, precisión y precompetición suave sin perder seguridad.',
+        '1. Activación: bajadas de ritmo progresivo, distancia entre niños y revisión de control.',
+        '2. Trazado: línea marcada sencilla, anticipación de giro, presión exterior y salida controlada.',
+        '3. Técnica avanzada base: cambios de ritmo, giro corto controlado, brazos estables y mirada anticipada.',
+        '4. Autonomía total: remontes, orden de salida, feedback rápido y corrección individual.',
+        '5. Retos: pequeños saltos o recursos solo si el grupo está muy controlado y hay espacio.',
+        '6. Cierre: una bajada tipo equipo/precompetición suave y recomendación clara de siguiente paso.',
+      ],
+    };
+
+    return [cabecera, ...(planes[perfil] || planes.APLUS), ...ajustes].join('\n');
+  }
+
+  function trabajoDiarioAutomaticoAgenda(nombreGrupo: string, alumnosGrupo: AgendaRecomendacionSesionApp[]) {
+    const niveles = alumnosGrupo.map((alumno) => alumno.nivel_resumen || '').filter(Boolean);
+    const pista = alumnosGrupo[0]?.pista_recomendada || alumnosGrupo[0]?.pista_alumno || 'Pequeña/Grande';
+    const observaciones = observacionesAutomaticasGrupoAgenda(alumnosGrupo);
+    return trabajoDiarioMSZApp(nombreGrupo, niveles, pista, observaciones);
+  }
+
+
+  function limpiarObservacionCortaGrupoApp(texto: string | null | undefined, maximo = 170) {
+    const limpio = (texto || '')
+      .replace(/\s+/g, ' ')
+      .replace(/\s+([,.])/g, '$1')
+      .trim();
+
+    if (!limpio) return '';
+    return limpio.length > maximo ? `${limpio.slice(0, maximo).trim()}...` : limpio;
+  }
+
+  function textoSinAcentosGrupoApp(texto: string) {
+    return texto
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .toLowerCase();
+  }
+
+  function observacionUtilParaGrupoApp(texto: string | null | undefined) {
+    const limpio = limpiarObservacionCortaGrupoApp(texto, 260);
+    if (!limpio) return '';
+
+    const normalizado = textoSinAcentosGrupoApp(limpio);
+    const ruido = [
+      'alumno nuevo',
+      'alumno conocido',
+      'ficha pendiente',
+      'pendiente de nivel',
+      'jose debe asignar nivel antes de generar grupos',
+      'sin nivel',
+      'ok',
+    ];
+
+    let depurado = normalizado;
+    ruido.forEach((palabra) => {
+      depurado = depurado.replaceAll(palabra, '');
+    });
+    depurado = depurado.replace(/[.·:;\-\s]/g, '');
+
+    return depurado ? limpio : '';
+  }
+
+  function resumenCualidadDebilidadFichaApp(observacionBase?: string | null, extra?: string | null) {
+    const partesUtiles = [observacionBase, extra]
+      .map((parte) => observacionUtilParaGrupoApp(parte))
+      .filter(Boolean);
+
+    if (partesUtiles.length === 0) return '';
+
+    const base = limpiarObservacionCortaGrupoApp(partesUtiles.join(' · '), 260);
+    const texto = textoSinAcentosGrupoApp(base);
+    const notas: string[] = [];
+
+    if (/actitud|ganas|content|sonrient|disfrut|motivad|escucha|obedece|hablador|habladora|buena/.test(texto)) {
+      notas.push('cualidad: buena actitud y ganas');
+    }
+    if (/autonom|solo|sola|material|se pone|se quita/.test(texto)) {
+      notas.push('cualidad: autonomía');
+    }
+    if (/llor|bloque|miedo|asust|nervi|sensible|se agobia/.test(texto)) {
+      notas.push('debilidad: puede bloquearse o tener miedo; entrada tranquila');
+    }
+    if (/remonte|percha|silla|cinta/.test(texto)) {
+      notas.push('debilidad/aviso: revisar remonte o cinta');
+    }
+    if (/fila|separa|escapa|despista|atencion|atiende|hacer caso|caso/.test(texto)) {
+      notas.push('debilidad: atención, fila y dinámica de grupo');
+    }
+    if (/sentad|sienta/.test(texto)) {
+      notas.push('debilidad técnica: tiende a ir sentado');
+    }
+    if (/rigid|rigidez/.test(texto)) {
+      notas.push('debilidad técnica: rigidez');
+    }
+    if (/velocidad|corre|rapido|rápido|frena|frenada/.test(texto)) {
+      notas.push('debilidad técnica: control de velocidad y frenada');
+    }
+    if (/cuna|cuña|giro|giros|paralelo|brazos|manos|mirada|exterior/.test(texto)) {
+      notas.push('debilidad/tarea técnica: giros, postura y control');
+    }
+
+    const notasUnicas = Array.from(new Set(notas)).slice(0, 3);
+    if (notasUnicas.length > 0) return `${notasUnicas.join(' / ')}.`;
+    return base;
+  }
+
+  function fraseImportanteAlumnoGrupoApp(nombre: string, observacionBase?: string | null, extra?: string | null) {
+    const detalle = resumenCualidadDebilidadFichaApp(observacionBase, extra);
+    if (!detalle) return '';
+    return `${nombre}: ${detalle}`;
+  }
+
+  function limpiarTextoObservacionesGrupoApp(texto: string | null | undefined) {
+    if (!texto) return '';
+
+    return String(texto)
+      .replace(/OBSERVACIONES\s+AUTOM[ÁA]TICAS\s+PARA\s+ENTRENADOR/gi, '')
+      .replace(/OBSERVACIONES\s+JOSE/gi, '')
+      .replace(/OBSERVACIONES\s+JOS[ÉE]/gi, '')
+      .replace(/Observaciones\s+autom[áa]ticas\s+para\s+el\s+entrenador/gi, '')
+      .replace(/Observaciones\s+autom[áa]ticas\s+para\s+entrenador/gi, '')
+      .replace(/Observaciones\s+de\s+Jose/gi, '')
+      .replace(/Observaciones\s+de\s+Jos[ée]/gi, '')
+      .replace(/[•]/g, '\n')
+      .replace(/\s*·\s*(?=\[|[A-ZÁÉÍÓÚÑ][a-záéíóúñ])/g, '\n')
+      .replace(/[ \t]+/g, ' ')
+      .split('\n')
+      .map((linea) => linea.trim())
+      .filter(Boolean)
+      .join('\n')
+      .trim();
+  }
+
+  function limpiarDetalleObservacionAlumnoGrupoApp(detalle: string | null | undefined) {
+    if (!detalle) return '';
+
+    let limpio = String(detalle)
+      .replace(/\s+/g, ' ')
+      .replace(/\s*·\s*/g, ' · ')
+      .trim();
+
+    const patronesRuido = [
+      /\bAlumno nuevo\.?/gi,
+      /\bAlumno conocido\.?/gi,
+      /\bFicha pendiente\.?/gi,
+      /\bOK\.?/gi,
+      /\bPendiente de nivel:\s*Jose debe asignar nivel antes de generar grupos\.?/gi,
+      /\bPendiente de nivel:\s*Jos[ée] debe asignar nivel antes de generar grupos\.?/gi,
+      /\bJose debe asignar nivel antes de generar grupos\.?/gi,
+      /\bJos[ée] debe asignar nivel antes de generar grupos\.?/gi,
+      /\bNivel estimado\.?/gi,
+      /\bNivel real de ficha\.?/gi,
+      /\bpendiente completar\.?/gi,
+      /\bcompleta\.?/gi,
+    ];
+
+    patronesRuido.forEach((patron) => {
+      limpio = limpio.replace(patron, '');
+    });
+
+    limpio = limpio
+      .replace(/(?:\s*·\s*){2,}/g, ' · ')
+      .replace(/^\s*[·.:;,-]+\s*/g, '')
+      .replace(/\s*[·.:;,-]+\s*$/g, '')
+      .trim();
+
+    if (!limpio) return '';
+
+    return limpiarObservacionCortaGrupoApp(limpio, 220);
+  }
+
+  function extraerObservacionesPorAlumnoGrupoApp(texto: string | null | undefined, maxLineas = 12) {
+    const limpio = limpiarTextoObservacionesGrupoApp(texto);
+    if (!limpio) return [] as string[];
+
+    const lineas: string[] = [];
+
+    limpio
+      .split('\n')
+      .map((linea) => linea.trim().replace(/^[-•]+\s*/, ''))
+      .filter(Boolean)
+      .forEach((linea) => {
+        const separador = linea.indexOf(':');
+        if (separador > 0) {
+          const nombre = linea.slice(0, separador).replace(/\s+/g, ' ').trim();
+          const detalle = limpiarDetalleObservacionAlumnoGrupoApp(linea.slice(separador + 1));
+          if (nombre && detalle) lineas.push(`${nombre}: ${detalle}`);
+          return;
+        }
+
+        const detalle = limpiarDetalleObservacionAlumnoGrupoApp(linea);
+        if (detalle) lineas.push(detalle);
+      });
+
+    if (lineas.length === 0) {
+      const patronNombre = /([^:\n]{3,90})\s*:/g;
+      const coincidencias = Array.from(limpio.matchAll(patronNombre));
+
+      coincidencias.forEach((coincidencia, index) => {
+        const nombre = (coincidencia[1] || '')
+          .replace(/^(ENTRENADOR|PARA ENTRENADOR|OBSERVACIONES)\s+/i, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        const inicioDetalle = (coincidencia.index || 0) + coincidencia[0].length;
+        const finDetalle = index + 1 < coincidencias.length ? (coincidencias[index + 1].index || limpio.length) : limpio.length;
+        const detalle = limpiarDetalleObservacionAlumnoGrupoApp(limpio.slice(inicioDetalle, finDetalle));
+        if (nombre && detalle) lineas.push(`${nombre}: ${detalle}`);
+      });
+    }
+
+    return Array.from(new Set(lineas)).slice(0, maxLineas);
+  }
+
+  function normalizarLineasObservacionesGrupoApp(texto: string | null | undefined, maxLineas = 12) {
+    return extraerObservacionesPorAlumnoGrupoApp(texto, maxLineas).join('\n');
+  }
+
+  function combinarObservacionesGrupoApp(automaticas: string, manuales: string | null | undefined) {
+    const auto = normalizarLineasObservacionesGrupoApp(automaticas, 10);
+    const manual = normalizarLineasObservacionesGrupoApp(manuales, 6);
+    return [auto, manual].filter(Boolean).join('\n');
+  }
+
+  function observacionesAutomaticasGrupoAgenda(alumnosGrupo: AgendaRecomendacionSesionApp[]) {
+    const lineas = alumnosGrupo
+      .map((alumno) => {
+        const ficha = agendaAlumnosSesion.find((registro) => registro.alumno_id === alumno.alumno_id);
+        return fraseImportanteAlumnoGrupoApp(alumno.alumno, ficha?.observacion, alumno.alertas);
+      })
+      .filter(Boolean);
+
+    if (lineas.length === 0) return '';
+    return normalizarLineasObservacionesGrupoApp(lineas.join('\n'));
+  }
+
+  function observacionesAutomaticasGrupoIntensivo(alumnosGrupo: RecomendacionGrupoIntensivoDiaApp[]) {
+    const lineas = alumnosGrupo
+      .map((alumno) =>
+        fraseImportanteAlumnoGrupoApp(
+          alumno.alumno,
+          alumno.observacion_visible_entrenador,
+          alumno.alerta_grupo
+        )
+      )
+      .filter(Boolean);
+
+    if (lineas.length === 0) return '';
+    return normalizarLineasObservacionesGrupoApp(lineas.join('\n'));
+  }
+
+  function observacionesAutomaticasGrupoIntensivoManual(alumnosIds: string[]) {
+    const lineas = alumnosIds
+      .map((alumnoId) => {
+        const resumen = resumenAlumnoIntensivo(alumnoId);
+        const ficha = intensivoAlumnos.find((registro) => registro.alumno_id === alumnoId);
+        return fraseImportanteAlumnoGrupoApp(
+          resumen?.alumno || ficha?.alumno || 'Alumno',
+          resumen?.observacion_visible_entrenador,
+          ficha?.recomendacion_siguiente_paso
+        );
+      })
+      .filter(Boolean);
+
+    if (lineas.length === 0) return '';
+    return normalizarLineasObservacionesGrupoApp(lineas.join('\n'));
+  }
+
+  function observacionesAutomaticasGrupoOcio(alumnosGrupo: OcioAlumnoApp[]) {
+    const lineas = alumnosGrupo
+      .map((alumno) => fraseImportanteAlumnoGrupoApp(alumno.alumno, alumno.observaciones, alumno.grupo_pista))
+      .filter(Boolean);
+
+    if (lineas.length === 0) return '';
+    return normalizarLineasObservacionesGrupoApp(lineas.join('\n'));
+  }
+
+  async function crearGrupoAgendaDesdeRecomendacion(nombreGrupo: string, alumnosGrupo: AgendaRecomendacionSesionApp[], nombreGrupoFinal?: string) {
+    if (!agendaSesionActivaId) {
+      setError('Primero selecciona una sesión.');
+      return;
+    }
+
+    const entrenadorId = entrenadoresAgendaGrupo[nombreGrupo];
+
+    if (!entrenadorId) {
+      setError(`Selecciona entrenador para ${nombreGrupo}.`);
+      return;
+    }
+
+    if (alumnosGrupo.length === 0) {
+      setError('Este grupo no tiene alumnos.');
+      return;
+    }
+
+    const nivelesGrupo = Array.from(new Set(alumnosGrupo.map((alumno) => alumno.nivel_resumen))).join(' / ');
+    const punto = puntosAgendaGrupo[nombreGrupo] || '1';
+    const trabajo = trabajoAgendaGrupo[nombreGrupo] || trabajoDiarioAutomaticoAgenda(nombreGrupo, alumnosGrupo);
+    const primero = alumnosGrupo[0];
+
+    const validacionOk = confirmarCrearGrupoConValidacionPedagogicaApp(alumnosGrupo, nombreGrupo);
+    if (!validacionOk) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('crear_grupo_sesion_operativa_app', {
+        p_sesion_id: agendaSesionActivaId,
+        p_nombre_grupo: nombreGrupo,
+        p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
+        p_pista: primero.pista_recomendada,
+        p_punto_encuentro: punto,
+        p_trabajo_diario: trabajo,
+        p_observaciones_importantes: combinarObservacionesGrupoApp(
+          observacionesAutomaticasGrupoAgenda(alumnosGrupo),
+          observacionesAgendaGrupo[nombreGrupo] || ''
+        ),
+        p_entrenador_id: entrenadorId,
+        p_alumnos_ids: alumnosGrupo.map((alumno) => alumno.alumno_id),
+        p_publicado: true,
+      });
+
+      const entrenadorApoyoId = entrenadoresApoyoAgendaGrupo[nombreGrupo] || '';
+      await ejecutarFuncion('guardar_apoyo_reportes_grupo_por_contexto_app', {
+        p_contexto: 'agenda',
+        p_contexto_id: agendaSesionActivaId,
+        p_nombre_grupo: nombreGrupo,
+        p_entrenador_apoyo_id: entrenadorApoyoId || null,
+        p_responsables: responsablesJsonAgendaApp(nombreGrupo, alumnosGrupo, entrenadorId, entrenadorApoyoId),
+      });
+
+      await cargarAgendaOperativaDirecta();
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+      await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      await generarRecomendacionAgendaSesion(agendaSesionActivaId);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+
+
+  async function cambiarEntrenadorGrupoAgenda(grupo: AgendaGrupoSesionApp, nuevoEntrenadorId: string) {
+    if (!grupo.grupo_id) return;
+
+    if (!nuevoEntrenadorId) {
+      setError('Selecciona un entrenador disponible para cambiar el grupo.');
+      return;
+    }
+
+    const nuevoEntrenador = entrenadores.find((entrenador) => entrenador.entrenador_id === nuevoEntrenadorId);
+    const confirmar = window.confirm(
+      `¿Cambiar el entrenador de ${grupo.nombre_grupo} a ${nuevoEntrenador?.nombre_completo || 'este entrenador'}?\n\nSe actualizará la vista del entrenador y los cobros se recalcularán con la nueva asignación.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('cambiar_entrenador_grupo_app', {
+        p_grupo_id: grupo.grupo_id,
+        p_entrenador_id: nuevoEntrenadorId,
+      });
+
+      if (agendaSesionActivaId) await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      await cargarAgendaOperativaDirecta();
+      await cargarGruposEntrenador();
+      await cargarPlanning();
+      await cargarCobros();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error cambiando entrenador del grupo');
+    }
+
+    setCargando(false);
+  }
+
+  async function guardarTrabajoObservacionesGrupoAgenda(grupo: AgendaGrupoSesionApp) {
+    if (!grupo.grupo_id) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('actualizar_trabajo_observaciones_grupo_app', {
+        p_grupo_id: grupo.grupo_id,
+        p_trabajo_diario: trabajoGrupoCreadoEditando[grupo.grupo_id] ?? grupo.trabajo_diario ?? '',
+        p_observaciones_importantes: normalizarLineasObservacionesGrupoApp(observacionesGrupoCreadoEditando[grupo.grupo_id] ?? grupo.observaciones_importantes ?? '', 12),
+      });
+
+      if (agendaSesionActivaId) await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      await cargarAgendaOperativaDirecta();
+      await cargarGruposEntrenador();
+      await cargarPlanning();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error guardando trabajo diario y observaciones del grupo');
+    }
+
+    setCargando(false);
+  }
+
+
+
+  async function editarNivelAlumnoAgenda(alumno: AgendaAlumnoSesionApp) {
+    const nuevoNivel = window.prompt(
+      `Nuevo nivel real de ficha para ${alumno.alumno} (INICIACION, A, A+, B, B+, C, C+, D, D+). Se aplicará en toda la app.`,
+      alumno.nivel_usado || 'INICIACION'
+    );
+
+    if (!nuevoNivel) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('actualizar_nivel_alumno_sesion_operativa_app', {
+        p_sesion_alumno_id: alumno.sesion_alumno_id,
+        p_nivel_codigo: nuevoNivel.trim().toUpperCase(),
+        p_origen: 'Jose / Coordinador',
+      });
+
+      await cargarDetalleSesionAgenda(alumno.sesion_id);
+      await cargarAgendaOperativaDirecta();
+      await cargarAlumnos();
+      setAgendaRecomendaciones([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function editarNombreAlumnoAgenda(alumno: AgendaAlumnoSesionApp) {
+    const nuevoNombre = window.prompt('Corrige el nombre del alumno', alumno.alumno);
+
+    if (!nuevoNombre || nuevoNombre.trim() === alumno.alumno) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('actualizar_nombre_alumno_sesion_operativa_app', {
+        p_sesion_alumno_id: alumno.sesion_alumno_id,
+        p_nombre: nuevoNombre.trim(),
+      });
+
+      await cargarDetalleSesionAgenda(alumno.sesion_id);
+      await cargarAgendaOperativaDirecta();
+      await cargarAlumnos();
+      setAgendaRecomendaciones([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function quitarAlumnoAgenda(alumno: AgendaAlumnoSesionApp) {
+    const confirmar = window.confirm(`¿Quitar a ${alumno.alumno} de esta sesión/listado?`);
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('quitar_alumno_sesion_operativa_app', {
+        p_sesion_alumno_id: alumno.sesion_alumno_id,
+      });
+
+      await cargarAgendaOperativaDirecta();
+      await cargarDetalleSesionAgenda(alumno.sesion_id);
+      setAgendaRecomendaciones([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function borrarAlumnoBaseAgenda(alumno: AgendaAlumnoSesionApp) {
+    const confirmar = window.confirm(`¿BORRAR la ficha completa de ${alumno.alumno}? Esto elimina al alumno de la base y de las pruebas donde esté metido.`);
+    if (!confirmar) return;
+
+    const confirmarFinal = window.confirm('Confirmación final: esta acción no es solo quitarlo del listado, borra la ficha del alumno.');
+    if (!confirmarFinal) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('borrar_alumno_base_operativa_app', {
+        p_alumno_id: alumno.alumno_id,
+      });
+
+      await cargarAgendaOperativaDirecta();
+      await cargarDetalleSesionAgenda(alumno.sesion_id);
+      setAgendaRecomendaciones([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function borrarGrupoAgenda(grupo: AgendaGrupoSesionApp) {
+    const confirmar = window.confirm(`¿Borrar el grupo ${grupo.nombre_grupo}? Se quitarán sus alumnos del grupo, pero no se borran sus fichas.`);
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('borrar_grupo_sesion_operativa_app', {
+        p_grupo_id: grupo.grupo_id,
+      });
+
+      await cargarAgendaOperativaDirecta();
+      await cargarDetalleSesionAgenda(grupo.sesion_id);
+      setAgendaRecomendaciones([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function borrarSesionAgendaActual() {
+    if (!agendaSesionActivaId) return;
+
+    const confirmar = window.confirm('¿Borrar esta sesión/listado de prueba? Se borran sus grupos y asignaciones. Las fichas de alumnos se borran desde el botón rojo de cada alumno.');
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('borrar_sesion_operativa_app', {
+        p_sesion_id: agendaSesionActivaId,
+      });
+
+      setAgendaSesionActivaId('');
+      setAgendaAlumnosSesion([]);
+      setAgendaGruposSesion([]);
+      setAgendaRecomendaciones([]);
+      await cargarAgendaOperativaDirecta();
+      irAlTrabajoAgenda();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function cargarDetalleGrupo(
+    nombreGrupo: string,
+    fecha: string,
+    horaInicio: string
+  ) {
+    setCargando(true);
+    setError('');
+
+    try {
+      const filtroNombre = encodeURIComponent(`eq.${nombreGrupo}`);
+      const filtroFecha = encodeURIComponent(`eq.${fecha}`);
+      const filtroHora = encodeURIComponent(`eq.${horaInicio}`);
+
+      const data = await consultarSupabase<DetalleGrupo>(
+        'v_detalle_grupos',
+        `select=*&nombre_grupo=${filtroNombre}&fecha=${filtroFecha}&hora_inicio=${filtroHora}`
+      );
+
+      setDetalle(data[0] || null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setDetalle(null);
+    }
+
+    setCargando(false);
+  }
+
+  useEffect(() => {
+    cargarInicio();
+  }, []);
+
+  useEffect(() => {
+    if (pantalla === 'agenda') {
+      cargarAgendaOperativaDirecta();
+      cargarIntensivos();
+      cargarPlanning();
+      cargarListados();
+      cargarEntrenadores();
+      cargarDisponibilidad();
+    }
+    if (pantalla === 'resumenDia') {
+      cargarAgendaOperativaDirecta();
+      cargarIntensivos();
+      cargarPlanning();
+      cargarListados();
+      cargarReportesPendientes();
+      cargarGruposEntrenador();
+      cargarDisponibilidad();
+    }
+    if (pantalla === 'inicio') cargarInicio();
+    if (pantalla === 'planning') cargarPlanning();
+    if (pantalla === 'entrenador') {
+      cargarGruposEntrenador();
+      cargarDisponibilidad();
+    }
+    if (pantalla === 'alumnos') cargarAlumnos();
+    if (pantalla === 'ocioAlumnos') { cargarOcioAlumnos(); cargarOcioGrupos(); }
+    if (pantalla === 'ocioGrupos') { cargarOcioAlumnos(); cargarOcioGrupos(); cargarOcioCambios(); }
+    if (pantalla === 'ocioCambios') { cargarOcioAlumnos(); cargarOcioGrupos(); cargarOcioCambios(); }
+    if (pantalla === 'revisionOcio') { cargarOcioAlumnos(); cargarOcioGrupos(); cargarOcioCambios(); }
+    if (pantalla === 'ocioSemana') { cargarOcioAlumnos(); cargarOcioGrupos(); cargarOcioCambios(); cargarEntrenadores(); cargarDisponibilidad(); cargarAgendaOperativaDirecta(); }
+    if (pantalla === 'entrenadores') cargarEntrenadores();
+    if (pantalla === 'disponibilidad') cargarDisponibilidad();
+    if (pantalla === 'reportes') cargarReportesPendientes();
+    if (pantalla === 'cobros') { cargarCobros(); cargarEntrenadores(); }
+    if (pantalla === 'exportaciones') { cargarAgendaOperativaDirecta(); cargarIntensivos(); cargarPlanning(); cargarListados(); cargarReportesPendientes(); cargarAlumnos(); cargarOcioAlumnos(); cargarOcioGrupos(); cargarCobros(); }
+    if (pantalla === 'intensivos') { cargarIntensivos(); cargarDisponibilidad(); cargarEntrenadores(); }
+    if (pantalla === 'listados') cargarListados();
+  }, [pantalla]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem('mitico_temporada_trabajo', String(anioInicioTemporadaAgenda));
+    if (mesAgendaActivo) window.localStorage.setItem('mitico_mes_trabajo', mesAgendaActivo);
+    if (semanaAgendaActiva) window.localStorage.setItem('mitico_semana_trabajo', semanaAgendaActiva);
+    const fechaTrabajoResumen = fechaResumenDia || fechaIsoHoyApp();
+    window.localStorage.setItem('mitico_fecha_resumen_dia', fechaTrabajoResumen);
+  }, [anioInicioTemporadaAgenda, mesAgendaActivo, semanaAgendaActiva, fechaResumenDia]);
+
+  const sesionesAgenda = sesionesAgendaOperativa();
+
+  const fechaResumenDiaActiva = fechaResumenDia || fechaIsoHoyApp();
+  const sesionesResumenDia = sesionesAgenda.filter((sesion) => sesion.fecha === fechaResumenDiaActiva);
+  const reportesResumenDia = reportesPendientes.filter((reporte) => reporte.fecha === fechaResumenDiaActiva);
+  const gruposEntrenadorResumenDia = gruposEntrenador.filter((grupo) => grupo.fecha === fechaResumenDiaActiva);
+  const gruposPendientesEntrenadorResumenDia = [
+    ...planning.filter((grupo) => grupo.fecha === fechaResumenDiaActiva && !grupo.entrenadores),
+    ...gruposIntensivoDia.filter((grupo) => grupo.fecha === fechaResumenDiaActiva && grupo.grupo_id && !grupo.entrenador),
+  ];
+  const totalAlumnosResumenDia = sesionesResumenDia.reduce((total, sesion) => total + Number(sesion.totalAlumnos || 0), 0);
+  const totalGruposResumenDia = sesionesResumenDia.reduce((total, sesion) => total + Number(sesion.totalGrupos || 0), 0);
+  const totalPublicadosResumenDia = sesionesResumenDia.reduce((total, sesion) => total + Number(sesion.publicados || 0), 0);
+
+  const claveSemanaBackupActiva = semanaAgendaActiva || semanaActualAgenda || '';
+  const backupSemanaStorageKey = claveSemanaBackupActiva ? `mitico_backup_excel_${claveSemanaBackupActiva}` : '';
+  const backupSemanaRealizado = backupSemanaStorageKey && typeof window !== 'undefined'
+    ? window.localStorage.getItem(backupSemanaStorageKey) || ''
+    : '';
+
+  const ocioRevisionBase = ocioAlumnos.map((alumno) => {
+    const recomendacion = ocioRecomendacionesCambio.find((item) => item.alumno_id === alumno.alumno_id);
+    const sinGrupo = !alumno.grupo_id;
+    const sinReportes = Number(alumno.total_reportes || 0) === 0;
+    const necesitaCambio = Boolean(recomendacion && recomendacion.recomendacion !== 'OK');
+    return {
+      ...alumno,
+      recomendacion_revision: recomendacion?.recomendacion || (sinGrupo ? 'Sin grupo estable' : sinReportes ? 'Sin reportes todavía' : 'OK'),
+      necesita_cambio_revision: necesitaCambio,
+      sin_grupo_revision: sinGrupo,
+      sin_reportes_revision: sinReportes,
+    };
+  });
+
+  const ocioRevisionFiltrada = ocioRevisionBase.filter((alumno) => {
+    const texto = `${alumno.alumno} ${alumno.nivel_usado || ''} ${alumno.grupo_estable || ''} ${alumno.recomendacion_revision}`.toLowerCase();
+    const coincideBusqueda = texto.includes(busquedaRevisionOcio.toLowerCase());
+    const coincideFiltro =
+      filtroRevisionOcio === 'todos' ||
+      (filtroRevisionOcio === 'cambios' && alumno.necesita_cambio_revision) ||
+      (filtroRevisionOcio === 'sin_grupo' && alumno.sin_grupo_revision) ||
+      (filtroRevisionOcio === 'sin_reportes' && alumno.sin_reportes_revision);
+    return coincideBusqueda && coincideFiltro;
+  });
+
+  const intensivosControlFino = panelControlIntensivo.map((panel) => {
+    const faltanSesiones = Math.max(0, 4 - Number(panel.total_dias || 0));
+    const incompleto = faltanSesiones > 0 || Number(panel.asignaciones_faltantes_estimadas || 0) > 0 || Number(panel.reportes_pendientes_estimados || 0) > 0 || Number(panel.diplomas_pendientes || 0) > 0 || Number(panel.recuperaciones_pendientes || 0) > 0;
+    return { ...panel, faltan_sesiones_4: faltanSesiones, incompleto_control_fino: incompleto };
+  });
+
+  const alumnosFiltrados = alumnos.filter((alumno) => {
+    const textoBusqueda = `${alumno.alumno} ${alumno.nivel_actual || ''} ${
+      alumno.ultimo_nivel_reportado || ''
+    } ${alumno.ultima_recomendacion || ''}`.toLowerCase();
+
+    const coincideBusqueda = textoBusqueda.includes(busquedaAlumno.toLowerCase());
+
+    const sinNivel =
+      !alumno.nivel_actual && !alumno.nivel_estimado && !alumno.ultimo_nivel_reportado;
+
+    const sinReportes = Number(alumno.total_reportes || 0) === 0;
+
+    const recomendacion = (alumno.ultima_recomendacion || '').toLowerCase();
+    const incidencia = (alumno.ultima_incidencia || '').toLowerCase();
+
+    const revisionReciente =
+      recomendacion.includes('revisar') ||
+      recomendacion.includes('subir') ||
+      recomendacion.includes('bajar') ||
+      recomendacion.includes('probar') ||
+      recomendacion.includes('volver');
+
+    const seguimientoEspecial =
+      recomendacion.includes('seguimiento') ||
+      recomendacion.includes('apoyo') ||
+      incidencia.includes('miedo') ||
+      incidencia.includes('bloqueo') ||
+      incidencia.includes('caída') ||
+      incidencia.includes('llanto');
+
+    const coincideFiltro =
+      filtroAlumnos === 'todos' ||
+      (filtroAlumnos === 'sin_nivel' && sinNivel) ||
+      (filtroAlumnos === 'sin_reportes' && sinReportes) ||
+      (filtroAlumnos === 'revision_reciente' && revisionReciente) ||
+      (filtroAlumnos === 'seguimiento_especial' && seguimientoEspecial);
+
+    return coincideBusqueda && coincideFiltro;
+  });
+
+  const gruposEntrenadorFiltrados = gruposEntrenador.filter((grupo) => {
+    const texto = `${grupo.entrenador} ${grupo.nombre_grupo} ${
+      grupo.modalidad
+    } ${grupo.alumnos || ''}`.toLowerCase();
+    return texto.includes(busquedaGrupoEntrenador.toLowerCase());
+  });
+
+  const entrenadoresFiltrados = entrenadores.filter((entrenador) => {
+    const textoBusqueda = `${entrenador.nombre_completo} ${entrenador.email || ''} ${entrenador.telefono || ''} ${(entrenador.especialidades || []).join(' ')}`.toLowerCase();
+
+    const coincideBusqueda = textoBusqueda.includes(busquedaEntrenador.toLowerCase());
+
+    const documentacionPendiente =
+      (entrenador.titulacion_estado || 'Pendiente') !== 'Validado' ||
+      (entrenador.antecedentes_estado || 'Pendiente') !== 'Validado';
+
+    const coincideFiltro =
+      filtroEntrenadores === 'todos' ||
+      (filtroEntrenadores === 'activos' && entrenador.activo) ||
+      (filtroEntrenadores === 'inactivos' && !entrenador.activo) ||
+      (filtroEntrenadores === 'sin_chaqueta' && !entrenador.chaqueta_entregada) ||
+      (filtroEntrenadores === 'documentacion_pendiente' && documentacionPendiente);
+
+    return coincideBusqueda && coincideFiltro;
+  });
+
+  const disponibilidadFiltrada = disponibilidad.filter((item) => {
+    const coincideSemana = semanaAgendaActiva
+      ? item.fecha_inicio === semanaAgendaActiva
+      : true;
+
+    const coincideBusqueda = item.entrenador
+      .toLowerCase()
+      .includes(busquedaDisponibilidad.toLowerCase());
+
+    const respuestaNormalizada = item.respuesta || 'Pendiente';
+
+    const coincideFiltro =
+      filtroDisponibilidad === 'todos' ||
+      (filtroDisponibilidad === 'disponibles' && respuestaNormalizada === 'Disponible') ||
+      (filtroDisponibilidad === 'no_puedo' && respuestaNormalizada === 'No puedo') ||
+      (filtroDisponibilidad === 'pendientes' && respuestaNormalizada === 'Pendiente');
+
+    return coincideSemana && coincideBusqueda && coincideFiltro;
+  });
+
+  const finSemanaReportes = semanaAgendaActiva
+    ? claveFechaAgenda(new Date(crearFechaAgenda(semanaAgendaActiva).getTime() + 6 * 24 * 60 * 60 * 1000))
+    : '';
+
+  const reportesFiltrados = reportesPendientes.filter((reporte) => {
+    const texto =
+      `${reporte.entrenador} ${reporte.alumno} ${reporte.nombre_grupo} ${reporte.modalidad} ${reporte.estado_reporte}`.toLowerCase();
+
+    const coincideSemana = semanaAgendaActiva
+      ? reporte.fecha >= semanaAgendaActiva && reporte.fecha <= finSemanaReportes
+      : true;
+
+    const coincideBusqueda = texto.includes(busquedaReportes.toLowerCase());
+
+    const coincideFiltro =
+      filtroReportes === 'todos' ||
+      (filtroReportes === 'faltan_reportes' &&
+        reporte.estado_reporte === 'Falta reporte') ||
+      (filtroReportes === 'asistencias_sin_confirmar' &&
+        reporte.estado_reporte === 'Asistencia sin confirmar');
+
+    return coincideSemana && coincideBusqueda && coincideFiltro;
+  });
+
+  const cobrosFiltrados = cobros.filter((cobro) => {
+    const texto =
+      `${cobro.entrenador} ${cobro.temporada} ${cobro.anio} ${cobro.mes} ${cobro.estado_mes} baby intensivos ocio`.toLowerCase();
+
+    const estadoCobro = String(cobro.estado_mes || '').toLowerCase();
+    const pendientesRevisar = Number(cobro.pendientes_revisar || 0);
+    const hoy = new Date();
+
+    const esPendiente =
+      estadoCobro.includes('pendiente') ||
+      estadoCobro.includes('abierto') ||
+      estadoCobro.includes('revisar') ||
+      estadoCobro.includes('borrador');
+
+    const esCerrado =
+      estadoCobro.includes('cerrado') ||
+      estadoCobro.includes('pagado') ||
+      estadoCobro.includes('aprobado');
+
+    const tieneIncidencias = pendientesRevisar > 0;
+
+    const esEsteMes =
+      Number(cobro.anio) === hoy.getFullYear() &&
+      Number(cobro.mes) === hoy.getMonth() + 1;
+
+    const coincideBusqueda = texto.includes(busquedaCobros.toLowerCase());
+
+    const coincideFiltro =
+      filtroCobros === 'todos' ||
+      (filtroCobros === 'pendiente' && esPendiente) ||
+      (filtroCobros === 'cerrado' && esCerrado) ||
+      (filtroCobros === 'incidencias' && tieneIncidencias) ||
+      (filtroCobros === 'este_mes' && esEsteMes);
+
+    return coincideBusqueda && coincideFiltro;
+  });
+
+  const totalGeneralCobrosMes = cobrosFiltrados.reduce(
+    (total, cobro) => total + Number(cobro.total_mes || 0),
+    0
+  );
+  const totalTurnosCobrosMes = cobrosFiltrados.reduce(
+    (total, cobro) => total + Number(cobro.total_turnos_computables || 0),
+    0
+  );
+  const totalBabyCobrosMes = cobrosFiltrados.reduce((total, cobro) => total + Number(cobro.total_turnos_baby || 0), 0);
+  const totalIntensivosCobrosMes = cobrosFiltrados.reduce((total, cobro) => total + Number(cobro.total_turnos_intensivos || 0), 0);
+  const totalOcioCobrosMes = cobrosFiltrados.reduce((total, cobro) => total + Number(cobro.total_turnos_ocio || 0), 0);
+  const aniosCobrosOpciones = Array.from(new Set([
+    new Date().getFullYear() - 1,
+    new Date().getFullYear(),
+    new Date().getFullYear() + 1,
+    anioCobros,
+    ...opcionesTemporadaAgenda,
+    ...opcionesTemporadaAgenda.map((anio) => anio + 1),
+  ])).sort((a, b) => a - b);
+
+  const intensivosFiltrados = intensivos.filter((intensivo) => {
+    const texto =
+      `${intensivo.intensivo} ${intensivo.temporada} ${intensivo.estado} ${intensivo.lugar}`.toLowerCase();
+
+    const coincideBusqueda = texto.includes(busquedaIntensivos.toLowerCase());
+
+    const estado = String(intensivo.estado || '').toLowerCase();
+    const totalAlumnos = Number(intensivo.total_alumnos || 0);
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    const fechaInicio = intensivo.fecha_inicio
+      ? new Date(`${intensivo.fecha_inicio}T00:00:00`)
+      : null;
+
+    const esActivo =
+      estado.includes('activo') ||
+      estado.includes('abierto') ||
+      estado.includes('en curso') ||
+      estado.includes('publicado');
+
+    const esCerrado =
+      estado.includes('cerrado') ||
+      estado.includes('finalizado') ||
+      estado.includes('cancelado');
+
+    const esProximo = Boolean(fechaInicio && fechaInicio >= hoy);
+
+    const coincideFiltro =
+      filtroIntensivos === 'todos' ||
+      (filtroIntensivos === 'activos' && esActivo) ||
+      (filtroIntensivos === 'cerrados' && esCerrado) ||
+      (filtroIntensivos === 'sin_alumnos' && totalAlumnos === 0) ||
+      (filtroIntensivos === 'proximos' && esProximo);
+
+    return coincideBusqueda && coincideFiltro;
+  });
+
+  const listadosFiltrados = listados.filter((listado) => {
+    const texto = `${listado.semana || ''} ${listado.modalidad} ${
+      listado.estado
+    } ${listado.fecha}`.toLowerCase();
+
+    const coincideBusqueda = texto.includes(busquedaListados.toLowerCase());
+
+    const coincideFiltro =
+      filtroListados === 'todos' ||
+      (filtroListados === 'pendientes' &&
+        Number(listado.pendientes_revisar || 0) > 0) ||
+      (filtroListados === 'altas' && Number(listado.altas_nuevas || 0) > 0) ||
+      (filtroListados === 'no_encontrados' &&
+        Number(listado.no_encontrados || 0) > 0) ||
+      (filtroListados === 'fuera_plazo' && listado.fuera_de_plazo);
+
+    return coincideBusqueda && coincideFiltro;
+  });
+
+  const disponibilidadPorEntrenador = agruparPorEntrenador(
+    disponibilidadFiltrada
+  );
+  const disponibilidadSemanalEntrenador = agruparDisponibilidadSemanal(
+    disponibilidadFiltrada
+  );
+  const disponibilidadPorTurno = agruparDisponibilidadPorTurno(disponibilidadFiltrada);
+
+  const sesionAgendaActiva = agendaSesionesDirectas.find(
+    (sesion) => sesion.sesion_id === agendaSesionActivaId
+  );
+
+  function horaCorta(valor: string | null | undefined) {
+    return (valor || '').slice(0, 5);
+  }
+
+  function entrenadoresDisponiblesParaTurno(fecha?: string | null, horaInicio?: string | null, horaFin?: string | null) {
+    if (!fecha || !horaInicio || !horaFin) return [];
+
+    return entrenadores
+      .filter((entrenador) => entrenador.activo)
+      .filter((entrenador) =>
+        disponibilidad.some((turno) =>
+          turno.entrenador_id === entrenador.entrenador_id &&
+          turno.fecha === fecha &&
+          horaCorta(turno.hora_inicio) === horaCorta(horaInicio) &&
+          horaCorta(turno.hora_fin) === horaCorta(horaFin) &&
+          turno.respuesta === 'Disponible'
+        )
+      )
+      .sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo));
+  }
+
+  function entrenadoresDisponiblesSesionActiva() {
+    return entrenadoresDisponiblesParaTurno(
+      sesionAgendaActiva?.fecha,
+      sesionAgendaActiva?.hora_inicio,
+      sesionAgendaActiva?.hora_fin
+    );
+  }
+
+  function entrenadoresDisponiblesDiaIntensivo(dia?: IntensivoDiaApp | null) {
+    const disponibles = entrenadoresDisponiblesParaTurno(
+      dia?.fecha,
+      dia?.hora_inicio,
+      dia?.hora_fin
+    );
+    return disponibles.length > 0 ? disponibles : entrenadoresActivosParaIntensivo();
+  }
+
+  function avisoDisponibilidadDiaIntensivo(dia?: IntensivoDiaApp | null) {
+    if (!dia) return 'Selecciona un día para ver entrenadores.';
+    const disponibles = entrenadoresDisponiblesParaTurno(dia.fecha, dia.hora_inicio, dia.hora_fin);
+    if (disponibles.length > 0) return `${disponibles.length} entrenador(es) disponibles para este día/turno.`;
+    return 'No hay disponibilidad registrada para este día/turno. Se muestran entrenadores activos para emergencia manual.';
+  }
+  const reportesPorEntrenador = agruparReportesPorEntrenador(reportesFiltrados);
+  const gruposEntrenadorAgrupados = agruparGruposPorEntrenador(
+    gruposEntrenadorFiltrados
+  );
+  const gruposEntrenadorSemanal = agruparGruposEntrenadorSemanal(
+    gruposEntrenadorFiltrados
+  );
+  const totalGruposVistaEntrenador = gruposEntrenadorSemanal.reduce((total, entrenador) => total + Number(entrenador.total_grupos || 0), 0);
+  const totalReportesVistaEntrenador = reportesFiltrados.filter((reporte) => reporte.estado_reporte === 'Falta reporte' || reporte.estado_reporte === 'Asistencia sin confirmar').length;
+  const totalDisponibilidadPendienteVistaEntrenador = disponibilidad.filter((turno) => turno.aviso_enviado && turno.respuesta === 'Pendiente').length;
+
+  function alumnosDelGrupo(grupoId: string, entrenadorId: string) {
+    return alumnosReporteEntrenador.filter(
+      (alumno) =>
+        alumno.grupo_id === grupoId && alumno.entrenador_id === entrenadorId
+    );
+  }
+
+  function alumnosDelIntensivo(intensivoId: string) {
+    return intensivoAlumnos.filter(
+      (registro) => registro.intensivo_id === intensivoId
+    );
+  }
+
+  function resumenAlumnoIntensivo(alumnoId: string) {
+    return alumnosResumenVolcado.find((alumno) => alumno.alumno_id === alumnoId);
+  }
+
+
+  function diasDelIntensivo(intensivoId: string) {
+    return intensivoDias.filter((dia) => dia.intensivo_id === intensivoId);
+  }
+
+  function asistenciasDelIntensivoDia(intensivoId: string, diaId: string) {
+    return intensivoAsistencias.filter(
+      (registro) =>
+        registro.intensivo_id === intensivoId &&
+        registro.intensivo_dia_id === diaId
+    );
+  }
+
+  function recuperacionesDelIntensivo(intensivoId: string) {
+    return intensivoMás.filter(
+      (registro) =>
+        registro.intensivo_origen_id === intensivoId ||
+        registro.intensivo_destino_id === intensivoId
+    );
+  }
+
+
+  function gruposNormalesDelDiaIntensivo(diaId: string) {
+    return gruposIntensivoDia.filter(
+      (grupo) => grupo.intensivo_dia_id === diaId && grupo.grupo_id
+    );
+  }
+
+  function resumenReportesDelIntensivo(intensivoId: string) {
+    return resumenReportesIntensivo.filter(
+      (registro) => registro.intensivo_id === intensivoId
+    );
+  }
+
+  function resumenFinalDelIntensivo(intensivoId: string) {
+    return resumenFinalIntensivo.filter(
+      (registro) => registro.intensivo_id === intensivoId
+    );
+  }
+
+  function reportesDetalleAlumnoIntensivo(intensivoId: string, alumnoId: string) {
+    return reportesDetalleIntensivo.filter(
+      (registro) =>
+        registro.intensivo_id === intensivoId && registro.alumno_id === alumnoId
+    );
+  }
+
+  function panelControlDelIntensivo(intensivoId: string) {
+    return panelControlIntensivo.find(
+      (registro) => registro.intensivo_id === intensivoId
+    );
+  }
+
+  function cerrarPanelesIntensivo() {
+    setGestionarPanelControlIntensivoId(null);
+    setDiaActivoIntensivoId(null);
+    setDiaEditandoIntensivoId(null);
+    setGestionarAlumnosIntensivoId(null);
+    setMostrarVolcadoIntensivoId(null);
+    setGestionarGruposIntensivoId(null);
+    setGestionarAsistenciaIntensivoId(null);
+    setGestionarMásIntensivoId(null);
+    setGestionarDiplomasIntensivoId(null);
+    setTextoVolcadoIntensivo('');
+    setResultadoVolcadoIntensivo([]);
+  }
+
+  function abrirPanelIntensivo(
+    intensivo: IntensivoApp,
+    panel:
+      | 'control'
+      | 'dias'
+      | 'alumnos'
+      | 'grupos'
+      | 'asistencia'
+      | 'recuperaciones'
+      | 'diplomas'
+  ) {
+    const intensivoId = intensivo.intensivo_id;
+    const yaAbierto =
+      (panel === 'control' && gestionarPanelControlIntensivoId === intensivoId) ||
+      (panel === 'dias' && diaActivoIntensivoId === intensivoId) ||
+      (panel === 'alumnos' && gestionarAlumnosIntensivoId === intensivoId) ||
+      (panel === 'grupos' && gestionarGruposIntensivoId === intensivoId) ||
+      (panel === 'asistencia' && gestionarAsistenciaIntensivoId === intensivoId) ||
+      (panel === 'recuperaciones' && gestionarMásIntensivoId === intensivoId) ||
+      (panel === 'diplomas' && gestionarDiplomasIntensivoId === intensivoId);
+
+    cerrarPanelesIntensivo();
+
+    if (yaAbierto) return;
+
+    if (panel === 'control') {
+      setGestionarPanelControlIntensivoId(intensivoId);
+      return;
+    }
+
+    if (panel === 'dias') {
+      setDiaActivoIntensivoId(intensivoId);
+      setFormDiaIntensivo(diaIntensivoInicial());
+      return;
+    }
+
+    if (panel === 'alumnos') {
+      setGestionarAlumnosIntensivoId(intensivoId);
+      setAlumnoSeleccionadoIntensivoId('');
+      setBusquedaAlumnoIntensivo('');
+      return;
+    }
+
+    if (panel === 'grupos') {
+      const primerDia = diasDelIntensivo(intensivoId)[0];
+      const alumnosIds = alumnosDelIntensivo(intensivoId).map(
+        (registro) => registro.alumno_id
+      );
+      setGestionarGruposIntensivoId(intensivoId);
+      setDiaGrupoSeleccionadoId(primerDia?.intensivo_dia_id || '');
+      setFormGrupoIntensivo({
+        ...grupoIntensivoInicial(),
+        alumnos_ids: alumnosIds,
+      });
+      setRecomendacionesGrupoIntensivo([]);
+      setEntrenadoresPorGrupoRecomendado({});
+      setDestinoAlumnoRecomendado({});
+      setTrabajoDiarioPorGrupoRecomendado({});
+      setObservacionesPorGrupoRecomendado({});
+      return;
+    }
+
+    if (panel === 'asistencia') {
+      const primerDia = diasDelIntensivo(intensivoId)[0];
+      setGestionarAsistenciaIntensivoId(intensivoId);
+      setDiaAsistenciaSeleccionadoId(primerDia?.intensivo_dia_id || '');
+      return;
+    }
+
+    if (panel === 'recuperaciones') {
+      setGestionarMásIntensivoId(intensivoId);
+      return;
+    }
+
+    if (panel === 'diplomas') {
+      setGestionarDiplomasIntensivoId(intensivoId);
+    }
+  }
+
+  function codigoNivelPorId(nivelId: string | null) {
+    if (!nivelId) return '-';
+    return nivelesDiplomaIntensivo.find((nivel) => nivel.id === nivelId)?.codigo || '-';
+  }
+
+  function entrenadoresActivosParaIntensivo() {
+    return entrenadores
+      .filter((entrenador) => entrenador.activo)
+      .sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo));
+  }
+
+  function alumnosDisponiblesParaIntensivo(intensivoId: string) {
+    const alumnosYaInscritos = new Set(
+      alumnosDelIntensivo(intensivoId).map((registro) => registro.alumno_id)
+    );
+
+    const busqueda = busquedaAlumnoIntensivo.trim().toLowerCase();
+
+    return alumnosParaIntensivo
+      .filter((alumno) => !alumnosYaInscritos.has(alumno.alumno_id))
+      .filter((alumno) =>
+        busqueda ? alumno.alumno.toLowerCase().includes(busqueda) : true
+      )
+      .slice(0, 80);
+  }
+
+  function formularioAbierto(alumno: AlumnoReporteEntrenador) {
+    return (
+      reporteActivo?.grupo_id === alumno.grupo_id &&
+      reporteActivo?.alumno_id === alumno.alumno_id
+    );
+  }
+
+  function calcularEstadoPlanning(grupo: GrupoPlanning) {
+    const alumnosEstadoGrupo = alumnosReporteEntrenador.filter(
+      (alumno) => alumno.grupo_id === grupo.grupo_id
+    );
+
+    const confirmacionesGrupo = gruposEntrenador.filter(
+      (asignacion) => asignacion.grupo_id === grupo.grupo_id
+    );
+
+    const asistentesPendientes = alumnosEstadoGrupo.filter(
+      (alumno) => alumno.estado_asistencia === 'Pendiente'
+    ).length;
+
+    const reportesPendientesGrupo = alumnosEstadoGrupo.filter(
+      (alumno) => alumno.estado_reporte === 'Falta reporte'
+    ).length;
+
+    const entrenadoresSinConfirmar = confirmacionesGrupo.filter(
+      (asignacion) => asignacion.estado_confirmacion !== 'Confirmado'
+    ).length;
+
+    const grupoTieneSeguimiento = alumnosEstadoGrupo.length > 0;
+
+    if (!grupo.publicado) return 'Sin publicar';
+    if (entrenadoresSinConfirmar > 0) return 'Publicado · entrenador sin confirmar';
+    if (grupoTieneSeguimiento && asistentesPendientes > 0) return 'Asistencia pendiente';
+    if (grupoTieneSeguimiento && reportesPendientesGrupo > 0) return 'Reportes pendientes';
+    if (grupoTieneSeguimiento) return 'Grupo cerrado';
+
+    return 'Publicado · pendiente de seguimiento';
+  }
+
+  const planningFiltrado = planning.filter((grupo) => {
+    const estado = calcularEstadoPlanning(grupo);
+
+    if (filtroPlanning === 'sin_publicar') return estado === 'Sin publicar';
+    if (filtroPlanning === 'cerrados') return estado === 'Grupo cerrado';
+    if (filtroPlanning === 'pendientes') {
+      return estado !== 'Grupo cerrado' && estado !== 'Sin publicar';
+    }
+
+    return true;
+  });
+
+  const totalPlanningPendientes = planning.filter((grupo) => {
+    const estado = calcularEstadoPlanning(grupo);
+    return estado !== 'Grupo cerrado' && estado !== 'Sin publicar';
+  }).length;
+
+  const totalPlanningCerrados = planning.filter(
+    (grupo) => calcularEstadoPlanning(grupo) === 'Grupo cerrado'
+  ).length;
+
+  const totalPlanningSinPublicar = planning.filter(
+    (grupo) => calcularEstadoPlanning(grupo) === 'Sin publicar'
+  ).length;
+
+  function crearFechaAgenda(fechaIso: string) {
+    const [anio, mes, dia] = fechaIso.split('-').map(Number);
+    return new Date(anio, mes - 1, dia);
+  }
+
+  function claveFechaAgenda(fecha: Date) {
+    const anio = fecha.getFullYear();
+    const mes = `${fecha.getMonth() + 1}`.padStart(2, '0');
+    const dia = `${fecha.getDate()}`.padStart(2, '0');
+    return `${anio}-${mes}-${dia}`;
+  }
+
+  function claveMesDesdeFecha(fechaIso: string) {
+    return fechaIso.slice(0, 7);
+  }
+
+  function nombreMesAgendaDesdeClave(clave: string) {
+    const [anio, mes] = clave.split('-').map(Number);
+    const fecha = new Date(anio, mes - 1, 1);
+    return fecha.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  }
+
+  function inicioSemanaAgenda(fechaIso: string) {
+    const fecha = crearFechaAgenda(fechaIso);
+    const diaSemana = fecha.getDay() === 0 ? 7 : fecha.getDay();
+    fecha.setDate(fecha.getDate() - diaSemana + 1);
+    return claveFechaAgenda(fecha);
+  }
+
+  function fechaAgendaCortaConAnio(fechaIso: string) {
+    const fecha = crearFechaAgenda(fechaIso);
+    return fecha.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  }
+
+  function fechaAgendaDiaCorta(fechaIso: string) {
+    const fecha = crearFechaAgenda(fechaIso);
+    return fecha.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+    });
+  }
+
+  function rangoSemanaAgenda(inicioIso: string) {
+    const inicio = crearFechaAgenda(inicioIso);
+    const fin = new Date(inicio);
+    fin.setDate(inicio.getDate() + 6);
+    return `${fechaAgendaCortaConAnio(claveFechaAgenda(inicio))} – ${fechaAgendaCortaConAnio(claveFechaAgenda(fin))}`;
+  }
+
+  function rangoEntrenosSemanaAgenda(inicioIso: string) {
+    const inicio = crearFechaAgenda(inicioIso);
+    const primerEntreno = new Date(inicio);
+    const ultimoEntreno = new Date(inicio);
+    primerEntreno.setDate(inicio.getDate() + 2);
+    ultimoEntreno.setDate(inicio.getDate() + 6);
+    return `${fechaAgendaDiaCorta(claveFechaAgenda(primerEntreno))} – ${fechaAgendaDiaCorta(claveFechaAgenda(ultimoEntreno))}`;
+  }
+
+  function diasTrabajoSemanaAgenda(inicioIso: string) {
+    const inicio = crearFechaAgenda(inicioIso);
+    // La semana se calcula lunes-domingo, pero en pantalla solo enseñamos días reales de entrenamiento.
+    return [2, 3, 4, 5, 6].map((offset) => {
+      const fecha = new Date(inicio);
+      fecha.setDate(inicio.getDate() + offset);
+      return {
+        fecha: claveFechaAgenda(fecha),
+        nombre: fecha.toLocaleDateString('es-ES', { weekday: 'long' }),
+        etiqueta: fecha.toLocaleDateString('es-ES', {
+          day: '2-digit',
+          month: 'short',
+        }),
+        esDiaTrabajo: true,
+      };
+    });
+  }
+
+  function turnosTrabajoDiaAgenda(fechaIso: string) {
+    const fecha = crearFechaAgenda(fechaIso);
+    const diaSemana = fecha.getDay();
+
+    if ([3, 4, 5].includes(diaSemana)) {
+      return [{ etiqueta: '18:00–20:00', inicio: '18:00', fin: '20:00' }];
+    }
+
+    if (diaSemana === 6) {
+      return [
+        { etiqueta: '09:45–11:45', inicio: '09:45', fin: '11:45' },
+        { etiqueta: '12:00–14:00', inicio: '12:00', fin: '14:00' },
+        { etiqueta: '14:30–16:30', inicio: '14:30', fin: '16:30' },
+      ];
+    }
+
+    if (diaSemana === 0) {
+      return [
+        { etiqueta: '09:45–11:45', inicio: '09:45', fin: '11:45' },
+        { etiqueta: '12:00–14:00', inicio: '12:00', fin: '14:00' },
+      ];
+    }
+
+    return [];
+  }
+
+  type SesionAgendaOperativa = {
+    id: string;
+    fecha: string;
+    hora_inicio: string;
+    hora_fin: string;
+    modalidad: string;
+    titulo: string;
+    estado: string;
+    totalAlumnos: number;
+    totalGrupos: number;
+    publicados: number;
+    origen: 'operativa' | 'intensivo' | 'planning' | 'listado';
+    intensivo?: IntensivoApp;
+    dia?: IntensivoDiaApp;
+    grupos: GrupoIntensivoDiaApp[];
+    planningGrupos: GrupoPlanning[];
+    listado?: ListadoApp;
+    agendaDirecta?: AgendaSesionDirectaApp;
+  };
+
+  function sesionesAgendaOperativa() {
+    const sesiones = new Map<string, SesionAgendaOperativa>();
+
+    agendaSesionesDirectas.forEach((sesionDirecta) => {
+      const gruposDirectos = agendaGruposSesion.filter(
+        (grupo) => grupo.sesion_id === sesionDirecta.sesion_id
+      );
+
+      sesiones.set(`operativa-${sesionDirecta.sesion_id}`, {
+        id: `operativa-${sesionDirecta.sesion_id}`,
+        fecha: sesionDirecta.fecha,
+        hora_inicio: sesionDirecta.hora_inicio,
+        hora_fin: sesionDirecta.hora_fin,
+        modalidad: sesionDirecta.modalidad_codigo || sesionDirecta.modalidad,
+        titulo: `${sesionDirecta.modalidad} · ${sesionDirecta.lugar || 'Madrid SnowZone'}`,
+        estado:
+          sesionDirecta.total_grupos === 0
+            ? 'Listado cargado · grupos pendientes'
+            : sesionDirecta.alumnos_sin_grupo > 0
+              ? `Faltan ${sesionDirecta.alumnos_sin_grupo} alumnos por colocar`
+              : 'Grupos creados',
+        totalAlumnos: Number(sesionDirecta.total_alumnos || 0),
+        totalGrupos: Number(sesionDirecta.total_grupos || 0),
+        publicados: Number(sesionDirecta.grupos_publicados || 0),
+        origen: 'operativa',
+        grupos: [],
+        planningGrupos: [],
+        agendaDirecta: sesionDirecta,
+      });
+    });
+
+    intensivoDias.forEach((dia) => {
+      const intensivo = intensivos.find(
+        (item) => item.intensivo_id === dia.intensivo_id
+      );
+      const gruposDia = gruposNormalesDelDiaIntensivo(dia.intensivo_dia_id);
+      const totalInscritos = alumnosDelIntensivo(dia.intensivo_id).length;
+      const id = `intensivo-${dia.intensivo_dia_id}`;
+
+      sesiones.set(id, {
+        id,
+        fecha: dia.fecha,
+        hora_inicio: dia.hora_inicio,
+        hora_fin: dia.hora_fin,
+        modalidad: 'INTENSIVO',
+        titulo: intensivo?.intensivo || 'Intensivo',
+        estado:
+          gruposDia.length === 0
+            ? 'Pendiente de grupos'
+            : gruposDia.some((grupo) => !grupo.publicado)
+              ? 'Grupos sin publicar'
+              : 'Publicado',
+        totalAlumnos: totalInscritos,
+        totalGrupos: gruposDia.length,
+        publicados: gruposDia.filter((grupo) => grupo.publicado).length,
+        origen: 'intensivo',
+        intensivo,
+        dia,
+        grupos: gruposDia,
+        planningGrupos: [],
+      });
+    });
+
+    const planningPorSesion = new Map<string, GrupoPlanning[]>();
+    planning.forEach((grupo) => {
+      const clave = `${grupo.fecha}-${grupo.hora_inicio}-${grupo.hora_fin}-${grupo.modalidad}`;
+      planningPorSesion.set(clave, [...(planningPorSesion.get(clave) || []), grupo]);
+    });
+
+    planningPorSesion.forEach((gruposSesion, clave) => {
+      const primero = gruposSesion[0];
+      if (!primero) return;
+      if (String(primero.modalidad || '').toUpperCase().includes('INTENSIVO')) return;
+
+      const existente = [...sesiones.values()].find((sesion) =>
+        sesion.fecha === primero.fecha &&
+        sesion.hora_inicio === primero.hora_inicio &&
+        sesion.hora_fin === primero.hora_fin &&
+        String(sesion.modalidad || '').toUpperCase() === String(primero.modalidad || '').toUpperCase()
+      );
+
+      if (existente) {
+        sesiones.set(existente.id, {
+          ...existente,
+          planningGrupos: gruposSesion,
+          totalGrupos: Math.max(existente.totalGrupos, gruposSesion.length),
+          publicados: Math.max(existente.publicados, gruposSesion.filter((grupo) => grupo.publicado).length),
+          estado: gruposSesion.every((grupo) => grupo.publicado)
+            ? 'Publicado'
+            : existente.estado,
+        });
+        return;
+      }
+
+      sesiones.set(`planning-${clave}`, {
+        id: `planning-${clave}`,
+        fecha: primero.fecha,
+        hora_inicio: primero.hora_inicio,
+        hora_fin: primero.hora_fin,
+        modalidad: primero.modalidad,
+        titulo: primero.modalidad,
+        estado: gruposSesion.every((grupo) => grupo.publicado)
+          ? 'Publicado'
+          : 'Pendiente publicar',
+        totalAlumnos: gruposSesion.reduce(
+          (total, grupo) => total + Number(grupo.total_alumnos || 0),
+          0
+        ),
+        totalGrupos: gruposSesion.length,
+        publicados: gruposSesion.filter((grupo) => grupo.publicado).length,
+        origen: 'planning',
+        grupos: [],
+        planningGrupos: gruposSesion,
+      });
+    });
+
+    listados.forEach((listado) => {
+      const id = `listado-${listado.listado_id}`;
+      const existeSesion = [...sesiones.values()].some(
+        (sesion) =>
+          sesion.fecha === listado.fecha &&
+          sesion.hora_inicio === listado.hora_inicio &&
+          sesion.modalidad === listado.modalidad
+      );
+
+      if (existeSesion) return;
+
+      sesiones.set(id, {
+        id,
+        fecha: listado.fecha,
+        hora_inicio: listado.hora_inicio,
+        hora_fin: listado.hora_fin,
+        modalidad: listado.modalidad,
+        titulo: `Listado ${listado.modalidad}`,
+        estado: listado.estado,
+        totalAlumnos: Number(listado.total_nombres_detectados || 0),
+        totalGrupos: 0,
+        publicados: 0,
+        origen: 'listado',
+        grupos: [],
+        planningGrupos: [],
+        listado,
+      });
+    });
+
+    return [...sesiones.values()].sort((a, b) =>
+      `${a.fecha} ${a.hora_inicio}`.localeCompare(`${b.fecha} ${b.hora_inicio}`)
+    );
+  }
+
+  function sesionesDelDiaAgenda(fecha: string) {
+    return sesionesAgenda.filter((sesion) => sesion.fecha === fecha);
+  }
+
+  function abrirSesionAgenda(sesion: SesionAgendaOperativa, panel: 'alumnos' | 'grupos') {
+    if (sesion.origen === 'operativa' && sesion.agendaDirecta) {
+      setAgendaDiaCompactoActivo(sesion.fecha);
+      setAgendaFormularioAbierto(false);
+      cargarDetalleSesionAgenda(sesion.agendaDirecta.sesion_id);
+      return;
+    }
+
+    if (sesion.origen === 'intensivo' && sesion.intensivo && sesion.dia) {
+      if (panel === 'alumnos') abrirPanelIntensivo(sesion.intensivo, 'alumnos');
+      if (panel === 'grupos') {
+        abrirPanelIntensivo(sesion.intensivo, 'grupos');
+        setDiaGrupoSeleccionadoId(sesion.dia.intensivo_dia_id);
+      }
+      setPantalla('intensivos');
+      return;
+    }
+
+    setPantalla('agenda');
+  }
+
+  function gruposTextoResumenSesion(sesion: SesionAgendaOperativa) {
+    if (sesion.origen === 'intensivo') {
+      return sesion.grupos
+        .filter((grupo) => grupo.grupo_id)
+        .map((grupo, indice) => `${nombreGrupoVisualApp(grupo, indice)} · ${grupo.entrenador || 'Pendiente entrenador'} · Punto ${grupo.punto_encuentro || '-'}`)
+        .join(' || ');
+    }
+
+    if (sesion.planningGrupos.length > 0) {
+      return sesion.planningGrupos
+        .map((grupo, indice) => `${nombreGrupoVisualApp(grupo, indice)} · ${grupo.entrenadores || 'Pendiente entrenador'} · Punto ${grupo.punto_encuentro || '-'}`)
+        .join(' || ');
+    }
+
+    if (sesion.agendaDirecta) {
+      return agendaGruposSesion
+        .filter((grupo) => grupo.sesion_id === sesion.agendaDirecta?.sesion_id)
+        .map((grupo, indice) => `${nombreGrupoVisualApp(grupo, indice)} · ${grupo.entrenador || 'Pendiente entrenador'} · Punto ${grupo.punto_encuentro || '-'}`)
+        .join(' || ');
+    }
+
+    return '';
+  }
+
+  function htmlEscapeBackup(valor: unknown) {
+    return String(valor ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function tablaBackupExcel(titulo: string, columnas: string[], filas: Array<Array<unknown>>) {
+    const cabecera = columnas.map((columna) => `<th>${htmlEscapeBackup(columna)}</th>`).join('');
+    const cuerpo = filas.length > 0
+      ? filas.map((fila) => `<tr>${fila.map((celda) => `<td>${htmlEscapeBackup(celda)}</td>`).join('')}</tr>`).join('')
+      : `<tr><td colspan="${columnas.length}">Sin datos</td></tr>`;
+
+    return `<h2>${htmlEscapeBackup(titulo)}</h2><table><thead><tr>${cabecera}</tr></thead><tbody>${cuerpo}</tbody></table><br/>`;
+  }
+
+  function descargarTextoComoArchivo(nombreArchivo: string, contenido: string, tipo: string) {
+    const blob = new Blob([contenido], { type: tipo });
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = nombreArchivo;
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function descargarBackupSemanalExcel() {
+    const semana = claveSemanaBackupActiva;
+    if (!semana) {
+      setError('Selecciona una semana antes de descargar la copia de seguridad.');
+      return;
+    }
+    const fin = domingoSemanaOcioActiva();
+    const sesionesSemana = sesionesAgenda.filter((sesion) => sesion.fecha >= semana && sesion.fecha <= fin);
+    const reportesSemana = reportesPendientes.filter((reporte) => reporte.fecha >= semana && reporte.fecha <= fin);
+    const gruposSemana = gruposEntrenador.filter((grupo) => grupo.fecha >= semana && grupo.fecha <= fin);
+
+    const html = `<!doctype html><html><head><meta charset="utf-8" />
+      <style>
+        body{font-family:Arial,sans-serif;color:#111;}
+        h1{font-size:22px;margin:0 0 8px;} h2{font-size:18px;margin:18px 0 8px;}
+        table{border-collapse:collapse;width:100%;margin-bottom:16px;}
+        th{background:#111827;color:#fff;text-align:left;} th,td{border:1px solid #d1d5db;padding:6px;font-size:12px;vertical-align:top;}
+      </style></head><body>
+      <h1>Backup semanal Mítico · ${htmlEscapeBackup(rangoSemanaAgenda(semana))}</h1>
+      <p>Generado: ${htmlEscapeBackup(new Date().toLocaleString('es-ES'))}</p>
+      ${tablaBackupExcel('Resumen sesiones semana', ['Fecha','Hora','Modalidad','Título','Estado','Alumnos','Grupos','Publicados','Detalle grupos'], sesionesSemana.map((sesion) => [sesion.fecha, `${sesion.hora_inicio}-${sesion.hora_fin}`, sesion.modalidad, sesion.titulo, sesion.estado, sesion.totalAlumnos, sesion.totalGrupos, sesion.publicados, gruposTextoResumenSesion(sesion)]))}
+      ${tablaBackupExcel('Alumnos base Baby/Intensivos', ['Alumno','Nivel actual','Nivel estimado','Estado ficha','Reportes','Última fecha','Última recomendación'], alumnos.map((alumno) => [alumno.alumno, alumno.nivel_actual || '', alumno.nivel_estimado || '', alumno.estado_ficha, alumno.total_reportes, alumno.ultima_fecha_reporte || '', alumno.ultima_recomendacion || '']))}
+      ${tablaBackupExcel('Ocio alumnos', ['Alumno','Nivel','Grupo estable','Día fijo','Hora fija','Reportes','Observaciones'], ocioAlumnos.map((alumno) => [alumno.alumno, alumno.nivel_usado || alumno.nivel || '', alumno.grupo_estable || '', alumno.dia_fijo || '', `${horaCorta(alumno.hora_inicio_fija)}-${horaCorta(alumno.hora_fin_fija)}`, alumno.total_reportes, alumno.observaciones || '']))}
+      ${tablaBackupExcel('Ocio grupos estables', ['Grupo','Día','Hora','Nivel','Pista','Punto','Alumnos'], ocioGrupos.map((grupo) => [grupo.nombre_grupo, grupo.dia_semana, `${horaCorta(grupo.hora_inicio)}-${horaCorta(grupo.hora_fin)}`, grupo.nivel_grupo || '', grupo.pista || '', grupo.punto_encuentro || '', grupo.alumnos_lista || '']))}
+      ${tablaBackupExcel('Intensivos', ['Intensivo','Estado','Sesiones','Alumnos','Inicio','Fin'], intensivos.map((intensivo) => [intensivo.intensivo, intensivo.estado, intensivo.total_dias, intensivo.total_alumnos, intensivo.fecha_inicio || '', intensivo.fecha_fin || '']))}
+      ${tablaBackupExcel('Grupos entrenador semana', ['Fecha','Hora','Modalidad','Grupo','Entrenador','Publicado','Alumnos','Trabajo'], gruposSemana.map((grupo) => [grupo.fecha, `${horaCorta(grupo.hora_inicio)}-${horaCorta(grupo.hora_fin)}`, grupo.modalidad, grupo.nombre_grupo, grupo.entrenador, grupo.publicado ? 'Sí' : 'No', grupo.total_alumnos, grupo.trabajo_diario || '']))}
+      ${tablaBackupExcel('Pendientes reportes semana', ['Fecha','Hora','Entrenador','Modalidad','Grupo','Alumno','Estado asistencia','Estado reporte'], reportesSemana.map((reporte) => [reporte.fecha, `${horaCorta(reporte.hora_inicio)}-${horaCorta(reporte.hora_fin)}`, reporte.entrenador, reporte.modalidad, reporte.nombre_grupo, reporte.alumno, reporte.estado_asistencia, reporte.estado_reporte]))}
+      ${tablaBackupExcel('Cobros mes visible', ['Entrenador','Baby','Intensivos','Ocio','Turnos','Tarifa','Total','Estado'], cobros.map((cobro) => [cobro.entrenador, cobro.total_turnos_baby, cobro.total_turnos_intensivos, cobro.total_turnos_ocio, cobro.total_turnos_computables, cobro.tarifa_por_turno, cobro.total_mes, cobro.estado_mes]))}
+      </body></html>`;
+
+    descargarTextoComoArchivo(`backup_mitico_${semana}.xls`, html, 'application/vnd.ms-excel;charset=utf-8');
+    if (backupSemanaStorageKey && typeof window !== 'undefined') {
+      const marca = new Date().toLocaleString('es-ES');
+      window.localStorage.setItem(backupSemanaStorageKey, marca);
+      setUltimaDescargaBackupSemana(marca);
+    }
+  }
+
+  function descargarResumenDiaExcel() {
+    const filas = sesionesResumenDia.map((sesion) => [
+      sesion.fecha,
+      `${horaCorta(sesion.hora_inicio)}-${horaCorta(sesion.hora_fin)}`,
+      sesion.modalidad,
+      sesion.titulo,
+      sesion.estado,
+      sesion.totalAlumnos,
+      sesion.totalGrupos,
+      sesion.publicados,
+      gruposTextoResumenSesion(sesion),
+    ]);
+
+    const html = `<!doctype html><html><head><meta charset="utf-8" /><style>body{font-family:Arial,sans-serif;}table{border-collapse:collapse;width:100%;}th{background:#111827;color:#fff;}th,td{border:1px solid #d1d5db;padding:6px;font-size:12px;}</style></head><body><h1>Resumen del día ${htmlEscapeBackup(formatearFecha(fechaResumenDiaActiva))}</h1>${tablaBackupExcel('Sesiones del día', ['Fecha','Hora','Modalidad','Título','Estado','Alumnos','Grupos','Publicados','Detalle grupos'], filas)}</body></html>`;
+    descargarTextoComoArchivo(`resumen_dia_${fechaResumenDiaActiva}.xls`, html, 'application/vnd.ms-excel;charset=utf-8');
+  }
+
+  return (
+    <main style={layout}>
+      <header style={cabeceraAppLimpia}>
+        <div style={cabeceraMarcaApp}>
+          <div style={marcaLogoTituloApp}>
+            <img src={LOGO_MITICO_CLUB} alt="Mítico Club" style={logoMarcaApp} />
+            <div>
+              <p style={marcaKickerApp}>Mítico Club · coordinación deportiva</p>
+              <h1 style={tituloMarcaApp}>MITICO BABY / OCIO LOGISTICA</h1>
+            </div>
+          </div>
+
+          <details style={chuletaGeneralApp}>
+            <summary style={summaryChuletaApp}>Chuleta rápida del flujo</summary>
+            <div style={chuletaGridApp}>
+              <div><strong>Trabajo semanal</strong><br />Disponibilidad → sesiones → grupos → publicación → reportes.</div>
+              <div><strong>Intensivos</strong><br />Aimharder → 4 sesiones → grupos por día/turno → reportes → cobros.</div>
+              <div><strong>Ocio</strong><br />Grupos estables → cambios puntuales → preparar semana → entrenador.</div>
+              <div><strong>Dirección</strong><br />Cobros mensuales + backup Excel para no perder datos.</div>
+            </div>
+          </details>
+
+          <div style={semanaTrabajoActivaApp}>
+            <span>Semana de trabajo</span>
+            <strong>{semanaAgendaActiva ? rangoSemanaAgenda(semanaAgendaActiva) : '-'}</strong>
+          </div>
+        </div>
+
+        <nav style={menuPrincipalApp}>
+          <div style={menuBloqueColor('#2563eb', '#eff6ff')}>
+            <span style={menuTituloColor('#2563eb')}>Trabajo semanal</span>
+            <button onClick={() => setPantalla('resumenDia')} style={botonMenuColor(pantalla === 'resumenDia', '#2563eb')}>Resumen del día</button>
+            <button onClick={() => setPantalla('agenda')} style={botonMenuColor(pantalla === 'agenda', '#2563eb')}>Días de entrenamiento</button>
+            <button onClick={() => setPantalla('reportes')} style={botonMenuColor(pantalla === 'reportes', '#2563eb')}>Cierre semanal</button>
+          </div>
+
+          <div style={menuBloqueColor('#7c3aed', '#f5f3ff')}>
+            <span style={menuTituloColor('#7c3aed')}>Fichas</span>
+            <button onClick={() => setPantalla('alumnos')} style={botonMenuColor(pantalla === 'alumnos', '#7c3aed')}>Alumnos</button>
+          </div>
+
+          <div style={menuBloqueColor('#f97316', '#fff7ed')}>
+            <span style={menuTituloColor('#f97316')}>Intensivos</span>
+            <button onClick={() => setPantalla('intensivos')} style={botonMenuColor(pantalla === 'intensivos', '#f97316')}>Intensivos</button>
+          </div>
+
+          <div style={menuBloqueColor('#16a34a', '#f0fdf4')}>
+            <span style={menuTituloColor('#16a34a')}>Ocio</span>
+            <button onClick={() => setPantalla('ocioAlumnos')} style={botonMenuColor(pantalla === 'ocioAlumnos', '#16a34a')}>Alumnos Ocio</button>
+            <button onClick={() => setPantalla('ocioGrupos')} style={botonMenuColor(pantalla === 'ocioGrupos', '#16a34a')}>Grupos estables</button>
+            <button onClick={() => setPantalla('ocioCambios')} style={botonMenuColor(pantalla === 'ocioCambios', '#16a34a')}>Cambios puntuales</button>
+            <button onClick={() => setPantalla('ocioSemana')} style={botonMenuColor(pantalla === 'ocioSemana', '#16a34a')}>Preparar semana</button>
+          </div>
+
+          <div style={menuBloqueColor('#0f766e', '#ecfdf5')}>
+            <span style={menuTituloColor('#0f766e')}>Entrenadores</span>
+            <button onClick={() => setPantalla('entrenadores')} style={botonMenuColor(pantalla === 'entrenadores', '#0f766e')}>Gestión entrenadores</button>
+            <button onClick={() => setPantalla('disponibilidad')} style={botonMenuColor(pantalla === 'disponibilidad', '#0f766e')}>Disponibilidad</button>
+            <button onClick={() => setPantalla('entrenador')} style={botonMenuColor(pantalla === 'entrenador', '#0f766e')}>Vista entrenador</button>
+          </div>
+
+          <div style={menuBloqueColor('#e11d48', '#fff1f2')}>
+            <span style={menuTituloColor('#e11d48')}>Dirección</span>
+            <button onClick={() => setPantalla('cobros')} style={botonMenuColor(pantalla === 'cobros', '#e11d48')}>Cobros</button>
+            <button onClick={() => setPantalla('exportaciones')} style={botonMenuColor(pantalla === 'exportaciones', '#e11d48')}>Exportaciones</button>
+          </div>
+        </nav>
+      </header>
+
+      {whatsappPreview && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            zIndex: 9999,
+            padding: 16,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <article
+            style={{
+              background: '#fff',
+              borderRadius: 22,
+              padding: 18,
+              width: 'min(920px, 100%)',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              boxShadow: '0 24px 80px rgba(0,0,0,0.30)',
+              border: '1px solid #e5e7eb',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 10 }}>
+              <div>
+                <p style={etiquetaSuperior}>PREVISUALIZACIÓN WHATSAPP</p>
+                <h2 style={{ margin: 0 }}>{whatsappPreview.titulo}</h2>
+              </div>
+              <button onClick={() => setWhatsappPreview(null)} style={botonSecundario}>Cerrar</button>
+            </div>
+
+            <div style={{ ...avisoNeutral, marginBottom: 12 }}>
+              Revisa y modifica aquí el texto antes de copiarlo. La hora del turno se rellena automáticamente y también aparece en el bloque final de papis importante.
+            </div>
+
+            <textarea
+              value={whatsappPreview.texto}
+              onChange={(e) => setWhatsappPreview({ ...whatsappPreview, texto: e.target.value })}
+              rows={18}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                borderRadius: 16,
+                border: '1px solid #d1d5db',
+                padding: 14,
+                fontSize: 15,
+                lineHeight: 1.45,
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                whiteSpace: 'pre-wrap',
+              }}
+            />
+
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+              <button onClick={copiarWhatsappPrevisualizado} style={botonPrincipal}>Copiar WhatsApp revisado</button>
+              <button onClick={() => setWhatsappPreview(null)} style={botonSecundario}>Cerrar sin copiar</button>
+            </div>
+          </article>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes miticoFadeUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes miticoPulseSoft {
+          0%, 100% { box-shadow: 0 10px 24px rgba(37,99,235,0.14); }
+          50% { box-shadow: 0 14px 32px rgba(37,99,235,0.23); }
+        }
+        button, summary, input, select, textarea {
+          transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease, opacity 0.16s ease;
+        }
+        button:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 10px 22px rgba(15,23,42,0.13);
+        }
+        button:active:not(:disabled) { transform: translateY(0); box-shadow: 0 4px 12px rgba(15,23,42,0.10); }
+        details[open] > *:not(summary) { animation: miticoFadeUp 0.18s ease both; }
+        article, nav > div, section { animation: miticoFadeUp 0.18s ease both; }
+        input:focus, select:focus, textarea:focus {
+          outline: none;
+          border-color: #2563eb !important;
+          box-shadow: 0 0 0 4px rgba(37,99,235,0.12);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          button, summary, input, select, textarea, article, nav > div, section {
+            transition: none !important;
+            animation: none !important;
+          }
+        }
+      `}</style>
+
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          #cobro-pdf-preview, #cobro-pdf-preview * { visibility: visible !important; }
+          #cobro-pdf-preview { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 0 !important; box-shadow: none !important; border: 0 !important; }
+          .no-imprimir-cobro { display: none !important; }
+        }
+      `}</style>
+
+      {cobroPdfPreview && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            zIndex: 9998,
+            padding: 16,
+            overflow: 'auto',
+          }}
+        >
+          <article
+            id="cobro-pdf-preview"
+            style={{
+              background: '#fff',
+              color: '#111',
+              borderRadius: 22,
+              padding: 22,
+              maxWidth: 980,
+              margin: '0 auto',
+              boxShadow: '0 24px 80px rgba(0,0,0,0.30)',
+              border: '1px solid #e5e7eb',
+              fontFamily: 'Arial, sans-serif',
+            }}
+          >
+            <div className="no-imprimir-cobro" style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 14 }}>
+              <div>
+                <p style={etiquetaSuperior}>PREVISUALIZACIÓN PDF</p>
+                <h2 style={{ margin: 0 }}>{cobroPdfPreview.titulo}</h2>
+                <p style={{ margin: '6px 0 0', color: '#555' }}>Revisa el resumen. Luego pulsa imprimir y en Mac guarda como PDF.</p>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button onClick={imprimirCobroPdfPreview} style={botonPrincipal}>Imprimir / guardar PDF</button>
+                <button onClick={() => setCobroPdfPreview(null)} style={botonSecundario}>Cerrar</button>
+              </div>
+            </div>
+
+            <style>{`
+              #cobro-pdf-preview h1, #cobro-pdf-preview h2, #cobro-pdf-preview h3 { margin-bottom: 8px; }
+              #cobro-pdf-preview .portada { border: 2px solid #111; border-radius: 16px; padding: 18px; margin-bottom: 24px; }
+              #cobro-pdf-preview .cobro { page-break-inside: avoid; border-bottom: 1px solid #ddd; padding: 18px 0; }
+              #cobro-pdf-preview .resumen { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0; }
+              #cobro-pdf-preview .resumen div { border: 1px solid #ddd; border-radius: 10px; padding: 10px; }
+              #cobro-pdf-preview table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+              #cobro-pdf-preview th, #cobro-pdf-preview td { border: 1px solid #ddd; padding: 7px; text-align: left; }
+              #cobro-pdf-preview th { background: #f2f2f2; }
+              #cobro-pdf-preview pre { white-space: pre-wrap; background: #f7f7f7; padding: 10px; border-radius: 10px; }
+            `}</style>
+
+            <div dangerouslySetInnerHTML={{ __html: cobroPdfPreview.cuerpo }} />
+          </article>
+        </div>
+      )}
+
+      {error && (
+        <div style={errorCaja}>
+          <strong>Error:</strong>
+          <pre style={{ whiteSpace: 'pre-wrap' }}>{error}</pre>
+        </div>
+      )}
+
+      {pantalla === 'resumenDia' && (
+        <section>
+          <div style={cabeceraPantallaMovil}>
+            <div>
+              <p style={etiquetaSuperior}>PISTA · CONTROL DIARIO</p>
+              <h2 style={{ margin: 0 }}>Resumen del día</h2>
+              <details style={ayudaDesplegableCompacta}>
+                <summary>Chuleta</summary>
+                <p style={{ margin: '8px 0 0' }}>Control de pista: sesiones, grupos, entrenadores, pendientes y reportes del día.</p>
+              </details>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <input type="date" value={fechaResumenDiaActiva} onChange={(e) => setFechaResumenDia(e.target.value)} style={inputCampo} />
+              <button onClick={actualizarTodo} style={botonSecundario}>Actualizar</button>
+              <button onClick={descargarResumenDiaExcel} style={botonPrincipal}>Excel resumen día</button>
+            </div>
+          </div>
+
+          <div style={gridResumenInicio}>
+            <div style={tarjetaInicioOk}><strong>Sesiones</strong><br /><span style={{ fontSize: 26, fontWeight: 900 }}>{sesionesResumenDia.length}</span></div>
+            <div style={tarjetaInicioOk}><strong>Alumnos previstos</strong><br /><span style={{ fontSize: 26, fontWeight: 900 }}>{totalAlumnosResumenDia}</span></div>
+            <div style={totalPublicadosResumenDia === totalGruposResumenDia ? tarjetaInicioOk : tarjetaInicioAlerta}><strong>Grupos publicados</strong><br /><span style={{ fontSize: 26, fontWeight: 900 }}>{totalPublicadosResumenDia}/{totalGruposResumenDia}</span></div>
+            <div style={reportesResumenDia.length === 0 ? tarjetaInicioOk : tarjetaInicioRojo}><strong>Pendientes reportes</strong><br /><span style={{ fontSize: 26, fontWeight: 900 }}>{reportesResumenDia.length}</span></div>
+          </div>
+
+          {gruposPendientesEntrenadorResumenDia.length > 0 && (
+            <div style={avisoPendiente}>Hay {gruposPendientesEntrenadorResumenDia.length} grupo(s) sin entrenador asignado para este día.</div>
+          )}
+
+          <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
+            {sesionesResumenDia.length === 0 ? (
+              <article style={tarjetaMovilVacia}>No hay sesiones preparadas para este día.</article>
+            ) : sesionesResumenDia.map((sesion) => (
+              <article key={sesion.id} style={tarjetaEntrenadorMovil}>
+                <div style={agendaCabeceraLinea}>
+                  <div>
+                    <p style={etiquetaSuperior}>{sesion.modalidad}</p>
+                    <h3 style={{ margin: 0 }}>{horaCorta(sesion.hora_inicio)}–{horaCorta(sesion.hora_fin)} · {sesion.titulo}</h3>
+                    <p style={{ margin: '6px 0 0', color: '#555' }}>{sesion.estado}</p>
+                  </div>
+                  <span style={miniBadge}>{sesion.totalAlumnos} niños · {sesion.totalGrupos} grupos</span>
+                </div>
+
+                <div style={gridResumenInicio}>
+                  <div style={miniTarjetaBlanca}><strong>Publicados</strong><br />{sesion.publicados}/{sesion.totalGrupos}</div>
+                  <div style={miniTarjetaBlanca}><strong>Origen</strong><br />{sesion.origen}</div>
+                  <div style={miniTarjetaBlanca}><strong>Detalle</strong><br />{gruposTextoResumenSesion(sesion) || 'Sin grupos creados'}</div>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button onClick={() => abrirSesionAgenda(sesion, sesion.totalGrupos > 0 ? 'grupos' : 'alumnos')} style={botonPrincipal}>Abrir sesión</button>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          {reportesResumenDia.length > 0 && (
+            <article style={{ ...tarjeta, marginTop: 16 }}>
+              <h3 style={{ marginTop: 0 }}>Pendientes del día</h3>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {reportesResumenDia.slice(0, 30).map((reporte) => (
+                  <div key={`${reporte.grupo_id}-${reporte.alumno_id}-${reporte.estado_reporte}`} style={avisoReportePendiente}>
+                    {horaCorta(reporte.hora_inicio)} · {reporte.entrenador} · {reporte.alumno} · {reporte.estado_reporte}
+                  </div>
+                ))}
+              </div>
+            </article>
+          )}
+        </section>
+      )}
+
+      {pantalla === 'exportaciones' && (
+        <section>
+          <div style={cabeceraPantallaMovil}>
+            <div>
+              <p style={etiquetaSuperior}>SEGURIDAD</p>
+              <h2 style={{ margin: 0 }}>Exportaciones y backup Excel</h2>
+              <details style={ayudaDesplegableCompacta}>
+                <summary>Chuleta</summary>
+                <p style={{ margin: '8px 0 0' }}>Descarga semanal compatible con Excel: sesiones, alumnos, Ocio, Intensivos, reportes y cobros.</p>
+              </details>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button onClick={actualizarTodo} style={botonSecundario}>Actualizar datos</button>
+              <button onClick={descargarBackupSemanalExcel} style={botonPrincipal}>Descargar backup semanal Excel</button>
+            </div>
+          </div>
+
+          <article style={{ ...tarjeta, marginTop: 16 }}>
+            <h3 style={{ marginTop: 0 }}>Backup semanal automático</h3>
+            <div style={backupSemanaRealizado || ultimaDescargaBackupSemana ? avisoCompleto : avisoPendiente}>
+              Semana {rangoSemanaAgenda(claveSemanaBackupActiva)} · {backupSemanaRealizado || ultimaDescargaBackupSemana ? `Última copia: ${backupSemanaRealizado || ultimaDescargaBackupSemana}` : 'Pendiente de descargar esta semana'}
+            </div>
+            <details style={ayudaDesplegableCompacta}>
+              <summary>Cómo funciona</summary>
+              <p style={{ margin: '8px 0 0' }}>El navegador no permite descargar archivos solo sin tocar nada. La app te marca cada semana si falta la copia y la descarga con un clic.</p>
+            </details>
+          </article>
+
+          <div style={gridResumenInicio}>
+            <div style={miniTarjetaBlanca}><strong>Sesiones semana</strong><br />{sesionesAgenda.filter((sesion) => sesion.fecha >= claveSemanaBackupActiva && sesion.fecha <= domingoSemanaOcioActiva()).length}</div>
+            <div style={miniTarjetaBlanca}><strong>Alumnos base</strong><br />{alumnos.length}</div>
+            <div style={miniTarjetaBlanca}><strong>Alumnos Ocio</strong><br />{ocioAlumnos.length}</div>
+            <div style={miniTarjetaBlanca}><strong>Intensivos</strong><br />{intensivos.length}</div>
+            <div style={miniTarjetaBlanca}><strong>Reportes pendientes semana</strong><br />{reportesPendientes.filter((reporte) => reporte.fecha >= claveSemanaBackupActiva && reporte.fecha <= domingoSemanaOcioActiva()).length}</div>
+            <div style={miniTarjetaBlanca}><strong>Cobros mes visible</strong><br />{cobros.length} entrenadores</div>
+          </div>
+        </section>
+      )}
+
+      {pantalla === 'revisionOcio' && (
+        <section>
+          <div style={cabeceraPantallaMovil}>
+            <div>
+              <p style={etiquetaSuperior}>OCIO · EVOLUCIÓN</p>
+              <h2 style={{ margin: 0 }}>Revisión Ocio</h2>
+              <p style={{ margin: '8px 0 0', color: '#555' }}>Niños que pueden necesitar cambio de grupo, alumnos sin grupo y alumnos sin reportes.</p>
+            </div>
+            <button onClick={() => { cargarOcioAlumnos(); cargarOcioGrupos(); cargarOcioCambios(); }} style={botonSecundario}>Actualizar revisión</button>
+          </div>
+
+          <div style={{ ...tarjeta, marginTop: 16 }}>
+            <div style={gridFormulario}>
+              <label style={labelCampo}>Buscar
+                <input value={busquedaRevisionOcio} onChange={(e) => setBusquedaRevisionOcio(e.target.value)} style={inputCampo} placeholder="Nombre, nivel o grupo" />
+              </label>
+              <label style={labelCampo}>Filtro
+                <select value={filtroRevisionOcio} onChange={(e) => setFiltroRevisionOcio(e.target.value as any)} style={selectCampo}>
+                  <option value="cambios">Solo posibles cambios</option>
+                  <option value="sin_grupo">Sin grupo estable</option>
+                  <option value="sin_reportes">Sin reportes</option>
+                  <option value="todos">Todos</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div style={gridResumenInicio}>
+            <div style={tarjetaInicioAlerta}><strong>Posibles cambios</strong><br /><span style={{ fontSize: 26, fontWeight: 900 }}>{ocioRevisionBase.filter((alumno) => alumno.necesita_cambio_revision).length}</span></div>
+            <div style={tarjetaInicioRojo}><strong>Sin grupo</strong><br /><span style={{ fontSize: 26, fontWeight: 900 }}>{ocioRevisionBase.filter((alumno) => alumno.sin_grupo_revision).length}</span></div>
+            <div style={tarjetaInicioAlerta}><strong>Sin reportes</strong><br /><span style={{ fontSize: 26, fontWeight: 900 }}>{ocioRevisionBase.filter((alumno) => alumno.sin_reportes_revision).length}</span></div>
+          </div>
+
+          <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
+            {ocioRevisionFiltrada.length === 0 ? (
+              <article style={tarjetaMovilVacia}>No hay alumnos en este filtro.</article>
+            ) : ocioRevisionFiltrada.map((alumno) => (
+              <article key={alumno.alumno_id} style={tarjetaEntrenadorMovil}>
+                <div style={agendaCabeceraLinea}>
+                  <div>
+                    <h3 style={{ margin: 0 }}>{alumno.alumno}</h3>
+                    <p style={{ margin: '6px 0 0', color: '#555' }}>Nivel {alumno.nivel_usado || alumno.nivel || '-'} · Grupo actual: {alumno.grupo_estable || 'Sin grupo'}</p>
+                  </div>
+                  <span style={alumno.recomendacion_revision === 'OK' ? miniBadgeVerde : miniBadge}>{alumno.recomendacion_revision}</span>
+                </div>
+
+                <div style={gridFormulario}>
+                  <label style={labelCampo}>Grupo destino sugerido/manual
+                    <select value={destinoRevisionOcio[alumno.alumno_id] || ''} onChange={(e) => setDestinoRevisionOcio({ ...destinoRevisionOcio, [alumno.alumno_id]: e.target.value })} style={selectCampo}>
+                      <option value="">Elegir grupo...</option>
+                      {ocioGrupos.map((grupo) => (
+                        <option key={grupo.grupo_id} value={grupo.grupo_id}>{grupo.nombre_grupo} · {grupo.dia_semana} {horaCorta(grupo.hora_inicio)} · {grupo.total_alumnos} niños</option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button onClick={() => abrirEvaluacionOcio(alumno)} style={botonSecundario}>Ver evaluación</button>
+                  <button onClick={() => moverAlumnoGrupoOcio(alumno.alumno_id, destinoRevisionOcio[alumno.alumno_id])} disabled={!destinoRevisionOcio[alumno.alumno_id]} style={botonPrincipal}>Aceptar cambio de grupo</button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {pantalla === 'agenda' && (
+        <section style={agendaShellCompacto}>
+          <article style={agendaHeroTrabajoSemanal}>
+            <div>
+              <p style={etiquetaSuperior}>TRABAJO SEMANAL · AGENDA</p>
+              <h2 style={{ margin: '3px 0 0', fontSize: 28 }}>Días de entrenamiento</h2>
+              <p style={{ margin: '8px 0 0', color: '#475569' }}>
+                Semana compacta: eliges semana, abres un día y trabajas solo una sesión. Sin bajar toda la pantalla.
+              </p>
+            </div>
+            <div style={agendaPanelRangoSemana}>
+              <span style={agendaMiniLabel}>Semana completa</span>
+              <strong>{semanaAgendaActiva ? rangoSemanaAgenda(semanaAgendaActiva) : 'Sin semana'}</strong>
+              <span style={agendaMiniTexto}>Entrenos: {semanaAgendaActiva ? rangoEntrenosSemanaAgenda(semanaAgendaActiva) : '-'}</span>
+            </div>
+          </article>
+
+          <section style={agendaPanelControles}>
+            <div style={agendaControlesGrid}>
+              <label style={labelCampo}>Temporada
+                <select
+                  value={anioInicioTemporadaAgenda}
+                  style={selectCampoAgenda}
+                  onChange={(e) => {
+                    const nuevoAnio = Number(e.target.value);
+                    setAnioInicioTemporadaAgenda(nuevoAnio);
+                    setMesAgenda(`${nuevoAnio}-09`);
+                    setSemanaAgendaInicio('');
+                    setAgendaDiaCompactoActivo('');
+                    setAgendaSesionActivaId('');
+                    setAgendaFormularioAbierto(false);
+                  }}
+                >
+                  {opcionesTemporadaAgenda.map((anio) => (
+                    <option key={anio} value={anio}>{nombreTemporadaAgenda(anio)}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label style={labelCampo}>Mes
+                <select
+                  value={mesAgendaActivo}
+                  style={selectCampoAgenda}
+                  onChange={(e) => {
+                    setMesAgenda(e.target.value);
+                    setSemanaAgendaInicio('');
+                    setAgendaDiaCompactoActivo('');
+                    setAgendaSesionActivaId('');
+                    setAgendaFormularioAbierto(false);
+                  }}
+                >
+                  {mesesAgenda.map((clave) => (
+                    <option key={clave} value={clave}>{nombreMesAgendaDesdeClave(clave)}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label style={labelCampo}>Semana
+                <select
+                  value={semanaAgendaActiva}
+                  style={selectCampoAgenda}
+                  onChange={(e) => {
+                    setSemanaAgendaInicio(e.target.value);
+                    setAgendaDiaCompactoActivo('');
+                    setAgendaSesionActivaId('');
+                    setAgendaFormularioAbierto(false);
+                  }}
+                >
+                  {semanasAgenda.map((semana) => (
+                    <option key={semana} value={semana}>Semana {rangoSemanaAgenda(semana)}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            {diasSemanaAgenda.length === 0 ? (
+              <div style={agendaVacio}>Selecciona una semana para ver los días de entrenamiento.</div>
+            ) : (() => {
+              const diaActivo = diasSemanaAgenda.find((dia) => dia.fecha === agendaDiaCompactoActivo) || diasSemanaAgenda[0];
+              const sesionesDia = diaActivo ? sesionesDelDiaAgenda(diaActivo.fecha) : [];
+              const totalAlumnosDia = sesionesDia.reduce((total, sesion) => total + Number(sesion.totalAlumnos || 0), 0);
+              const totalGruposDia = sesionesDia.reduce((total, sesion) => total + Number(sesion.totalGrupos || 0), 0);
+
+              return (
+                <div style={{ display: 'grid', gap: 14 }}>
+                  <div style={agendaDiasSelectorCompacto}>
+                    {diasSemanaAgenda.map((dia) => {
+                      const sesionesDiaBoton = sesionesDelDiaAgenda(dia.fecha);
+                      const alumnosDiaBoton = sesionesDiaBoton.reduce((total, sesion) => total + Number(sesion.totalAlumnos || 0), 0);
+                      const gruposDiaBoton = sesionesDiaBoton.reduce((total, sesion) => total + Number(sesion.totalGrupos || 0), 0);
+                      const activo = dia.fecha === diaActivo.fecha;
+
+                      return (
+                        <button
+                          key={dia.fecha}
+                          onClick={() => {
+                            setAgendaDiaCompactoActivo(dia.fecha);
+                            setAgendaSesionActivaId('');
+                            setAgendaFormularioAbierto(false);
+                          }}
+                          style={agendaBotonDiaCompacto(activo, alumnosDiaBoton, gruposDiaBoton)}
+                        >
+                          <span style={{ display: 'grid', gap: 2, textAlign: 'left' }}>
+                            <span style={{ textTransform: 'capitalize', fontWeight: 900 }}>{dia.nombre}</span>
+                            <span style={{ fontSize: 13, color: activo ? '#1d4ed8' : '#64748b' }}>{fechaAgendaDiaCorta(dia.fecha)}</span>
+                          </span>
+                          <span style={agendaMiniContadorDiaCompacto(activo, alumnosDiaBoton, gruposDiaBoton)}>{alumnosDiaBoton} alumnos · {gruposDiaBoton} grupos</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <article style={agendaDiaCard}>
+                    <header style={agendaDiaHeader}>
+                      <div>
+                        <p style={agendaMiniLabel}>Día seleccionado</p>
+                        <h3 style={{ margin: 0, textTransform: 'capitalize', fontSize: 24 }}>{diaActivo.nombre} · {fechaAgendaCortaConAnio(diaActivo.fecha)}</h3>
+                        <p style={{ margin: '4px 0 0', color: '#64748b' }}>{totalAlumnosDia} alumnos · {totalGruposDia} grupos · Semana {rangoSemanaAgenda(semanaAgendaActiva)}</p>
+                      </div>
+                      <button onClick={() => abrirFormularioAgendaDia(diaActivo.fecha)} style={botonPrincipal}>+ listado</button>
+                    </header>
+
+                    <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+                      {turnosTrabajoDiaAgenda(diaActivo.fecha).map((turno) => (
+                        <div key={`${diaActivo.fecha}-${turno.inicio}`} style={agendaTurnoFila}>
+                          <strong>{turno.etiqueta}</strong>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            {modalidadesAgendaTrabajo.map((modalidad) => (
+                              <button
+                                key={`${diaActivo.fecha}-${turno.inicio}-${modalidad.codigo}`}
+                                onClick={() => abrirFormularioAgendaDia(diaActivo.fecha, turno.inicio, turno.fin, modalidad.codigo)}
+                                style={botonModalidadAgenda(modalidad.codigo)}
+                              >
+                                + {modalidad.nombre}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {sesionesDia.length === 0 ? (
+                      <div style={{ ...agendaVacioMini, marginTop: 12 }}>
+                        <strong>Sin listados en este día.</strong>
+                        <p style={{ margin: '6px 0 10px' }}>Elige turno y modalidad arriba para pegar el listado.</p>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+                        {sesionesDia.map((sesion) => (
+                          <article key={sesion.id} style={agendaSesionCardModalidad(sesion.modalidad)}>
+                            <div style={agendaSesionTop}>
+                              <div>
+                                <div style={agendaBadgeModalidadColor(sesion.modalidad)}>{sesion.modalidad}</div>
+                                <h4 style={{ margin: '8px 0 4px', fontSize: 18 }}>{sesion.titulo}</h4>
+                                <p style={{ margin: 0, color: '#475569' }}>{sesion.hora_inicio?.slice(0, 5)} - {sesion.hora_fin?.slice(0, 5)} · {sesion.estado}</p>
+                              </div>
+                              <div style={agendaSesionContadores}>
+                                <span><strong>{sesion.totalAlumnos}</strong> alumnos</span>
+                                <span><strong>{sesion.totalGrupos}</strong> grupos</span>
+                              </div>
+                            </div>
+                            <div style={agendaAccionesSesion}>
+                              <button onClick={() => abrirSesionAgenda(sesion, sesion.totalGrupos > 0 ? 'grupos' : 'alumnos')} style={botonPrincipal}>Abrir sesión</button>
+                              <button onClick={() => abrirFormularioAgendaDia(sesion.fecha, sesion.hora_inicio?.slice(0, 5), sesion.hora_fin?.slice(0, 5), sesion.modalidad)} style={botonSecundario}>Nuevo listado mismo turno</button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    )}
+                  </article>
+                </div>
+              );
+            })()}
+          </section>
+
+          {(agendaFormularioAbierto || agendaSesionActivaId) && (
+            <section id="trabajo-agenda" style={{ ...agendaBloqueBlanco, border: '2px solid #111827', scrollMarginTop: 16 }}>
+              <div style={agendaCabeceraLinea}>
+                <div>
+                  <h3 style={{ margin: 0 }}>{agendaFormularioAbierto ? 'Pegar listado' : 'Sesión abierta'}</h3>
+                  <p style={{ margin: '4px 0 0', color: '#666' }}>Trabajo directo sin salto automático de pantalla.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setAgendaFormularioAbierto(false);
+                    setAgendaSesionActivaId('');
+                    setAgendaRecomendaciones([]);
+                  }}
+                  style={botonSecundario}
+                >
+                  Cerrar
+                </button>
+              </div>
+
+              {agendaFormularioAbierto && (
+                <article id="agenda-formulario-listado" style={{ ...tarjetaResaltada, scrollMarginTop: 16 }}>
+                  <h3 style={{ marginTop: 0 }}>Pegar listado de Aimharder</h3>
+                  <p>
+                    Día seleccionado: <strong>{formatearFecha(agendaForm.fecha)}</strong>. Este listado pertenece SOLO a la modalidad y turno que ves abajo.
+                  </p>
+
+                  <div style={gridFormulario}>
+                    <label style={labelCampo}>Modalidad
+                      <select value={agendaForm.modalidad} onChange={(e) => setAgendaForm({ ...agendaForm, modalidad: e.target.value })}>
+                        <option value="BABY">Baby</option>
+                        <option value="OCIO">Ocio</option>
+                        <option value="INTENSIVOS">Intensivo</option>
+                        <option value="PARTICULAR">Particular</option>
+                      </select>
+                    </label>
+                    <label style={labelCampo}>Hora inicio
+                      <input type="time" value={agendaForm.hora_inicio} onChange={(e) => setAgendaForm({ ...agendaForm, hora_inicio: e.target.value })} />
+                    </label>
+                    <label style={labelCampo}>Hora fin
+                      <input type="time" value={agendaForm.hora_fin} onChange={(e) => setAgendaForm({ ...agendaForm, hora_fin: e.target.value })} />
+                    </label>
+                    <label style={labelCampo}>Lugar
+                      <input value={agendaForm.lugar} onChange={(e) => setAgendaForm({ ...agendaForm, lugar: e.target.value })} />
+                    </label>
+                  </div>
+
+                  <label style={labelCampo}>Listado del día
+                    <textarea
+                      id="agenda-textarea-listado"
+                      value={agendaForm.texto_listado}
+                      onChange={(e) => setAgendaForm({ ...agendaForm, texto_listado: e.target.value })}
+                      placeholder="Pega aquí el listado de Aimharder..."
+                      rows={8}
+                    />
+                  </label>
+
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button onClick={volcarListadoAgendaOperativa} style={botonPrincipal}>1 · Volcar listado y crear sesión</button>
+                    <button onClick={() => setAgendaFormularioAbierto(false)} style={botonSecundario}>Cancelar</button>
+                  </div>
+                </article>
+              )}
+
+              {!agendaFormularioAbierto && agendaSesionActivaId && (
+                <article id="agenda-sesion-trabajo" style={{ ...tarjetaResaltada, scrollMarginTop: 16 }}>
+                  <h3 style={{ marginTop: 0 }}>Sesión seleccionada</h3>
+
+                  <div style={gridMiniMetricas}>
+                    <div style={miniMetrica}><strong>{agendaAlumnosSesion.length}</strong><span>alumnos</span></div>
+                    <div style={miniMetrica}><strong>{agendaGruposSesion.length}</strong><span>grupos creados</span></div>
+                    <div style={miniMetrica}><strong>{agendaAlumnosSesion.filter((a) => a.estado_en_listado === 'NUEVO').length}</strong><span>nuevos</span></div>
+                    <div style={miniMetrica}><strong>{agendaAlumnosSesion.filter((a) => a.estado_en_listado === 'CONOCIDO').length}</strong><span>conocidos</span></div>
+                  </div>
+
+                  <details style={{ marginTop: 12 }}>
+                    <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>Alumnos detectados · editar niveles y fichas</summary>
+                    <div style={{ ...avisoNeutral, margin: '10px 0 12px' }}>Si cambias un nivel aquí, se guarda como nivel real de la ficha y se usa en toda la app.</div>
+                    <div style={{ display: 'grid', gap: 8 }}>
+                      {agendaAlumnosSesion.map((alumno) => (
+                        <div key={alumno.sesion_alumno_id} style={agendaAlumnoLinea}>
+                          <div>
+                            <strong>{alumno.alumno}</strong>
+                            <p style={{ margin: '4px 0 0' }}>{alumno.estado_en_listado} · Nivel: <strong>{alumno.nivel_usado || 'SIN NIVEL'}</strong> · {alumno.origen_nivel || '-'} · Pista {alumno.pista_recomendada || '-'}</p>
+                            <p style={{ margin: '4px 0 0', color: '#666' }}>{alumno.estado_ficha}</p>
+                          </div>
+                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', maxWidth: 560 }}>
+                            <button onClick={() => editarNivelAlumnoAgenda(alumno)} style={botonMini}>Editar nivel</button>
+                            <button onClick={() => editarNombreAlumnoAgenda(alumno)} style={botonMini}>Editar nombre</button>
+                            <button onClick={() => quitarAlumnoAgenda(alumno)} style={botonPeligroMini}>Quitar sesión</button>
+                            <button onClick={() => borrarAlumnoBaseAgenda(alumno)} style={botonPeligroMini}>Borrar ficha</button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
+                    <button onClick={() => generarRecomendacionAgendaSesion(agendaSesionActivaId)} style={botonPrincipal}>Generar grupos recomendados</button>
+                    <button onClick={crearGrupoManualAgenda} style={botonSecundario}>Crear grupo manual vacío</button>
+                    {agendaGruposSesion.length > 0 && <button onClick={copiarMensajeWhatsAppPapisSesionActual} style={botonSecundario}>Ver WhatsApp papis</button>}
+                    <button onClick={borrarSesionAgendaActual} style={botonPeligro}>Borrar sesión/listado de prueba</button>
+                  </div>
+
+                  {gruposAgendaManuales.length > 0 && (
+                    <div style={{ ...avisoNeutral, marginTop: 12 }}>
+                      <strong>Grupos manuales preparados:</strong>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                        {gruposAgendaManuales.map((grupoManual) => (
+                          <span key={`chip-manual-agenda-${grupoManual}`} style={agendaBadgeModalidad}>
+                            {grupoManual}
+                          </span>
+                        ))}
+                      </div>
+                      <p style={{ margin: '8px 0 0' }}>
+                        Ahora en la propuesta usa “Mover a” para mandar alumnos a esos grupos. Si no ves alumnos debajo, pulsa “Generar grupos recomendados”.
+                      </p>
+                    </div>
+                  )}
+
+                  {gruposRecomendadosAgenda().length > 0 && (
+                    <section style={{ marginTop: 16 }}>
+                      <h4>Propuesta editable antes de publicar</h4>
+                      <div style={{ ...avisoCompleto, marginBottom: 12 }}>
+                        Puedes crear un grupo manual vacío y mover niños. Ejemplo: sacar los 3 B+ a “Grupo B+” y dejar C/D juntos.
+                      </div>
+                      <div style={{ display: 'grid', gap: 12 }}>
+                        {gruposRecomendadosAgenda().map(([nombreGrupo, alumnosGrupo], indiceGrupoAgenda) => {
+                          const primero = alumnosGrupo[0];
+                          const trabajoAuto = trabajoAgendaGrupo[nombreGrupo] || trabajoDiarioAutomaticoAgenda(nombreGrupo, alumnosGrupo);
+                          const puntoDefecto = puntosEncuentroAgenda[indiceGrupoAgenda % puntosEncuentroAgenda.length];
+                          const nombreGrupoVisible = nombreGrupoPropuestaApp(alumnosGrupo, indiceGrupoAgenda);
+                          const observacionesAutoGrupo = observacionesAutomaticasGrupoAgenda(alumnosGrupo);
+                          const validacionPedagogicaGrupo = textoValidacionPedagogicaGrupoApp(alumnosGrupo);
+
+                          return (
+                            <article key={nombreGrupo} style={{ ...agendaGrupoPropuesta, ...estiloGrupoPorPistaApp({ pista: primero.pista_recomendada, nivel_grupo: primero.nivel_resumen }) }}>
+                              <div style={agendaGrupoLinea}>
+                                <h3 style={{ margin: 0 }}>{nombreGrupoVisible}</h3>
+                                <span>{alumnosGrupo.length} niños</span>
+                              </div>
+                              <p><strong>Bloque:</strong> {primero.bloque_tecnico} · <strong>Pista:</strong> {primero.pista_recomendada}</p>
+                              <div style={{ ...estiloValidacionPedagogicaApp(validacionPedagogicaGrupo.estado), marginBottom: 10 }}>
+                                <strong>{validacionPedagogicaGrupo.titulo}</strong>
+                                {validacionPedagogicaGrupo.mensajes.length > 0 && (
+                                  <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+                                    {validacionPedagogicaGrupo.mensajes.map((mensaje) => <li key={`${nombreGrupo}-${mensaje}`}>{mensaje}</li>)}
+                                  </ul>
+                                )}
+                              </div>
+                              <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
+                                {alumnosGrupo.map((alumno) => (
+                                  <div key={`${nombreGrupo}-${alumno.alumno_id}`} style={agendaAlumnoLinea}>
+                                    <div>
+                                      <strong>{alumno.alumno}</strong>
+                                      <p style={{ margin: '4px 0 0' }}>{alumno.nivel_resumen} · {alumno.pista_alumno}{alumno.alertas ? ` · ${alumno.alertas}` : ''}</p>
+                                    </div>
+                                    <label style={{ ...labelCampo, minWidth: 240 }}>Mover a
+                                      <select value={destinoActualAlumnoAgenda(alumno)} onChange={(e) => moverAlumnoAgendaRecomendado(alumno.alumno_id, e.target.value)}>
+                                        {nombresGruposAgendaBase().map((grupoDestino) => (
+                                          <option key={`${alumno.alumno_id}-${grupoDestino}`} value={grupoDestino}>{grupoDestino}</option>
+                                        ))}
+                                        <option value="__NO_CREAR__">Dejar fuera de momento</option>
+                                      </select>
+                                    </label>
+                                  </div>
+                                ))}
+                              </div>
+
+                              <div style={gridFormulario}>
+                                <label style={labelCampo}>Entrenador
+                                  <select value={entrenadoresAgendaGrupo[nombreGrupo] || ''} onChange={(e) => setEntrenadoresAgendaGrupo({ ...entrenadoresAgendaGrupo, [nombreGrupo]: e.target.value })}>
+                                    <option value="">Selecciona entrenador</option>
+                                    {entrenadoresDisponiblesSesionActiva().map((entrenador) => (
+                                      <option key={entrenador.entrenador_id} value={entrenador.entrenador_id}>{entrenador.nombre_completo}</option>
+                                    ))}
+                                  </select>
+                                </label>
+                                <label style={labelCampo}>Punto encuentro
+                                  <select value={puntosAgendaGrupo[nombreGrupo] || puntoDefecto} onChange={(e) => setPuntosAgendaGrupo({ ...puntosAgendaGrupo, [nombreGrupo]: e.target.value })}>
+                                    {puntosEncuentroAgenda.map((punto) => <option key={`punto-agenda-${punto}`} value={punto}>Punto {punto}</option>)}
+                                  </select>
+                                </label>
+                                <label style={labelCampo}>Segundo entrenador
+                                  <select value={entrenadoresApoyoAgendaGrupo[nombreGrupo] || ''} onChange={(e) => setEntrenadoresApoyoAgendaGrupo({ ...entrenadoresApoyoAgendaGrupo, [nombreGrupo]: e.target.value })}>
+                                    <option value="">Sin segundo entrenador</option>
+                                    {entrenadoresDisponiblesSesionActiva()
+                                      .filter((entrenador) => entrenador.entrenador_id !== (entrenadoresAgendaGrupo[nombreGrupo] || ''))
+                                      .map((entrenador) => (
+                                        <option key={`${nombreGrupo}-apoyo-${entrenador.entrenador_id}`} value={entrenador.entrenador_id}>{entrenador.nombre_completo}</option>
+                                      ))}
+                                  </select>
+                                </label>
+                              </div>
+
+                              {necesitaDosEntrenadoresGrupoApp(alumnosGrupo) && (
+                                <div style={{ ...avisoPendiente, marginBottom: 10 }}>{textoNecesidadDosEntrenadoresApp(alumnosGrupo)}</div>
+                              )}
+
+                              {(entrenadoresAgendaGrupo[nombreGrupo] && entrenadoresApoyoAgendaGrupo[nombreGrupo]) && (
+                                <details style={{ ...avisoNeutral, marginBottom: 10 }}>
+                                  <summary style={{ cursor: 'pointer', fontWeight: 900 }}>Reparto de reportes / niños</summary>
+                                  <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                                    {alumnosGrupo.map((alumno, indiceAlumnoReparto) => (
+                                      <label key={`${nombreGrupo}-resp-${alumno.alumno_id}`} style={labelCampo}>
+                                        {alumno.alumno}
+                                        <select
+                                          value={responsableReporteAgendaApp(
+                                            nombreGrupo,
+                                            alumno.alumno_id,
+                                            indiceAlumnoReparto,
+                                            entrenadoresAgendaGrupo[nombreGrupo],
+                                            entrenadoresApoyoAgendaGrupo[nombreGrupo]
+                                          )}
+                                          onChange={(e) => setResponsablesReporteAgendaGrupo({
+                                            ...responsablesReporteAgendaGrupo,
+                                            [`${nombreGrupo}__${alumno.alumno_id}`]: e.target.value,
+                                          })}
+                                        >
+                                          <option value={entrenadoresAgendaGrupo[nombreGrupo]}>{entrenadores.find((entrenador) => entrenador.entrenador_id === entrenadoresAgendaGrupo[nombreGrupo])?.nombre_completo || 'Entrenador 1'}</option>
+                                          <option value={entrenadoresApoyoAgendaGrupo[nombreGrupo]}>{entrenadores.find((entrenador) => entrenador.entrenador_id === entrenadoresApoyoAgendaGrupo[nombreGrupo])?.nombre_completo || 'Entrenador 2'}</option>
+                                        </select>
+                                      </label>
+                                    ))}
+                                  </div>
+                                </details>
+                              )}
+
+                              <label style={labelCampo}>Trabajo diario automático según nivel/pista
+                                <textarea value={trabajoAuto} onChange={(e) => setTrabajoAgendaGrupo({ ...trabajoAgendaGrupo, [nombreGrupo]: e.target.value })} rows={4} />
+                              </label>
+                              {observacionesAutoGrupo && <div style={{ ...avisoCompleto, marginBottom: 10 }}><strong>Observaciones</strong><div style={{ marginTop: 6 }}>{formatearObservaciones(observacionesAutoGrupo)}</div></div>}
+                              <label style={labelCampo}>Observaciones manuales · opcional
+                                <textarea value={observacionesAgendaGrupo[nombreGrupo] || ''} onChange={(e) => setObservacionesAgendaGrupo({ ...observacionesAgendaGrupo, [nombreGrupo]: e.target.value })} rows={3} />
+                              </label>
+                              <button onClick={() => crearGrupoAgendaDesdeRecomendacion(nombreGrupo, alumnosGrupo, nombreGrupoVisible)} style={botonPrincipal}>Crear este grupo revisado</button>
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  )}
+
+                  {agendaGruposSesion.length > 0 && (
+                    <section style={{ marginTop: 16 }}>
+                      <h4>Grupos creados en este día</h4>
+                      <div style={{ display: 'grid', gap: 10 }}>
+                        {agendaGruposSesion.map((grupo, indiceGrupoCreado) => (
+                          <article key={grupo.grupo_id} style={estiloGrupoPorPistaApp(grupo)}>
+                            <div style={agendaGrupoLinea}>
+                              <strong>{nombreGrupoVisualApp(grupo, indiceGrupoCreado)}</strong>
+                              <span>{grupo.entrenador || 'Sin entrenador'} · {grupo.total_alumnos} niños · {grupo.publicado ? 'Publicado' : 'Borrador'}</span>
+                            </div>
+                            <p><span style={estiloBadgePistaApp(grupo.pista)}>{etiquetaPistaVisualApp(grupo.pista)}</span> · Punto {grupo.punto_encuentro || '-'}</p>
+                            {grupo.alumnos_lista && <div style={listaAlumnosGrupoCompacta}>{grupo.alumnos_lista.split(' || ').map((alumnoGrupo, indice) => <span key={`${grupo.grupo_id}-${indice}`}>{alumnoGrupo}</span>)}</div>}
+                            <details style={panelTrabajoGrupo}>
+                              <summary style={summaryTrabajoGrupo}>Trabajo diario y observaciones</summary>
+                              <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+                                <label style={labelCampo}>Trabajo diario visible para entrenador
+                                  <textarea value={trabajoGrupoCreadoEditando[grupo.grupo_id] ?? grupo.trabajo_diario ?? ''} onChange={(e) => setTrabajoGrupoCreadoEditando({ ...trabajoGrupoCreadoEditando, [grupo.grupo_id]: e.target.value })} rows={4} style={textareaCampo} />
+                                </label>
+                                <label style={labelCampo}>Observaciones
+                                  <textarea value={observacionesGrupoCreadoEditando[grupo.grupo_id] ?? normalizarLineasObservacionesGrupoApp(grupo.observaciones_importantes, 12) ?? ''} onChange={(e) => setObservacionesGrupoCreadoEditando({ ...observacionesGrupoCreadoEditando, [grupo.grupo_id]: e.target.value })} rows={4} style={textareaCampo} />
+                                </label>
+                                <button onClick={() => guardarTrabajoObservacionesGrupoAgenda(grupo)} style={botonPrincipal}>Guardar trabajo y observaciones</button>
+                              </div>
+                            </details>
+                            <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
+                              <label style={labelCampo}>Cambiar entrenador si hay baja
+                                <select value={grupo.entrenador_id || ''} onChange={(e) => cambiarEntrenadorGrupoAgenda(grupo, e.target.value)} style={selectCampo}>
+                                  <option value="">Selecciona entrenador disponible</option>
+                                  {(grupo.entrenador_id && !entrenadoresDisponiblesSesionActiva().some((entrenador) => entrenador.entrenador_id === grupo.entrenador_id) ? [entrenadores.find((entrenador) => entrenador.entrenador_id === grupo.entrenador_id)].filter(Boolean) as EntrenadorResumen[] : []).concat(entrenadoresDisponiblesSesionActiva()).map((entrenador) => (
+                                    <option key={`${grupo.grupo_id}-cambio-${entrenador.entrenador_id}`} value={entrenador.entrenador_id}>{entrenador.nombre_completo}</option>
+                                  ))}
+                                </select>
+                              </label>
+                              <button onClick={() => borrarGrupoAgenda(grupo)} style={botonPeligroMini}>Borrar grupo</button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+                </article>
+              )}
+            </section>
+          )}
+        </section>
+      )}
+
+
+
+      {pantalla === 'ocioAlumnos' && (() => {
+        const totalOcio = ocioAlumnos.length;
+        const ocioSinGrupo = ocioAlumnos.filter((alumno) => !alumno.grupo_id).length;
+        const ocioSinNivel = ocioAlumnos.filter((alumno) => !(alumno.nivel_usado || alumno.nivel)).length;
+        const ocioConReportes = ocioAlumnos.filter((alumno) => Number(alumno.total_reportes || 0) > 0).length;
+
+        const estiloOcioHero = {
+          ...agendaHero,
+          background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 48%, #f8fafc 100%)',
+          border: '1px solid #bbf7d0',
+          boxShadow: '0 18px 45px rgba(22, 163, 74, 0.10)'
+        };
+
+        const tarjetaMetricaOcio = (color: string, fondo: string) => ({
+          ...miniTarjetaBlanca,
+          border: `1px solid ${color}33`,
+          background: fondo,
+          minHeight: 82,
+          display: 'grid',
+          alignContent: 'center'
+        });
+
+        return (
+          <section style={{ display: 'grid', gap: 16 }}>
+            <article style={estiloOcioHero}>
+              <div>
+                <span style={{ ...agendaBadgeModalidad, background: '#ecfdf5', color: '#047857', borderColor: '#bbf7d0' }}>FICHAS · OCIO</span>
+                <h2 style={{ margin: '10px 0 0' }}>Alumnos Ocio</h2>
+                <p style={{ margin: '8px 0 0', color: '#475569', fontWeight: 650 }}>
+                  Base anual separada: día fijo, turno fijo, grupo estable, nivel y reportes.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <button onClick={() => setPantalla('alumnos')} style={{ ...botonSecundario, borderColor: '#ddd6fe', color: '#6d28d9', background: '#f5f3ff' }}>Ver alumnos Baby/Intensivos</button>
+                <button onClick={abrirNuevoAlumnoOcio} style={{ ...botonPrincipal, background: '#16a34a', boxShadow: '0 12px 25px rgba(22, 163, 74, 0.22)' }}>+ Añadir alumno Ocio</button>
+              </div>
+            </article>
+
+            <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+              <div style={tarjetaMetricaOcio('#16a34a', '#f0fdf4')}>
+                <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>TOTAL OCIO</span>
+                <strong style={{ fontSize: 28 }}>{totalOcio}</strong>
+                <span>alumnos</span>
+              </div>
+              <div style={tarjetaMetricaOcio('#dc2626', '#fef2f2')}>
+                <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>SIN GRUPO</span>
+                <strong style={{ fontSize: 28 }}>{ocioSinGrupo}</strong>
+                <span>pendientes</span>
+              </div>
+              <div style={tarjetaMetricaOcio('#f97316', '#fff7ed')}>
+                <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>SIN NIVEL</span>
+                <strong style={{ fontSize: 28 }}>{ocioSinNivel}</strong>
+                <span>revisar</span>
+              </div>
+              <div style={tarjetaMetricaOcio('#2563eb', '#eff6ff')}>
+                <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>CON REPORTES</span>
+                <strong style={{ fontSize: 28 }}>{ocioConReportes}</strong>
+                <span>histórico</span>
+              </div>
+            </section>
+
+            {mostrarNuevoOcio && (
+              <article style={{ ...tarjetaResaltada, borderColor: '#bbf7d0', background: '#f0fdf4' }}>
+                <h3 style={{ marginTop: 0 }}>{ocioAlumnoEditandoId ? 'Editar alumno Ocio' : 'Añadir alumno Ocio'}</h3>
+                <div style={gridFormulario}>
+                  <label style={labelCampo}>Nombre
+                    <input value={ocioNombre} onChange={(e) => setOcioNombre(e.target.value)} placeholder="Nombre completo" />
+                  </label>
+                  <label style={labelCampo}>Nivel
+                    <select value={ocioNivel} onChange={(e) => setOcioNivel(e.target.value)}>
+                      <option value="">Pendiente</option>
+                      {opcionesNivel.map((nivel) => <option key={nivel} value={nivel}>{nivel}</option>)}
+                    </select>
+                  </label>
+                  <label style={labelCampo}>Fecha nacimiento
+                    <input type="date" value={ocioFechaNacimiento} onChange={(e) => setOcioFechaNacimiento(e.target.value)} />
+                  </label>
+                  <label style={labelCampo}>Día fijo
+                    <select value={ocioDiaFijo} onChange={(e) => setOcioDiaFijo(e.target.value)}>
+                      <option>Jueves</option>
+                      <option>Sábado</option>
+                      <option>Domingo</option>
+                      <option>Miércoles</option>
+                      <option>Viernes</option>
+                    </select>
+                  </label>
+                  <label style={labelCampo}>Hora inicio
+                    <input type="time" value={ocioHoraInicio} onChange={(e) => setOcioHoraInicio(e.target.value)} />
+                  </label>
+                  <label style={labelCampo}>Hora fin
+                    <input type="time" value={ocioHoraFin} onChange={(e) => setOcioHoraFin(e.target.value)} />
+                  </label>
+                </div>
+                <label style={{ ...labelCampo, marginTop: 12 }}>Observaciones
+                  <textarea value={ocioObservaciones} onChange={(e) => setOcioObservaciones(e.target.value)} placeholder="Observaciones internas de Ocio" rows={3} />
+                </label>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                  <button onClick={guardarAlumnoOcio} style={{ ...botonPrincipal, background: '#16a34a' }}>Guardar alumno</button>
+                  <button onClick={() => { limpiarFormularioOcioAlumno(); setMostrarNuevoOcio(false); }} style={botonSecundario}>Cancelar</button>
+                </div>
+              </article>
+            )}
+
+            <details style={agendaBloqueBlanco}>
+              <summary style={{ cursor: 'pointer', fontWeight: 900, color: '#047857' }}>Importar listado Ocio desde Aimharder</summary>
+              <div style={{ marginTop: 12 }}>
+                <div style={gridFormulario}>
+                  <label style={labelCampo}>Día fijo para este volcado
+                    <select value={ocioDiaFijo} onChange={(e) => setOcioDiaFijo(e.target.value)}>
+                      <option>Jueves</option><option>Sábado</option><option>Domingo</option><option>Miércoles</option><option>Viernes</option>
+                    </select>
+                  </label>
+                  <label style={labelCampo}>Hora inicio
+                    <input type="time" value={ocioHoraInicio} onChange={(e) => setOcioHoraInicio(e.target.value)} />
+                  </label>
+                  <label style={labelCampo}>Hora fin
+                    <input type="time" value={ocioHoraFin} onChange={(e) => setOcioHoraFin(e.target.value)} />
+                  </label>
+                </div>
+                <textarea value={textoImportarOcio} onChange={(e) => setTextoImportarOcio(e.target.value)} placeholder="Pega aquí listado Aimharder de Ocio" rows={7} style={{ width: '100%', marginTop: 10 }} />
+                <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                  <button onClick={importarOcioAimharder} style={{ ...botonPrincipal, background: '#16a34a' }}>Importar alumnos Ocio</button>
+                  <button onClick={() => { setTextoImportarOcio(''); setResultadoImportarOcio([]); }} style={botonSecundario}>Limpiar</button>
+                </div>
+                {resultadoImportarOcio.length > 0 && (
+                  <div style={{ ...avisoCompleto, marginTop: 10 }}>
+                    <strong>{resultadoImportarOcio.length} alumnos importados/actualizados.</strong>
+                    <ul style={{ margin: '6px 0 0 18px' }}>
+                      {resultadoImportarOcio.map((item, indice) => <li key={`${item.alumno}-${indice}`}>{item.alumno} · Nivel {item.nivel}</li>)}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </details>
+
+            <article style={agendaBloqueBlanco}>
+              <input value={busquedaOcio} onChange={(e) => setBusquedaOcio(e.target.value)} placeholder="Buscar alumno Ocio..." style={{ ...buscador, margin: 0 }} />
+            </article>
+
+            <div style={{ display: 'grid', gap: 12 }}>
+              {ocioAlumnosFiltrados.map((alumno) => {
+                const sinGrupo = !alumno.grupo_id;
+                return (
+                  <article key={alumno.alumno_id} style={{ ...tarjeta, border: `1px solid ${sinGrupo ? '#fecaca' : '#bbf7d0'}`, background: sinGrupo ? 'linear-gradient(135deg,#fff 0%,#fef2f2 100%)' : 'linear-gradient(135deg,#fff 0%,#f0fdf4 100%)', boxShadow: '0 14px 30px rgba(15, 23, 42, 0.07)' }}>
+                    <div style={agendaCabeceraLinea}>
+                      <div>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={{ ...agendaBadgeModalidad, background: '#ecfdf5', color: '#047857', borderColor: '#bbf7d0' }}>OCIO</span>
+                          <span style={{ ...agendaBadgeModalidad, background: sinGrupo ? '#fef2f2' : '#f8fafc', color: sinGrupo ? '#dc2626' : '#475569', borderColor: sinGrupo ? '#fecaca' : '#e2e8f0' }}>
+                            {sinGrupo ? 'Sin grupo estable' : alumno.grupo_estable}
+                          </span>
+                          <span style={{ ...agendaBadgeModalidad, background: '#eff6ff', color: '#2563eb', borderColor: '#bfdbfe' }}>Nivel {alumno.nivel_usado || '-'}</span>
+                        </div>
+                        <h3 style={{ margin: 0 }}>{alumno.alumno}</h3>
+                        <p style={{ margin: '8px 0 0', color: '#475569', fontWeight: 700 }}>
+                          {alumno.dia_fijo || alumno.grupo_dia || '-'} · {(alumno.hora_inicio_fija || alumno.grupo_hora_inicio || '').slice(0,5)}-{(alumno.hora_fin_fija || alumno.grupo_hora_fin || '').slice(0,5)} · Reportes: {alumno.total_reportes || 0}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <button onClick={() => editarAlumnoOcio(alumno)} style={botonSecundario}>Editar ficha</button>
+                        <button onClick={() => abrirEvaluacionOcio(alumno)} style={botonSecundario}>Ver evaluación</button>
+                        <button onClick={() => eliminarAlumnoOcio(alumno)} style={botonPeligro}>Eliminar</button>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                      <label style={{ ...labelCampo, flex: 1, minWidth: 240 }}>Mover a grupo estable
+                        <select value={alumno.grupo_id || ''} onChange={(e) => asignarAlumnoGrupoOcio(alumno.alumno_id, e.target.value)}>
+                          <option value="">Sin grupo</option>
+                          {ocioGrupos.map((grupo) => <option key={grupo.grupo_id} value={grupo.grupo_id}>{grupo.nombre_grupo} · {grupo.dia_semana} {(grupo.hora_inicio || '').slice(0,5)}</option>)}
+                        </select>
+                      </label>
+                      {alumno.grupo_id && <button onClick={() => quitarAlumnoGrupoOcio(alumno.alumno_id, alumno.grupo_id)} style={botonSecundario}>Quitar del grupo</button>}
+                    </div>
+
+                    {alumno.observaciones && <p style={{ ...avisoNeutral, marginTop: 10 }}><strong>Obs:</strong> {alumno.observaciones}</p>}
+
+                    {evaluacionOcioActivaId === alumno.alumno_id && (
+                      <div style={{ ...miniTarjetaBlanca, marginTop: 12 }}>
+                        <h4 style={{ marginTop: 0 }}>Vista previa evaluación Ocio</h4>
+                        <pre style={{ whiteSpace: 'pre-wrap', background: '#f8fafc', padding: 12, borderRadius: 14, maxHeight: 360, overflow: 'auto' }}>{evaluacionOcioTexto}</pre>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <button onClick={copiarEvaluacionOcio} style={{ ...botonPrincipal, background: '#16a34a' }}>Copiar para ChatGPT</button>
+                          <button onClick={() => { setEvaluacionOcioActivaId(null); setEvaluacionOcioTexto(''); }} style={botonSecundario}>Cerrar</button>
+                        </div>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })()}
+
+      {pantalla === 'ocioGrupos' && (
+        <section style={{ display: 'grid', gap: 18 }}>
+          <article style={agendaHero}>
+            <div>
+              <h2 style={{ margin: 0 }}>Ocio · Grupos estables</h2>
+              <p style={{ margin: '8px 0 0' }}>Grupos anuales estables de septiembre a junio. El entrenador puede cambiar cada semana según disponibilidad.</p>
+            </div>
+            <button onClick={abrirNuevoGrupoOcio} style={botonPrincipal}>+ Crear grupo estable</button>
+          </article>
+
+          {mostrarFormularioOcioGrupo && (
+            <article style={tarjetaResaltada}>
+              <h3 style={{ marginTop: 0 }}>{ocioGrupoForm.id ? 'Editar grupo estable' : 'Crear grupo estable Ocio'}</h3>
+              <div style={gridFormulario}>
+                <label style={labelCampo}>Nombre grupo
+                  <input value={ocioGrupoForm.nombre} onChange={(e) => setOcioGrupoForm({ ...ocioGrupoForm, nombre: e.target.value })} placeholder="Grupo Ocio Sábado A" />
+                </label>
+                <label style={labelCampo}>Día
+                  <select value={ocioGrupoForm.dia} onChange={(e) => setOcioGrupoForm({ ...ocioGrupoForm, dia: e.target.value })}>
+                    <option>Jueves</option><option>Sábado</option><option>Domingo</option><option>Miércoles</option><option>Viernes</option>
+                  </select>
+                </label>
+                <label style={labelCampo}>Hora inicio
+                  <input type="time" value={ocioGrupoForm.horaInicio} onChange={(e) => setOcioGrupoForm({ ...ocioGrupoForm, horaInicio: e.target.value })} />
+                </label>
+                <label style={labelCampo}>Hora fin
+                  <input type="time" value={ocioGrupoForm.horaFin} onChange={(e) => setOcioGrupoForm({ ...ocioGrupoForm, horaFin: e.target.value })} />
+                </label>
+                <label style={labelCampo}>Nivel grupo
+                  <select value={ocioGrupoForm.nivel} onChange={(e) => setOcioGrupoForm({ ...ocioGrupoForm, nivel: e.target.value })}>
+                    {opcionesNivel.map((nivel) => <option key={nivel} value={nivel}>{nivel}</option>)}
+                  </select>
+                </label>
+                <label style={labelCampo}>Pista
+                  <select value={ocioGrupoForm.pista} onChange={(e) => setOcioGrupoForm({ ...ocioGrupoForm, pista: e.target.value })}>
+                    {opcionesPista.map((pista) => <option key={pista} value={pista}>{pista}</option>)}
+                  </select>
+                </label>
+                <label style={labelCampo}>Punto
+                  <select value={ocioGrupoForm.punto} onChange={(e) => setOcioGrupoForm({ ...ocioGrupoForm, punto: e.target.value })}>
+                    {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((punto) => <option key={punto} value={punto}>Punto {punto}</option>)}
+                  </select>
+                </label>
+              </div>
+              <label style={{ ...labelCampo, marginTop: 12 }}>Observaciones de grupo
+                <textarea value={ocioGrupoForm.observaciones} onChange={(e) => setOcioGrupoForm({ ...ocioGrupoForm, observaciones: e.target.value })} rows={3} />
+              </label>
+              <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                <button onClick={guardarGrupoOcio} style={botonPrincipal}>Guardar grupo</button>
+                <button onClick={() => { setMostrarFormularioOcioGrupo(false); setOcioGrupoForm(ocioGrupoFormInicial()); }} style={botonSecundario}>Cancelar</button>
+              </div>
+            </article>
+          )}
+
+          <article style={agendaBloqueBlanco}>
+            <h3 style={{ marginTop: 0 }}>Revisión automática de cambios</h3>
+            {ocioRecomendacionesCambio.filter((item) => item.recomendacion !== 'OK').length === 0 ? (
+              <p style={{ margin: 0, color: '#555' }}>Sin cambios importantes detectados ahora mismo.</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 8 }}>
+                {ocioRecomendacionesCambio.filter((item) => item.recomendacion !== 'OK').map((item) => (
+                  <div key={`${item.alumno_id}-${item.recomendacion}`} style={avisoPendiente}>
+                    <strong>{item.alumno}</strong> · Nivel {item.nivel_alumno || '-'} · Grupo actual: {item.nombre_grupo || 'Sin grupo'}
+                    <br />
+                    {item.recomendacion}
+                  </div>
+                ))}
+              </div>
+            )}
+          </article>
+
+          <article style={agendaBloqueBlanco}>
+            <h3 style={{ marginTop: 0 }}>Grupos por día y turno</h3>
+            <div style={{ display: 'grid', gap: 12 }}>
+              {ocioGrupos.length === 0 && <div style={agendaVacio}>Todavía no hay grupos estables de Ocio.</div>}
+              {ocioGrupos.map((grupo) => (
+                <article key={grupo.grupo_id} style={agendaGrupoResumen}>
+                  <div style={agendaGrupoLinea}>
+                    <strong>{grupo.nombre_grupo}</strong>
+                    <span>{grupo.dia_semana} · {(grupo.hora_inicio || '').slice(0,5)}-{(grupo.hora_fin || '').slice(0,5)} · {grupo.total_alumnos} niños</span>
+                  </div>
+                  <p style={{ margin: '8px 0' }}>{grupo.nivel_grupo || '-'} · {grupo.pista || '-'} · Punto {grupo.punto_encuentro || '-'}</p>
+                  {grupo.alumnos_lista ? (
+                    <ul style={{ margin: '8px 0 0 18px', padding: 0 }}>
+                      {grupo.alumnos_lista.split(' || ').map((alumno, indice) => <li key={`${grupo.grupo_id}-${indice}`}>{alumno}</li>)}
+                    </ul>
+                  ) : <p style={{ margin: 0, color: '#666' }}>Sin alumnos asignados.</p>}
+                  {grupo.observaciones && <p style={{ ...avisoNeutral, marginTop: 10 }}>{grupo.observaciones}</p>}
+                  <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                    <button onClick={() => editarGrupoOcio(grupo)} style={botonSecundario}>Editar grupo</button>
+                    <button onClick={() => copiarWhatsappOcioGrupo(grupo)} style={botonSecundario}>Ver WhatsApp padres</button>
+                    <button onClick={() => eliminarGrupoOcio(grupo)} style={botonPeligro}>Eliminar grupo</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </article>
+        </section>
+      )}
+
+
+      {pantalla === 'ocioCambios' && (
+        <section style={{ display: 'grid', gap: 18 }}>
+          <article style={agendaHeroOcio}>
+            <div>
+              <p style={etiquetaSuperior}>OCIO · SEMANA</p>
+              <h2 style={{ margin: 0 }}>Cambios puntuales</h2>
+              <details style={ayudaDesplegableCompacta}>
+                <summary>¿Para qué sirve?</summary>
+                <p style={{ margin: '8px 0 0' }}>Para mover a un niño solo una semana: por ejemplo de domingo a sábado. Luego se aplica en Preparar semana, WhatsApp, vista entrenador, reportes y cobros.</p>
+              </details>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button onClick={() => abrirFormularioCambioOcio()} style={botonPrincipal}>+ Cambio puntual</button>
+              <button onClick={() => { cargarOcioAlumnos(); cargarOcioGrupos(); cargarOcioCambios(); }} style={botonSecundario}>Actualizar</button>
+            </div>
+          </article>
+
+          <article style={agendaBloqueBlanco}>
+            <h3 style={{ marginTop: 0 }}>Semana</h3>
+            <div style={gridFormulario}>
+              <label style={labelCampo}>Temporada
+                <select value={anioInicioTemporadaAgenda} onChange={(e) => { setAnioInicioTemporadaAgenda(Number(e.target.value)); setSemanaAgendaInicio(''); }}>
+                  {opcionesTemporadaAgenda.map((anio) => <option key={anio} value={anio}>{anio}/{anio + 1}</option>)}
+                </select>
+              </label>
+              <label style={labelCampo}>Mes
+                <select value={mesAgendaActivo} onChange={(e) => { setMesAgenda(e.target.value); setSemanaAgendaInicio(''); }}>
+                  {mesesAgenda.map((mes) => <option key={mes} value={mes}>{capitalizarPrimera(nombreMesAgendaDesdeClave(mes))}</option>)}
+                </select>
+              </label>
+              <label style={labelCampo}>Semana lunes-domingo
+                <select value={semanaAgendaActiva} onChange={(e) => setSemanaAgendaInicio(e.target.value)}>
+                  {semanasAgenda.map((semana) => <option key={semana} value={semana}>Semana {rangoSemanaAgenda(semana)}</option>)}
+                </select>
+              </label>
+            </div>
+          </article>
+
+          {mostrarFormularioOcioCambio && (
+            <article style={{ ...tarjeta, border: '2px solid #111' }}>
+              <h3 style={{ marginTop: 0 }}>{ocioCambioForm.id ? 'Modificar cambio puntual' : 'Nuevo cambio puntual'}</h3>
+              <div style={gridFormulario}>
+                <label style={labelCampo}>Alumno
+                  <select
+                    value={ocioCambioForm.alumnoId}
+                    onChange={(e) => setOcioCambioForm({ ...ocioCambioForm, alumnoId: e.target.value })}
+                  >
+                    <option value="">Seleccionar alumno</option>
+                    {ocioAlumnos
+                      .slice()
+                      .sort((a, b) => a.alumno.localeCompare(b.alumno))
+                      .map((alumno) => (
+                        <option key={`cambio-alumno-${alumno.alumno_id}`} value={alumno.alumno_id}>
+                          {alumno.alumno} · {alumno.grupo_estable || 'Sin grupo'}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+
+                <label style={labelCampo}>Grupo destino puntual
+                  <select
+                    value={ocioCambioForm.grupoDestinoId}
+                    onChange={(e) => {
+                      const grupoDestinoId = e.target.value;
+                      setOcioCambioForm({
+                        ...ocioCambioForm,
+                        grupoDestinoId,
+                        fecha: grupoDestinoId ? fechaDestinoCambioOcio(grupoDestinoId) : ocioCambioForm.fecha,
+                      });
+                    }}
+                  >
+                    <option value="">Seleccionar grupo destino</option>
+                    {ocioGrupos
+                      .filter((grupo) => grupo.grupo_id !== ocioAlumnoCambioSeleccionado?.grupo_id)
+                      .map((grupo) => (
+                        <option key={`destino-${grupo.grupo_id}`} value={grupo.grupo_id}>
+                          {grupo.dia_semana} · {horaCorta(grupo.hora_inicio)}-{horaCorta(grupo.hora_fin)} · {grupo.nombre_grupo} · Punto {grupo.punto_encuentro || '-'}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+
+                <label style={labelCampo}>Fecha del cambio
+                  <input
+                    type="date"
+                    value={ocioCambioForm.fecha || fechaDestinoCambioOcio(ocioCambioForm.grupoDestinoId)}
+                    onChange={(e) => setOcioCambioForm({ ...ocioCambioForm, fecha: e.target.value })}
+                    style={inputCampo}
+                  />
+                </label>
+
+                <label style={labelCampo}>Motivo / nota interna
+                  <textarea
+                    value={ocioCambioForm.motivo}
+                    onChange={(e) => setOcioCambioForm({ ...ocioCambioForm, motivo: e.target.value })}
+                    style={textareaCampo}
+                    placeholder="Ejemplo: viene sábado en vez de domingo esta semana"
+                  />
+                </label>
+              </div>
+
+              {ocioAlumnoCambioSeleccionado && (
+                <div style={{ ...avisoNeutral, marginTop: 10 }}>
+                  Grupo habitual: <strong>{ocioAlumnoCambioSeleccionado.grupo_estable || 'Sin grupo estable'}</strong> · {ocioAlumnoCambioSeleccionado.grupo_dia || ocioAlumnoCambioSeleccionado.dia_fijo || '-'} {horaCorta(ocioAlumnoCambioSeleccionado.grupo_hora_inicio || ocioAlumnoCambioSeleccionado.hora_inicio_fija)}-{horaCorta(ocioAlumnoCambioSeleccionado.grupo_hora_fin || ocioAlumnoCambioSeleccionado.hora_fin_fija)}
+                </div>
+              )}
+
+              {grupoOcioDestinoCambioSeleccionado() && (
+                <div style={{ ...avisoCompleto, marginTop: 10 }}>
+                  Destino: <strong>{grupoOcioDestinoCambioSeleccionado()?.nombre_grupo}</strong> · {grupoOcioDestinoCambioSeleccionado()?.dia_semana} {horaCorta(grupoOcioDestinoCambioSeleccionado()?.hora_inicio)}-{horaCorta(grupoOcioDestinoCambioSeleccionado()?.hora_fin)} · Punto {grupoOcioDestinoCambioSeleccionado()?.punto_encuentro || '-'}
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                <button onClick={guardarCambioPuntualOcio} style={botonPrincipal}>Guardar cambio puntual</button>
+                <button onClick={limpiarFormularioCambioOcio} style={botonSecundario}>Cancelar</button>
+              </div>
+            </article>
+          )}
+
+          <article style={agendaBloqueBlanco}>
+            <div style={agendaCabeceraLinea}>
+              <div>
+                <h3 style={{ marginTop: 0, marginBottom: 6 }}>Cambios de la semana {rangoSemanaAgenda(semanaAgendaActiva || semanaActualAgenda)}</h3>
+                <p style={{ margin: 0, color: '#555' }}>Al preparar semana, el alumno sale de su grupo habitual y entra en el grupo destino.</p>
+              </div>
+              <button onClick={() => setPantalla('ocioSemana')} style={botonSecundario}>Ir a Preparar semana</button>
+            </div>
+
+            {cambiosOcioSemana.length === 0 ? (
+              <div style={agendaVacio}>No hay cambios puntuales para esta semana.</div>
+            ) : (
+              <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+                {cambiosOcioSemana.map((cambio) => (
+                  <div key={`cambio-${cambio.reubicacion_id}`} style={miniTarjetaBlanca}>
+                    <div style={agendaCabeceraLinea}>
+                      <div>
+                        <strong>{cambio.alumno}</strong> · Nivel {cambio.nivel_usado || '-'}
+                        <p style={{ margin: '5px 0 0' }}>
+                          {formatearFecha(cambio.fecha)} · {cambio.grupo_origen || 'Origen'} → <strong>{cambio.grupo_destino}</strong>
+                        </p>
+                        <p style={{ margin: '5px 0 0', color: '#555' }}>
+                          Destino: {cambio.destino_dia_semana || '-'} {horaCorta(cambio.destino_hora_inicio)}-{horaCorta(cambio.destino_hora_fin)} · Punto {cambio.destino_punto || '-'}
+                        </p>
+                        {cambio.motivo && <p style={{ margin: '5px 0 0', color: '#555' }}>{cambio.motivo}</p>}
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <button onClick={() => abrirFormularioCambioOcio(cambio)} style={botonSecundario}>Modificar</button>
+                        <button onClick={() => eliminarCambioPuntualOcio(cambio)} style={botonPeligroMini}>Eliminar</button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </article>
+
+          <details style={panelRevisionIntegradaOcio}>
+            <summary style={summaryChuletaApp}>Revisión de evolución Ocio</summary>
+            <div style={gridResumenInicio}>
+              <div style={miniTarjetaBlanca}><strong>Posibles cambios</strong><br />{ocioRevisionBase.filter((alumno) => alumno.necesita_cambio_revision).length}</div>
+              <div style={miniTarjetaBlanca}><strong>Sin grupo</strong><br />{ocioRevisionBase.filter((alumno) => alumno.sin_grupo_revision).length}</div>
+              <div style={miniTarjetaBlanca}><strong>Sin reportes</strong><br />{ocioRevisionBase.filter((alumno) => alumno.sin_reportes_revision).length}</div>
+            </div>
+            <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+              {ocioRevisionBase.filter((alumno) => alumno.necesita_cambio_revision || alumno.sin_grupo_revision || alumno.sin_reportes_revision).slice(0, 6).map((alumno) => (
+                <div key={`rev-int-${alumno.alumno_id}`} style={avisoNeutral}>
+                  <strong>{alumno.alumno}</strong> · Nivel {alumno.nivel_usado || '-'} · {alumno.recomendacion_revision}
+                </div>
+              ))}
+              {ocioRevisionBase.filter((alumno) => alumno.necesita_cambio_revision || alumno.sin_grupo_revision || alumno.sin_reportes_revision).length === 0 && (
+                <div style={avisoCompleto}>Ocio sin avisos importantes ahora mismo.</div>
+              )}
+            </div>
+          </details>
+        </section>
+      )}
+
+      {pantalla === 'ocioSemana' && (
+        <section style={{ display: 'grid', gap: 18 }}>
+          <article style={agendaHero}>
+            <div>
+              <h2 style={{ margin: 0 }}>Ocio · Preparar semana</h2>
+              <details style={ayudaDesplegableCompacta}>
+                <summary>Chuleta</summary>
+                <p style={{ margin: '8px 0 0' }}>Convierte los grupos estables en grupos reales de esta semana: niños que vienen, cambios puntuales, entrenador disponible, vista entrenador, reportes y cobros.</p>
+              </details>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button onClick={abrirWhatsappSemanaOcio} style={botonSecundario}>Ver WhatsApp semana</button>
+              <button onClick={prepararTodaSemanaOcio} style={botonPrincipal}>Preparar toda la semana</button>
+            </div>
+          </article>
+
+          <article style={agendaBloqueBlanco}>
+            <h3 style={{ marginTop: 0 }}>Semana</h3>
+            <div style={gridFormulario}>
+              <label style={labelCampo}>Temporada
+                <select value={anioInicioTemporadaAgenda} onChange={(e) => { setAnioInicioTemporadaAgenda(Number(e.target.value)); setSemanaAgendaInicio(''); }}>
+                  {opcionesTemporadaAgenda.map((anio) => <option key={anio} value={anio}>{anio}/{anio + 1}</option>)}
+                </select>
+              </label>
+              <label style={labelCampo}>Mes
+                <select value={mesAgendaActivo} onChange={(e) => { setMesAgenda(e.target.value); setSemanaAgendaInicio(''); }}>
+                  {mesesAgenda.map((mes) => <option key={mes} value={mes}>{capitalizarPrimera(nombreMesAgendaDesdeClave(mes))}</option>)}
+                </select>
+              </label>
+              <label style={labelCampo}>Semana lunes-domingo
+                <select value={semanaAgendaActiva} onChange={(e) => setSemanaAgendaInicio(e.target.value)}>
+                  {semanasAgenda.map((semana) => <option key={semana} value={semana}>Semana {rangoSemanaAgenda(semana)}</option>)}
+                </select>
+              </label>
+            </div>
+            <p style={{ marginBottom: 0, color: '#555' }}>Si todavía no pediste disponibilidad de entrenadores, ve a Disponibilidad semanal y crea/manda los turnos antes de asignar entrenador.</p>
+          </article>
+
+          <article style={agendaBloqueBlanco}>
+            <div style={agendaCabeceraLinea}>
+              <div>
+                <h3 style={{ marginTop: 0, marginBottom: 6 }}>Cambios puntuales de esta semana</h3>
+                <p style={{ margin: 0, color: '#555' }}>Estos cambios se aplican al preparar grupos, al WhatsApp semanal y a la vista entrenador.</p>
+              </div>
+              <button onClick={() => setPantalla('ocioCambios')} style={botonSecundario}>Gestionar cambios</button>
+            </div>
+            {cambiosOcioSemana.length === 0 ? (
+              <p style={{ marginBottom: 0, color: '#555' }}>No hay cambios puntuales para la semana seleccionada.</p>
+            ) : (
+              <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                {cambiosOcioSemana.map((cambio) => (
+                  <div key={`cambio-resumen-${cambio.reubicacion_id}`} style={avisoNeutral}>
+                    <strong>{cambio.alumno}</strong> · {formatearFecha(cambio.fecha)} · {cambio.grupo_origen || 'Origen'} → {cambio.grupo_destino || 'Destino'}
+                    {cambio.motivo ? ` · ${cambio.motivo}` : ''}
+                  </div>
+                ))}
+              </div>
+            )}
+          </article>
+
+          {ocioGrupos.length === 0 ? (
+            <div style={agendaVacio}>No hay grupos estables de Ocio. Primero crea grupos en Ocio → Grupos estables.</div>
+          ) : (
+            <div style={{ display: 'grid', gap: 12 }}>
+              {ocioGrupos.map((grupo) => {
+                const fecha = fechaGrupoOcioSemana(grupo);
+                const alumnosGrupo = alumnosGrupoOcioEstable(grupo.grupo_id);
+                const presentes = alumnosGrupo.filter((alumno) => alumnoVieneOcioSemana(alumno.alumno_id));
+                const observacionesAutoGrupoOcio = observacionesAutomaticasGrupoOcio(presentes);
+                const disponibles = entrenadoresDisponiblesParaTurno(fecha, grupo.hora_inicio, grupo.hora_fin);
+                const entrenadorSeleccionado = entrenadorSeleccionadoOcioSemana(grupo.grupo_id);
+                const categoria = categoriaOcioGrupo(grupo);
+
+                return (
+                  <article key={`ocio-semana-${grupo.grupo_id}`} style={tarjeta}>
+                    <div style={agendaCabeceraLinea}>
+                      <div>
+                        <h3 style={{ margin: 0 }}>{nombreGrupoSemanalOcio(grupo)}</h3>
+                        <p style={{ margin: '6px 0 0' }}>
+                          {capitalizarPrimera(grupo.dia_semana)} {formatearFecha(fecha)} · {horaCorta(grupo.hora_inicio)}-{horaCorta(grupo.hora_fin)} · {categoria} · Punto {grupo.punto_encuentro || '-'}
+                        </p>
+                        <p style={{ margin: '6px 0 0', color: '#555' }}>{presentes.length}/{alumnosGrupo.length} vienen esta semana</p>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <button onClick={() => prepararGrupoOcioSemana(grupo)} style={botonPrincipal}>Preparar grupo</button>
+                      </div>
+                    </div>
+
+                    <div style={gridFormulario}>
+                      <label style={labelCampo}>Entrenador de esta semana
+                        <select
+                          value={entrenadorSeleccionado}
+                          onChange={(e) => setOcioSemanaEntrenadores((anterior) => ({ ...anterior, [grupo.grupo_id]: e.target.value }))}
+                        >
+                          <option value="">Pendiente de entrenador</option>
+                          {disponibles.map((entrenador) => (
+                            <option key={entrenador.entrenador_id} value={entrenador.entrenador_id}>{entrenador.nombre_completo}</option>
+                          ))}
+                        </select>
+                      </label>
+                      <label style={labelCampo}>Trabajo diario automático
+                        <textarea value={trabajoDiarioOcioSemana(grupo)} readOnly rows={3} />
+                      </label>
+                    </div>
+
+                    {disponibles.length === 0 && (
+                      <p style={{ ...avisoPendiente, marginTop: 10 }}>No hay entrenadores marcados como Disponible para este día/turno. Puedes preparar el grupo como pendiente de entrenador.</p>
+                    )}
+
+                    {observacionesAutoGrupoOcio && (
+                      <div style={{ ...avisoCompleto, marginTop: 10 }}>
+                        <strong>Observaciones</strong>
+                        <div style={{ marginTop: 6 }}>{formatearObservaciones(observacionesAutoGrupoOcio)}</div>
+                      </div>
+                    )}
+
+                    <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+                      {alumnosGrupo.length === 0 && <div style={agendaVacio}>Este grupo estable no tiene alumnos asignados.</div>}
+                      {alumnosGrupo.map((alumno) => {
+                        const viene = alumnoVieneOcioSemana(alumno.alumno_id);
+                        return (
+                          <div key={`ocio-viene-${grupo.grupo_id}-${alumno.alumno_id}`} style={filaAlumnoAsistencia}>
+                            <div>
+                              <strong>{alumno.alumno}</strong>
+                              <p style={{ margin: '4px 0 0', color: '#555' }}>Nivel {alumno.nivel_usado || '-'}{alumno.fecha_nacimiento ? ` · ${edadOcioAlumnoEnFecha(alumno, fecha) || '-'} años` : ''}</p>
+                              {cambioEntradaOcio(alumno.alumno_id, grupo.grupo_id) && (
+                                <p style={{ margin: '4px 0 0', color: '#0f766e', fontWeight: 800 }}>Cambio puntual desde {cambioEntradaOcio(alumno.alumno_id, grupo.grupo_id)?.grupo_origen || 'otro grupo'}</p>
+                              )}
+                            </div>
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                              <button onClick={() => cambiarAsistenciaOcioSemana(alumno.alumno_id, true)} style={viene ? botonAsistenciaOk : botonAsistenciaOff}>Viene</button>
+                              <button onClick={() => cambiarAsistenciaOcioSemana(alumno.alumno_id, false)} style={!viene ? botonAsistenciaAusente : botonAsistenciaOff}>No viene</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          )}
+
+          {ocioSemanaResultados.length > 0 && (
+            <article style={agendaBloqueBlanco}>
+              <h3 style={{ marginTop: 0 }}>Resultado de preparación</h3>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {ocioSemanaResultados.map((resultado, indice) => (
+                  <div key={`${resultado.grupo_estable}-${resultado.fecha}-${indice}`} style={avisoCompleto}>
+                    <strong>{resultado.grupo_estable}</strong> · {formatearFecha(resultado.fecha)} · {resultado.hora_inicio?.slice(0,5)}-{resultado.hora_fin?.slice(0,5)} · {resultado.alumnos} alumnos · {resultado.entrenador || 'Pendiente entrenador'}
+                    <br />{resultado.estado}
+                  </div>
+                ))}
+              </div>
+            </article>
+          )}
+        </section>
+      )}
+
+      {pantalla === 'inicio' && (
+        <section>
+          <div style={cabeceraPantalla}>
+            <h2>Inicio · Jose</h2>
+            <button onClick={actualizarTodo}>Actualizar todo</button>
+          </div>
+
+          {cargando && <p>Cargando panel de control...</p>}
+
+          <section
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+              gap: 12,
+              marginBottom: 18,
+            }}
+          >
+            <article style={tarjetaInicioEstado(resumenInicio.reportesPendientes)}>
+              <h3 style={{ margin: 0, fontSize: 16 }}>Reportes pendientes</h3>
+              <p style={{ fontSize: 34, margin: '8px 0', fontWeight: 'bold' }}>
+                {resumenInicio.reportesPendientes}
+              </p>
+              <p style={{ margin: 0 }}>Alumnos presentes sin reporte.</p>
+
+              {resumenInicio.reportesPendientes > 0 && (
+                <button
+                  onClick={() => setPantalla('reportes')}
+                  style={{ ...botonPrincipal, marginTop: 12 }}
+                >
+                  Ver pendientes
+                </button>
+              )}
+            </article>
+
+            <article style={tarjetaInicioEstado(resumenInicio.asistenciasSinConfirmar)}>
+              <h3 style={{ margin: 0, fontSize: 16 }}>Asistencias sin confirmar</h3>
+              <p style={{ fontSize: 34, margin: '8px 0', fontWeight: 'bold' }}>
+                {resumenInicio.asistenciasSinConfirmar}
+              </p>
+              <p style={{ margin: 0 }}>Alumnos pendientes de Presente/Ausente.</p>
+
+              {resumenInicio.asistenciasSinConfirmar > 0 && (
+                <button
+                  onClick={() => setPantalla('reportes')}
+                  style={{ ...botonPrincipal, marginTop: 12 }}
+                >
+                  Ver pendientes
+                </button>
+              )}
+            </article>
+
+            <article style={tarjetaInicioEstado(resumenInicio.gruposSinPublicar)}>
+              <h3 style={{ margin: 0, fontSize: 16 }}>Grupos sin publicar</h3>
+              <p style={{ fontSize: 34, margin: '8px 0', fontWeight: 'bold' }}>
+                {resumenInicio.gruposSinPublicar}
+              </p>
+              <p style={{ margin: 0 }}>Grupos preparados que aún no ve el entrenador.</p>
+
+              {resumenInicio.gruposSinPublicar > 0 && (
+                <button
+                  onClick={() => {
+                    setPantalla('agenda');
+                  }}
+                  style={{ ...botonPrincipal, marginTop: 12 }}
+                >
+                  Ver días
+                </button>
+              )}
+            </article>
+
+            <article style={tarjetaInicioEstado(resumenInicio.entrenadoresSinConfirmar)}>
+              <h3 style={{ margin: 0, fontSize: 16 }}>Entrenadores sin confirmar</h3>
+              <p style={{ fontSize: 34, margin: '8px 0', fontWeight: 'bold' }}>
+                {resumenInicio.entrenadoresSinConfirmar}
+              </p>
+              <p style={{ margin: 0 }}>Asignaciones publicadas pendientes de confirmar.</p>
+
+              {resumenInicio.entrenadoresSinConfirmar > 0 && (
+                <button
+                  onClick={() => {
+                    setPantalla('agenda');
+                  }}
+                  style={{ ...botonPrincipal, marginTop: 12 }}
+                >
+                  Ver días
+                </button>
+              )}
+            </article>
+          </section>
+
+          <section style={{ display: 'grid', gap: 12 }}>
+            {avisos.map((aviso) => (
+              <article key={aviso.orden} style={tarjeta}>
+                <h3 style={{ margin: 0, fontSize: 18 }}>{aviso.bloque}</h3>
+                <p
+                  style={{ fontSize: 34, margin: '8px 0', fontWeight: 'bold' }}
+                >
+                  {aviso.contador}
+                </p>
+                <p style={{ margin: 0 }}>{aviso.descripcion}</p>
+              </article>
+            ))}
+          </section>
+        </section>
+      )}
+
+      {pantalla === 'planning' && (
+        <section>
+          <div style={cabeceraPantalla}>
+            <h2>Histórico técnico de grupos</h2>
+            <button onClick={cargarPlanning}>Actualizar histórico</button>
+          </div>
+
+          {cargando && <p>Cargando...</p>}
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+            <button
+              onClick={() => setFiltroPlanning('todos')}
+              style={botonMenu(filtroPlanning === 'todos')}
+            >
+              Todos ({planning.length})
+            </button>
+
+            <button
+              onClick={() => setFiltroPlanning('pendientes')}
+              style={botonMenu(filtroPlanning === 'pendientes')}
+            >
+              Pendientes ({totalPlanningPendientes})
+            </button>
+
+            <button
+              onClick={() => setFiltroPlanning('cerrados')}
+              style={botonMenu(filtroPlanning === 'cerrados')}
+            >
+              Cerrados ({totalPlanningCerrados})
+            </button>
+
+            <button
+              onClick={() => setFiltroPlanning('sin_publicar')}
+              style={botonMenu(filtroPlanning === 'sin_publicar')}
+            >
+              Sin publicar ({totalPlanningSinPublicar})
+            </button>
+          </div>
+
+          {detalle && (
+            <article
+              style={{ ...tarjeta, border: '2px solid #111', marginBottom: 20 }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                }}
+              >
+                <div>
+                  <h2 style={{ marginTop: 0 }}>{nombreGrupoVisualApp(detalle, 0)}</h2>
+                  <p>
+                    {formatearFecha(detalle.fecha)} ·{' '}
+                    {detalle.hora_inicio.slice(0, 5)}–
+                    {detalle.hora_fin.slice(0, 5)} · {detalle.modalidad}
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setDetalle(null)}
+                  style={botonSecundario}
+                >
+                  Cerrar detalle
+                </button>
+              </div>
+
+              <p>
+                <strong>Entrenadores:</strong>{' '}
+                {detalle.entrenadores || 'Sin asignar'}
+              </p>
+
+              <p>
+                <strong>Nivel:</strong> {detalle.nivel_grupo || '-'} ·{' '}
+                <strong>Pista:</strong> {detalle.pista || '-'} ·{' '}
+                <strong>Punto:</strong> {detalle.punto_encuentro || '-'} ·{' '}
+                <strong>Estado:</strong> {detalle.estado_grupo}
+              </p>
+
+              <p>
+                <strong>Total alumnos:</strong> {detalle.total_alumnos}
+              </p>
+
+              <p>
+                <strong>Alumnos / asistencia / reportes:</strong>
+              </p>
+              <div style={bloqueTexto}>
+                {formatearAlumnosDetalle(detalle.alumnos_detalle)}
+              </div>
+
+              <p>
+                <strong>Trabajo diario:</strong>
+              </p>
+              <div style={bloqueTexto}>
+                {formatearTrabajoDiario(detalle.trabajo_diario)}
+              </div>
+
+              {detalle.observaciones_importantes && (
+                <>
+                  <p>
+                    <strong>Observaciones:</strong>
+                  </p>
+                  <div style={bloqueTexto}>
+                    {formatearObservaciones(detalle.observaciones_importantes)}
+                  </div>
+                </>
+              )}
+
+              <p>
+                <strong>Ratio OK:</strong> {detalle.ratio_ok ? 'Sí' : 'No'} ·{' '}
+                <strong>Excepción ratio:</strong>{' '}
+                {detalle.excepcion_ratio ? 'Sí' : 'No'}
+              </p>
+            </article>
+          )}
+
+          {!cargando && planningFiltrado.length === 0 && (
+            <article style={tarjeta}>
+              <h3 style={{ marginTop: 0 }}>Sin grupos en este filtro</h3>
+              <p style={{ marginBottom: 0 }}>Cambia el filtro para ver otros grupos.</p>
+            </article>
+          )}
+
+          <section style={{ display: 'grid', gap: 16 }}>
+            {planningFiltrado.map((grupo, indiceGrupoPlanningHistorico) => {
+              const alumnosEstadoGrupo = alumnosReporteEntrenador.filter(
+                (alumno) => alumno.grupo_id === grupo.grupo_id
+              );
+
+              const confirmacionesGrupo = gruposEntrenador.filter(
+                (asignacion) => asignacion.grupo_id === grupo.grupo_id
+              );
+
+              const asistentesPendientes = alumnosEstadoGrupo.filter(
+                (alumno) => alumno.estado_asistencia === 'Pendiente'
+              ).length;
+
+              const reportesPendientesGrupo = alumnosEstadoGrupo.filter(
+                (alumno) => alumno.estado_reporte === 'Falta reporte'
+              ).length;
+
+              const entrenadoresSinConfirmar = confirmacionesGrupo.filter(
+                (asignacion) => asignacion.estado_confirmacion !== 'Confirmado'
+              ).length;
+
+              const grupoTieneSeguimiento = alumnosEstadoGrupo.length > 0;
+
+              const estadoPlanning = !grupo.publicado
+                ? 'Sin publicar'
+                : entrenadoresSinConfirmar > 0
+                  ? 'Publicado · entrenador sin confirmar'
+                  : grupoTieneSeguimiento && asistentesPendientes > 0
+                    ? 'Asistencia pendiente'
+                    : grupoTieneSeguimiento && reportesPendientesGrupo > 0
+                      ? 'Reportes pendientes'
+                      : grupoTieneSeguimiento
+                        ? 'Grupo cerrado'
+                        : 'Publicado · pendiente de seguimiento';
+
+              const estiloEstadoPlanning = !grupo.publicado
+                ? avisoNeutral
+                : entrenadoresSinConfirmar > 0
+                  ? avisoPendiente
+                  : grupoTieneSeguimiento && asistentesPendientes > 0
+                    ? avisoPendiente
+                    : grupoTieneSeguimiento && reportesPendientesGrupo > 0
+                      ? avisoReportePendiente
+                      : grupoTieneSeguimiento
+                        ? avisoCompleto
+                        : avisoNeutral;
+
+              const textoConfirmacionGrupo = !grupo.publicado
+                ? 'Sin publicar'
+                : entrenadoresSinConfirmar > 0
+                  ? `Pendiente (${entrenadoresSinConfirmar})`
+                  : 'OK';
+
+              const textoAsistenciaGrupo = !grupo.publicado
+                ? 'Sin publicar'
+                : !grupoTieneSeguimiento
+                  ? 'Sin seguimiento'
+                  : asistentesPendientes > 0
+                    ? `Pendiente (${asistentesPendientes})`
+                    : 'Completa';
+
+              const textoReportesGrupo = !grupo.publicado
+                ? 'Sin publicar'
+                : !grupoTieneSeguimiento
+                  ? 'Sin seguimiento'
+                  : reportesPendientesGrupo > 0
+                    ? `Pendientes (${reportesPendientesGrupo})`
+                    : 'Completos';
+
+              return (
+              <article key={grupo.grupo_id} style={tarjeta}>
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                  }}
+                >
+                  <div>
+                    <h3 style={{ margin: 0 }}>{nombreGrupoVisualApp(grupo, indiceGrupoPlanningHistorico)}</h3>
+                    <p style={{ margin: '6px 0' }}>
+                      {formatearFecha(grupo.fecha)} ·{' '}
+                      {grupo.hora_inicio.slice(0, 5)}–
+                      {grupo.hora_fin.slice(0, 5)} · {grupo.modalidad}
+                    </p>
+                  </div>
+
+                  <div style={{ textAlign: 'right' }}>
+                    <strong>{grupo.total_alumnos} niños</strong>
+                    <p style={{ margin: '6px 0' }}>
+                      Punto {grupo.punto_encuentro}
+                    </p>
+                    <p style={{ margin: '6px 0', fontWeight: 'bold' }}>
+                      {grupo.publicado ? 'Publicado' : 'Sin publicar'}
+                    </p>
+                  </div>
+                </div>
+
+                <hr />
+
+                <div style={estiloEstadoPlanning}>
+                  {estadoPlanning}
+                </div>
+
+                {grupo.publicado && (
+                  <div style={cierreJoseCaja}>
+                    <strong>Cierre del grupo</strong>
+
+                    <div style={cierreJoseGrid}>
+                      <div style={cierreJoseItem}>
+                        <span style={cierreJoseLabel}>Confirmación entrenador</span>
+                        <strong>{textoConfirmacionGrupo}</strong>
+                      </div>
+
+                      <div style={cierreJoseItem}>
+                        <span style={cierreJoseLabel}>Asistencia</span>
+                        <strong>{textoAsistenciaGrupo}</strong>
+                      </div>
+
+                      <div style={cierreJoseItem}>
+                        <span style={cierreJoseLabel}>Reportes</span>
+                        <strong>{textoReportesGrupo}</strong>
+                      </div>
+
+                      <div style={cierreJoseItem}>
+                        <span style={cierreJoseLabel}>Estado final</span>
+                        <strong>{estadoPlanning}</strong>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <p>
+                  <strong>Entrenador:</strong>{' '}
+                  {grupo.entrenadores || 'Sin asignar'}
+                </p>
+
+                <p>
+                  <strong>Nivel:</strong> {grupo.nivel_grupo || '-'} ·{' '}
+                  <strong>Pista:</strong> {grupo.pista || '-'} ·{' '}
+                  <strong>Estado:</strong> {grupo.estado_grupo}
+                </p>
+
+                <p>
+                  <strong>Alumnos:</strong>
+                </p>
+                <div style={bloqueTexto}>
+                  {formatearAlumnosPlanning(grupo.alumnos)}
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    marginTop: 12,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <button
+                    onClick={() =>
+                      cargarDetalleGrupo(
+                        grupo.nombre_grupo,
+                        grupo.fecha,
+                        grupo.hora_inicio
+                      )
+                    }
+                    style={botonSecundario}
+                  >
+                    Ver detalle
+                  </button>
+
+                  {!grupo.publicado && (
+                    <button
+                      onClick={() => publicarGrupo(grupo.grupo_id)}
+                      style={botonPrincipal}
+                    >
+                      Publicar grupo
+                    </button>
+                  )}
+
+                  {grupo.publicado && (
+                    <button
+                      onClick={() => despublicarGrupo(grupo.grupo_id)}
+                      style={botonPeligro}
+                    >
+                      Despublicar grupo
+                    </button>
+                  )}
+                </div>
+              </article>
+              );
+            })}
+          </section>
+        </section>
+      )}
+
+      {pantalla === 'entrenador' && (
+        <section style={vistaEntrenadorShell}>
+          <div style={entrenadorHeroApp}>
+            <div>
+              <p style={etiquetaSuperior}>VISTA ENTRENADOR · MÓVIL</p>
+              <h2 style={{ margin: 0 }}>Panel del entrenador</h2>
+              <div style={entrenadorHeroChips}>
+                <span>Semana {semanaAgendaActiva ? rangoSemanaAgenda(semanaAgendaActiva) : '-'}</span>
+                <span>{totalGruposVistaEntrenador} grupos publicados</span>
+                <span>{totalReportesVistaEntrenador} tareas pendientes</span>
+                <span>{totalDisponibilidadPendienteVistaEntrenador} disponibilidades pendientes</span>
+              </div>
+            </div>
+            <button onClick={() => { cargarGruposEntrenador(); cargarDisponibilidad(); }} style={botonPrincipal}>Actualizar vista</button>
+          </div>
+
+          <article style={panelEntrenadorFiltroApp}>
+            <input
+              value={busquedaGrupoEntrenador}
+              onChange={(e) => setBusquedaGrupoEntrenador(e.target.value)}
+              placeholder="Buscar entrenador..."
+              style={inputEntrenadorBusqueda}
+            />
+
+            <div style={tabBarEntrenadorModerno}>
+              <button
+                type="button"
+                onClick={() => setTabVistaEntrenador('disponibilidad')}
+                style={tabEntrenadorModerno(tabVistaEntrenador === 'disponibilidad', '#0f766e')}
+              >
+                Disponibilidad semanal
+              </button>
+              <button
+                type="button"
+                onClick={() => setTabVistaEntrenador('grupos')}
+                style={tabEntrenadorModerno(tabVistaEntrenador === 'grupos', '#2563eb')}
+              >
+                Grupos / reportes
+              </button>
+            </div>
+          </article>
+
+          {cargando && <p>Cargando vista entrenador...</p>}
+
+          {!cargando && tabVistaEntrenador === 'disponibilidad' && disponibilidadSemanalEntrenador.filter((grupo) => grupo.entrenador.toLowerCase().includes(busquedaGrupoEntrenador.toLowerCase())).length > 0 && (
+            <section style={{ display: 'grid', gap: 12 }}>
+              <details style={chuletaEntrenadorMini}>
+                <summary>Chuleta disponibilidad</summary>
+                <p style={{ margin: '8px 0 0' }}>Primero se contesta disponibilidad. Después Jose monta los grupos solo con los entrenadores disponibles.</p>
+              </details>
+
+              {disponibilidadSemanalEntrenador
+                .filter((grupo) => grupo.entrenador.toLowerCase().includes(busquedaGrupoEntrenador.toLowerCase()))
+                .map((grupo) => (
+                  <article key={`disponibilidad-vista-${grupo.entrenador_id}`} style={tarjetaEntrenadorMovil}>
+                    <header style={cabeceraEntrenadorMovil}>
+                      <div>
+                        <p style={etiquetaSuperior}>DISPONIBILIDAD</p>
+                        <h3 style={{ margin: 0 }}>{grupo.entrenador}</h3>
+                      </div>
+                      <div style={resumenChipsMovil}>
+                        <span>{grupo.disponibles} disponibles</span>
+                        <span>{grupo.no_puedo} no pueden</span>
+                        <span>{grupo.pendientes} pendientes</span>
+                      </div>
+                    </header>
+
+                    {grupo.semanas.map((semana) => (
+                      <section key={`disp-vista-${grupo.entrenador_id}-${semana.inicio}`} style={bloqueSemanaMovil}>
+                        <div style={cabeceraSemanaMovil}>
+                          <div>
+                            <p style={etiquetaSuperior}>SEMANA DE TRABAJO</p>
+                            <h4 style={{ margin: 0 }}>{rangoSemanaAgenda(semana.inicio)}</h4>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'grid', gap: 8 }}>
+                          {diasTrabajoSemanaAgenda(semana.inicio).map((dia) => {
+                            const turnosDia = semana.turnos.filter((turno) => turno.fecha === dia.fecha);
+                            return (
+                              <article key={`disp-vista-dia-${grupo.entrenador_id}-${dia.fecha}`} style={diaEntrenadorCard}>
+                                <div style={diaEntrenadorHeader}>
+                                  <div style={{ display: 'grid' }}>
+                                    <strong>{capitalizarPrimera(dia.nombre)}</strong>
+                                    <span>{formatearFecha(dia.fecha)}</span>
+                                  </div>
+                                </div>
+
+                                {turnosTrabajoDiaAgenda(dia.fecha).map((turnoBase) => {
+                                  const turno = turnosDia.find((item) => item.hora_inicio.slice(0, 5) === turnoBase.inicio && item.hora_fin.slice(0, 5) === turnoBase.fin);
+                                  const respuesta = turno?.respuesta || 'Pendiente';
+
+                                  return (
+                                    <div key={`disp-vista-turno-${grupo.entrenador_id}-${dia.fecha}-${turnoBase.inicio}`} style={miniTarjetaBlanca}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
+                                        <strong>{turnoBase.inicio}–{turnoBase.fin}</strong>
+                                        <span style={respuesta === 'Disponible' ? badgeTrabaja : respuesta === 'No puedo' ? badgeNoTrabaja : badgePendiente}>
+                                          {respuesta}
+                                        </span>
+                                      </div>
+                                      {turno && (
+                                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                                          <button onClick={() => responderDisponibilidadRapida(turno, 'Disponible')} style={respuesta === 'Disponible' ? botonAsistenciaOk : botonAsistenciaOff}>Disponible</button>
+                                          <button onClick={() => responderDisponibilidadRapida(turno, 'No puedo')} style={respuesta === 'No puedo' ? botonAsistenciaAusente : botonAsistenciaOff}>No puedo</button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </article>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    ))}
+                  </article>
+                ))}
+            </section>
+          )}
+
+          {!cargando && ((tabVistaEntrenador === 'disponibilidad' && disponibilidadSemanalEntrenador.length === 0) || (tabVistaEntrenador === 'grupos' && gruposEntrenadorSemanal.length === 0)) && !error && (
+            <article style={tarjetaMovilVacia}>
+              <h3 style={{ marginTop: 0 }}>Sin datos en esta pestaña</h3>
+              <p style={{ marginBottom: 0 }}>En Disponibilidad semanal aparecerán los turnos antes de crear grupos. En Grupos/reportes aparecerán los grupos asignados cuando Jose los publique.</p>
+            </article>
+          )}
+
+          {tabVistaEntrenador === 'grupos' && gruposEntrenadorSemanal.map((bloqueEntrenador) => (
+            <article key={bloqueEntrenador.entrenador_id} style={tarjetaEntrenadorMovil}>
+              <header style={cabeceraEntrenadorMovil}>
+                <div>
+                  <p style={etiquetaSuperior}>ENTRENADOR</p>
+                  <h3 style={{ margin: 0 }}>{bloqueEntrenador.entrenador}</h3>
+                </div>
+                <div style={contadorGrandeMovil}>
+                  <strong>{bloqueEntrenador.total_grupos}</strong>
+                  <span>grupos</span>
+                </div>
+              </header>
+
+              {pendientesEntrenador(bloqueEntrenador.entrenador_id).length > 0 && (
+                <section style={avisoPendiente}>
+                  <strong>Aviso de tareas pendientes</strong>
+                  <p style={{ margin: '6px 0 0' }}>
+                    Tienes {pendientesEntrenador(bloqueEntrenador.entrenador_id).filter((reporte) => reporte.estado_reporte === 'Falta reporte').length} reportes pendientes y {pendientesEntrenador(bloqueEntrenador.entrenador_id).filter((reporte) => reporte.estado_reporte === 'Asistencia sin confirmar').length} asistencias sin confirmar. Entra en cada grupo y déjalo cerrado.
+                  </p>
+                </section>
+              )}
+
+              {disponibilidad.filter((turno) => turno.entrenador_id === bloqueEntrenador.entrenador_id && turno.aviso_enviado && turno.respuesta === 'Pendiente').length > 0 && (
+                <section style={avisoPendiente}>
+                  <strong>Disponibilidad pendiente en la app</strong>
+                  <p style={{ margin: '6px 0 10px' }}>Rellena estos turnos para que Jose pueda montar la semana.</p>
+                  <div style={{ display: 'grid', gap: 8 }}>
+                    {disponibilidad
+                      .filter((turno) => turno.entrenador_id === bloqueEntrenador.entrenador_id && turno.aviso_enviado && turno.respuesta === 'Pendiente')
+                      .sort((a, b) => `${a.fecha} ${a.hora_inicio}`.localeCompare(`${b.fecha} ${b.hora_inicio}`))
+                      .map((turno) => (
+                        <div key={`${turno.id}-vista-entrenador`} style={miniTarjetaBlanca}>
+                          <strong>{capitalizarPrimera(new Date(`${turno.fecha}T00:00:00`).toLocaleDateString('es-ES', { weekday: 'long' }))} {formatearFecha(turno.fecha)}</strong>
+                          <p style={{ margin: '4px 0 8px' }}>{turno.hora_inicio.slice(0, 5)}–{turno.hora_fin.slice(0, 5)}</p>
+                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            <button onClick={() => responderDisponibilidadRapida(turno, 'Disponible')} style={botonAsistenciaOk}>Disponible</button>
+                            <button onClick={() => responderDisponibilidadRapida(turno, 'No puedo')} style={botonAsistenciaAusente}>No puedo</button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                </section>
+              )}
+
+              {bloqueEntrenador.semanas.map((semana) => {
+                const totalReportesSemana = semana.grupos.reduce((total, grupo) => {
+                  const alumnosGrupo = alumnosDelGrupo(grupo.grupo_id, grupo.entrenador_id);
+                  return total + alumnosGrupo.filter((a) => a.estado_reporte === 'Falta reporte').length;
+                }, 0);
+
+                return (
+                  <section key={`${bloqueEntrenador.entrenador_id}-${semana.inicio}`} style={bloqueSemanaMovil}>
+                    <div style={cabeceraSemanaMovil}>
+                      <div>
+                        <p style={etiquetaSuperior}>SEMANA LUNES-DOMINGO</p>
+                        <h4 style={{ margin: 0 }}>{rangoSemanaAgenda(semana.inicio)}</h4>
+                      </div>
+                      <div style={resumenChipsMovil}>
+                        <span>{semana.grupos.length} grupos</span>
+                        <span>{totalReportesSemana} reportes pendientes</span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'grid', gap: 10 }}>
+                      {diasTrabajoSemanaAgenda(semana.inicio).map((dia) => {
+                        const gruposDia = semana.grupos.filter((grupo) => grupo.fecha === dia.fecha);
+                        const trabajaDia = gruposDia.length > 0;
+
+                        return (
+                          <article key={`${bloqueEntrenador.entrenador_id}-${semana.inicio}-${dia.fecha}`} style={trabajaDia ? diaEntrenadorCard : diaEntrenadorCardLibre}>
+                            <div style={diaEntrenadorHeader}>
+                              <div style={{ display: 'grid' }}>
+                                <strong>{capitalizarPrimera(dia.nombre)}</strong>
+                                <span>{formatearFecha(dia.fecha)}</span>
+                              </div>
+                              <span style={trabajaDia ? badgeTrabaja : badgeNoTrabaja}>{trabajaDia ? 'TRABAJA' : 'Sin turno asignado'}</span>
+                            </div>
+
+                            {trabajaDia && turnosTrabajoDiaAgenda(dia.fecha).map((turno) => {
+                              const gruposTurno = gruposDia.filter(
+                                (grupo) => grupo.hora_inicio.slice(0, 5) === turno.inicio && grupo.hora_fin.slice(0, 5) === turno.fin
+                              );
+
+                              if (gruposTurno.length === 0) return null;
+
+                              return (
+                                <section key={`${dia.fecha}-${turno.inicio}-${turno.fin}`} style={turnoEntrenadorBox}>
+                                  <h4 style={{ margin: '0 0 8px' }}>{turno.inicio}–{turno.fin}</h4>
+
+                                  {gruposTurno.map((grupo, indiceGrupoEntrenadorTurno) => {
+                                    const alumnosGrupo = alumnosDelGrupo(grupo.grupo_id, grupo.entrenador_id);
+                                    const presentes = alumnosGrupo.filter((a) => a.estado_asistencia === 'Presente').length;
+                                    const ausentes = alumnosGrupo.filter((a) => a.estado_asistencia === 'Ausente').length;
+                                    const pendientes = alumnosGrupo.filter((a) => a.estado_asistencia === 'Pendiente').length;
+                                    const faltaReporte = alumnosGrupo.filter((a) => a.estado_reporte === 'Falta reporte').length;
+                                    const reportesEnviados = alumnosGrupo.filter((a) => a.estado_reporte === 'Reporte enviado').length;
+                                    const asistenciaCompleta = alumnosGrupo.length > 0 && pendientes === 0;
+                                    const grupoCerrado = asistenciaCompleta && faltaReporte === 0;
+
+                                    return (
+                                      <article key={`${grupo.entrenador_id}-${grupo.grupo_id}`} style={{ ...grupoEntrenadorCardMovil, ...estiloGrupoPorPistaApp(grupo) }}>
+                                        <div style={grupoEntrenadorTopMovil}>
+                                          <div>
+                                            <p style={badgeModalidadMovil}>{grupo.modalidad}</p>
+                                            <h3 style={{ margin: '4px 0' }}>{nombreGrupoVisualApp(grupo, indiceGrupoEntrenadorTurno)}</h3>
+                                            <p style={{ margin: 0 }}>
+                                              Nivel {grupo.nivel_grupo || '-'} · Pista {grupo.pista || '-'} · Punto {grupo.punto_encuentro || '-'}
+                                            </p>
+                                          </div>
+                                          <div style={contadorNinosMovil}>
+                                            <strong>{grupo.total_alumnos}</strong>
+                                            <span>niños</span>
+                                          </div>
+                                        </div>
+
+                                        <div style={grupoCerrado ? avisoCompleto : avisoPendiente}>
+                                          {grupoCerrado ? 'Grupo cerrado' : asistenciaCompleta ? 'Faltan reportes' : 'Falta asistencia'}
+                                        </div>
+
+                                        {grupo.estado_confirmacion !== 'Confirmado' && (
+                                          <button onClick={() => confirmarGrupoEntrenador(grupo.grupo_id, grupo.entrenador_id)} style={{ ...botonPrincipal, width: '100%' }}>
+                                            Grupo visto · Confirmo horario, punto, niños y trabajo diario
+                                          </button>
+                                        )}
+
+                                        <section style={bloqueInfoEntrenador}>
+                                          <h4>Niños del grupo</h4>
+                                          <ul style={{ margin: 0, paddingLeft: 18 }}>
+                                            {alumnosGrupo.map((alumno) => (
+                                              <li key={`${grupo.grupo_id}-${alumno.alumno_id}-lista`}>
+                                                <strong>{alumno.alumno} · Nivel {alumno.nivel_alumno || 'SIN NIVEL'}</strong>
+                                              </li>
+                                            ))}
+                                          </ul>
+                                        </section>
+
+                                        <section style={bloqueInfoEntrenador}>
+                                          <h4>Trabajo diario</h4>
+                                          <div style={bloqueTexto}>{formatearTrabajoDiario(grupo.trabajo_diario)}</div>
+                                        </section>
+
+                                        {grupo.observaciones_importantes && (
+                                          <section style={bloqueInfoEntrenador}>
+                                            <h4>Observaciones</h4>
+                                            <div style={bloqueTexto}>{formatearObservaciones(grupo.observaciones_importantes)}</div>
+                                          </section>
+                                        )}
+
+                                        <section style={bloqueInfoEntrenador}>
+                                          <h4>Asistencia y reportes</h4>
+                                          <div style={resumenChipsMovil}>
+                                            <span>Presentes {presentes}</span>
+                                            <span>Ausentes {ausentes}</span>
+                                            <span>Pendientes {pendientes}</span>
+                                            <span>Reportes {reportesEnviados}/{alumnosGrupo.length}</span>
+                                          </div>
+
+                                          <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                                            {alumnosGrupo.map((alumno) => (
+                                              <div key={`${grupo.grupo_id}-${alumno.alumno_id}`} style={miniTarjetaBlanca}>
+                                                <div style={filaAlumnoEntrenadorMovil}>
+                                                  <div>
+                                                    <strong>{alumno.alumno} · Nivel {alumno.nivel_alumno || 'SIN NIVEL'}</strong>
+                                                    <p style={{ margin: '4px 0 0', fontSize: 13 }}>Asistencia: <strong>{alumno.estado_asistencia}</strong></p>
+                                                    <p style={{ margin: '4px 0 0', fontSize: 13 }}>Reporte: <strong>{alumno.estado_reporte}</strong></p>
+                                                  </div>
+                                                  <div style={botonesAsistenciaMovil}>
+                                                    <button onClick={() => marcarAsistencia(grupo.grupo_id, alumno.alumno_id, 'Presente')} style={alumno.estado_asistencia === 'Presente' ? botonAsistenciaOk : botonAsistenciaOff}>Presente</button>
+                                                    <button onClick={() => marcarAsistencia(grupo.grupo_id, alumno.alumno_id, 'Ausente')} style={alumno.estado_asistencia === 'Ausente' ? botonAsistenciaAusente : botonAsistenciaOff}>Ausente</button>
+                                                    <button onClick={() => marcarAsistencia(grupo.grupo_id, alumno.alumno_id, 'Pendiente')} style={alumno.estado_asistencia === 'Pendiente' ? botonAsistenciaPendiente : botonAsistenciaOff}>Pendiente</button>
+                                                  </div>
+                                                </div>
+
+                                                {alumno.estado_reporte === 'Falta reporte' && !formularioAbierto(alumno) && (
+                                                  <button onClick={() => abrirFormularioReporte(alumno)} style={{ ...botonPrincipal, marginTop: 10, width: '100%' }}>Rellenar reporte</button>
+                                                )}
+
+                                                {formularioAbierto(alumno) && (
+                                                  <div style={formularioCaja}>
+                                                    <h4 style={{ marginTop: 0 }}>Reporte de {alumno.alumno}</h4>
+                                                    <details style={ayudaReporteEntrenadorCaja}>
+                                                      <summary style={summaryAyudaReporteEntrenador}>Ver ayuda rápida para rellenar reporte</summary>
+                                                      <AyudaReporteEntrenador nivel={formReporte.nivel || alumno.nivel_alumno || grupo.nivel_grupo || ''} />
+                                                    </details>
+                                                    <div style={gridFormulario}>
+                                                      <CampoSelect label="Nivel" value={formReporte.nivel} opciones={opcionesNivel} onChange={(valor) => setFormReporte({ ...formReporte, nivel: valor })} />
+                                                      <CampoSelect label="Actitud" value={formReporte.actitud} opciones={opcionesActitud} onChange={(valor) => setFormReporte({ ...formReporte, actitud: valor })} />
+                                                      <CampoSelect label="Técnica" value={formReporte.tecnica} opciones={opcionesTecnica} onChange={(valor) => setFormReporte({ ...formReporte, tecnica: valor })} />
+                                                      <CampoSelect label="Pista" value={formReporte.pista} opciones={opcionesPista} onChange={(valor) => setFormReporte({ ...formReporte, pista: valor })} />
+                                                      <CampoSelect label="Autonomía" value={formReporte.autonomia} opciones={opcionesAutonomia} onChange={(valor) => setFormReporte({ ...formReporte, autonomia: valor })} />
+                                                      <CampoSelect label="Remontes" value={formReporte.remontes} opciones={opcionesRemontes} onChange={(valor) => setFormReporte({ ...formReporte, remontes: valor })} />
+                                                      <CampoSelect label="Incidencia" value={formReporte.incidencia} opciones={opcionesIncidencia} onChange={(valor) => setFormReporte({ ...formReporte, incidencia: valor })} />
+                                                      <CampoSelect label="Recomendación" value={formReporte.recomendacion} opciones={opcionesRecomendacion} onChange={(valor) => setFormReporte({ ...formReporte, recomendacion: valor })} />
+                                                    </div>
+                                                    <label style={labelCampo}>
+                                                      Observaciones
+                                                      <textarea value={formReporte.observaciones} onChange={(e) => setFormReporte({ ...formReporte, observaciones: e.target.value })} style={textarea} />
+                                                    </label>
+                                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                                                      <button onClick={() => guardarReporteAlumno(alumno)} style={botonPrincipal}>Guardar reporte</button>
+                                                      <button onClick={cerrarFormularioReporte} style={botonSecundario}>Cancelar</button>
+                                                    </div>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </section>
+                                      </article>
+                                    );
+                                  })}
+                                </section>
+                              );
+                            })}
+                          </article>
+                        );
+                      })}
+                    </div>
+                  </section>
+                );
+              })}
+            </article>
+          ))}
+        </section>
+      )}
+
+      {pantalla === 'reportes' && (() => {
+        const totalReportesPendientes = reportesFiltrados.filter((reporte) => reporte.estado_reporte === 'Falta reporte').length;
+        const totalAsistenciasPendientes = reportesFiltrados.filter((reporte) => reporte.estado_reporte === 'Asistencia sin confirmar' || reporte.estado_asistencia === 'Pendiente').length;
+        const totalAmbosPendientes = reportesFiltrados.filter((reporte) => reporte.estado_reporte === 'Falta reporte' && reporte.estado_asistencia === 'Pendiente').length;
+        const totalEntrenadoresPendientes = reportesPorEntrenador.length;
+
+        const chipEstadoReporte = (reporte: ReportePendiente) => {
+          const faltaReporte = reporte.estado_reporte === 'Falta reporte';
+          const asistenciaPendiente = reporte.estado_reporte === 'Asistencia sin confirmar' || reporte.estado_asistencia === 'Pendiente';
+
+          if (faltaReporte && asistenciaPendiente) {
+            return {
+              texto: 'Reporte + asistencia',
+              estilo: { background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }
+            };
+          }
+
+          if (asistenciaPendiente) {
+            return {
+              texto: 'Asistencia pendiente',
+              estilo: { background: '#ffedd5', color: '#9a3412', border: '1px solid #fed7aa' }
+            };
+          }
+
+          return {
+            texto: 'Falta reporte',
+            estilo: { background: '#dbeafe', color: '#1d4ed8', border: '1px solid #bfdbfe' }
+          };
+        };
+
+        const metricasPendientes = [
+          {
+            titulo: 'Entrenadores',
+            valor: totalEntrenadoresPendientes,
+            detalle: 'con tareas',
+            estilo: { background: 'linear-gradient(135deg, #eff6ff, #ffffff)', border: '1px solid #bfdbfe', color: '#1e3a8a' }
+          },
+          {
+            titulo: 'Reportes',
+            valor: totalReportesPendientes,
+            detalle: 'por rellenar',
+            estilo: { background: 'linear-gradient(135deg, #eef2ff, #ffffff)', border: '1px solid #c7d2fe', color: '#3730a3' }
+          },
+          {
+            titulo: 'Asistencia',
+            valor: totalAsistenciasPendientes,
+            detalle: 'sin cerrar',
+            estilo: { background: 'linear-gradient(135deg, #fff7ed, #ffffff)', border: '1px solid #fed7aa', color: '#9a3412' }
+          },
+          {
+            titulo: 'Críticos',
+            valor: totalAmbosPendientes,
+            detalle: 'ambos pendientes',
+            estilo: { background: 'linear-gradient(135deg, #fef2f2, #ffffff)', border: '1px solid #fecaca', color: '#991b1b' }
+          }
+        ];
+
+        return (
+          <section>
+            <div style={{
+              ...cabeceraPantalla,
+              alignItems: 'center',
+              background: 'linear-gradient(135deg, #f8fbff, #eef7ff)',
+              border: '1px solid #dbeafe',
+              borderRadius: 24,
+              padding: 20,
+              boxShadow: '0 18px 45px rgba(15, 23, 42, 0.08)'
+            }}>
+              <div>
+                <p style={{ ...etiquetaSuperior, marginBottom: 6 }}>CONTROL SEMANAL</p>
+                <h2 style={{ margin: 0 }}>Reportes pendientes</h2>
+                <details style={{ marginTop: 10 }}>
+                  <summary style={{ cursor: 'pointer', fontWeight: 900, color: '#2563eb' }}>Ayuda rápida</summary>
+                  <div style={{
+                    marginTop: 10,
+                    padding: 12,
+                    borderRadius: 16,
+                    background: '#ffffff',
+                    border: '1px solid #dbeafe',
+                    color: '#334155',
+                    lineHeight: 1.45
+                  }}>
+                    <p style={{ margin: 0 }}>
+                      Revisión por semana y entrenador. Los pendientes ya aparecen en Vista entrenador; el WhatsApp solo sirve como recordatorio directo.
+                    </p>
+                  </div>
+                </details>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <button onClick={copiarWhatsappPendientesReportes} style={botonPrincipal}>
+                  Ver WhatsApp general
+                </button>
+                <button onClick={cargarReportesPendientes} style={botonSecundario}>
+                  Actualizar
+                </button>
+              </div>
+            </div>
+
+            <article style={{
+              ...agendaBloqueBlanco,
+              marginTop: 16,
+              borderRadius: 24,
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 14px 35px rgba(15, 23, 42, 0.06)'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
+                <div>
+                  <p style={{ ...etiquetaSuperior, marginBottom: 4 }}>SEMANA</p>
+                  <h3 style={{ margin: 0 }}>Semana a revisar</h3>
+                </div>
+                <span style={{
+                  padding: '8px 12px',
+                  borderRadius: 999,
+                  background: '#eef6ff',
+                  border: '1px solid #bfdbfe',
+                  color: '#1e40af',
+                  fontWeight: 900
+                }}>
+                  {rangoSemanaAgenda(semanaAgendaActiva)}
+                </span>
+              </div>
+
+              <div style={gridFormulario}>
+                <label style={labelCampo}>
+                  Temporada
+                  <select
+                    value={anioInicioTemporadaAgenda}
+                    style={selectCampoAgenda}
+                    onChange={(e) => {
+                      const nuevoAnio = Number(e.target.value);
+                      setAnioInicioTemporadaAgenda(nuevoAnio);
+                      setMesAgenda(`${nuevoAnio}-09`);
+                      setSemanaAgendaInicio('');
+                    }}
+                  >
+                    {opcionesTemporadaAgenda.map((anio) => (
+                      <option key={anio} value={anio}>{nombreTemporadaAgenda(anio)}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label style={labelCampo}>
+                  Mes
+                  <select
+                    value={mesAgendaActivo}
+                    style={selectCampoAgenda}
+                    onChange={(e) => {
+                      setMesAgenda(e.target.value);
+                      setSemanaAgendaInicio('');
+                    }}
+                  >
+                    {mesesAgenda.map((clave) => (
+                      <option key={clave} value={clave}>{nombreMesAgendaDesdeClave(clave)}</option>
+                    ))}
+                  </select>
+                </label>
+
+                <label style={labelCampo}>
+                  Semana lunes-domingo
+                  <select
+                    value={semanaAgendaActiva}
+                    style={selectCampoAgenda}
+                    onChange={(e) => setSemanaAgendaInicio(e.target.value)}
+                  >
+                    {semanasAgenda.map((semana) => (
+                      <option key={semana} value={semana}>Semana {rangoSemanaAgenda(semana)}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            </article>
+
+            <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, margin: '16px 0' }}>
+              {metricasPendientes.map((metrica) => (
+                <article key={metrica.titulo} style={{
+                  ...metrica.estilo,
+                  borderRadius: 20,
+                  padding: 16,
+                  boxShadow: '0 12px 25px rgba(15, 23, 42, 0.05)'
+                }}>
+                  <p style={{ margin: 0, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', fontWeight: 900, opacity: 0.75 }}>{metrica.titulo}</p>
+                  <div style={{ display: 'flex', alignItems: 'end', gap: 8, marginTop: 6 }}>
+                    <strong style={{ fontSize: 30, lineHeight: 1 }}>{metrica.valor}</strong>
+                    <span style={{ fontWeight: 800, marginBottom: 4 }}>{metrica.detalle}</span>
+                  </div>
+                </article>
+              ))}
+            </section>
+
+            <article style={{
+              background: '#ffffff',
+              border: '1px solid #e2e8f0',
+              borderRadius: 22,
+              padding: 14,
+              marginBottom: 16,
+              boxShadow: '0 10px 24px rgba(15, 23, 42, 0.04)'
+            }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'center' }}>
+                <input
+                  value={busquedaReportes}
+                  onChange={(e) => setBusquedaReportes(e.target.value)}
+                  placeholder="Buscar entrenador, alumno, grupo o modalidad..."
+                  style={{ ...buscador, margin: 0 }}
+                />
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <button onClick={() => setFiltroReportes('todos')} style={botonMenu(filtroReportes === 'todos')}>Todos</button>
+                  <button onClick={() => setFiltroReportes('faltan_reportes')} style={botonMenu(filtroReportes === 'faltan_reportes')}>Reportes</button>
+                  <button onClick={() => setFiltroReportes('asistencias_sin_confirmar')} style={botonMenu(filtroReportes === 'asistencias_sin_confirmar')}>Asistencia</button>
+                </div>
+              </div>
+            </article>
+
+            {cargando && <p>Cargando reportes pendientes...</p>}
+
+            {!cargando && reportesFiltrados.length === 0 && !error && (
+              <article style={{
+                ...tarjetaMovilVacia,
+                border: '1px solid #bbf7d0',
+                background: 'linear-gradient(135deg, #f0fdf4, #ffffff)',
+                borderRadius: 24
+              }}>
+                <h3 style={{ marginTop: 0 }}>Todo al día en esta semana</h3>
+                <p style={{ marginBottom: 0 }}>No hay reportes pendientes ni asistencias sin confirmar para la semana seleccionada.</p>
+              </article>
+            )}
+
+            <section style={{ display: 'grid', gap: 14 }}>
+              {reportesPorEntrenador.map((grupo) => {
+                const faltanReportes = grupo.reportes.filter((reporte) => reporte.estado_reporte === 'Falta reporte');
+                const asistenciasSinConfirmar = grupo.reportes.filter((reporte) => reporte.estado_reporte === 'Asistencia sin confirmar' || reporte.estado_asistencia === 'Pendiente');
+                const ambosPendientes = grupo.reportes.filter((reporte) => reporte.estado_reporte === 'Falta reporte' && reporte.estado_asistencia === 'Pendiente');
+                const reportesPorFecha = grupo.reportes.reduce((acc, reporte) => {
+                  const clave = reporte.fecha;
+                  if (!acc[clave]) acc[clave] = [];
+                  acc[clave].push(reporte);
+                  return acc;
+                }, {} as Record<string, ReportePendiente[]>);
+
+                return (
+                  <article key={grupo.entrenador} style={{
+                    ...tarjetaEntrenadorMovil,
+                    borderRadius: 24,
+                    border: '1px solid #dbeafe',
+                    background: 'linear-gradient(135deg, #ffffff, #f8fbff)',
+                    boxShadow: '0 16px 35px rgba(15, 23, 42, 0.07)',
+                    overflow: 'hidden'
+                  }}>
+                    <header style={{
+                      ...cabeceraEntrenadorMovil,
+                      alignItems: 'center',
+                      borderBottom: '1px solid #e2e8f0',
+                      paddingBottom: 14
+                    }}>
+                      <div>
+                        <p style={{ ...etiquetaSuperior, marginBottom: 6 }}>ENTRENADOR</p>
+                        <h3 style={{ margin: 0 }}>{grupo.entrenador}</h3>
+                        <p style={{ margin: '6px 0 0', color: '#64748b', fontWeight: 700 }}>Semana {rangoSemanaAgenda(semanaAgendaActiva)}</p>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <span style={{ padding: '8px 11px', borderRadius: 999, background: '#eef2ff', color: '#3730a3', border: '1px solid #c7d2fe', fontWeight: 900 }}>{faltanReportes.length} reportes</span>
+                        <span style={{ padding: '8px 11px', borderRadius: 999, background: '#fff7ed', color: '#9a3412', border: '1px solid #fed7aa', fontWeight: 900 }}>{asistenciasSinConfirmar.length} asistencias</span>
+                        {ambosPendientes.length > 0 && (
+                          <span style={{ padding: '8px 11px', borderRadius: 999, background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', fontWeight: 900 }}>{ambosPendientes.length} críticos</span>
+                        )}
+                      </div>
+                    </header>
+
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14, alignItems: 'center', justifyContent: 'space-between' }}>
+                      <button onClick={() => copiarWhatsappPendientesEntrenador(grupo.entrenador, grupo.reportes)} style={botonPrincipal}>
+                        Ver WhatsApp personal
+                      </button>
+                      <span style={{ color: '#64748b', fontWeight: 800 }}>{grupo.reportes.length} tareas pendientes</span>
+                    </div>
+
+                    <details style={{ marginTop: 12 }}>
+                      <summary style={{
+                        cursor: 'pointer',
+                        fontWeight: 900,
+                        padding: '12px 14px',
+                        borderRadius: 16,
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        color: '#0f172a'
+                      }}>
+                        Ver detalle de pendientes
+                      </summary>
+
+                      <section style={{ display: 'grid', gap: 12, marginTop: 12 }}>
+                        {Object.entries(reportesPorFecha).sort(([a], [b]) => a.localeCompare(b)).map(([fecha, reportesFecha]) => (
+                          <article key={`${grupo.entrenador}-${fecha}`} style={{
+                            border: '1px solid #e2e8f0',
+                            borderRadius: 18,
+                            background: '#ffffff',
+                            overflow: 'hidden'
+                          }}>
+                            <div style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              gap: 10,
+                              flexWrap: 'wrap',
+                              padding: '12px 14px',
+                              background: '#f8fafc',
+                              borderBottom: '1px solid #e2e8f0'
+                            }}>
+                              <strong>{formatearFecha(fecha)}</strong>
+                              <span style={{ color: '#64748b', fontWeight: 800 }}>{reportesFecha.length} pendiente(s)</span>
+                            </div>
+
+                            <div style={{ display: 'grid', gap: 8, padding: 12 }}>
+                              {reportesFecha.map((reporte) => {
+                                const chip = chipEstadoReporte(reporte);
+                                return (
+                                  <div key={`${reporte.grupo_id}-${reporte.alumno_id}-${reporte.estado_reporte}`} style={{
+                                    ...miniTarjetaBlanca,
+                                    border: '1px solid #e2e8f0',
+                                    borderRadius: 16,
+                                    boxShadow: 'none'
+                                  }}>
+                                    <div style={{ display: 'grid', gap: 8 }}>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                                        <strong>{reporte.alumno}</strong>
+                                        <span style={{ ...chip.estilo, padding: '6px 10px', borderRadius: 999, fontWeight: 900, fontSize: 12 }}>{chip.texto}</span>
+                                      </div>
+
+                                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', color: '#475569', fontWeight: 700 }}>
+                                        <span>Nivel {reporte.nivel_alumno || 'SIN NIVEL'}</span>
+                                        <span>{reporte.modalidad}</span>
+                                        <span>{reporte.hora_inicio.slice(0, 5)}–{reporte.hora_fin.slice(0, 5)}</span>
+                                      </div>
+
+                                      <div style={{ display: 'grid', gap: 4, color: '#334155' }}>
+                                        <p style={{ margin: 0 }}><strong>Grupo:</strong> {reporte.nombre_grupo}</p>
+                                        <p style={{ margin: 0 }}><strong>Asistencia:</strong> {reporte.estado_asistencia} · <strong>Reporte:</strong> {reporte.estado_reporte}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </article>
+                        ))}
+                      </section>
+                    </details>
+                  </article>
+                );
+              })}
+            </section>
+          </section>
+        );
+      })()}
+
+      {pantalla === 'alumnos' && (() => {
+        const totalFichas = alumnos.length;
+        const totalSinNivel = alumnos.filter((alumno) => !(alumno.nivel_actual || alumno.ultimo_nivel_reportado || alumno.nivel_estimado)).length;
+        const totalSinReportes = alumnos.filter((alumno) => Number(alumno.total_reportes || 0) === 0).length;
+        const totalRevisarFicha = alumnos.filter((alumno) => String(alumno.estado_ficha || '').toLowerCase().includes('revis')).length;
+
+        const estiloFichaHero = {
+          ...agendaHero,
+          background: 'linear-gradient(135deg, #f5f3ff 0%, #eef2ff 48%, #f8fafc 100%)',
+          border: '1px solid #ddd6fe',
+          boxShadow: '0 18px 45px rgba(79, 70, 229, 0.10)'
+        };
+
+        const tarjetaMetricaFicha = (color: string, fondo: string) => ({
+          ...miniTarjetaBlanca,
+          border: `1px solid ${color}33`,
+          background: fondo,
+          minHeight: 82,
+          display: 'grid',
+          alignContent: 'center'
+        });
+
+        const badgeNivelFicha = (nivel: string) => {
+          const limpio = String(nivel || 'SIN NIVEL').toUpperCase();
+          let color = '#64748b';
+          let fondo = '#f8fafc';
+          if (limpio.includes('INICIACION') || limpio === 'A') { color = '#16a34a'; fondo = '#f0fdf4'; }
+          if (limpio === 'A+' || limpio === 'B') { color = '#2563eb'; fondo = '#eff6ff'; }
+          if (limpio.includes('B+') || limpio === 'C') { color = '#f97316'; fondo = '#fff7ed'; }
+          if (limpio.includes('C+') || limpio.includes('D')) { color = '#7c3aed'; fondo = '#f5f3ff'; }
+          if (limpio.includes('SIN')) { color = '#dc2626'; fondo = '#fef2f2'; }
+          return {
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '7px 12px',
+            borderRadius: 999,
+            border: `1px solid ${color}40`,
+            background: fondo,
+            color,
+            fontWeight: 900,
+            fontSize: 13,
+            letterSpacing: 0.2
+          };
+        };
+
+        const estiloTarjetaAlumno = (nivel: string) => {
+          const limpio = String(nivel || '').toUpperCase();
+          let borde = '#dbeafe';
+          let fondo = 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)';
+          if (limpio.includes('INICIACION') || limpio === 'A') { borde = '#bbf7d0'; fondo = 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)'; }
+          if (limpio === 'A+' || limpio === 'B') { borde = '#bfdbfe'; fondo = 'linear-gradient(135deg, #ffffff 0%, #eff6ff 100%)'; }
+          if (limpio.includes('B+') || limpio === 'C') { borde = '#fed7aa'; fondo = 'linear-gradient(135deg, #ffffff 0%, #fff7ed 100%)'; }
+          if (limpio.includes('C+') || limpio.includes('D')) { borde = '#ddd6fe'; fondo = 'linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)'; }
+          if (!limpio || limpio.includes('SIN')) { borde = '#fecaca'; fondo = 'linear-gradient(135deg, #ffffff 0%, #fef2f2 100%)'; }
+          return {
+            ...tarjeta,
+            border: `1px solid ${borde}`,
+            background: fondo,
+            boxShadow: '0 14px 30px rgba(15, 23, 42, 0.07)'
+          };
+        };
+
+        return (
+          <section style={{ display: 'grid', gap: 16 }}>
+            <article style={estiloFichaHero}>
+              <div>
+                <span style={{ ...agendaBadgeModalidad, background: '#f5f3ff', color: '#7c3aed', borderColor: '#ddd6fe' }}>FICHAS</span>
+                <h2 style={{ margin: '10px 0 0' }}>Alumnos</h2>
+                <p style={{ margin: '8px 0 0', color: '#475569', fontWeight: 650 }}>
+                  Baby e Intensivos juntos. Aquí queda el nivel real que usa toda la app.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <button
+                  type="button"
+                  onClick={() => setPantalla('ocioAlumnos')}
+                  style={{ ...botonSecundario, borderColor: '#bbf7d0', color: '#166534', background: '#f0fdf4' }}
+                >
+                  Ver alumnos Ocio
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMostrarNuevoAlumnoManual((valor) => !valor)}
+                  style={botonPrincipal}
+                  title="Crear ficha manual para un niño que no viene de listado."
+                >
+                  + Añadir alumno
+                </button>
+                <button onClick={cargarAlumnos} style={botonSecundario}>Refrescar</button>
+              </div>
+            </article>
+
+            <details style={{ ...agendaBloqueBlanco, padding: 14 }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 900, color: '#475569' }}>Ayuda rápida de esta pantalla</summary>
+              <div style={{ display: 'grid', gap: 8, marginTop: 10, color: '#475569' }}>
+                <p style={{ margin: 0 }}>Usa esta pantalla para revisar nivel real, historial, último reporte y evaluación técnica de Baby/Intensivos.</p>
+                <p style={{ margin: 0 }}>Ocio tiene su propia subpestaña porque funciona como escuela anual con grupo estable y día fijo.</p>
+              </div>
+            </details>
+
+            <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
+              <div style={tarjetaMetricaFicha('#7c3aed', '#f5f3ff')}>
+                <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>TOTAL</span>
+                <strong style={{ fontSize: 28 }}>{totalFichas}</strong>
+                <span>fichas</span>
+              </div>
+              <div style={tarjetaMetricaFicha('#dc2626', '#fef2f2')}>
+                <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>SIN NIVEL</span>
+                <strong style={{ fontSize: 28 }}>{totalSinNivel}</strong>
+                <span>revisar</span>
+              </div>
+              <div style={tarjetaMetricaFicha('#f97316', '#fff7ed')}>
+                <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>SIN REPORTES</span>
+                <strong style={{ fontSize: 28 }}>{totalSinReportes}</strong>
+                <span>sin histórico</span>
+              </div>
+              <div style={tarjetaMetricaFicha('#2563eb', '#eff6ff')}>
+                <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>REVISAR</span>
+                <strong style={{ fontSize: 28 }}>{totalRevisarFicha}</strong>
+                <span>fichas</span>
+              </div>
+            </section>
+
+            {mostrarNuevoAlumnoManual && (
+              <article style={{ ...agendaBloqueBlanco, borderColor: '#ddd6fe', background: '#faf5ff' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                  <div>
+                    <h3 style={{ marginTop: 0 }}>Crear alumno manual</h3>
+                    <p style={{ marginTop: 0, color: '#555' }}>
+                      Para niños que no vienen de Aimharder o pruebas. Si no sabes nivel, déjalo pendiente.
+                    </p>
+                  </div>
+                  <button type="button" onClick={() => setMostrarNuevoAlumnoManual(false)} style={botonSecundario}>Cerrar</button>
+                </div>
+
+                <div style={gridFormulario}>
+                  <label style={labelCampo}>
+                    Nombre completo
+                    <input
+                      value={nuevoAlumnoNombre}
+                      onChange={(e) => setNuevoAlumnoNombre(e.target.value.toUpperCase())}
+                      placeholder="NOMBRE APELLIDO APELLIDO"
+                      style={inputCampo}
+                    />
+                  </label>
+
+                  <label style={labelCampo}>
+                    Nivel real inicial
+                    <select
+                      value={nuevoAlumnoNivel}
+                      onChange={(e) => setNuevoAlumnoNivel(e.target.value)}
+                      style={selectCampo}
+                    >
+                      <option value="">Sin nivel / pendiente</option>
+                      {opcionesNivel.map((nivel) => (
+                        <option key={nivel} value={nivel}>{nivel}</option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label style={labelCampo}>
+                    Origen del nivel
+                    <select
+                      value={nuevoAlumnoOrigen}
+                      onChange={(e) => setNuevoAlumnoOrigen(e.target.value)}
+                      style={selectCampo}
+                    >
+                      <option value="Jose / Coordinador">Jose / Coordinador</option>
+                      <option value="Familia">Familia</option>
+                      <option value="Ventas / compañera">Ventas / compañera</option>
+                      <option value="Clase de prueba pendiente">Clase de prueba pendiente</option>
+                      <option value="Desconocido">Desconocido</option>
+                    </select>
+                  </label>
+
+                  <label style={labelCampo}>
+                    Estado ficha
+                    <select
+                      value={nuevoAlumnoEstado}
+                      onChange={(e) => setNuevoAlumnoEstado(e.target.value)}
+                      style={selectCampo}
+                    >
+                      <option value="pendiente completar">Pendiente completar</option>
+                      <option value="revisar">Revisar</option>
+                      <option value="completa">Completa</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                  <button type="button" onClick={crearAlumnoManualBase} style={botonPrincipal}>
+                    Crear ficha
+                  </button>
+                </div>
+              </article>
+            )}
+
+            <article style={agendaBloqueBlanco}>
+              <div style={{ display: 'grid', gap: 12 }}>
+                <input
+                  value={busquedaAlumno}
+                  onChange={(e) => setBusquedaAlumno(e.target.value)}
+                  placeholder="Buscar alumno por nombre..."
+                  style={{ ...buscador, margin: 0 }}
+                />
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <button onClick={() => setFiltroAlumnos('todos')} style={botonMenu(filtroAlumnos === 'todos')}>Todos</button>
+                  <button onClick={() => setFiltroAlumnos('sin_nivel')} style={botonMenu(filtroAlumnos === 'sin_nivel')}>Sin nivel</button>
+                  <button onClick={() => setFiltroAlumnos('sin_reportes')} style={botonMenu(filtroAlumnos === 'sin_reportes')}>Sin reportes</button>
+                </div>
+              </div>
+            </article>
+
+            {cargando && <p>Cargando alumnos...</p>}
+
+            <section style={{ display: 'grid', gap: 12 }}>
+              {alumnosFiltrados.map((alumno) => {
+                const editandoEsteAlumno = alumnoEditandoId === alumno.alumno_id;
+                const nivelPrincipal = alumno.nivel_actual || alumno.ultimo_nivel_reportado || alumno.nivel_estimado || 'SIN NIVEL';
+                const sinReportes = Number(alumno.total_reportes || 0) === 0;
+                const nivelUsadoPorApp = alumno.nivel_actual || alumno.ultimo_nivel_reportado || alumno.nivel_estimado || '-';
+                const ultimoNivelReporte = alumno.ultimo_nivel_reportado || '';
+                const nivelDifiereUltimoReporte = Boolean(
+                  alumno.nivel_actual &&
+                  ultimoNivelReporte &&
+                  String(alumno.nivel_actual).trim().toUpperCase() !== String(ultimoNivelReporte).trim().toUpperCase()
+                );
+                const nivelProvisional = !alumno.nivel_actual && Boolean(alumno.nivel_estimado);
+                const historialAbierto = historialAlumnoAbiertoId === alumno.alumno_id;
+
+                return (
+                  <article key={alumno.alumno_id} style={estiloTarjetaAlumno(nivelPrincipal)}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                      <div style={{ minWidth: 260, flex: 1 }}>
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
+                          <span style={badgeNivelFicha(nivelPrincipal)}>Nivel {nivelPrincipal}</span>
+                          <span style={{ ...agendaBadgeModalidad, background: sinReportes ? '#fff7ed' : '#ecfdf5', color: sinReportes ? '#c2410c' : '#047857', borderColor: sinReportes ? '#fed7aa' : '#bbf7d0' }}>
+                            {sinReportes ? 'Sin reportes' : `${alumno.total_reportes || 0} reportes`}
+                          </span>
+                          <span style={{ ...agendaBadgeModalidad, background: '#f8fafc', color: '#475569', borderColor: '#e2e8f0' }}>
+                            {alumno.estado_ficha || 'sin estado'}
+                          </span>
+                        </div>
+
+                        <h3 style={{ margin: 0 }}>{alumno.alumno}</h3>
+                        <p style={{ margin: '8px 0 0', color: '#475569', fontWeight: 700 }}>
+                          Entrenamientos: {alumno.total_entrenamientos_realizados || 0} · Origen nivel: {alumno.origen_nivel_estimado || '-'}
+                        </p>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                        <button
+                          type="button"
+                          onClick={() => editarAlumnoBaseRapido(alumno)}
+                          style={botonMini}
+                          title="Editar nombre, nivel real, origen del nivel y estado de ficha."
+                        >
+                          Editar ficha
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => abrirEvaluacionAlumno(alumno)}
+                          style={botonMini}
+                          title="Previsualizar la evaluación técnica generada desde todos los reportes del alumno."
+                        >
+                          Ver evaluación
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => borrarAlumnoBase(alumno)}
+                          style={botonPeligroMini}
+                          title="Eliminar la ficha completa del alumno y sus datos asociados."
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </div>
+
+                    {editandoEsteAlumno && (
+                      <div style={{ ...miniTarjetaBlanca, marginTop: 12, border: '1px solid #ddd6fe' }}>
+                        <h4 style={{ marginTop: 0 }}>Editar ficha operativa</h4>
+                        <p style={{ marginTop: 0, color: '#475569' }}>
+                          Este nivel se guarda como nivel real y se usa en recomendador, grupos, listados y vista entrenador.
+                        </p>
+
+                        <div style={gridFormulario}>
+                          <label style={labelCampo}>
+                            Nombre
+                            <input
+                              value={alumnoEditNombre}
+                              onChange={(e) => setAlumnoEditNombre(e.target.value.toUpperCase())}
+                              style={inputCampo}
+                            />
+                          </label>
+
+                          <label style={labelCampo}>
+                            Nivel real de ficha
+                            <select value={alumnoEditNivel} onChange={(e) => setAlumnoEditNivel(e.target.value)} style={selectCampo}>
+                              <option value="">Sin nivel / pendiente</option>
+                              {opcionesNivel.map((nivel) => (
+                                <option key={nivel} value={nivel}>{nivel}</option>
+                              ))}
+                            </select>
+                          </label>
+
+                          <label style={labelCampo}>
+                            Origen del nivel
+                            <select value={alumnoEditOrigen} onChange={(e) => setAlumnoEditOrigen(e.target.value)} style={selectCampo}>
+                              <option value="Jose / Coordinador">Jose / Coordinador</option>
+                              <option value="Familia">Familia</option>
+                              <option value="Ventas / compañera">Ventas / compañera</option>
+                              <option value="Clase de prueba pendiente">Clase de prueba pendiente</option>
+                              <option value="Desconocido">Desconocido</option>
+                            </select>
+                          </label>
+
+                          <label style={labelCampo}>
+                            Estado ficha
+                            <select value={alumnoEditEstado} onChange={(e) => setAlumnoEditEstado(e.target.value)} style={selectCampo}>
+                              <option value="pendiente completar">Pendiente completar</option>
+                              <option value="revisar">Revisar</option>
+                              <option value="completa">Completa</option>
+                            </select>
+                          </label>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                          <button type="button" onClick={() => guardarAlumnoBase(alumno.alumno_id)} style={botonPrincipal}>
+                            Guardar cambios
+                          </button>
+                          <button type="button" onClick={cerrarEditorAlumnoBase} style={botonSecundario}>
+                            Cancelar
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {evaluacionAlumnoActivaId === alumno.alumno_id && (
+                      <div style={{ ...miniTarjetaBlanca, marginTop: 12, border: '1px solid #bfdbfe' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                          <div>
+                            <h4 style={{ margin: 0 }}>Vista previa evaluación técnica</h4>
+                            <p style={{ margin: '6px 0 0', color: '#555' }}>
+                              Revisa el texto antes de copiarlo para dejarlo bonito para padres.
+                            </p>
+                          </div>
+                          <button type="button" onClick={() => { setEvaluacionAlumnoActivaId(null); setEvaluacionAlumnoTexto(''); }} style={botonSecundario}>
+                            Cerrar
+                          </button>
+                        </div>
+
+                        <textarea
+                          readOnly
+                          value={evaluacionAlumnoTexto}
+                          style={{ ...textarea, minHeight: 260, marginTop: 12, whiteSpace: 'pre-wrap' }}
+                        />
+
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                          <button type="button" onClick={copiarEvaluacionAlumnoTexto} style={botonPrincipal}>
+                            Copiar para ChatGPT
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ marginTop: 12 }}>
+                      <button
+                        type="button"
+                        onClick={() => setHistorialAlumnoAbiertoId(historialAbierto ? null : alumno.alumno_id)}
+                        style={{
+                          ...botonSecundario,
+                          width: '100%',
+                          justifyContent: 'space-between',
+                          borderColor: historialAbierto ? '#bfdbfe' : '#e2e8f0',
+                          background: historialAbierto ? '#eff6ff' : '#ffffff',
+                          color: '#0f172a',
+                          fontWeight: 900
+                        }}
+                      >
+                        <span>{historialAbierto ? '▼' : '▶'} Historial técnico / último reporte</span>
+                        <span style={{ fontSize: 13, color: '#64748b' }}>
+                          Nivel app {nivelUsadoPorApp} · Último reporte {alumno.ultima_fecha_reporte ? formatearFecha(alumno.ultima_fecha_reporte) : '-'}
+                        </span>
+                      </button>
+
+                      {historialAbierto && (
+                        <div style={{ ...miniTarjetaBlanca, marginTop: 10, display: 'grid', gap: 12, border: '1px solid #bfdbfe', background: '#f8fbff' }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
+                            <div style={{ ...miniTarjetaBlanca, padding: 12, background: '#ffffff' }}>
+                              <div style={{ fontSize: 12, fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Nivel usado por la app</div>
+                              <div style={{ fontSize: 24, fontWeight: 950, color: '#0f172a', marginTop: 4 }}>{nivelUsadoPorApp}</div>
+                              <div style={{ color: '#64748b', fontWeight: 700, marginTop: 4 }}>Este es el nivel real para recomendador y grupos.</div>
+                            </div>
+
+                            <div style={{ ...miniTarjetaBlanca, padding: 12, background: '#ffffff' }}>
+                              <div style={{ fontSize: 12, fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Último reporte</div>
+                              <div style={{ fontSize: 24, fontWeight: 950, color: nivelDifiereUltimoReporte ? '#c2410c' : '#047857', marginTop: 4 }}>
+                                {alumno.ultimo_nivel_reportado || '-'}
+                              </div>
+                              <div style={{ color: '#64748b', fontWeight: 700, marginTop: 4 }}>
+                                {alumno.ultima_fecha_reporte ? formatearFecha(alumno.ultima_fecha_reporte) : 'Sin fecha de reporte'}
+                              </div>
+                            </div>
+
+                            <div style={{ ...miniTarjetaBlanca, padding: 12, background: '#ffffff' }}>
+                              <div style={{ fontSize: 12, fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Origen del nivel</div>
+                              <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', marginTop: 6 }}>{alumno.origen_nivel_estimado || '-'}</div>
+                              <div style={{ color: '#64748b', fontWeight: 700, marginTop: 4 }}>Solo avisa si el nivel no está confirmado.</div>
+                            </div>
+                          </div>
+
+                          {nivelDifiereUltimoReporte && (
+                            <div style={{ padding: 12, borderRadius: 16, border: '1px solid #fed7aa', background: '#fff7ed', color: '#9a3412', fontWeight: 800 }}>
+                              Revisar nivel: el nivel usado por la app no coincide con el último nivel reportado por entrenador.
+                            </div>
+                          )}
+
+                          {nivelProvisional && (
+                            <div style={{ padding: 12, borderRadius: 16, border: '1px solid #fde68a', background: '#fffbeb', color: '#92400e', fontWeight: 800 }}>
+                              Nivel provisional: todavía no hay nivel real confirmado en ficha. Usar con aviso en grupos.
+                            </div>
+                          )}
+
+                          <details style={{ border: '1px solid #e2e8f0', borderRadius: 16, padding: 12, background: '#ffffff' }}>
+                            <summary style={{ cursor: 'pointer', fontWeight: 900, color: '#334155' }}>Ver datos históricos del nivel</summary>
+                            <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
+                              <p style={{ margin: 0 }}><strong>Nivel inicial / estimado:</strong> {alumno.nivel_estimado || '-'}</p>
+                              <p style={{ margin: 0 }}><strong>Último nivel reportado:</strong> {alumno.ultimo_nivel_reportado || '-'}</p>
+                              <p style={{ margin: 0 }}><strong>Nivel usado por la app:</strong> {nivelUsadoPorApp}</p>
+                              <p style={{ margin: 0 }}><strong>Origen:</strong> {alumno.origen_nivel_estimado || '-'}</p>
+                            </div>
+                          </details>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
+                            <p style={{ margin: 0 }}><strong>Última modalidad:</strong> {alumno.ultima_modalidad || '-'}</p>
+                            <p style={{ margin: 0 }}><strong>Pista:</strong> {alumno.ultima_pista || '-'}</p>
+                            <p style={{ margin: 0 }}><strong>Última actitud:</strong> {alumno.ultima_actitud || '-'}</p>
+                            <p style={{ margin: 0 }}><strong>Última técnica:</strong> {alumno.ultima_tecnica || '-'}</p>
+                            <p style={{ margin: 0 }}><strong>Última recomendación:</strong> {alumno.ultima_recomendacion || '-'}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </article>
+                );
+              })}
+            </section>
+          </section>
+        );
+      })()}
+
+      {pantalla === 'entrenadores' && (
+        <section>
+          <div style={cabeceraPantalla}>
+            <div>
+              <h2>Entrenadores / gestión</h2>
+              <p style={{ margin: '6px 0 0', color: '#555' }}>
+                Alta, contacto, especialidades, chaqueta y documentación. Los cobros se gestionan en Cobros.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button type="button" onClick={abrirNuevoEntrenador} style={botonPrincipal}>
+                + Añadir entrenador
+              </button>
+              <button onClick={cargarEntrenadores} style={botonSecundario}>
+                Refrescar
+              </button>
+            </div>
+          </div>
+
+          {mostrarFormularioEntrenador && (
+            <article style={agendaBloqueBlanco}>
+              <h3 style={{ marginTop: 0 }}>{formEntrenador.id ? 'Editar entrenador' : 'Alta de entrenador'}</h3>
+              <p style={{ marginTop: 0, color: '#555' }}>
+                Para que puedan usar la app necesitas al menos nombre. El email es recomendable para acceso/login y el teléfono para WhatsApp.
+              </p>
+
+              <div style={gridFormulario}>
+                <label style={labelCampo}>
+                  Nombre completo
+                  <input
+                    value={formEntrenador.nombre}
+                    onChange={(e) => setFormEntrenador({ ...formEntrenador, nombre: e.target.value })}
+                    placeholder="Nombre y apellidos"
+                    style={inputCampo}
+                  />
+                </label>
+
+                <label style={labelCampo}>
+                  Email acceso app
+                  <input
+                    value={formEntrenador.email}
+                    onChange={(e) => setFormEntrenador({ ...formEntrenador, email: e.target.value })}
+                    placeholder="correo@ejemplo.com"
+                    style={inputCampo}
+                  />
+                </label>
+
+                <label style={labelCampo}>
+                  Teléfono / WhatsApp
+                  <input
+                    value={formEntrenador.telefono}
+                    onChange={(e) => setFormEntrenador({ ...formEntrenador, telefono: e.target.value })}
+                    placeholder="600000000"
+                    style={inputCampo}
+                  />
+                </label>
+
+                <label style={labelCampo}>
+                  Tarifa por turno
+                  <input
+                    value={formEntrenador.tarifa}
+                    onChange={(e) => setFormEntrenador({ ...formEntrenador, tarifa: e.target.value })}
+                    placeholder="0"
+                    type="number"
+                    style={inputCampo}
+                  />
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
+                <label style={{ ...miniTarjetaBlanca, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={formEntrenador.activo}
+                    onChange={(e) => setFormEntrenador({ ...formEntrenador, activo: e.target.checked })}
+                  />{' '}
+                  Activo esta temporada
+                </label>
+                <label style={{ ...miniTarjetaBlanca, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={formEntrenador.chaqueta}
+                    onChange={(e) => setFormEntrenador({ ...formEntrenador, chaqueta: e.target.checked })}
+                  />{' '}
+                  Chaqueta entregada
+                </label>
+              </div>
+
+              <h4>Especialidades</h4>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {opcionesEspecialidadEntrenador.map((especialidad) => (
+                  <label key={especialidad} style={botonMenu(formEntrenador.especialidades.includes(especialidad))}>
+                    <input
+                      type="checkbox"
+                      checked={formEntrenador.especialidades.includes(especialidad)}
+                      onChange={() => alternarEspecialidadEntrenador(especialidad)}
+                      style={{ display: 'none' }}
+                    />
+                    {especialidad}
+                  </label>
+                ))}
+              </div>
+
+              <h4>Documentación</h4>
+              <div style={gridFormulario}>
+                <label style={labelCampo}>
+                  Titulación
+                  <select
+                    value={formEntrenador.titulacionEstado}
+                    onChange={(e) => setFormEntrenador({ ...formEntrenador, titulacionEstado: e.target.value })}
+                    style={selectCampo}
+                  >
+                    {opcionesDocumentoEntrenador.map((opcion) => <option key={opcion} value={opcion}>{opcion}</option>)}
+                  </select>
+                </label>
+                <label style={labelCampo}>
+                  Enlace titulación
+                  <input
+                    value={formEntrenador.titulacionUrl}
+                    onChange={(e) => setFormEntrenador({ ...formEntrenador, titulacionUrl: e.target.value })}
+                    placeholder="Drive / PDF / enlace interno"
+                    style={inputCampo}
+                  />
+                </label>
+                <label style={labelCampo}>
+                  Antecedentes sexuales
+                  <select
+                    value={formEntrenador.antecedentesEstado}
+                    onChange={(e) => setFormEntrenador({ ...formEntrenador, antecedentesEstado: e.target.value })}
+                    style={selectCampo}
+                  >
+                    {opcionesDocumentoEntrenador.map((opcion) => <option key={opcion} value={opcion}>{opcion}</option>)}
+                  </select>
+                </label>
+                <label style={labelCampo}>
+                  Enlace antecedentes
+                  <input
+                    value={formEntrenador.antecedentesUrl}
+                    onChange={(e) => setFormEntrenador({ ...formEntrenador, antecedentesUrl: e.target.value })}
+                    placeholder="Drive / PDF / enlace interno"
+                    style={inputCampo}
+                  />
+                </label>
+              </div>
+
+              <label style={{ ...labelCampo, marginTop: 12 }}>
+                Observaciones internas
+                <textarea
+                  value={formEntrenador.observaciones}
+                  onChange={(e) => setFormEntrenador({ ...formEntrenador, observaciones: e.target.value })}
+                  placeholder="Disponibilidad especial, forma de trabajar, restricciones, notas de coordinación..."
+                  style={{ ...inputCampo, minHeight: 80 }}
+                />
+              </label>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
+                <button type="button" onClick={guardarEntrenadorGestion} style={botonPrincipal}>
+                  Guardar entrenador
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMostrarFormularioEntrenador(false);
+                    setFormEntrenador(entrenadorFormInicial());
+                  }}
+                  style={botonSecundario}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </article>
+          )}
+
+          <input
+            value={busquedaEntrenador}
+            onChange={(e) => setBusquedaEntrenador(e.target.value)}
+            placeholder="Buscar entrenador, teléfono, email o especialidad..."
+            style={buscador}
+          />
+
+          <nav style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+            <button onClick={() => setFiltroEntrenadores('todos')} style={botonMenu(filtroEntrenadores === 'todos')}>Todos</button>
+            <button onClick={() => setFiltroEntrenadores('activos')} style={botonMenu(filtroEntrenadores === 'activos')}>Activos</button>
+            <button onClick={() => setFiltroEntrenadores('inactivos')} style={botonMenu(filtroEntrenadores === 'inactivos')}>Inactivos</button>
+            <button onClick={() => setFiltroEntrenadores('sin_chaqueta')} style={botonMenu(filtroEntrenadores === 'sin_chaqueta')}>Sin chaqueta</button>
+            <button onClick={() => setFiltroEntrenadores('documentacion_pendiente')} style={botonMenu(filtroEntrenadores === 'documentacion_pendiente')}>Documentación pendiente</button>
+          </nav>
+
+          {cargando && <p>Cargando entrenadores...</p>}
+
+          {!cargando && entrenadoresFiltrados.length === 0 && !error && (
+            <article style={tarjetaMovilVacia}>
+              <h3 style={{ marginTop: 0 }}>Sin entrenadores en este filtro</h3>
+              <p style={{ marginBottom: 0 }}>Puedes añadir el primer entrenador con el botón superior.</p>
+            </article>
+          )}
+
+          <section style={{ display: 'grid', gap: 12 }}>
+            {entrenadoresFiltrados.map((entrenador) => {
+              const documentacionOk =
+                (entrenador.titulacion_estado || 'Pendiente') === 'Validado' &&
+                (entrenador.antecedentes_estado || 'Pendiente') === 'Validado';
+
+              return (
+                <article key={entrenador.entrenador_id} style={tarjeta}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                    <div>
+                      <p style={etiquetaSuperior}>ENTRENADOR</p>
+                      <h3 style={{ margin: 0 }}>{entrenador.nombre_completo}</h3>
+                      <p style={{ margin: '6px 0 0', color: '#555' }}>
+                        {entrenador.activo ? 'Activo' : 'Inactivo'} · Chaqueta: {entrenador.chaqueta_entregada ? 'Sí' : 'No'}
+                      </p>
+                    </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button type="button" onClick={() => abrirEditarEntrenador(entrenador)} style={botonMini}>
+                        Editar ficha
+                      </button>
+                      <button type="button" onClick={() => eliminarEntrenadorGestion(entrenador)} style={botonPeligro}>
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={gridMiniMetricas}>
+                    <div style={miniMetrica}>
+                      <strong>Contacto</strong>
+                      <span>Email: {entrenador.email || '-'}</span>
+                      <span>WhatsApp: {entrenador.telefono || '-'}</span>
+                    </div>
+                    <div style={miniMetrica}>
+                      <strong>Especialidades</strong>
+                      <span>{(entrenador.especialidades || []).length > 0 ? (entrenador.especialidades || []).join(' · ') : 'Sin marcar'}</span>
+                    </div>
+                    <div style={miniMetrica}>
+                      <strong>Documentación</strong>
+                      <span>Titulación: {entrenador.titulacion_estado || 'Pendiente'}</span>
+                      <span>Antecedentes: {entrenador.antecedentes_estado || 'Pendiente'}</span>
+                    </div>
+                    <div style={miniMetrica}>
+                      <strong>Estado operativo</strong>
+                      <span>{documentacionOk ? 'Documentación OK' : 'Revisar documentación'}</span>
+                      <span>Tarifa: {entrenador.tarifa_por_turno || 0} € / turno</span>
+                    </div>
+                  </div>
+
+                  {(entrenador.titulacion_url || entrenador.antecedentes_url || entrenador.observaciones_internas) && (
+                    <details>
+                      <summary style={{ cursor: 'pointer', fontWeight: 900 }}>Ver documentos y notas</summary>
+                      <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
+                        <p style={{ margin: 0 }}><strong>Titulación:</strong> {entrenador.titulacion_url || '-'} {entrenador.titulacion_observaciones ? `· ${entrenador.titulacion_observaciones}` : ''}</p>
+                        <p style={{ margin: 0 }}><strong>Antecedentes:</strong> {entrenador.antecedentes_url || '-'} {entrenador.antecedentes_observaciones ? `· ${entrenador.antecedentes_observaciones}` : ''}</p>
+                        <p style={{ margin: 0 }}><strong>Notas:</strong> {entrenador.observaciones_internas || '-'}</p>
+                      </div>
+                    </details>
+                  )}
+                </article>
+              );
+            })}
+          </section>
+        </section>
+      )}
+
+      {pantalla === 'disponibilidad' && (
+        <section style={{ display: 'grid', gap: 16 }}>
+          <div style={cabeceraPantallaMovil}>
+            <div>
+              <h2 style={{ margin: 0 }}>Disponibilidad semanal</h2>
+              <p style={{ margin: '6px 0 0' }}>
+                Flujo correcto: 1) pides disponibilidad por semana, 2) entrenadores responden Disponible/No puedo, 3) Jose crea grupos solo con los disponibles, 4) envías aviso de grupos asignados.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button onClick={crearDisponibilidadSemanaActual} style={botonSecundario}>1 · Crear turnos</button>
+              <button onClick={enviarAvisoDisponibilidadSemana} style={botonPrincipal}>2 · Enviar aviso en app</button>
+              <button onClick={copiarMensajeDisponibilidadSemana} style={botonSecundario}>3 · Ver recordatorio WhatsApp</button>
+            </div>
+          </div>
+
+          <article style={agendaBloqueBlanco}>
+            <h3 style={{ marginTop: 0 }}>Semana que estás pidiendo</h3>
+            <div style={gridFormulario}>
+              <label style={labelCampo}>
+                Temporada
+                <select
+                  value={anioInicioTemporadaAgenda}
+                  style={selectCampoAgenda}
+                  onChange={(e) => {
+                    const nuevoAnio = Number(e.target.value);
+                    setAnioInicioTemporadaAgenda(nuevoAnio);
+                    setMesAgenda(`${nuevoAnio}-09`);
+                    setSemanaAgendaInicio('');
+                  }}
+                >
+                  {opcionesTemporadaAgenda.map((anio) => (
+                    <option key={anio} value={anio}>{nombreTemporadaAgenda(anio)}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label style={labelCampo}>
+                Mes
+                <select
+                  value={mesAgendaActivo}
+                  style={selectCampoAgenda}
+                  onChange={(e) => {
+                    setMesAgenda(e.target.value);
+                    setSemanaAgendaInicio('');
+                  }}
+                >
+                  {mesesAgenda.map((clave) => (
+                    <option key={clave} value={clave}>{nombreMesAgendaDesdeClave(clave)}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label style={labelCampo}>
+                Semana lunes-domingo
+                <select
+                  value={semanaAgendaActiva}
+                  onChange={(e) => setSemanaAgendaInicio(e.target.value)}
+                >
+                  {semanasAgenda.map((semana) => (
+                    <option key={semana} value={semana}>Semana {rangoSemanaAgenda(semana)}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <p style={{ margin: '10px 0 0', fontWeight: 800 }}>
+              Disponibilidad seleccionada: Semana {semanaAgendaActiva ? rangoSemanaAgenda(semanaAgendaActiva) : '-'}
+            </p>
+          </article>
+
+          <input value={busquedaDisponibilidad} onChange={(e) => setBusquedaDisponibilidad(e.target.value)} placeholder="Buscar entrenador..." style={buscador} />
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
+            <button onClick={() => setFiltroDisponibilidad('todos')} style={botonMenu(filtroDisponibilidad === 'todos')}>Todos</button>
+            <button onClick={() => setFiltroDisponibilidad('disponibles')} style={botonMenu(filtroDisponibilidad === 'disponibles')}>Disponibles</button>
+            <button onClick={() => setFiltroDisponibilidad('no_puedo')} style={botonMenu(filtroDisponibilidad === 'no_puedo')}>No puedo</button>
+            <button onClick={() => setFiltroDisponibilidad('pendientes')} style={botonMenu(filtroDisponibilidad === 'pendientes')}>Pendientes</button>
+          </div>
+
+          <article style={avisoNeutral}>
+            Vista rápida tipo Google Forms: por cada día y turno ves quién está Disponible, quién No puede y quién falta por contestar. Esta pantalla funciona antes de crear grupos.
+          </article>
+
+          {cargando && <p>Cargando disponibilidad...</p>}
+
+          {!cargando && disponibilidadSemanalEntrenador.length === 0 && !error && (
+            <article style={tarjetaMovilVacia}>
+              <h3 style={{ marginTop: 0 }}>Sin disponibilidad creada para esta semana</h3>
+              <p style={{ marginBottom: 0 }}>Selecciona temporada y semana arriba. Luego pulsa “Crear turnos”.</p>
+            </article>
+          )}
+
+          <section style={{ display: 'grid', gap: 16 }}>
+            {disponibilidadPorTurno.map((turno) => (
+              <article key={turno.clave} style={tarjetaEntrenadorMovil}>
+                <header style={cabeceraEntrenadorMovil}>
+                  <div>
+                    <p style={etiquetaSuperior}>DÍA / TURNO</p>
+                    <h3 style={{ margin: 0 }}>
+                      {capitalizarPrimera(new Date(`${turno.fecha}T00:00:00`).toLocaleDateString('es-ES', { weekday: 'long' }))} {formatearFecha(turno.fecha)} · {turno.hora_inicio.slice(0, 5)}–{turno.hora_fin.slice(0, 5)}
+                    </h3>
+                  </div>
+                  <div style={resumenChipsMovil}>
+                    <span>{turno.disponibles.length} disponibles</span>
+                    <span>{turno.no_puedo.length} no pueden</span>
+                    <span>{turno.pendientes.length} pendientes</span>
+                  </div>
+                </header>
+
+                <div style={{ display: 'grid', gap: 10 }}>
+                  <div style={miniTarjetaBlanca}>
+                    <strong>Disponibles para asignar grupo</strong>
+                    <p style={{ margin: '6px 0 0' }}>
+                      {turno.disponibles.length > 0 ? turno.disponibles.join(' · ') : 'Nadie ha marcado Disponible todavía.'}
+                    </p>
+                  </div>
+
+                  <details>
+                    <summary style={{ cursor: 'pointer', fontWeight: 800 }}>Ver No pueden / Pendientes</summary>
+                    <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+                      <div style={miniTarjetaBlanca}>
+                        <strong>No pueden</strong>
+                        <p style={{ margin: '6px 0 0' }}>{turno.no_puedo.length > 0 ? turno.no_puedo.join(' · ') : 'Nadie.'}</p>
+                      </div>
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Pendientes</strong>
+                        <p style={{ margin: '6px 0 0' }}>{turno.pendientes.length > 0 ? turno.pendientes.join(' · ') : 'Nadie pendiente.'}</p>
+                      </div>
+                    </div>
+                  </details>
+                </div>
+              </article>
+            ))}
+          </section>
+
+          <details style={agendaBloqueBlanco}>
+            <summary style={{ cursor: 'pointer', fontWeight: 900 }}>Ver detalle por entrenador</summary>
+            <section style={{ display: 'grid', gap: 16, marginTop: 12 }}>
+              {disponibilidadSemanalEntrenador.map((grupo) => (
+                <article key={grupo.entrenador_id} style={tarjetaEntrenadorMovil}>
+                  <header style={cabeceraEntrenadorMovil}>
+                    <div><p style={etiquetaSuperior}>ENTRENADOR</p><h3 style={{ margin: 0 }}>{grupo.entrenador}</h3></div>
+                    <div style={resumenChipsMovil}><span>{grupo.disponibles} disponibles</span><span>{grupo.no_puedo} no puedo</span><span>{grupo.pendientes} pendientes</span></div>
+                  </header>
+                  {grupo.semanas.map((semana) => (
+                    <section key={`${grupo.entrenador_id}-${semana.inicio}`} style={bloqueSemanaMovil}>
+                      <h4 style={{ marginTop: 0 }}>Semana {rangoSemanaAgenda(semana.inicio)}</h4>
+                      <div style={{ display: 'grid', gap: 8 }}>
+                        {diasTrabajoSemanaAgenda(semana.inicio).map((dia) => {
+                          const turnosDia = semana.turnos.filter((turno) => turno.fecha === dia.fecha);
+                          return (
+                            <article key={`${grupo.entrenador_id}-${dia.fecha}`} style={diaEntrenadorCard}>
+                              <div style={diaEntrenadorHeader}><div style={{ display: 'grid' }}><strong>{capitalizarPrimera(dia.nombre)}</strong><span>{formatearFecha(dia.fecha)}</span></div></div>
+                              {turnosTrabajoDiaAgenda(dia.fecha).map((turnoBase) => {
+                                const turno = turnosDia.find((item) => item.hora_inicio.slice(0, 5) === turnoBase.inicio && item.hora_fin.slice(0, 5) === turnoBase.fin);
+                                return (
+                                  <div key={`${dia.fecha}-${turnoBase.inicio}`} style={miniTarjetaBlanca}>
+                                    <strong>{turnoBase.inicio}–{turnoBase.fin}</strong>
+                                    <p style={{ margin: '4px 0 0' }}>Respuesta: <strong>{turno?.respuesta || 'Pendiente'}</strong></p>
+                                    {turno && (
+                                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                                        <button onClick={() => responderDisponibilidadRapida(turno, 'Disponible')} style={turno.respuesta === 'Disponible' ? botonAsistenciaOk : botonAsistenciaOff}>Disponible</button>
+                                        <button onClick={() => responderDisponibilidadRapida(turno, 'No puedo')} style={turno.respuesta === 'No puedo' ? botonAsistenciaAusente : botonAsistenciaOff}>No puedo</button>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))}
+                </article>
+              ))}
+            </section>
+          </details>
+        </section>
+      )}
+
+      {pantalla === 'cobros' && (
+        <section style={{ display: 'grid', gap: 16 }}>
+          <article style={agendaHero}>
+            <div>
+              <h2 style={{ margin: 0 }}>Cobros entrenadores</h2>
+              <p style={{ margin: '8px 0 0' }}>Resumen mensual unificado: Baby, Intensivos y Ocio. Se calcula por turnos trabajados x tarifa por sesión, con ajustes manuales si hace falta.</p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button onClick={cargarCobros} style={botonSecundario}>Actualizar</button>
+              <button onClick={abrirPdfCobrosConjunto} style={botonPrincipal}>PDF conjunto dirección</button>
+            </div>
+          </article>
+
+          <article style={agendaBloqueBlanco}>
+            <h3 style={{ marginTop: 0 }}>Mes a revisar</h3>
+            <div style={gridFormulario}>
+              <label style={labelCampo}>Año
+                <select value={anioCobros} onChange={(e) => setAnioCobros(Number(e.target.value))} style={selectCampo}>
+                  {aniosCobrosOpciones.map((anio) => <option key={anio} value={anio}>{anio}</option>)}
+                </select>
+              </label>
+              <label style={labelCampo}>Mes
+                <select value={mesCobros} onChange={(e) => setMesCobros(Number(e.target.value))} style={selectCampo}>
+                  {Array.from({ length: 12 }, (_, indice) => indice + 1).map((mes) => <option key={mes} value={mes}>{nombreMes(mes)}</option>)}
+                </select>
+              </label>
+              <div style={{ ...labelCampo, justifyContent: 'flex-end' }}>
+                <button onClick={cargarCobros} style={botonPrincipal}>Ver mes</button>
+              </div>
+            </div>
+          </article>
+
+          <article style={agendaBloqueBlanco}>
+            <h3 style={{ marginTop: 0 }}>Añadir entreno manual</h3>
+            <p style={{ marginTop: 0, color: '#555' }}>Para entrenos que no estén registrados en Baby, Intensivos u Ocio. Cuenta como un turno más en el mes del entrenador.</p>
+            <div style={gridFormulario}>
+              <label style={labelCampo}>Entrenador
+                <select
+                  value={formCobroManual.entrenadorId}
+                  onChange={(e) => setFormCobroManual({ ...formCobroManual, entrenadorId: e.target.value })}
+                  style={selectCampo}
+                >
+                  <option value="">Elegir entrenador</option>
+                  {entrenadores.filter((entrenador) => entrenador.activo !== false).map((entrenador) => (
+                    <option key={entrenador.entrenador_id} value={entrenador.entrenador_id}>
+                      {entrenador.nombre_completo}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label style={labelCampo}>Fecha
+                <input
+                  type="date"
+                  value={formCobroManual.fecha}
+                  onChange={(e) => setFormCobroManual({ ...formCobroManual, fecha: e.target.value })}
+                  style={inputCampo}
+                />
+              </label>
+              <label style={labelCampo}>Inicio
+                <input
+                  type="time"
+                  value={formCobroManual.horaInicio}
+                  onChange={(e) => setFormCobroManual({ ...formCobroManual, horaInicio: e.target.value })}
+                  style={inputCampo}
+                />
+              </label>
+              <label style={labelCampo}>Fin
+                <input
+                  type="time"
+                  value={formCobroManual.horaFin}
+                  onChange={(e) => setFormCobroManual({ ...formCobroManual, horaFin: e.target.value })}
+                  style={inputCampo}
+                />
+              </label>
+              <label style={labelCampo}>Modalidad
+                <select
+                  value={formCobroManual.modalidad}
+                  onChange={(e) => setFormCobroManual({ ...formCobroManual, modalidad: e.target.value })}
+                  style={selectCampo}
+                >
+                  <option value="BABY">Baby</option>
+                  <option value="INTENSIVOS">Intensivos</option>
+                  <option value="OCIO">Ocio</option>
+                </select>
+              </label>
+              <label style={labelCampo}>Nombre / motivo
+                <input
+                  value={formCobroManual.nombreGrupo}
+                  onChange={(e) => setFormCobroManual({ ...formCobroManual, nombreGrupo: e.target.value })}
+                  placeholder="Apoyo pista / entreno manual / sustitución..."
+                  style={inputCampo}
+                />
+              </label>
+              <label style={labelCampo}>Niños
+                <input
+                  type="number"
+                  value={formCobroManual.totalAlumnos}
+                  onChange={(e) => setFormCobroManual({ ...formCobroManual, totalAlumnos: e.target.value })}
+                  style={inputCampo}
+                />
+              </label>
+              <label style={labelCampo}>Importe especial opcional
+                <input
+                  value={formCobroManual.importeOverride}
+                  onChange={(e) => setFormCobroManual({ ...formCobroManual, importeOverride: e.target.value })}
+                  placeholder="Vacío = tarifa del entrenador"
+                  style={inputCampo}
+                />
+              </label>
+              <label style={{ ...labelCampo, gridColumn: '1 / -1' }}>Observaciones
+                <textarea
+                  value={formCobroManual.observaciones}
+                  onChange={(e) => setFormCobroManual({ ...formCobroManual, observaciones: e.target.value })}
+                  rows={2}
+                  placeholder="Nota para dirección si hace falta..."
+                  style={textareaCampo}
+                />
+              </label>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+              <button onClick={crearEntrenoManualCobro} style={botonPrincipal}>Añadir entreno manual</button>
+              <button onClick={() => setFormCobroManual(cobroManualInicial())} style={botonSecundario}>Limpiar formulario</button>
+            </div>
+          </article>
+
+          <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+            <article style={miniTarjetaBlanca}>
+              <strong>Total mes</strong>
+              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>{formatearEuros(totalGeneralCobrosMes)}</p>
+            </article>
+            <article style={miniTarjetaBlanca}>
+              <strong>Turnos</strong>
+              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>{totalTurnosCobrosMes}</p>
+            </article>
+            <article style={miniTarjetaBlanca}>
+              <strong>Baby</strong>
+              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>{totalBabyCobrosMes}</p>
+            </article>
+            <article style={miniTarjetaBlanca}>
+              <strong>Intensivos</strong>
+              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>{totalIntensivosCobrosMes}</p>
+            </article>
+            <article style={miniTarjetaBlanca}>
+              <strong>Ocio</strong>
+              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>{totalOcioCobrosMes}</p>
+            </article>
+          </section>
+
+          <input
+            value={busquedaCobros}
+            onChange={(e) => setBusquedaCobros(e.target.value)}
+            placeholder="Buscar entrenador, temporada, mes, modalidad o estado..."
+            style={buscador}
+          />
+
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <button onClick={() => setFiltroCobros('todos')} style={botonMenu(filtroCobros === 'todos')}>Todos</button>
+            <button onClick={() => setFiltroCobros('pendiente')} style={botonMenu(filtroCobros === 'pendiente')}>Pendiente</button>
+            <button onClick={() => setFiltroCobros('cerrado')} style={botonMenu(filtroCobros === 'cerrado')}>Cerrado / pagado</button>
+            <button onClick={() => setFiltroCobros('incidencias')} style={botonMenu(filtroCobros === 'incidencias')}>Con incidencias</button>
+            <button onClick={() => setFiltroCobros('este_mes')} style={botonMenu(filtroCobros === 'este_mes')}>Este mes</button>
+          </div>
+
+          {cargando && <p>Cargando cobros...</p>}
+
+          {!cargando && cobrosFiltrados.length === 0 && !error && (
+            <article style={tarjeta}>
+              <h3 style={{ marginTop: 0 }}>Sin cobros</h3>
+              <p style={{ marginBottom: 0 }}>No hay turnos con entrenador asignado para este mes. Cuando prepares/publices grupos de Baby, Intensivos u Ocio, aparecerán aquí.</p>
+            </article>
+          )}
+
+          <section style={{ display: 'grid', gap: 14 }}>
+            {cobrosFiltrados.map((cobro) => {
+              const detalles = detallesDeCobro(cobro.entrenador_id);
+              return (
+                <article key={`${cobro.entrenador_id}-${cobro.anio}-${cobro.mes}`} style={tarjeta}>
+                  <div style={agendaCabeceraLinea}>
+                    <div>
+                      <h3 style={{ margin: 0 }}>{cobro.entrenador}</h3>
+                      <p style={{ margin: '6px 0 0', color: '#555' }}>
+                        {nombreMes(cobro.mes)} {cobro.anio} · {cobro.temporada} · Estado: <strong>{cobro.estado_mes}</strong>
+                      </p>
+                    </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <p style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>{formatearEuros(cobro.total_mes)}</p>
+                      <p style={{ margin: '4px 0 0', color: '#555' }}>{cobro.total_turnos_computables} turnos</p>
+                    </div>
+                  </div>
+
+                  <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8, marginTop: 12 }}>
+                    <div style={miniTarjetaBlanca}><strong>Baby</strong><br />{cobro.total_turnos_baby || 0} turnos</div>
+                    <div style={miniTarjetaBlanca}><strong>Intensivos</strong><br />{cobro.total_turnos_intensivos || 0} turnos</div>
+                    <div style={miniTarjetaBlanca}><strong>Ocio</strong><br />{cobro.total_turnos_ocio || 0} turnos</div>
+                    <div style={miniTarjetaBlanca}><strong>Subtotal</strong><br />{formatearEuros(cobro.subtotal_sesiones)}</div>
+                    <div style={miniTarjetaBlanca}><strong>Ajustes</strong><br />{formatearEuros(cobro.ajustes_total)}</div>
+                  </section>
+
+                  <div style={{ ...gridFormulario, marginTop: 12 }}>
+                    <label style={labelCampo}>Tarifa por sesión
+                      <input
+                        type="number"
+                        value={tarifasEditadasCobros[cobro.entrenador_id] ?? String(cobro.tarifa_por_turno ?? 0)}
+                        onChange={(e) => setTarifasEditadasCobros({ ...tarifasEditadasCobros, [cobro.entrenador_id]: e.target.value })}
+                        style={inputCampo}
+                      />
+                    </label>
+                    <div style={{ ...labelCampo, justifyContent: 'flex-end' }}>
+                      <button onClick={() => guardarTarifaCobro(cobro)} style={botonSecundario}>Guardar tarifa</button>
+                    </div>
+                    <div style={{ ...labelCampo, justifyContent: 'flex-end' }}>
+                      <button onClick={() => crearAjusteCobro(cobro)} style={botonSecundario}>+ Ajuste manual</button>
+                    </div>
+                    <div style={{ ...labelCampo, justifyContent: 'flex-end' }}>
+                      <button onClick={() => abrirPdfCobroEntrenador(cobro)} style={botonPrincipal}>PDF individual</button>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                    <button onClick={() => cambiarEstadoCobro(cobro, 'abierto')} style={botonMenu(cobro.estado_mes === 'abierto')}>Abierto</button>
+                    <button onClick={() => cambiarEstadoCobro(cobro, 'revisado')} style={botonMenu(cobro.estado_mes === 'revisado')}>Revisado</button>
+                    <button onClick={() => cambiarEstadoCobro(cobro, 'cerrado')} style={botonMenu(cobro.estado_mes === 'cerrado')}>Cerrado</button>
+                    <button onClick={() => cambiarEstadoCobro(cobro, 'pagado')} style={botonMenu(cobro.estado_mes === 'pagado')}>Pagado</button>
+                    {Number(cobro.ajustes_total || 0) !== 0 && (
+                      <button onClick={() => limpiarAjustesCobro(cobro)} style={botonPeligroMini}>Limpiar ajustes</button>
+                    )}
+                  </div>
+
+                  {cobro.nota_direccion && (
+                    <div style={{ ...avisoCompleto, marginTop: 10 }}>
+                      <strong>Nota dirección:</strong> {cobro.nota_direccion}
+                    </div>
+                  )}
+
+                  {cobro.pendientes_revisar > 0 && (
+                    <div style={{ ...avisoPendiente, marginTop: 10 }}>
+                      Hay {cobro.pendientes_revisar} turno(s) pendiente(s) de revisar/publicar antes de cerrar el mes.
+                    </div>
+                  )}
+
+                  <details style={{ marginTop: 12 }}>
+                    <summary style={{ cursor: 'pointer', fontWeight: 800 }}>Ver detalle de turnos ({detalles.length})</summary>
+                    <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                      {detalles.map((detalleCobro) => (
+                        <div key={`${detalleCobro.entrenador_id}-${detalleCobro.grupo_id}-${detalleCobro.fecha}-${detalleCobro.hora_inicio}`} style={miniTarjetaBlanca}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
+                            <div>
+                              <strong>{formatearFecha(detalleCobro.fecha)} · {horaCorta(detalleCobro.hora_inicio)}-{horaCorta(detalleCobro.hora_fin)} · {detalleCobro.modalidad}</strong>
+                              {detalleCobro.origen_cobro === 'MANUAL' && <span style={{ marginLeft: 8, fontWeight: 900 }}>MANUAL</span>}
+                              <p style={{ margin: '5px 0 0' }}>{detalleCobro.nombre_grupo} · {detalleCobro.total_alumnos} niños · {formatearEuros(detalleCobro.importe_turno)}</p>
+                              {detalleCobro.observaciones && <p style={{ margin: '5px 0 0', color: '#555' }}>{detalleCobro.observaciones}</p>}
+                            </div>
+                            {detalleCobro.origen_cobro === 'MANUAL' && (
+                              <button onClick={() => eliminarEntrenoManualCobro(detalleCobro)} style={botonPeligroMini}>Eliminar</button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+
+                  {cobro.detalle_ajustes && (
+                    <details style={{ marginTop: 12 }}>
+                      <summary style={{ cursor: 'pointer', fontWeight: 800 }}>Ver ajustes manuales</summary>
+                      <pre style={bloqueTexto}>{cobro.detalle_ajustes}</pre>
+                    </details>
+                  )}
+                </article>
+              );
+            })}
+          </section>
+        </section>
+      )}
+
+      {pantalla === 'intensivos' && PantallaIntensivos({ abrirPanelIntensivo, actualizarDiaIntensivoDesdeApp, actualizarDiplomaIntensivo, actualizarNivelAlumnoIntensivo, actualizarRecuperacionIntensivo, agendaBadgeModalidad, agruparRecomendacionesDia, alumnoSeleccionadoIntensivoId, alumnosDelIntensivo, alumnosDisponiblesParaIntensivo, asistenciasDelIntensivoDia, autoproponerNivelesDiploma, avisoCompleto, avisoDisponibilidadDiaIntensivo, avisoNeutral, avisoPendiente, ayudaDesplegableCompacta, añadirAlumnoAIntensivo, barraPasosIntensivo, borrarDiaIntensivoDesdeApp, borrarGrupoIntensivo, borrarIntensivoCompleto, botonMenu, botonPasoIntensivo, botonPeligro, botonPeligroMini, botonPrincipal, botonSecundario, buscador, busquedaAlumnoIntensivo, busquedaIntensivos, cabeceraPantalla, calcularFechasCuatroSesionesIntensivo, cargando, cargarIntensivos, cerrarPanelesIntensivo, chipResumenCursoIntensivo, claveAlumnoRecomendado, claveGrupoRecomendado, codigoNivelPorId, crearCuatroSesionesIntensivo, crearGrupoDesdeRecomendacion, crearGrupoNormalIntensivo, crearIntensivoDesdeApp, destinoAlumnoRecomendado, diaActivoIntensivoId, diaAsistenciaSeleccionadoId, diaEditandoIntensivoId, diaGrupoSeleccionadoId, diaIntensivoInicial, diasDelIntensivo, eliminarRecuperacionIntensivo, entrenadores, entrenadoresApoyoPorGrupoRecomendado, entrenadoresDisponiblesDiaIntensivo, entrenadoresPorGrupoRecomendado, error, estiloBadgePistaApp, estiloGrupoPorPistaApp, estiloValidacionPedagogicaApp, etiquetaPistaVisualApp, etiquetaSuperior, filtroIntensivos, formDiaIntensivo, formGrupoIntensivo, formIntensivo, formatearFecha, formatearObservaciones, formularioCaja, generarMásDesdeAsistencias, generarRecomendacionGruposIntensivo, generarTrabajoDiarioAutomaticoGrupo, gestionarAlumnosIntensivoId, gestionarAsistenciaIntensivoId, gestionarDiplomasIntensivoId, gestionarGruposIntensivoId, gestionarMásIntensivoId, gestionarPanelControlIntensivoId, gridFormulario, gruposDestinoRecuperacion, gruposNormalesDelDiaIntensivo, guardarDiaIntensivo, inputCampo, intensivoCursoAbiertoId, intensivoInicial, intensivos, intensivosFiltrados, labelCampo, marcarAsistenciaIntensivo, miniTarjetaBlanca, mostrarFormularioIntensivo, mostrarPlantillaCuatroSesionesIntensivoId, mostrarVolcadoIntensivoId, necesitaDosEntrenadoresGrupoApp, nivelesDiplomaIntensivo, nombreGrupoVisualApp, nombresGruposBaseRecomendados, observacionesAutomaticasGrupoIntensivo, observacionesAutomaticasGrupoIntensivoManual, observacionesPorGrupoRecomendado, opcionesEstadoDiplomaIntensivo, opcionesEstadoRecuperacionIntensivo, opcionesNivel, opcionesOrigenNivelAlumno, opcionesPistaGrupoIntensivo, opcionesRecomendacionIntensivo, panelControlDelIntensivo, plantillaCuatroSesionesInicial, plantillaCuatroSesionesIntensivo, prepararEdicionDiaIntensivo, quitarAlumnoDeIntensivo, recomendacionesDelDiaIntensivo, recuperacionesDelIntensivo, reportesDetalleAlumnoIntensivo, responsableReporteRecomendadoApp, responsablesReportePorGrupoRecomendado, resultadoVolcadoIntensivo, resumenAlumnoIntensivo, resumenFinalDelIntensivo, resumenReportesDelIntensivo, selectCampo, setAlumnoSeleccionadoIntensivoId, setBusquedaAlumnoIntensivo, setBusquedaIntensivos, setDestinoAlumnoRecomendado, setDiaEditandoIntensivoId, setDiaGrupoSeleccionadoId, setEntrenadoresApoyoPorGrupoRecomendado, setEntrenadoresPorGrupoRecomendado, setFiltroIntensivos, setFormDiaIntensivo, setFormGrupoIntensivo, setFormIntensivo, setGestionarAlumnosIntensivoId, setGestionarDiplomasIntensivoId, setGestionarMásIntensivoId, setIntensivoCursoAbiertoId, setMostrarFormularioIntensivo, setMostrarPlantillaCuatroSesionesIntensivoId, setMostrarVolcadoIntensivoId, setObservacionesPorGrupoRecomendado, setPlantillaCuatroSesionesIntensivo, setRecomendacionesGrupoIntensivo, setResponsablesReportePorGrupoRecomendado, setResultadoVolcadoIntensivo, setTextoVolcadoIntensivo, setTrabajoDiarioPorGrupoRecomendado, tarjeta, tarjetaIntensivoCurso, textoBaseDiplomaIntensivo, textoNecesidadDosEntrenadoresApp, textoValidacionPedagogicaGrupoApp, textoVolcadoIntensivo, trabajoDiarioPorGrupoRecomendado, volcarListadoAlumnosIntensivo })}
+
+      {pantalla === 'listados' && (
+        <section>
+          <div style={cabeceraPantalla}>
+            <h2>Listados cargados</h2>
+            <button onClick={cargarListados}>Actualizar listados</button>
+          </div>
+
+          <input
+            value={busquedaListados}
+            onChange={(e) => setBusquedaListados(e.target.value)}
+            placeholder="Buscar semana, modalidad, estado o fecha..."
+            style={buscador}
+          />
+
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              flexWrap: 'wrap',
+              marginBottom: 16,
+            }}
+          >
+            <button
+              onClick={() => setFiltroListados('todos')}
+              style={botonMenu(filtroListados === 'todos')}
+            >
+              Todos
+            </button>
+            <button
+              onClick={() => setFiltroListados('pendientes')}
+              style={botonMenu(filtroListados === 'pendientes')}
+            >
+              Pendientes revisar
+            </button>
+            <button
+              onClick={() => setFiltroListados('altas')}
+              style={botonMenu(filtroListados === 'altas')}
+            >
+              Altas nuevas
+            </button>
+            <button
+              onClick={() => setFiltroListados('no_encontrados')}
+              style={botonMenu(filtroListados === 'no_encontrados')}
+            >
+              No encontrados
+            </button>
+            <button
+              onClick={() => setFiltroListados('fuera_plazo')}
+              style={botonMenu(filtroListados === 'fuera_plazo')}
+            >
+              Fuera de plazo
+            </button>
+          </div>
+
+          {cargando && <p>Cargando listados...</p>}
+
+          {!cargando && listadosFiltrados.length === 0 && !error && (
+            <article style={tarjeta}>
+              <h3 style={{ marginTop: 0 }}>Sin listados</h3>
+              <p style={{ marginBottom: 0 }}>
+                No hay listados que coincidan con el filtro actual.
+              </p>
+            </article>
+          )}
+
+          <section style={{ display: 'grid', gap: 12 }}>
+            {listadosFiltrados.map((listado) => (
+              <article key={listado.listado_id} style={tarjeta}>
+                <h3 style={{ margin: 0 }}>{listado.semana || 'Sin semana'}</h3>
+                <p>
+                  {formatearFecha(listado.fecha)} ·{' '}
+                  {listado.hora_inicio.slice(0, 5)}–
+                  {listado.hora_fin.slice(0, 5)} · {listado.modalidad}
+                </p>
+                <p>
+                  <strong>Estado:</strong> {listado.estado}
+                </p>
+                <p>
+                  <strong>Plazo:</strong>{' '}
+                  {listado.fuera_de_plazo ? 'Fuera de plazo' : 'En plazo'}
+                </p>
+                <hr />
+                <p>
+                  <strong>Total detectados:</strong>{' '}
+                  {listado.total_nombres_detectados || 0}
+                </p>
+                <p>
+                  <strong>Encontrados:</strong> {listado.encontrados || 0} ·{' '}
+                  <strong>Altas nuevas:</strong> {listado.altas_nuevas || 0} ·{' '}
+                  <strong>Pendientes:</strong> {listado.pendientes_revisar || 0}
+                </p>
+                <p>
+                  <strong>No encontrados:</strong> {listado.no_encontrados || 0}{' '}
+                  · <strong>Duplicados:</strong> {listado.duplicados || 0}
+                </p>
+              </article>
+            ))}
+          </section>
+        </section>
+      )}
+    </main>
+  );
+}
+
+
+export default function App() {
+  return (
+    <PantallaSegura>
+      <AppContenido />
+    </PantallaSegura>
+  );
+}
