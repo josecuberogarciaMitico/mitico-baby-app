@@ -1,55 +1,205 @@
 import React, { useEffect, useState } from 'react';
+import './App.css';
 import { LOGO_MITICO_CLUB, FOTO_MITICO_HERO } from './assets/imagenes';
 import {
-  AyudaReporteEntrenador, CampoSelect, PantallaSegura, agendaAccionesSesion, agendaAlumnoLinea,
-  agendaBadgeModalidad, agendaBadgeModalidadColor, agendaBloqueBlanco, agendaBotonDiaCompacto,
-  agendaBotonMes, agendaBotonSemana, agendaCabeceraLinea, agendaControlesGrid, agendaDiaCard,
-  agendaDiaHeader, agendaDiasGrid, agendaDiasSelectorCompacto, agendaGrupoLinea,
-  agendaGrupoPropuesta, agendaGrupoResumen, agendaHero, agendaHeroOcio, agendaHeroTrabajoSemanal,
-  agendaMesesGrid, agendaMiniContador, agendaMiniContadorDiaCompacto, agendaMiniLabel,
-  agendaMiniTexto, agendaPanelControles, agendaPanelRangoSemana, agendaSemanasGrid,
-  agendaSesionCard, agendaSesionCardModalidad, agendaSesionContadores, agendaSesionTop,
-  agendaShellCompacto, agendaTurnoFila, agendaVacio, agendaVacioMini,
-  agruparDisponibilidadPorTurno, agruparDisponibilidadSemanal, agruparGruposEntrenadorSemanal,
-  agruparGruposPorEntrenador, agruparPorEntrenador, agruparReportesPorEntrenador,
-  alumnosLimpiosWhatsapp, avisoCompleto, avisoInline, avisoNeutral, avisoPendiente,
-  avisoReportePendiente, ayudaDesplegableCompacta, ayudaReporteEntrenadorCaja,
-  ayudaReporteEntrenadorContenido, badgeIntensivoEntrenador, badgeModalidadMovil, badgeNoTrabaja,
-  badgePendiente, badgePistaGrandeApp, badgePistaNeutraApp, badgePistaPequenaApp, badgeTrabaja,
-  barraPasosIntensivo, bloqueInfoEntrenador, bloqueSemanaMovil, bloqueTexto,
-  botonAsistenciaAusente, botonAsistenciaOff, botonAsistenciaOk, botonAsistenciaPendiente,
-  botonBaseApp, botonMenu, botonMenuColor, botonMini, botonModalidadAgenda, botonPasoIntensivo,
-  botonPeligro, botonPeligroMini, botonPrincipal, botonSecundario, botonesAsistenciaMovil,
-  buscador, cabeceraAppLimpia, cabeceraEntrenadorMovil, cabeceraMarcaApp, cabeceraPantalla,
-  cabeceraPantallaMovil, cabeceraSemanaMovil, capitalizarPrimera, celdaTextoAyudaReporte,
-  celdaTituloAyudaReporte, chipDiaIntensivo, chipDiaIntensivoVacio, chipResumenCursoIntensivo,
-  chuletaEntrenadorMini, chuletaGeneralApp, chuletaGridApp, cierreJoseCaja, cierreJoseGrid,
-  cierreJoseItem, cierreJoseLabel, coloresModalidadAgenda, contadorGrandeMovil, contadorNinosMovil,
-  diaEntrenadorCard, diaEntrenadorCardLibre, diaEntrenadorHeader, emojiPuntoEncuentro,
-  entrenadorHeroApp, entrenadorHeroChips, errorCaja, esIntensivoGrupo, escaparHtml,
-  estiloBadgePistaApp, estiloGrupoPorPistaApp, etiquetaFechaHoraGrupo, etiquetaPistaVisualApp,
-  etiquetaSuperior, extraerObservacionesVisualesGrupoApp, filaAlumnoAsistencia,
-  filaAlumnoEntrenadorMovil, formatearAlumnosDetalle, formatearAlumnosPlanning, formatearEuros,
-  formatearFecha, formatearObservaciones, formatearTrabajoDiario, formularioCaja,
-  franjaFechasIntensivo, gridFormulario, gridMiniMetricas, gridResumenInicio,
-  grupoEntrenadorCardMovil, grupoEntrenadorTopMovil, grupoNivelAFormulario, inicioSemanaGlobal,
-  inputCampo, inputEntrenadorBusqueda, labelCampo, layout, limpiarDetalleObservacionVisualGrupoApp,
-  lineaDiasIntensivo, listaAlumnosGrupoCompacta, logoMarcaApp, marcaKickerApp, marcaLogoTituloApp,
-  menuBloqueApp, menuBloqueColor, menuPrincipalApp, menuTituloApp, menuTituloColor,
-  metricCardIntensivo, miniBadge, miniBadgeVerde, miniMetrica, miniTarjeta, miniTarjetaBlanca,
-  miniTarjetaCerrada, miniTarjetaCompleta, miniTarjetaPendienteAsistencia,
-  miniTarjetaPendienteReporte, nivelGeneralGrupoVisual, nombreGrupoPropuestaApp,
-  nombreGrupoVisualApp, nombreMes, normalizarModalidadAgenda, panelEntrenadorFiltroApp,
-  panelRevisionIntegradaOcio, panelTrabajoGrupo, perfilAyudaReporteEntrenador, resumenChipsMovil,
-  resumenCursoIntensivoGrid, selectCampo, selectCampoAgenda, semanaTrabajoActivaApp,
-  summaryAyudaReporteEntrenador, summaryChuletaApp, summaryTrabajoGrupo, tabBarEntrenadorModerno,
-  tabEntrenadorModerno, tablaAyudaReporteEntrenador, tarjeta, tarjetaEntrenadorMovil,
-  tarjetaInicioAlerta, tarjetaInicioEstado, tarjetaInicioOk, tarjetaInicioRojo,
-  tarjetaIntensivoCurso, tarjetaModernaIntensivos, tarjetaMovilVacia, tarjetaResaltada, textarea,
-  textareaCampo, tituloMarcaApp, turnoEntrenadorBox, vistaEntrenadorShell
+  AyudaReporteEntrenador,
+  CampoSelect,
+  PantallaSegura,
+  agendaAccionesSesion,
+  agendaAlumnoLinea,
+  agendaBadgeModalidad,
+  agendaBadgeModalidadColor,
+  agendaBloqueBlanco,
+  agendaBotonDiaCompacto,
+  agendaBotonMes,
+  agendaBotonSemana,
+  agendaCabeceraLinea,
+  agendaControlesGrid,
+  agendaDiaCard,
+  agendaDiaHeader,
+  agendaDiasGrid,
+  agendaDiasSelectorCompacto,
+  agendaGrupoLinea,
+  agendaGrupoPropuesta,
+  agendaGrupoResumen,
+  agendaHero,
+  agendaHeroOcio,
+  agendaHeroTrabajoSemanal,
+  agendaMesesGrid,
+  agendaMiniContador,
+  agendaMiniContadorDiaCompacto,
+  agendaMiniLabel,
+  agendaMiniTexto,
+  agendaPanelControles,
+  agendaPanelRangoSemana,
+  agendaSemanasGrid,
+  agendaSesionCard,
+  agendaSesionCardModalidad,
+  agendaSesionContadores,
+  agendaSesionTop,
+  agendaShellCompacto,
+  agendaTurnoFila,
+  agendaVacio,
+  agendaVacioMini,
+  agruparDisponibilidadPorTurno,
+  agruparDisponibilidadSemanal,
+  agruparGruposEntrenadorSemanal,
+  agruparGruposPorEntrenador,
+  agruparPorEntrenador,
+  agruparReportesPorEntrenador,
+  alumnosLimpiosWhatsapp,
+  avisoCompleto,
+  avisoInline,
+  avisoNeutral,
+  avisoPendiente,
+  avisoReportePendiente,
+  ayudaDesplegableCompacta,
+  ayudaReporteEntrenadorCaja,
+  ayudaReporteEntrenadorContenido,
+  badgeIntensivoEntrenador,
+  badgeModalidadMovil,
+  badgeNoTrabaja,
+  badgePendiente,
+  badgePistaGrandeApp,
+  badgePistaNeutraApp,
+  badgePistaPequenaApp,
+  badgeTrabaja,
+  barraPasosIntensivo,
+  bloqueInfoEntrenador,
+  bloqueSemanaMovil,
+  bloqueTexto,
+  botonAsistenciaAusente,
+  botonAsistenciaOff,
+  botonAsistenciaOk,
+  botonAsistenciaPendiente,
+  botonBaseApp,
+  botonMenu,
+  botonMenuColor,
+  botonMini,
+  botonModalidadAgenda,
+  botonPasoIntensivo,
+  botonPeligro,
+  botonPeligroMini,
+  botonPrincipal,
+  botonSecundario,
+  botonesAsistenciaMovil,
+  buscador,
+  cabeceraAppLimpia,
+  cabeceraEntrenadorMovil,
+  cabeceraMarcaApp,
+  cabeceraPantalla,
+  cabeceraPantallaMovil,
+  cabeceraSemanaMovil,
+  capitalizarPrimera,
+  celdaTextoAyudaReporte,
+  celdaTituloAyudaReporte,
+  chipDiaIntensivo,
+  chipDiaIntensivoVacio,
+  chipResumenCursoIntensivo,
+  chuletaEntrenadorMini,
+  chuletaGeneralApp,
+  chuletaGridApp,
+  cierreJoseCaja,
+  cierreJoseGrid,
+  cierreJoseItem,
+  cierreJoseLabel,
+  coloresModalidadAgenda,
+  contadorGrandeMovil,
+  contadorNinosMovil,
+  diaEntrenadorCard,
+  diaEntrenadorCardLibre,
+  diaEntrenadorHeader,
+  emojiPuntoEncuentro,
+  entrenadorHeroApp,
+  entrenadorHeroChips,
+  errorCaja,
+  esIntensivoGrupo,
+  escaparHtml,
+  estiloBadgePistaApp,
+  estiloGrupoPorPistaApp,
+  etiquetaFechaHoraGrupo,
+  etiquetaPistaVisualApp,
+  etiquetaSuperior,
+  extraerObservacionesVisualesGrupoApp,
+  filaAlumnoAsistencia,
+  filaAlumnoEntrenadorMovil,
+  formatearAlumnosDetalle,
+  formatearAlumnosPlanning,
+  formatearEuros,
+  formatearFecha,
+  formatearObservaciones,
+  formatearTrabajoDiario,
+  formularioCaja,
+  franjaFechasIntensivo,
+  gridFormulario,
+  gridMiniMetricas,
+  gridResumenInicio,
+  grupoEntrenadorCardMovil,
+  grupoEntrenadorTopMovil,
+  grupoNivelAFormulario,
+  inicioSemanaGlobal,
+  inputCampo,
+  inputEntrenadorBusqueda,
+  labelCampo,
+  layout,
+  limpiarDetalleObservacionVisualGrupoApp,
+  lineaDiasIntensivo,
+  listaAlumnosGrupoCompacta,
+  logoMarcaApp,
+  marcaKickerApp,
+  marcaLogoTituloApp,
+  menuBloqueApp,
+  menuBloqueColor,
+  menuPrincipalApp,
+  menuTituloApp,
+  menuTituloColor,
+  metricCardIntensivo,
+  miniBadge,
+  miniBadgeVerde,
+  miniMetrica,
+  miniTarjeta,
+  miniTarjetaBlanca,
+  miniTarjetaCerrada,
+  miniTarjetaCompleta,
+  miniTarjetaPendienteAsistencia,
+  miniTarjetaPendienteReporte,
+  nivelGeneralGrupoVisual,
+  nombreGrupoPropuestaApp,
+  nombreGrupoVisualApp,
+  nombreMes,
+  normalizarModalidadAgenda,
+  panelEntrenadorFiltroApp,
+  panelRevisionIntegradaOcio,
+  panelTrabajoGrupo,
+  perfilAyudaReporteEntrenador,
+  resumenChipsMovil,
+  resumenCursoIntensivoGrid,
+  selectCampo,
+  selectCampoAgenda,
+  semanaTrabajoActivaApp,
+  summaryAyudaReporteEntrenador,
+  summaryChuletaApp,
+  summaryTrabajoGrupo,
+  tabBarEntrenadorModerno,
+  tabEntrenadorModerno,
+  tablaAyudaReporteEntrenador,
+  tarjeta,
+  tarjetaEntrenadorMovil,
+  tarjetaInicioAlerta,
+  tarjetaInicioEstado,
+  tarjetaInicioOk,
+  tarjetaInicioRojo,
+  tarjetaIntensivoCurso,
+  tarjetaModernaIntensivos,
+  tarjetaMovilVacia,
+  tarjetaResaltada,
+  textarea,
+  textareaCampo,
+  tituloMarcaApp,
+  turnoEntrenadorBox,
+  vistaEntrenadorShell,
 } from './lib/appHelpers';
 import { PantallaIntensivos } from './screens/IntensivosScreen';
-
 
 type WhatsappPreviewState = {
   titulo: string;
@@ -172,7 +322,6 @@ type AlumnoResumen = {
   ultima_incidencia: string | null;
   ultima_recomendacion: string | null;
 };
-
 
 type OcioAlumnoApp = {
   alumno_id: string;
@@ -310,7 +459,6 @@ function ocioGrupoFormInicial(): OcioGrupoFormState {
     observaciones: '',
   };
 }
-
 
 type EntrenadorResumen = {
   entrenador_id: string;
@@ -615,7 +763,6 @@ type GrupoDestinoRecuperacionApp = {
   modalidad: string;
 };
 
-
 type GrupoIntensivoDiaApp = {
   intensivo_dia_id: string;
   intensivo_id: string;
@@ -749,7 +896,6 @@ type ReporteDetalleIntensivoApp = {
   enviado_at: string | null;
 };
 
-
 type ListadoApp = {
   listado_id: string;
   semana: string | null;
@@ -766,7 +912,6 @@ type ListadoApp = {
   pendientes_revisar: number;
   duplicados: number;
 };
-
 
 type AgendaSesionDirectaApp = {
   sesion_id: string;
@@ -884,7 +1029,11 @@ type PlantillaCuatroSesionesIntensivoState = {
   fechaInicio: string;
   horaInicio: string;
   horaFin: string;
-  tipo: 'cuatro_dias' | 'dos_fines_semana' | 'cuatro_sabados' | 'cuatro_domingos';
+  tipo:
+    | 'cuatro_dias'
+    | 'dos_fines_semana'
+    | 'cuatro_sabados'
+    | 'cuatro_domingos';
 };
 
 type GrupoIntensivoFormState = {
@@ -949,7 +1098,9 @@ function calcularFechasCuatroSesionesIntensivo(
   return [0, 7, 14, 21].map((offset) => sumarDiasIso(fechaInicio, offset));
 }
 
-function nombreTipoCuatroSesionesIntensivo(tipo: PlantillaCuatroSesionesIntensivoState['tipo']) {
+function nombreTipoCuatroSesionesIntensivo(
+  tipo: PlantillaCuatroSesionesIntensivoState['tipo']
+) {
   if (tipo === 'cuatro_dias') return '4 días seguidos';
   if (tipo === 'dos_fines_semana') return '2 fines de semana consecutivos';
   if (tipo === 'cuatro_sabados') return '4 sábados';
@@ -990,7 +1141,6 @@ type ResumenInicio = {
 
 const SUPABASE_URL = 'https://natxwawulodkoauqkwqz.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_xeLKsuImDbVd9tnoBzSxXw_KAqod1bu';
-
 
 type RolUsuarioApp = 'coordinador_jefe' | 'coordinador' | 'entrenador';
 
@@ -1063,8 +1213,11 @@ function extraerSesionInvitacionDesdeUrlApp(): SesionAuthApp | null {
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
   const search = new URLSearchParams(window.location.search.replace(/^\?/, ''));
   const accessToken = hash.get('access_token') || search.get('access_token');
-  const refreshToken = hash.get('refresh_token') || search.get('refresh_token') || undefined;
-  const expiresIn = Number(hash.get('expires_in') || search.get('expires_in') || 0);
+  const refreshToken =
+    hash.get('refresh_token') || search.get('refresh_token') || undefined;
+  const expiresIn = Number(
+    hash.get('expires_in') || search.get('expires_in') || 0
+  );
   const type = hash.get('type') || search.get('type') || '';
 
   if (!accessToken) return null;
@@ -1072,12 +1225,17 @@ function extraerSesionInvitacionDesdeUrlApp(): SesionAuthApp | null {
   return {
     access_token: accessToken,
     refresh_token: refreshToken,
-    expires_at: expiresIn ? Math.floor(Date.now() / 1000) + expiresIn : undefined,
+    expires_at: expiresIn
+      ? Math.floor(Date.now() / 1000) + expiresIn
+      : undefined,
     user: { id: '', email: '' },
   };
 }
 
-async function authRequestApp<T>(ruta: string, opciones: RequestInit = {}): Promise<T> {
+async function authRequestApp<T>(
+  ruta: string,
+  opciones: RequestInit = {}
+): Promise<T> {
   const respuesta = await fetch(`${SUPABASE_URL}/auth/v1/${ruta}`, {
     ...opciones,
     headers: {
@@ -1096,14 +1254,20 @@ async function authRequestApp<T>(ruta: string, opciones: RequestInit = {}): Prom
   }
 
   if (!respuesta.ok) {
-    const mensaje = typeof datos === 'string' ? datos : datos?.msg || datos?.message || texto || 'Error de autenticación';
+    const mensaje =
+      typeof datos === 'string'
+        ? datos
+        : datos?.msg || datos?.message || texto || 'Error de autenticación';
     throw new Error(mensaje);
   }
 
   return datos as T;
 }
 
-async function iniciarSesionEmailPasswordApp(email: string, password: string): Promise<SesionAuthApp> {
+async function iniciarSesionEmailPasswordApp(
+  email: string,
+  password: string
+): Promise<SesionAuthApp> {
   const datos: any = await authRequestApp('token?grant_type=password', {
     method: 'POST',
     body: JSON.stringify({ email, password }),
@@ -1120,7 +1284,9 @@ async function iniciarSesionEmailPasswordApp(email: string, password: string): P
   };
 }
 
-async function refrescarSesionAuthApp(refreshToken: string): Promise<SesionAuthApp> {
+async function refrescarSesionAuthApp(
+  refreshToken: string
+): Promise<SesionAuthApp> {
   const datos: any = await authRequestApp('token?grant_type=refresh_token', {
     method: 'POST',
     body: JSON.stringify({ refresh_token: refreshToken }),
@@ -1137,7 +1303,9 @@ async function refrescarSesionAuthApp(refreshToken: string): Promise<SesionAuthA
   };
 }
 
-async function obtenerUsuarioAuthApp(accessToken: string): Promise<{ id: string; email?: string }> {
+async function obtenerUsuarioAuthApp(
+  accessToken: string
+): Promise<{ id: string; email?: string }> {
   const datos: any = await authRequestApp('user', {
     method: 'GET',
     headers: {
@@ -1151,7 +1319,10 @@ async function obtenerUsuarioAuthApp(accessToken: string): Promise<{ id: string;
   };
 }
 
-async function actualizarPasswordInvitacionApp(accessToken: string, password: string) {
+async function actualizarPasswordInvitacionApp(
+  accessToken: string,
+  password: string
+) {
   await authRequestApp('user', {
     method: 'PUT',
     headers: {
@@ -1161,9 +1332,14 @@ async function actualizarPasswordInvitacionApp(accessToken: string, password: st
   });
 }
 
-async function cargarPerfilUsuarioApp(accessToken: string, userId: string): Promise<PerfilUsuarioApp | null> {
+async function cargarPerfilUsuarioApp(
+  accessToken: string,
+  userId: string
+): Promise<PerfilUsuarioApp | null> {
   const respuesta = await fetch(
-    `${SUPABASE_URL}/rest/v1/usuarios_app?select=id,auth_user_id,email,nombre,rol,entrenador_id,activo&auth_user_id=eq.${encodeURIComponent(userId)}&activo=eq.true&limit=1`,
+    `${SUPABASE_URL}/rest/v1/usuarios_app?select=id,auth_user_id,email,nombre,rol,entrenador_id,activo&auth_user_id=eq.${encodeURIComponent(
+      userId
+    )}&activo=eq.true&limit=1`,
     {
       headers: {
         apikey: SUPABASE_ANON_KEY,
@@ -1222,7 +1398,11 @@ const authBotonApp: React.CSSProperties = {
   boxShadow: '0 14px 24px rgba(37,99,235,0.24)',
 };
 
-function PantallaLoginApp({ onLogin }: { onLogin: (email: string, password: string) => Promise<void> }) {
+function PantallaLoginApp({
+  onLogin,
+}: {
+  onLogin: (email: string, password: string) => Promise<void>;
+}) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [cargandoAuth, setCargandoAuth] = useState(false);
@@ -1248,31 +1428,99 @@ function PantallaLoginApp({ onLogin }: { onLogin: (email: string, password: stri
   return (
     <main style={authShellApp}>
       <form onSubmit={enviarLogin} style={authCardApp}>
-        <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 18 }}>
-          <img src={LOGO_MITICO_CLUB} alt="Mítico Club" style={{ width: 64, height: 64, borderRadius: 18, objectFit: 'contain', background: '#fff', border: '1px solid #e5e7eb' }} />
+        <div
+          style={{
+            display: 'flex',
+            gap: 14,
+            alignItems: 'center',
+            marginBottom: 18,
+          }}
+        >
+          <img
+            src={LOGO_MITICO_CLUB}
+            alt="Mítico Club"
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: 18,
+              objectFit: 'contain',
+              background: '#fff',
+              border: '1px solid #e5e7eb',
+            }}
+          />
           <div>
-            <p style={{ margin: 0, color: '#2563eb', fontWeight: 900, letterSpacing: 2, textTransform: 'uppercase', fontSize: 12 }}>Acceso privado</p>
-            <h1 style={{ margin: '4px 0 0', fontSize: 26 }}>Mítico Baby / Ocio</h1>
+            <p
+              style={{
+                margin: 0,
+                color: '#2563eb',
+                fontWeight: 900,
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+                fontSize: 12,
+              }}
+            >
+              Acceso privado
+            </p>
+            <h1 style={{ margin: '4px 0 0', fontSize: 26 }}>
+              Mítico Baby / Ocio
+            </h1>
           </div>
         </div>
 
         <p style={{ marginTop: 0, color: '#475569', lineHeight: 1.45 }}>
-          Entra con tu email y contraseña. Si eres entrenador, solo verás tu panel de trabajo.
+          Entra con tu email y contraseña. Si eres entrenador, solo verás tu
+          panel de trabajo.
         </p>
 
-        <label style={{ display: 'grid', gap: 7, fontWeight: 800, marginBottom: 12 }}>
+        <label
+          style={{ display: 'grid', gap: 7, fontWeight: 800, marginBottom: 12 }}
+        >
           Email
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={authInputApp} placeholder="tu@email.com" autoComplete="email" />
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={authInputApp}
+            placeholder="tu@email.com"
+            autoComplete="email"
+          />
         </label>
 
-        <label style={{ display: 'grid', gap: 7, fontWeight: 800, marginBottom: 16 }}>
+        <label
+          style={{ display: 'grid', gap: 7, fontWeight: 800, marginBottom: 16 }}
+        >
           Contraseña
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={authInputApp} placeholder="Contraseña" autoComplete="current-password" />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={authInputApp}
+            placeholder="Contraseña"
+            autoComplete="current-password"
+          />
         </label>
 
-        {errorAuth && <div style={{ background: '#fff1f2', color: '#be123c', border: '1px solid #fecdd3', borderRadius: 16, padding: 12, marginBottom: 12, fontWeight: 800 }}>{errorAuth}</div>}
+        {errorAuth && (
+          <div
+            style={{
+              background: '#fff1f2',
+              color: '#be123c',
+              border: '1px solid #fecdd3',
+              borderRadius: 16,
+              padding: 12,
+              marginBottom: 12,
+              fontWeight: 800,
+            }}
+          >
+            {errorAuth}
+          </div>
+        )}
 
-        <button type="submit" disabled={cargandoAuth} style={{ ...authBotonApp, opacity: cargandoAuth ? 0.7 : 1 }}>
+        <button
+          type="submit"
+          disabled={cargandoAuth}
+          style={{ ...authBotonApp, opacity: cargandoAuth ? 0.7 : 1 }}
+        >
           {cargandoAuth ? 'Entrando...' : 'Entrar'}
         </button>
       </form>
@@ -1280,7 +1528,13 @@ function PantallaLoginApp({ onLogin }: { onLogin: (email: string, password: stri
   );
 }
 
-function PantallaCrearPasswordApp({ sesionInvitacion, onCompletado }: { sesionInvitacion: SesionAuthApp; onCompletado: (sesion: SesionAuthApp) => Promise<void> }) {
+function PantallaCrearPasswordApp({
+  sesionInvitacion,
+  onCompletado,
+}: {
+  sesionInvitacion: SesionAuthApp;
+  onCompletado: (sesion: SesionAuthApp) => Promise<void>;
+}) {
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
   const [cargandoAuth, setCargandoAuth] = useState(false);
@@ -1300,8 +1554,13 @@ function PantallaCrearPasswordApp({ sesionInvitacion, onCompletado }: { sesionIn
 
     try {
       setCargandoAuth(true);
-      await actualizarPasswordInvitacionApp(sesionInvitacion.access_token, password);
-      const usuario = await obtenerUsuarioAuthApp(sesionInvitacion.access_token);
+      await actualizarPasswordInvitacionApp(
+        sesionInvitacion.access_token,
+        password
+      );
+      const usuario = await obtenerUsuarioAuthApp(
+        sesionInvitacion.access_token
+      );
       await onCompletado({ ...sesionInvitacion, user: usuario });
       limpiarUrlAuthApp();
     } catch (error: any) {
@@ -1314,31 +1573,99 @@ function PantallaCrearPasswordApp({ sesionInvitacion, onCompletado }: { sesionIn
   return (
     <main style={authShellApp}>
       <form onSubmit={guardarPassword} style={authCardApp}>
-        <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 18 }}>
-          <img src={LOGO_MITICO_CLUB} alt="Mítico Club" style={{ width: 64, height: 64, borderRadius: 18, objectFit: 'contain', background: '#fff', border: '1px solid #e5e7eb' }} />
+        <div
+          style={{
+            display: 'flex',
+            gap: 14,
+            alignItems: 'center',
+            marginBottom: 18,
+          }}
+        >
+          <img
+            src={LOGO_MITICO_CLUB}
+            alt="Mítico Club"
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: 18,
+              objectFit: 'contain',
+              background: '#fff',
+              border: '1px solid #e5e7eb',
+            }}
+          />
           <div>
-            <p style={{ margin: 0, color: '#16a34a', fontWeight: 900, letterSpacing: 2, textTransform: 'uppercase', fontSize: 12 }}>Invitación aceptada</p>
-            <h1 style={{ margin: '4px 0 0', fontSize: 26 }}>Crea tu contraseña</h1>
+            <p
+              style={{
+                margin: 0,
+                color: '#16a34a',
+                fontWeight: 900,
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+                fontSize: 12,
+              }}
+            >
+              Invitación aceptada
+            </p>
+            <h1 style={{ margin: '4px 0 0', fontSize: 26 }}>
+              Crea tu contraseña
+            </h1>
           </div>
         </div>
 
         <p style={{ marginTop: 0, color: '#475569', lineHeight: 1.45 }}>
-          Pon tu contraseña para entrar después con email y contraseña desde el móvil.
+          Pon tu contraseña para entrar después con email y contraseña desde el
+          móvil.
         </p>
 
-        <label style={{ display: 'grid', gap: 7, fontWeight: 800, marginBottom: 12 }}>
+        <label
+          style={{ display: 'grid', gap: 7, fontWeight: 800, marginBottom: 12 }}
+        >
           Nueva contraseña
-          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={authInputApp} placeholder="Mínimo 8 caracteres" autoComplete="new-password" />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={authInputApp}
+            placeholder="Mínimo 8 caracteres"
+            autoComplete="new-password"
+          />
         </label>
 
-        <label style={{ display: 'grid', gap: 7, fontWeight: 800, marginBottom: 16 }}>
+        <label
+          style={{ display: 'grid', gap: 7, fontWeight: 800, marginBottom: 16 }}
+        >
           Repetir contraseña
-          <input type="password" value={password2} onChange={(e) => setPassword2(e.target.value)} style={authInputApp} placeholder="Repite la contraseña" autoComplete="new-password" />
+          <input
+            type="password"
+            value={password2}
+            onChange={(e) => setPassword2(e.target.value)}
+            style={authInputApp}
+            placeholder="Repite la contraseña"
+            autoComplete="new-password"
+          />
         </label>
 
-        {errorAuth && <div style={{ background: '#fff1f2', color: '#be123c', border: '1px solid #fecdd3', borderRadius: 16, padding: 12, marginBottom: 12, fontWeight: 800 }}>{errorAuth}</div>}
+        {errorAuth && (
+          <div
+            style={{
+              background: '#fff1f2',
+              color: '#be123c',
+              border: '1px solid #fecdd3',
+              borderRadius: 16,
+              padding: 12,
+              marginBottom: 12,
+              fontWeight: 800,
+            }}
+          >
+            {errorAuth}
+          </div>
+        )}
 
-        <button type="submit" disabled={cargandoAuth} style={{ ...authBotonApp, opacity: cargandoAuth ? 0.7 : 1 }}>
+        <button
+          type="submit"
+          disabled={cargandoAuth}
+          style={{ ...authBotonApp, opacity: cargandoAuth ? 0.7 : 1 }}
+        >
           {cargandoAuth ? 'Guardando...' : 'Guardar contraseña y entrar'}
         </button>
       </form>
@@ -1346,13 +1673,21 @@ function PantallaCrearPasswordApp({ sesionInvitacion, onCompletado }: { sesionIn
   );
 }
 
-function PantallaAuthErrorApp({ mensaje, onSalir }: { mensaje: string; onSalir: () => void }) {
+function PantallaAuthErrorApp({
+  mensaje,
+  onSalir,
+}: {
+  mensaje: string;
+  onSalir: () => void;
+}) {
   return (
     <main style={authShellApp}>
       <section style={authCardApp}>
         <h1 style={{ marginTop: 0 }}>Acceso pendiente de configurar</h1>
         <p style={{ color: '#475569', lineHeight: 1.45 }}>{mensaje}</p>
-        <button type="button" onClick={onSalir} style={authBotonApp}>Volver al login</button>
+        <button type="button" onClick={onSalir} style={authBotonApp}>
+          Volver al login
+        </button>
       </section>
     </main>
   );
@@ -1372,7 +1707,11 @@ const opcionesNivel = [
 
 const nivelesDiplomaIntensivo = [
   { id: '', codigo: 'Sin seleccionar', orden: -1 },
-  { id: '8b50fa47-80dc-4808-8606-922823b708dd', codigo: 'INICIACION', orden: 0 },
+  {
+    id: '8b50fa47-80dc-4808-8606-922823b708dd',
+    codigo: 'INICIACION',
+    orden: 0,
+  },
   { id: '9da86b75-7d1d-45ce-b331-6ed3c1989553', codigo: 'A', orden: 1 },
   { id: 'b4cc5c49-dcd6-4120-8c2d-ba657bb8dcdd', codigo: 'A+', orden: 2 },
   { id: '0b6e022a-6d6c-498e-9337-de3c67fdc207', codigo: 'B', orden: 3 },
@@ -1456,7 +1795,6 @@ const opcionesRecomendacion = [
   'Hacer seguimiento especial',
 ];
 
-
 const opcionesEspecialidadEntrenador = [
   'Baby',
   'Ocio',
@@ -1533,17 +1871,18 @@ const opcionesEstadoRecuperacionIntensivo = [
   'Descartada',
 ];
 
-
 const opcionesPistaGrupoIntensivo = ['', 'Pequeña', 'Grande', 'Pequeña/Grande'];
 
-const puntosEncuentroAgenda = Array.from({ length: 12 }, (_, indice) => `${indice + 1}`);
+const puntosEncuentroAgenda = Array.from(
+  { length: 12 },
+  (_, indice) => `${indice + 1}`
+);
 
 const modalidadesAgendaTrabajo = [
   { codigo: 'BABY', nombre: 'Baby' },
   { codigo: 'OCIO', nombre: 'Ocio' },
   { codigo: 'INTENSIVOS', nombre: 'Intensivo' },
 ];
-
 
 function agendaFormInicial(): AgendaFormState {
   return {
@@ -1569,7 +1908,6 @@ function reporteInicial(): ReporteFormState {
     observaciones: '',
   };
 }
-
 
 const temporadaInicioDefectoAgenda = (() => {
   const hoy = new Date();
@@ -1601,9 +1939,10 @@ function mesesTemporadaAgenda(anioInicio: number) {
 }
 
 function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
-  const esCoordinadorApp = !perfilUsuario || esRolCoordinacionApp(perfilUsuario.rol);
+  const esCoordinadorApp =
+    !perfilUsuario || esRolCoordinacionApp(perfilUsuario.rol);
   const esEntrenadorApp = Boolean(perfilUsuario && !esCoordinadorApp);
-  const entrenadorIdSesionApp = perfilUsuario?.entrenador_id || "";
+  const entrenadorIdSesionApp = perfilUsuario?.entrenador_id || '';
   const [pantalla, setPantalla] = useState<
     | 'agenda'
     | 'resumenDia'
@@ -1639,9 +1978,22 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     entrenadoresSinConfirmar: 0,
   });
 
-  const [anioInicioTemporadaAgenda, setAnioInicioTemporadaAgenda] = useState(() => Math.max(2026, leerStorageNumeroApp('mitico_temporada_trabajo', temporadaInicioDefectoAgenda)));
-  const [mesAgenda, setMesAgenda] = useState(() => leerStorageApp('mitico_mes_trabajo', ''));
-  const [semanaAgendaInicio, setSemanaAgendaInicio] = useState(() => leerStorageApp('mitico_semana_trabajo', ''));
+  const [anioInicioTemporadaAgenda, setAnioInicioTemporadaAgenda] = useState(
+    () =>
+      Math.max(
+        2026,
+        leerStorageNumeroApp(
+          'mitico_temporada_trabajo',
+          temporadaInicioDefectoAgenda
+        )
+      )
+  );
+  const [mesAgenda, setMesAgenda] = useState(() =>
+    leerStorageApp('mitico_mes_trabajo', '')
+  );
+  const [semanaAgendaInicio, setSemanaAgendaInicio] = useState(() =>
+    leerStorageApp('mitico_semana_trabajo', '')
+  );
   const [planning, setPlanning] = useState<GrupoPlanning[]>([]);
   const [filtroPlanning, setFiltroPlanning] = useState<
     'todos' | 'pendientes' | 'cerrados' | 'sin_publicar'
@@ -1655,7 +2007,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     AlumnoReporteEntrenador[]
   >([]);
   const [busquedaGrupoEntrenador, setBusquedaGrupoEntrenador] = useState('');
-  const [tabVistaEntrenador, setTabVistaEntrenador] = useState<'disponibilidad' | 'grupos'>('disponibilidad');
+  const [tabVistaEntrenador, setTabVistaEntrenador] = useState<
+    'disponibilidad' | 'grupos'
+  >('disponibilidad');
 
   const [reporteActivo, setReporteActivo] = useState<ReporteActivo | null>(
     null
@@ -1667,28 +2021,47 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [alumnos, setAlumnos] = useState<AlumnoResumen[]>([]);
   const [busquedaAlumno, setBusquedaAlumno] = useState('');
   const [filtroAlumnos, setFiltroAlumnos] = useState<
-    'todos' | 'sin_nivel' | 'sin_reportes' | 'revision_reciente' | 'seguimiento_especial'
+    | 'todos'
+    | 'sin_nivel'
+    | 'sin_reportes'
+    | 'revision_reciente'
+    | 'seguimiento_especial'
   >('todos');
   const [alumnoEditandoId, setAlumnoEditandoId] = useState<string | null>(null);
   const [alumnoEditNombre, setAlumnoEditNombre] = useState('');
   const [alumnoEditNivel, setAlumnoEditNivel] = useState('');
-  const [alumnoEditOrigen, setAlumnoEditOrigen] = useState('Jose / Coordinador');
-  const [alumnoEditEstado, setAlumnoEditEstado] = useState('pendiente completar');
-  const [mostrarNuevoAlumnoManual, setMostrarNuevoAlumnoManual] = useState(false);
+  const [alumnoEditOrigen, setAlumnoEditOrigen] =
+    useState('Jose / Coordinador');
+  const [alumnoEditEstado, setAlumnoEditEstado] = useState(
+    'pendiente completar'
+  );
+  const [mostrarNuevoAlumnoManual, setMostrarNuevoAlumnoManual] =
+    useState(false);
   const [nuevoAlumnoNombre, setNuevoAlumnoNombre] = useState('');
   const [nuevoAlumnoNivel, setNuevoAlumnoNivel] = useState('');
-  const [nuevoAlumnoOrigen, setNuevoAlumnoOrigen] = useState('Jose / Coordinador');
-  const [nuevoAlumnoEstado, setNuevoAlumnoEstado] = useState('pendiente completar');
-  const [evaluacionAlumnoActivaId, setEvaluacionAlumnoActivaId] = useState<string | null>(null);
+  const [nuevoAlumnoOrigen, setNuevoAlumnoOrigen] =
+    useState('Jose / Coordinador');
+  const [nuevoAlumnoEstado, setNuevoAlumnoEstado] = useState(
+    'pendiente completar'
+  );
+  const [evaluacionAlumnoActivaId, setEvaluacionAlumnoActivaId] = useState<
+    string | null
+  >(null);
   const [evaluacionAlumnoTexto, setEvaluacionAlumnoTexto] = useState('');
-  const [historialAlumnoAbiertoId, setHistorialAlumnoAbiertoId] = useState<string | null>(null);
+  const [historialAlumnoAbiertoId, setHistorialAlumnoAbiertoId] = useState<
+    string | null
+  >(null);
 
   const [ocioAlumnos, setOcioAlumnos] = useState<OcioAlumnoApp[]>([]);
   const [ocioGrupos, setOcioGrupos] = useState<OcioGrupoApp[]>([]);
-  const [ocioRecomendacionesCambio, setOcioRecomendacionesCambio] = useState<OcioRecomendacionCambioApp[]>([]);
+  const [ocioRecomendacionesCambio, setOcioRecomendacionesCambio] = useState<
+    OcioRecomendacionCambioApp[]
+  >([]);
   const [busquedaOcio, setBusquedaOcio] = useState('');
   const [mostrarNuevoOcio, setMostrarNuevoOcio] = useState(false);
-  const [ocioAlumnoEditandoId, setOcioAlumnoEditandoId] = useState<string | null>(null);
+  const [ocioAlumnoEditandoId, setOcioAlumnoEditandoId] = useState<
+    string | null
+  >(null);
   const [ocioNombre, setOcioNombre] = useState('');
   const [ocioNivel, setOcioNivel] = useState('');
   const [ocioFechaNacimiento, setOcioFechaNacimiento] = useState('');
@@ -1697,25 +2070,50 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [ocioHoraFin, setOcioHoraFin] = useState('20:00');
   const [ocioObservaciones, setOcioObservaciones] = useState('');
   const [textoImportarOcio, setTextoImportarOcio] = useState('');
-  const [resultadoImportarOcio, setResultadoImportarOcio] = useState<OcioImportadoApp[]>([]);
-  const [ocioGrupoForm, setOcioGrupoForm] = useState<OcioGrupoFormState>(ocioGrupoFormInicial());
-  const [mostrarFormularioOcioGrupo, setMostrarFormularioOcioGrupo] = useState(false);
-  const [evaluacionOcioActivaId, setEvaluacionOcioActivaId] = useState<string | null>(null);
+  const [resultadoImportarOcio, setResultadoImportarOcio] = useState<
+    OcioImportadoApp[]
+  >([]);
+  const [ocioGrupoForm, setOcioGrupoForm] = useState<OcioGrupoFormState>(
+    ocioGrupoFormInicial()
+  );
+  const [mostrarFormularioOcioGrupo, setMostrarFormularioOcioGrupo] =
+    useState(false);
+  const [evaluacionOcioActivaId, setEvaluacionOcioActivaId] = useState<
+    string | null
+  >(null);
   const [evaluacionOcioTexto, setEvaluacionOcioTexto] = useState('');
-  const [ocioSemanaAsistencia, setOcioSemanaAsistencia] = useState<Record<string, boolean>>({});
-  const [ocioSemanaEntrenadores, setOcioSemanaEntrenadores] = useState<Record<string, string>>({});
-  const [ocioSemanaResultados, setOcioSemanaResultados] = useState<OcioPrepararResultadoApp[]>([]);
-  const [ocioCambiosPuntuales, setOcioCambiosPuntuales] = useState<OcioCambioPuntualApp[]>([]);
-  const [ocioCambioForm, setOcioCambioForm] = useState<OcioCambioFormState>(ocioCambioFormInicial());
-  const [mostrarFormularioOcioCambio, setMostrarFormularioOcioCambio] = useState(false);
+  const [ocioSemanaAsistencia, setOcioSemanaAsistencia] = useState<
+    Record<string, boolean>
+  >({});
+  const [ocioSemanaEntrenadores, setOcioSemanaEntrenadores] = useState<
+    Record<string, string>
+  >({});
+  const [ocioSemanaResultados, setOcioSemanaResultados] = useState<
+    OcioPrepararResultadoApp[]
+  >([]);
+  const [ocioCambiosPuntuales, setOcioCambiosPuntuales] = useState<
+    OcioCambioPuntualApp[]
+  >([]);
+  const [ocioCambioForm, setOcioCambioForm] = useState<OcioCambioFormState>(
+    ocioCambioFormInicial()
+  );
+  const [mostrarFormularioOcioCambio, setMostrarFormularioOcioCambio] =
+    useState(false);
 
   const [entrenadores, setEntrenadores] = useState<EntrenadorResumen[]>([]);
   const [busquedaEntrenador, setBusquedaEntrenador] = useState('');
   const [filtroEntrenadores, setFiltroEntrenadores] = useState<
-    'todos' | 'activos' | 'inactivos' | 'sin_chaqueta' | 'documentacion_pendiente'
+    | 'todos'
+    | 'activos'
+    | 'inactivos'
+    | 'sin_chaqueta'
+    | 'documentacion_pendiente'
   >('todos');
-  const [mostrarFormularioEntrenador, setMostrarFormularioEntrenador] = useState(false);
-  const [formEntrenador, setFormEntrenador] = useState<EntrenadorFormState>(entrenadorFormInicial());
+  const [mostrarFormularioEntrenador, setMostrarFormularioEntrenador] =
+    useState(false);
+  const [formEntrenador, setFormEntrenador] = useState<EntrenadorFormState>(
+    entrenadorFormInicial()
+  );
 
   const [disponibilidad, setDisponibilidad] = useState<
     DisponibilidadEntrenador[]
@@ -1741,70 +2139,136 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [filtroCobros, setFiltroCobros] = useState<
     'todos' | 'pendiente' | 'cerrado' | 'incidencias' | 'este_mes'
   >('todos');
-  const [tarifasEditadasCobros, setTarifasEditadasCobros] = useState<Record<string, string>>({});
-  const [formCobroManual, setFormCobroManual] = useState<CobroManualFormState>(cobroManualInicial());
-  const [cobroPdfPreview, setCobroPdfPreview] = useState<CobroPdfPreviewState | null>(null);
+  const [tarifasEditadasCobros, setTarifasEditadasCobros] = useState<
+    Record<string, string>
+  >({});
+  const [formCobroManual, setFormCobroManual] = useState<CobroManualFormState>(
+    cobroManualInicial()
+  );
+  const [cobroPdfPreview, setCobroPdfPreview] =
+    useState<CobroPdfPreviewState | null>(null);
 
   const [intensivos, setIntensivos] = useState<IntensivoApp[]>([]);
-  const [panelControlIntensivo, setPanelControlIntensivo] = useState<PanelControlIntensivoApp[]>([]);
+  const [panelControlIntensivo, setPanelControlIntensivo] = useState<
+    PanelControlIntensivoApp[]
+  >([]);
   const [busquedaIntensivos, setBusquedaIntensivos] = useState('');
   const [filtroIntensivos, setFiltroIntensivos] = useState<
     'todos' | 'activos' | 'cerrados' | 'sin_alumnos' | 'proximos'
   >('todos');
-  const [gestionarPanelControlIntensivoId, setGestionarPanelControlIntensivoId] = useState<string | null>(null);
-  const [intensivoCursoAbiertoId, setIntensivoCursoAbiertoId] = useState<string | null>(null);
+  const [
+    gestionarPanelControlIntensivoId,
+    setGestionarPanelControlIntensivoId,
+  ] = useState<string | null>(null);
+  const [intensivoCursoAbiertoId, setIntensivoCursoAbiertoId] = useState<
+    string | null
+  >(null);
 
-  const [mostrarFormularioIntensivo, setMostrarFormularioIntensivo] = useState(false);
+  const [mostrarFormularioIntensivo, setMostrarFormularioIntensivo] =
+    useState(false);
   const [formIntensivo, setFormIntensivo] = useState<IntensivoFormState>(
     intensivoInicial()
   );
-  const [diaActivoIntensivoId, setDiaActivoIntensivoId] = useState<string | null>(
-    null
-  );
-  const [diaEditandoIntensivoId, setDiaEditandoIntensivoId] = useState<string | null>(
-    null
-  );
-  const [formDiaIntensivo, setFormDiaIntensivo] = useState<DiaIntensivoFormState>(
-    diaIntensivoInicial()
-  );
-  const [plantillaCuatroSesionesIntensivo, setPlantillaCuatroSesionesIntensivo] = useState<PlantillaCuatroSesionesIntensivoState>(
+  const [diaActivoIntensivoId, setDiaActivoIntensivoId] = useState<
+    string | null
+  >(null);
+  const [diaEditandoIntensivoId, setDiaEditandoIntensivoId] = useState<
+    string | null
+  >(null);
+  const [formDiaIntensivo, setFormDiaIntensivo] =
+    useState<DiaIntensivoFormState>(diaIntensivoInicial());
+  const [
+    plantillaCuatroSesionesIntensivo,
+    setPlantillaCuatroSesionesIntensivo,
+  ] = useState<PlantillaCuatroSesionesIntensivoState>(
     plantillaCuatroSesionesInicial()
   );
-  const [mostrarPlantillaCuatroSesionesIntensivoId, setMostrarPlantillaCuatroSesionesIntensivoId] = useState<string | null>(null);
-  const [intensivoAlumnos, setIntensivoAlumnos] = useState<IntensivoAlumnoApp[]>([]);
-  const [alumnosParaIntensivo, setAlumnosParaIntensivo] = useState<AlumnoParaIntensivoApp[]>([]);
-  const [alumnosResumenVolcado, setAlumnosResumenVolcado] = useState<AlumnoResumenParaVolcadoApp[]>([]);
-  const [gestionarAlumnosIntensivoId, setGestionarAlumnosIntensivoId] = useState<string | null>(null);
+  const [
+    mostrarPlantillaCuatroSesionesIntensivoId,
+    setMostrarPlantillaCuatroSesionesIntensivoId,
+  ] = useState<string | null>(null);
+  const [intensivoAlumnos, setIntensivoAlumnos] = useState<
+    IntensivoAlumnoApp[]
+  >([]);
+  const [alumnosParaIntensivo, setAlumnosParaIntensivo] = useState<
+    AlumnoParaIntensivoApp[]
+  >([]);
+  const [alumnosResumenVolcado, setAlumnosResumenVolcado] = useState<
+    AlumnoResumenParaVolcadoApp[]
+  >([]);
+  const [gestionarAlumnosIntensivoId, setGestionarAlumnosIntensivoId] =
+    useState<string | null>(null);
   const [busquedaAlumnoIntensivo, setBusquedaAlumnoIntensivo] = useState('');
-  const [alumnoSeleccionadoIntensivoId, setAlumnoSeleccionadoIntensivoId] = useState('');
-  const [mostrarVolcadoIntensivoId, setMostrarVolcadoIntensivoId] = useState<string | null>(null);
+  const [alumnoSeleccionadoIntensivoId, setAlumnoSeleccionadoIntensivoId] =
+    useState('');
+  const [mostrarVolcadoIntensivoId, setMostrarVolcadoIntensivoId] = useState<
+    string | null
+  >(null);
   const [textoVolcadoIntensivo, setTextoVolcadoIntensivo] = useState('');
-  const [resultadoVolcadoIntensivo, setResultadoVolcadoIntensivo] = useState<VolcadoAlumnoIntensivoApp[]>([]);
+  const [resultadoVolcadoIntensivo, setResultadoVolcadoIntensivo] = useState<
+    VolcadoAlumnoIntensivoApp[]
+  >([]);
   const [intensivoDias, setIntensivoDias] = useState<IntensivoDiaApp[]>([]);
-  const [intensivoAsistencias, setIntensivoAsistencias] = useState<IntensivoAsistenciaApp[]>([]);
-  const [gestionarAsistenciaIntensivoId, setGestionarAsistenciaIntensivoId] = useState<string | null>(null);
-  const [diaAsistenciaSeleccionadoId, setDiaAsistenciaSeleccionadoId] = useState('');
-  const [intensivoMás, setIntensivoMás] = useState<IntensivoRecuperacionApp[]>([]);
-  const [gruposDestinoRecuperacion, setGruposDestinoRecuperacion] = useState<GrupoDestinoRecuperacionApp[]>([]);
-  const [gestionarMásIntensivoId, setGestionarMásIntensivoId] = useState<string | null>(null);
-
-  const [gruposIntensivoDia, setGruposIntensivoDia] = useState<GrupoIntensivoDiaApp[]>([]);
-  const [resumenReportesIntensivo, setResumenReportesIntensivo] = useState<ResumenReportesIntensivoApp[]>([]);
-  const [resumenFinalIntensivo, setResumenFinalIntensivo] = useState<ResumenFinalIntensivoApp[]>([]);
-  const [reportesDetalleIntensivo, setReportesDetalleIntensivo] = useState<ReporteDetalleIntensivoApp[]>([]);
-  const [gestionarDiplomasIntensivoId, setGestionarDiplomasIntensivoId] = useState<string | null>(null);
-  const [gestionarGruposIntensivoId, setGestionarGruposIntensivoId] = useState<string | null>(null);
-  const [diaGrupoSeleccionadoId, setDiaGrupoSeleccionadoId] = useState('');
-  const [formGrupoIntensivo, setFormGrupoIntensivo] = useState<GrupoIntensivoFormState>(
-    grupoIntensivoInicial()
+  const [intensivoAsistencias, setIntensivoAsistencias] = useState<
+    IntensivoAsistenciaApp[]
+  >([]);
+  const [gestionarAsistenciaIntensivoId, setGestionarAsistenciaIntensivoId] =
+    useState<string | null>(null);
+  const [diaAsistenciaSeleccionadoId, setDiaAsistenciaSeleccionadoId] =
+    useState('');
+  const [intensivoMás, setIntensivoMás] = useState<IntensivoRecuperacionApp[]>(
+    []
   );
-  const [recomendacionesGrupoIntensivo, setRecomendacionesGrupoIntensivo] = useState<RecomendacionGrupoIntensivoDiaApp[]>([]);
-  const [entrenadoresPorGrupoRecomendado, setEntrenadoresPorGrupoRecomendado] = useState<Record<string, string>>({});
-  const [entrenadoresApoyoPorGrupoRecomendado, setEntrenadoresApoyoPorGrupoRecomendado] = useState<Record<string, string>>({});
-  const [responsablesReportePorGrupoRecomendado, setResponsablesReportePorGrupoRecomendado] = useState<Record<string, string>>({});
-  const [destinoAlumnoRecomendado, setDestinoAlumnoRecomendado] = useState<Record<string, string>>({});
-  const [trabajoDiarioPorGrupoRecomendado, setTrabajoDiarioPorGrupoRecomendado] = useState<Record<string, string>>({});
-  const [observacionesPorGrupoRecomendado, setObservacionesPorGrupoRecomendado] = useState<Record<string, string>>({});
+  const [gruposDestinoRecuperacion, setGruposDestinoRecuperacion] = useState<
+    GrupoDestinoRecuperacionApp[]
+  >([]);
+  const [gestionarMásIntensivoId, setGestionarMásIntensivoId] = useState<
+    string | null
+  >(null);
+
+  const [gruposIntensivoDia, setGruposIntensivoDia] = useState<
+    GrupoIntensivoDiaApp[]
+  >([]);
+  const [resumenReportesIntensivo, setResumenReportesIntensivo] = useState<
+    ResumenReportesIntensivoApp[]
+  >([]);
+  const [resumenFinalIntensivo, setResumenFinalIntensivo] = useState<
+    ResumenFinalIntensivoApp[]
+  >([]);
+  const [reportesDetalleIntensivo, setReportesDetalleIntensivo] = useState<
+    ReporteDetalleIntensivoApp[]
+  >([]);
+  const [gestionarDiplomasIntensivoId, setGestionarDiplomasIntensivoId] =
+    useState<string | null>(null);
+  const [gestionarGruposIntensivoId, setGestionarGruposIntensivoId] = useState<
+    string | null
+  >(null);
+  const [diaGrupoSeleccionadoId, setDiaGrupoSeleccionadoId] = useState('');
+  const [formGrupoIntensivo, setFormGrupoIntensivo] =
+    useState<GrupoIntensivoFormState>(grupoIntensivoInicial());
+  const [recomendacionesGrupoIntensivo, setRecomendacionesGrupoIntensivo] =
+    useState<RecomendacionGrupoIntensivoDiaApp[]>([]);
+  const [entrenadoresPorGrupoRecomendado, setEntrenadoresPorGrupoRecomendado] =
+    useState<Record<string, string>>({});
+  const [
+    entrenadoresApoyoPorGrupoRecomendado,
+    setEntrenadoresApoyoPorGrupoRecomendado,
+  ] = useState<Record<string, string>>({});
+  const [
+    responsablesReportePorGrupoRecomendado,
+    setResponsablesReportePorGrupoRecomendado,
+  ] = useState<Record<string, string>>({});
+  const [destinoAlumnoRecomendado, setDestinoAlumnoRecomendado] = useState<
+    Record<string, string>
+  >({});
+  const [
+    trabajoDiarioPorGrupoRecomendado,
+    setTrabajoDiarioPorGrupoRecomendado,
+  ] = useState<Record<string, string>>({});
+  const [
+    observacionesPorGrupoRecomendado,
+    setObservacionesPorGrupoRecomendado,
+  ] = useState<Record<string, string>>({});
 
   const [listados, setListados] = useState<ListadoApp[]>([]);
   const [busquedaListados, setBusquedaListados] = useState('');
@@ -1812,34 +2276,70 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     'todos' | 'pendientes' | 'altas' | 'no_encontrados' | 'fuera_plazo'
   >('todos');
 
-  const [agendaSesionesDirectas, setAgendaSesionesDirectas] = useState<AgendaSesionDirectaApp[]>([]);
+  const [agendaSesionesDirectas, setAgendaSesionesDirectas] = useState<
+    AgendaSesionDirectaApp[]
+  >([]);
   const [agendaSesionActivaId, setAgendaSesionActivaId] = useState('');
   const [agendaFormularioAbierto, setAgendaFormularioAbierto] = useState(false);
   const [agendaDiaCompactoActivo, setAgendaDiaCompactoActivo] = useState('');
-  const [gruposAgendaManuales, setGruposAgendaManuales] = useState<string[]>([]);
-  const [agendaForm, setAgendaForm] = useState<AgendaFormState>(agendaFormInicial());
-  const [agendaAlumnosSesion, setAgendaAlumnosSesion] = useState<AgendaAlumnoSesionApp[]>([]);
-  const [agendaGruposSesion, setAgendaGruposSesion] = useState<AgendaGrupoSesionApp[]>([]);
-  const [agendaRecomendaciones, setAgendaRecomendaciones] = useState<AgendaRecomendacionSesionApp[]>([]);
-  const [fechaResumenDia, setFechaResumenDia] = useState(() => leerStorageApp('mitico_fecha_resumen_dia', fechaIsoHoyApp()));
+  const [gruposAgendaManuales, setGruposAgendaManuales] = useState<string[]>(
+    []
+  );
+  const [agendaForm, setAgendaForm] = useState<AgendaFormState>(
+    agendaFormInicial()
+  );
+  const [agendaAlumnosSesion, setAgendaAlumnosSesion] = useState<
+    AgendaAlumnoSesionApp[]
+  >([]);
+  const [agendaGruposSesion, setAgendaGruposSesion] = useState<
+    AgendaGrupoSesionApp[]
+  >([]);
+  const [agendaRecomendaciones, setAgendaRecomendaciones] = useState<
+    AgendaRecomendacionSesionApp[]
+  >([]);
+  const [fechaResumenDia, setFechaResumenDia] = useState(() =>
+    leerStorageApp('mitico_fecha_resumen_dia', fechaIsoHoyApp())
+  );
   const [busquedaRevisionOcio, setBusquedaRevisionOcio] = useState('');
-  const [filtroRevisionOcio, setFiltroRevisionOcio] = useState<'todos' | 'cambios' | 'sin_grupo' | 'sin_reportes'>('cambios');
-  const [destinoRevisionOcio, setDestinoRevisionOcio] = useState<Record<string, string>>({});
-  const [ultimaDescargaBackupSemana, setUltimaDescargaBackupSemana] = useState('');
-  const [destinoAlumnoAgendaGrupo, setDestinoAlumnoAgendaGrupo] = useState<Record<string, string>>({});
-  const [entrenadoresAgendaGrupo, setEntrenadoresAgendaGrupo] = useState<Record<string, string>>({});
-  const [entrenadoresApoyoAgendaGrupo, setEntrenadoresApoyoAgendaGrupo] = useState<Record<string, string>>({});
-  const [responsablesReporteAgendaGrupo, setResponsablesReporteAgendaGrupo] = useState<Record<string, string>>({});
-  const [puntosAgendaGrupo, setPuntosAgendaGrupo] = useState<Record<string, string>>({});
-  const [trabajoAgendaGrupo, setTrabajoAgendaGrupo] = useState<Record<string, string>>({});
-  const [observacionesAgendaGrupo, setObservacionesAgendaGrupo] = useState<Record<string, string>>({});
-  const [trabajoGrupoCreadoEditando, setTrabajoGrupoCreadoEditando] = useState<Record<string, string>>({});
-  const [observacionesGrupoCreadoEditando, setObservacionesGrupoCreadoEditando] = useState<Record<string, string>>({});
-
+  const [filtroRevisionOcio, setFiltroRevisionOcio] = useState<
+    'todos' | 'cambios' | 'sin_grupo' | 'sin_reportes'
+  >('cambios');
+  const [destinoRevisionOcio, setDestinoRevisionOcio] = useState<
+    Record<string, string>
+  >({});
+  const [ultimaDescargaBackupSemana, setUltimaDescargaBackupSemana] =
+    useState('');
+  const [destinoAlumnoAgendaGrupo, setDestinoAlumnoAgendaGrupo] = useState<
+    Record<string, string>
+  >({});
+  const [entrenadoresAgendaGrupo, setEntrenadoresAgendaGrupo] = useState<
+    Record<string, string>
+  >({});
+  const [entrenadoresApoyoAgendaGrupo, setEntrenadoresApoyoAgendaGrupo] =
+    useState<Record<string, string>>({});
+  const [responsablesReporteAgendaGrupo, setResponsablesReporteAgendaGrupo] =
+    useState<Record<string, string>>({});
+  const [puntosAgendaGrupo, setPuntosAgendaGrupo] = useState<
+    Record<string, string>
+  >({});
+  const [trabajoAgendaGrupo, setTrabajoAgendaGrupo] = useState<
+    Record<string, string>
+  >({});
+  const [observacionesAgendaGrupo, setObservacionesAgendaGrupo] = useState<
+    Record<string, string>
+  >({});
+  const [trabajoGrupoCreadoEditando, setTrabajoGrupoCreadoEditando] = useState<
+    Record<string, string>
+  >({});
+  const [
+    observacionesGrupoCreadoEditando,
+    setObservacionesGrupoCreadoEditando,
+  ] = useState<Record<string, string>>({});
 
   const [cargando, setCargando] = useState(false);
   const [error, setError] = useState('');
-  const [whatsappPreview, setWhatsappPreview] = useState<WhatsappPreviewState | null>(null);
+  const [whatsappPreview, setWhatsappPreview] =
+    useState<WhatsappPreviewState | null>(null);
 
   async function consultarSupabase<T>(
     tabla: string,
@@ -1939,9 +2439,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         asistenciasSinConfirmar: reportesData.filter(
           (reporte) => reporte.estado_reporte === 'Asistencia sin confirmar'
         ).length,
-        gruposSinPublicar: planningData.filter((grupo) => !grupo.publicado).length,
+        gruposSinPublicar: planningData.filter((grupo) => !grupo.publicado)
+          .length,
         entrenadoresSinConfirmar: gruposEntrenadorData.filter(
-          (grupo) => grupo.publicado && grupo.estado_confirmacion !== 'Confirmado'
+          (grupo) =>
+            grupo.publicado && grupo.estado_confirmacion !== 'Confirmado'
         ).length,
       });
     } catch (err) {
@@ -1964,29 +2466,34 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setDetalle(null);
 
     try {
-      const [avisosData, reportesData, planningData, gruposEntrenadorData, alumnosEstadoData] =
-        await Promise.all([
-          consultarSupabase<AvisoJose>(
-            'v_inicio_avisos_jose',
-            'select=*&order=orden.asc'
-          ),
-          consultarSupabase<ReportePendiente>(
-            'v_reportes_pendientes_entrenador_dos_entrenadores',
-            'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc,alumno.asc'
-          ),
-          consultarSupabase<GrupoPlanning>(
-            'v_planning_app',
-            'select=*&order=fecha.asc,hora_inicio.asc,nombre_grupo.asc'
-          ),
-          consultarSupabase<GrupoEntrenadorApp>(
-            'v_grupos_entrenador_app_dos_entrenadores',
-            'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc'
-          ),
-          consultarSupabase<AlumnoReporteEntrenador>(
-            'v_alumnos_reporte_entrenador_app_dos_entrenadores',
-            'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc,alumno.asc'
-          ),
-        ]);
+      const [
+        avisosData,
+        reportesData,
+        planningData,
+        gruposEntrenadorData,
+        alumnosEstadoData,
+      ] = await Promise.all([
+        consultarSupabase<AvisoJose>(
+          'v_inicio_avisos_jose',
+          'select=*&order=orden.asc'
+        ),
+        consultarSupabase<ReportePendiente>(
+          'v_reportes_pendientes_entrenador_dos_entrenadores',
+          'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc,alumno.asc'
+        ),
+        consultarSupabase<GrupoPlanning>(
+          'v_planning_app',
+          'select=*&order=fecha.asc,hora_inicio.asc,nombre_grupo.asc'
+        ),
+        consultarSupabase<GrupoEntrenadorApp>(
+          'v_grupos_entrenador_app_dos_entrenadores',
+          'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc'
+        ),
+        consultarSupabase<AlumnoReporteEntrenador>(
+          'v_alumnos_reporte_entrenador_app_dos_entrenadores',
+          'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc,alumno.asc'
+        ),
+      ]);
 
       setAvisos(avisosData);
       setReportesPendientes(reportesData);
@@ -2001,9 +2508,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         asistenciasSinConfirmar: reportesData.filter(
           (reporte) => reporte.estado_reporte === 'Asistencia sin confirmar'
         ).length,
-        gruposSinPublicar: planningData.filter((grupo) => !grupo.publicado).length,
+        gruposSinPublicar: planningData.filter((grupo) => !grupo.publicado)
+          .length,
         entrenadoresSinConfirmar: gruposEntrenadorData.filter(
-          (grupo) => grupo.publicado && grupo.estado_confirmacion !== 'Confirmado'
+          (grupo) =>
+            grupo.publicado && grupo.estado_confirmacion !== 'Confirmado'
         ).length,
       });
     } catch (err) {
@@ -2171,7 +2680,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
       await cargarGruposEntrenador();
       if (pantalla === 'reportes') await cargarReportesPendientes();
-      setTimeout(() => window.scrollTo({ top: scrollActual, behavior: 'auto' }), 0);
+      setTimeout(
+        () => window.scrollTo({ top: scrollActual, behavior: 'auto' }),
+        0
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     }
@@ -2304,7 +2816,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   function editarAlumnoBaseRapido(alumno: AlumnoResumen) {
     setAlumnoEditandoId(alumno.alumno_id);
     setAlumnoEditNombre(alumno.alumno || '');
-    setAlumnoEditNivel(alumno.nivel_actual || alumno.nivel_estimado || alumno.ultimo_nivel_reportado || '');
+    setAlumnoEditNivel(
+      alumno.nivel_actual ||
+        alumno.nivel_estimado ||
+        alumno.ultimo_nivel_reportado ||
+        ''
+    );
     setAlumnoEditOrigen(alumno.origen_nivel_estimado || 'Jose / Coordinador');
     setAlumnoEditEstado(alumno.estado_ficha || 'pendiente completar');
   }
@@ -2370,7 +2887,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       await cargarAlumnos();
       await cargarAgendaOperativaDirecta();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error creando alumno manual');
+      setError(
+        err instanceof Error ? err.message : 'Error creando alumno manual'
+      );
     }
 
     setCargando(false);
@@ -2387,11 +2906,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         'extraer_evaluacion_alumno_reportes_app',
         { p_alumno_id: alumno.alumno_id }
       );
-      const texto = resultado[0]?.texto || `No hay reportes todavía para ${alumno.alumno}.`;
+      const texto =
+        resultado[0]?.texto || `No hay reportes todavía para ${alumno.alumno}.`;
       setEvaluacionAlumnoTexto(texto);
     } catch (err) {
       setEvaluacionAlumnoTexto('');
-      setError(err instanceof Error ? err.message : 'Error generando evaluación');
+      setError(
+        err instanceof Error ? err.message : 'Error generando evaluación'
+      );
     }
 
     setCargando(false);
@@ -2402,12 +2924,13 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
     try {
       await navigator.clipboard.writeText(evaluacionAlumnoTexto);
-      alert('Evaluación copiada. Pégala en ChatGPT para convertirla en mensaje bonito para padres.');
+      alert(
+        'Evaluación copiada. Pégala en ChatGPT para convertirla en mensaje bonito para padres.'
+      );
     } catch {
       window.prompt('Copia esta evaluación:', evaluacionAlumnoTexto);
     }
   }
-
 
   async function cargarOcioAlumnos() {
     setCargando(true);
@@ -2419,7 +2942,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       );
       setOcioAlumnos(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error cargando alumnos de Ocio');
+      setError(
+        err instanceof Error ? err.message : 'Error cargando alumnos de Ocio'
+      );
       setOcioAlumnos([]);
     }
     setCargando(false);
@@ -2434,13 +2959,16 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         'select=*&order=dia_semana.asc,hora_inicio.asc,nombre_grupo.asc'
       );
       setOcioGrupos(data);
-      const recomendaciones = await consultarSupabase<OcioRecomendacionCambioApp>(
-        'v_ocio_recomendacion_cambios_app',
-        'select=*&order=alumno.asc'
-      );
+      const recomendaciones =
+        await consultarSupabase<OcioRecomendacionCambioApp>(
+          'v_ocio_recomendacion_cambios_app',
+          'select=*&order=alumno.asc'
+        );
       setOcioRecomendacionesCambio(recomendaciones);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error cargando grupos de Ocio');
+      setError(
+        err instanceof Error ? err.message : 'Error cargando grupos de Ocio'
+      );
       setOcioGrupos([]);
       setOcioRecomendacionesCambio([]);
     }
@@ -2457,7 +2985,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       );
       setOcioCambiosPuntuales(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error cargando cambios puntuales de Ocio');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error cargando cambios puntuales de Ocio'
+      );
       setOcioCambiosPuntuales([]);
     }
     setCargando(false);
@@ -2482,11 +3014,20 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   function editarAlumnoOcio(alumno: OcioAlumnoApp) {
     setOcioAlumnoEditandoId(alumno.alumno_id);
     setOcioNombre(alumno.alumno || '');
-    setOcioNivel(alumno.nivel_usado && alumno.nivel_usado !== '-' ? alumno.nivel_usado : '');
+    setOcioNivel(
+      alumno.nivel_usado && alumno.nivel_usado !== '-' ? alumno.nivel_usado : ''
+    );
     setOcioFechaNacimiento(alumno.fecha_nacimiento || '');
     setOcioDiaFijo(alumno.dia_fijo || alumno.grupo_dia || 'Jueves');
-    setOcioHoraInicio((alumno.hora_inicio_fija || alumno.grupo_hora_inicio || '18:00').slice(0, 5));
-    setOcioHoraFin((alumno.hora_fin_fija || alumno.grupo_hora_fin || '20:00').slice(0, 5));
+    setOcioHoraInicio(
+      (alumno.hora_inicio_fija || alumno.grupo_hora_inicio || '18:00').slice(
+        0,
+        5
+      )
+    );
+    setOcioHoraFin(
+      (alumno.hora_fin_fija || alumno.grupo_hora_fin || '20:00').slice(0, 5)
+    );
     setOcioObservaciones(alumno.observaciones || '');
     setMostrarNuevoOcio(true);
   }
@@ -2528,22 +3069,30 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       await cargarOcioAlumnos();
       await cargarOcioGrupos();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error guardando alumno Ocio');
+      setError(
+        err instanceof Error ? err.message : 'Error guardando alumno Ocio'
+      );
     }
     setCargando(false);
   }
 
   async function eliminarAlumnoOcio(alumno: OcioAlumnoApp) {
-    const confirmar = window.confirm(`¿Eliminar la ficha de Ocio de ${alumno.alumno}? No se puede deshacer.`);
+    const confirmar = window.confirm(
+      `¿Eliminar la ficha de Ocio de ${alumno.alumno}? No se puede deshacer.`
+    );
     if (!confirmar) return;
     setCargando(true);
     setError('');
     try {
-      await ejecutarFuncion('eliminar_alumno_ocio_app', { p_alumno_id: alumno.alumno_id });
+      await ejecutarFuncion('eliminar_alumno_ocio_app', {
+        p_alumno_id: alumno.alumno_id,
+      });
       await cargarOcioAlumnos();
       await cargarOcioGrupos();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error eliminando alumno Ocio');
+      setError(
+        err instanceof Error ? err.message : 'Error eliminando alumno Ocio'
+      );
     }
     setCargando(false);
   }
@@ -2556,16 +3105,21 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setCargando(true);
     setError('');
     try {
-      const resultado = await ejecutarFuncionConRespuesta<OcioImportadoApp>('importar_alumnos_ocio_aimharder_app', {
-        p_texto: textoImportarOcio,
-        p_dia_fijo: ocioDiaFijo || null,
-        p_hora_inicio: ocioHoraInicio || null,
-        p_hora_fin: ocioHoraFin || null,
-      });
+      const resultado = await ejecutarFuncionConRespuesta<OcioImportadoApp>(
+        'importar_alumnos_ocio_aimharder_app',
+        {
+          p_texto: textoImportarOcio,
+          p_dia_fijo: ocioDiaFijo || null,
+          p_hora_inicio: ocioHoraInicio || null,
+          p_hora_fin: ocioHoraFin || null,
+        }
+      );
       setResultadoImportarOcio(resultado);
       await cargarOcioAlumnos();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error importando listado Ocio');
+      setError(
+        err instanceof Error ? err.message : 'Error importando listado Ocio'
+      );
     }
     setCargando(false);
   }
@@ -2611,39 +3165,50 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           p_observaciones: ocioGrupoForm.observaciones || null,
         });
       } else {
-        await ejecutarFuncionConRespuesta<{ crear_grupo_ocio_app: string }>('crear_grupo_ocio_app', {
-          p_anio_inicio: anioInicioTemporadaAgenda,
-          p_nombre_grupo: ocioGrupoForm.nombre.trim(),
-          p_dia_semana: ocioGrupoForm.dia,
-          p_hora_inicio: ocioGrupoForm.horaInicio,
-          p_hora_fin: ocioGrupoForm.horaFin,
-          p_nivel_grupo: ocioGrupoForm.nivel,
-          p_pista: ocioGrupoForm.pista,
-          p_punto_encuentro: ocioGrupoForm.punto,
-          p_observaciones: ocioGrupoForm.observaciones || null,
-        });
+        await ejecutarFuncionConRespuesta<{ crear_grupo_ocio_app: string }>(
+          'crear_grupo_ocio_app',
+          {
+            p_anio_inicio: anioInicioTemporadaAgenda,
+            p_nombre_grupo: ocioGrupoForm.nombre.trim(),
+            p_dia_semana: ocioGrupoForm.dia,
+            p_hora_inicio: ocioGrupoForm.horaInicio,
+            p_hora_fin: ocioGrupoForm.horaFin,
+            p_nivel_grupo: ocioGrupoForm.nivel,
+            p_pista: ocioGrupoForm.pista,
+            p_punto_encuentro: ocioGrupoForm.punto,
+            p_observaciones: ocioGrupoForm.observaciones || null,
+          }
+        );
       }
       setMostrarFormularioOcioGrupo(false);
       setOcioGrupoForm(ocioGrupoFormInicial());
       await cargarOcioGrupos();
       await cargarOcioAlumnos();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error guardando grupo Ocio');
+      setError(
+        err instanceof Error ? err.message : 'Error guardando grupo Ocio'
+      );
     }
     setCargando(false);
   }
 
   async function eliminarGrupoOcio(grupo: OcioGrupoApp) {
-    const confirmar = window.confirm(`¿Eliminar ${grupo.nombre_grupo}? Se quitarán sus alumnos del grupo estable.`);
+    const confirmar = window.confirm(
+      `¿Eliminar ${grupo.nombre_grupo}? Se quitarán sus alumnos del grupo estable.`
+    );
     if (!confirmar) return;
     setCargando(true);
     setError('');
     try {
-      await ejecutarFuncion('eliminar_grupo_ocio_app', { p_grupo_id: grupo.grupo_id });
+      await ejecutarFuncion('eliminar_grupo_ocio_app', {
+        p_grupo_id: grupo.grupo_id,
+      });
       await cargarOcioGrupos();
       await cargarOcioAlumnos();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error eliminando grupo Ocio');
+      setError(
+        err instanceof Error ? err.message : 'Error eliminando grupo Ocio'
+      );
     }
     setCargando(false);
   }
@@ -2660,12 +3225,17 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       await cargarOcioAlumnos();
       await cargarOcioGrupos();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error moviendo alumno Ocio');
+      setError(
+        err instanceof Error ? err.message : 'Error moviendo alumno Ocio'
+      );
     }
     setCargando(false);
   }
 
-  async function quitarAlumnoGrupoOcio(alumnoId: string, grupoId: string | null) {
+  async function quitarAlumnoGrupoOcio(
+    alumnoId: string,
+    grupoId: string | null
+  ) {
     if (!grupoId) return;
     setCargando(true);
     setError('');
@@ -2677,7 +3247,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       await cargarOcioAlumnos();
       await cargarOcioGrupos();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error quitando alumno del grupo');
+      setError(
+        err instanceof Error ? err.message : 'Error quitando alumno del grupo'
+      );
     }
     setCargando(false);
   }
@@ -2688,13 +3260,22 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setCargando(true);
     setError('');
     try {
-      const resultado = await ejecutarFuncionConRespuesta<{ texto: string }>('extraer_evaluacion_ocio_app', {
-        p_alumno_id: alumno.alumno_id,
-      });
-      setEvaluacionOcioTexto(resultado[0]?.texto || `No hay reportes de Ocio para ${alumno.alumno}.`);
+      const resultado = await ejecutarFuncionConRespuesta<{ texto: string }>(
+        'extraer_evaluacion_ocio_app',
+        {
+          p_alumno_id: alumno.alumno_id,
+        }
+      );
+      setEvaluacionOcioTexto(
+        resultado[0]?.texto || `No hay reportes de Ocio para ${alumno.alumno}.`
+      );
     } catch (err) {
       setEvaluacionOcioTexto('');
-      setError(err instanceof Error ? err.message : 'Error generando evaluación de Ocio');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error generando evaluación de Ocio'
+      );
     }
     setCargando(false);
   }
@@ -2703,7 +3284,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     if (!evaluacionOcioTexto.trim()) return;
     try {
       await navigator.clipboard.writeText(evaluacionOcioTexto);
-      alert('Evaluación de Ocio copiada. Pégala en ChatGPT para dejarla bonita para los padres.');
+      alert(
+        'Evaluación de Ocio copiada. Pégala en ChatGPT para dejarla bonita para los padres.'
+      );
     } catch {
       window.prompt('Copia esta evaluación:', evaluacionOcioTexto);
     }
@@ -2751,28 +3334,40 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     mensaje += '¡Nos vemos en MSZ equipo!\n';
     mensaje += '⚠️Papis importante!\n';
     mensaje += `Como la logística con los peques se puede complicar un poco, os recomiendo estar 20-25 minutos antes de la hora de entrada ya que a las ${horaInicio} el grupo estará entrando en pista con su entrenador.\n`;
-    mensaje += 'Si alguno llegáis tarde, avisad en este número: Jose +34 647 027 692';
+    mensaje +=
+      'Si alguno llegáis tarde, avisad en este número: Jose +34 647 027 692';
 
-    abrirPrevisualizacionWhatsapp(`WhatsApp padres Ocio · ${grupo.dia_semana || ''} ${horaInicio}-${horaFin}`, mensaje);
+    abrirPrevisualizacionWhatsapp(
+      `WhatsApp padres Ocio · ${
+        grupo.dia_semana || ''
+      } ${horaInicio}-${horaFin}`,
+      mensaje
+    );
   }
-
 
   function offsetDiaOcio(dia: string | null | undefined) {
     const normalizado = (dia || '').toLowerCase();
-    if (normalizado.includes('miércoles') || normalizado.includes('miercoles')) return 2;
+    if (normalizado.includes('miércoles') || normalizado.includes('miercoles'))
+      return 2;
     if (normalizado.includes('jueves')) return 3;
     if (normalizado.includes('viernes')) return 4;
-    if (normalizado.includes('sábado') || normalizado.includes('sabado')) return 5;
+    if (normalizado.includes('sábado') || normalizado.includes('sabado'))
+      return 5;
     if (normalizado.includes('domingo')) return 6;
     return 3;
   }
 
-
   const mesesBaseAgenda = mesesTemporadaAgenda(anioInicioTemporadaAgenda);
   const mesesAgenda = mesesBaseAgenda;
   const opcionesTemporadaAgenda = Array.from(
-    new Set(Array.from({ length: 12 }, (_, indice) => 2026 + indice).concat([temporadaInicioDefectoAgenda]))
-  ).filter((anio) => anio >= 2026).sort((a, b) => a - b);
+    new Set(
+      Array.from({ length: 12 }, (_, indice) => 2026 + indice).concat([
+        temporadaInicioDefectoAgenda,
+      ])
+    )
+  )
+    .filter((anio) => anio >= 2026)
+    .sort((a, b) => a - b);
 
   const hoyAgendaClave = claveFechaAgenda(new Date());
   const mesActualAgenda = claveMesDesdeFecha(hoyAgendaClave);
@@ -2781,8 +3376,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     mesAgenda && mesesAgenda.includes(mesAgenda)
       ? mesAgenda
       : mesesAgenda.includes(mesActualAgenda)
-        ? mesActualAgenda
-        : mesesAgenda[0] || '';
+      ? mesActualAgenda
+      : mesesAgenda[0] || '';
 
   function semanasDelMesAgenda(claveMes: string) {
     if (!claveMes) return [];
@@ -2795,7 +3390,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     // Bloques semanales reales: siempre lunes-domingo.
     // Si el mes empieza en martes/miércoles/etc., la primera semana empieza el lunes anterior.
     // Ejemplo temporada 2026/2027: septiembre empieza con Semana 31 ago - 06 sept.
-    const inicio = crearFechaAgenda(inicioSemanaAgenda(claveFechaAgenda(primeroMes)));
+    const inicio = crearFechaAgenda(
+      inicioSemanaAgenda(claveFechaAgenda(primeroMes))
+    );
 
     while (inicio <= ultimoMes) {
       semanas.push(claveFechaAgenda(inicio));
@@ -2813,13 +3410,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     semanaAgendaInicio && semanasAgenda.includes(semanaAgendaInicio)
       ? semanaAgendaInicio
       : semanasAgenda.includes(semanaActualAgenda)
-        ? semanaActualAgenda
-        : semanasAgenda[0] || '';
+      ? semanaActualAgenda
+      : semanasAgenda[0] || '';
 
   const diasSemanaAgenda = semanaAgendaActiva
     ? diasTrabajoSemanaAgenda(semanaAgendaActiva)
     : [];
-
 
   function fechaGrupoOcioSemana(grupo: OcioGrupoApp) {
     const semana = semanaAgendaActiva || semanaActualAgenda;
@@ -2845,25 +3441,38 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const inicio = lunesSemanaOcioActiva();
     const fin = domingoSemanaOcioActiva();
     if (!inicio || !fin) return [];
-    return ocioCambiosPuntuales.filter((cambio) =>
-      cambio.fecha >= inicio &&
-      cambio.fecha <= fin &&
-      (cambio.estado || 'confirmada') !== 'cancelada'
+    return ocioCambiosPuntuales.filter(
+      (cambio) =>
+        cambio.fecha >= inicio &&
+        cambio.fecha <= fin &&
+        (cambio.estado || 'confirmada') !== 'cancelada'
     );
   }
 
-  function cambioEntradaOcio(alumnoId: string, grupoId: string | null | undefined) {
+  function cambioEntradaOcio(
+    alumnoId: string,
+    grupoId: string | null | undefined
+  ) {
     if (!grupoId) return null;
-    return cambiosOcioSemanaActiva().find((cambio) =>
-      cambio.alumno_id === alumnoId && cambio.grupo_destino_id === grupoId
-    ) || null;
+    return (
+      cambiosOcioSemanaActiva().find(
+        (cambio) =>
+          cambio.alumno_id === alumnoId && cambio.grupo_destino_id === grupoId
+      ) || null
+    );
   }
 
-  function cambioSalidaOcio(alumnoId: string, grupoId: string | null | undefined) {
+  function cambioSalidaOcio(
+    alumnoId: string,
+    grupoId: string | null | undefined
+  ) {
     if (!grupoId) return null;
-    return cambiosOcioSemanaActiva().find((cambio) =>
-      cambio.alumno_id === alumnoId && cambio.grupo_origen_id === grupoId
-    ) || null;
+    return (
+      cambiosOcioSemanaActiva().find(
+        (cambio) =>
+          cambio.alumno_id === alumnoId && cambio.grupo_origen_id === grupoId
+      ) || null
+    );
   }
 
   function alumnosGrupoOcioEstable(grupoId: string | null | undefined) {
@@ -2884,18 +3493,25 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const mapa = new Map<string, OcioAlumnoApp>();
 
     ocioAlumnos
-      .filter((alumno) => alumno.grupo_id === grupoId && !salientes.has(alumno.alumno_id))
+      .filter(
+        (alumno) =>
+          alumno.grupo_id === grupoId && !salientes.has(alumno.alumno_id)
+      )
       .forEach((alumno) => mapa.set(alumno.alumno_id, alumno));
 
     ocioAlumnos
       .filter((alumno) => entrantes.has(alumno.alumno_id))
       .forEach((alumno) => mapa.set(alumno.alumno_id, alumno));
 
-    return Array.from(mapa.values()).sort((a, b) => a.alumno.localeCompare(b.alumno));
+    return Array.from(mapa.values()).sort((a, b) =>
+      a.alumno.localeCompare(b.alumno)
+    );
   }
 
   function claveAsistenciaOcioSemana(alumnoId: string) {
-    return `${semanaAgendaActiva || semanaActualAgenda || 'sin_semana'}__${alumnoId}`;
+    return `${
+      semanaAgendaActiva || semanaActualAgenda || 'sin_semana'
+    }__${alumnoId}`;
   }
 
   function alumnoVieneOcioSemana(alumnoId: string) {
@@ -2914,7 +3530,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const fecha = crearFechaAgenda(fechaIso);
     let edad = fecha.getFullYear() - nacimiento.getFullYear();
     const mes = fecha.getMonth() - nacimiento.getMonth();
-    if (mes < 0 || (mes === 0 && fecha.getDate() < nacimiento.getDate())) edad -= 1;
+    if (mes < 0 || (mes === 0 && fecha.getDate() < nacimiento.getDate()))
+      edad -= 1;
     return edad;
   }
 
@@ -2926,7 +3543,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       .filter((edad): edad is number => typeof edad === 'number');
 
     if (edades.length === 0) return 'Ocio';
-    const media = edades.reduce((total, edad) => total + edad, 0) / edades.length;
+    const media =
+      edades.reduce((total, edad) => total + edad, 0) / edades.length;
     return media >= 7 ? 'Mayores' : 'Pequeños';
   }
 
@@ -2961,12 +3579,18 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       const fecha = fechaGrupoOcioSemana(grupo);
       const horaInicio = horaCorta(grupo.hora_inicio);
       const horaFin = horaCorta(grupo.hora_fin);
-      const alumnosPresentes = alumnosGrupoOcioEstable(grupo.grupo_id).filter((alumno) => alumnoVieneOcioSemana(alumno.alumno_id));
+      const alumnosPresentes = alumnosGrupoOcioEstable(grupo.grupo_id).filter(
+        (alumno) => alumnoVieneOcioSemana(alumno.alumno_id)
+      );
       if (alumnosPresentes.length === 0) return;
       const entrenadorId = entrenadorSeleccionadoOcioSemana(grupo.grupo_id);
-      const entrenador = entrenadores.find((item) => item.entrenador_id === entrenadorId)?.nombre_completo || 'ENTRENADOR PENDIENTE';
+      const entrenador =
+        entrenadores.find((item) => item.entrenador_id === entrenadorId)
+          ?.nombre_completo || 'ENTRENADOR PENDIENTE';
 
-      mensaje += `*${(grupo.dia_semana || '').toUpperCase()} · ${formatearFecha(fecha)}*\n`;
+      mensaje += `*${(grupo.dia_semana || '').toUpperCase()} · ${formatearFecha(
+        fecha
+      )}*\n`;
       mensaje += `⏰ horario de ${horaInicio} a ${horaFin} MSZ\n\n`;
       mensaje += `⛷️ ${entrenador}\n`;
       mensaje += `📍${grupo.punto_encuentro || '-'}\n`;
@@ -2978,28 +3602,37 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     });
 
     const primerGrupoConAlumnos = ocioGrupos.find((grupo) =>
-      alumnosGrupoOcioEstable(grupo.grupo_id).some((alumno) => alumnoVieneOcioSemana(alumno.alumno_id))
+      alumnosGrupoOcioEstable(grupo.grupo_id).some((alumno) =>
+        alumnoVieneOcioSemana(alumno.alumno_id)
+      )
     );
-    const horaEntrada = primerGrupoConAlumnos ? horaCorta(primerGrupoConAlumnos.hora_inicio) : 'la hora de entrada';
+    const horaEntrada = primerGrupoConAlumnos
+      ? horaCorta(primerGrupoConAlumnos.hora_inicio)
+      : 'la hora de entrada';
 
     mensaje += '¡Nos vemos en MSZ equipo!\n';
     mensaje += '⚠️Papis importante!\n';
     mensaje += `Como la logística con los peques se puede complicar un poco, os recomiendo estar 20-25 minutos antes de la hora de entrada ya que a las ${horaEntrada} el grupo estará entrando en pista con su entrenador.\n`;
-    mensaje += 'Si alguno llegáis tarde, avisad en este número: Jose +34 647 027 692';
+    mensaje +=
+      'Si alguno llegáis tarde, avisad en este número: Jose +34 647 027 692';
 
     return mensaje;
   }
 
   function abrirWhatsappSemanaOcio() {
     abrirPrevisualizacionWhatsapp(
-      `WhatsApp padres Ocio · semana ${rangoSemanaAgenda(semanaAgendaActiva || semanaActualAgenda)}`,
+      `WhatsApp padres Ocio · semana ${rangoSemanaAgenda(
+        semanaAgendaActiva || semanaActualAgenda
+      )}`,
       mensajeWhatsappSemanaOcio()
     );
   }
 
   async function prepararGrupoOcioSemana(grupo: OcioGrupoApp) {
     const fecha = fechaGrupoOcioSemana(grupo);
-    const alumnosPresentes = alumnosGrupoOcioEstable(grupo.grupo_id).filter((alumno) => alumnoVieneOcioSemana(alumno.alumno_id));
+    const alumnosPresentes = alumnosGrupoOcioEstable(grupo.grupo_id).filter(
+      (alumno) => alumnoVieneOcioSemana(alumno.alumno_id)
+    );
 
     if (!fecha) {
       setError('Selecciona una semana antes de preparar Ocio.');
@@ -3011,48 +3644,61 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       return;
     }
 
-    const entrenadorId = entrenadorSeleccionadoOcioSemana(grupo.grupo_id) || null;
+    const entrenadorId =
+      entrenadorSeleccionadoOcioSemana(grupo.grupo_id) || null;
     const entrenadorNombre = entrenadorId
-      ? entrenadores.find((entrenador) => entrenador.entrenador_id === entrenadorId)?.nombre_completo || null
+      ? entrenadores.find(
+          (entrenador) => entrenador.entrenador_id === entrenadorId
+        )?.nombre_completo || null
       : null;
 
     setCargando(true);
     setError('');
 
     try {
-      const resultado = await ejecutarFuncionConRespuesta<OcioPrepararResultadoApp>(
-        'preparar_grupo_ocio_semana_app',
-        {
-          p_fecha: fecha,
-          p_hora_inicio: horaCorta(grupo.hora_inicio),
-          p_hora_fin: horaCorta(grupo.hora_fin),
-          p_nombre_grupo: nombreGrupoSemanalOcio(grupo),
-          p_nivel_grupo: categoriaOcioGrupo(grupo),
-          p_pista: grupo.pista || null,
-          p_punto_encuentro: grupo.punto_encuentro || null,
-          p_trabajo_diario: trabajoDiarioOcioSemana(grupo),
-          p_observaciones_importantes: combinarObservacionesGrupoApp(
-            observacionesAutomaticasGrupoOcio(alumnosPresentes),
-            grupo.observaciones || null
-          ),
-          p_entrenador_id: entrenadorId,
-          p_alumnos_ids: alumnosPresentes.map((alumno) => alumno.alumno_id),
-        }
-      );
+      const resultado =
+        await ejecutarFuncionConRespuesta<OcioPrepararResultadoApp>(
+          'preparar_grupo_ocio_semana_app',
+          {
+            p_fecha: fecha,
+            p_hora_inicio: horaCorta(grupo.hora_inicio),
+            p_hora_fin: horaCorta(grupo.hora_fin),
+            p_nombre_grupo: nombreGrupoSemanalOcio(grupo),
+            p_nivel_grupo: categoriaOcioGrupo(grupo),
+            p_pista: grupo.pista || null,
+            p_punto_encuentro: grupo.punto_encuentro || null,
+            p_trabajo_diario: trabajoDiarioOcioSemana(grupo),
+            p_observaciones_importantes: combinarObservacionesGrupoApp(
+              observacionesAutomaticasGrupoOcio(alumnosPresentes),
+              grupo.observaciones || null
+            ),
+            p_entrenador_id: entrenadorId,
+            p_alumnos_ids: alumnosPresentes.map((alumno) => alumno.alumno_id),
+          }
+        );
 
       setOcioSemanaResultados((anteriores) => [
         ...resultado,
-        ...anteriores.filter((item) => item.grupo_estable !== grupo.nombre_grupo || item.fecha !== fecha),
+        ...anteriores.filter(
+          (item) =>
+            item.grupo_estable !== grupo.nombre_grupo || item.fecha !== fecha
+        ),
       ]);
 
       await cargarAgendaOperativaDirecta();
       await cargarPlanning();
       await cargarGruposEntrenador();
       if (entrenadorNombre === null) {
-        setError(`Grupo ${grupo.nombre_grupo} creado como pendiente de entrenador.`);
+        setError(
+          `Grupo ${grupo.nombre_grupo} creado como pendiente de entrenador.`
+        );
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error preparando grupo Ocio semanal');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error preparando grupo Ocio semanal'
+      );
     }
 
     setCargando(false);
@@ -3060,7 +3706,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
   async function prepararTodaSemanaOcio() {
     const gruposConAlumnos = ocioGrupos.filter((grupo) =>
-      alumnosGrupoOcioEstable(grupo.grupo_id).some((alumno) => alumnoVieneOcioSemana(alumno.alumno_id))
+      alumnosGrupoOcioEstable(grupo.grupo_id).some((alumno) =>
+        alumnoVieneOcioSemana(alumno.alumno_id)
+      )
     );
 
     if (gruposConAlumnos.length === 0) {
@@ -3069,7 +3717,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     }
 
     const confirmar = window.confirm(
-      `¿Preparar ${gruposConAlumnos.length} grupos de Ocio para la semana ${rangoSemanaAgenda(semanaAgendaActiva || semanaActualAgenda)}?`
+      `¿Preparar ${
+        gruposConAlumnos.length
+      } grupos de Ocio para la semana ${rangoSemanaAgenda(
+        semanaAgendaActiva || semanaActualAgenda
+      )}?`
     );
 
     if (!confirmar) return;
@@ -3084,15 +3736,24 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     `${a.fecha} ${a.alumno}`.localeCompare(`${b.fecha} ${b.alumno}`)
   );
 
-  const ocioAlumnoCambioSeleccionado = ocioAlumnos.find((alumno) => alumno.alumno_id === ocioCambioForm.alumnoId) || null;
+  const ocioAlumnoCambioSeleccionado =
+    ocioAlumnos.find(
+      (alumno) => alumno.alumno_id === ocioCambioForm.alumnoId
+    ) || null;
 
   function grupoOcioDestinoCambioSeleccionado() {
-    return ocioGrupos.find((grupo) => grupo.grupo_id === ocioCambioForm.grupoDestinoId) || null;
+    return (
+      ocioGrupos.find(
+        (grupo) => grupo.grupo_id === ocioCambioForm.grupoDestinoId
+      ) || null
+    );
   }
 
   function fechaDestinoCambioOcio(grupoDestinoId: string) {
     const grupo = ocioGrupos.find((item) => item.grupo_id === grupoDestinoId);
-    return grupo ? fechaGrupoOcioSemana(grupo) : (ocioCambioForm.fecha || lunesSemanaOcioActiva());
+    return grupo
+      ? fechaGrupoOcioSemana(grupo)
+      : ocioCambioForm.fecha || lunesSemanaOcioActiva();
   }
 
   function limpiarFormularioCambioOcio() {
@@ -3128,7 +3789,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       return;
     }
 
-    const fecha = ocioCambioForm.fecha || fechaDestinoCambioOcio(ocioCambioForm.grupoDestinoId);
+    const fecha =
+      ocioCambioForm.fecha ||
+      fechaDestinoCambioOcio(ocioCambioForm.grupoDestinoId);
 
     if (!fecha) {
       alert('Selecciona una semana y una fecha de cambio.');
@@ -3149,13 +3812,19 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       await cargarOcioAlumnos();
       await cargarOcioGrupos();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error guardando cambio puntual de Ocio');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error guardando cambio puntual de Ocio'
+      );
     }
     setCargando(false);
   }
 
   async function eliminarCambioPuntualOcio(cambio: OcioCambioPuntualApp) {
-    const confirmar = window.confirm(`¿Eliminar el cambio puntual de ${cambio.alumno}?`);
+    const confirmar = window.confirm(
+      `¿Eliminar el cambio puntual de ${cambio.alumno}?`
+    );
     if (!confirmar) return;
 
     setCargando(true);
@@ -3168,7 +3837,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       await cargarOcioAlumnos();
       await cargarOcioGrupos();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error eliminando cambio puntual de Ocio');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error eliminando cambio puntual de Ocio'
+      );
     }
     setCargando(false);
   }
@@ -3257,14 +3930,17 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_titulacion_observaciones: formEntrenador.titulacionObs.trim() || null,
         p_antecedentes_estado: formEntrenador.antecedentesEstado,
         p_antecedentes_url: formEntrenador.antecedentesUrl.trim() || null,
-        p_antecedentes_observaciones: formEntrenador.antecedentesObs.trim() || null,
+        p_antecedentes_observaciones:
+          formEntrenador.antecedentesObs.trim() || null,
         p_observaciones_internas: formEntrenador.observaciones.trim() || null,
       });
       setMostrarFormularioEntrenador(false);
       setFormEntrenador(entrenadorFormInicial());
       await cargarEntrenadores();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error guardando entrenador');
+      setError(
+        err instanceof Error ? err.message : 'Error guardando entrenador'
+      );
     }
 
     setCargando(false);
@@ -3285,7 +3961,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       });
       await cargarEntrenadores();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error eliminando entrenador');
+      setError(
+        err instanceof Error ? err.message : 'Error eliminando entrenador'
+      );
     }
 
     setCargando(false);
@@ -3349,7 +4027,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       setCobrosDetalle(detalleData);
       const tarifas: Record<string, string> = {};
       resumenData.forEach((cobro) => {
-        tarifas[cobro.entrenador_id] = String(Number(cobro.tarifa_por_turno || 0));
+        tarifas[cobro.entrenador_id] = String(
+          Number(cobro.tarifa_por_turno || 0)
+        );
       });
       setTarifasEditadasCobros(tarifas);
     } catch (err) {
@@ -3362,11 +4042,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   function detallesDeCobro(entrenadorId: string) {
-    return cobrosDetalle.filter((detalleCobro) => detalleCobro.entrenador_id === entrenadorId);
+    return cobrosDetalle.filter(
+      (detalleCobro) => detalleCobro.entrenador_id === entrenadorId
+    );
   }
 
   async function guardarTarifaCobro(cobro: CobroMensual) {
-    const valor = Number(tarifasEditadasCobros[cobro.entrenador_id] ?? cobro.tarifa_por_turno ?? 0);
+    const valor = Number(
+      tarifasEditadasCobros[cobro.entrenador_id] ?? cobro.tarifa_por_turno ?? 0
+    );
     if (Number.isNaN(valor) || valor < 0) {
       alert('La tarifa tiene que ser un número válido.');
       return;
@@ -3387,10 +4071,16 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   async function crearAjusteCobro(cobro: CobroMensual) {
-    const concepto = window.prompt(`Concepto del ajuste para ${cobro.entrenador}`, 'Ajuste manual');
+    const concepto = window.prompt(
+      `Concepto del ajuste para ${cobro.entrenador}`,
+      'Ajuste manual'
+    );
     if (concepto === null) return;
 
-    const importeTexto = window.prompt('Importe del ajuste. Usa negativo si quieres descontar. Ejemplo: 15 o -10', '0');
+    const importeTexto = window.prompt(
+      'Importe del ajuste. Usa negativo si quieres descontar. Ejemplo: 15 o -10',
+      '0'
+    );
     if (importeTexto === null) return;
 
     const importe = Number(importeTexto.replace(',', '.'));
@@ -3399,7 +4089,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       return;
     }
 
-    const observaciones = window.prompt('Observación para dirección, si hace falta:', '') || '';
+    const observaciones =
+      window.prompt('Observación para dirección, si hace falta:', '') || '';
 
     setCargando(true);
     setError('');
@@ -3420,7 +4111,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   async function limpiarAjustesCobro(cobro: CobroMensual) {
-    if (!window.confirm(`¿Eliminar todos los ajustes manuales de ${cobro.entrenador} en ${nombreMes(cobro.mes)} ${cobro.anio}?`)) return;
+    if (
+      !window.confirm(
+        `¿Eliminar todos los ajustes manuales de ${
+          cobro.entrenador
+        } en ${nombreMes(cobro.mes)} ${cobro.anio}?`
+      )
+    )
+      return;
 
     setCargando(true);
     setError('');
@@ -3438,7 +4136,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   async function cambiarEstadoCobro(cobro: CobroMensual, estado: string) {
-    const nota = window.prompt(`Nota para dirección en ${estado}:`, cobro.nota_direccion || '') || '';
+    const nota =
+      window.prompt(
+        `Nota para dirección en ${estado}:`,
+        cobro.nota_direccion || ''
+      ) || '';
 
     setCargando(true);
     setError('');
@@ -3452,7 +4154,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       });
       await cargarCobros();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error cambiando estado del cobro');
+      setError(
+        err instanceof Error ? err.message : 'Error cambiando estado del cobro'
+      );
     }
     setCargando(false);
   }
@@ -3474,16 +4178,22 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           </tr>
         </thead>
         <tbody>
-          ${detalles.map((detalleCobro) => `
+          ${detalles
+            .map(
+              (detalleCobro) => `
             <tr>
               <td>${escaparHtml(formatearFecha(detalleCobro.fecha))}</td>
-              <td>${escaparHtml(horaCorta(detalleCobro.hora_inicio))}-${escaparHtml(horaCorta(detalleCobro.hora_fin))}</td>
+              <td>${escaparHtml(
+                horaCorta(detalleCobro.hora_inicio)
+              )}-${escaparHtml(horaCorta(detalleCobro.hora_fin))}</td>
               <td>${escaparHtml(detalleCobro.modalidad)}</td>
               <td>${escaparHtml(detalleCobro.nombre_grupo)}</td>
               <td>${Number(detalleCobro.total_alumnos || 0)}</td>
               <td>${formatearEuros(detalleCobro.importe_turno)}</td>
             </tr>
-          `).join('')}
+          `
+            )
+            .join('')}
         </tbody>
       </table>
     `;
@@ -3493,28 +4203,60 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     return `
       <section class="cobro">
         <h2>${escaparHtml(cobro.entrenador)}</h2>
-        <p><strong>Mes:</strong> ${escaparHtml(nombreMes(cobro.mes))} ${cobro.anio} · ${escaparHtml(cobro.temporada || '')}</p>
-        <p><strong>Estado:</strong> ${escaparHtml(cobro.estado_mes || 'abierto')}</p>
-        ${cobro.nota_direccion ? `<p><strong>Nota dirección:</strong> ${escaparHtml(cobro.nota_direccion)}</p>` : ''}
+        <p><strong>Mes:</strong> ${escaparHtml(nombreMes(cobro.mes))} ${
+      cobro.anio
+    } · ${escaparHtml(cobro.temporada || '')}</p>
+        <p><strong>Estado:</strong> ${escaparHtml(
+          cobro.estado_mes || 'abierto'
+        )}</p>
+        ${
+          cobro.nota_direccion
+            ? `<p><strong>Nota dirección:</strong> ${escaparHtml(
+                cobro.nota_direccion
+              )}</p>`
+            : ''
+        }
         <div class="resumen">
-          <div><strong>Baby</strong><br>${Number(cobro.total_turnos_baby || 0)} turnos</div>
-          <div><strong>Intensivos</strong><br>${Number(cobro.total_turnos_intensivos || 0)} turnos</div>
-          <div><strong>Ocio</strong><br>${Number(cobro.total_turnos_ocio || 0)} turnos</div>
-          <div><strong>Tarifa</strong><br>${formatearEuros(cobro.tarifa_por_turno)}</div>
-          <div><strong>Subtotal</strong><br>${formatearEuros(cobro.subtotal_sesiones)}</div>
-          <div><strong>Ajustes</strong><br>${formatearEuros(cobro.ajustes_total)}</div>
-          <div><strong>Total mes</strong><br>${formatearEuros(cobro.total_mes)}</div>
+          <div><strong>Baby</strong><br>${Number(
+            cobro.total_turnos_baby || 0
+          )} turnos</div>
+          <div><strong>Intensivos</strong><br>${Number(
+            cobro.total_turnos_intensivos || 0
+          )} turnos</div>
+          <div><strong>Ocio</strong><br>${Number(
+            cobro.total_turnos_ocio || 0
+          )} turnos</div>
+          <div><strong>Tarifa</strong><br>${formatearEuros(
+            cobro.tarifa_por_turno
+          )}</div>
+          <div><strong>Subtotal</strong><br>${formatearEuros(
+            cobro.subtotal_sesiones
+          )}</div>
+          <div><strong>Ajustes</strong><br>${formatearEuros(
+            cobro.ajustes_total
+          )}</div>
+          <div><strong>Total mes</strong><br>${formatearEuros(
+            cobro.total_mes
+          )}</div>
         </div>
         <h3>Detalle de turnos</h3>
         ${htmlDetalleTurnosCobro(cobro)}
-        ${cobro.detalle_ajustes ? `<h3>Ajustes manuales</h3><pre>${escaparHtml(cobro.detalle_ajustes)}</pre>` : ''}
+        ${
+          cobro.detalle_ajustes
+            ? `<h3>Ajustes manuales</h3><pre>${escaparHtml(
+                cobro.detalle_ajustes
+              )}</pre>`
+            : ''
+        }
       </section>
     `;
   }
 
   function abrirPdfCobroEntrenador(cobro: CobroMensual) {
     setCobroPdfPreview({
-      titulo: `Cobro ${cobro.entrenador} · ${nombreMes(cobro.mes)} ${cobro.anio}`,
+      titulo: `Cobro ${cobro.entrenador} · ${nombreMes(cobro.mes)} ${
+        cobro.anio
+      }`,
       cuerpo: htmlCobroEntrenador(cobro),
     });
   }
@@ -3525,7 +4267,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       return;
     }
 
-    const totalGeneral = cobrosFiltrados.reduce((total, cobro) => total + Number(cobro.total_mes || 0), 0);
+    const totalGeneral = cobrosFiltrados.reduce(
+      (total, cobro) => total + Number(cobro.total_mes || 0),
+      0
+    );
     const cuerpo = `
       <section class="portada">
         <h1>Resumen cobros entrenadores</h1>
@@ -3536,7 +4281,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       ${cobrosFiltrados.map((cobro) => htmlCobroEntrenador(cobro)).join('')}
     `;
 
-    setCobroPdfPreview({ titulo: `Cobros entrenadores · ${nombreMes(mesCobros)} ${anioCobros}`, cuerpo });
+    setCobroPdfPreview({
+      titulo: `Cobros entrenadores · ${nombreMes(mesCobros)} ${anioCobros}`,
+      cuerpo,
+    });
   }
 
   function imprimirCobroPdfPreview() {
@@ -3549,14 +4297,20 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       return;
     }
 
-    if (!formCobroManual.fecha || !formCobroManual.horaInicio || !formCobroManual.horaFin) {
+    if (
+      !formCobroManual.fecha ||
+      !formCobroManual.horaInicio ||
+      !formCobroManual.horaFin
+    ) {
       alert('Completa fecha y horario.');
       return;
     }
 
     const totalAlumnos = Number(formCobroManual.totalAlumnos || 0);
     const importeOverrideTexto = formCobroManual.importeOverride.trim();
-    const importeOverride = importeOverrideTexto ? Number(importeOverrideTexto.replace(',', '.')) : null;
+    const importeOverride = importeOverrideTexto
+      ? Number(importeOverrideTexto.replace(',', '.'))
+      : null;
 
     if (Number.isNaN(totalAlumnos) || totalAlumnos < 0) {
       alert('Número de niños no válido.');
@@ -3564,7 +4318,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     }
 
     if (importeOverride !== null && Number.isNaN(importeOverride)) {
-      alert('Importe manual no válido. Déjalo vacío para usar la tarifa del entrenador.');
+      alert(
+        'Importe manual no válido. Déjalo vacío para usar la tarifa del entrenador.'
+      );
       return;
     }
 
@@ -3585,7 +4341,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       setFormCobroManual(cobroManualInicial());
       await cargarCobros();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error creando entreno manual');
+      setError(
+        err instanceof Error ? err.message : 'Error creando entreno manual'
+      );
     }
     setCargando(false);
   }
@@ -3593,7 +4351,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   async function eliminarEntrenoManualCobro(detalleCobro: CobroDetalleMensual) {
     const entrenoId = detalleCobro.entreno_manual_id || detalleCobro.grupo_id;
     if (!entrenoId) return;
-    if (!window.confirm(`¿Eliminar este entreno manual de ${detalleCobro.entrenador}?`)) return;
+    if (
+      !window.confirm(
+        `¿Eliminar este entreno manual de ${detalleCobro.entrenador}?`
+      )
+    )
+      return;
 
     setCargando(true);
     setError('');
@@ -3603,7 +4366,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       });
       await cargarCobros();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error eliminando entreno manual');
+      setError(
+        err instanceof Error ? err.message : 'Error eliminando entreno manual'
+      );
     }
     setCargando(false);
   }
@@ -3811,7 +4576,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     );
 
     if (repetidas.length > 0) {
-      setError(`Ya existen estos días en el intensivo: ${repetidas.map(formatearFecha).join(', ')}.`);
+      setError(
+        `Ya existen estos días en el intensivo: ${repetidas
+          .map(formatearFecha)
+          .join(', ')}.`
+      );
       return;
     }
 
@@ -3823,7 +4592,18 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     }
 
     const confirmar = window.confirm(
-      `¿Crear 4 sesiones para ${intensivo.intensivo}?\n${nombreTipoCuatroSesionesIntensivo(plantillaCuatroSesionesIntensivo.tipo)}\n${fechas.map((fecha) => `- ${formatearFecha(fecha)} ${plantillaCuatroSesionesIntensivo.horaInicio}-${plantillaCuatroSesionesIntensivo.horaFin}`).join('\n')}`
+      `¿Crear 4 sesiones para ${
+        intensivo.intensivo
+      }?\n${nombreTipoCuatroSesionesIntensivo(
+        plantillaCuatroSesionesIntensivo.tipo
+      )}\n${fechas
+        .map(
+          (fecha) =>
+            `- ${formatearFecha(fecha)} ${
+              plantillaCuatroSesionesIntensivo.horaInicio
+            }-${plantillaCuatroSesionesIntensivo.horaFin}`
+        )
+        .join('\n')}`
     );
 
     if (!confirmar) return;
@@ -3845,7 +4625,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       setPlantillaCuatroSesionesIntensivo(plantillaCuatroSesionesInicial());
       await cargarIntensivos();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error creando las 4 sesiones del intensivo');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error creando las 4 sesiones del intensivo'
+      );
     }
 
     setCargando(false);
@@ -3959,13 +4743,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setError('');
 
     try {
-      const resultado = await ejecutarFuncionConRespuesta<VolcadoAlumnoIntensivoApp>(
-        'volcar_alumnos_intensivo_app',
-        {
-          p_intensivo_id: intensivo.intensivo_id,
-          p_texto: textoVolcadoIntensivo,
-        }
-      );
+      const resultado =
+        await ejecutarFuncionConRespuesta<VolcadoAlumnoIntensivoApp>(
+          'volcar_alumnos_intensivo_app',
+          {
+            p_intensivo_id: intensivo.intensivo_id,
+            p_texto: textoVolcadoIntensivo,
+          }
+        );
 
       setResultadoVolcadoIntensivo(resultado);
       setBusquedaAlumnoIntensivo('');
@@ -4058,7 +4843,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     if (!grupo.grupo_id) return;
 
     const confirmar = window.confirm(
-      `¿Borrar el grupo ${grupo.nombre_grupo || 'sin nombre'}? Se eliminarán sus alumnos, entrenador, reportes y trabajo diario asociados.`
+      `¿Borrar el grupo ${
+        grupo.nombre_grupo || 'sin nombre'
+      }? Se eliminarán sus alumnos, entrenador, reportes y trabajo diario asociados.`
     );
 
     if (!confirmar) return;
@@ -4193,7 +4980,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setCargando(false);
   }
 
-  async function eliminarRecuperacionIntensivo(registro: IntensivoRecuperacionApp) {
+  async function eliminarRecuperacionIntensivo(
+    registro: IntensivoRecuperacionApp
+  ) {
     const confirmar = window.confirm(
       `¿Eliminar la recuperación de ${registro.alumno}?`
     );
@@ -4215,7 +5004,6 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
     setCargando(false);
   }
-
 
   async function crearGrupoNormalIntensivo(
     intensivo: IntensivoApp,
@@ -4241,21 +5029,46 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       return;
     }
 
-    const alumnosManualRatio = formGrupoIntensivo.alumnos_ids.map((alumnoId) => {
-      const ficha = alumnosResumenVolcado.find((alumno) => alumno.alumno_id === alumnoId);
-      return {
-        nivel_resumen: ficha?.nivel_resumen || ficha?.nivel_actual || ficha?.nivel_estimado || 'A+',
-        pista_recomendada: ficha?.pista_resumen || ficha?.pista_nivel_actual || ficha?.pista_nivel_estimado || formGrupoIntensivo.pista,
-        pista_alumno: ficha?.pista_resumen || ficha?.pista_nivel_actual || ficha?.pista_nivel_estimado || formGrupoIntensivo.pista,
-      };
-    });
-    if (necesitaDosEntrenadoresGrupoApp(alumnosManualRatio) && !formGrupoIntensivo.entrenador_apoyo_id) {
-      const seguirSinApoyo = window.confirm(`${textoNecesidadDosEntrenadoresApp(alumnosManualRatio)}\n\nSolo has seleccionado 1 entrenador. Puedes publicarlo con aviso fuerte si es necesario en pista. ¿Continuar?`);
+    const alumnosManualRatio = formGrupoIntensivo.alumnos_ids.map(
+      (alumnoId) => {
+        const ficha = alumnosResumenVolcado.find(
+          (alumno) => alumno.alumno_id === alumnoId
+        );
+        return {
+          nivel_resumen:
+            ficha?.nivel_resumen ||
+            ficha?.nivel_actual ||
+            ficha?.nivel_estimado ||
+            'A+',
+          pista_recomendada:
+            ficha?.pista_resumen ||
+            ficha?.pista_nivel_actual ||
+            ficha?.pista_nivel_estimado ||
+            formGrupoIntensivo.pista,
+          pista_alumno:
+            ficha?.pista_resumen ||
+            ficha?.pista_nivel_actual ||
+            ficha?.pista_nivel_estimado ||
+            formGrupoIntensivo.pista,
+        };
+      }
+    );
+    if (
+      necesitaDosEntrenadoresGrupoApp(alumnosManualRatio) &&
+      !formGrupoIntensivo.entrenador_apoyo_id
+    ) {
+      const seguirSinApoyo = window.confirm(
+        `${textoNecesidadDosEntrenadoresApp(
+          alumnosManualRatio
+        )}\n\nSolo has seleccionado 1 entrenador. Puedes publicarlo con aviso fuerte si es necesario en pista. ¿Continuar?`
+      );
       if (!seguirSinApoyo) return;
     }
 
     const confirmar = window.confirm(
-      `¿Crear ${formGrupoIntensivo.nombre_grupo} para ${intensivo.intensivo} el ${formatearFecha(dia.fecha)}?`
+      `¿Crear ${formGrupoIntensivo.nombre_grupo} para ${
+        intensivo.intensivo
+      } el ${formatearFecha(dia.fecha)}?`
     );
 
     if (!confirmar) return;
@@ -4272,7 +5085,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_punto_encuentro: formGrupoIntensivo.punto_encuentro.trim(),
         p_trabajo_diario: formGrupoIntensivo.trabajo_diario.trim(),
         p_observaciones_importantes: combinarObservacionesGrupoApp(
-          observacionesAutomaticasGrupoIntensivoManual(formGrupoIntensivo.alumnos_ids),
+          observacionesAutomaticasGrupoIntensivoManual(
+            formGrupoIntensivo.alumnos_ids
+          ),
           formGrupoIntensivo.observaciones_importantes.trim()
         ),
         p_entrenador_id: formGrupoIntensivo.entrenador_id,
@@ -4285,10 +5100,16 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_contexto_id: dia.intensivo_dia_id,
         p_nombre_grupo: formGrupoIntensivo.nombre_grupo.trim(),
         p_entrenador_apoyo_id: formGrupoIntensivo.entrenador_apoyo_id || null,
-        p_responsables: formGrupoIntensivo.alumnos_ids.map((alumnoId, indice) => ({
-          alumno_id: alumnoId,
-          entrenador_id: responsableAutomaticoReporteApp(indice, formGrupoIntensivo.entrenador_id, formGrupoIntensivo.entrenador_apoyo_id),
-        })),
+        p_responsables: formGrupoIntensivo.alumnos_ids.map(
+          (alumnoId, indice) => ({
+            alumno_id: alumnoId,
+            entrenador_id: responsableAutomaticoReporteApp(
+              indice,
+              formGrupoIntensivo.entrenador_id,
+              formGrupoIntensivo.entrenador_apoyo_id
+            ),
+          })
+        ),
       });
 
       setFormGrupoIntensivo(grupoIntensivoInicial());
@@ -4300,7 +5121,6 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setCargando(false);
   }
 
-
   function claveGrupoRecomendado(diaId: string, grupoRecomendado: string) {
     return `${diaId}__${grupoRecomendado}`;
   }
@@ -4309,8 +5129,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     return `${diaId}__alumno__${alumnoId}`;
   }
 
-  function destinoActualAlumnoRecomendado(diaId: string, alumno: RecomendacionGrupoIntensivoDiaApp) {
-    return destinoAlumnoRecomendado[claveAlumnoRecomendado(diaId, alumno.alumno_id)] || alumno.grupo_recomendado;
+  function destinoActualAlumnoRecomendado(
+    diaId: string,
+    alumno: RecomendacionGrupoIntensivoDiaApp
+  ) {
+    return (
+      destinoAlumnoRecomendado[
+        claveAlumnoRecomendado(diaId, alumno.alumno_id)
+      ] || alumno.grupo_recomendado
+    );
   }
 
   function nombresGruposBaseRecomendados(diaId: string) {
@@ -4357,7 +5184,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         const primeroB = b.alumnosGrupo[0];
         if (!primeroA || !primeroB) return 0;
         return (
-          Number(primeroA.orden_bloque || 0) - Number(primeroB.orden_bloque || 0) ||
+          Number(primeroA.orden_bloque || 0) -
+            Number(primeroB.orden_bloque || 0) ||
           a.nombreGrupo.localeCompare(b.nombreGrupo)
         );
       });
@@ -4366,7 +5194,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   async function crearDisponibilidadSemanaActual() {
     const semana = semanaAgendaActiva || semanaActualAgenda;
     if (!semana) {
-      setError('Selecciona una semana en Días de entrenamiento antes de pedir disponibilidad.');
+      setError(
+        'Selecciona una semana en Días de entrenamiento antes de pedir disponibilidad.'
+      );
       return;
     }
 
@@ -4380,7 +5210,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       await cargarDisponibilidad();
       alert('Turnos de disponibilidad creados para la semana.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error creando disponibilidad semanal');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error creando disponibilidad semanal'
+      );
     }
 
     setCargando(false);
@@ -4389,7 +5223,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   async function enviarAvisoDisponibilidadSemana() {
     const semana = semanaAgendaActiva || semanaActualAgenda;
     if (!semana) {
-      setError('Selecciona una semana en Días de entrenamiento antes de enviar el aviso.');
+      setError(
+        'Selecciona una semana en Días de entrenamiento antes de enviar el aviso.'
+      );
       return;
     }
 
@@ -4401,9 +5237,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_semana_inicio: semana,
       });
       await cargarDisponibilidad();
-      alert('Aviso enviado dentro de la app. Los entrenadores lo verán como disponibilidad pendiente.');
+      alert(
+        'Aviso enviado dentro de la app. Los entrenadores lo verán como disponibilidad pendiente.'
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error enviando aviso interno de disponibilidad');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error enviando aviso interno de disponibilidad'
+      );
     }
 
     setCargando(false);
@@ -4424,9 +5266,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_comentario: turno.comentario || null,
       });
       await cargarDisponibilidad();
-      setTimeout(() => window.scrollTo({ top: scrollActual, behavior: 'auto' }), 0);
+      setTimeout(
+        () => window.scrollTo({ top: scrollActual, behavior: 'auto' }),
+        0
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error guardando disponibilidad');
+      setError(
+        err instanceof Error ? err.message : 'Error guardando disponibilidad'
+      );
     }
 
     setCargando(false);
@@ -4434,30 +5281,43 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
   function mensajeDisponibilidadSemana() {
     const semana = semanaAgendaActiva || semanaActualAgenda;
-    if (!semana) return 'Selecciona una semana antes de copiar el recordatorio.';
+    if (!semana)
+      return 'Selecciona una semana antes de copiar el recordatorio.';
     const dias = diasTrabajoSemanaAgenda(semana);
-    let mensaje = `*Disponibilidad Mítico Baby / Ocio*\nSemana ${rangoSemanaAgenda(semana)}\n\nPor favor confirma tu disponibilidad para estos turnos:\n\n`;
+    let mensaje = `*Disponibilidad Mítico Baby / Ocio*\nSemana ${rangoSemanaAgenda(
+      semana
+    )}\n\nPor favor confirma tu disponibilidad para estos turnos:\n\n`;
 
     dias.forEach((dia) => {
-      mensaje += `*${capitalizarPrimera(dia.nombre)} ${formatearFecha(dia.fecha)}*\n`;
+      mensaje += `*${capitalizarPrimera(dia.nombre)} ${formatearFecha(
+        dia.fecha
+      )}*\n`;
       turnosTrabajoDiaAgenda(dia.fecha).forEach((turno) => {
         mensaje += `- ${turno.inicio}–${turno.fin}\n`;
       });
       mensaje += '\n';
     });
 
-    mensaje += 'No hace falta responder por WhatsApp: rellenadlo en la app. Gracias equipo.';
+    mensaje +=
+      'No hace falta responder por WhatsApp: rellenadlo en la app. Gracias equipo.';
     return mensaje;
   }
 
   function copiarMensajeDisponibilidadSemana() {
     const mensaje = mensajeDisponibilidadSemana();
-    abrirPrevisualizacionWhatsapp(`WhatsApp entrenadores · disponibilidad ${rangoSemanaAgenda(semanaAgendaActiva || semanaActualAgenda)}`, mensaje);
+    abrirPrevisualizacionWhatsapp(
+      `WhatsApp entrenadores · disponibilidad ${rangoSemanaAgenda(
+        semanaAgendaActiva || semanaActualAgenda
+      )}`,
+      mensaje
+    );
   }
 
   function mensajeWhatsappPendientesReportes(items: ReportePendiente[]) {
-    const pendientes = items.filter((reporte) =>
-      reporte.estado_reporte === 'Falta reporte' || reporte.estado_reporte === 'Asistencia sin confirmar'
+    const pendientes = items.filter(
+      (reporte) =>
+        reporte.estado_reporte === 'Falta reporte' ||
+        reporte.estado_reporte === 'Asistencia sin confirmar'
     );
 
     if (pendientes.length === 0) {
@@ -4466,22 +5326,37 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
     const porEntrenador = agruparReportesPorEntrenador(pendientes);
     let mensaje = 'Buenas equipo!\n\n';
-    mensaje += 'Tenéis tareas pendientes en la app. Por favor entrad en Vista entrenador → Grupos / reportes y dejadlo cerrado.\n\n';
+    mensaje +=
+      'Tenéis tareas pendientes en la app. Por favor entrad en Vista entrenador → Grupos / reportes y dejadlo cerrado.\n\n';
 
     porEntrenador.forEach((grupo) => {
-      const faltanReportes = grupo.reportes.filter((reporte) => reporte.estado_reporte === 'Falta reporte');
-      const faltanAsistencias = grupo.reportes.filter((reporte) => reporte.estado_reporte === 'Asistencia sin confirmar');
+      const faltanReportes = grupo.reportes.filter(
+        (reporte) => reporte.estado_reporte === 'Falta reporte'
+      );
+      const faltanAsistencias = grupo.reportes.filter(
+        (reporte) => reporte.estado_reporte === 'Asistencia sin confirmar'
+      );
       mensaje += `⛷️ ${grupo.entrenador}\n`;
       if (faltanAsistencias.length > 0) {
         mensaje += `- Asistencias sin confirmar: ${faltanAsistencias.length}\n`;
         faltanAsistencias.slice(0, 6).forEach((reporte) => {
-          mensaje += `  • ${formatearFecha(reporte.fecha)} ${reporte.hora_inicio.slice(0, 5)}-${reporte.hora_fin.slice(0, 5)} · ${reporte.alumno} · ${reporte.nombre_grupo}\n`;
+          mensaje += `  • ${formatearFecha(
+            reporte.fecha
+          )} ${reporte.hora_inicio.slice(0, 5)}-${reporte.hora_fin.slice(
+            0,
+            5
+          )} · ${reporte.alumno} · ${reporte.nombre_grupo}\n`;
         });
       }
       if (faltanReportes.length > 0) {
         mensaje += `- Reportes pendientes: ${faltanReportes.length}\n`;
         faltanReportes.slice(0, 6).forEach((reporte) => {
-          mensaje += `  • ${formatearFecha(reporte.fecha)} ${reporte.hora_inicio.slice(0, 5)}-${reporte.hora_fin.slice(0, 5)} · ${reporte.alumno} · ${reporte.nombre_grupo}\n`;
+          mensaje += `  • ${formatearFecha(
+            reporte.fecha
+          )} ${reporte.hora_inicio.slice(0, 5)}-${reporte.hora_fin.slice(
+            0,
+            5
+          )} · ${reporte.alumno} · ${reporte.nombre_grupo}\n`;
         });
       }
       mensaje += '\n';
@@ -4493,18 +5368,31 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
   function copiarWhatsappPendientesReportes() {
     const mensaje = mensajeWhatsappPendientesReportes(reportesFiltrados);
-    abrirPrevisualizacionWhatsapp(`WhatsApp entrenadores · pendientes semana ${rangoSemanaAgenda(semanaAgendaActiva)}`, mensaje);
+    abrirPrevisualizacionWhatsapp(
+      `WhatsApp entrenadores · pendientes semana ${rangoSemanaAgenda(
+        semanaAgendaActiva
+      )}`,
+      mensaje
+    );
   }
 
-  function copiarWhatsappPendientesEntrenador(nombreEntrenador: string, items: ReportePendiente[]) {
+  function copiarWhatsappPendientesEntrenador(
+    nombreEntrenador: string,
+    items: ReportePendiente[]
+  ) {
     const mensaje = mensajeWhatsappPendientesReportes(items);
-    abrirPrevisualizacionWhatsapp(`WhatsApp personal · ${nombreEntrenador}`, mensaje);
+    abrirPrevisualizacionWhatsapp(
+      `WhatsApp personal · ${nombreEntrenador}`,
+      mensaje
+    );
   }
 
   function pendientesEntrenador(entrenadorId: string) {
-    return reportesPendientes.filter((reporte) =>
-      reporte.entrenador_id === entrenadorId &&
-      (reporte.estado_reporte === 'Falta reporte' || reporte.estado_reporte === 'Asistencia sin confirmar')
+    return reportesPendientes.filter(
+      (reporte) =>
+        reporte.entrenador_id === entrenadorId &&
+        (reporte.estado_reporte === 'Falta reporte' ||
+          reporte.estado_reporte === 'Asistencia sin confirmar')
     );
   }
 
@@ -4528,10 +5416,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     );
 
     let mensaje = `*${diaTexto}* ⛷️💨\n`;
-    mensaje += `⏰ horario de ${sesion.hora_inicio.slice(0, 5)} a ${sesion.hora_fin.slice(0, 5)} MSZ\n\n`;
+    mensaje += `⏰ horario de ${sesion.hora_inicio.slice(
+      0,
+      5
+    )} a ${sesion.hora_fin.slice(0, 5)} MSZ\n\n`;
 
     grupos.forEach((grupo) => {
-      mensaje += `⛷️ ${(grupo.entrenador || 'ENTRENADOR PENDIENTE').toUpperCase()}\n`;
+      mensaje += `⛷️ ${(
+        grupo.entrenador || 'ENTRENADOR PENDIENTE'
+      ).toUpperCase()}\n`;
       mensaje += `📍${emojiPuntoEncuentro(grupo.punto_encuentro)}\n`;
       mensaje += '👶\n';
       alumnosLimpiosWhatsapp(grupo.alumnos_lista).forEach((alumno) => {
@@ -4542,8 +5435,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
     mensaje += '¡Nos vemos en MSZ equipo!\n';
     mensaje += '⚠️Papis importante!\n';
-    mensaje += `Como la logística con los peques se puede complicar un poco, os recomiendo estar 20-25 minutos antes de la hora de entrada ya que a las ${sesion.hora_inicio.slice(0, 5)} el grupo estará entrando en pista con su entrenador.\n`;
-    mensaje += 'Si alguno llegáis tarde, avisad en este número: Jose +34 647 027 692';
+    mensaje += `Como la logística con los peques se puede complicar un poco, os recomiendo estar 20-25 minutos antes de la hora de entrada ya que a las ${sesion.hora_inicio.slice(
+      0,
+      5
+    )} el grupo estará entrando en pista con su entrenador.\n`;
+    mensaje +=
+      'Si alguno llegáis tarde, avisad en este número: Jose +34 647 027 692';
 
     return mensaje;
   }
@@ -4555,9 +5452,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       return;
     }
 
-    const sesion = agendaSesionesDirectas.find((item) => item.sesion_id === agendaSesionActivaId);
+    const sesion = agendaSesionesDirectas.find(
+      (item) => item.sesion_id === agendaSesionActivaId
+    );
     const titulo = sesion
-      ? `WhatsApp papis · ${sesion.modalidad} ${sesion.hora_inicio.slice(0, 5)}-${sesion.hora_fin.slice(0, 5)}`
+      ? `WhatsApp papis · ${sesion.modalidad} ${sesion.hora_inicio.slice(
+          0,
+          5
+        )}-${sesion.hora_fin.slice(0, 5)}`
       : 'WhatsApp papis';
     abrirPrevisualizacionWhatsapp(titulo, mensaje);
   }
@@ -4566,19 +5468,34 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     nombreGrupo: string,
     alumnosGrupo: RecomendacionGrupoIntensivoDiaApp[]
   ) {
-    const niveles = alumnosGrupo.map((a) => a.nivel_resumen || '').filter(Boolean);
+    const niveles = alumnosGrupo
+      .map((a) => a.nivel_resumen || '')
+      .filter(Boolean);
     const pista = alumnosGrupo[0]?.pista_recomendada || 'Pequeña/Grande';
     const observaciones = observacionesAutomaticasGrupoIntensivo(alumnosGrupo);
-    const base = trabajoDiarioMSZApp(nombreGrupo, niveles, pista, observaciones);
-    const declaradosFamilia = alumnosGrupo.filter((a) => a.fuente_nivel === 'Nivel declarado familia');
-    const fichasPendientes = alumnosGrupo.filter((a) => a.estado_ficha !== 'completa');
+    const base = trabajoDiarioMSZApp(
+      nombreGrupo,
+      niveles,
+      pista,
+      observaciones
+    );
+    const declaradosFamilia = alumnosGrupo.filter(
+      (a) => a.fuente_nivel === 'Nivel declarado familia'
+    );
+    const fichasPendientes = alumnosGrupo.filter(
+      (a) => a.estado_ficha !== 'completa'
+    );
 
     const avisos = [
       declaradosFamilia.length > 0
-        ? `Aviso reporte: validar nivel declarado por familia: ${declaradosFamilia.map((a) => `${a.alumno} (${a.nivel_resumen})`).join(', ')}.`
+        ? `Aviso reporte: validar nivel declarado por familia: ${declaradosFamilia
+            .map((a) => `${a.alumno} (${a.nivel_resumen})`)
+            .join(', ')}.`
         : '',
       fichasPendientes.length > 0
-        ? `Aviso ficha: observar nivel real, autonomía y actitud de ${fichasPendientes.map((a) => a.alumno).join(', ')}.`
+        ? `Aviso ficha: observar nivel real, autonomía y actitud de ${fichasPendientes
+            .map((a) => a.alumno)
+            .join(', ')}.`
         : '',
     ].filter(Boolean);
 
@@ -4591,46 +5508,77 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   ) {
     const lineasReportes = reportes.map((reporte) => {
       return [
-        `Día ${reporte.numero_dia} · ${formatearFecha(reporte.fecha)} · ${reporte.nombre_grupo}`,
+        `Día ${reporte.numero_dia} · ${formatearFecha(reporte.fecha)} · ${
+          reporte.nombre_grupo
+        }`,
         `Entrenador: ${reporte.entrenador || '-'}`,
         `Nivel: ${reporte.nivel_reportado || '-'}`,
-        `Técnica: ${reporte.tecnica || '-'}${reporte.tecnica_comentario ? ` (${reporte.tecnica_comentario})` : ''}`,
-        `Actitud: ${reporte.actitud || '-'}${reporte.actitud_comentario ? ` (${reporte.actitud_comentario})` : ''}`,
-        `Autonomía: ${reporte.autonomia || '-'}${reporte.autonomia_comentario ? ` (${reporte.autonomia_comentario})` : ''}`,
-        `Incidencia: ${reporte.incidencia || '-'}${reporte.incidencia_comentario ? ` (${reporte.incidencia_comentario})` : ''}`,
-        `Recomendación: ${reporte.recomendacion_proxima_sesion || '-'}${reporte.recomendacion_comentario ? ` (${reporte.recomendacion_comentario})` : ''}`,
+        `Técnica: ${reporte.tecnica || '-'}${
+          reporte.tecnica_comentario ? ` (${reporte.tecnica_comentario})` : ''
+        }`,
+        `Actitud: ${reporte.actitud || '-'}${
+          reporte.actitud_comentario ? ` (${reporte.actitud_comentario})` : ''
+        }`,
+        `Autonomía: ${reporte.autonomia || '-'}${
+          reporte.autonomia_comentario
+            ? ` (${reporte.autonomia_comentario})`
+            : ''
+        }`,
+        `Incidencia: ${reporte.incidencia || '-'}${
+          reporte.incidencia_comentario
+            ? ` (${reporte.incidencia_comentario})`
+            : ''
+        }`,
+        `Recomendación: ${reporte.recomendacion_proxima_sesion || '-'}${
+          reporte.recomendacion_comentario
+            ? ` (${reporte.recomendacion_comentario})`
+            : ''
+        }`,
       ].join('\n');
     });
 
     return [
       `BASE DIPLOMA INTENSIVO · ${registro.intensivo}`,
       `Alumno: ${registro.alumno}`,
-      `Asistencia: ${registro.dias_presente || 0} presente · ${registro.dias_ausente || 0} ausente · ${registro.dias_pendiente_asistencia || 0} pendiente · ${registro.total_dias_intensivo || 0} días totales`,
+      `Asistencia: ${registro.dias_presente || 0} presente · ${
+        registro.dias_ausente || 0
+      } ausente · ${registro.dias_pendiente_asistencia || 0} pendiente · ${
+        registro.total_dias_intensivo || 0
+      } días totales`,
       `Reportes enviados: ${registro.total_reportes || 0}`,
       `Niveles reportados: ${registro.niveles_reportados || '-'}`,
       `Nivel más alto reportado: ${registro.nivel_mas_alto_reportado || '-'}`,
       `Último nivel reportado: ${registro.nivel_ultimo_reporte || '-'}`,
-      `Nivel final propuesto: ${codigoNivelPorId(registro.nivel_final_propuesto_id)}`,
-      `Nivel final confirmado: ${codigoNivelPorId(registro.nivel_final_confirmado_id)}`,
+      `Nivel final propuesto: ${codigoNivelPorId(
+        registro.nivel_final_propuesto_id
+      )}`,
+      `Nivel final confirmado: ${codigoNivelPorId(
+        registro.nivel_final_confirmado_id
+      )}`,
       `Técnicas trabajadas: ${registro.tecnicas_reportadas || '-'}`,
       `Actitud global: ${registro.actitudes_reportadas || '-'}`,
       `Autonomía: ${registro.autonomias_reportadas || '-'}`,
       `Incidencias: ${registro.incidencias_reportadas || '-'}`,
-      `Recomendaciones de entrenadores: ${registro.recomendaciones_reportadas || '-'}`,
+      `Recomendaciones de entrenadores: ${
+        registro.recomendaciones_reportadas || '-'
+      }`,
       `Comentarios técnica: ${registro.comentarios_tecnica || '-'}`,
       `Comentarios actitud: ${registro.comentarios_actitud || '-'}`,
       `Comentarios autonomía: ${registro.comentarios_autonomia || '-'}`,
       `Comentarios recomendación: ${registro.comentarios_recomendacion || '-'}`,
       '',
       'REPORTES DÍA A DÍA',
-      lineasReportes.length > 0 ? lineasReportes.join('\n\n---\n\n') : 'Sin reportes día a día todavía.',
+      lineasReportes.length > 0
+        ? lineasReportes.join('\n\n---\n\n')
+        : 'Sin reportes día a día todavía.',
       '',
       'INSTRUCCIÓN PARA CHATGPT: con esta información redactar un diploma/resumen para padres en tono positivo, claro y profesional, sin inventar datos y suavizando incidencias si las hubiera.',
     ].join('\n');
   }
 
-
-  async function generarRecomendacionGruposIntensivo(dia: IntensivoDiaApp | undefined) {
+  async function generarRecomendacionGruposIntensivo(
+    dia: IntensivoDiaApp | undefined
+  ) {
     if (!dia) {
       setError('Primero selecciona un día del intensivo.');
       return;
@@ -4640,14 +5588,16 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setError('');
 
     try {
-      const resultado = await ejecutarFuncionConRespuesta<RecomendacionGrupoIntensivoDiaApp>(
-        'recomendar_grupos_intensivo_dia_app',
-        {
-          p_intensivo_dia_id: dia.intensivo_dia_id,
-        }
-      );
+      const resultado =
+        await ejecutarFuncionConRespuesta<RecomendacionGrupoIntensivoDiaApp>(
+          'recomendar_grupos_intensivo_dia_app',
+          {
+            p_intensivo_dia_id: dia.intensivo_dia_id,
+          }
+        );
 
-      const resultadoPedagogico = aplicarCinturonPedagogicoAutomaticoIntensivo(resultado);
+      const resultadoPedagogico =
+        aplicarCinturonPedagogicoAutomaticoIntensivo(resultado);
 
       setRecomendacionesGrupoIntensivo((anteriores) => [
         ...anteriores.filter(
@@ -4659,10 +5609,13 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       setDestinoAlumnoRecomendado((anteriores) => {
         const copia = { ...anteriores };
         Object.keys(copia).forEach((clave) => {
-          if (clave.startsWith(`${dia.intensivo_dia_id}__alumno__`)) delete copia[clave];
+          if (clave.startsWith(`${dia.intensivo_dia_id}__alumno__`))
+            delete copia[clave];
         });
         resultadoPedagogico.forEach((registro) => {
-          copia[claveAlumnoRecomendado(dia.intensivo_dia_id, registro.alumno_id)] = registro.grupo_recomendado;
+          copia[
+            claveAlumnoRecomendado(dia.intensivo_dia_id, registro.alumno_id)
+          ] = registro.grupo_recomendado;
         });
         return copia;
       });
@@ -4670,7 +5623,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       setTrabajoDiarioPorGrupoRecomendado((anteriores) => {
         const copia = { ...anteriores };
         Object.keys(copia).forEach((clave) => {
-          if (clave.startsWith(`${dia.intensivo_dia_id}__`)) delete copia[clave];
+          if (clave.startsWith(`${dia.intensivo_dia_id}__`))
+            delete copia[clave];
         });
         return copia;
       });
@@ -4678,13 +5632,16 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       setObservacionesPorGrupoRecomendado((anteriores) => {
         const copia = { ...anteriores };
         Object.keys(copia).forEach((clave) => {
-          if (clave.startsWith(`${dia.intensivo_dia_id}__`)) delete copia[clave];
+          if (clave.startsWith(`${dia.intensivo_dia_id}__`))
+            delete copia[clave];
         });
         return copia;
       });
 
       if (resultadoPedagogico.length === 0) {
-        setError('No hay alumnos pendientes para recomendar en este día. Puede que ya estén todos metidos en grupos.');
+        setError(
+          'No hay alumnos pendientes para recomendar en este día. Puede que ya estén todos metidos en grupos.'
+        );
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
@@ -4719,15 +5676,28 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
     const primero = alumnosGrupo[0];
     const nivelesGrupo = Array.from(
-      new Set(alumnosGrupo.map((alumno) => alumno.nivel_resumen).filter(Boolean))
+      new Set(
+        alumnosGrupo.map((alumno) => alumno.nivel_resumen).filter(Boolean)
+      )
     ).join(' / ');
 
-    const validacionOk = confirmarCrearGrupoConValidacionPedagogicaApp(alumnosGrupo, nombreGrupo);
+    const validacionOk = confirmarCrearGrupoConValidacionPedagogicaApp(
+      alumnosGrupo,
+      nombreGrupo
+    );
     if (!validacionOk) return;
 
-    const entrenadorApoyoAviso = entrenadoresApoyoPorGrupoRecomendado[clave] || '';
-    if (necesitaDosEntrenadoresGrupoApp(alumnosGrupo) && !entrenadorApoyoAviso) {
-      const seguirSinApoyo = window.confirm(`${textoNecesidadDosEntrenadoresApp(alumnosGrupo)}\n\nSolo has seleccionado 1 entrenador. Puedes publicarlo con aviso fuerte si es necesario en pista. ¿Continuar?`);
+    const entrenadorApoyoAviso =
+      entrenadoresApoyoPorGrupoRecomendado[clave] || '';
+    if (
+      necesitaDosEntrenadoresGrupoApp(alumnosGrupo) &&
+      !entrenadorApoyoAviso
+    ) {
+      const seguirSinApoyo = window.confirm(
+        `${textoNecesidadDosEntrenadoresApp(
+          alumnosGrupo
+        )}\n\nSolo has seleccionado 1 entrenador. Puedes publicarlo con aviso fuerte si es necesario en pista. ¿Continuar?`
+      );
       if (!seguirSinApoyo) return;
     }
 
@@ -4752,20 +5722,27 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           generarTrabajoDiarioAutomaticoGrupo(nombreGrupo, alumnosGrupo),
         p_observaciones_importantes: combinarObservacionesGrupoApp(
           observacionesAutomaticasGrupoIntensivo(alumnosGrupo),
-          observacionesPorGrupoRecomendado[clave] || formGrupoIntensivo.observaciones_importantes.trim()
+          observacionesPorGrupoRecomendado[clave] ||
+            formGrupoIntensivo.observaciones_importantes.trim()
         ),
         p_entrenador_id: entrenadorId,
         p_alumnos_ids: alumnosGrupo.map((alumno) => alumno.alumno_id),
         p_publicado: true,
       });
 
-      const entrenadorApoyoId = entrenadoresApoyoPorGrupoRecomendado[clave] || '';
+      const entrenadorApoyoId =
+        entrenadoresApoyoPorGrupoRecomendado[clave] || '';
       await ejecutarFuncion('guardar_apoyo_reportes_grupo_por_contexto_app', {
         p_contexto: 'intensivo',
         p_contexto_id: dia.intensivo_dia_id,
         p_nombre_grupo: nombreGrupo,
         p_entrenador_apoyo_id: entrenadorApoyoId || null,
-        p_responsables: responsablesJsonGrupoRecomendadoApp(clave, alumnosGrupo, entrenadorId, entrenadorApoyoId),
+        p_responsables: responsablesJsonGrupoRecomendadoApp(
+          clave,
+          alumnosGrupo,
+          entrenadorId,
+          entrenadorApoyoId
+        ),
       });
 
       setRecomendacionesGrupoIntensivo((anteriores) =>
@@ -4792,7 +5769,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
       setResponsablesReportePorGrupoRecomendado((anteriores) => {
         const copia = { ...anteriores };
-        alumnosGrupo.forEach((alumno) => delete copia[`${clave}__${alumno.alumno_id}`]);
+        alumnosGrupo.forEach(
+          (alumno) => delete copia[`${clave}__${alumno.alumno_id}`]
+        );
         return copia;
       });
 
@@ -4815,7 +5794,6 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
     setCargando(false);
   }
-
 
   async function autoproponerNivelesDiploma(intensivo: IntensivoApp) {
     const confirmar = window.confirm(
@@ -4886,9 +5864,6 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setCargando(false);
   }
 
-
-
-
   async function activarTemporadaAgenda(anioInicio: number) {
     setCargando(true);
     setError('');
@@ -4941,8 +5916,25 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
       setAgendaAlumnosSesion(alumnosData);
       setAgendaGruposSesion(gruposData);
-      setTrabajoGrupoCreadoEditando(Object.fromEntries(gruposData.map((grupo) => [grupo.grupo_id, grupo.trabajo_diario || ''])));
-      setObservacionesGrupoCreadoEditando(Object.fromEntries(gruposData.map((grupo) => [grupo.grupo_id, normalizarLineasObservacionesGrupoApp(grupo.observaciones_importantes || '', 12)])));
+      setTrabajoGrupoCreadoEditando(
+        Object.fromEntries(
+          gruposData.map((grupo) => [
+            grupo.grupo_id,
+            grupo.trabajo_diario || '',
+          ])
+        )
+      );
+      setObservacionesGrupoCreadoEditando(
+        Object.fromEntries(
+          gruposData.map((grupo) => [
+            grupo.grupo_id,
+            normalizarLineasObservacionesGrupoApp(
+              grupo.observaciones_importantes || '',
+              12
+            ),
+          ])
+        )
+      );
       setAgendaRecomendaciones([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
@@ -4953,31 +5945,50 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setCargando(false);
   }
 
-  function irAlTrabajoAgenda(destino: 'formulario' | 'sesion' | 'trabajo' = 'trabajo') {
+  function irAlTrabajoAgenda(
+    destino: 'formulario' | 'sesion' | 'trabajo' = 'trabajo'
+  ) {
     // Scroll controlado: solo cuando Jose pulsa + Baby/Ocio/Intensivo o Abrir sesión.
     // No salta solo al cambiar semana/día.
     window.setTimeout(() => {
-      const idDestino = destino === 'formulario' ? 'agenda-formulario-listado' : destino === 'sesion' ? 'agenda-sesion-trabajo' : 'trabajo-agenda';
-      const elemento = document.getElementById(idDestino) || document.getElementById('trabajo-agenda');
+      const idDestino =
+        destino === 'formulario'
+          ? 'agenda-formulario-listado'
+          : destino === 'sesion'
+          ? 'agenda-sesion-trabajo'
+          : 'trabajo-agenda';
+      const elemento =
+        document.getElementById(idDestino) ||
+        document.getElementById('trabajo-agenda');
       elemento?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
       if (destino === 'formulario') {
         window.setTimeout(() => {
-          const textarea = document.getElementById('agenda-textarea-listado') as HTMLTextAreaElement | null;
+          const textarea = document.getElementById(
+            'agenda-textarea-listado'
+          ) as HTMLTextAreaElement | null;
           textarea?.focus();
         }, 180);
       }
     }, 90);
   }
 
-  function abrirFormularioAgendaDia(fecha: string, horaInicio?: string, horaFin?: string, modalidad?: string) {
+  function abrirFormularioAgendaDia(
+    fecha: string,
+    horaInicio?: string,
+    horaFin?: string,
+    modalidad?: string
+  ) {
     setAgendaDiaCompactoActivo(fecha);
     setAgendaFormularioAbierto(true);
     setAgendaSesionActivaId('');
     setAgendaAlumnosSesion([]);
     setAgendaGruposSesion([]);
     setAgendaRecomendaciones([]);
-    const turnoDefecto = turnosTrabajoDiaAgenda(fecha)[0] || { inicio: '18:00', fin: '20:00' };
+    const turnoDefecto = turnosTrabajoDiaAgenda(fecha)[0] || {
+      inicio: '18:00',
+      fin: '20:00',
+    };
     setAgendaForm((anterior) => ({
       ...anterior,
       fecha,
@@ -5044,10 +6055,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setError('');
 
     try {
-      const data = await ejecutarFuncionConRespuesta<AgendaRecomendacionSesionApp>(
-        'recomendar_grupos_sesion_operativa_app',
-        { p_sesion_id: sesionId }
-      );
+      const data =
+        await ejecutarFuncionConRespuesta<AgendaRecomendacionSesionApp>(
+          'recomendar_grupos_sesion_operativa_app',
+          { p_sesion_id: sesionId }
+        );
       const dataPedagogica = aplicarCinturonPedagogicoAutomaticoAgenda(data);
       setAgendaRecomendaciones(dataPedagogica);
       setDestinoAlumnoAgendaGrupo({});
@@ -5072,7 +6084,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   function destinoActualAlumnoAgenda(alumno: AgendaRecomendacionSesionApp) {
-    return destinoAlumnoAgendaGrupo[claveAlumnoAgendaRecomendado(alumno.alumno_id)] || alumno.grupo_recomendado;
+    return (
+      destinoAlumnoAgendaGrupo[
+        claveAlumnoAgendaRecomendado(alumno.alumno_id)
+      ] || alumno.grupo_recomendado
+    );
   }
 
   function nombresGruposAgendaBase() {
@@ -5093,11 +6109,16 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     }
 
     const sugerido = `Grupo manual ${gruposAgendaManuales.length + 1}`;
-    const nombre = window.prompt('Nombre del nuevo grupo manual. Ejemplo: Grupo B+ o Grupo C/D', sugerido);
+    const nombre = window.prompt(
+      'Nombre del nuevo grupo manual. Ejemplo: Grupo B+ o Grupo C/D',
+      sugerido
+    );
     const limpio = (nombre || '').trim();
     if (!limpio) return;
 
-    const yaExiste = gruposAgendaManuales.includes(limpio) || nombresGruposAgendaBase().includes(limpio);
+    const yaExiste =
+      gruposAgendaManuales.includes(limpio) ||
+      nombresGruposAgendaBase().includes(limpio);
     if (yaExiste) {
       setError(`El grupo manual "${limpio}" ya existe.`);
       return;
@@ -5109,7 +6130,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     // Si todavía no hay propuesta, generamos una base para que aparezcan los alumnos
     // y se puedan mover al grupo manual recién creado.
     if (agendaRecomendaciones.length === 0) {
-      setTimeout(() => generarRecomendacionAgendaSesion(agendaSesionActivaId), 0);
+      setTimeout(
+        () => generarRecomendacionAgendaSesion(agendaSesionActivaId),
+        0
+      );
     }
   }
 
@@ -5134,26 +6158,36 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     });
 
     return [...mapa.entries()]
-      .map(([nombreGrupo, alumnosGrupo]) => ([
-        nombreGrupo,
-        alumnosGrupo.sort((a, b) => {
-          return (
-            a.orden_bloque - b.orden_bloque ||
-            a.nivel_orden - b.nivel_orden ||
-            a.alumno.localeCompare(b.alumno)
-          );
-        }),
-      ] as [string, AgendaRecomendacionSesionApp[]]))
+      .map(
+        ([nombreGrupo, alumnosGrupo]) =>
+          [
+            nombreGrupo,
+            alumnosGrupo.sort((a, b) => {
+              return (
+                a.orden_bloque - b.orden_bloque ||
+                a.nivel_orden - b.nivel_orden ||
+                a.alumno.localeCompare(b.alumno)
+              );
+            }),
+          ] as [string, AgendaRecomendacionSesionApp[]]
+      )
       .sort((a, b) => {
         const primeroA = a[1][0];
         const primeroB = b[1][0];
         if (!primeroA || !primeroB) return 0;
-        return primeroA.orden_bloque - primeroB.orden_bloque || a[0].localeCompare(b[0]);
+        return (
+          primeroA.orden_bloque - primeroB.orden_bloque ||
+          a[0].localeCompare(b[0])
+        );
       });
   }
 
   function ordenNivelTrabajoMSZApp(nivel: string | null | undefined) {
-    const limpio = (nivel || '').toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+    const limpio = (nivel || '')
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
     if (limpio.includes('D+')) return 8;
     if (limpio === 'D' || limpio.includes(' D')) return 7;
     if (limpio.includes('C+')) return 6;
@@ -5165,8 +6199,6 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     if (limpio.includes('INICIACION') || limpio.includes('DEBUT')) return 0;
     return 2;
   }
-
-
 
   function nivelOrdenPedagogicoApp(nivel: string | null | undefined) {
     return ordenNivelTrabajoMSZApp(nivel);
@@ -5184,13 +6216,40 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     return 'D+';
   }
 
-  function validacionPedagogicaGrupoApp(alumnosGrupo: { nivel_resumen?: string | null; alumno?: string | null; pista_recomendada?: string | null; pista_alumno?: string | null; fuente_nivel?: string | null; estado_ficha?: string | null; alertas?: string | null; alerta_grupo?: string | null }[]) {
+  function validacionPedagogicaGrupoApp(
+    alumnosGrupo: {
+      nivel_resumen?: string | null;
+      alumno?: string | null;
+      pista_recomendada?: string | null;
+      pista_alumno?: string | null;
+      fuente_nivel?: string | null;
+      estado_ficha?: string | null;
+      alertas?: string | null;
+      alerta_grupo?: string | null;
+    }[]
+  ) {
     const ordenes = alumnosGrupo
       .map((alumno) => nivelOrdenPedagogicoApp(alumno.nivel_resumen))
       .filter((orden) => Number.isFinite(orden));
-    const niveles = Array.from(new Set(ordenes.map(nivelEtiquetaPedagogicaApp)));
-    const pistas = alumnosGrupo.map((alumno) => `${alumno.pista_recomendada || ''} ${alumno.pista_alumno || ''}`.toLowerCase()).join(' ');
-    const textos = alumnosGrupo.map((alumno) => `${alumno.fuente_nivel || ''} ${alumno.estado_ficha || ''} ${alumno.alertas || ''} ${alumno.alerta_grupo || ''}`).join(' ').toLowerCase();
+    const niveles = Array.from(
+      new Set(ordenes.map(nivelEtiquetaPedagogicaApp))
+    );
+    const pistas = alumnosGrupo
+      .map((alumno) =>
+        `${alumno.pista_recomendada || ''} ${
+          alumno.pista_alumno || ''
+        }`.toLowerCase()
+      )
+      .join(' ');
+    const textos = alumnosGrupo
+      .map(
+        (alumno) =>
+          `${alumno.fuente_nivel || ''} ${alumno.estado_ficha || ''} ${
+            alumno.alertas || ''
+          } ${alumno.alerta_grupo || ''}`
+      )
+      .join(' ')
+      .toLowerCase();
 
     const tieneIniciacion = ordenes.some((orden) => orden <= 0);
     const tieneA = ordenes.some((orden) => orden === 1);
@@ -5206,8 +6265,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const avisos: string[] = [];
 
     if (alumnosGrupo.length === 0) bloqueos.push('Grupo sin alumnos.');
-    if (alumnosGrupo.length === 1) bloqueos.push('No crear grupo automático de 1 alumno. Dejar para revisión manual.');
-    if (alumnosGrupo.length === 2) supervision.push('Grupo de 2 alumnos: solo si Jose lo acepta por encaje real o falta de niños.');
+    if (alumnosGrupo.length === 1)
+      bloqueos.push(
+        'No crear grupo automático de 1 alumno. Dejar para revisión manual.'
+      );
+    if (alumnosGrupo.length === 2)
+      supervision.push(
+        'Grupo de 2 alumnos: solo si Jose lo acepta por encaje real o falta de niños.'
+      );
 
     if (tieneIniciacion && tieneBoSuperior) {
       bloqueos.push('INICIACIÓN no puede mezclarse con B, B+, C, C+, D o D+.');
@@ -5222,25 +6287,46 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       bloqueos.push('A+ no puede mezclarse con C, C+, D o D+.');
     }
     if (tieneAPlus && (tieneB || tieneBPlus)) {
-      supervision.push('A+ con B/B+ requiere Supervisión Jose: solo si el A+ está a punto de pasar y el B es bajito.');
+      supervision.push(
+        'A+ con B/B+ requiere Supervisión Jose: solo si el A+ está a punto de pasar y el B es bajito.'
+      );
     }
     if (tieneBPlus && tieneC) {
-      avisos.push('B+ con C permitido, revisar que el B+ aguante pista grande y ritmo del grupo.');
+      avisos.push(
+        'B+ con C permitido, revisar que el B+ aguante pista grande y ritmo del grupo.'
+      );
     }
-    if (alumnosGrupo.length >= 5 && ordenes.length && Math.max(...ordenes) <= 2) {
-      supervision.push('Grupo bajo de 5 niños: necesita 2 entrenadores. Si solo hay 1, publicar solo con aviso fuerte.');
+    if (
+      alumnosGrupo.length >= 5 &&
+      ordenes.length &&
+      Math.max(...ordenes) <= 2
+    ) {
+      supervision.push(
+        'Grupo bajo de 5 niños: necesita 2 entrenadores. Si solo hay 1, publicar solo con aviso fuerte.'
+      );
     }
     if (/peque/.test(pistas) && alumnosGrupo.length > 5) {
       bloqueos.push('Pista pequeña con más de 5 niños: dividir grupo.');
     }
     if (/grande/.test(pistas) && alumnosGrupo.length > 7) {
-      supervision.push('Pista grande con más de 7 niños: intentar dividir 4/4 o publicar con 2 entrenadores si Jose lo decide.');
+      supervision.push(
+        'Pista grande con más de 7 niños: intentar dividir 4/4 o publicar con 2 entrenadores si Jose lo decide.'
+      );
     }
     if (/familia|declarado|estimado|sin reporte|pendiente/.test(textos)) {
-      avisos.push('Hay nivel declarado/estimado o ficha pendiente: revisar en primera bajada.');
+      avisos.push(
+        'Hay nivel declarado/estimado o ficha pendiente: revisar en primera bajada.'
+      );
     }
 
-    const estado = bloqueos.length > 0 ? 'BLOQUEADO' : supervision.length > 0 ? 'SUPERVISION_JOSE' : avisos.length > 0 ? 'AVISO' : 'OK';
+    const estado =
+      bloqueos.length > 0
+        ? 'BLOQUEADO'
+        : supervision.length > 0
+        ? 'SUPERVISION_JOSE'
+        : avisos.length > 0
+        ? 'AVISO'
+        : 'OK';
     return {
       estado,
       niveles,
@@ -5248,15 +6334,27 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     };
   }
 
-  function textoValidacionPedagogicaGrupoApp(alumnosGrupo: { nivel_resumen?: string | null; alumno?: string | null; pista_recomendada?: string | null; pista_alumno?: string | null; fuente_nivel?: string | null; estado_ficha?: string | null; alertas?: string | null; alerta_grupo?: string | null }[]) {
+  function textoValidacionPedagogicaGrupoApp(
+    alumnosGrupo: {
+      nivel_resumen?: string | null;
+      alumno?: string | null;
+      pista_recomendada?: string | null;
+      pista_alumno?: string | null;
+      fuente_nivel?: string | null;
+      estado_ficha?: string | null;
+      alertas?: string | null;
+      alerta_grupo?: string | null;
+    }[]
+  ) {
     const validacion = validacionPedagogicaGrupoApp(alumnosGrupo);
-    const titulo = validacion.estado === 'BLOQUEADO'
-      ? 'BLOQUEADO · No publicar este grupo'
-      : validacion.estado === 'SUPERVISION_JOSE'
+    const titulo =
+      validacion.estado === 'BLOQUEADO'
+        ? 'BLOQUEADO · No publicar este grupo'
+        : validacion.estado === 'SUPERVISION_JOSE'
         ? 'SUPERVISIÓN JOSE'
         : validacion.estado === 'AVISO'
-          ? 'AVISO PEDAGÓGICO'
-          : 'OK PEDAGÓGICO';
+        ? 'AVISO PEDAGÓGICO'
+        : 'OK PEDAGÓGICO';
     return { ...validacion, titulo };
   }
 
@@ -5267,65 +6365,177 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     return avisoNeutral;
   }
 
-  function bandaAutomaticaPedagogicaApp(registro: { nivel_resumen?: string | null }) {
+  function bandaAutomaticaPedagogicaApp(registro: {
+    nivel_resumen?: string | null;
+  }) {
     const orden = nivelOrdenPedagogicoApp(registro.nivel_resumen);
     if (orden <= 1) {
-      return { id: 'INICIACION_A', label: 'INICIACIÓN / A', bloque: 'INICIACIÓN / A', pista: 'Pequeña', orden: 0, max: 5 };
+      return {
+        id: 'INICIACION_A',
+        label: 'INICIACIÓN / A',
+        bloque: 'INICIACIÓN / A',
+        pista: 'Pequeña',
+        orden: 0,
+        max: 5,
+      };
     }
     if (orden === 2) {
-      return { id: 'APLUS', label: 'A+', bloque: 'A+', pista: 'Pequeña', orden: 2, max: 5 };
+      return {
+        id: 'APLUS',
+        label: 'A+',
+        bloque: 'A+',
+        pista: 'Pequeña',
+        orden: 2,
+        max: 5,
+      };
     }
     if (orden <= 4) {
-      return { id: 'B_BPLUS', label: 'B / B+', bloque: 'B / B+', pista: 'Pequeña/Grande', orden: 3, max: 6 };
+      return {
+        id: 'B_BPLUS',
+        label: 'B / B+',
+        bloque: 'B / B+',
+        pista: 'Pequeña/Grande',
+        orden: 3,
+        max: 6,
+      };
     }
-    return { id: 'C_D', label: 'C / D', bloque: 'C / D', pista: 'Grande', orden: 5, max: 7 };
+    return {
+      id: 'C_D',
+      label: 'C / D',
+      bloque: 'C / D',
+      pista: 'Grande',
+      orden: 5,
+      max: 7,
+    };
   }
 
-  function necesitaDosEntrenadoresGrupoApp(alumnosGrupo: { nivel_resumen?: string | null; pista_recomendada?: string | null; pista_alumno?: string | null }[]) {
-    const ordenes = alumnosGrupo.map((alumno) => nivelOrdenPedagogicoApp(alumno.nivel_resumen));
+  function necesitaDosEntrenadoresGrupoApp(
+    alumnosGrupo: {
+      nivel_resumen?: string | null;
+      pista_recomendada?: string | null;
+      pista_alumno?: string | null;
+    }[]
+  ) {
+    const ordenes = alumnosGrupo.map((alumno) =>
+      nivelOrdenPedagogicoApp(alumno.nivel_resumen)
+    );
     const maxOrden = ordenes.length ? Math.max(...ordenes) : 2;
-    const pistaTexto = alumnosGrupo.map((alumno) => `${alumno.pista_recomendada || ''} ${alumno.pista_alumno || ''}`).join(' ').toLowerCase();
+    const pistaTexto = alumnosGrupo
+      .map(
+        (alumno) =>
+          `${alumno.pista_recomendada || ''} ${alumno.pista_alumno || ''}`
+      )
+      .join(' ')
+      .toLowerCase();
     if (alumnosGrupo.length >= 5 && maxOrden <= 2) return true;
     if (alumnosGrupo.length > 7 && /grande/.test(pistaTexto)) return true;
     return false;
   }
 
-  function textoNecesidadDosEntrenadoresApp(alumnosGrupo: { nivel_resumen?: string | null; pista_recomendada?: string | null; pista_alumno?: string | null }[]) {
-    const ordenes = alumnosGrupo.map((alumno) => nivelOrdenPedagogicoApp(alumno.nivel_resumen));
+  function textoNecesidadDosEntrenadoresApp(
+    alumnosGrupo: {
+      nivel_resumen?: string | null;
+      pista_recomendada?: string | null;
+      pista_alumno?: string | null;
+    }[]
+  ) {
+    const ordenes = alumnosGrupo.map((alumno) =>
+      nivelOrdenPedagogicoApp(alumno.nivel_resumen)
+    );
     const maxOrden = ordenes.length ? Math.max(...ordenes) : 2;
-    const pistaTexto = alumnosGrupo.map((alumno) => `${alumno.pista_recomendada || ''} ${alumno.pista_alumno || ''}`).join(' ').toLowerCase();
-    if (alumnosGrupo.length >= 5 && maxOrden <= 2) return 'Ratio: grupo bajo de 5 niños. Recomendado 2 entrenadores.';
-    if (alumnosGrupo.length > 7 && /grande/.test(pistaTexto)) return 'Ratio: pista grande con más de 7 niños. Recomendado 2 entrenadores o dividir.';
+    const pistaTexto = alumnosGrupo
+      .map(
+        (alumno) =>
+          `${alumno.pista_recomendada || ''} ${alumno.pista_alumno || ''}`
+      )
+      .join(' ')
+      .toLowerCase();
+    if (alumnosGrupo.length >= 5 && maxOrden <= 2)
+      return 'Ratio: grupo bajo de 5 niños. Recomendado 2 entrenadores.';
+    if (alumnosGrupo.length > 7 && /grande/.test(pistaTexto))
+      return 'Ratio: pista grande con más de 7 niños. Recomendado 2 entrenadores o dividir.';
     return '';
   }
 
-  function responsableAutomaticoReporteApp(indice: number, entrenadorPrincipalId: string, entrenadorApoyoId: string) {
+  function responsableAutomaticoReporteApp(
+    indice: number,
+    entrenadorPrincipalId: string,
+    entrenadorApoyoId: string
+  ) {
     if (!entrenadorApoyoId) return entrenadorPrincipalId;
     const posicion = indice % 5;
     return posicion < 3 ? entrenadorPrincipalId : entrenadorApoyoId;
   }
 
-  function responsableReporteRecomendadoApp(claveGrupo: string, alumnoId: string, indice: number, entrenadorPrincipalId: string, entrenadorApoyoId: string) {
+  function responsableReporteRecomendadoApp(
+    claveGrupo: string,
+    alumnoId: string,
+    indice: number,
+    entrenadorPrincipalId: string,
+    entrenadorApoyoId: string
+  ) {
     const clave = `${claveGrupo}__${alumnoId}`;
-    return responsablesReportePorGrupoRecomendado[clave] || responsableAutomaticoReporteApp(indice, entrenadorPrincipalId, entrenadorApoyoId);
+    return (
+      responsablesReportePorGrupoRecomendado[clave] ||
+      responsableAutomaticoReporteApp(
+        indice,
+        entrenadorPrincipalId,
+        entrenadorApoyoId
+      )
+    );
   }
 
-  function responsableReporteAgendaApp(nombreGrupo: string, alumnoId: string, indice: number, entrenadorPrincipalId: string, entrenadorApoyoId: string) {
+  function responsableReporteAgendaApp(
+    nombreGrupo: string,
+    alumnoId: string,
+    indice: number,
+    entrenadorPrincipalId: string,
+    entrenadorApoyoId: string
+  ) {
     const clave = `${nombreGrupo}__${alumnoId}`;
-    return responsablesReporteAgendaGrupo[clave] || responsableAutomaticoReporteApp(indice, entrenadorPrincipalId, entrenadorApoyoId);
+    return (
+      responsablesReporteAgendaGrupo[clave] ||
+      responsableAutomaticoReporteApp(
+        indice,
+        entrenadorPrincipalId,
+        entrenadorApoyoId
+      )
+    );
   }
 
-  function responsablesJsonGrupoRecomendadoApp(claveGrupo: string, alumnosGrupo: { alumno_id: string }[], entrenadorPrincipalId: string, entrenadorApoyoId: string) {
+  function responsablesJsonGrupoRecomendadoApp(
+    claveGrupo: string,
+    alumnosGrupo: { alumno_id: string }[],
+    entrenadorPrincipalId: string,
+    entrenadorApoyoId: string
+  ) {
     return alumnosGrupo.map((alumno, indice) => ({
       alumno_id: alumno.alumno_id,
-      entrenador_id: responsableReporteRecomendadoApp(claveGrupo, alumno.alumno_id, indice, entrenadorPrincipalId, entrenadorApoyoId),
+      entrenador_id: responsableReporteRecomendadoApp(
+        claveGrupo,
+        alumno.alumno_id,
+        indice,
+        entrenadorPrincipalId,
+        entrenadorApoyoId
+      ),
     }));
   }
 
-  function responsablesJsonAgendaApp(nombreGrupo: string, alumnosGrupo: { alumno_id: string }[], entrenadorPrincipalId: string, entrenadorApoyoId: string) {
+  function responsablesJsonAgendaApp(
+    nombreGrupo: string,
+    alumnosGrupo: { alumno_id: string }[],
+    entrenadorPrincipalId: string,
+    entrenadorApoyoId: string
+  ) {
     return alumnosGrupo.map((alumno, indice) => ({
       alumno_id: alumno.alumno_id,
-      entrenador_id: responsableReporteAgendaApp(nombreGrupo, alumno.alumno_id, indice, entrenadorPrincipalId, entrenadorApoyoId),
+      entrenador_id: responsableReporteAgendaApp(
+        nombreGrupo,
+        alumno.alumno_id,
+        indice,
+        entrenadorPrincipalId,
+        entrenadorApoyoId
+      ),
     }));
   }
 
@@ -5334,14 +6544,19 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const numeroGrupos = Math.ceil(total / maximo);
     const base = Math.floor(total / numeroGrupos);
     const extra = total % numeroGrupos;
-    const tamanos = Array.from({ length: numeroGrupos }, (_, index) => base + (index < extra ? 1 : 0));
+    const tamanos = Array.from(
+      { length: numeroGrupos },
+      (_, index) => base + (index < extra ? 1 : 0)
+    );
     if (tamanos.some((tamano) => tamano === 1) && total >= 4) {
       return tamanosGruposPedagogicosApp(total, Math.max(3, maximo - 1));
     }
     return tamanos;
   }
 
-  function aplicarCinturonPedagogicoAutomaticoAgenda(data: AgendaRecomendacionSesionApp[]) {
+  function aplicarCinturonPedagogicoAutomaticoAgenda(
+    data: AgendaRecomendacionSesionApp[]
+  ) {
     const porBanda = new Map<string, AgendaRecomendacionSesionApp[]>();
     data.forEach((registro) => {
       const banda = bandaAutomaticaPedagogicaApp(registro);
@@ -5352,35 +6567,49 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const salida: AgendaRecomendacionSesionApp[] = [];
     ['INICIACION_A', 'APLUS', 'B_BPLUS', 'C_D'].forEach((idBanda) => {
       const alumnos = (porBanda.get(idBanda) || []).sort((a, b) => {
-        return nivelOrdenPedagogicoApp(a.nivel_resumen) - nivelOrdenPedagogicoApp(b.nivel_resumen) || a.alumno.localeCompare(b.alumno);
+        return (
+          nivelOrdenPedagogicoApp(a.nivel_resumen) -
+            nivelOrdenPedagogicoApp(b.nivel_resumen) ||
+          a.alumno.localeCompare(b.alumno)
+        );
       });
       if (alumnos.length === 0) return;
       const banda = bandaAutomaticaPedagogicaApp(alumnos[0]);
       let inicio = 0;
-      tamanosGruposPedagogicosApp(alumnos.length, banda.max).forEach((tamano) => {
-        const alumnosChunk = alumnos.slice(inicio, inicio + tamano);
-        const nombre = tamano === 1
-          ? `REVISIÓN MANUAL · ${banda.label}`
-          : `Grupo ${contador++} · Nivel ${banda.label}`;
-        alumnosChunk.forEach((alumno, indice) => {
-          const alertaExtra = tamano === 1 ? 'No crear grupo de 1. Revisión manual.' : alumno.alertas || null;
-          salida.push({
-            ...alumno,
-            grupo_recomendado: nombre,
-            bloque_tecnico: banda.bloque,
-            pista_recomendada: banda.pista,
-            orden_bloque: banda.orden,
-            orden_en_grupo: indice + 1,
-            alertas: [alumno.alertas, alertaExtra].filter(Boolean).join(' · ') || null,
+      tamanosGruposPedagogicosApp(alumnos.length, banda.max).forEach(
+        (tamano) => {
+          const alumnosChunk = alumnos.slice(inicio, inicio + tamano);
+          const nombre =
+            tamano === 1
+              ? `REVISIÓN MANUAL · ${banda.label}`
+              : `Grupo ${contador++} · Nivel ${banda.label}`;
+          alumnosChunk.forEach((alumno, indice) => {
+            const alertaExtra =
+              tamano === 1
+                ? 'No crear grupo de 1. Revisión manual.'
+                : alumno.alertas || null;
+            salida.push({
+              ...alumno,
+              grupo_recomendado: nombre,
+              bloque_tecnico: banda.bloque,
+              pista_recomendada: banda.pista,
+              orden_bloque: banda.orden,
+              orden_en_grupo: indice + 1,
+              alertas:
+                [alumno.alertas, alertaExtra].filter(Boolean).join(' · ') ||
+                null,
+            });
           });
-        });
-        inicio += tamano;
-      });
+          inicio += tamano;
+        }
+      );
     });
     return salida;
   }
 
-  function aplicarCinturonPedagogicoAutomaticoIntensivo(data: RecomendacionGrupoIntensivoDiaApp[]) {
+  function aplicarCinturonPedagogicoAutomaticoIntensivo(
+    data: RecomendacionGrupoIntensivoDiaApp[]
+  ) {
     const porBanda = new Map<string, RecomendacionGrupoIntensivoDiaApp[]>();
     data.forEach((registro) => {
       const banda = bandaAutomaticaPedagogicaApp(registro);
@@ -5391,49 +6620,83 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const salida: RecomendacionGrupoIntensivoDiaApp[] = [];
     ['INICIACION_A', 'APLUS', 'B_BPLUS', 'C_D'].forEach((idBanda) => {
       const alumnos = (porBanda.get(idBanda) || []).sort((a, b) => {
-        return nivelOrdenPedagogicoApp(a.nivel_resumen) - nivelOrdenPedagogicoApp(b.nivel_resumen) || a.alumno.localeCompare(b.alumno);
+        return (
+          nivelOrdenPedagogicoApp(a.nivel_resumen) -
+            nivelOrdenPedagogicoApp(b.nivel_resumen) ||
+          a.alumno.localeCompare(b.alumno)
+        );
       });
       if (alumnos.length === 0) return;
       const banda = bandaAutomaticaPedagogicaApp(alumnos[0]);
       let inicio = 0;
-      tamanosGruposPedagogicosApp(alumnos.length, banda.max).forEach((tamano) => {
-        const alumnosChunk = alumnos.slice(inicio, inicio + tamano);
-        const nombre = tamano === 1
-          ? `REVISIÓN MANUAL · ${banda.label}`
-          : `Grupo ${contador++} · Nivel ${banda.label}`;
-        alumnosChunk.forEach((alumno, indice) => {
-          const alertaExtra = tamano === 1 ? 'No crear grupo de 1. Revisión manual.' : alumno.alerta_grupo || null;
-          salida.push({
-            ...alumno,
-            grupo_recomendado: nombre,
-            bloque_tecnico: banda.bloque,
-            pista_recomendada: banda.pista,
-            orden_bloque: banda.orden,
-            orden_en_grupo: indice + 1,
-            tamanio_grupo: tamano,
-            alerta_grupo: [alumno.alerta_grupo, alertaExtra].filter(Boolean).join(' · ') || 'OK',
+      tamanosGruposPedagogicosApp(alumnos.length, banda.max).forEach(
+        (tamano) => {
+          const alumnosChunk = alumnos.slice(inicio, inicio + tamano);
+          const nombre =
+            tamano === 1
+              ? `REVISIÓN MANUAL · ${banda.label}`
+              : `Grupo ${contador++} · Nivel ${banda.label}`;
+          alumnosChunk.forEach((alumno, indice) => {
+            const alertaExtra =
+              tamano === 1
+                ? 'No crear grupo de 1. Revisión manual.'
+                : alumno.alerta_grupo || null;
+            salida.push({
+              ...alumno,
+              grupo_recomendado: nombre,
+              bloque_tecnico: banda.bloque,
+              pista_recomendada: banda.pista,
+              orden_bloque: banda.orden,
+              orden_en_grupo: indice + 1,
+              tamanio_grupo: tamano,
+              alerta_grupo:
+                [alumno.alerta_grupo, alertaExtra]
+                  .filter(Boolean)
+                  .join(' · ') || 'OK',
+            });
           });
-        });
-        inicio += tamano;
-      });
+          inicio += tamano;
+        }
+      );
     });
     return salida;
   }
 
-  function confirmarCrearGrupoConValidacionPedagogicaApp(alumnosGrupo: { nivel_resumen?: string | null; alumno?: string | null; pista_recomendada?: string | null; pista_alumno?: string | null; fuente_nivel?: string | null; estado_ficha?: string | null; alertas?: string | null; alerta_grupo?: string | null }[], nombreGrupo: string) {
+  function confirmarCrearGrupoConValidacionPedagogicaApp(
+    alumnosGrupo: {
+      nivel_resumen?: string | null;
+      alumno?: string | null;
+      pista_recomendada?: string | null;
+      pista_alumno?: string | null;
+      fuente_nivel?: string | null;
+      estado_ficha?: string | null;
+      alertas?: string | null;
+      alerta_grupo?: string | null;
+    }[],
+    nombreGrupo: string
+  ) {
     const validacion = textoValidacionPedagogicaGrupoApp(alumnosGrupo);
     if (validacion.estado === 'BLOQUEADO') {
       setError(`${nombreGrupo} bloqueado: ${validacion.mensajes.join(' ')}`);
       return false;
     }
-    if (validacion.estado === 'SUPERVISION_JOSE' || validacion.estado === 'AVISO') {
-      return window.confirm(`${validacion.titulo}\n\n${validacion.mensajes.join('\n')}\n\n¿Quieres crear el grupo igualmente?`);
+    if (
+      validacion.estado === 'SUPERVISION_JOSE' ||
+      validacion.estado === 'AVISO'
+    ) {
+      return window.confirm(
+        `${validacion.titulo}\n\n${validacion.mensajes.join(
+          '\n'
+        )}\n\n¿Quieres crear el grupo igualmente?`
+      );
     }
     return true;
   }
 
   function perfilTrabajoMSZApp(niveles: string[], pistaTexto: string) {
-    const ordenes = niveles.map(ordenNivelTrabajoMSZApp).filter((orden) => Number.isFinite(orden));
+    const ordenes = niveles
+      .map(ordenNivelTrabajoMSZApp)
+      .filter((orden) => Number.isFinite(orden));
     const min = ordenes.length ? Math.min(...ordenes) : 2;
     const max = ordenes.length ? Math.max(...ordenes) : 2;
 
@@ -5444,24 +6707,38 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     return 'D_DPLUS';
   }
 
-  function trabajoDiarioMSZApp(nombreGrupo: string, niveles: string[], pistaTexto: string, observacionesTexto?: string | null) {
+  function trabajoDiarioMSZApp(
+    nombreGrupo: string,
+    niveles: string[],
+    pistaTexto: string,
+    observacionesTexto?: string | null
+  ) {
     const perfil = perfilTrabajoMSZApp(niveles, pistaTexto);
     const pista = pistaTexto || 'Pequeña/Grande';
-    const nivelesTexto = Array.from(new Set(niveles.filter(Boolean))).join(' / ') || '-';
+    const nivelesTexto =
+      Array.from(new Set(niveles.filter(Boolean))).join(' / ') || '-';
     const obs = textoSinAcentosGrupoApp(observacionesTexto || '');
     const ajustes: string[] = [];
 
     if (/miedo|llor|bloque|asust|nervi|agobia/.test(obs)) {
-      ajustes.push('Ajuste emocional: entrada muy progresiva, pocas consignas y primera bajada fácil para generar confianza.');
+      ajustes.push(
+        'Ajuste emocional: entrada muy progresiva, pocas consignas y primera bajada fácil para generar confianza.'
+      );
     }
     if (/fila|despista|atencion|adelant|escapa|separa/.test(obs)) {
-      ajustes.push('Ajuste de grupo: prioridad a fila, distancia entre niños y salir solo cuando lo indique el entrenador.');
+      ajustes.push(
+        'Ajuste de grupo: prioridad a fila, distancia entre niños y salir solo cuando lo indique el entrenador.'
+      );
     }
     if (/rigid|sentad|equilibr|postura/.test(obs)) {
-      ajustes.push('Ajuste técnico: ejercicios de movilidad, manos delante y equilibrio antes de subir ritmo.');
+      ajustes.push(
+        'Ajuste técnico: ejercicios de movilidad, manos delante y equilibrio antes de subir ritmo.'
+      );
     }
     if (/remonte|percha|silla|cinta/.test(obs)) {
-      ajustes.push('Ajuste remonte: revisar entrada y salida; no forzar percha/silla si aparece bloqueo.');
+      ajustes.push(
+        'Ajuste remonte: revisar entrada y salida; no forzar percha/silla si aparece bloqueo.'
+      );
     }
 
     const cabecera = `Grupo ${nombreGrupo}. Nivel: ${nivelesTexto} · Pista: ${pista} · Madrid SnowZone.`;
@@ -5514,32 +6791,43 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       ],
     };
 
-    return [cabecera, ...(planes[perfil] || planes.APLUS), ...ajustes].join('\n');
+    return [cabecera, ...(planes[perfil] || planes.APLUS), ...ajustes].join(
+      '\n'
+    );
   }
 
-  function trabajoDiarioAutomaticoAgenda(nombreGrupo: string, alumnosGrupo: AgendaRecomendacionSesionApp[]) {
-    const niveles = alumnosGrupo.map((alumno) => alumno.nivel_resumen || '').filter(Boolean);
-    const pista = alumnosGrupo[0]?.pista_recomendada || alumnosGrupo[0]?.pista_alumno || 'Pequeña/Grande';
+  function trabajoDiarioAutomaticoAgenda(
+    nombreGrupo: string,
+    alumnosGrupo: AgendaRecomendacionSesionApp[]
+  ) {
+    const niveles = alumnosGrupo
+      .map((alumno) => alumno.nivel_resumen || '')
+      .filter(Boolean);
+    const pista =
+      alumnosGrupo[0]?.pista_recomendada ||
+      alumnosGrupo[0]?.pista_alumno ||
+      'Pequeña/Grande';
     const observaciones = observacionesAutomaticasGrupoAgenda(alumnosGrupo);
     return trabajoDiarioMSZApp(nombreGrupo, niveles, pista, observaciones);
   }
 
-
-  function limpiarObservacionCortaGrupoApp(texto: string | null | undefined, maximo = 170) {
+  function limpiarObservacionCortaGrupoApp(
+    texto: string | null | undefined,
+    maximo = 170
+  ) {
     const limpio = (texto || '')
       .replace(/\s+/g, ' ')
       .replace(/\s+([,.])/g, '$1')
       .trim();
 
     if (!limpio) return '';
-    return limpio.length > maximo ? `${limpio.slice(0, maximo).trim()}...` : limpio;
+    return limpio.length > maximo
+      ? `${limpio.slice(0, maximo).trim()}...`
+      : limpio;
   }
 
   function textoSinAcentosGrupoApp(texto: string) {
-    return texto
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .toLowerCase();
+    return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
   }
 
   function observacionUtilParaGrupoApp(texto: string | null | undefined) {
@@ -5566,7 +6854,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     return depurado ? limpio : '';
   }
 
-  function resumenCualidadDebilidadFichaApp(observacionBase?: string | null, extra?: string | null) {
+  function resumenCualidadDebilidadFichaApp(
+    observacionBase?: string | null,
+    extra?: string | null
+  ) {
     const partesUtiles = [observacionBase, extra]
       .map((parte) => observacionUtilParaGrupoApp(parte))
       .filter(Boolean);
@@ -5577,19 +6868,27 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const texto = textoSinAcentosGrupoApp(base);
     const notas: string[] = [];
 
-    if (/actitud|ganas|content|sonrient|disfrut|motivad|escucha|obedece|hablador|habladora|buena/.test(texto)) {
+    if (
+      /actitud|ganas|content|sonrient|disfrut|motivad|escucha|obedece|hablador|habladora|buena/.test(
+        texto
+      )
+    ) {
       notas.push('cualidad: buena actitud y ganas');
     }
     if (/autonom|solo|sola|material|se pone|se quita/.test(texto)) {
       notas.push('cualidad: autonomía');
     }
     if (/llor|bloque|miedo|asust|nervi|sensible|se agobia/.test(texto)) {
-      notas.push('debilidad: puede bloquearse o tener miedo; entrada tranquila');
+      notas.push(
+        'debilidad: puede bloquearse o tener miedo; entrada tranquila'
+      );
     }
     if (/remonte|percha|silla|cinta/.test(texto)) {
       notas.push('debilidad/aviso: revisar remonte o cinta');
     }
-    if (/fila|separa|escapa|despista|atencion|atiende|hacer caso|caso/.test(texto)) {
+    if (
+      /fila|separa|escapa|despista|atencion|atiende|hacer caso|caso/.test(texto)
+    ) {
       notas.push('debilidad: atención, fila y dinámica de grupo');
     }
     if (/sentad|sienta/.test(texto)) {
@@ -5601,7 +6900,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     if (/velocidad|corre|rapido|rápido|frena|frenada/.test(texto)) {
       notas.push('debilidad técnica: control de velocidad y frenada');
     }
-    if (/cuna|cuña|giro|giros|paralelo|brazos|manos|mirada|exterior/.test(texto)) {
+    if (
+      /cuna|cuña|giro|giros|paralelo|brazos|manos|mirada|exterior/.test(texto)
+    ) {
       notas.push('debilidad/tarea técnica: giros, postura y control');
     }
 
@@ -5610,7 +6911,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     return base;
   }
 
-  function fraseImportanteAlumnoGrupoApp(nombre: string, observacionBase?: string | null, extra?: string | null) {
+  function fraseImportanteAlumnoGrupoApp(
+    nombre: string,
+    observacionBase?: string | null,
+    extra?: string | null
+  ) {
     const detalle = resumenCualidadDebilidadFichaApp(observacionBase, extra);
     if (!detalle) return '';
     return `${nombre}: ${detalle}`;
@@ -5637,7 +6942,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       .trim();
   }
 
-  function limpiarDetalleObservacionAlumnoGrupoApp(detalle: string | null | undefined) {
+  function limpiarDetalleObservacionAlumnoGrupoApp(
+    detalle: string | null | undefined
+  ) {
     if (!detalle) return '';
 
     let limpio = String(detalle)
@@ -5675,7 +6982,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     return limpiarObservacionCortaGrupoApp(limpio, 220);
   }
 
-  function extraerObservacionesPorAlumnoGrupoApp(texto: string | null | undefined, maxLineas = 12) {
+  function extraerObservacionesPorAlumnoGrupoApp(
+    texto: string | null | undefined,
+    maxLineas = 12
+  ) {
     const limpio = limpiarTextoObservacionesGrupoApp(texto);
     if (!limpio) return [] as string[];
 
@@ -5689,7 +6999,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         const separador = linea.indexOf(':');
         if (separador > 0) {
           const nombre = linea.slice(0, separador).replace(/\s+/g, ' ').trim();
-          const detalle = limpiarDetalleObservacionAlumnoGrupoApp(linea.slice(separador + 1));
+          const detalle = limpiarDetalleObservacionAlumnoGrupoApp(
+            linea.slice(separador + 1)
+          );
           if (nombre && detalle) lineas.push(`${nombre}: ${detalle}`);
           return;
         }
@@ -5707,9 +7019,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           .replace(/^(ENTRENADOR|PARA ENTRENADOR|OBSERVACIONES)\s+/i, '')
           .replace(/\s+/g, ' ')
           .trim();
-        const inicioDetalle = (coincidencia.index || 0) + coincidencia[0].length;
-        const finDetalle = index + 1 < coincidencias.length ? (coincidencias[index + 1].index || limpio.length) : limpio.length;
-        const detalle = limpiarDetalleObservacionAlumnoGrupoApp(limpio.slice(inicioDetalle, finDetalle));
+        const inicioDetalle =
+          (coincidencia.index || 0) + coincidencia[0].length;
+        const finDetalle =
+          index + 1 < coincidencias.length
+            ? coincidencias[index + 1].index || limpio.length
+            : limpio.length;
+        const detalle = limpiarDetalleObservacionAlumnoGrupoApp(
+          limpio.slice(inicioDetalle, finDetalle)
+        );
         if (nombre && detalle) lineas.push(`${nombre}: ${detalle}`);
       });
     }
@@ -5717,21 +7035,35 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     return Array.from(new Set(lineas)).slice(0, maxLineas);
   }
 
-  function normalizarLineasObservacionesGrupoApp(texto: string | null | undefined, maxLineas = 12) {
+  function normalizarLineasObservacionesGrupoApp(
+    texto: string | null | undefined,
+    maxLineas = 12
+  ) {
     return extraerObservacionesPorAlumnoGrupoApp(texto, maxLineas).join('\n');
   }
 
-  function combinarObservacionesGrupoApp(automaticas: string, manuales: string | null | undefined) {
+  function combinarObservacionesGrupoApp(
+    automaticas: string,
+    manuales: string | null | undefined
+  ) {
     const auto = normalizarLineasObservacionesGrupoApp(automaticas, 10);
     const manual = normalizarLineasObservacionesGrupoApp(manuales, 6);
     return [auto, manual].filter(Boolean).join('\n');
   }
 
-  function observacionesAutomaticasGrupoAgenda(alumnosGrupo: AgendaRecomendacionSesionApp[]) {
+  function observacionesAutomaticasGrupoAgenda(
+    alumnosGrupo: AgendaRecomendacionSesionApp[]
+  ) {
     const lineas = alumnosGrupo
       .map((alumno) => {
-        const ficha = agendaAlumnosSesion.find((registro) => registro.alumno_id === alumno.alumno_id);
-        return fraseImportanteAlumnoGrupoApp(alumno.alumno, ficha?.observacion, alumno.alertas);
+        const ficha = agendaAlumnosSesion.find(
+          (registro) => registro.alumno_id === alumno.alumno_id
+        );
+        return fraseImportanteAlumnoGrupoApp(
+          alumno.alumno,
+          ficha?.observacion,
+          alumno.alertas
+        );
       })
       .filter(Boolean);
 
@@ -5739,7 +7071,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     return normalizarLineasObservacionesGrupoApp(lineas.join('\n'));
   }
 
-  function observacionesAutomaticasGrupoIntensivo(alumnosGrupo: RecomendacionGrupoIntensivoDiaApp[]) {
+  function observacionesAutomaticasGrupoIntensivo(
+    alumnosGrupo: RecomendacionGrupoIntensivoDiaApp[]
+  ) {
     const lineas = alumnosGrupo
       .map((alumno) =>
         fraseImportanteAlumnoGrupoApp(
@@ -5758,7 +7092,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const lineas = alumnosIds
       .map((alumnoId) => {
         const resumen = resumenAlumnoIntensivo(alumnoId);
-        const ficha = intensivoAlumnos.find((registro) => registro.alumno_id === alumnoId);
+        const ficha = intensivoAlumnos.find(
+          (registro) => registro.alumno_id === alumnoId
+        );
         return fraseImportanteAlumnoGrupoApp(
           resumen?.alumno || ficha?.alumno || 'Alumno',
           resumen?.observacion_visible_entrenador,
@@ -5773,14 +7109,24 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
   function observacionesAutomaticasGrupoOcio(alumnosGrupo: OcioAlumnoApp[]) {
     const lineas = alumnosGrupo
-      .map((alumno) => fraseImportanteAlumnoGrupoApp(alumno.alumno, alumno.observaciones, alumno.grupo_pista))
+      .map((alumno) =>
+        fraseImportanteAlumnoGrupoApp(
+          alumno.alumno,
+          alumno.observaciones,
+          alumno.grupo_pista
+        )
+      )
       .filter(Boolean);
 
     if (lineas.length === 0) return '';
     return normalizarLineasObservacionesGrupoApp(lineas.join('\n'));
   }
 
-  async function crearGrupoAgendaDesdeRecomendacion(nombreGrupo: string, alumnosGrupo: AgendaRecomendacionSesionApp[], nombreGrupoFinal?: string) {
+  async function crearGrupoAgendaDesdeRecomendacion(
+    nombreGrupo: string,
+    alumnosGrupo: AgendaRecomendacionSesionApp[],
+    nombreGrupoFinal?: string
+  ) {
     if (!agendaSesionActivaId) {
       setError('Primero selecciona una sesión.');
       return;
@@ -5798,12 +7144,19 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       return;
     }
 
-    const nivelesGrupo = Array.from(new Set(alumnosGrupo.map((alumno) => alumno.nivel_resumen))).join(' / ');
+    const nivelesGrupo = Array.from(
+      new Set(alumnosGrupo.map((alumno) => alumno.nivel_resumen))
+    ).join(' / ');
     const punto = puntosAgendaGrupo[nombreGrupo] || '1';
-    const trabajo = trabajoAgendaGrupo[nombreGrupo] || trabajoDiarioAutomaticoAgenda(nombreGrupo, alumnosGrupo);
+    const trabajo =
+      trabajoAgendaGrupo[nombreGrupo] ||
+      trabajoDiarioAutomaticoAgenda(nombreGrupo, alumnosGrupo);
     const primero = alumnosGrupo[0];
 
-    const validacionOk = confirmarCrearGrupoConValidacionPedagogicaApp(alumnosGrupo, nombreGrupo);
+    const validacionOk = confirmarCrearGrupoConValidacionPedagogicaApp(
+      alumnosGrupo,
+      nombreGrupo
+    );
     if (!validacionOk) return;
 
     setCargando(true);
@@ -5832,7 +7185,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_contexto_id: agendaSesionActivaId,
         p_nombre_grupo: nombreGrupo,
         p_entrenador_apoyo_id: entrenadorApoyoId || null,
-        p_responsables: responsablesJsonAgendaApp(nombreGrupo, alumnosGrupo, entrenadorId, entrenadorApoyoId),
+        p_responsables: responsablesJsonAgendaApp(
+          nombreGrupo,
+          alumnosGrupo,
+          entrenadorId,
+          entrenadorApoyoId
+        ),
       });
 
       await cargarAgendaOperativaDirecta();
@@ -5847,9 +7205,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setCargando(false);
   }
 
-
-
-  async function cambiarEntrenadorGrupoAgenda(grupo: AgendaGrupoSesionApp, nuevoEntrenadorId: string) {
+  async function cambiarEntrenadorGrupoAgenda(
+    grupo: AgendaGrupoSesionApp,
+    nuevoEntrenadorId: string
+  ) {
     if (!grupo.grupo_id) return;
 
     if (!nuevoEntrenadorId) {
@@ -5857,9 +7216,13 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       return;
     }
 
-    const nuevoEntrenador = entrenadores.find((entrenador) => entrenador.entrenador_id === nuevoEntrenadorId);
+    const nuevoEntrenador = entrenadores.find(
+      (entrenador) => entrenador.entrenador_id === nuevoEntrenadorId
+    );
     const confirmar = window.confirm(
-      `¿Cambiar el entrenador de ${grupo.nombre_grupo} a ${nuevoEntrenador?.nombre_completo || 'este entrenador'}?\n\nSe actualizará la vista del entrenador y los cobros se recalcularán con la nueva asignación.`
+      `¿Cambiar el entrenador de ${grupo.nombre_grupo} a ${
+        nuevoEntrenador?.nombre_completo || 'este entrenador'
+      }?\n\nSe actualizará la vista del entrenador y los cobros se recalcularán con la nueva asignación.`
     );
 
     if (!confirmar) return;
@@ -5873,19 +7236,26 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_entrenador_id: nuevoEntrenadorId,
       });
 
-      if (agendaSesionActivaId) await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      if (agendaSesionActivaId)
+        await cargarDetalleSesionAgenda(agendaSesionActivaId);
       await cargarAgendaOperativaDirecta();
       await cargarGruposEntrenador();
       await cargarPlanning();
       await cargarCobros();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error cambiando entrenador del grupo');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error cambiando entrenador del grupo'
+      );
     }
 
     setCargando(false);
   }
 
-  async function guardarTrabajoObservacionesGrupoAgenda(grupo: AgendaGrupoSesionApp) {
+  async function guardarTrabajoObservacionesGrupoAgenda(
+    grupo: AgendaGrupoSesionApp
+  ) {
     if (!grupo.grupo_id) return;
 
     setCargando(true);
@@ -5894,22 +7264,33 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     try {
       await ejecutarFuncion('actualizar_trabajo_observaciones_grupo_app', {
         p_grupo_id: grupo.grupo_id,
-        p_trabajo_diario: trabajoGrupoCreadoEditando[grupo.grupo_id] ?? grupo.trabajo_diario ?? '',
-        p_observaciones_importantes: normalizarLineasObservacionesGrupoApp(observacionesGrupoCreadoEditando[grupo.grupo_id] ?? grupo.observaciones_importantes ?? '', 12),
+        p_trabajo_diario:
+          trabajoGrupoCreadoEditando[grupo.grupo_id] ??
+          grupo.trabajo_diario ??
+          '',
+        p_observaciones_importantes: normalizarLineasObservacionesGrupoApp(
+          observacionesGrupoCreadoEditando[grupo.grupo_id] ??
+            grupo.observaciones_importantes ??
+            '',
+          12
+        ),
       });
 
-      if (agendaSesionActivaId) await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      if (agendaSesionActivaId)
+        await cargarDetalleSesionAgenda(agendaSesionActivaId);
       await cargarAgendaOperativaDirecta();
       await cargarGruposEntrenador();
       await cargarPlanning();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error guardando trabajo diario y observaciones del grupo');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error guardando trabajo diario y observaciones del grupo'
+      );
     }
 
     setCargando(false);
   }
-
-
 
   async function editarNivelAlumnoAgenda(alumno: AgendaAlumnoSesionApp) {
     const nuevoNivel = window.prompt(
@@ -5941,7 +7322,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   async function editarNombreAlumnoAgenda(alumno: AgendaAlumnoSesionApp) {
-    const nuevoNombre = window.prompt('Corrige el nombre del alumno', alumno.alumno);
+    const nuevoNombre = window.prompt(
+      'Corrige el nombre del alumno',
+      alumno.alumno
+    );
 
     if (!nuevoNombre || nuevoNombre.trim() === alumno.alumno) return;
 
@@ -5966,7 +7350,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   async function quitarAlumnoAgenda(alumno: AgendaAlumnoSesionApp) {
-    const confirmar = window.confirm(`¿Quitar a ${alumno.alumno} de esta sesión/listado?`);
+    const confirmar = window.confirm(
+      `¿Quitar a ${alumno.alumno} de esta sesión/listado?`
+    );
     if (!confirmar) return;
 
     setCargando(true);
@@ -5988,10 +7374,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   async function borrarAlumnoBaseAgenda(alumno: AgendaAlumnoSesionApp) {
-    const confirmar = window.confirm(`¿BORRAR la ficha completa de ${alumno.alumno}? Esto elimina al alumno de la base y de las pruebas donde esté metido.`);
+    const confirmar = window.confirm(
+      `¿BORRAR la ficha completa de ${alumno.alumno}? Esto elimina al alumno de la base y de las pruebas donde esté metido.`
+    );
     if (!confirmar) return;
 
-    const confirmarFinal = window.confirm('Confirmación final: esta acción no es solo quitarlo del listado, borra la ficha del alumno.');
+    const confirmarFinal = window.confirm(
+      'Confirmación final: esta acción no es solo quitarlo del listado, borra la ficha del alumno.'
+    );
     if (!confirmarFinal) return;
 
     setCargando(true);
@@ -6013,7 +7403,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   async function borrarGrupoAgenda(grupo: AgendaGrupoSesionApp) {
-    const confirmar = window.confirm(`¿Borrar el grupo ${grupo.nombre_grupo}? Se quitarán sus alumnos del grupo, pero no se borran sus fichas.`);
+    const confirmar = window.confirm(
+      `¿Borrar el grupo ${grupo.nombre_grupo}? Se quitarán sus alumnos del grupo, pero no se borran sus fichas.`
+    );
     if (!confirmar) return;
 
     setCargando(true);
@@ -6037,7 +7429,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   async function borrarSesionAgendaActual() {
     if (!agendaSesionActivaId) return;
 
-    const confirmar = window.confirm('¿Borrar esta sesión/listado de prueba? Se borran sus grupos y asignaciones. Las fichas de alumnos se borran desde el botón rojo de cada alumno.');
+    const confirmar = window.confirm(
+      '¿Borrar esta sesión/listado de prueba? Se borran sus grupos y asignaciones. Las fichas de alumnos se borran desde el botón rojo de cada alumno.'
+    );
     if (!confirmar) return;
 
     setCargando(true);
@@ -6117,57 +7511,145 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       cargarDisponibilidad();
     }
     if (pantalla === 'alumnos') cargarAlumnos();
-    if (pantalla === 'ocioAlumnos') { cargarOcioAlumnos(); cargarOcioGrupos(); }
-    if (pantalla === 'ocioGrupos') { cargarOcioAlumnos(); cargarOcioGrupos(); cargarOcioCambios(); }
-    if (pantalla === 'ocioCambios') { cargarOcioAlumnos(); cargarOcioGrupos(); cargarOcioCambios(); }
-    if (pantalla === 'revisionOcio') { cargarOcioAlumnos(); cargarOcioGrupos(); cargarOcioCambios(); }
-    if (pantalla === 'ocioSemana') { cargarOcioAlumnos(); cargarOcioGrupos(); cargarOcioCambios(); cargarEntrenadores(); cargarDisponibilidad(); cargarAgendaOperativaDirecta(); }
+    if (pantalla === 'ocioAlumnos') {
+      cargarOcioAlumnos();
+      cargarOcioGrupos();
+    }
+    if (pantalla === 'ocioGrupos') {
+      cargarOcioAlumnos();
+      cargarOcioGrupos();
+      cargarOcioCambios();
+    }
+    if (pantalla === 'ocioCambios') {
+      cargarOcioAlumnos();
+      cargarOcioGrupos();
+      cargarOcioCambios();
+    }
+    if (pantalla === 'revisionOcio') {
+      cargarOcioAlumnos();
+      cargarOcioGrupos();
+      cargarOcioCambios();
+    }
+    if (pantalla === 'ocioSemana') {
+      cargarOcioAlumnos();
+      cargarOcioGrupos();
+      cargarOcioCambios();
+      cargarEntrenadores();
+      cargarDisponibilidad();
+      cargarAgendaOperativaDirecta();
+    }
     if (pantalla === 'entrenadores') cargarEntrenadores();
     if (pantalla === 'disponibilidad') cargarDisponibilidad();
     if (pantalla === 'reportes') cargarReportesPendientes();
-    if (pantalla === 'cobros') { cargarCobros(); cargarEntrenadores(); }
-    if (pantalla === 'exportaciones') { cargarAgendaOperativaDirecta(); cargarIntensivos(); cargarPlanning(); cargarListados(); cargarReportesPendientes(); cargarAlumnos(); cargarOcioAlumnos(); cargarOcioGrupos(); cargarCobros(); }
-    if (pantalla === 'intensivos') { cargarIntensivos(); cargarDisponibilidad(); cargarEntrenadores(); }
+    if (pantalla === 'cobros') {
+      cargarCobros();
+      cargarEntrenadores();
+    }
+    if (pantalla === 'exportaciones') {
+      cargarAgendaOperativaDirecta();
+      cargarIntensivos();
+      cargarPlanning();
+      cargarListados();
+      cargarReportesPendientes();
+      cargarAlumnos();
+      cargarOcioAlumnos();
+      cargarOcioGrupos();
+      cargarCobros();
+    }
+    if (pantalla === 'intensivos') {
+      cargarIntensivos();
+      cargarDisponibilidad();
+      cargarEntrenadores();
+    }
     if (pantalla === 'listados') cargarListados();
   }, [pantalla]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    window.localStorage.setItem('mitico_temporada_trabajo', String(anioInicioTemporadaAgenda));
-    if (mesAgendaActivo) window.localStorage.setItem('mitico_mes_trabajo', mesAgendaActivo);
-    if (semanaAgendaActiva) window.localStorage.setItem('mitico_semana_trabajo', semanaAgendaActiva);
+    window.localStorage.setItem(
+      'mitico_temporada_trabajo',
+      String(anioInicioTemporadaAgenda)
+    );
+    if (mesAgendaActivo)
+      window.localStorage.setItem('mitico_mes_trabajo', mesAgendaActivo);
+    if (semanaAgendaActiva)
+      window.localStorage.setItem('mitico_semana_trabajo', semanaAgendaActiva);
     const fechaTrabajoResumen = fechaResumenDia || fechaIsoHoyApp();
-    window.localStorage.setItem('mitico_fecha_resumen_dia', fechaTrabajoResumen);
-  }, [anioInicioTemporadaAgenda, mesAgendaActivo, semanaAgendaActiva, fechaResumenDia]);
+    window.localStorage.setItem(
+      'mitico_fecha_resumen_dia',
+      fechaTrabajoResumen
+    );
+  }, [
+    anioInicioTemporadaAgenda,
+    mesAgendaActivo,
+    semanaAgendaActiva,
+    fechaResumenDia,
+  ]);
 
   const sesionesAgenda = sesionesAgendaOperativa();
 
   const fechaResumenDiaActiva = fechaResumenDia || fechaIsoHoyApp();
-  const sesionesResumenDia = sesionesAgenda.filter((sesion) => sesion.fecha === fechaResumenDiaActiva);
-  const reportesResumenDia = reportesPendientes.filter((reporte) => reporte.fecha === fechaResumenDiaActiva);
-  const gruposEntrenadorResumenDia = gruposEntrenador.filter((grupo) => grupo.fecha === fechaResumenDiaActiva);
+  const sesionesResumenDia = sesionesAgenda.filter(
+    (sesion) => sesion.fecha === fechaResumenDiaActiva
+  );
+  const reportesResumenDia = reportesPendientes.filter(
+    (reporte) => reporte.fecha === fechaResumenDiaActiva
+  );
+  const gruposEntrenadorResumenDia = gruposEntrenador.filter(
+    (grupo) => grupo.fecha === fechaResumenDiaActiva
+  );
   const gruposPendientesEntrenadorResumenDia = [
-    ...planning.filter((grupo) => grupo.fecha === fechaResumenDiaActiva && !grupo.entrenadores),
-    ...gruposIntensivoDia.filter((grupo) => grupo.fecha === fechaResumenDiaActiva && grupo.grupo_id && !grupo.entrenador),
+    ...planning.filter(
+      (grupo) => grupo.fecha === fechaResumenDiaActiva && !grupo.entrenadores
+    ),
+    ...gruposIntensivoDia.filter(
+      (grupo) =>
+        grupo.fecha === fechaResumenDiaActiva &&
+        grupo.grupo_id &&
+        !grupo.entrenador
+    ),
   ];
-  const totalAlumnosResumenDia = sesionesResumenDia.reduce((total, sesion) => total + Number(sesion.totalAlumnos || 0), 0);
-  const totalGruposResumenDia = sesionesResumenDia.reduce((total, sesion) => total + Number(sesion.totalGrupos || 0), 0);
-  const totalPublicadosResumenDia = sesionesResumenDia.reduce((total, sesion) => total + Number(sesion.publicados || 0), 0);
+  const totalAlumnosResumenDia = sesionesResumenDia.reduce(
+    (total, sesion) => total + Number(sesion.totalAlumnos || 0),
+    0
+  );
+  const totalGruposResumenDia = sesionesResumenDia.reduce(
+    (total, sesion) => total + Number(sesion.totalGrupos || 0),
+    0
+  );
+  const totalPublicadosResumenDia = sesionesResumenDia.reduce(
+    (total, sesion) => total + Number(sesion.publicados || 0),
+    0
+  );
 
-  const claveSemanaBackupActiva = semanaAgendaActiva || semanaActualAgenda || '';
-  const backupSemanaStorageKey = claveSemanaBackupActiva ? `mitico_backup_excel_${claveSemanaBackupActiva}` : '';
-  const backupSemanaRealizado = backupSemanaStorageKey && typeof window !== 'undefined'
-    ? window.localStorage.getItem(backupSemanaStorageKey) || ''
+  const claveSemanaBackupActiva =
+    semanaAgendaActiva || semanaActualAgenda || '';
+  const backupSemanaStorageKey = claveSemanaBackupActiva
+    ? `mitico_backup_excel_${claveSemanaBackupActiva}`
     : '';
+  const backupSemanaRealizado =
+    backupSemanaStorageKey && typeof window !== 'undefined'
+      ? window.localStorage.getItem(backupSemanaStorageKey) || ''
+      : '';
 
   const ocioRevisionBase = ocioAlumnos.map((alumno) => {
-    const recomendacion = ocioRecomendacionesCambio.find((item) => item.alumno_id === alumno.alumno_id);
+    const recomendacion = ocioRecomendacionesCambio.find(
+      (item) => item.alumno_id === alumno.alumno_id
+    );
     const sinGrupo = !alumno.grupo_id;
     const sinReportes = Number(alumno.total_reportes || 0) === 0;
-    const necesitaCambio = Boolean(recomendacion && recomendacion.recomendacion !== 'OK');
+    const necesitaCambio = Boolean(
+      recomendacion && recomendacion.recomendacion !== 'OK'
+    );
     return {
       ...alumno,
-      recomendacion_revision: recomendacion?.recomendacion || (sinGrupo ? 'Sin grupo estable' : sinReportes ? 'Sin reportes todavía' : 'OK'),
+      recomendacion_revision:
+        recomendacion?.recomendacion ||
+        (sinGrupo
+          ? 'Sin grupo estable'
+          : sinReportes
+          ? 'Sin reportes todavía'
+          : 'OK'),
       necesita_cambio_revision: necesitaCambio,
       sin_grupo_revision: sinGrupo,
       sin_reportes_revision: sinReportes,
@@ -6175,7 +7657,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   });
 
   const ocioRevisionFiltrada = ocioRevisionBase.filter((alumno) => {
-    const texto = `${alumno.alumno} ${alumno.nivel_usado || ''} ${alumno.grupo_estable || ''} ${alumno.recomendacion_revision}`.toLowerCase();
+    const texto = `${alumno.alumno} ${alumno.nivel_usado || ''} ${
+      alumno.grupo_estable || ''
+    } ${alumno.recomendacion_revision}`.toLowerCase();
     const coincideBusqueda = texto.includes(busquedaRevisionOcio.toLowerCase());
     const coincideFiltro =
       filtroRevisionOcio === 'todos' ||
@@ -6187,8 +7671,17 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
   const intensivosControlFino = panelControlIntensivo.map((panel) => {
     const faltanSesiones = Math.max(0, 4 - Number(panel.total_dias || 0));
-    const incompleto = faltanSesiones > 0 || Number(panel.asignaciones_faltantes_estimadas || 0) > 0 || Number(panel.reportes_pendientes_estimados || 0) > 0 || Number(panel.diplomas_pendientes || 0) > 0 || Number(panel.recuperaciones_pendientes || 0) > 0;
-    return { ...panel, faltan_sesiones_4: faltanSesiones, incompleto_control_fino: incompleto };
+    const incompleto =
+      faltanSesiones > 0 ||
+      Number(panel.asignaciones_faltantes_estimadas || 0) > 0 ||
+      Number(panel.reportes_pendientes_estimados || 0) > 0 ||
+      Number(panel.diplomas_pendientes || 0) > 0 ||
+      Number(panel.recuperaciones_pendientes || 0) > 0;
+    return {
+      ...panel,
+      faltan_sesiones_4: faltanSesiones,
+      incompleto_control_fino: incompleto,
+    };
   });
 
   const alumnosFiltrados = alumnos.filter((alumno) => {
@@ -6196,10 +7689,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       alumno.ultimo_nivel_reportado || ''
     } ${alumno.ultima_recomendacion || ''}`.toLowerCase();
 
-    const coincideBusqueda = textoBusqueda.includes(busquedaAlumno.toLowerCase());
+    const coincideBusqueda = textoBusqueda.includes(
+      busquedaAlumno.toLowerCase()
+    );
 
     const sinNivel =
-      !alumno.nivel_actual && !alumno.nivel_estimado && !alumno.ultimo_nivel_reportado;
+      !alumno.nivel_actual &&
+      !alumno.nivel_estimado &&
+      !alumno.ultimo_nivel_reportado;
 
     const sinReportes = Number(alumno.total_reportes || 0) === 0;
 
@@ -6232,7 +7729,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   });
 
   const gruposEntrenadorFiltrados = gruposEntrenador.filter((grupo) => {
-    if (!esCoordinadorApp && entrenadorIdSesionApp && grupo.entrenador_id !== entrenadorIdSesionApp) return false;
+    if (
+      !esCoordinadorApp &&
+      entrenadorIdSesionApp &&
+      grupo.entrenador_id !== entrenadorIdSesionApp
+    )
+      return false;
     if (!esCoordinadorApp && !entrenadorIdSesionApp) return false;
     const texto = `${grupo.entrenador} ${grupo.nombre_grupo} ${
       grupo.modalidad
@@ -6241,9 +7743,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   });
 
   const entrenadoresFiltrados = entrenadores.filter((entrenador) => {
-    const textoBusqueda = `${entrenador.nombre_completo} ${entrenador.email || ''} ${entrenador.telefono || ''} ${(entrenador.especialidades || []).join(' ')}`.toLowerCase();
+    const textoBusqueda = `${entrenador.nombre_completo} ${
+      entrenador.email || ''
+    } ${entrenador.telefono || ''} ${(entrenador.especialidades || []).join(
+      ' '
+    )}`.toLowerCase();
 
-    const coincideBusqueda = textoBusqueda.includes(busquedaEntrenador.toLowerCase());
+    const coincideBusqueda = textoBusqueda.includes(
+      busquedaEntrenador.toLowerCase()
+    );
 
     const documentacionPendiente =
       (entrenador.titulacion_estado || 'Pendiente') !== 'Validado' ||
@@ -6253,14 +7761,21 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       filtroEntrenadores === 'todos' ||
       (filtroEntrenadores === 'activos' && entrenador.activo) ||
       (filtroEntrenadores === 'inactivos' && !entrenador.activo) ||
-      (filtroEntrenadores === 'sin_chaqueta' && !entrenador.chaqueta_entregada) ||
-      (filtroEntrenadores === 'documentacion_pendiente' && documentacionPendiente);
+      (filtroEntrenadores === 'sin_chaqueta' &&
+        !entrenador.chaqueta_entregada) ||
+      (filtroEntrenadores === 'documentacion_pendiente' &&
+        documentacionPendiente);
 
     return coincideBusqueda && coincideFiltro;
   });
 
   const disponibilidadFiltrada = disponibilidad.filter((item) => {
-    if (!esCoordinadorApp && entrenadorIdSesionApp && item.entrenador_id !== entrenadorIdSesionApp) return false;
+    if (
+      !esCoordinadorApp &&
+      entrenadorIdSesionApp &&
+      item.entrenador_id !== entrenadorIdSesionApp
+    )
+      return false;
     if (!esCoordinadorApp && !entrenadorIdSesionApp) return false;
     const coincideSemana = semanaAgendaActiva
       ? item.fecha_inicio === semanaAgendaActiva
@@ -6274,25 +7789,39 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
     const coincideFiltro =
       filtroDisponibilidad === 'todos' ||
-      (filtroDisponibilidad === 'disponibles' && respuestaNormalizada === 'Disponible') ||
-      (filtroDisponibilidad === 'no_puedo' && respuestaNormalizada === 'No puedo') ||
-      (filtroDisponibilidad === 'pendientes' && respuestaNormalizada === 'Pendiente');
+      (filtroDisponibilidad === 'disponibles' &&
+        respuestaNormalizada === 'Disponible') ||
+      (filtroDisponibilidad === 'no_puedo' &&
+        respuestaNormalizada === 'No puedo') ||
+      (filtroDisponibilidad === 'pendientes' &&
+        respuestaNormalizada === 'Pendiente');
 
     return coincideSemana && coincideBusqueda && coincideFiltro;
   });
 
   const finSemanaReportes = semanaAgendaActiva
-    ? claveFechaAgenda(new Date(crearFechaAgenda(semanaAgendaActiva).getTime() + 6 * 24 * 60 * 60 * 1000))
+    ? claveFechaAgenda(
+        new Date(
+          crearFechaAgenda(semanaAgendaActiva).getTime() +
+            6 * 24 * 60 * 60 * 1000
+        )
+      )
     : '';
 
   const reportesFiltrados = reportesPendientes.filter((reporte) => {
-    if (!esCoordinadorApp && entrenadorIdSesionApp && reporte.entrenador_id !== entrenadorIdSesionApp) return false;
+    if (
+      !esCoordinadorApp &&
+      entrenadorIdSesionApp &&
+      reporte.entrenador_id !== entrenadorIdSesionApp
+    )
+      return false;
     if (!esCoordinadorApp && !entrenadorIdSesionApp) return false;
     const texto =
       `${reporte.entrenador} ${reporte.alumno} ${reporte.nombre_grupo} ${reporte.modalidad} ${reporte.estado_reporte}`.toLowerCase();
 
     const coincideSemana = semanaAgendaActiva
-      ? reporte.fecha >= semanaAgendaActiva && reporte.fecha <= finSemanaReportes
+      ? reporte.fecha >= semanaAgendaActiva &&
+        reporte.fecha <= finSemanaReportes
       : true;
 
     const coincideBusqueda = texto.includes(busquedaReportes.toLowerCase());
@@ -6352,17 +7881,28 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     (total, cobro) => total + Number(cobro.total_turnos_computables || 0),
     0
   );
-  const totalBabyCobrosMes = cobrosFiltrados.reduce((total, cobro) => total + Number(cobro.total_turnos_baby || 0), 0);
-  const totalIntensivosCobrosMes = cobrosFiltrados.reduce((total, cobro) => total + Number(cobro.total_turnos_intensivos || 0), 0);
-  const totalOcioCobrosMes = cobrosFiltrados.reduce((total, cobro) => total + Number(cobro.total_turnos_ocio || 0), 0);
-  const aniosCobrosOpciones = Array.from(new Set([
-    new Date().getFullYear() - 1,
-    new Date().getFullYear(),
-    new Date().getFullYear() + 1,
-    anioCobros,
-    ...opcionesTemporadaAgenda,
-    ...opcionesTemporadaAgenda.map((anio) => anio + 1),
-  ])).sort((a, b) => a - b);
+  const totalBabyCobrosMes = cobrosFiltrados.reduce(
+    (total, cobro) => total + Number(cobro.total_turnos_baby || 0),
+    0
+  );
+  const totalIntensivosCobrosMes = cobrosFiltrados.reduce(
+    (total, cobro) => total + Number(cobro.total_turnos_intensivos || 0),
+    0
+  );
+  const totalOcioCobrosMes = cobrosFiltrados.reduce(
+    (total, cobro) => total + Number(cobro.total_turnos_ocio || 0),
+    0
+  );
+  const aniosCobrosOpciones = Array.from(
+    new Set([
+      new Date().getFullYear() - 1,
+      new Date().getFullYear(),
+      new Date().getFullYear() + 1,
+      anioCobros,
+      ...opcionesTemporadaAgenda,
+      ...opcionesTemporadaAgenda.map((anio) => anio + 1),
+    ])
+  ).sort((a, b) => a - b);
 
   const intensivosFiltrados = intensivos.filter((intensivo) => {
     const texto =
@@ -6428,7 +7968,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const disponibilidadSemanalEntrenador = agruparDisponibilidadSemanal(
     disponibilidadFiltrada
   );
-  const disponibilidadPorTurno = agruparDisponibilidadPorTurno(disponibilidadFiltrada);
+  const disponibilidadPorTurno = agruparDisponibilidadPorTurno(
+    disponibilidadFiltrada
+  );
 
   const sesionAgendaActiva = agendaSesionesDirectas.find(
     (sesion) => sesion.sesion_id === agendaSesionActivaId
@@ -6438,18 +7980,23 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     return (valor || '').slice(0, 5);
   }
 
-  function entrenadoresDisponiblesParaTurno(fecha?: string | null, horaInicio?: string | null, horaFin?: string | null) {
+  function entrenadoresDisponiblesParaTurno(
+    fecha?: string | null,
+    horaInicio?: string | null,
+    horaFin?: string | null
+  ) {
     if (!fecha || !horaInicio || !horaFin) return [];
 
     return entrenadores
       .filter((entrenador) => entrenador.activo)
       .filter((entrenador) =>
-        disponibilidad.some((turno) =>
-          turno.entrenador_id === entrenador.entrenador_id &&
-          turno.fecha === fecha &&
-          horaCorta(turno.hora_inicio) === horaCorta(horaInicio) &&
-          horaCorta(turno.hora_fin) === horaCorta(horaFin) &&
-          turno.respuesta === 'Disponible'
+        disponibilidad.some(
+          (turno) =>
+            turno.entrenador_id === entrenador.entrenador_id &&
+            turno.fecha === fecha &&
+            horaCorta(turno.hora_inicio) === horaCorta(horaInicio) &&
+            horaCorta(turno.hora_fin) === horaCorta(horaFin) &&
+            turno.respuesta === 'Disponible'
         )
       )
       .sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo));
@@ -6469,13 +8016,20 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       dia?.hora_inicio,
       dia?.hora_fin
     );
-    return disponibles.length > 0 ? disponibles : entrenadoresActivosParaIntensivo();
+    return disponibles.length > 0
+      ? disponibles
+      : entrenadoresActivosParaIntensivo();
   }
 
   function avisoDisponibilidadDiaIntensivo(dia?: IntensivoDiaApp | null) {
     if (!dia) return 'Selecciona un día para ver entrenadores.';
-    const disponibles = entrenadoresDisponiblesParaTurno(dia.fecha, dia.hora_inicio, dia.hora_fin);
-    if (disponibles.length > 0) return `${disponibles.length} entrenador(es) disponibles para este día/turno.`;
+    const disponibles = entrenadoresDisponiblesParaTurno(
+      dia.fecha,
+      dia.hora_inicio,
+      dia.hora_fin
+    );
+    if (disponibles.length > 0)
+      return `${disponibles.length} entrenador(es) disponibles para este día/turno.`;
     return 'No hay disponibilidad registrada para este día/turno. Se muestran entrenadores activos para emergencia manual.';
   }
   const reportesPorEntrenador = agruparReportesPorEntrenador(reportesFiltrados);
@@ -6485,9 +8039,19 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const gruposEntrenadorSemanal = agruparGruposEntrenadorSemanal(
     gruposEntrenadorFiltrados
   );
-  const totalGruposVistaEntrenador = gruposEntrenadorSemanal.reduce((total, entrenador) => total + Number(entrenador.total_grupos || 0), 0);
-  const totalReportesVistaEntrenador = reportesFiltrados.filter((reporte) => reporte.estado_reporte === 'Falta reporte' || reporte.estado_reporte === 'Asistencia sin confirmar').length;
-  const totalDisponibilidadPendienteVistaEntrenador = disponibilidadFiltrada.filter((turno) => turno.aviso_enviado && turno.respuesta === 'Pendiente').length;
+  const totalGruposVistaEntrenador = gruposEntrenadorSemanal.reduce(
+    (total, entrenador) => total + Number(entrenador.total_grupos || 0),
+    0
+  );
+  const totalReportesVistaEntrenador = reportesFiltrados.filter(
+    (reporte) =>
+      reporte.estado_reporte === 'Falta reporte' ||
+      reporte.estado_reporte === 'Asistencia sin confirmar'
+  ).length;
+  const totalDisponibilidadPendienteVistaEntrenador =
+    disponibilidadFiltrada.filter(
+      (turno) => turno.aviso_enviado && turno.respuesta === 'Pendiente'
+    ).length;
 
   function alumnosDelGrupo(grupoId: string, entrenadorId: string) {
     return alumnosReporteEntrenador.filter(
@@ -6503,9 +8067,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   function resumenAlumnoIntensivo(alumnoId: string) {
-    return alumnosResumenVolcado.find((alumno) => alumno.alumno_id === alumnoId);
+    return alumnosResumenVolcado.find(
+      (alumno) => alumno.alumno_id === alumnoId
+    );
   }
-
 
   function diasDelIntensivo(intensivoId: string) {
     return intensivoDias.filter((dia) => dia.intensivo_id === intensivoId);
@@ -6527,7 +8092,6 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     );
   }
 
-
   function gruposNormalesDelDiaIntensivo(diaId: string) {
     return gruposIntensivoDia.filter(
       (grupo) => grupo.intensivo_dia_id === diaId && grupo.grupo_id
@@ -6546,7 +8110,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     );
   }
 
-  function reportesDetalleAlumnoIntensivo(intensivoId: string, alumnoId: string) {
+  function reportesDetalleAlumnoIntensivo(
+    intensivoId: string,
+    alumnoId: string
+  ) {
     return reportesDetalleIntensivo.filter(
       (registro) =>
         registro.intensivo_id === intensivoId && registro.alumno_id === alumnoId
@@ -6586,11 +8153,13 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   ) {
     const intensivoId = intensivo.intensivo_id;
     const yaAbierto =
-      (panel === 'control' && gestionarPanelControlIntensivoId === intensivoId) ||
+      (panel === 'control' &&
+        gestionarPanelControlIntensivoId === intensivoId) ||
       (panel === 'dias' && diaActivoIntensivoId === intensivoId) ||
       (panel === 'alumnos' && gestionarAlumnosIntensivoId === intensivoId) ||
       (panel === 'grupos' && gestionarGruposIntensivoId === intensivoId) ||
-      (panel === 'asistencia' && gestionarAsistenciaIntensivoId === intensivoId) ||
+      (panel === 'asistencia' &&
+        gestionarAsistenciaIntensivoId === intensivoId) ||
       (panel === 'recuperaciones' && gestionarMásIntensivoId === intensivoId) ||
       (panel === 'diplomas' && gestionarDiplomasIntensivoId === intensivoId);
 
@@ -6654,7 +8223,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
   function codigoNivelPorId(nivelId: string | null) {
     if (!nivelId) return '-';
-    return nivelesDiplomaIntensivo.find((nivel) => nivel.id === nivelId)?.codigo || '-';
+    return (
+      nivelesDiplomaIntensivo.find((nivel) => nivel.id === nivelId)?.codigo ||
+      '-'
+    );
   }
 
   function entrenadoresActivosParaIntensivo() {
@@ -6709,9 +8281,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const grupoTieneSeguimiento = alumnosEstadoGrupo.length > 0;
 
     if (!grupo.publicado) return 'Sin publicar';
-    if (entrenadoresSinConfirmar > 0) return 'Publicado · entrenador sin confirmar';
-    if (grupoTieneSeguimiento && asistentesPendientes > 0) return 'Asistencia pendiente';
-    if (grupoTieneSeguimiento && reportesPendientesGrupo > 0) return 'Reportes pendientes';
+    if (entrenadoresSinConfirmar > 0)
+      return 'Publicado · entrenador sin confirmar';
+    if (grupoTieneSeguimiento && asistentesPendientes > 0)
+      return 'Asistencia pendiente';
+    if (grupoTieneSeguimiento && reportesPendientesGrupo > 0)
+      return 'Reportes pendientes';
     if (grupoTieneSeguimiento) return 'Grupo cerrado';
 
     return 'Publicado · pendiente de seguimiento';
@@ -6761,7 +8336,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   function nombreMesAgendaDesdeClave(clave: string) {
     const [anio, mes] = clave.split('-').map(Number);
     const fecha = new Date(anio, mes - 1, 1);
-    return fecha.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    return fecha.toLocaleDateString('es-ES', {
+      month: 'long',
+      year: 'numeric',
+    });
   }
 
   function inicioSemanaAgenda(fechaIso: string) {
@@ -6792,7 +8370,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const inicio = crearFechaAgenda(inicioIso);
     const fin = new Date(inicio);
     fin.setDate(inicio.getDate() + 6);
-    return `${fechaAgendaCortaConAnio(claveFechaAgenda(inicio))} – ${fechaAgendaCortaConAnio(claveFechaAgenda(fin))}`;
+    return `${fechaAgendaCortaConAnio(
+      claveFechaAgenda(inicio)
+    )} – ${fechaAgendaCortaConAnio(claveFechaAgenda(fin))}`;
   }
 
   function rangoEntrenosSemanaAgenda(inicioIso: string) {
@@ -6801,7 +8381,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const ultimoEntreno = new Date(inicio);
     primerEntreno.setDate(inicio.getDate() + 2);
     ultimoEntreno.setDate(inicio.getDate() + 6);
-    return `${fechaAgendaDiaCorta(claveFechaAgenda(primerEntreno))} – ${fechaAgendaDiaCorta(claveFechaAgenda(ultimoEntreno))}`;
+    return `${fechaAgendaDiaCorta(
+      claveFechaAgenda(primerEntreno)
+    )} – ${fechaAgendaDiaCorta(claveFechaAgenda(ultimoEntreno))}`;
   }
 
   function diasTrabajoSemanaAgenda(inicioIso: string) {
@@ -6882,13 +8464,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         hora_inicio: sesionDirecta.hora_inicio,
         hora_fin: sesionDirecta.hora_fin,
         modalidad: sesionDirecta.modalidad_codigo || sesionDirecta.modalidad,
-        titulo: `${sesionDirecta.modalidad} · ${sesionDirecta.lugar || 'Madrid SnowZone'}`,
+        titulo: `${sesionDirecta.modalidad} · ${
+          sesionDirecta.lugar || 'Madrid SnowZone'
+        }`,
         estado:
           sesionDirecta.total_grupos === 0
             ? 'Listado cargado · grupos pendientes'
             : sesionDirecta.alumnos_sin_grupo > 0
-              ? `Faltan ${sesionDirecta.alumnos_sin_grupo} alumnos por colocar`
-              : 'Grupos creados',
+            ? `Faltan ${sesionDirecta.alumnos_sin_grupo} alumnos por colocar`
+            : 'Grupos creados',
         totalAlumnos: Number(sesionDirecta.total_alumnos || 0),
         totalGrupos: Number(sesionDirecta.total_grupos || 0),
         publicados: Number(sesionDirecta.grupos_publicados || 0),
@@ -6918,8 +8502,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           gruposDia.length === 0
             ? 'Pendiente de grupos'
             : gruposDia.some((grupo) => !grupo.publicado)
-              ? 'Grupos sin publicar'
-              : 'Publicado',
+            ? 'Grupos sin publicar'
+            : 'Publicado',
         totalAlumnos: totalInscritos,
         totalGrupos: gruposDia.length,
         publicados: gruposDia.filter((grupo) => grupo.publicado).length,
@@ -6934,19 +8518,29 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const planningPorSesion = new Map<string, GrupoPlanning[]>();
     planning.forEach((grupo) => {
       const clave = `${grupo.fecha}-${grupo.hora_inicio}-${grupo.hora_fin}-${grupo.modalidad}`;
-      planningPorSesion.set(clave, [...(planningPorSesion.get(clave) || []), grupo]);
+      planningPorSesion.set(clave, [
+        ...(planningPorSesion.get(clave) || []),
+        grupo,
+      ]);
     });
 
     planningPorSesion.forEach((gruposSesion, clave) => {
       const primero = gruposSesion[0];
       if (!primero) return;
-      if (String(primero.modalidad || '').toUpperCase().includes('INTENSIVO')) return;
+      if (
+        String(primero.modalidad || '')
+          .toUpperCase()
+          .includes('INTENSIVO')
+      )
+        return;
 
-      const existente = [...sesiones.values()].find((sesion) =>
-        sesion.fecha === primero.fecha &&
-        sesion.hora_inicio === primero.hora_inicio &&
-        sesion.hora_fin === primero.hora_fin &&
-        String(sesion.modalidad || '').toUpperCase() === String(primero.modalidad || '').toUpperCase()
+      const existente = [...sesiones.values()].find(
+        (sesion) =>
+          sesion.fecha === primero.fecha &&
+          sesion.hora_inicio === primero.hora_inicio &&
+          sesion.hora_fin === primero.hora_fin &&
+          String(sesion.modalidad || '').toUpperCase() ===
+            String(primero.modalidad || '').toUpperCase()
       );
 
       if (existente) {
@@ -6954,7 +8548,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           ...existente,
           planningGrupos: gruposSesion,
           totalGrupos: Math.max(existente.totalGrupos, gruposSesion.length),
-          publicados: Math.max(existente.publicados, gruposSesion.filter((grupo) => grupo.publicado).length),
+          publicados: Math.max(
+            existente.publicados,
+            gruposSesion.filter((grupo) => grupo.publicado).length
+          ),
           estado: gruposSesion.every((grupo) => grupo.publicado)
             ? 'Publicado'
             : existente.estado,
@@ -7022,7 +8619,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     return sesionesAgenda.filter((sesion) => sesion.fecha === fecha);
   }
 
-  function abrirSesionAgenda(sesion: SesionAgendaOperativa, panel: 'alumnos' | 'grupos') {
+  function abrirSesionAgenda(
+    sesion: SesionAgendaOperativa,
+    panel: 'alumnos' | 'grupos'
+  ) {
     if (sesion.origen === 'operativa' && sesion.agendaDirecta) {
       setAgendaDiaCompactoActivo(sesion.fecha);
       setAgendaFormularioAbierto(false);
@@ -7047,20 +8647,35 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     if (sesion.origen === 'intensivo') {
       return sesion.grupos
         .filter((grupo) => grupo.grupo_id)
-        .map((grupo, indice) => `${nombreGrupoVisualApp(grupo, indice)} · ${grupo.entrenador || 'Pendiente entrenador'} · Punto ${grupo.punto_encuentro || '-'}`)
+        .map(
+          (grupo, indice) =>
+            `${nombreGrupoVisualApp(grupo, indice)} · ${
+              grupo.entrenador || 'Pendiente entrenador'
+            } · Punto ${grupo.punto_encuentro || '-'}`
+        )
         .join(' || ');
     }
 
     if (sesion.planningGrupos.length > 0) {
       return sesion.planningGrupos
-        .map((grupo, indice) => `${nombreGrupoVisualApp(grupo, indice)} · ${grupo.entrenadores || 'Pendiente entrenador'} · Punto ${grupo.punto_encuentro || '-'}`)
+        .map(
+          (grupo, indice) =>
+            `${nombreGrupoVisualApp(grupo, indice)} · ${
+              grupo.entrenadores || 'Pendiente entrenador'
+            } · Punto ${grupo.punto_encuentro || '-'}`
+        )
         .join(' || ');
     }
 
     if (sesion.agendaDirecta) {
       return agendaGruposSesion
         .filter((grupo) => grupo.sesion_id === sesion.agendaDirecta?.sesion_id)
-        .map((grupo, indice) => `${nombreGrupoVisualApp(grupo, indice)} · ${grupo.entrenador || 'Pendiente entrenador'} · Punto ${grupo.punto_encuentro || '-'}`)
+        .map(
+          (grupo, indice) =>
+            `${nombreGrupoVisualApp(grupo, indice)} · ${
+              grupo.entrenador || 'Pendiente entrenador'
+            } · Punto ${grupo.punto_encuentro || '-'}`
+        )
         .join(' || ');
     }
 
@@ -7076,16 +8691,36 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       .replace(/'/g, '&#039;');
   }
 
-  function tablaBackupExcel(titulo: string, columnas: string[], filas: Array<Array<unknown>>) {
-    const cabecera = columnas.map((columna) => `<th>${htmlEscapeBackup(columna)}</th>`).join('');
-    const cuerpo = filas.length > 0
-      ? filas.map((fila) => `<tr>${fila.map((celda) => `<td>${htmlEscapeBackup(celda)}</td>`).join('')}</tr>`).join('')
-      : `<tr><td colspan="${columnas.length}">Sin datos</td></tr>`;
+  function tablaBackupExcel(
+    titulo: string,
+    columnas: string[],
+    filas: Array<Array<unknown>>
+  ) {
+    const cabecera = columnas
+      .map((columna) => `<th>${htmlEscapeBackup(columna)}</th>`)
+      .join('');
+    const cuerpo =
+      filas.length > 0
+        ? filas
+            .map(
+              (fila) =>
+                `<tr>${fila
+                  .map((celda) => `<td>${htmlEscapeBackup(celda)}</td>`)
+                  .join('')}</tr>`
+            )
+            .join('')
+        : `<tr><td colspan="${columnas.length}">Sin datos</td></tr>`;
 
-    return `<h2>${htmlEscapeBackup(titulo)}</h2><table><thead><tr>${cabecera}</tr></thead><tbody>${cuerpo}</tbody></table><br/>`;
+    return `<h2>${htmlEscapeBackup(
+      titulo
+    )}</h2><table><thead><tr>${cabecera}</tr></thead><tbody>${cuerpo}</tbody></table><br/>`;
   }
 
-  function descargarTextoComoArchivo(nombreArchivo: string, contenido: string, tipo: string) {
+  function descargarTextoComoArchivo(
+    nombreArchivo: string,
+    contenido: string,
+    tipo: string
+  ) {
     const blob = new Blob([contenido], { type: tipo });
     const url = URL.createObjectURL(blob);
     const enlace = document.createElement('a');
@@ -7100,13 +8735,21 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   function descargarBackupSemanalExcel() {
     const semana = claveSemanaBackupActiva;
     if (!semana) {
-      setError('Selecciona una semana antes de descargar la copia de seguridad.');
+      setError(
+        'Selecciona una semana antes de descargar la copia de seguridad.'
+      );
       return;
     }
     const fin = domingoSemanaOcioActiva();
-    const sesionesSemana = sesionesAgenda.filter((sesion) => sesion.fecha >= semana && sesion.fecha <= fin);
-    const reportesSemana = reportesPendientes.filter((reporte) => reporte.fecha >= semana && reporte.fecha <= fin);
-    const gruposSemana = gruposEntrenador.filter((grupo) => grupo.fecha >= semana && grupo.fecha <= fin);
+    const sesionesSemana = sesionesAgenda.filter(
+      (sesion) => sesion.fecha >= semana && sesion.fecha <= fin
+    );
+    const reportesSemana = reportesPendientes.filter(
+      (reporte) => reporte.fecha >= semana && reporte.fecha <= fin
+    );
+    const gruposSemana = gruposEntrenador.filter(
+      (grupo) => grupo.fecha >= semana && grupo.fecha <= fin
+    );
 
     const html = `<!doctype html><html><head><meta charset="utf-8" />
       <style>
@@ -7115,19 +8758,180 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         table{border-collapse:collapse;width:100%;margin-bottom:16px;}
         th{background:#111827;color:#fff;text-align:left;} th,td{border:1px solid #d1d5db;padding:6px;font-size:12px;vertical-align:top;}
       </style></head><body>
-      <h1>Backup semanal Mítico · ${htmlEscapeBackup(rangoSemanaAgenda(semana))}</h1>
+      <h1>Backup semanal Mítico · ${htmlEscapeBackup(
+        rangoSemanaAgenda(semana)
+      )}</h1>
       <p>Generado: ${htmlEscapeBackup(new Date().toLocaleString('es-ES'))}</p>
-      ${tablaBackupExcel('Resumen sesiones semana', ['Fecha','Hora','Modalidad','Título','Estado','Alumnos','Grupos','Publicados','Detalle grupos'], sesionesSemana.map((sesion) => [sesion.fecha, `${sesion.hora_inicio}-${sesion.hora_fin}`, sesion.modalidad, sesion.titulo, sesion.estado, sesion.totalAlumnos, sesion.totalGrupos, sesion.publicados, gruposTextoResumenSesion(sesion)]))}
-      ${tablaBackupExcel('Alumnos base Baby/Intensivos', ['Alumno','Nivel actual','Nivel estimado','Estado ficha','Reportes','Última fecha','Última recomendación'], alumnos.map((alumno) => [alumno.alumno, alumno.nivel_actual || '', alumno.nivel_estimado || '', alumno.estado_ficha, alumno.total_reportes, alumno.ultima_fecha_reporte || '', alumno.ultima_recomendacion || '']))}
-      ${tablaBackupExcel('Ocio alumnos', ['Alumno','Nivel','Grupo estable','Día fijo','Hora fija','Reportes','Observaciones'], ocioAlumnos.map((alumno) => [alumno.alumno, alumno.nivel_usado || alumno.nivel || '', alumno.grupo_estable || '', alumno.dia_fijo || '', `${horaCorta(alumno.hora_inicio_fija)}-${horaCorta(alumno.hora_fin_fija)}`, alumno.total_reportes, alumno.observaciones || '']))}
-      ${tablaBackupExcel('Ocio grupos estables', ['Grupo','Día','Hora','Nivel','Pista','Punto','Alumnos'], ocioGrupos.map((grupo) => [grupo.nombre_grupo, grupo.dia_semana, `${horaCorta(grupo.hora_inicio)}-${horaCorta(grupo.hora_fin)}`, grupo.nivel_grupo || '', grupo.pista || '', grupo.punto_encuentro || '', grupo.alumnos_lista || '']))}
-      ${tablaBackupExcel('Intensivos', ['Intensivo','Estado','Sesiones','Alumnos','Inicio','Fin'], intensivos.map((intensivo) => [intensivo.intensivo, intensivo.estado, intensivo.total_dias, intensivo.total_alumnos, intensivo.fecha_inicio || '', intensivo.fecha_fin || '']))}
-      ${tablaBackupExcel('Grupos entrenador semana', ['Fecha','Hora','Modalidad','Grupo','Entrenador','Publicado','Alumnos','Trabajo'], gruposSemana.map((grupo) => [grupo.fecha, `${horaCorta(grupo.hora_inicio)}-${horaCorta(grupo.hora_fin)}`, grupo.modalidad, grupo.nombre_grupo, grupo.entrenador, grupo.publicado ? 'Sí' : 'No', grupo.total_alumnos, grupo.trabajo_diario || '']))}
-      ${tablaBackupExcel('Pendientes reportes semana', ['Fecha','Hora','Entrenador','Modalidad','Grupo','Alumno','Estado asistencia','Estado reporte'], reportesSemana.map((reporte) => [reporte.fecha, `${horaCorta(reporte.hora_inicio)}-${horaCorta(reporte.hora_fin)}`, reporte.entrenador, reporte.modalidad, reporte.nombre_grupo, reporte.alumno, reporte.estado_asistencia, reporte.estado_reporte]))}
-      ${tablaBackupExcel('Cobros mes visible', ['Entrenador','Baby','Intensivos','Ocio','Turnos','Tarifa','Total','Estado'], cobros.map((cobro) => [cobro.entrenador, cobro.total_turnos_baby, cobro.total_turnos_intensivos, cobro.total_turnos_ocio, cobro.total_turnos_computables, cobro.tarifa_por_turno, cobro.total_mes, cobro.estado_mes]))}
+      ${tablaBackupExcel(
+        'Resumen sesiones semana',
+        [
+          'Fecha',
+          'Hora',
+          'Modalidad',
+          'Título',
+          'Estado',
+          'Alumnos',
+          'Grupos',
+          'Publicados',
+          'Detalle grupos',
+        ],
+        sesionesSemana.map((sesion) => [
+          sesion.fecha,
+          `${sesion.hora_inicio}-${sesion.hora_fin}`,
+          sesion.modalidad,
+          sesion.titulo,
+          sesion.estado,
+          sesion.totalAlumnos,
+          sesion.totalGrupos,
+          sesion.publicados,
+          gruposTextoResumenSesion(sesion),
+        ])
+      )}
+      ${tablaBackupExcel(
+        'Alumnos base Baby/Intensivos',
+        [
+          'Alumno',
+          'Nivel actual',
+          'Nivel estimado',
+          'Estado ficha',
+          'Reportes',
+          'Última fecha',
+          'Última recomendación',
+        ],
+        alumnos.map((alumno) => [
+          alumno.alumno,
+          alumno.nivel_actual || '',
+          alumno.nivel_estimado || '',
+          alumno.estado_ficha,
+          alumno.total_reportes,
+          alumno.ultima_fecha_reporte || '',
+          alumno.ultima_recomendacion || '',
+        ])
+      )}
+      ${tablaBackupExcel(
+        'Ocio alumnos',
+        [
+          'Alumno',
+          'Nivel',
+          'Grupo estable',
+          'Día fijo',
+          'Hora fija',
+          'Reportes',
+          'Observaciones',
+        ],
+        ocioAlumnos.map((alumno) => [
+          alumno.alumno,
+          alumno.nivel_usado || alumno.nivel || '',
+          alumno.grupo_estable || '',
+          alumno.dia_fijo || '',
+          `${horaCorta(alumno.hora_inicio_fija)}-${horaCorta(
+            alumno.hora_fin_fija
+          )}`,
+          alumno.total_reportes,
+          alumno.observaciones || '',
+        ])
+      )}
+      ${tablaBackupExcel(
+        'Ocio grupos estables',
+        ['Grupo', 'Día', 'Hora', 'Nivel', 'Pista', 'Punto', 'Alumnos'],
+        ocioGrupos.map((grupo) => [
+          grupo.nombre_grupo,
+          grupo.dia_semana,
+          `${horaCorta(grupo.hora_inicio)}-${horaCorta(grupo.hora_fin)}`,
+          grupo.nivel_grupo || '',
+          grupo.pista || '',
+          grupo.punto_encuentro || '',
+          grupo.alumnos_lista || '',
+        ])
+      )}
+      ${tablaBackupExcel(
+        'Intensivos',
+        ['Intensivo', 'Estado', 'Sesiones', 'Alumnos', 'Inicio', 'Fin'],
+        intensivos.map((intensivo) => [
+          intensivo.intensivo,
+          intensivo.estado,
+          intensivo.total_dias,
+          intensivo.total_alumnos,
+          intensivo.fecha_inicio || '',
+          intensivo.fecha_fin || '',
+        ])
+      )}
+      ${tablaBackupExcel(
+        'Grupos entrenador semana',
+        [
+          'Fecha',
+          'Hora',
+          'Modalidad',
+          'Grupo',
+          'Entrenador',
+          'Publicado',
+          'Alumnos',
+          'Trabajo',
+        ],
+        gruposSemana.map((grupo) => [
+          grupo.fecha,
+          `${horaCorta(grupo.hora_inicio)}-${horaCorta(grupo.hora_fin)}`,
+          grupo.modalidad,
+          grupo.nombre_grupo,
+          grupo.entrenador,
+          grupo.publicado ? 'Sí' : 'No',
+          grupo.total_alumnos,
+          grupo.trabajo_diario || '',
+        ])
+      )}
+      ${tablaBackupExcel(
+        'Pendientes reportes semana',
+        [
+          'Fecha',
+          'Hora',
+          'Entrenador',
+          'Modalidad',
+          'Grupo',
+          'Alumno',
+          'Estado asistencia',
+          'Estado reporte',
+        ],
+        reportesSemana.map((reporte) => [
+          reporte.fecha,
+          `${horaCorta(reporte.hora_inicio)}-${horaCorta(reporte.hora_fin)}`,
+          reporte.entrenador,
+          reporte.modalidad,
+          reporte.nombre_grupo,
+          reporte.alumno,
+          reporte.estado_asistencia,
+          reporte.estado_reporte,
+        ])
+      )}
+      ${tablaBackupExcel(
+        'Cobros mes visible',
+        [
+          'Entrenador',
+          'Baby',
+          'Intensivos',
+          'Ocio',
+          'Turnos',
+          'Tarifa',
+          'Total',
+          'Estado',
+        ],
+        cobros.map((cobro) => [
+          cobro.entrenador,
+          cobro.total_turnos_baby,
+          cobro.total_turnos_intensivos,
+          cobro.total_turnos_ocio,
+          cobro.total_turnos_computables,
+          cobro.tarifa_por_turno,
+          cobro.total_mes,
+          cobro.estado_mes,
+        ])
+      )}
       </body></html>`;
 
-    descargarTextoComoArchivo(`backup_mitico_${semana}.xls`, html, 'application/vnd.ms-excel;charset=utf-8');
+    descargarTextoComoArchivo(
+      `backup_mitico_${semana}.xls`,
+      html,
+      'application/vnd.ms-excel;charset=utf-8'
+    );
     if (backupSemanaStorageKey && typeof window !== 'undefined') {
       const marca = new Date().toLocaleString('es-ES');
       window.localStorage.setItem(backupSemanaStorageKey, marca);
@@ -7148,8 +8952,28 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       gruposTextoResumenSesion(sesion),
     ]);
 
-    const html = `<!doctype html><html><head><meta charset="utf-8" /><style>body{font-family:Arial,sans-serif;}table{border-collapse:collapse;width:100%;}th{background:#111827;color:#fff;}th,td{border:1px solid #d1d5db;padding:6px;font-size:12px;}</style></head><body><h1>Resumen del día ${htmlEscapeBackup(formatearFecha(fechaResumenDiaActiva))}</h1>${tablaBackupExcel('Sesiones del día', ['Fecha','Hora','Modalidad','Título','Estado','Alumnos','Grupos','Publicados','Detalle grupos'], filas)}</body></html>`;
-    descargarTextoComoArchivo(`resumen_dia_${fechaResumenDiaActiva}.xls`, html, 'application/vnd.ms-excel;charset=utf-8');
+    const html = `<!doctype html><html><head><meta charset="utf-8" /><style>body{font-family:Arial,sans-serif;}table{border-collapse:collapse;width:100%;}th{background:#111827;color:#fff;}th,td{border:1px solid #d1d5db;padding:6px;font-size:12px;}</style></head><body><h1>Resumen del día ${htmlEscapeBackup(
+      formatearFecha(fechaResumenDiaActiva)
+    )}</h1>${tablaBackupExcel(
+      'Sesiones del día',
+      [
+        'Fecha',
+        'Hora',
+        'Modalidad',
+        'Título',
+        'Estado',
+        'Alumnos',
+        'Grupos',
+        'Publicados',
+        'Detalle grupos',
+      ],
+      filas
+    )}</body></html>`;
+    descargarTextoComoArchivo(
+      `resumen_dia_${fechaResumenDiaActiva}.xls`,
+      html,
+      'application/vnd.ms-excel;charset=utf-8'
+    );
   }
 
   return (
@@ -7157,7 +8981,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       <header style={cabeceraAppLimpia}>
         <div style={cabeceraMarcaApp}>
           <div style={marcaLogoTituloApp}>
-            <img src={LOGO_MITICO_CLUB} alt="Mítico Club" style={logoMarcaApp} />
+            <img
+              src={LOGO_MITICO_CLUB}
+              alt="Mítico Club"
+              style={logoMarcaApp}
+            />
             <div>
               <p style={marcaKickerApp}>Mítico Club · coordinación deportiva</p>
               <h1 style={tituloMarcaApp}>MITICO BABY / OCIO LOGISTICA</h1>
@@ -7165,75 +8993,190 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           </div>
 
           <details style={chuletaGeneralApp}>
-            <summary style={summaryChuletaApp}>Chuleta rápida del flujo</summary>
+            <summary style={summaryChuletaApp}>
+              Chuleta rápida del flujo
+            </summary>
             <div style={chuletaGridApp}>
-              <div><strong>Trabajo semanal</strong><br />Disponibilidad → sesiones → grupos → publicación → reportes.</div>
-              <div><strong>Intensivos</strong><br />Aimharder → 4 sesiones → grupos por día/turno → reportes → cobros.</div>
-              <div><strong>Ocio</strong><br />Grupos estables → cambios puntuales → preparar semana → entrenador.</div>
-              <div><strong>Dirección</strong><br />Cobros mensuales + backup Excel para no perder datos.</div>
+              <div>
+                <strong>Trabajo semanal</strong>
+                <br />
+                Disponibilidad → sesiones → grupos → publicación → reportes.
+              </div>
+              <div>
+                <strong>Intensivos</strong>
+                <br />
+                Aimharder → 4 sesiones → grupos por día/turno → reportes →
+                cobros.
+              </div>
+              <div>
+                <strong>Ocio</strong>
+                <br />
+                Grupos estables → cambios puntuales → preparar semana →
+                entrenador.
+              </div>
+              <div>
+                <strong>Dirección</strong>
+                <br />
+                Cobros mensuales + backup Excel para no perder datos.
+              </div>
             </div>
           </details>
 
           <div style={semanaTrabajoActivaApp}>
             <span>Semana de trabajo</span>
-            <strong>{semanaAgendaActiva ? rangoSemanaAgenda(semanaAgendaActiva) : '-'}</strong>
+            <strong>
+              {semanaAgendaActiva ? rangoSemanaAgenda(semanaAgendaActiva) : '-'}
+            </strong>
           </div>
 
           {perfilUsuario && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              <span style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: 999, padding: '8px 12px', fontWeight: 900 }}>
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 10,
+                flexWrap: 'wrap',
+                justifyContent: 'flex-end',
+              }}
+            >
+              <span
+                style={{
+                  border: '1px solid #cbd5e1',
+                  background: '#fff',
+                  borderRadius: 999,
+                  padding: '8px 12px',
+                  fontWeight: 900,
+                }}
+              >
                 {perfilUsuario.nombre} · {rolUsuarioTextoApp(perfilUsuario.rol)}
               </span>
-              <button type="button" onClick={onLogout} style={botonSecundario}>Salir</button>
+              <button type="button" onClick={onLogout} style={botonSecundario}>
+                Salir
+              </button>
             </div>
           )}
         </div>
 
         {esCoordinadorApp ? (
-        <nav style={menuPrincipalApp}>
-          <div style={menuBloqueColor('#2563eb', '#eff6ff')}>
-            <span style={menuTituloColor('#2563eb')}>Trabajo semanal</span>
-            <button onClick={() => setPantalla('resumenDia')} style={botonMenuColor(pantalla === 'resumenDia', '#2563eb')}>Resumen del día</button>
-            <button onClick={() => setPantalla('agenda')} style={botonMenuColor(pantalla === 'agenda', '#2563eb')}>Días de entrenamiento</button>
-            <button onClick={() => setPantalla('reportes')} style={botonMenuColor(pantalla === 'reportes', '#2563eb')}>Cierre semanal</button>
-          </div>
+          <nav style={menuPrincipalApp}>
+            <div style={menuBloqueColor('#2563eb', '#eff6ff')}>
+              <span style={menuTituloColor('#2563eb')}>Trabajo semanal</span>
+              <button
+                onClick={() => setPantalla('resumenDia')}
+                style={botonMenuColor(pantalla === 'resumenDia', '#2563eb')}
+              >
+                Resumen del día
+              </button>
+              <button
+                onClick={() => setPantalla('agenda')}
+                style={botonMenuColor(pantalla === 'agenda', '#2563eb')}
+              >
+                Días de entrenamiento
+              </button>
+              <button
+                onClick={() => setPantalla('reportes')}
+                style={botonMenuColor(pantalla === 'reportes', '#2563eb')}
+              >
+                Cierre semanal
+              </button>
+            </div>
 
-          <div style={menuBloqueColor('#7c3aed', '#f5f3ff')}>
-            <span style={menuTituloColor('#7c3aed')}>Fichas</span>
-            <button onClick={() => setPantalla('alumnos')} style={botonMenuColor(pantalla === 'alumnos', '#7c3aed')}>Alumnos</button>
-          </div>
+            <div style={menuBloqueColor('#7c3aed', '#f5f3ff')}>
+              <span style={menuTituloColor('#7c3aed')}>Fichas</span>
+              <button
+                onClick={() => setPantalla('alumnos')}
+                style={botonMenuColor(pantalla === 'alumnos', '#7c3aed')}
+              >
+                Alumnos
+              </button>
+            </div>
 
-          <div style={menuBloqueColor('#f97316', '#fff7ed')}>
-            <span style={menuTituloColor('#f97316')}>Intensivos</span>
-            <button onClick={() => setPantalla('intensivos')} style={botonMenuColor(pantalla === 'intensivos', '#f97316')}>Intensivos</button>
-          </div>
+            <div style={menuBloqueColor('#f97316', '#fff7ed')}>
+              <span style={menuTituloColor('#f97316')}>Intensivos</span>
+              <button
+                onClick={() => setPantalla('intensivos')}
+                style={botonMenuColor(pantalla === 'intensivos', '#f97316')}
+              >
+                Intensivos
+              </button>
+            </div>
 
-          <div style={menuBloqueColor('#16a34a', '#f0fdf4')}>
-            <span style={menuTituloColor('#16a34a')}>Ocio</span>
-            <button onClick={() => setPantalla('ocioAlumnos')} style={botonMenuColor(pantalla === 'ocioAlumnos', '#16a34a')}>Alumnos Ocio</button>
-            <button onClick={() => setPantalla('ocioGrupos')} style={botonMenuColor(pantalla === 'ocioGrupos', '#16a34a')}>Grupos estables</button>
-            <button onClick={() => setPantalla('ocioCambios')} style={botonMenuColor(pantalla === 'ocioCambios', '#16a34a')}>Cambios puntuales</button>
-            <button onClick={() => setPantalla('ocioSemana')} style={botonMenuColor(pantalla === 'ocioSemana', '#16a34a')}>Preparar semana</button>
-          </div>
+            <div style={menuBloqueColor('#16a34a', '#f0fdf4')}>
+              <span style={menuTituloColor('#16a34a')}>Ocio</span>
+              <button
+                onClick={() => setPantalla('ocioAlumnos')}
+                style={botonMenuColor(pantalla === 'ocioAlumnos', '#16a34a')}
+              >
+                Alumnos Ocio
+              </button>
+              <button
+                onClick={() => setPantalla('ocioGrupos')}
+                style={botonMenuColor(pantalla === 'ocioGrupos', '#16a34a')}
+              >
+                Grupos estables
+              </button>
+              <button
+                onClick={() => setPantalla('ocioCambios')}
+                style={botonMenuColor(pantalla === 'ocioCambios', '#16a34a')}
+              >
+                Cambios puntuales
+              </button>
+              <button
+                onClick={() => setPantalla('ocioSemana')}
+                style={botonMenuColor(pantalla === 'ocioSemana', '#16a34a')}
+              >
+                Preparar semana
+              </button>
+            </div>
 
-          <div style={menuBloqueColor('#0f766e', '#ecfdf5')}>
-            <span style={menuTituloColor('#0f766e')}>Entrenadores</span>
-            <button onClick={() => setPantalla('entrenadores')} style={botonMenuColor(pantalla === 'entrenadores', '#0f766e')}>Gestión entrenadores</button>
-            <button onClick={() => setPantalla('disponibilidad')} style={botonMenuColor(pantalla === 'disponibilidad', '#0f766e')}>Disponibilidad</button>
-            <button onClick={() => setPantalla('entrenador')} style={botonMenuColor(pantalla === 'entrenador', '#0f766e')}>Vista entrenador</button>
-          </div>
+            <div style={menuBloqueColor('#0f766e', '#ecfdf5')}>
+              <span style={menuTituloColor('#0f766e')}>Entrenadores</span>
+              <button
+                onClick={() => setPantalla('entrenadores')}
+                style={botonMenuColor(pantalla === 'entrenadores', '#0f766e')}
+              >
+                Gestión entrenadores
+              </button>
+              <button
+                onClick={() => setPantalla('disponibilidad')}
+                style={botonMenuColor(pantalla === 'disponibilidad', '#0f766e')}
+              >
+                Disponibilidad
+              </button>
+              <button
+                onClick={() => setPantalla('entrenador')}
+                style={botonMenuColor(pantalla === 'entrenador', '#0f766e')}
+              >
+                Vista entrenador
+              </button>
+            </div>
 
-          <div style={menuBloqueColor('#e11d48', '#fff1f2')}>
-            <span style={menuTituloColor('#e11d48')}>Dirección</span>
-            <button onClick={() => setPantalla('cobros')} style={botonMenuColor(pantalla === 'cobros', '#e11d48')}>Cobros</button>
-            <button onClick={() => setPantalla('exportaciones')} style={botonMenuColor(pantalla === 'exportaciones', '#e11d48')}>Exportaciones</button>
-          </div>
-        </nav>
+            <div style={menuBloqueColor('#e11d48', '#fff1f2')}>
+              <span style={menuTituloColor('#e11d48')}>Dirección</span>
+              <button
+                onClick={() => setPantalla('cobros')}
+                style={botonMenuColor(pantalla === 'cobros', '#e11d48')}
+              >
+                Cobros
+              </button>
+              <button
+                onClick={() => setPantalla('exportaciones')}
+                style={botonMenuColor(pantalla === 'exportaciones', '#e11d48')}
+              >
+                Exportaciones
+              </button>
+            </div>
+          </nav>
         ) : (
           <nav style={menuPrincipalApp}>
             <div style={menuBloqueColor('#0f766e', '#ecfdf5')}>
               <span style={menuTituloColor('#0f766e')}>Entrenador</span>
-              <button onClick={() => setPantalla('entrenador')} style={botonMenuColor(true, '#0f766e')}>Mi panel</button>
+              <button
+                onClick={() => setPantalla('entrenador')}
+                style={botonMenuColor(true, '#0f766e')}
+              >
+                Mi panel
+              </button>
             </div>
           </nav>
         )}
@@ -7264,21 +9207,41 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               border: '1px solid #e5e7eb',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 10 }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 12,
+                alignItems: 'flex-start',
+                marginBottom: 10,
+              }}
+            >
               <div>
                 <p style={etiquetaSuperior}>PREVISUALIZACIÓN WHATSAPP</p>
                 <h2 style={{ margin: 0 }}>{whatsappPreview.titulo}</h2>
               </div>
-              <button onClick={() => setWhatsappPreview(null)} style={botonSecundario}>Cerrar</button>
+              <button
+                onClick={() => setWhatsappPreview(null)}
+                style={botonSecundario}
+              >
+                Cerrar
+              </button>
             </div>
 
             <div style={{ ...avisoNeutral, marginBottom: 12 }}>
-              Revisa y modifica aquí el texto antes de copiarlo. La hora del turno se rellena automáticamente y también aparece en el bloque final de papis importante.
+              Revisa y modifica aquí el texto antes de copiarlo. La hora del
+              turno se rellena automáticamente y también aparece en el bloque
+              final de papis importante.
             </div>
 
             <textarea
               value={whatsappPreview.texto}
-              onChange={(e) => setWhatsappPreview({ ...whatsappPreview, texto: e.target.value })}
+              onChange={(e) =>
+                setWhatsappPreview({
+                  ...whatsappPreview,
+                  texto: e.target.value,
+                })
+              }
               rows={18}
               style={{
                 width: '100%',
@@ -7288,14 +9251,32 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                 padding: 14,
                 fontSize: 15,
                 lineHeight: 1.45,
-                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                fontFamily:
+                  'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
                 whiteSpace: 'pre-wrap',
               }}
             />
 
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-              <button onClick={copiarWhatsappPrevisualizado} style={botonPrincipal}>Copiar WhatsApp revisado</button>
-              <button onClick={() => setWhatsappPreview(null)} style={botonSecundario}>Cerrar sin copiar</button>
+            <div
+              style={{
+                display: 'flex',
+                gap: 8,
+                flexWrap: 'wrap',
+                marginTop: 12,
+              }}
+            >
+              <button
+                onClick={copiarWhatsappPrevisualizado}
+                style={botonPrincipal}
+              >
+                Copiar WhatsApp revisado
+              </button>
+              <button
+                onClick={() => setWhatsappPreview(null)}
+                style={botonSecundario}
+              >
+                Cerrar sin copiar
+              </button>
             </div>
           </article>
         </div>
@@ -7367,15 +9348,37 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               fontFamily: 'Arial, sans-serif',
             }}
           >
-            <div className="no-imprimir-cobro" style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', marginBottom: 14 }}>
+            <div
+              className="no-imprimir-cobro"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 12,
+                alignItems: 'flex-start',
+                marginBottom: 14,
+              }}
+            >
               <div>
                 <p style={etiquetaSuperior}>PREVISUALIZACIÓN PDF</p>
                 <h2 style={{ margin: 0 }}>{cobroPdfPreview.titulo}</h2>
-                <p style={{ margin: '6px 0 0', color: '#555' }}>Revisa el resumen. Luego pulsa imprimir y en Mac guarda como PDF.</p>
+                <p style={{ margin: '6px 0 0', color: '#555' }}>
+                  Revisa el resumen. Luego pulsa imprimir y en Mac guarda como
+                  PDF.
+                </p>
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button onClick={imprimirCobroPdfPreview} style={botonPrincipal}>Imprimir / guardar PDF</button>
-                <button onClick={() => setCobroPdfPreview(null)} style={botonSecundario}>Cerrar</button>
+                <button
+                  onClick={imprimirCobroPdfPreview}
+                  style={botonPrincipal}
+                >
+                  Imprimir / guardar PDF
+                </button>
+                <button
+                  onClick={() => setCobroPdfPreview(null)}
+                  style={botonSecundario}
+                >
+                  Cerrar
+                </button>
               </div>
             </div>
 
@@ -7411,52 +9414,136 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               <h2 style={{ margin: 0 }}>Resumen del día</h2>
               <details style={ayudaDesplegableCompacta}>
                 <summary>Chuleta</summary>
-                <p style={{ margin: '8px 0 0' }}>Control de pista: sesiones, grupos, entrenadores, pendientes y reportes del día.</p>
+                <p style={{ margin: '8px 0 0' }}>
+                  Control de pista: sesiones, grupos, entrenadores, pendientes y
+                  reportes del día.
+                </p>
               </details>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <input type="date" value={fechaResumenDiaActiva} onChange={(e) => setFechaResumenDia(e.target.value)} style={inputCampo} />
-              <button onClick={actualizarTodo} style={botonSecundario}>Actualizar</button>
-              <button onClick={descargarResumenDiaExcel} style={botonPrincipal}>Excel resumen día</button>
+              <input
+                type="date"
+                value={fechaResumenDiaActiva}
+                onChange={(e) => setFechaResumenDia(e.target.value)}
+                style={inputCampo}
+              />
+              <button onClick={actualizarTodo} style={botonSecundario}>
+                Actualizar
+              </button>
+              <button onClick={descargarResumenDiaExcel} style={botonPrincipal}>
+                Excel resumen día
+              </button>
             </div>
           </div>
 
           <div style={gridResumenInicio}>
-            <div style={tarjetaInicioOk}><strong>Sesiones</strong><br /><span style={{ fontSize: 26, fontWeight: 900 }}>{sesionesResumenDia.length}</span></div>
-            <div style={tarjetaInicioOk}><strong>Alumnos previstos</strong><br /><span style={{ fontSize: 26, fontWeight: 900 }}>{totalAlumnosResumenDia}</span></div>
-            <div style={totalPublicadosResumenDia === totalGruposResumenDia ? tarjetaInicioOk : tarjetaInicioAlerta}><strong>Grupos publicados</strong><br /><span style={{ fontSize: 26, fontWeight: 900 }}>{totalPublicadosResumenDia}/{totalGruposResumenDia}</span></div>
-            <div style={reportesResumenDia.length === 0 ? tarjetaInicioOk : tarjetaInicioRojo}><strong>Pendientes reportes</strong><br /><span style={{ fontSize: 26, fontWeight: 900 }}>{reportesResumenDia.length}</span></div>
+            <div style={tarjetaInicioOk}>
+              <strong>Sesiones</strong>
+              <br />
+              <span style={{ fontSize: 26, fontWeight: 900 }}>
+                {sesionesResumenDia.length}
+              </span>
+            </div>
+            <div style={tarjetaInicioOk}>
+              <strong>Alumnos previstos</strong>
+              <br />
+              <span style={{ fontSize: 26, fontWeight: 900 }}>
+                {totalAlumnosResumenDia}
+              </span>
+            </div>
+            <div
+              style={
+                totalPublicadosResumenDia === totalGruposResumenDia
+                  ? tarjetaInicioOk
+                  : tarjetaInicioAlerta
+              }
+            >
+              <strong>Grupos publicados</strong>
+              <br />
+              <span style={{ fontSize: 26, fontWeight: 900 }}>
+                {totalPublicadosResumenDia}/{totalGruposResumenDia}
+              </span>
+            </div>
+            <div
+              style={
+                reportesResumenDia.length === 0
+                  ? tarjetaInicioOk
+                  : tarjetaInicioRojo
+              }
+            >
+              <strong>Pendientes reportes</strong>
+              <br />
+              <span style={{ fontSize: 26, fontWeight: 900 }}>
+                {reportesResumenDia.length}
+              </span>
+            </div>
           </div>
 
           {gruposPendientesEntrenadorResumenDia.length > 0 && (
-            <div style={avisoPendiente}>Hay {gruposPendientesEntrenadorResumenDia.length} grupo(s) sin entrenador asignado para este día.</div>
+            <div style={avisoPendiente}>
+              Hay {gruposPendientesEntrenadorResumenDia.length} grupo(s) sin
+              entrenador asignado para este día.
+            </div>
           )}
 
           <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
             {sesionesResumenDia.length === 0 ? (
-              <article style={tarjetaMovilVacia}>No hay sesiones preparadas para este día.</article>
-            ) : sesionesResumenDia.map((sesion) => (
-              <article key={sesion.id} style={tarjetaEntrenadorMovil}>
-                <div style={agendaCabeceraLinea}>
-                  <div>
-                    <p style={etiquetaSuperior}>{sesion.modalidad}</p>
-                    <h3 style={{ margin: 0 }}>{horaCorta(sesion.hora_inicio)}–{horaCorta(sesion.hora_fin)} · {sesion.titulo}</h3>
-                    <p style={{ margin: '6px 0 0', color: '#555' }}>{sesion.estado}</p>
-                  </div>
-                  <span style={miniBadge}>{sesion.totalAlumnos} niños · {sesion.totalGrupos} grupos</span>
-                </div>
-
-                <div style={gridResumenInicio}>
-                  <div style={miniTarjetaBlanca}><strong>Publicados</strong><br />{sesion.publicados}/{sesion.totalGrupos}</div>
-                  <div style={miniTarjetaBlanca}><strong>Origen</strong><br />{sesion.origen}</div>
-                  <div style={miniTarjetaBlanca}><strong>Detalle</strong><br />{gruposTextoResumenSesion(sesion) || 'Sin grupos creados'}</div>
-                </div>
-
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button onClick={() => abrirSesionAgenda(sesion, sesion.totalGrupos > 0 ? 'grupos' : 'alumnos')} style={botonPrincipal}>Abrir sesión</button>
-                </div>
+              <article style={tarjetaMovilVacia}>
+                No hay sesiones preparadas para este día.
               </article>
-            ))}
+            ) : (
+              sesionesResumenDia.map((sesion) => (
+                <article key={sesion.id} style={tarjetaEntrenadorMovil}>
+                  <div style={agendaCabeceraLinea}>
+                    <div>
+                      <p style={etiquetaSuperior}>{sesion.modalidad}</p>
+                      <h3 style={{ margin: 0 }}>
+                        {horaCorta(sesion.hora_inicio)}–
+                        {horaCorta(sesion.hora_fin)} · {sesion.titulo}
+                      </h3>
+                      <p style={{ margin: '6px 0 0', color: '#555' }}>
+                        {sesion.estado}
+                      </p>
+                    </div>
+                    <span style={miniBadge}>
+                      {sesion.totalAlumnos} niños · {sesion.totalGrupos} grupos
+                    </span>
+                  </div>
+
+                  <div style={gridResumenInicio}>
+                    <div style={miniTarjetaBlanca}>
+                      <strong>Publicados</strong>
+                      <br />
+                      {sesion.publicados}/{sesion.totalGrupos}
+                    </div>
+                    <div style={miniTarjetaBlanca}>
+                      <strong>Origen</strong>
+                      <br />
+                      {sesion.origen}
+                    </div>
+                    <div style={miniTarjetaBlanca}>
+                      <strong>Detalle</strong>
+                      <br />
+                      {gruposTextoResumenSesion(sesion) || 'Sin grupos creados'}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() =>
+                        abrirSesionAgenda(
+                          sesion,
+                          sesion.totalGrupos > 0 ? 'grupos' : 'alumnos'
+                        )
+                      }
+                      style={botonPrincipal}
+                    >
+                      Abrir sesión
+                    </button>
+                  </div>
+                </article>
+              ))
+            )}
           </div>
 
           {reportesResumenDia.length > 0 && (
@@ -7464,8 +9551,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               <h3 style={{ marginTop: 0 }}>Pendientes del día</h3>
               <div style={{ display: 'grid', gap: 8 }}>
                 {reportesResumenDia.slice(0, 30).map((reporte) => (
-                  <div key={`${reporte.grupo_id}-${reporte.alumno_id}-${reporte.estado_reporte}`} style={avisoReportePendiente}>
-                    {horaCorta(reporte.hora_inicio)} · {reporte.entrenador} · {reporte.alumno} · {reporte.estado_reporte}
+                  <div
+                    key={`${reporte.grupo_id}-${reporte.alumno_id}-${reporte.estado_reporte}`}
+                    style={avisoReportePendiente}
+                  >
+                    {horaCorta(reporte.hora_inicio)} · {reporte.entrenador} ·{' '}
+                    {reporte.alumno} · {reporte.estado_reporte}
                   </div>
                 ))}
               </div>
@@ -7482,33 +9573,94 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               <h2 style={{ margin: 0 }}>Exportaciones y backup Excel</h2>
               <details style={ayudaDesplegableCompacta}>
                 <summary>Chuleta</summary>
-                <p style={{ margin: '8px 0 0' }}>Descarga semanal compatible con Excel: sesiones, alumnos, Ocio, Intensivos, reportes y cobros.</p>
+                <p style={{ margin: '8px 0 0' }}>
+                  Descarga semanal compatible con Excel: sesiones, alumnos,
+                  Ocio, Intensivos, reportes y cobros.
+                </p>
               </details>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={actualizarTodo} style={botonSecundario}>Actualizar datos</button>
-              <button onClick={descargarBackupSemanalExcel} style={botonPrincipal}>Descargar backup semanal Excel</button>
+              <button onClick={actualizarTodo} style={botonSecundario}>
+                Actualizar datos
+              </button>
+              <button
+                onClick={descargarBackupSemanalExcel}
+                style={botonPrincipal}
+              >
+                Descargar backup semanal Excel
+              </button>
             </div>
           </div>
 
           <article style={{ ...tarjeta, marginTop: 16 }}>
             <h3 style={{ marginTop: 0 }}>Backup semanal automático</h3>
-            <div style={backupSemanaRealizado || ultimaDescargaBackupSemana ? avisoCompleto : avisoPendiente}>
-              Semana {rangoSemanaAgenda(claveSemanaBackupActiva)} · {backupSemanaRealizado || ultimaDescargaBackupSemana ? `Última copia: ${backupSemanaRealizado || ultimaDescargaBackupSemana}` : 'Pendiente de descargar esta semana'}
+            <div
+              style={
+                backupSemanaRealizado || ultimaDescargaBackupSemana
+                  ? avisoCompleto
+                  : avisoPendiente
+              }
+            >
+              Semana {rangoSemanaAgenda(claveSemanaBackupActiva)} ·{' '}
+              {backupSemanaRealizado || ultimaDescargaBackupSemana
+                ? `Última copia: ${
+                    backupSemanaRealizado || ultimaDescargaBackupSemana
+                  }`
+                : 'Pendiente de descargar esta semana'}
             </div>
             <details style={ayudaDesplegableCompacta}>
               <summary>Cómo funciona</summary>
-              <p style={{ margin: '8px 0 0' }}>El navegador no permite descargar archivos solo sin tocar nada. La app te marca cada semana si falta la copia y la descarga con un clic.</p>
+              <p style={{ margin: '8px 0 0' }}>
+                El navegador no permite descargar archivos solo sin tocar nada.
+                La app te marca cada semana si falta la copia y la descarga con
+                un clic.
+              </p>
             </details>
           </article>
 
           <div style={gridResumenInicio}>
-            <div style={miniTarjetaBlanca}><strong>Sesiones semana</strong><br />{sesionesAgenda.filter((sesion) => sesion.fecha >= claveSemanaBackupActiva && sesion.fecha <= domingoSemanaOcioActiva()).length}</div>
-            <div style={miniTarjetaBlanca}><strong>Alumnos base</strong><br />{alumnos.length}</div>
-            <div style={miniTarjetaBlanca}><strong>Alumnos Ocio</strong><br />{ocioAlumnos.length}</div>
-            <div style={miniTarjetaBlanca}><strong>Intensivos</strong><br />{intensivos.length}</div>
-            <div style={miniTarjetaBlanca}><strong>Reportes pendientes semana</strong><br />{reportesPendientes.filter((reporte) => reporte.fecha >= claveSemanaBackupActiva && reporte.fecha <= domingoSemanaOcioActiva()).length}</div>
-            <div style={miniTarjetaBlanca}><strong>Cobros mes visible</strong><br />{cobros.length} entrenadores</div>
+            <div style={miniTarjetaBlanca}>
+              <strong>Sesiones semana</strong>
+              <br />
+              {
+                sesionesAgenda.filter(
+                  (sesion) =>
+                    sesion.fecha >= claveSemanaBackupActiva &&
+                    sesion.fecha <= domingoSemanaOcioActiva()
+                ).length
+              }
+            </div>
+            <div style={miniTarjetaBlanca}>
+              <strong>Alumnos base</strong>
+              <br />
+              {alumnos.length}
+            </div>
+            <div style={miniTarjetaBlanca}>
+              <strong>Alumnos Ocio</strong>
+              <br />
+              {ocioAlumnos.length}
+            </div>
+            <div style={miniTarjetaBlanca}>
+              <strong>Intensivos</strong>
+              <br />
+              {intensivos.length}
+            </div>
+            <div style={miniTarjetaBlanca}>
+              <strong>Reportes pendientes semana</strong>
+              <br />
+              {
+                reportesPendientes.filter(
+                  (reporte) =>
+                    reporte.fecha >= claveSemanaBackupActiva &&
+                    reporte.fecha <= domingoSemanaOcioActiva()
+                ).length
+              }
+            </div>
+            <div style={miniTarjetaBlanca}>
+              <strong>Cobros mes visible</strong>
+              <br />
+              {cobros.length} entrenadores
+            </div>
           </div>
         </section>
       )}
@@ -7519,18 +9671,41 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
             <div>
               <p style={etiquetaSuperior}>OCIO · EVOLUCIÓN</p>
               <h2 style={{ margin: 0 }}>Revisión Ocio</h2>
-              <p style={{ margin: '8px 0 0', color: '#555' }}>Niños que pueden necesitar cambio de grupo, alumnos sin grupo y alumnos sin reportes.</p>
+              <p style={{ margin: '8px 0 0', color: '#555' }}>
+                Niños que pueden necesitar cambio de grupo, alumnos sin grupo y
+                alumnos sin reportes.
+              </p>
             </div>
-            <button onClick={() => { cargarOcioAlumnos(); cargarOcioGrupos(); cargarOcioCambios(); }} style={botonSecundario}>Actualizar revisión</button>
+            <button
+              onClick={() => {
+                cargarOcioAlumnos();
+                cargarOcioGrupos();
+                cargarOcioCambios();
+              }}
+              style={botonSecundario}
+            >
+              Actualizar revisión
+            </button>
           </div>
 
           <div style={{ ...tarjeta, marginTop: 16 }}>
             <div style={gridFormulario}>
-              <label style={labelCampo}>Buscar
-                <input value={busquedaRevisionOcio} onChange={(e) => setBusquedaRevisionOcio(e.target.value)} style={inputCampo} placeholder="Nombre, nivel o grupo" />
+              <label style={labelCampo}>
+                Buscar
+                <input
+                  value={busquedaRevisionOcio}
+                  onChange={(e) => setBusquedaRevisionOcio(e.target.value)}
+                  style={inputCampo}
+                  placeholder="Nombre, nivel o grupo"
+                />
               </label>
-              <label style={labelCampo}>Filtro
-                <select value={filtroRevisionOcio} onChange={(e) => setFiltroRevisionOcio(e.target.value as any)} style={selectCampo}>
+              <label style={labelCampo}>
+                Filtro
+                <select
+                  value={filtroRevisionOcio}
+                  onChange={(e) => setFiltroRevisionOcio(e.target.value as any)}
+                  style={selectCampo}
+                >
                   <option value="cambios">Solo posibles cambios</option>
                   <option value="sin_grupo">Sin grupo estable</option>
                   <option value="sin_reportes">Sin reportes</option>
@@ -7541,41 +9716,115 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           </div>
 
           <div style={gridResumenInicio}>
-            <div style={tarjetaInicioAlerta}><strong>Posibles cambios</strong><br /><span style={{ fontSize: 26, fontWeight: 900 }}>{ocioRevisionBase.filter((alumno) => alumno.necesita_cambio_revision).length}</span></div>
-            <div style={tarjetaInicioRojo}><strong>Sin grupo</strong><br /><span style={{ fontSize: 26, fontWeight: 900 }}>{ocioRevisionBase.filter((alumno) => alumno.sin_grupo_revision).length}</span></div>
-            <div style={tarjetaInicioAlerta}><strong>Sin reportes</strong><br /><span style={{ fontSize: 26, fontWeight: 900 }}>{ocioRevisionBase.filter((alumno) => alumno.sin_reportes_revision).length}</span></div>
+            <div style={tarjetaInicioAlerta}>
+              <strong>Posibles cambios</strong>
+              <br />
+              <span style={{ fontSize: 26, fontWeight: 900 }}>
+                {
+                  ocioRevisionBase.filter(
+                    (alumno) => alumno.necesita_cambio_revision
+                  ).length
+                }
+              </span>
+            </div>
+            <div style={tarjetaInicioRojo}>
+              <strong>Sin grupo</strong>
+              <br />
+              <span style={{ fontSize: 26, fontWeight: 900 }}>
+                {
+                  ocioRevisionBase.filter((alumno) => alumno.sin_grupo_revision)
+                    .length
+                }
+              </span>
+            </div>
+            <div style={tarjetaInicioAlerta}>
+              <strong>Sin reportes</strong>
+              <br />
+              <span style={{ fontSize: 26, fontWeight: 900 }}>
+                {
+                  ocioRevisionBase.filter(
+                    (alumno) => alumno.sin_reportes_revision
+                  ).length
+                }
+              </span>
+            </div>
           </div>
 
           <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
             {ocioRevisionFiltrada.length === 0 ? (
-              <article style={tarjetaMovilVacia}>No hay alumnos en este filtro.</article>
-            ) : ocioRevisionFiltrada.map((alumno) => (
-              <article key={alumno.alumno_id} style={tarjetaEntrenadorMovil}>
-                <div style={agendaCabeceraLinea}>
-                  <div>
-                    <h3 style={{ margin: 0 }}>{alumno.alumno}</h3>
-                    <p style={{ margin: '6px 0 0', color: '#555' }}>Nivel {alumno.nivel_usado || alumno.nivel || '-'} · Grupo actual: {alumno.grupo_estable || 'Sin grupo'}</p>
-                  </div>
-                  <span style={alumno.recomendacion_revision === 'OK' ? miniBadgeVerde : miniBadge}>{alumno.recomendacion_revision}</span>
-                </div>
-
-                <div style={gridFormulario}>
-                  <label style={labelCampo}>Grupo destino sugerido/manual
-                    <select value={destinoRevisionOcio[alumno.alumno_id] || ''} onChange={(e) => setDestinoRevisionOcio({ ...destinoRevisionOcio, [alumno.alumno_id]: e.target.value })} style={selectCampo}>
-                      <option value="">Elegir grupo...</option>
-                      {ocioGrupos.map((grupo) => (
-                        <option key={grupo.grupo_id} value={grupo.grupo_id}>{grupo.nombre_grupo} · {grupo.dia_semana} {horaCorta(grupo.hora_inicio)} · {grupo.total_alumnos} niños</option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button onClick={() => abrirEvaluacionOcio(alumno)} style={botonSecundario}>Ver evaluación</button>
-                  <button onClick={() => moverAlumnoGrupoOcio(alumno.alumno_id, destinoRevisionOcio[alumno.alumno_id])} disabled={!destinoRevisionOcio[alumno.alumno_id]} style={botonPrincipal}>Aceptar cambio de grupo</button>
-                </div>
+              <article style={tarjetaMovilVacia}>
+                No hay alumnos en este filtro.
               </article>
-            ))}
+            ) : (
+              ocioRevisionFiltrada.map((alumno) => (
+                <article key={alumno.alumno_id} style={tarjetaEntrenadorMovil}>
+                  <div style={agendaCabeceraLinea}>
+                    <div>
+                      <h3 style={{ margin: 0 }}>{alumno.alumno}</h3>
+                      <p style={{ margin: '6px 0 0', color: '#555' }}>
+                        Nivel {alumno.nivel_usado || alumno.nivel || '-'} ·
+                        Grupo actual: {alumno.grupo_estable || 'Sin grupo'}
+                      </p>
+                    </div>
+                    <span
+                      style={
+                        alumno.recomendacion_revision === 'OK'
+                          ? miniBadgeVerde
+                          : miniBadge
+                      }
+                    >
+                      {alumno.recomendacion_revision}
+                    </span>
+                  </div>
+
+                  <div style={gridFormulario}>
+                    <label style={labelCampo}>
+                      Grupo destino sugerido/manual
+                      <select
+                        value={destinoRevisionOcio[alumno.alumno_id] || ''}
+                        onChange={(e) =>
+                          setDestinoRevisionOcio({
+                            ...destinoRevisionOcio,
+                            [alumno.alumno_id]: e.target.value,
+                          })
+                        }
+                        style={selectCampo}
+                      >
+                        <option value="">Elegir grupo...</option>
+                        {ocioGrupos.map((grupo) => (
+                          <option key={grupo.grupo_id} value={grupo.grupo_id}>
+                            {grupo.nombre_grupo} · {grupo.dia_semana}{' '}
+                            {horaCorta(grupo.hora_inicio)} ·{' '}
+                            {grupo.total_alumnos} niños
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => abrirEvaluacionOcio(alumno)}
+                      style={botonSecundario}
+                    >
+                      Ver evaluación
+                    </button>
+                    <button
+                      onClick={() =>
+                        moverAlumnoGrupoOcio(
+                          alumno.alumno_id,
+                          destinoRevisionOcio[alumno.alumno_id]
+                        )
+                      }
+                      disabled={!destinoRevisionOcio[alumno.alumno_id]}
+                      style={botonPrincipal}
+                    >
+                      Aceptar cambio de grupo
+                    </button>
+                  </div>
+                </article>
+              ))
+            )}
           </div>
         </section>
       )}
@@ -7585,21 +9834,34 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           <article style={agendaHeroTrabajoSemanal}>
             <div>
               <p style={etiquetaSuperior}>TRABAJO SEMANAL · AGENDA</p>
-              <h2 style={{ margin: '3px 0 0', fontSize: 28 }}>Días de entrenamiento</h2>
+              <h2 style={{ margin: '3px 0 0', fontSize: 28 }}>
+                Días de entrenamiento
+              </h2>
               <p style={{ margin: '8px 0 0', color: '#475569' }}>
-                Semana compacta: eliges semana, abres un día y trabajas solo una sesión. Sin bajar toda la pantalla.
+                Semana compacta: eliges semana, abres un día y trabajas solo una
+                sesión. Sin bajar toda la pantalla.
               </p>
             </div>
             <div style={agendaPanelRangoSemana}>
               <span style={agendaMiniLabel}>Semana completa</span>
-              <strong>{semanaAgendaActiva ? rangoSemanaAgenda(semanaAgendaActiva) : 'Sin semana'}</strong>
-              <span style={agendaMiniTexto}>Entrenos: {semanaAgendaActiva ? rangoEntrenosSemanaAgenda(semanaAgendaActiva) : '-'}</span>
+              <strong>
+                {semanaAgendaActiva
+                  ? rangoSemanaAgenda(semanaAgendaActiva)
+                  : 'Sin semana'}
+              </strong>
+              <span style={agendaMiniTexto}>
+                Entrenos:{' '}
+                {semanaAgendaActiva
+                  ? rangoEntrenosSemanaAgenda(semanaAgendaActiva)
+                  : '-'}
+              </span>
             </div>
           </article>
 
           <section style={agendaPanelControles}>
             <div style={agendaControlesGrid}>
-              <label style={labelCampo}>Temporada
+              <label style={labelCampo}>
+                Temporada
                 <select
                   value={anioInicioTemporadaAgenda}
                   style={selectCampoAgenda}
@@ -7614,12 +9876,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   }}
                 >
                   {opcionesTemporadaAgenda.map((anio) => (
-                    <option key={anio} value={anio}>{nombreTemporadaAgenda(anio)}</option>
+                    <option key={anio} value={anio}>
+                      {nombreTemporadaAgenda(anio)}
+                    </option>
                   ))}
                 </select>
               </label>
 
-              <label style={labelCampo}>Mes
+              <label style={labelCampo}>
+                Mes
                 <select
                   value={mesAgendaActivo}
                   style={selectCampoAgenda}
@@ -7632,12 +9897,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   }}
                 >
                   {mesesAgenda.map((clave) => (
-                    <option key={clave} value={clave}>{nombreMesAgendaDesdeClave(clave)}</option>
+                    <option key={clave} value={clave}>
+                      {nombreMesAgendaDesdeClave(clave)}
+                    </option>
                   ))}
                 </select>
               </label>
 
-              <label style={labelCampo}>Semana
+              <label style={labelCampo}>
+                Semana
                 <select
                   value={semanaAgendaActiva}
                   style={selectCampoAgenda}
@@ -7649,118 +9917,286 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   }}
                 >
                   {semanasAgenda.map((semana) => (
-                    <option key={semana} value={semana}>Semana {rangoSemanaAgenda(semana)}</option>
+                    <option key={semana} value={semana}>
+                      Semana {rangoSemanaAgenda(semana)}
+                    </option>
                   ))}
                 </select>
               </label>
             </div>
 
             {diasSemanaAgenda.length === 0 ? (
-              <div style={agendaVacio}>Selecciona una semana para ver los días de entrenamiento.</div>
-            ) : (() => {
-              const diaActivo = diasSemanaAgenda.find((dia) => dia.fecha === agendaDiaCompactoActivo) || diasSemanaAgenda[0];
-              const sesionesDia = diaActivo ? sesionesDelDiaAgenda(diaActivo.fecha) : [];
-              const totalAlumnosDia = sesionesDia.reduce((total, sesion) => total + Number(sesion.totalAlumnos || 0), 0);
-              const totalGruposDia = sesionesDia.reduce((total, sesion) => total + Number(sesion.totalGrupos || 0), 0);
+              <div style={agendaVacio}>
+                Selecciona una semana para ver los días de entrenamiento.
+              </div>
+            ) : (
+              (() => {
+                const diaActivo =
+                  diasSemanaAgenda.find(
+                    (dia) => dia.fecha === agendaDiaCompactoActivo
+                  ) || diasSemanaAgenda[0];
+                const sesionesDia = diaActivo
+                  ? sesionesDelDiaAgenda(diaActivo.fecha)
+                  : [];
+                const totalAlumnosDia = sesionesDia.reduce(
+                  (total, sesion) => total + Number(sesion.totalAlumnos || 0),
+                  0
+                );
+                const totalGruposDia = sesionesDia.reduce(
+                  (total, sesion) => total + Number(sesion.totalGrupos || 0),
+                  0
+                );
 
-              return (
-                <div style={{ display: 'grid', gap: 14 }}>
-                  <div style={agendaDiasSelectorCompacto}>
-                    {diasSemanaAgenda.map((dia) => {
-                      const sesionesDiaBoton = sesionesDelDiaAgenda(dia.fecha);
-                      const alumnosDiaBoton = sesionesDiaBoton.reduce((total, sesion) => total + Number(sesion.totalAlumnos || 0), 0);
-                      const gruposDiaBoton = sesionesDiaBoton.reduce((total, sesion) => total + Number(sesion.totalGrupos || 0), 0);
-                      const activo = dia.fecha === diaActivo.fecha;
+                return (
+                  <div style={{ display: 'grid', gap: 14 }}>
+                    <div style={agendaDiasSelectorCompacto}>
+                      {diasSemanaAgenda.map((dia) => {
+                        const sesionesDiaBoton = sesionesDelDiaAgenda(
+                          dia.fecha
+                        );
+                        const alumnosDiaBoton = sesionesDiaBoton.reduce(
+                          (total, sesion) =>
+                            total + Number(sesion.totalAlumnos || 0),
+                          0
+                        );
+                        const gruposDiaBoton = sesionesDiaBoton.reduce(
+                          (total, sesion) =>
+                            total + Number(sesion.totalGrupos || 0),
+                          0
+                        );
+                        const activo = dia.fecha === diaActivo.fecha;
 
-                      return (
-                        <button
-                          key={dia.fecha}
-                          onClick={() => {
-                            setAgendaDiaCompactoActivo(dia.fecha);
-                            setAgendaSesionActivaId('');
-                            setAgendaFormularioAbierto(false);
-                          }}
-                          style={agendaBotonDiaCompacto(activo, alumnosDiaBoton, gruposDiaBoton)}
-                        >
-                          <span style={{ display: 'grid', gap: 2, textAlign: 'left' }}>
-                            <span style={{ textTransform: 'capitalize', fontWeight: 900 }}>{dia.nombre}</span>
-                            <span style={{ fontSize: 13, color: activo ? '#1d4ed8' : '#64748b' }}>{fechaAgendaDiaCorta(dia.fecha)}</span>
-                          </span>
-                          <span style={agendaMiniContadorDiaCompacto(activo, alumnosDiaBoton, gruposDiaBoton)}>{alumnosDiaBoton} alumnos · {gruposDiaBoton} grupos</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <article style={agendaDiaCard}>
-                    <header style={agendaDiaHeader}>
-                      <div>
-                        <p style={agendaMiniLabel}>Día seleccionado</p>
-                        <h3 style={{ margin: 0, textTransform: 'capitalize', fontSize: 24 }}>{diaActivo.nombre} · {fechaAgendaCortaConAnio(diaActivo.fecha)}</h3>
-                        <p style={{ margin: '4px 0 0', color: '#64748b' }}>{totalAlumnosDia} alumnos · {totalGruposDia} grupos · Semana {rangoSemanaAgenda(semanaAgendaActiva)}</p>
-                      </div>
-                      <button onClick={() => abrirFormularioAgendaDia(diaActivo.fecha)} style={botonPrincipal}>+ listado</button>
-                    </header>
-
-                    <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
-                      {turnosTrabajoDiaAgenda(diaActivo.fecha).map((turno) => (
-                        <div key={`${diaActivo.fecha}-${turno.inicio}`} style={agendaTurnoFila}>
-                          <strong>{turno.etiqueta}</strong>
-                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                            {modalidadesAgendaTrabajo.map((modalidad) => (
-                              <button
-                                key={`${diaActivo.fecha}-${turno.inicio}-${modalidad.codigo}`}
-                                onClick={() => abrirFormularioAgendaDia(diaActivo.fecha, turno.inicio, turno.fin, modalidad.codigo)}
-                                style={botonModalidadAgenda(modalidad.codigo)}
+                        return (
+                          <button
+                            key={dia.fecha}
+                            onClick={() => {
+                              setAgendaDiaCompactoActivo(dia.fecha);
+                              setAgendaSesionActivaId('');
+                              setAgendaFormularioAbierto(false);
+                            }}
+                            style={agendaBotonDiaCompacto(
+                              activo,
+                              alumnosDiaBoton,
+                              gruposDiaBoton
+                            )}
+                          >
+                            <span
+                              style={{
+                                display: 'grid',
+                                gap: 2,
+                                textAlign: 'left',
+                              }}
+                            >
+                              <span
+                                style={{
+                                  textTransform: 'capitalize',
+                                  fontWeight: 900,
+                                }}
                               >
-                                + {modalidad.nombre}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
+                                {dia.nombre}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: 13,
+                                  color: activo ? '#1d4ed8' : '#64748b',
+                                }}
+                              >
+                                {fechaAgendaDiaCorta(dia.fecha)}
+                              </span>
+                            </span>
+                            <span
+                              style={agendaMiniContadorDiaCompacto(
+                                activo,
+                                alumnosDiaBoton,
+                                gruposDiaBoton
+                              )}
+                            >
+                              {alumnosDiaBoton} alumnos · {gruposDiaBoton}{' '}
+                              grupos
+                            </span>
+                          </button>
+                        );
+                      })}
                     </div>
 
-                    {sesionesDia.length === 0 ? (
-                      <div style={{ ...agendaVacioMini, marginTop: 12 }}>
-                        <strong>Sin listados en este día.</strong>
-                        <p style={{ margin: '6px 0 10px' }}>Elige turno y modalidad arriba para pegar el listado.</p>
-                      </div>
-                    ) : (
-                      <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
-                        {sesionesDia.map((sesion) => (
-                          <article key={sesion.id} style={agendaSesionCardModalidad(sesion.modalidad)}>
-                            <div style={agendaSesionTop}>
-                              <div>
-                                <div style={agendaBadgeModalidadColor(sesion.modalidad)}>{sesion.modalidad}</div>
-                                <h4 style={{ margin: '8px 0 4px', fontSize: 18 }}>{sesion.titulo}</h4>
-                                <p style={{ margin: 0, color: '#475569' }}>{sesion.hora_inicio?.slice(0, 5)} - {sesion.hora_fin?.slice(0, 5)} · {sesion.estado}</p>
-                              </div>
-                              <div style={agendaSesionContadores}>
-                                <span><strong>{sesion.totalAlumnos}</strong> alumnos</span>
-                                <span><strong>{sesion.totalGrupos}</strong> grupos</span>
+                    <article style={agendaDiaCard}>
+                      <header style={agendaDiaHeader}>
+                        <div>
+                          <p style={agendaMiniLabel}>Día seleccionado</p>
+                          <h3
+                            style={{
+                              margin: 0,
+                              textTransform: 'capitalize',
+                              fontSize: 24,
+                            }}
+                          >
+                            {diaActivo.nombre} ·{' '}
+                            {fechaAgendaCortaConAnio(diaActivo.fecha)}
+                          </h3>
+                          <p style={{ margin: '4px 0 0', color: '#64748b' }}>
+                            {totalAlumnosDia} alumnos · {totalGruposDia} grupos
+                            · Semana {rangoSemanaAgenda(semanaAgendaActiva)}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() =>
+                            abrirFormularioAgendaDia(diaActivo.fecha)
+                          }
+                          style={botonPrincipal}
+                        >
+                          + listado
+                        </button>
+                      </header>
+
+                      <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+                        {turnosTrabajoDiaAgenda(diaActivo.fecha).map(
+                          (turno) => (
+                            <div
+                              key={`${diaActivo.fecha}-${turno.inicio}`}
+                              style={agendaTurnoFila}
+                            >
+                              <strong>{turno.etiqueta}</strong>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  gap: 6,
+                                  flexWrap: 'wrap',
+                                }}
+                              >
+                                {modalidadesAgendaTrabajo.map((modalidad) => (
+                                  <button
+                                    key={`${diaActivo.fecha}-${turno.inicio}-${modalidad.codigo}`}
+                                    onClick={() =>
+                                      abrirFormularioAgendaDia(
+                                        diaActivo.fecha,
+                                        turno.inicio,
+                                        turno.fin,
+                                        modalidad.codigo
+                                      )
+                                    }
+                                    style={botonModalidadAgenda(
+                                      modalidad.codigo
+                                    )}
+                                  >
+                                    + {modalidad.nombre}
+                                  </button>
+                                ))}
                               </div>
                             </div>
-                            <div style={agendaAccionesSesion}>
-                              <button onClick={() => abrirSesionAgenda(sesion, sesion.totalGrupos > 0 ? 'grupos' : 'alumnos')} style={botonPrincipal}>Abrir sesión</button>
-                              <button onClick={() => abrirFormularioAgendaDia(sesion.fecha, sesion.hora_inicio?.slice(0, 5), sesion.hora_fin?.slice(0, 5), sesion.modalidad)} style={botonSecundario}>Nuevo listado mismo turno</button>
-                            </div>
-                          </article>
-                        ))}
+                          )
+                        )}
                       </div>
-                    )}
-                  </article>
-                </div>
-              );
-            })()}
+
+                      {sesionesDia.length === 0 ? (
+                        <div style={{ ...agendaVacioMini, marginTop: 12 }}>
+                          <strong>Sin listados en este día.</strong>
+                          <p style={{ margin: '6px 0 10px' }}>
+                            Elige turno y modalidad arriba para pegar el
+                            listado.
+                          </p>
+                        </div>
+                      ) : (
+                        <div
+                          style={{ display: 'grid', gap: 10, marginTop: 12 }}
+                        >
+                          {sesionesDia.map((sesion) => (
+                            <article
+                              key={sesion.id}
+                              style={agendaSesionCardModalidad(
+                                sesion.modalidad
+                              )}
+                            >
+                              <div style={agendaSesionTop}>
+                                <div>
+                                  <div
+                                    style={agendaBadgeModalidadColor(
+                                      sesion.modalidad
+                                    )}
+                                  >
+                                    {sesion.modalidad}
+                                  </div>
+                                  <h4
+                                    style={{
+                                      margin: '8px 0 4px',
+                                      fontSize: 18,
+                                    }}
+                                  >
+                                    {sesion.titulo}
+                                  </h4>
+                                  <p style={{ margin: 0, color: '#475569' }}>
+                                    {sesion.hora_inicio?.slice(0, 5)} -{' '}
+                                    {sesion.hora_fin?.slice(0, 5)} ·{' '}
+                                    {sesion.estado}
+                                  </p>
+                                </div>
+                                <div style={agendaSesionContadores}>
+                                  <span>
+                                    <strong>{sesion.totalAlumnos}</strong>{' '}
+                                    alumnos
+                                  </span>
+                                  <span>
+                                    <strong>{sesion.totalGrupos}</strong> grupos
+                                  </span>
+                                </div>
+                              </div>
+                              <div style={agendaAccionesSesion}>
+                                <button
+                                  onClick={() =>
+                                    abrirSesionAgenda(
+                                      sesion,
+                                      sesion.totalGrupos > 0
+                                        ? 'grupos'
+                                        : 'alumnos'
+                                    )
+                                  }
+                                  style={botonPrincipal}
+                                >
+                                  Abrir sesión
+                                </button>
+                                <button
+                                  onClick={() =>
+                                    abrirFormularioAgendaDia(
+                                      sesion.fecha,
+                                      sesion.hora_inicio?.slice(0, 5),
+                                      sesion.hora_fin?.slice(0, 5),
+                                      sesion.modalidad
+                                    )
+                                  }
+                                  style={botonSecundario}
+                                >
+                                  Nuevo listado mismo turno
+                                </button>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      )}
+                    </article>
+                  </div>
+                );
+              })()
+            )}
           </section>
 
           {(agendaFormularioAbierto || agendaSesionActivaId) && (
-            <section id="trabajo-agenda" style={{ ...agendaBloqueBlanco, border: '2px solid #111827', scrollMarginTop: 16 }}>
+            <section
+              id="trabajo-agenda"
+              style={{
+                ...agendaBloqueBlanco,
+                border: '2px solid #111827',
+                scrollMarginTop: 16,
+              }}
+            >
               <div style={agendaCabeceraLinea}>
                 <div>
-                  <h3 style={{ margin: 0 }}>{agendaFormularioAbierto ? 'Pegar listado' : 'Sesión abierta'}</h3>
-                  <p style={{ margin: '4px 0 0', color: '#666' }}>Trabajo directo sin salto automático de pantalla.</p>
+                  <h3 style={{ margin: 0 }}>
+                    {agendaFormularioAbierto
+                      ? 'Pegar listado'
+                      : 'Sesión abierta'}
+                  </h3>
+                  <p style={{ margin: '4px 0 0', color: '#666' }}>
+                    Trabajo directo sin salto automático de pantalla.
+                  </p>
                 </div>
                 <button
                   onClick={() => {
@@ -7775,101 +10211,276 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               </div>
 
               {agendaFormularioAbierto && (
-                <article id="agenda-formulario-listado" style={{ ...tarjetaResaltada, scrollMarginTop: 16 }}>
+                <article
+                  id="agenda-formulario-listado"
+                  style={{ ...tarjetaResaltada, scrollMarginTop: 16 }}
+                >
                   <h3 style={{ marginTop: 0 }}>Pegar listado de Aimharder</h3>
                   <p>
-                    Día seleccionado: <strong>{formatearFecha(agendaForm.fecha)}</strong>. Este listado pertenece SOLO a la modalidad y turno que ves abajo.
+                    Día seleccionado:{' '}
+                    <strong>{formatearFecha(agendaForm.fecha)}</strong>. Este
+                    listado pertenece SOLO a la modalidad y turno que ves abajo.
                   </p>
 
                   <div style={gridFormulario}>
-                    <label style={labelCampo}>Modalidad
-                      <select value={agendaForm.modalidad} onChange={(e) => setAgendaForm({ ...agendaForm, modalidad: e.target.value })}>
+                    <label style={labelCampo}>
+                      Modalidad
+                      <select
+                        value={agendaForm.modalidad}
+                        onChange={(e) =>
+                          setAgendaForm({
+                            ...agendaForm,
+                            modalidad: e.target.value,
+                          })
+                        }
+                      >
                         <option value="BABY">Baby</option>
                         <option value="OCIO">Ocio</option>
                         <option value="INTENSIVOS">Intensivo</option>
                         <option value="PARTICULAR">Particular</option>
                       </select>
                     </label>
-                    <label style={labelCampo}>Hora inicio
-                      <input type="time" value={agendaForm.hora_inicio} onChange={(e) => setAgendaForm({ ...agendaForm, hora_inicio: e.target.value })} />
+                    <label style={labelCampo}>
+                      Hora inicio
+                      <input
+                        type="time"
+                        value={agendaForm.hora_inicio}
+                        onChange={(e) =>
+                          setAgendaForm({
+                            ...agendaForm,
+                            hora_inicio: e.target.value,
+                          })
+                        }
+                      />
                     </label>
-                    <label style={labelCampo}>Hora fin
-                      <input type="time" value={agendaForm.hora_fin} onChange={(e) => setAgendaForm({ ...agendaForm, hora_fin: e.target.value })} />
+                    <label style={labelCampo}>
+                      Hora fin
+                      <input
+                        type="time"
+                        value={agendaForm.hora_fin}
+                        onChange={(e) =>
+                          setAgendaForm({
+                            ...agendaForm,
+                            hora_fin: e.target.value,
+                          })
+                        }
+                      />
                     </label>
-                    <label style={labelCampo}>Lugar
-                      <input value={agendaForm.lugar} onChange={(e) => setAgendaForm({ ...agendaForm, lugar: e.target.value })} />
+                    <label style={labelCampo}>
+                      Lugar
+                      <input
+                        value={agendaForm.lugar}
+                        onChange={(e) =>
+                          setAgendaForm({
+                            ...agendaForm,
+                            lugar: e.target.value,
+                          })
+                        }
+                      />
                     </label>
                   </div>
 
-                  <label style={labelCampo}>Listado del día
+                  <label style={labelCampo}>
+                    Listado del día
                     <textarea
                       id="agenda-textarea-listado"
                       value={agendaForm.texto_listado}
-                      onChange={(e) => setAgendaForm({ ...agendaForm, texto_listado: e.target.value })}
+                      onChange={(e) =>
+                        setAgendaForm({
+                          ...agendaForm,
+                          texto_listado: e.target.value,
+                        })
+                      }
                       placeholder="Pega aquí el listado de Aimharder..."
                       rows={8}
                     />
                   </label>
 
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    <button onClick={volcarListadoAgendaOperativa} style={botonPrincipal}>1 · Volcar listado y crear sesión</button>
-                    <button onClick={() => setAgendaFormularioAbierto(false)} style={botonSecundario}>Cancelar</button>
+                    <button
+                      onClick={volcarListadoAgendaOperativa}
+                      style={botonPrincipal}
+                    >
+                      1 · Volcar listado y crear sesión
+                    </button>
+                    <button
+                      onClick={() => setAgendaFormularioAbierto(false)}
+                      style={botonSecundario}
+                    >
+                      Cancelar
+                    </button>
                   </div>
                 </article>
               )}
 
               {!agendaFormularioAbierto && agendaSesionActivaId && (
-                <article id="agenda-sesion-trabajo" style={{ ...tarjetaResaltada, scrollMarginTop: 16 }}>
+                <article
+                  id="agenda-sesion-trabajo"
+                  style={{ ...tarjetaResaltada, scrollMarginTop: 16 }}
+                >
                   <h3 style={{ marginTop: 0 }}>Sesión seleccionada</h3>
 
                   <div style={gridMiniMetricas}>
-                    <div style={miniMetrica}><strong>{agendaAlumnosSesion.length}</strong><span>alumnos</span></div>
-                    <div style={miniMetrica}><strong>{agendaGruposSesion.length}</strong><span>grupos creados</span></div>
-                    <div style={miniMetrica}><strong>{agendaAlumnosSesion.filter((a) => a.estado_en_listado === 'NUEVO').length}</strong><span>nuevos</span></div>
-                    <div style={miniMetrica}><strong>{agendaAlumnosSesion.filter((a) => a.estado_en_listado === 'CONOCIDO').length}</strong><span>conocidos</span></div>
+                    <div style={miniMetrica}>
+                      <strong>{agendaAlumnosSesion.length}</strong>
+                      <span>alumnos</span>
+                    </div>
+                    <div style={miniMetrica}>
+                      <strong>{agendaGruposSesion.length}</strong>
+                      <span>grupos creados</span>
+                    </div>
+                    <div style={miniMetrica}>
+                      <strong>
+                        {
+                          agendaAlumnosSesion.filter(
+                            (a) => a.estado_en_listado === 'NUEVO'
+                          ).length
+                        }
+                      </strong>
+                      <span>nuevos</span>
+                    </div>
+                    <div style={miniMetrica}>
+                      <strong>
+                        {
+                          agendaAlumnosSesion.filter(
+                            (a) => a.estado_en_listado === 'CONOCIDO'
+                          ).length
+                        }
+                      </strong>
+                      <span>conocidos</span>
+                    </div>
                   </div>
 
                   <details style={{ marginTop: 12 }}>
-                    <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>Alumnos detectados · editar niveles y fichas</summary>
-                    <div style={{ ...avisoNeutral, margin: '10px 0 12px' }}>Si cambias un nivel aquí, se guarda como nivel real de la ficha y se usa en toda la app.</div>
+                    <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>
+                      Alumnos detectados · editar niveles y fichas
+                    </summary>
+                    <div style={{ ...avisoNeutral, margin: '10px 0 12px' }}>
+                      Si cambias un nivel aquí, se guarda como nivel real de la
+                      ficha y se usa en toda la app.
+                    </div>
                     <div style={{ display: 'grid', gap: 8 }}>
                       {agendaAlumnosSesion.map((alumno) => (
-                        <div key={alumno.sesion_alumno_id} style={agendaAlumnoLinea}>
+                        <div
+                          key={alumno.sesion_alumno_id}
+                          style={agendaAlumnoLinea}
+                        >
                           <div>
                             <strong>{alumno.alumno}</strong>
-                            <p style={{ margin: '4px 0 0' }}>{alumno.estado_en_listado} · Nivel: <strong>{alumno.nivel_usado || 'SIN NIVEL'}</strong> · {alumno.origen_nivel || '-'} · Pista {alumno.pista_recomendada || '-'}</p>
-                            <p style={{ margin: '4px 0 0', color: '#666' }}>{alumno.estado_ficha}</p>
+                            <p style={{ margin: '4px 0 0' }}>
+                              {alumno.estado_en_listado} · Nivel:{' '}
+                              <strong>
+                                {alumno.nivel_usado || 'SIN NIVEL'}
+                              </strong>{' '}
+                              · {alumno.origen_nivel || '-'} · Pista{' '}
+                              {alumno.pista_recomendada || '-'}
+                            </p>
+                            <p style={{ margin: '4px 0 0', color: '#666' }}>
+                              {alumno.estado_ficha}
+                            </p>
                           </div>
-                          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', alignItems: 'center', maxWidth: 560 }}>
-                            <button onClick={() => editarNivelAlumnoAgenda(alumno)} style={botonMini}>Editar nivel</button>
-                            <button onClick={() => editarNombreAlumnoAgenda(alumno)} style={botonMini}>Editar nombre</button>
-                            <button onClick={() => quitarAlumnoAgenda(alumno)} style={botonPeligroMini}>Quitar sesión</button>
-                            <button onClick={() => borrarAlumnoBaseAgenda(alumno)} style={botonPeligroMini}>Borrar ficha</button>
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 8,
+                              flexWrap: 'wrap',
+                              justifyContent: 'flex-end',
+                              alignItems: 'center',
+                              maxWidth: 560,
+                            }}
+                          >
+                            <button
+                              onClick={() => editarNivelAlumnoAgenda(alumno)}
+                              style={botonMini}
+                            >
+                              Editar nivel
+                            </button>
+                            <button
+                              onClick={() => editarNombreAlumnoAgenda(alumno)}
+                              style={botonMini}
+                            >
+                              Editar nombre
+                            </button>
+                            <button
+                              onClick={() => quitarAlumnoAgenda(alumno)}
+                              style={botonPeligroMini}
+                            >
+                              Quitar sesión
+                            </button>
+                            <button
+                              onClick={() => borrarAlumnoBaseAgenda(alumno)}
+                              style={botonPeligroMini}
+                            >
+                              Borrar ficha
+                            </button>
                           </div>
                         </div>
                       ))}
                     </div>
                   </details>
 
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 16 }}>
-                    <button onClick={() => generarRecomendacionAgendaSesion(agendaSesionActivaId)} style={botonPrincipal}>Generar grupos recomendados</button>
-                    <button onClick={crearGrupoManualAgenda} style={botonSecundario}>Crear grupo manual vacío</button>
-                    {agendaGruposSesion.length > 0 && <button onClick={copiarMensajeWhatsAppPapisSesionActual} style={botonSecundario}>Ver WhatsApp papis</button>}
-                    <button onClick={borrarSesionAgendaActual} style={botonPeligro}>Borrar sesión/listado de prueba</button>
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      marginTop: 16,
+                    }}
+                  >
+                    <button
+                      onClick={() =>
+                        generarRecomendacionAgendaSesion(agendaSesionActivaId)
+                      }
+                      style={botonPrincipal}
+                    >
+                      Generar grupos recomendados
+                    </button>
+                    <button
+                      onClick={crearGrupoManualAgenda}
+                      style={botonSecundario}
+                    >
+                      Crear grupo manual vacío
+                    </button>
+                    {agendaGruposSesion.length > 0 && (
+                      <button
+                        onClick={copiarMensajeWhatsAppPapisSesionActual}
+                        style={botonSecundario}
+                      >
+                        Ver WhatsApp papis
+                      </button>
+                    )}
+                    <button
+                      onClick={borrarSesionAgendaActual}
+                      style={botonPeligro}
+                    >
+                      Borrar sesión/listado de prueba
+                    </button>
                   </div>
 
                   {gruposAgendaManuales.length > 0 && (
                     <div style={{ ...avisoNeutral, marginTop: 12 }}>
                       <strong>Grupos manuales preparados:</strong>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 8 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 8,
+                          flexWrap: 'wrap',
+                          marginTop: 8,
+                        }}
+                      >
                         {gruposAgendaManuales.map((grupoManual) => (
-                          <span key={`chip-manual-agenda-${grupoManual}`} style={agendaBadgeModalidad}>
+                          <span
+                            key={`chip-manual-agenda-${grupoManual}`}
+                            style={agendaBadgeModalidad}
+                          >
                             {grupoManual}
                           </span>
                         ))}
                       </div>
                       <p style={{ margin: '8px 0 0' }}>
-                        Ahora en la propuesta usa “Mover a” para mandar alumnos a esos grupos. Si no ves alumnos debajo, pulsa “Generar grupos recomendados”.
+                        Ahora en la propuesta usa “Mover a” para mandar alumnos
+                        a esos grupos. Si no ves alumnos debajo, pulsa “Generar
+                        grupos recomendados”.
                       </p>
                     </div>
                   )}
@@ -7878,121 +10489,399 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                     <section style={{ marginTop: 16 }}>
                       <h4>Propuesta editable antes de publicar</h4>
                       <div style={{ ...avisoCompleto, marginBottom: 12 }}>
-                        Puedes crear un grupo manual vacío y mover niños. Ejemplo: sacar los 3 B+ a “Grupo B+” y dejar C/D juntos.
+                        Puedes crear un grupo manual vacío y mover niños.
+                        Ejemplo: sacar los 3 B+ a “Grupo B+” y dejar C/D juntos.
                       </div>
                       <div style={{ display: 'grid', gap: 12 }}>
-                        {gruposRecomendadosAgenda().map(([nombreGrupo, alumnosGrupo], indiceGrupoAgenda) => {
-                          const primero = alumnosGrupo[0];
-                          const trabajoAuto = trabajoAgendaGrupo[nombreGrupo] || trabajoDiarioAutomaticoAgenda(nombreGrupo, alumnosGrupo);
-                          const puntoDefecto = puntosEncuentroAgenda[indiceGrupoAgenda % puntosEncuentroAgenda.length];
-                          const nombreGrupoVisible = nombreGrupoPropuestaApp(alumnosGrupo, indiceGrupoAgenda);
-                          const observacionesAutoGrupo = observacionesAutomaticasGrupoAgenda(alumnosGrupo);
-                          const validacionPedagogicaGrupo = textoValidacionPedagogicaGrupoApp(alumnosGrupo);
+                        {gruposRecomendadosAgenda().map(
+                          ([nombreGrupo, alumnosGrupo], indiceGrupoAgenda) => {
+                            const primero = alumnosGrupo[0];
+                            const trabajoAuto =
+                              trabajoAgendaGrupo[nombreGrupo] ||
+                              trabajoDiarioAutomaticoAgenda(
+                                nombreGrupo,
+                                alumnosGrupo
+                              );
+                            const puntoDefecto =
+                              puntosEncuentroAgenda[
+                                indiceGrupoAgenda % puntosEncuentroAgenda.length
+                              ];
+                            const nombreGrupoVisible = nombreGrupoPropuestaApp(
+                              alumnosGrupo,
+                              indiceGrupoAgenda
+                            );
+                            const observacionesAutoGrupo =
+                              observacionesAutomaticasGrupoAgenda(alumnosGrupo);
+                            const validacionPedagogicaGrupo =
+                              textoValidacionPedagogicaGrupoApp(alumnosGrupo);
 
-                          return (
-                            <article key={nombreGrupo} style={{ ...agendaGrupoPropuesta, ...estiloGrupoPorPistaApp({ pista: primero.pista_recomendada, nivel_grupo: primero.nivel_resumen }) }}>
-                              <div style={agendaGrupoLinea}>
-                                <h3 style={{ margin: 0 }}>{nombreGrupoVisible}</h3>
-                                <span>{alumnosGrupo.length} niños</span>
-                              </div>
-                              <p><strong>Bloque:</strong> {primero.bloque_tecnico} · <strong>Pista:</strong> {primero.pista_recomendada}</p>
-                              <div style={{ ...estiloValidacionPedagogicaApp(validacionPedagogicaGrupo.estado), marginBottom: 10 }}>
-                                <strong>{validacionPedagogicaGrupo.titulo}</strong>
-                                {validacionPedagogicaGrupo.mensajes.length > 0 && (
-                                  <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
-                                    {validacionPedagogicaGrupo.mensajes.map((mensaje) => <li key={`${nombreGrupo}-${mensaje}`}>{mensaje}</li>)}
-                                  </ul>
-                                )}
-                              </div>
-                              <div style={{ display: 'grid', gap: 8, marginBottom: 12 }}>
-                                {alumnosGrupo.map((alumno) => (
-                                  <div key={`${nombreGrupo}-${alumno.alumno_id}`} style={agendaAlumnoLinea}>
-                                    <div>
-                                      <strong>{alumno.alumno}</strong>
-                                      <p style={{ margin: '4px 0 0' }}>{alumno.nivel_resumen} · {alumno.pista_alumno}{alumno.alertas ? ` · ${alumno.alertas}` : ''}</p>
-                                    </div>
-                                    <label style={{ ...labelCampo, minWidth: 240 }}>Mover a
-                                      <select value={destinoActualAlumnoAgenda(alumno)} onChange={(e) => moverAlumnoAgendaRecomendado(alumno.alumno_id, e.target.value)}>
-                                        {nombresGruposAgendaBase().map((grupoDestino) => (
-                                          <option key={`${alumno.alumno_id}-${grupoDestino}`} value={grupoDestino}>{grupoDestino}</option>
-                                        ))}
-                                        <option value="__NO_CREAR__">Dejar fuera de momento</option>
-                                      </select>
-                                    </label>
-                                  </div>
-                                ))}
-                              </div>
-
-                              <div style={gridFormulario}>
-                                <label style={labelCampo}>Entrenador
-                                  <select value={entrenadoresAgendaGrupo[nombreGrupo] || ''} onChange={(e) => setEntrenadoresAgendaGrupo({ ...entrenadoresAgendaGrupo, [nombreGrupo]: e.target.value })}>
-                                    <option value="">Selecciona entrenador</option>
-                                    {entrenadoresDisponiblesSesionActiva().map((entrenador) => (
-                                      <option key={entrenador.entrenador_id} value={entrenador.entrenador_id}>{entrenador.nombre_completo}</option>
-                                    ))}
-                                  </select>
-                                </label>
-                                <label style={labelCampo}>Punto encuentro
-                                  <select value={puntosAgendaGrupo[nombreGrupo] || puntoDefecto} onChange={(e) => setPuntosAgendaGrupo({ ...puntosAgendaGrupo, [nombreGrupo]: e.target.value })}>
-                                    {puntosEncuentroAgenda.map((punto) => <option key={`punto-agenda-${punto}`} value={punto}>Punto {punto}</option>)}
-                                  </select>
-                                </label>
-                                <label style={labelCampo}>Segundo entrenador
-                                  <select value={entrenadoresApoyoAgendaGrupo[nombreGrupo] || ''} onChange={(e) => setEntrenadoresApoyoAgendaGrupo({ ...entrenadoresApoyoAgendaGrupo, [nombreGrupo]: e.target.value })}>
-                                    <option value="">Sin segundo entrenador</option>
-                                    {entrenadoresDisponiblesSesionActiva()
-                                      .filter((entrenador) => entrenador.entrenador_id !== (entrenadoresAgendaGrupo[nombreGrupo] || ''))
-                                      .map((entrenador) => (
-                                        <option key={`${nombreGrupo}-apoyo-${entrenador.entrenador_id}`} value={entrenador.entrenador_id}>{entrenador.nombre_completo}</option>
-                                      ))}
-                                  </select>
-                                </label>
-                              </div>
-
-                              {necesitaDosEntrenadoresGrupoApp(alumnosGrupo) && (
-                                <div style={{ ...avisoPendiente, marginBottom: 10 }}>{textoNecesidadDosEntrenadoresApp(alumnosGrupo)}</div>
-                              )}
-
-                              {(entrenadoresAgendaGrupo[nombreGrupo] && entrenadoresApoyoAgendaGrupo[nombreGrupo]) && (
-                                <details style={{ ...avisoNeutral, marginBottom: 10 }}>
-                                  <summary style={{ cursor: 'pointer', fontWeight: 900 }}>Reparto de reportes / niños</summary>
-                                  <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-                                    {alumnosGrupo.map((alumno, indiceAlumnoReparto) => (
-                                      <label key={`${nombreGrupo}-resp-${alumno.alumno_id}`} style={labelCampo}>
-                                        {alumno.alumno}
+                            return (
+                              <article
+                                key={nombreGrupo}
+                                style={{
+                                  ...agendaGrupoPropuesta,
+                                  ...estiloGrupoPorPistaApp({
+                                    pista: primero.pista_recomendada,
+                                    nivel_grupo: primero.nivel_resumen,
+                                  }),
+                                }}
+                              >
+                                <div style={agendaGrupoLinea}>
+                                  <h3 style={{ margin: 0 }}>
+                                    {nombreGrupoVisible}
+                                  </h3>
+                                  <span>{alumnosGrupo.length} niños</span>
+                                </div>
+                                <p>
+                                  <strong>Bloque:</strong>{' '}
+                                  {primero.bloque_tecnico} ·{' '}
+                                  <strong>Pista:</strong>{' '}
+                                  {primero.pista_recomendada}
+                                </p>
+                                <div
+                                  style={{
+                                    ...estiloValidacionPedagogicaApp(
+                                      validacionPedagogicaGrupo.estado
+                                    ),
+                                    marginBottom: 10,
+                                  }}
+                                >
+                                  <strong>
+                                    {validacionPedagogicaGrupo.titulo}
+                                  </strong>
+                                  {validacionPedagogicaGrupo.mensajes.length >
+                                    0 && (
+                                    <ul
+                                      style={{
+                                        margin: '6px 0 0',
+                                        paddingLeft: 18,
+                                      }}
+                                    >
+                                      {validacionPedagogicaGrupo.mensajes.map(
+                                        (mensaje) => (
+                                          <li key={`${nombreGrupo}-${mensaje}`}>
+                                            {mensaje}
+                                          </li>
+                                        )
+                                      )}
+                                    </ul>
+                                  )}
+                                </div>
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gap: 8,
+                                    marginBottom: 12,
+                                  }}
+                                >
+                                  {alumnosGrupo.map((alumno) => (
+                                    <div
+                                      key={`${nombreGrupo}-${alumno.alumno_id}`}
+                                      style={agendaAlumnoLinea}
+                                    >
+                                      <div>
+                                        <strong>{alumno.alumno}</strong>
+                                        <p style={{ margin: '4px 0 0' }}>
+                                          {alumno.nivel_resumen} ·{' '}
+                                          {alumno.pista_alumno}
+                                          {alumno.alertas
+                                            ? ` · ${alumno.alertas}`
+                                            : ''}
+                                        </p>
+                                      </div>
+                                      <label
+                                        style={{ ...labelCampo, minWidth: 240 }}
+                                      >
+                                        Mover a
                                         <select
-                                          value={responsableReporteAgendaApp(
-                                            nombreGrupo,
-                                            alumno.alumno_id,
-                                            indiceAlumnoReparto,
-                                            entrenadoresAgendaGrupo[nombreGrupo],
-                                            entrenadoresApoyoAgendaGrupo[nombreGrupo]
+                                          value={destinoActualAlumnoAgenda(
+                                            alumno
                                           )}
-                                          onChange={(e) => setResponsablesReporteAgendaGrupo({
-                                            ...responsablesReporteAgendaGrupo,
-                                            [`${nombreGrupo}__${alumno.alumno_id}`]: e.target.value,
-                                          })}
+                                          onChange={(e) =>
+                                            moverAlumnoAgendaRecomendado(
+                                              alumno.alumno_id,
+                                              e.target.value
+                                            )
+                                          }
                                         >
-                                          <option value={entrenadoresAgendaGrupo[nombreGrupo]}>{entrenadores.find((entrenador) => entrenador.entrenador_id === entrenadoresAgendaGrupo[nombreGrupo])?.nombre_completo || 'Entrenador 1'}</option>
-                                          <option value={entrenadoresApoyoAgendaGrupo[nombreGrupo]}>{entrenadores.find((entrenador) => entrenador.entrenador_id === entrenadoresApoyoAgendaGrupo[nombreGrupo])?.nombre_completo || 'Entrenador 2'}</option>
+                                          {nombresGruposAgendaBase().map(
+                                            (grupoDestino) => (
+                                              <option
+                                                key={`${alumno.alumno_id}-${grupoDestino}`}
+                                                value={grupoDestino}
+                                              >
+                                                {grupoDestino}
+                                              </option>
+                                            )
+                                          )}
+                                          <option value="__NO_CREAR__">
+                                            Dejar fuera de momento
+                                          </option>
                                         </select>
                                       </label>
-                                    ))}
-                                  </div>
-                                </details>
-                              )}
+                                    </div>
+                                  ))}
+                                </div>
 
-                              <label style={labelCampo}>Trabajo diario automático según nivel/pista
-                                <textarea value={trabajoAuto} onChange={(e) => setTrabajoAgendaGrupo({ ...trabajoAgendaGrupo, [nombreGrupo]: e.target.value })} rows={4} />
-                              </label>
-                              {observacionesAutoGrupo && <div style={{ ...avisoCompleto, marginBottom: 10 }}><strong>Observaciones</strong><div style={{ marginTop: 6 }}>{formatearObservaciones(observacionesAutoGrupo)}</div></div>}
-                              <label style={labelCampo}>Observaciones manuales · opcional
-                                <textarea value={observacionesAgendaGrupo[nombreGrupo] || ''} onChange={(e) => setObservacionesAgendaGrupo({ ...observacionesAgendaGrupo, [nombreGrupo]: e.target.value })} rows={3} />
-                              </label>
-                              <button onClick={() => crearGrupoAgendaDesdeRecomendacion(nombreGrupo, alumnosGrupo, nombreGrupoVisible)} style={botonPrincipal}>Crear este grupo revisado</button>
-                            </article>
-                          );
-                        })}
+                                <div style={gridFormulario}>
+                                  <label style={labelCampo}>
+                                    Entrenador
+                                    <select
+                                      value={
+                                        entrenadoresAgendaGrupo[nombreGrupo] ||
+                                        ''
+                                      }
+                                      onChange={(e) =>
+                                        setEntrenadoresAgendaGrupo({
+                                          ...entrenadoresAgendaGrupo,
+                                          [nombreGrupo]: e.target.value,
+                                        })
+                                      }
+                                    >
+                                      <option value="">
+                                        Selecciona entrenador
+                                      </option>
+                                      {entrenadoresDisponiblesSesionActiva().map(
+                                        (entrenador) => (
+                                          <option
+                                            key={entrenador.entrenador_id}
+                                            value={entrenador.entrenador_id}
+                                          >
+                                            {entrenador.nombre_completo}
+                                          </option>
+                                        )
+                                      )}
+                                    </select>
+                                  </label>
+                                  <label style={labelCampo}>
+                                    Punto encuentro
+                                    <select
+                                      value={
+                                        puntosAgendaGrupo[nombreGrupo] ||
+                                        puntoDefecto
+                                      }
+                                      onChange={(e) =>
+                                        setPuntosAgendaGrupo({
+                                          ...puntosAgendaGrupo,
+                                          [nombreGrupo]: e.target.value,
+                                        })
+                                      }
+                                    >
+                                      {puntosEncuentroAgenda.map((punto) => (
+                                        <option
+                                          key={`punto-agenda-${punto}`}
+                                          value={punto}
+                                        >
+                                          Punto {punto}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                  <label style={labelCampo}>
+                                    Segundo entrenador
+                                    <select
+                                      value={
+                                        entrenadoresApoyoAgendaGrupo[
+                                          nombreGrupo
+                                        ] || ''
+                                      }
+                                      onChange={(e) =>
+                                        setEntrenadoresApoyoAgendaGrupo({
+                                          ...entrenadoresApoyoAgendaGrupo,
+                                          [nombreGrupo]: e.target.value,
+                                        })
+                                      }
+                                    >
+                                      <option value="">
+                                        Sin segundo entrenador
+                                      </option>
+                                      {entrenadoresDisponiblesSesionActiva()
+                                        .filter(
+                                          (entrenador) =>
+                                            entrenador.entrenador_id !==
+                                            (entrenadoresAgendaGrupo[
+                                              nombreGrupo
+                                            ] || '')
+                                        )
+                                        .map((entrenador) => (
+                                          <option
+                                            key={`${nombreGrupo}-apoyo-${entrenador.entrenador_id}`}
+                                            value={entrenador.entrenador_id}
+                                          >
+                                            {entrenador.nombre_completo}
+                                          </option>
+                                        ))}
+                                    </select>
+                                  </label>
+                                </div>
+
+                                {necesitaDosEntrenadoresGrupoApp(
+                                  alumnosGrupo
+                                ) && (
+                                  <div
+                                    style={{
+                                      ...avisoPendiente,
+                                      marginBottom: 10,
+                                    }}
+                                  >
+                                    {textoNecesidadDosEntrenadoresApp(
+                                      alumnosGrupo
+                                    )}
+                                  </div>
+                                )}
+
+                                {entrenadoresAgendaGrupo[nombreGrupo] &&
+                                  entrenadoresApoyoAgendaGrupo[nombreGrupo] && (
+                                    <details
+                                      style={{
+                                        ...avisoNeutral,
+                                        marginBottom: 10,
+                                      }}
+                                    >
+                                      <summary
+                                        style={{
+                                          cursor: 'pointer',
+                                          fontWeight: 900,
+                                        }}
+                                      >
+                                        Reparto de reportes / niños
+                                      </summary>
+                                      <div
+                                        style={{
+                                          display: 'grid',
+                                          gap: 8,
+                                          marginTop: 10,
+                                        }}
+                                      >
+                                        {alumnosGrupo.map(
+                                          (alumno, indiceAlumnoReparto) => (
+                                            <label
+                                              key={`${nombreGrupo}-resp-${alumno.alumno_id}`}
+                                              style={labelCampo}
+                                            >
+                                              {alumno.alumno}
+                                              <select
+                                                value={responsableReporteAgendaApp(
+                                                  nombreGrupo,
+                                                  alumno.alumno_id,
+                                                  indiceAlumnoReparto,
+                                                  entrenadoresAgendaGrupo[
+                                                    nombreGrupo
+                                                  ],
+                                                  entrenadoresApoyoAgendaGrupo[
+                                                    nombreGrupo
+                                                  ]
+                                                )}
+                                                onChange={(e) =>
+                                                  setResponsablesReporteAgendaGrupo(
+                                                    {
+                                                      ...responsablesReporteAgendaGrupo,
+                                                      [`${nombreGrupo}__${alumno.alumno_id}`]:
+                                                        e.target.value,
+                                                    }
+                                                  )
+                                                }
+                                              >
+                                                <option
+                                                  value={
+                                                    entrenadoresAgendaGrupo[
+                                                      nombreGrupo
+                                                    ]
+                                                  }
+                                                >
+                                                  {entrenadores.find(
+                                                    (entrenador) =>
+                                                      entrenador.entrenador_id ===
+                                                      entrenadoresAgendaGrupo[
+                                                        nombreGrupo
+                                                      ]
+                                                  )?.nombre_completo ||
+                                                    'Entrenador 1'}
+                                                </option>
+                                                <option
+                                                  value={
+                                                    entrenadoresApoyoAgendaGrupo[
+                                                      nombreGrupo
+                                                    ]
+                                                  }
+                                                >
+                                                  {entrenadores.find(
+                                                    (entrenador) =>
+                                                      entrenador.entrenador_id ===
+                                                      entrenadoresApoyoAgendaGrupo[
+                                                        nombreGrupo
+                                                      ]
+                                                  )?.nombre_completo ||
+                                                    'Entrenador 2'}
+                                                </option>
+                                              </select>
+                                            </label>
+                                          )
+                                        )}
+                                      </div>
+                                    </details>
+                                  )}
+
+                                <label style={labelCampo}>
+                                  Trabajo diario automático según nivel/pista
+                                  <textarea
+                                    value={trabajoAuto}
+                                    onChange={(e) =>
+                                      setTrabajoAgendaGrupo({
+                                        ...trabajoAgendaGrupo,
+                                        [nombreGrupo]: e.target.value,
+                                      })
+                                    }
+                                    rows={4}
+                                  />
+                                </label>
+                                {observacionesAutoGrupo && (
+                                  <div
+                                    style={{
+                                      ...avisoCompleto,
+                                      marginBottom: 10,
+                                    }}
+                                  >
+                                    <strong>Observaciones</strong>
+                                    <div style={{ marginTop: 6 }}>
+                                      {formatearObservaciones(
+                                        observacionesAutoGrupo
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
+                                <label style={labelCampo}>
+                                  Observaciones manuales · opcional
+                                  <textarea
+                                    value={
+                                      observacionesAgendaGrupo[nombreGrupo] ||
+                                      ''
+                                    }
+                                    onChange={(e) =>
+                                      setObservacionesAgendaGrupo({
+                                        ...observacionesAgendaGrupo,
+                                        [nombreGrupo]: e.target.value,
+                                      })
+                                    }
+                                    rows={3}
+                                  />
+                                </label>
+                                <button
+                                  onClick={() =>
+                                    crearGrupoAgendaDesdeRecomendacion(
+                                      nombreGrupo,
+                                      alumnosGrupo,
+                                      nombreGrupoVisible
+                                    )
+                                  }
+                                  style={botonPrincipal}
+                                >
+                                  Crear este grupo revisado
+                                </button>
+                              </article>
+                            );
+                          }
+                        )}
                       </div>
                     </section>
                   )}
@@ -8002,35 +10891,155 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                       <h4>Grupos creados en este día</h4>
                       <div style={{ display: 'grid', gap: 10 }}>
                         {agendaGruposSesion.map((grupo, indiceGrupoCreado) => (
-                          <article key={grupo.grupo_id} style={estiloGrupoPorPistaApp(grupo)}>
+                          <article
+                            key={grupo.grupo_id}
+                            style={estiloGrupoPorPistaApp(grupo)}
+                          >
                             <div style={agendaGrupoLinea}>
-                              <strong>{nombreGrupoVisualApp(grupo, indiceGrupoCreado)}</strong>
-                              <span>{grupo.entrenador || 'Sin entrenador'} · {grupo.total_alumnos} niños · {grupo.publicado ? 'Publicado' : 'Borrador'}</span>
+                              <strong>
+                                {nombreGrupoVisualApp(grupo, indiceGrupoCreado)}
+                              </strong>
+                              <span>
+                                {grupo.entrenador || 'Sin entrenador'} ·{' '}
+                                {grupo.total_alumnos} niños ·{' '}
+                                {grupo.publicado ? 'Publicado' : 'Borrador'}
+                              </span>
                             </div>
-                            <p><span style={estiloBadgePistaApp(grupo.pista)}>{etiquetaPistaVisualApp(grupo.pista)}</span> · Punto {grupo.punto_encuentro || '-'}</p>
-                            {grupo.alumnos_lista && <div style={listaAlumnosGrupoCompacta}>{grupo.alumnos_lista.split(' || ').map((alumnoGrupo, indice) => <span key={`${grupo.grupo_id}-${indice}`}>{alumnoGrupo}</span>)}</div>}
+                            <p>
+                              <span style={estiloBadgePistaApp(grupo.pista)}>
+                                {etiquetaPistaVisualApp(grupo.pista)}
+                              </span>{' '}
+                              · Punto {grupo.punto_encuentro || '-'}
+                            </p>
+                            {grupo.alumnos_lista && (
+                              <div style={listaAlumnosGrupoCompacta}>
+                                {grupo.alumnos_lista
+                                  .split(' || ')
+                                  .map((alumnoGrupo, indice) => (
+                                    <span key={`${grupo.grupo_id}-${indice}`}>
+                                      {alumnoGrupo}
+                                    </span>
+                                  ))}
+                              </div>
+                            )}
                             <details style={panelTrabajoGrupo}>
-                              <summary style={summaryTrabajoGrupo}>Trabajo diario y observaciones</summary>
-                              <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
-                                <label style={labelCampo}>Trabajo diario visible para entrenador
-                                  <textarea value={trabajoGrupoCreadoEditando[grupo.grupo_id] ?? grupo.trabajo_diario ?? ''} onChange={(e) => setTrabajoGrupoCreadoEditando({ ...trabajoGrupoCreadoEditando, [grupo.grupo_id]: e.target.value })} rows={4} style={textareaCampo} />
+                              <summary style={summaryTrabajoGrupo}>
+                                Trabajo diario y observaciones
+                              </summary>
+                              <div
+                                style={{
+                                  display: 'grid',
+                                  gap: 10,
+                                  marginTop: 12,
+                                }}
+                              >
+                                <label style={labelCampo}>
+                                  Trabajo diario visible para entrenador
+                                  <textarea
+                                    value={
+                                      trabajoGrupoCreadoEditando[
+                                        grupo.grupo_id
+                                      ] ??
+                                      grupo.trabajo_diario ??
+                                      ''
+                                    }
+                                    onChange={(e) =>
+                                      setTrabajoGrupoCreadoEditando({
+                                        ...trabajoGrupoCreadoEditando,
+                                        [grupo.grupo_id]: e.target.value,
+                                      })
+                                    }
+                                    rows={4}
+                                    style={textareaCampo}
+                                  />
                                 </label>
-                                <label style={labelCampo}>Observaciones
-                                  <textarea value={observacionesGrupoCreadoEditando[grupo.grupo_id] ?? normalizarLineasObservacionesGrupoApp(grupo.observaciones_importantes, 12) ?? ''} onChange={(e) => setObservacionesGrupoCreadoEditando({ ...observacionesGrupoCreadoEditando, [grupo.grupo_id]: e.target.value })} rows={4} style={textareaCampo} />
+                                <label style={labelCampo}>
+                                  Observaciones
+                                  <textarea
+                                    value={
+                                      observacionesGrupoCreadoEditando[
+                                        grupo.grupo_id
+                                      ] ??
+                                      normalizarLineasObservacionesGrupoApp(
+                                        grupo.observaciones_importantes,
+                                        12
+                                      ) ??
+                                      ''
+                                    }
+                                    onChange={(e) =>
+                                      setObservacionesGrupoCreadoEditando({
+                                        ...observacionesGrupoCreadoEditando,
+                                        [grupo.grupo_id]: e.target.value,
+                                      })
+                                    }
+                                    rows={4}
+                                    style={textareaCampo}
+                                  />
                                 </label>
-                                <button onClick={() => guardarTrabajoObservacionesGrupoAgenda(grupo)} style={botonPrincipal}>Guardar trabajo y observaciones</button>
+                                <button
+                                  onClick={() =>
+                                    guardarTrabajoObservacionesGrupoAgenda(
+                                      grupo
+                                    )
+                                  }
+                                  style={botonPrincipal}
+                                >
+                                  Guardar trabajo y observaciones
+                                </button>
                               </div>
                             </details>
-                            <div style={{ marginTop: 10, display: 'grid', gap: 8 }}>
-                              <label style={labelCampo}>Cambiar entrenador si hay baja
-                                <select value={grupo.entrenador_id || ''} onChange={(e) => cambiarEntrenadorGrupoAgenda(grupo, e.target.value)} style={selectCampo}>
-                                  <option value="">Selecciona entrenador disponible</option>
-                                  {(grupo.entrenador_id && !entrenadoresDisponiblesSesionActiva().some((entrenador) => entrenador.entrenador_id === grupo.entrenador_id) ? [entrenadores.find((entrenador) => entrenador.entrenador_id === grupo.entrenador_id)].filter(Boolean) as EntrenadorResumen[] : []).concat(entrenadoresDisponiblesSesionActiva()).map((entrenador) => (
-                                    <option key={`${grupo.grupo_id}-cambio-${entrenador.entrenador_id}`} value={entrenador.entrenador_id}>{entrenador.nombre_completo}</option>
-                                  ))}
+                            <div
+                              style={{ marginTop: 10, display: 'grid', gap: 8 }}
+                            >
+                              <label style={labelCampo}>
+                                Cambiar entrenador si hay baja
+                                <select
+                                  value={grupo.entrenador_id || ''}
+                                  onChange={(e) =>
+                                    cambiarEntrenadorGrupoAgenda(
+                                      grupo,
+                                      e.target.value
+                                    )
+                                  }
+                                  style={selectCampo}
+                                >
+                                  <option value="">
+                                    Selecciona entrenador disponible
+                                  </option>
+                                  {(grupo.entrenador_id &&
+                                  !entrenadoresDisponiblesSesionActiva().some(
+                                    (entrenador) =>
+                                      entrenador.entrenador_id ===
+                                      grupo.entrenador_id
+                                  )
+                                    ? ([
+                                        entrenadores.find(
+                                          (entrenador) =>
+                                            entrenador.entrenador_id ===
+                                            grupo.entrenador_id
+                                        ),
+                                      ].filter(Boolean) as EntrenadorResumen[])
+                                    : []
+                                  )
+                                    .concat(
+                                      entrenadoresDisponiblesSesionActiva()
+                                    )
+                                    .map((entrenador) => (
+                                      <option
+                                        key={`${grupo.grupo_id}-cambio-${entrenador.entrenador_id}`}
+                                        value={entrenador.entrenador_id}
+                                      >
+                                        {entrenador.nombre_completo}
+                                      </option>
+                                    ))}
                                 </select>
                               </label>
-                              <button onClick={() => borrarGrupoAgenda(grupo)} style={botonPeligroMini}>Borrar grupo</button>
+                              <button
+                                onClick={() => borrarGrupoAgenda(grupo)}
+                                style={botonPeligroMini}
+                              >
+                                Borrar grupo
+                              </button>
                             </div>
                           </article>
                         ))}
@@ -8044,270 +11053,765 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         </section>
       )}
 
+      {pantalla === 'ocioAlumnos' &&
+        (() => {
+          const totalOcio = ocioAlumnos.length;
+          const ocioSinGrupo = ocioAlumnos.filter(
+            (alumno) => !alumno.grupo_id
+          ).length;
+          const ocioSinNivel = ocioAlumnos.filter(
+            (alumno) => !(alumno.nivel_usado || alumno.nivel)
+          ).length;
+          const ocioConReportes = ocioAlumnos.filter(
+            (alumno) => Number(alumno.total_reportes || 0) > 0
+          ).length;
 
+          const estiloOcioHero = {
+            ...agendaHero,
+            background:
+              'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 48%, #f8fafc 100%)',
+            border: '1px solid #bbf7d0',
+            boxShadow: '0 18px 45px rgba(22, 163, 74, 0.10)',
+          };
 
-      {pantalla === 'ocioAlumnos' && (() => {
-        const totalOcio = ocioAlumnos.length;
-        const ocioSinGrupo = ocioAlumnos.filter((alumno) => !alumno.grupo_id).length;
-        const ocioSinNivel = ocioAlumnos.filter((alumno) => !(alumno.nivel_usado || alumno.nivel)).length;
-        const ocioConReportes = ocioAlumnos.filter((alumno) => Number(alumno.total_reportes || 0) > 0).length;
+          const tarjetaMetricaOcio = (color: string, fondo: string) => ({
+            ...miniTarjetaBlanca,
+            border: `1px solid ${color}33`,
+            background: fondo,
+            minHeight: 82,
+            display: 'grid',
+            alignContent: 'center',
+          });
 
-        const estiloOcioHero = {
-          ...agendaHero,
-          background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 48%, #f8fafc 100%)',
-          border: '1px solid #bbf7d0',
-          boxShadow: '0 18px 45px rgba(22, 163, 74, 0.10)'
-        };
-
-        const tarjetaMetricaOcio = (color: string, fondo: string) => ({
-          ...miniTarjetaBlanca,
-          border: `1px solid ${color}33`,
-          background: fondo,
-          minHeight: 82,
-          display: 'grid',
-          alignContent: 'center'
-        });
-
-        return (
-          <section style={{ display: 'grid', gap: 16 }}>
-            <article style={estiloOcioHero}>
-              <div>
-                <span style={{ ...agendaBadgeModalidad, background: '#ecfdf5', color: '#047857', borderColor: '#bbf7d0' }}>FICHAS · OCIO</span>
-                <h2 style={{ margin: '10px 0 0' }}>Alumnos Ocio</h2>
-                <p style={{ margin: '8px 0 0', color: '#475569', fontWeight: 650 }}>
-                  Base anual separada: día fijo, turno fijo, grupo estable, nivel y reportes.
-                </p>
-              </div>
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <button onClick={() => setPantalla('alumnos')} style={{ ...botonSecundario, borderColor: '#ddd6fe', color: '#6d28d9', background: '#f5f3ff' }}>Ver alumnos Baby/Intensivos</button>
-                <button onClick={abrirNuevoAlumnoOcio} style={{ ...botonPrincipal, background: '#16a34a', boxShadow: '0 12px 25px rgba(22, 163, 74, 0.22)' }}>+ Añadir alumno Ocio</button>
-              </div>
-            </article>
-
-            <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
-              <div style={tarjetaMetricaOcio('#16a34a', '#f0fdf4')}>
-                <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>TOTAL OCIO</span>
-                <strong style={{ fontSize: 28 }}>{totalOcio}</strong>
-                <span>alumnos</span>
-              </div>
-              <div style={tarjetaMetricaOcio('#dc2626', '#fef2f2')}>
-                <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>SIN GRUPO</span>
-                <strong style={{ fontSize: 28 }}>{ocioSinGrupo}</strong>
-                <span>pendientes</span>
-              </div>
-              <div style={tarjetaMetricaOcio('#f97316', '#fff7ed')}>
-                <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>SIN NIVEL</span>
-                <strong style={{ fontSize: 28 }}>{ocioSinNivel}</strong>
-                <span>revisar</span>
-              </div>
-              <div style={tarjetaMetricaOcio('#2563eb', '#eff6ff')}>
-                <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>CON REPORTES</span>
-                <strong style={{ fontSize: 28 }}>{ocioConReportes}</strong>
-                <span>histórico</span>
-              </div>
-            </section>
-
-            {mostrarNuevoOcio && (
-              <article style={{ ...tarjetaResaltada, borderColor: '#bbf7d0', background: '#f0fdf4' }}>
-                <h3 style={{ marginTop: 0 }}>{ocioAlumnoEditandoId ? 'Editar alumno Ocio' : 'Añadir alumno Ocio'}</h3>
-                <div style={gridFormulario}>
-                  <label style={labelCampo}>Nombre
-                    <input value={ocioNombre} onChange={(e) => setOcioNombre(e.target.value)} placeholder="Nombre completo" />
-                  </label>
-                  <label style={labelCampo}>Nivel
-                    <select value={ocioNivel} onChange={(e) => setOcioNivel(e.target.value)}>
-                      <option value="">Pendiente</option>
-                      {opcionesNivel.map((nivel) => <option key={nivel} value={nivel}>{nivel}</option>)}
-                    </select>
-                  </label>
-                  <label style={labelCampo}>Fecha nacimiento
-                    <input type="date" value={ocioFechaNacimiento} onChange={(e) => setOcioFechaNacimiento(e.target.value)} />
-                  </label>
-                  <label style={labelCampo}>Día fijo
-                    <select value={ocioDiaFijo} onChange={(e) => setOcioDiaFijo(e.target.value)}>
-                      <option>Jueves</option>
-                      <option>Sábado</option>
-                      <option>Domingo</option>
-                      <option>Miércoles</option>
-                      <option>Viernes</option>
-                    </select>
-                  </label>
-                  <label style={labelCampo}>Hora inicio
-                    <input type="time" value={ocioHoraInicio} onChange={(e) => setOcioHoraInicio(e.target.value)} />
-                  </label>
-                  <label style={labelCampo}>Hora fin
-                    <input type="time" value={ocioHoraFin} onChange={(e) => setOcioHoraFin(e.target.value)} />
-                  </label>
+          return (
+            <section style={{ display: 'grid', gap: 16 }}>
+              <article style={estiloOcioHero}>
+                <div>
+                  <span
+                    style={{
+                      ...agendaBadgeModalidad,
+                      background: '#ecfdf5',
+                      color: '#047857',
+                      borderColor: '#bbf7d0',
+                    }}
+                  >
+                    FICHAS · OCIO
+                  </span>
+                  <h2 style={{ margin: '10px 0 0' }}>Alumnos Ocio</h2>
+                  <p
+                    style={{
+                      margin: '8px 0 0',
+                      color: '#475569',
+                      fontWeight: 650,
+                    }}
+                  >
+                    Base anual separada: día fijo, turno fijo, grupo estable,
+                    nivel y reportes.
+                  </p>
                 </div>
-                <label style={{ ...labelCampo, marginTop: 12 }}>Observaciones
-                  <textarea value={ocioObservaciones} onChange={(e) => setOcioObservaciones(e.target.value)} placeholder="Observaciones internas de Ocio" rows={3} />
-                </label>
-                <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                  <button onClick={guardarAlumnoOcio} style={{ ...botonPrincipal, background: '#16a34a' }}>Guardar alumno</button>
-                  <button onClick={() => { limpiarFormularioOcioAlumno(); setMostrarNuevoOcio(false); }} style={botonSecundario}>Cancelar</button>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 10,
+                    flexWrap: 'wrap',
+                    justifyContent: 'flex-end',
+                  }}
+                >
+                  <button
+                    onClick={() => setPantalla('alumnos')}
+                    style={{
+                      ...botonSecundario,
+                      borderColor: '#ddd6fe',
+                      color: '#6d28d9',
+                      background: '#f5f3ff',
+                    }}
+                  >
+                    Ver alumnos Baby/Intensivos
+                  </button>
+                  <button
+                    onClick={abrirNuevoAlumnoOcio}
+                    style={{
+                      ...botonPrincipal,
+                      background: '#16a34a',
+                      boxShadow: '0 12px 25px rgba(22, 163, 74, 0.22)',
+                    }}
+                  >
+                    + Añadir alumno Ocio
+                  </button>
                 </div>
               </article>
-            )}
 
-            <details style={agendaBloqueBlanco}>
-              <summary style={{ cursor: 'pointer', fontWeight: 900, color: '#047857' }}>Importar listado Ocio desde Aimharder</summary>
-              <div style={{ marginTop: 12 }}>
-                <div style={gridFormulario}>
-                  <label style={labelCampo}>Día fijo para este volcado
-                    <select value={ocioDiaFijo} onChange={(e) => setOcioDiaFijo(e.target.value)}>
-                      <option>Jueves</option><option>Sábado</option><option>Domingo</option><option>Miércoles</option><option>Viernes</option>
-                    </select>
-                  </label>
-                  <label style={labelCampo}>Hora inicio
-                    <input type="time" value={ocioHoraInicio} onChange={(e) => setOcioHoraInicio(e.target.value)} />
-                  </label>
-                  <label style={labelCampo}>Hora fin
-                    <input type="time" value={ocioHoraFin} onChange={(e) => setOcioHoraFin(e.target.value)} />
-                  </label>
+              <section
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                  gap: 10,
+                }}
+              >
+                <div style={tarjetaMetricaOcio('#16a34a', '#f0fdf4')}>
+                  <span
+                    style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
+                  >
+                    TOTAL OCIO
+                  </span>
+                  <strong style={{ fontSize: 28 }}>{totalOcio}</strong>
+                  <span>alumnos</span>
                 </div>
-                <textarea value={textoImportarOcio} onChange={(e) => setTextoImportarOcio(e.target.value)} placeholder="Pega aquí listado Aimharder de Ocio" rows={7} style={{ width: '100%', marginTop: 10 }} />
-                <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
-                  <button onClick={importarOcioAimharder} style={{ ...botonPrincipal, background: '#16a34a' }}>Importar alumnos Ocio</button>
-                  <button onClick={() => { setTextoImportarOcio(''); setResultadoImportarOcio([]); }} style={botonSecundario}>Limpiar</button>
+                <div style={tarjetaMetricaOcio('#dc2626', '#fef2f2')}>
+                  <span
+                    style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
+                  >
+                    SIN GRUPO
+                  </span>
+                  <strong style={{ fontSize: 28 }}>{ocioSinGrupo}</strong>
+                  <span>pendientes</span>
                 </div>
-                {resultadoImportarOcio.length > 0 && (
-                  <div style={{ ...avisoCompleto, marginTop: 10 }}>
-                    <strong>{resultadoImportarOcio.length} alumnos importados/actualizados.</strong>
-                    <ul style={{ margin: '6px 0 0 18px' }}>
-                      {resultadoImportarOcio.map((item, indice) => <li key={`${item.alumno}-${indice}`}>{item.alumno} · Nivel {item.nivel}</li>)}
-                    </ul>
+                <div style={tarjetaMetricaOcio('#f97316', '#fff7ed')}>
+                  <span
+                    style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
+                  >
+                    SIN NIVEL
+                  </span>
+                  <strong style={{ fontSize: 28 }}>{ocioSinNivel}</strong>
+                  <span>revisar</span>
+                </div>
+                <div style={tarjetaMetricaOcio('#2563eb', '#eff6ff')}>
+                  <span
+                    style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
+                  >
+                    CON REPORTES
+                  </span>
+                  <strong style={{ fontSize: 28 }}>{ocioConReportes}</strong>
+                  <span>histórico</span>
+                </div>
+              </section>
+
+              {mostrarNuevoOcio && (
+                <article
+                  style={{
+                    ...tarjetaResaltada,
+                    borderColor: '#bbf7d0',
+                    background: '#f0fdf4',
+                  }}
+                >
+                  <h3 style={{ marginTop: 0 }}>
+                    {ocioAlumnoEditandoId
+                      ? 'Editar alumno Ocio'
+                      : 'Añadir alumno Ocio'}
+                  </h3>
+                  <div style={gridFormulario}>
+                    <label style={labelCampo}>
+                      Nombre
+                      <input
+                        value={ocioNombre}
+                        onChange={(e) => setOcioNombre(e.target.value)}
+                        placeholder="Nombre completo"
+                      />
+                    </label>
+                    <label style={labelCampo}>
+                      Nivel
+                      <select
+                        value={ocioNivel}
+                        onChange={(e) => setOcioNivel(e.target.value)}
+                      >
+                        <option value="">Pendiente</option>
+                        {opcionesNivel.map((nivel) => (
+                          <option key={nivel} value={nivel}>
+                            {nivel}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label style={labelCampo}>
+                      Fecha nacimiento
+                      <input
+                        type="date"
+                        value={ocioFechaNacimiento}
+                        onChange={(e) => setOcioFechaNacimiento(e.target.value)}
+                      />
+                    </label>
+                    <label style={labelCampo}>
+                      Día fijo
+                      <select
+                        value={ocioDiaFijo}
+                        onChange={(e) => setOcioDiaFijo(e.target.value)}
+                      >
+                        <option>Jueves</option>
+                        <option>Sábado</option>
+                        <option>Domingo</option>
+                        <option>Miércoles</option>
+                        <option>Viernes</option>
+                      </select>
+                    </label>
+                    <label style={labelCampo}>
+                      Hora inicio
+                      <input
+                        type="time"
+                        value={ocioHoraInicio}
+                        onChange={(e) => setOcioHoraInicio(e.target.value)}
+                      />
+                    </label>
+                    <label style={labelCampo}>
+                      Hora fin
+                      <input
+                        type="time"
+                        value={ocioHoraFin}
+                        onChange={(e) => setOcioHoraFin(e.target.value)}
+                      />
+                    </label>
                   </div>
-                )}
-              </div>
-            </details>
+                  <label style={{ ...labelCampo, marginTop: 12 }}>
+                    Observaciones
+                    <textarea
+                      value={ocioObservaciones}
+                      onChange={(e) => setOcioObservaciones(e.target.value)}
+                      placeholder="Observaciones internas de Ocio"
+                      rows={3}
+                    />
+                  </label>
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      marginTop: 12,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <button
+                      onClick={guardarAlumnoOcio}
+                      style={{ ...botonPrincipal, background: '#16a34a' }}
+                    >
+                      Guardar alumno
+                    </button>
+                    <button
+                      onClick={() => {
+                        limpiarFormularioOcioAlumno();
+                        setMostrarNuevoOcio(false);
+                      }}
+                      style={botonSecundario}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </article>
+              )}
 
-            <article style={agendaBloqueBlanco}>
-              <input value={busquedaOcio} onChange={(e) => setBusquedaOcio(e.target.value)} placeholder="Buscar alumno Ocio..." style={{ ...buscador, margin: 0 }} />
-            </article>
+              <details style={agendaBloqueBlanco}>
+                <summary
+                  style={{
+                    cursor: 'pointer',
+                    fontWeight: 900,
+                    color: '#047857',
+                  }}
+                >
+                  Importar listado Ocio desde Aimharder
+                </summary>
+                <div style={{ marginTop: 12 }}>
+                  <div style={gridFormulario}>
+                    <label style={labelCampo}>
+                      Día fijo para este volcado
+                      <select
+                        value={ocioDiaFijo}
+                        onChange={(e) => setOcioDiaFijo(e.target.value)}
+                      >
+                        <option>Jueves</option>
+                        <option>Sábado</option>
+                        <option>Domingo</option>
+                        <option>Miércoles</option>
+                        <option>Viernes</option>
+                      </select>
+                    </label>
+                    <label style={labelCampo}>
+                      Hora inicio
+                      <input
+                        type="time"
+                        value={ocioHoraInicio}
+                        onChange={(e) => setOcioHoraInicio(e.target.value)}
+                      />
+                    </label>
+                    <label style={labelCampo}>
+                      Hora fin
+                      <input
+                        type="time"
+                        value={ocioHoraFin}
+                        onChange={(e) => setOcioHoraFin(e.target.value)}
+                      />
+                    </label>
+                  </div>
+                  <textarea
+                    value={textoImportarOcio}
+                    onChange={(e) => setTextoImportarOcio(e.target.value)}
+                    placeholder="Pega aquí listado Aimharder de Ocio"
+                    rows={7}
+                    style={{ width: '100%', marginTop: 10 }}
+                  />
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      marginTop: 10,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <button
+                      onClick={importarOcioAimharder}
+                      style={{ ...botonPrincipal, background: '#16a34a' }}
+                    >
+                      Importar alumnos Ocio
+                    </button>
+                    <button
+                      onClick={() => {
+                        setTextoImportarOcio('');
+                        setResultadoImportarOcio([]);
+                      }}
+                      style={botonSecundario}
+                    >
+                      Limpiar
+                    </button>
+                  </div>
+                  {resultadoImportarOcio.length > 0 && (
+                    <div style={{ ...avisoCompleto, marginTop: 10 }}>
+                      <strong>
+                        {resultadoImportarOcio.length} alumnos
+                        importados/actualizados.
+                      </strong>
+                      <ul style={{ margin: '6px 0 0 18px' }}>
+                        {resultadoImportarOcio.map((item, indice) => (
+                          <li key={`${item.alumno}-${indice}`}>
+                            {item.alumno} · Nivel {item.nivel}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </details>
 
-            <div style={{ display: 'grid', gap: 12 }}>
-              {ocioAlumnosFiltrados.map((alumno) => {
-                const sinGrupo = !alumno.grupo_id;
-                return (
-                  <article key={alumno.alumno_id} style={{ ...tarjeta, border: `1px solid ${sinGrupo ? '#fecaca' : '#bbf7d0'}`, background: sinGrupo ? 'linear-gradient(135deg,#fff 0%,#fef2f2 100%)' : 'linear-gradient(135deg,#fff 0%,#f0fdf4 100%)', boxShadow: '0 14px 30px rgba(15, 23, 42, 0.07)' }}>
-                    <div style={agendaCabeceraLinea}>
-                      <div>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-                          <span style={{ ...agendaBadgeModalidad, background: '#ecfdf5', color: '#047857', borderColor: '#bbf7d0' }}>OCIO</span>
-                          <span style={{ ...agendaBadgeModalidad, background: sinGrupo ? '#fef2f2' : '#f8fafc', color: sinGrupo ? '#dc2626' : '#475569', borderColor: sinGrupo ? '#fecaca' : '#e2e8f0' }}>
-                            {sinGrupo ? 'Sin grupo estable' : alumno.grupo_estable}
-                          </span>
-                          <span style={{ ...agendaBadgeModalidad, background: '#eff6ff', color: '#2563eb', borderColor: '#bfdbfe' }}>Nivel {alumno.nivel_usado || '-'}</span>
+              <article style={agendaBloqueBlanco}>
+                <input
+                  value={busquedaOcio}
+                  onChange={(e) => setBusquedaOcio(e.target.value)}
+                  placeholder="Buscar alumno Ocio..."
+                  style={{ ...buscador, margin: 0 }}
+                />
+              </article>
+
+              <div style={{ display: 'grid', gap: 12 }}>
+                {ocioAlumnosFiltrados.map((alumno) => {
+                  const sinGrupo = !alumno.grupo_id;
+                  return (
+                    <article
+                      key={alumno.alumno_id}
+                      style={{
+                        ...tarjeta,
+                        border: `1px solid ${sinGrupo ? '#fecaca' : '#bbf7d0'}`,
+                        background: sinGrupo
+                          ? 'linear-gradient(135deg,#fff 0%,#fef2f2 100%)'
+                          : 'linear-gradient(135deg,#fff 0%,#f0fdf4 100%)',
+                        boxShadow: '0 14px 30px rgba(15, 23, 42, 0.07)',
+                      }}
+                    >
+                      <div style={agendaCabeceraLinea}>
+                        <div>
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 8,
+                              flexWrap: 'wrap',
+                              alignItems: 'center',
+                              marginBottom: 8,
+                            }}
+                          >
+                            <span
+                              style={{
+                                ...agendaBadgeModalidad,
+                                background: '#ecfdf5',
+                                color: '#047857',
+                                borderColor: '#bbf7d0',
+                              }}
+                            >
+                              OCIO
+                            </span>
+                            <span
+                              style={{
+                                ...agendaBadgeModalidad,
+                                background: sinGrupo ? '#fef2f2' : '#f8fafc',
+                                color: sinGrupo ? '#dc2626' : '#475569',
+                                borderColor: sinGrupo ? '#fecaca' : '#e2e8f0',
+                              }}
+                            >
+                              {sinGrupo
+                                ? 'Sin grupo estable'
+                                : alumno.grupo_estable}
+                            </span>
+                            <span
+                              style={{
+                                ...agendaBadgeModalidad,
+                                background: '#eff6ff',
+                                color: '#2563eb',
+                                borderColor: '#bfdbfe',
+                              }}
+                            >
+                              Nivel {alumno.nivel_usado || '-'}
+                            </span>
+                          </div>
+                          <h3 style={{ margin: 0 }}>{alumno.alumno}</h3>
+                          <p
+                            style={{
+                              margin: '8px 0 0',
+                              color: '#475569',
+                              fontWeight: 700,
+                            }}
+                          >
+                            {alumno.dia_fijo || alumno.grupo_dia || '-'} ·{' '}
+                            {(
+                              alumno.hora_inicio_fija ||
+                              alumno.grupo_hora_inicio ||
+                              ''
+                            ).slice(0, 5)}
+                            -
+                            {(
+                              alumno.hora_fin_fija ||
+                              alumno.grupo_hora_fin ||
+                              ''
+                            ).slice(0, 5)}{' '}
+                            · Reportes: {alumno.total_reportes || 0}
+                          </p>
                         </div>
-                        <h3 style={{ margin: 0 }}>{alumno.alumno}</h3>
-                        <p style={{ margin: '8px 0 0', color: '#475569', fontWeight: 700 }}>
-                          {alumno.dia_fijo || alumno.grupo_dia || '-'} · {(alumno.hora_inicio_fija || alumno.grupo_hora_inicio || '').slice(0,5)}-{(alumno.hora_fin_fija || alumno.grupo_hora_fin || '').slice(0,5)} · Reportes: {alumno.total_reportes || 0}
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: 8,
+                            flexWrap: 'wrap',
+                            justifyContent: 'flex-end',
+                          }}
+                        >
+                          <button
+                            onClick={() => editarAlumnoOcio(alumno)}
+                            style={botonSecundario}
+                          >
+                            Editar ficha
+                          </button>
+                          <button
+                            onClick={() => abrirEvaluacionOcio(alumno)}
+                            style={botonSecundario}
+                          >
+                            Ver evaluación
+                          </button>
+                          <button
+                            onClick={() => eliminarAlumnoOcio(alumno)}
+                            style={botonPeligro}
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 8,
+                          flexWrap: 'wrap',
+                          marginTop: 12,
+                        }}
+                      >
+                        <label
+                          style={{ ...labelCampo, flex: 1, minWidth: 240 }}
+                        >
+                          Mover a grupo estable
+                          <select
+                            value={alumno.grupo_id || ''}
+                            onChange={(e) =>
+                              asignarAlumnoGrupoOcio(
+                                alumno.alumno_id,
+                                e.target.value
+                              )
+                            }
+                          >
+                            <option value="">Sin grupo</option>
+                            {ocioGrupos.map((grupo) => (
+                              <option
+                                key={grupo.grupo_id}
+                                value={grupo.grupo_id}
+                              >
+                                {grupo.nombre_grupo} · {grupo.dia_semana}{' '}
+                                {(grupo.hora_inicio || '').slice(0, 5)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        {alumno.grupo_id && (
+                          <button
+                            onClick={() =>
+                              quitarAlumnoGrupoOcio(
+                                alumno.alumno_id,
+                                alumno.grupo_id
+                              )
+                            }
+                            style={botonSecundario}
+                          >
+                            Quitar del grupo
+                          </button>
+                        )}
+                      </div>
+
+                      {alumno.observaciones && (
+                        <p style={{ ...avisoNeutral, marginTop: 10 }}>
+                          <strong>Obs:</strong> {alumno.observaciones}
                         </p>
-                      </div>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        <button onClick={() => editarAlumnoOcio(alumno)} style={botonSecundario}>Editar ficha</button>
-                        <button onClick={() => abrirEvaluacionOcio(alumno)} style={botonSecundario}>Ver evaluación</button>
-                        <button onClick={() => eliminarAlumnoOcio(alumno)} style={botonPeligro}>Eliminar</button>
-                      </div>
-                    </div>
+                      )}
 
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-                      <label style={{ ...labelCampo, flex: 1, minWidth: 240 }}>Mover a grupo estable
-                        <select value={alumno.grupo_id || ''} onChange={(e) => asignarAlumnoGrupoOcio(alumno.alumno_id, e.target.value)}>
-                          <option value="">Sin grupo</option>
-                          {ocioGrupos.map((grupo) => <option key={grupo.grupo_id} value={grupo.grupo_id}>{grupo.nombre_grupo} · {grupo.dia_semana} {(grupo.hora_inicio || '').slice(0,5)}</option>)}
-                        </select>
-                      </label>
-                      {alumno.grupo_id && <button onClick={() => quitarAlumnoGrupoOcio(alumno.alumno_id, alumno.grupo_id)} style={botonSecundario}>Quitar del grupo</button>}
-                    </div>
-
-                    {alumno.observaciones && <p style={{ ...avisoNeutral, marginTop: 10 }}><strong>Obs:</strong> {alumno.observaciones}</p>}
-
-                    {evaluacionOcioActivaId === alumno.alumno_id && (
-                      <div style={{ ...miniTarjetaBlanca, marginTop: 12 }}>
-                        <h4 style={{ marginTop: 0 }}>Vista previa evaluación Ocio</h4>
-                        <pre style={{ whiteSpace: 'pre-wrap', background: '#f8fafc', padding: 12, borderRadius: 14, maxHeight: 360, overflow: 'auto' }}>{evaluacionOcioTexto}</pre>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                          <button onClick={copiarEvaluacionOcio} style={{ ...botonPrincipal, background: '#16a34a' }}>Copiar para ChatGPT</button>
-                          <button onClick={() => { setEvaluacionOcioActivaId(null); setEvaluacionOcioTexto(''); }} style={botonSecundario}>Cerrar</button>
+                      {evaluacionOcioActivaId === alumno.alumno_id && (
+                        <div style={{ ...miniTarjetaBlanca, marginTop: 12 }}>
+                          <h4 style={{ marginTop: 0 }}>
+                            Vista previa evaluación Ocio
+                          </h4>
+                          <pre
+                            style={{
+                              whiteSpace: 'pre-wrap',
+                              background: '#f8fafc',
+                              padding: 12,
+                              borderRadius: 14,
+                              maxHeight: 360,
+                              overflow: 'auto',
+                            }}
+                          >
+                            {evaluacionOcioTexto}
+                          </pre>
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 8,
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <button
+                              onClick={copiarEvaluacionOcio}
+                              style={{
+                                ...botonPrincipal,
+                                background: '#16a34a',
+                              }}
+                            >
+                              Copiar para ChatGPT
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEvaluacionOcioActivaId(null);
+                                setEvaluacionOcioTexto('');
+                              }}
+                              style={botonSecundario}
+                            >
+                              Cerrar
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
-                  </article>
-                );
-              })}
-            </div>
-          </section>
-        );
-      })()}
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })()}
 
       {pantalla === 'ocioGrupos' && (
         <section style={{ display: 'grid', gap: 18 }}>
           <article style={agendaHero}>
             <div>
               <h2 style={{ margin: 0 }}>Ocio · Grupos estables</h2>
-              <p style={{ margin: '8px 0 0' }}>Grupos anuales estables de septiembre a junio. El entrenador puede cambiar cada semana según disponibilidad.</p>
+              <p style={{ margin: '8px 0 0' }}>
+                Grupos anuales estables de septiembre a junio. El entrenador
+                puede cambiar cada semana según disponibilidad.
+              </p>
             </div>
-            <button onClick={abrirNuevoGrupoOcio} style={botonPrincipal}>+ Crear grupo estable</button>
+            <button onClick={abrirNuevoGrupoOcio} style={botonPrincipal}>
+              + Crear grupo estable
+            </button>
           </article>
 
           {mostrarFormularioOcioGrupo && (
             <article style={tarjetaResaltada}>
-              <h3 style={{ marginTop: 0 }}>{ocioGrupoForm.id ? 'Editar grupo estable' : 'Crear grupo estable Ocio'}</h3>
+              <h3 style={{ marginTop: 0 }}>
+                {ocioGrupoForm.id
+                  ? 'Editar grupo estable'
+                  : 'Crear grupo estable Ocio'}
+              </h3>
               <div style={gridFormulario}>
-                <label style={labelCampo}>Nombre grupo
-                  <input value={ocioGrupoForm.nombre} onChange={(e) => setOcioGrupoForm({ ...ocioGrupoForm, nombre: e.target.value })} placeholder="Grupo Ocio Sábado A" />
+                <label style={labelCampo}>
+                  Nombre grupo
+                  <input
+                    value={ocioGrupoForm.nombre}
+                    onChange={(e) =>
+                      setOcioGrupoForm({
+                        ...ocioGrupoForm,
+                        nombre: e.target.value,
+                      })
+                    }
+                    placeholder="Grupo Ocio Sábado A"
+                  />
                 </label>
-                <label style={labelCampo}>Día
-                  <select value={ocioGrupoForm.dia} onChange={(e) => setOcioGrupoForm({ ...ocioGrupoForm, dia: e.target.value })}>
-                    <option>Jueves</option><option>Sábado</option><option>Domingo</option><option>Miércoles</option><option>Viernes</option>
+                <label style={labelCampo}>
+                  Día
+                  <select
+                    value={ocioGrupoForm.dia}
+                    onChange={(e) =>
+                      setOcioGrupoForm({
+                        ...ocioGrupoForm,
+                        dia: e.target.value,
+                      })
+                    }
+                  >
+                    <option>Jueves</option>
+                    <option>Sábado</option>
+                    <option>Domingo</option>
+                    <option>Miércoles</option>
+                    <option>Viernes</option>
                   </select>
                 </label>
-                <label style={labelCampo}>Hora inicio
-                  <input type="time" value={ocioGrupoForm.horaInicio} onChange={(e) => setOcioGrupoForm({ ...ocioGrupoForm, horaInicio: e.target.value })} />
+                <label style={labelCampo}>
+                  Hora inicio
+                  <input
+                    type="time"
+                    value={ocioGrupoForm.horaInicio}
+                    onChange={(e) =>
+                      setOcioGrupoForm({
+                        ...ocioGrupoForm,
+                        horaInicio: e.target.value,
+                      })
+                    }
+                  />
                 </label>
-                <label style={labelCampo}>Hora fin
-                  <input type="time" value={ocioGrupoForm.horaFin} onChange={(e) => setOcioGrupoForm({ ...ocioGrupoForm, horaFin: e.target.value })} />
+                <label style={labelCampo}>
+                  Hora fin
+                  <input
+                    type="time"
+                    value={ocioGrupoForm.horaFin}
+                    onChange={(e) =>
+                      setOcioGrupoForm({
+                        ...ocioGrupoForm,
+                        horaFin: e.target.value,
+                      })
+                    }
+                  />
                 </label>
-                <label style={labelCampo}>Nivel grupo
-                  <select value={ocioGrupoForm.nivel} onChange={(e) => setOcioGrupoForm({ ...ocioGrupoForm, nivel: e.target.value })}>
-                    {opcionesNivel.map((nivel) => <option key={nivel} value={nivel}>{nivel}</option>)}
+                <label style={labelCampo}>
+                  Nivel grupo
+                  <select
+                    value={ocioGrupoForm.nivel}
+                    onChange={(e) =>
+                      setOcioGrupoForm({
+                        ...ocioGrupoForm,
+                        nivel: e.target.value,
+                      })
+                    }
+                  >
+                    {opcionesNivel.map((nivel) => (
+                      <option key={nivel} value={nivel}>
+                        {nivel}
+                      </option>
+                    ))}
                   </select>
                 </label>
-                <label style={labelCampo}>Pista
-                  <select value={ocioGrupoForm.pista} onChange={(e) => setOcioGrupoForm({ ...ocioGrupoForm, pista: e.target.value })}>
-                    {opcionesPista.map((pista) => <option key={pista} value={pista}>{pista}</option>)}
+                <label style={labelCampo}>
+                  Pista
+                  <select
+                    value={ocioGrupoForm.pista}
+                    onChange={(e) =>
+                      setOcioGrupoForm({
+                        ...ocioGrupoForm,
+                        pista: e.target.value,
+                      })
+                    }
+                  >
+                    {opcionesPista.map((pista) => (
+                      <option key={pista} value={pista}>
+                        {pista}
+                      </option>
+                    ))}
                   </select>
                 </label>
-                <label style={labelCampo}>Punto
-                  <select value={ocioGrupoForm.punto} onChange={(e) => setOcioGrupoForm({ ...ocioGrupoForm, punto: e.target.value })}>
-                    {Array.from({ length: 12 }, (_, i) => String(i + 1)).map((punto) => <option key={punto} value={punto}>Punto {punto}</option>)}
+                <label style={labelCampo}>
+                  Punto
+                  <select
+                    value={ocioGrupoForm.punto}
+                    onChange={(e) =>
+                      setOcioGrupoForm({
+                        ...ocioGrupoForm,
+                        punto: e.target.value,
+                      })
+                    }
+                  >
+                    {Array.from({ length: 12 }, (_, i) => String(i + 1)).map(
+                      (punto) => (
+                        <option key={punto} value={punto}>
+                          Punto {punto}
+                        </option>
+                      )
+                    )}
                   </select>
                 </label>
               </div>
-              <label style={{ ...labelCampo, marginTop: 12 }}>Observaciones de grupo
-                <textarea value={ocioGrupoForm.observaciones} onChange={(e) => setOcioGrupoForm({ ...ocioGrupoForm, observaciones: e.target.value })} rows={3} />
+              <label style={{ ...labelCampo, marginTop: 12 }}>
+                Observaciones de grupo
+                <textarea
+                  value={ocioGrupoForm.observaciones}
+                  onChange={(e) =>
+                    setOcioGrupoForm({
+                      ...ocioGrupoForm,
+                      observaciones: e.target.value,
+                    })
+                  }
+                  rows={3}
+                />
               </label>
-              <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                <button onClick={guardarGrupoOcio} style={botonPrincipal}>Guardar grupo</button>
-                <button onClick={() => { setMostrarFormularioOcioGrupo(false); setOcioGrupoForm(ocioGrupoFormInicial()); }} style={botonSecundario}>Cancelar</button>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  marginTop: 12,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <button onClick={guardarGrupoOcio} style={botonPrincipal}>
+                  Guardar grupo
+                </button>
+                <button
+                  onClick={() => {
+                    setMostrarFormularioOcioGrupo(false);
+                    setOcioGrupoForm(ocioGrupoFormInicial());
+                  }}
+                  style={botonSecundario}
+                >
+                  Cancelar
+                </button>
               </div>
             </article>
           )}
 
           <article style={agendaBloqueBlanco}>
             <h3 style={{ marginTop: 0 }}>Revisión automática de cambios</h3>
-            {ocioRecomendacionesCambio.filter((item) => item.recomendacion !== 'OK').length === 0 ? (
-              <p style={{ margin: 0, color: '#555' }}>Sin cambios importantes detectados ahora mismo.</p>
+            {ocioRecomendacionesCambio.filter(
+              (item) => item.recomendacion !== 'OK'
+            ).length === 0 ? (
+              <p style={{ margin: 0, color: '#555' }}>
+                Sin cambios importantes detectados ahora mismo.
+              </p>
             ) : (
               <div style={{ display: 'grid', gap: 8 }}>
-                {ocioRecomendacionesCambio.filter((item) => item.recomendacion !== 'OK').map((item) => (
-                  <div key={`${item.alumno_id}-${item.recomendacion}`} style={avisoPendiente}>
-                    <strong>{item.alumno}</strong> · Nivel {item.nivel_alumno || '-'} · Grupo actual: {item.nombre_grupo || 'Sin grupo'}
-                    <br />
-                    {item.recomendacion}
-                  </div>
-                ))}
+                {ocioRecomendacionesCambio
+                  .filter((item) => item.recomendacion !== 'OK')
+                  .map((item) => (
+                    <div
+                      key={`${item.alumno_id}-${item.recomendacion}`}
+                      style={avisoPendiente}
+                    >
+                      <strong>{item.alumno}</strong> · Nivel{' '}
+                      {item.nivel_alumno || '-'} · Grupo actual:{' '}
+                      {item.nombre_grupo || 'Sin grupo'}
+                      <br />
+                      {item.recomendacion}
+                    </div>
+                  ))}
               </div>
             )}
           </article>
@@ -8315,24 +11819,70 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           <article style={agendaBloqueBlanco}>
             <h3 style={{ marginTop: 0 }}>Grupos por día y turno</h3>
             <div style={{ display: 'grid', gap: 12 }}>
-              {ocioGrupos.length === 0 && <div style={agendaVacio}>Todavía no hay grupos estables de Ocio.</div>}
+              {ocioGrupos.length === 0 && (
+                <div style={agendaVacio}>
+                  Todavía no hay grupos estables de Ocio.
+                </div>
+              )}
               {ocioGrupos.map((grupo) => (
                 <article key={grupo.grupo_id} style={agendaGrupoResumen}>
                   <div style={agendaGrupoLinea}>
                     <strong>{grupo.nombre_grupo}</strong>
-                    <span>{grupo.dia_semana} · {(grupo.hora_inicio || '').slice(0,5)}-{(grupo.hora_fin || '').slice(0,5)} · {grupo.total_alumnos} niños</span>
+                    <span>
+                      {grupo.dia_semana} ·{' '}
+                      {(grupo.hora_inicio || '').slice(0, 5)}-
+                      {(grupo.hora_fin || '').slice(0, 5)} ·{' '}
+                      {grupo.total_alumnos} niños
+                    </span>
                   </div>
-                  <p style={{ margin: '8px 0' }}>{grupo.nivel_grupo || '-'} · {grupo.pista || '-'} · Punto {grupo.punto_encuentro || '-'}</p>
+                  <p style={{ margin: '8px 0' }}>
+                    {grupo.nivel_grupo || '-'} · {grupo.pista || '-'} · Punto{' '}
+                    {grupo.punto_encuentro || '-'}
+                  </p>
                   {grupo.alumnos_lista ? (
                     <ul style={{ margin: '8px 0 0 18px', padding: 0 }}>
-                      {grupo.alumnos_lista.split(' || ').map((alumno, indice) => <li key={`${grupo.grupo_id}-${indice}`}>{alumno}</li>)}
+                      {grupo.alumnos_lista
+                        .split(' || ')
+                        .map((alumno, indice) => (
+                          <li key={`${grupo.grupo_id}-${indice}`}>{alumno}</li>
+                        ))}
                     </ul>
-                  ) : <p style={{ margin: 0, color: '#666' }}>Sin alumnos asignados.</p>}
-                  {grupo.observaciones && <p style={{ ...avisoNeutral, marginTop: 10 }}>{grupo.observaciones}</p>}
-                  <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                    <button onClick={() => editarGrupoOcio(grupo)} style={botonSecundario}>Editar grupo</button>
-                    <button onClick={() => copiarWhatsappOcioGrupo(grupo)} style={botonSecundario}>Ver WhatsApp padres</button>
-                    <button onClick={() => eliminarGrupoOcio(grupo)} style={botonPeligro}>Eliminar grupo</button>
+                  ) : (
+                    <p style={{ margin: 0, color: '#666' }}>
+                      Sin alumnos asignados.
+                    </p>
+                  )}
+                  {grupo.observaciones && (
+                    <p style={{ ...avisoNeutral, marginTop: 10 }}>
+                      {grupo.observaciones}
+                    </p>
+                  )}
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      marginTop: 12,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <button
+                      onClick={() => editarGrupoOcio(grupo)}
+                      style={botonSecundario}
+                    >
+                      Editar grupo
+                    </button>
+                    <button
+                      onClick={() => copiarWhatsappOcioGrupo(grupo)}
+                      style={botonSecundario}
+                    >
+                      Ver WhatsApp padres
+                    </button>
+                    <button
+                      onClick={() => eliminarGrupoOcio(grupo)}
+                      style={botonPeligro}
+                    >
+                      Eliminar grupo
+                    </button>
                   </div>
                 </article>
               ))}
@@ -8340,7 +11890,6 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           </article>
         </section>
       )}
-
 
       {pantalla === 'ocioCambios' && (
         <section style={{ display: 'grid', gap: 18 }}>
@@ -8350,31 +11899,79 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               <h2 style={{ margin: 0 }}>Cambios puntuales</h2>
               <details style={ayudaDesplegableCompacta}>
                 <summary>¿Para qué sirve?</summary>
-                <p style={{ margin: '8px 0 0' }}>Para mover a un niño solo una semana: por ejemplo de domingo a sábado. Luego se aplica en Preparar semana, WhatsApp, vista entrenador, reportes y cobros.</p>
+                <p style={{ margin: '8px 0 0' }}>
+                  Para mover a un niño solo una semana: por ejemplo de domingo a
+                  sábado. Luego se aplica en Preparar semana, WhatsApp, vista
+                  entrenador, reportes y cobros.
+                </p>
               </details>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={() => abrirFormularioCambioOcio()} style={botonPrincipal}>+ Cambio puntual</button>
-              <button onClick={() => { cargarOcioAlumnos(); cargarOcioGrupos(); cargarOcioCambios(); }} style={botonSecundario}>Actualizar</button>
+              <button
+                onClick={() => abrirFormularioCambioOcio()}
+                style={botonPrincipal}
+              >
+                + Cambio puntual
+              </button>
+              <button
+                onClick={() => {
+                  cargarOcioAlumnos();
+                  cargarOcioGrupos();
+                  cargarOcioCambios();
+                }}
+                style={botonSecundario}
+              >
+                Actualizar
+              </button>
             </div>
           </article>
 
           <article style={agendaBloqueBlanco}>
             <h3 style={{ marginTop: 0 }}>Semana</h3>
             <div style={gridFormulario}>
-              <label style={labelCampo}>Temporada
-                <select value={anioInicioTemporadaAgenda} onChange={(e) => { setAnioInicioTemporadaAgenda(Number(e.target.value)); setSemanaAgendaInicio(''); }}>
-                  {opcionesTemporadaAgenda.map((anio) => <option key={anio} value={anio}>{anio}/{anio + 1}</option>)}
+              <label style={labelCampo}>
+                Temporada
+                <select
+                  value={anioInicioTemporadaAgenda}
+                  onChange={(e) => {
+                    setAnioInicioTemporadaAgenda(Number(e.target.value));
+                    setSemanaAgendaInicio('');
+                  }}
+                >
+                  {opcionesTemporadaAgenda.map((anio) => (
+                    <option key={anio} value={anio}>
+                      {anio}/{anio + 1}
+                    </option>
+                  ))}
                 </select>
               </label>
-              <label style={labelCampo}>Mes
-                <select value={mesAgendaActivo} onChange={(e) => { setMesAgenda(e.target.value); setSemanaAgendaInicio(''); }}>
-                  {mesesAgenda.map((mes) => <option key={mes} value={mes}>{capitalizarPrimera(nombreMesAgendaDesdeClave(mes))}</option>)}
+              <label style={labelCampo}>
+                Mes
+                <select
+                  value={mesAgendaActivo}
+                  onChange={(e) => {
+                    setMesAgenda(e.target.value);
+                    setSemanaAgendaInicio('');
+                  }}
+                >
+                  {mesesAgenda.map((mes) => (
+                    <option key={mes} value={mes}>
+                      {capitalizarPrimera(nombreMesAgendaDesdeClave(mes))}
+                    </option>
+                  ))}
                 </select>
               </label>
-              <label style={labelCampo}>Semana lunes-domingo
-                <select value={semanaAgendaActiva} onChange={(e) => setSemanaAgendaInicio(e.target.value)}>
-                  {semanasAgenda.map((semana) => <option key={semana} value={semana}>Semana {rangoSemanaAgenda(semana)}</option>)}
+              <label style={labelCampo}>
+                Semana lunes-domingo
+                <select
+                  value={semanaAgendaActiva}
+                  onChange={(e) => setSemanaAgendaInicio(e.target.value)}
+                >
+                  {semanasAgenda.map((semana) => (
+                    <option key={semana} value={semana}>
+                      Semana {rangoSemanaAgenda(semana)}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>
@@ -8382,26 +11979,41 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
           {mostrarFormularioOcioCambio && (
             <article style={{ ...tarjeta, border: '2px solid #111' }}>
-              <h3 style={{ marginTop: 0 }}>{ocioCambioForm.id ? 'Modificar cambio puntual' : 'Nuevo cambio puntual'}</h3>
+              <h3 style={{ marginTop: 0 }}>
+                {ocioCambioForm.id
+                  ? 'Modificar cambio puntual'
+                  : 'Nuevo cambio puntual'}
+              </h3>
               <div style={gridFormulario}>
-                <label style={labelCampo}>Alumno
+                <label style={labelCampo}>
+                  Alumno
                   <select
                     value={ocioCambioForm.alumnoId}
-                    onChange={(e) => setOcioCambioForm({ ...ocioCambioForm, alumnoId: e.target.value })}
+                    onChange={(e) =>
+                      setOcioCambioForm({
+                        ...ocioCambioForm,
+                        alumnoId: e.target.value,
+                      })
+                    }
                   >
                     <option value="">Seleccionar alumno</option>
                     {ocioAlumnos
                       .slice()
                       .sort((a, b) => a.alumno.localeCompare(b.alumno))
                       .map((alumno) => (
-                        <option key={`cambio-alumno-${alumno.alumno_id}`} value={alumno.alumno_id}>
-                          {alumno.alumno} · {alumno.grupo_estable || 'Sin grupo'}
+                        <option
+                          key={`cambio-alumno-${alumno.alumno_id}`}
+                          value={alumno.alumno_id}
+                        >
+                          {alumno.alumno} ·{' '}
+                          {alumno.grupo_estable || 'Sin grupo'}
                         </option>
                       ))}
                   </select>
                 </label>
 
-                <label style={labelCampo}>Grupo destino puntual
+                <label style={labelCampo}>
+                  Grupo destino puntual
                   <select
                     value={ocioCambioForm.grupoDestinoId}
                     onChange={(e) => {
@@ -8409,34 +12021,60 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                       setOcioCambioForm({
                         ...ocioCambioForm,
                         grupoDestinoId,
-                        fecha: grupoDestinoId ? fechaDestinoCambioOcio(grupoDestinoId) : ocioCambioForm.fecha,
+                        fecha: grupoDestinoId
+                          ? fechaDestinoCambioOcio(grupoDestinoId)
+                          : ocioCambioForm.fecha,
                       });
                     }}
                   >
                     <option value="">Seleccionar grupo destino</option>
                     {ocioGrupos
-                      .filter((grupo) => grupo.grupo_id !== ocioAlumnoCambioSeleccionado?.grupo_id)
+                      .filter(
+                        (grupo) =>
+                          grupo.grupo_id !==
+                          ocioAlumnoCambioSeleccionado?.grupo_id
+                      )
                       .map((grupo) => (
-                        <option key={`destino-${grupo.grupo_id}`} value={grupo.grupo_id}>
-                          {grupo.dia_semana} · {horaCorta(grupo.hora_inicio)}-{horaCorta(grupo.hora_fin)} · {grupo.nombre_grupo} · Punto {grupo.punto_encuentro || '-'}
+                        <option
+                          key={`destino-${grupo.grupo_id}`}
+                          value={grupo.grupo_id}
+                        >
+                          {grupo.dia_semana} · {horaCorta(grupo.hora_inicio)}-
+                          {horaCorta(grupo.hora_fin)} · {grupo.nombre_grupo} ·
+                          Punto {grupo.punto_encuentro || '-'}
                         </option>
                       ))}
                   </select>
                 </label>
 
-                <label style={labelCampo}>Fecha del cambio
+                <label style={labelCampo}>
+                  Fecha del cambio
                   <input
                     type="date"
-                    value={ocioCambioForm.fecha || fechaDestinoCambioOcio(ocioCambioForm.grupoDestinoId)}
-                    onChange={(e) => setOcioCambioForm({ ...ocioCambioForm, fecha: e.target.value })}
+                    value={
+                      ocioCambioForm.fecha ||
+                      fechaDestinoCambioOcio(ocioCambioForm.grupoDestinoId)
+                    }
+                    onChange={(e) =>
+                      setOcioCambioForm({
+                        ...ocioCambioForm,
+                        fecha: e.target.value,
+                      })
+                    }
                     style={inputCampo}
                   />
                 </label>
 
-                <label style={labelCampo}>Motivo / nota interna
+                <label style={labelCampo}>
+                  Motivo / nota interna
                   <textarea
                     value={ocioCambioForm.motivo}
-                    onChange={(e) => setOcioCambioForm({ ...ocioCambioForm, motivo: e.target.value })}
+                    onChange={(e) =>
+                      setOcioCambioForm({
+                        ...ocioCambioForm,
+                        motivo: e.target.value,
+                      })
+                    }
                     style={textareaCampo}
                     placeholder="Ejemplo: viene sábado en vez de domingo esta semana"
                   />
@@ -8445,19 +12083,61 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
               {ocioAlumnoCambioSeleccionado && (
                 <div style={{ ...avisoNeutral, marginTop: 10 }}>
-                  Grupo habitual: <strong>{ocioAlumnoCambioSeleccionado.grupo_estable || 'Sin grupo estable'}</strong> · {ocioAlumnoCambioSeleccionado.grupo_dia || ocioAlumnoCambioSeleccionado.dia_fijo || '-'} {horaCorta(ocioAlumnoCambioSeleccionado.grupo_hora_inicio || ocioAlumnoCambioSeleccionado.hora_inicio_fija)}-{horaCorta(ocioAlumnoCambioSeleccionado.grupo_hora_fin || ocioAlumnoCambioSeleccionado.hora_fin_fija)}
+                  Grupo habitual:{' '}
+                  <strong>
+                    {ocioAlumnoCambioSeleccionado.grupo_estable ||
+                      'Sin grupo estable'}
+                  </strong>{' '}
+                  ·{' '}
+                  {ocioAlumnoCambioSeleccionado.grupo_dia ||
+                    ocioAlumnoCambioSeleccionado.dia_fijo ||
+                    '-'}{' '}
+                  {horaCorta(
+                    ocioAlumnoCambioSeleccionado.grupo_hora_inicio ||
+                      ocioAlumnoCambioSeleccionado.hora_inicio_fija
+                  )}
+                  -
+                  {horaCorta(
+                    ocioAlumnoCambioSeleccionado.grupo_hora_fin ||
+                      ocioAlumnoCambioSeleccionado.hora_fin_fija
+                  )}
                 </div>
               )}
 
               {grupoOcioDestinoCambioSeleccionado() && (
                 <div style={{ ...avisoCompleto, marginTop: 10 }}>
-                  Destino: <strong>{grupoOcioDestinoCambioSeleccionado()?.nombre_grupo}</strong> · {grupoOcioDestinoCambioSeleccionado()?.dia_semana} {horaCorta(grupoOcioDestinoCambioSeleccionado()?.hora_inicio)}-{horaCorta(grupoOcioDestinoCambioSeleccionado()?.hora_fin)} · Punto {grupoOcioDestinoCambioSeleccionado()?.punto_encuentro || '-'}
+                  Destino:{' '}
+                  <strong>
+                    {grupoOcioDestinoCambioSeleccionado()?.nombre_grupo}
+                  </strong>{' '}
+                  · {grupoOcioDestinoCambioSeleccionado()?.dia_semana}{' '}
+                  {horaCorta(grupoOcioDestinoCambioSeleccionado()?.hora_inicio)}
+                  -{horaCorta(grupoOcioDestinoCambioSeleccionado()?.hora_fin)} ·
+                  Punto{' '}
+                  {grupoOcioDestinoCambioSeleccionado()?.punto_encuentro || '-'}
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-                <button onClick={guardarCambioPuntualOcio} style={botonPrincipal}>Guardar cambio puntual</button>
-                <button onClick={limpiarFormularioCambioOcio} style={botonSecundario}>Cancelar</button>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  marginTop: 12,
+                }}
+              >
+                <button
+                  onClick={guardarCambioPuntualOcio}
+                  style={botonPrincipal}
+                >
+                  Guardar cambio puntual
+                </button>
+                <button
+                  onClick={limpiarFormularioCambioOcio}
+                  style={botonSecundario}
+                >
+                  Cancelar
+                </button>
               </div>
             </article>
           )}
@@ -8465,32 +12145,75 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           <article style={agendaBloqueBlanco}>
             <div style={agendaCabeceraLinea}>
               <div>
-                <h3 style={{ marginTop: 0, marginBottom: 6 }}>Cambios de la semana {rangoSemanaAgenda(semanaAgendaActiva || semanaActualAgenda)}</h3>
-                <p style={{ margin: 0, color: '#555' }}>Al preparar semana, el alumno sale de su grupo habitual y entra en el grupo destino.</p>
+                <h3 style={{ marginTop: 0, marginBottom: 6 }}>
+                  Cambios de la semana{' '}
+                  {rangoSemanaAgenda(semanaAgendaActiva || semanaActualAgenda)}
+                </h3>
+                <p style={{ margin: 0, color: '#555' }}>
+                  Al preparar semana, el alumno sale de su grupo habitual y
+                  entra en el grupo destino.
+                </p>
               </div>
-              <button onClick={() => setPantalla('ocioSemana')} style={botonSecundario}>Ir a Preparar semana</button>
+              <button
+                onClick={() => setPantalla('ocioSemana')}
+                style={botonSecundario}
+              >
+                Ir a Preparar semana
+              </button>
             </div>
 
             {cambiosOcioSemana.length === 0 ? (
-              <div style={agendaVacio}>No hay cambios puntuales para esta semana.</div>
+              <div style={agendaVacio}>
+                No hay cambios puntuales para esta semana.
+              </div>
             ) : (
               <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
                 {cambiosOcioSemana.map((cambio) => (
-                  <div key={`cambio-${cambio.reubicacion_id}`} style={miniTarjetaBlanca}>
+                  <div
+                    key={`cambio-${cambio.reubicacion_id}`}
+                    style={miniTarjetaBlanca}
+                  >
                     <div style={agendaCabeceraLinea}>
                       <div>
-                        <strong>{cambio.alumno}</strong> · Nivel {cambio.nivel_usado || '-'}
+                        <strong>{cambio.alumno}</strong> · Nivel{' '}
+                        {cambio.nivel_usado || '-'}
                         <p style={{ margin: '5px 0 0' }}>
-                          {formatearFecha(cambio.fecha)} · {cambio.grupo_origen || 'Origen'} → <strong>{cambio.grupo_destino}</strong>
+                          {formatearFecha(cambio.fecha)} ·{' '}
+                          {cambio.grupo_origen || 'Origen'} →{' '}
+                          <strong>{cambio.grupo_destino}</strong>
                         </p>
                         <p style={{ margin: '5px 0 0', color: '#555' }}>
-                          Destino: {cambio.destino_dia_semana || '-'} {horaCorta(cambio.destino_hora_inicio)}-{horaCorta(cambio.destino_hora_fin)} · Punto {cambio.destino_punto || '-'}
+                          Destino: {cambio.destino_dia_semana || '-'}{' '}
+                          {horaCorta(cambio.destino_hora_inicio)}-
+                          {horaCorta(cambio.destino_hora_fin)} · Punto{' '}
+                          {cambio.destino_punto || '-'}
                         </p>
-                        {cambio.motivo && <p style={{ margin: '5px 0 0', color: '#555' }}>{cambio.motivo}</p>}
+                        {cambio.motivo && (
+                          <p style={{ margin: '5px 0 0', color: '#555' }}>
+                            {cambio.motivo}
+                          </p>
+                        )}
                       </div>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        <button onClick={() => abrirFormularioCambioOcio(cambio)} style={botonSecundario}>Modificar</button>
-                        <button onClick={() => eliminarCambioPuntualOcio(cambio)} style={botonPeligroMini}>Eliminar</button>
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 8,
+                          flexWrap: 'wrap',
+                          justifyContent: 'flex-end',
+                        }}
+                      >
+                        <button
+                          onClick={() => abrirFormularioCambioOcio(cambio)}
+                          style={botonSecundario}
+                        >
+                          Modificar
+                        </button>
+                        <button
+                          onClick={() => eliminarCambioPuntualOcio(cambio)}
+                          style={botonPeligroMini}
+                        >
+                          Eliminar
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -8500,20 +12223,62 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           </article>
 
           <details style={panelRevisionIntegradaOcio}>
-            <summary style={summaryChuletaApp}>Revisión de evolución Ocio</summary>
+            <summary style={summaryChuletaApp}>
+              Revisión de evolución Ocio
+            </summary>
             <div style={gridResumenInicio}>
-              <div style={miniTarjetaBlanca}><strong>Posibles cambios</strong><br />{ocioRevisionBase.filter((alumno) => alumno.necesita_cambio_revision).length}</div>
-              <div style={miniTarjetaBlanca}><strong>Sin grupo</strong><br />{ocioRevisionBase.filter((alumno) => alumno.sin_grupo_revision).length}</div>
-              <div style={miniTarjetaBlanca}><strong>Sin reportes</strong><br />{ocioRevisionBase.filter((alumno) => alumno.sin_reportes_revision).length}</div>
+              <div style={miniTarjetaBlanca}>
+                <strong>Posibles cambios</strong>
+                <br />
+                {
+                  ocioRevisionBase.filter(
+                    (alumno) => alumno.necesita_cambio_revision
+                  ).length
+                }
+              </div>
+              <div style={miniTarjetaBlanca}>
+                <strong>Sin grupo</strong>
+                <br />
+                {
+                  ocioRevisionBase.filter((alumno) => alumno.sin_grupo_revision)
+                    .length
+                }
+              </div>
+              <div style={miniTarjetaBlanca}>
+                <strong>Sin reportes</strong>
+                <br />
+                {
+                  ocioRevisionBase.filter(
+                    (alumno) => alumno.sin_reportes_revision
+                  ).length
+                }
+              </div>
             </div>
             <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-              {ocioRevisionBase.filter((alumno) => alumno.necesita_cambio_revision || alumno.sin_grupo_revision || alumno.sin_reportes_revision).slice(0, 6).map((alumno) => (
-                <div key={`rev-int-${alumno.alumno_id}`} style={avisoNeutral}>
-                  <strong>{alumno.alumno}</strong> · Nivel {alumno.nivel_usado || '-'} · {alumno.recomendacion_revision}
+              {ocioRevisionBase
+                .filter(
+                  (alumno) =>
+                    alumno.necesita_cambio_revision ||
+                    alumno.sin_grupo_revision ||
+                    alumno.sin_reportes_revision
+                )
+                .slice(0, 6)
+                .map((alumno) => (
+                  <div key={`rev-int-${alumno.alumno_id}`} style={avisoNeutral}>
+                    <strong>{alumno.alumno}</strong> · Nivel{' '}
+                    {alumno.nivel_usado || '-'} ·{' '}
+                    {alumno.recomendacion_revision}
+                  </div>
+                ))}
+              {ocioRevisionBase.filter(
+                (alumno) =>
+                  alumno.necesita_cambio_revision ||
+                  alumno.sin_grupo_revision ||
+                  alumno.sin_reportes_revision
+              ).length === 0 && (
+                <div style={avisoCompleto}>
+                  Ocio sin avisos importantes ahora mismo.
                 </div>
-              ))}
-              {ocioRevisionBase.filter((alumno) => alumno.necesita_cambio_revision || alumno.sin_grupo_revision || alumno.sin_reportes_revision).length === 0 && (
-                <div style={avisoCompleto}>Ocio sin avisos importantes ahora mismo.</div>
               )}
             </div>
           </details>
@@ -8527,52 +12292,112 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               <h2 style={{ margin: 0 }}>Ocio · Preparar semana</h2>
               <details style={ayudaDesplegableCompacta}>
                 <summary>Chuleta</summary>
-                <p style={{ margin: '8px 0 0' }}>Convierte los grupos estables en grupos reales de esta semana: niños que vienen, cambios puntuales, entrenador disponible, vista entrenador, reportes y cobros.</p>
+                <p style={{ margin: '8px 0 0' }}>
+                  Convierte los grupos estables en grupos reales de esta semana:
+                  niños que vienen, cambios puntuales, entrenador disponible,
+                  vista entrenador, reportes y cobros.
+                </p>
               </details>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={abrirWhatsappSemanaOcio} style={botonSecundario}>Ver WhatsApp semana</button>
-              <button onClick={prepararTodaSemanaOcio} style={botonPrincipal}>Preparar toda la semana</button>
+              <button onClick={abrirWhatsappSemanaOcio} style={botonSecundario}>
+                Ver WhatsApp semana
+              </button>
+              <button onClick={prepararTodaSemanaOcio} style={botonPrincipal}>
+                Preparar toda la semana
+              </button>
             </div>
           </article>
 
           <article style={agendaBloqueBlanco}>
             <h3 style={{ marginTop: 0 }}>Semana</h3>
             <div style={gridFormulario}>
-              <label style={labelCampo}>Temporada
-                <select value={anioInicioTemporadaAgenda} onChange={(e) => { setAnioInicioTemporadaAgenda(Number(e.target.value)); setSemanaAgendaInicio(''); }}>
-                  {opcionesTemporadaAgenda.map((anio) => <option key={anio} value={anio}>{anio}/{anio + 1}</option>)}
+              <label style={labelCampo}>
+                Temporada
+                <select
+                  value={anioInicioTemporadaAgenda}
+                  onChange={(e) => {
+                    setAnioInicioTemporadaAgenda(Number(e.target.value));
+                    setSemanaAgendaInicio('');
+                  }}
+                >
+                  {opcionesTemporadaAgenda.map((anio) => (
+                    <option key={anio} value={anio}>
+                      {anio}/{anio + 1}
+                    </option>
+                  ))}
                 </select>
               </label>
-              <label style={labelCampo}>Mes
-                <select value={mesAgendaActivo} onChange={(e) => { setMesAgenda(e.target.value); setSemanaAgendaInicio(''); }}>
-                  {mesesAgenda.map((mes) => <option key={mes} value={mes}>{capitalizarPrimera(nombreMesAgendaDesdeClave(mes))}</option>)}
+              <label style={labelCampo}>
+                Mes
+                <select
+                  value={mesAgendaActivo}
+                  onChange={(e) => {
+                    setMesAgenda(e.target.value);
+                    setSemanaAgendaInicio('');
+                  }}
+                >
+                  {mesesAgenda.map((mes) => (
+                    <option key={mes} value={mes}>
+                      {capitalizarPrimera(nombreMesAgendaDesdeClave(mes))}
+                    </option>
+                  ))}
                 </select>
               </label>
-              <label style={labelCampo}>Semana lunes-domingo
-                <select value={semanaAgendaActiva} onChange={(e) => setSemanaAgendaInicio(e.target.value)}>
-                  {semanasAgenda.map((semana) => <option key={semana} value={semana}>Semana {rangoSemanaAgenda(semana)}</option>)}
+              <label style={labelCampo}>
+                Semana lunes-domingo
+                <select
+                  value={semanaAgendaActiva}
+                  onChange={(e) => setSemanaAgendaInicio(e.target.value)}
+                >
+                  {semanasAgenda.map((semana) => (
+                    <option key={semana} value={semana}>
+                      Semana {rangoSemanaAgenda(semana)}
+                    </option>
+                  ))}
                 </select>
               </label>
             </div>
-            <p style={{ marginBottom: 0, color: '#555' }}>Si todavía no pediste disponibilidad de entrenadores, ve a Disponibilidad semanal y crea/manda los turnos antes de asignar entrenador.</p>
+            <p style={{ marginBottom: 0, color: '#555' }}>
+              Si todavía no pediste disponibilidad de entrenadores, ve a
+              Disponibilidad semanal y crea/manda los turnos antes de asignar
+              entrenador.
+            </p>
           </article>
 
           <article style={agendaBloqueBlanco}>
             <div style={agendaCabeceraLinea}>
               <div>
-                <h3 style={{ marginTop: 0, marginBottom: 6 }}>Cambios puntuales de esta semana</h3>
-                <p style={{ margin: 0, color: '#555' }}>Estos cambios se aplican al preparar grupos, al WhatsApp semanal y a la vista entrenador.</p>
+                <h3 style={{ marginTop: 0, marginBottom: 6 }}>
+                  Cambios puntuales de esta semana
+                </h3>
+                <p style={{ margin: 0, color: '#555' }}>
+                  Estos cambios se aplican al preparar grupos, al WhatsApp
+                  semanal y a la vista entrenador.
+                </p>
               </div>
-              <button onClick={() => setPantalla('ocioCambios')} style={botonSecundario}>Gestionar cambios</button>
+              <button
+                onClick={() => setPantalla('ocioCambios')}
+                style={botonSecundario}
+              >
+                Gestionar cambios
+              </button>
             </div>
             {cambiosOcioSemana.length === 0 ? (
-              <p style={{ marginBottom: 0, color: '#555' }}>No hay cambios puntuales para la semana seleccionada.</p>
+              <p style={{ marginBottom: 0, color: '#555' }}>
+                No hay cambios puntuales para la semana seleccionada.
+              </p>
             ) : (
               <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
                 {cambiosOcioSemana.map((cambio) => (
-                  <div key={`cambio-resumen-${cambio.reubicacion_id}`} style={avisoNeutral}>
-                    <strong>{cambio.alumno}</strong> · {formatearFecha(cambio.fecha)} · {cambio.grupo_origen || 'Origen'} → {cambio.grupo_destino || 'Destino'}
+                  <div
+                    key={`cambio-resumen-${cambio.reubicacion_id}`}
+                    style={avisoNeutral}
+                  >
+                    <strong>{cambio.alumno}</strong> ·{' '}
+                    {formatearFecha(cambio.fecha)} ·{' '}
+                    {cambio.grupo_origen || 'Origen'} →{' '}
+                    {cambio.grupo_destino || 'Destino'}
                     {cambio.motivo ? ` · ${cambio.motivo}` : ''}
                   </div>
                 ))}
@@ -8581,77 +12406,197 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           </article>
 
           {ocioGrupos.length === 0 ? (
-            <div style={agendaVacio}>No hay grupos estables de Ocio. Primero crea grupos en Ocio → Grupos estables.</div>
+            <div style={agendaVacio}>
+              No hay grupos estables de Ocio. Primero crea grupos en Ocio →
+              Grupos estables.
+            </div>
           ) : (
             <div style={{ display: 'grid', gap: 12 }}>
               {ocioGrupos.map((grupo) => {
                 const fecha = fechaGrupoOcioSemana(grupo);
                 const alumnosGrupo = alumnosGrupoOcioEstable(grupo.grupo_id);
-                const presentes = alumnosGrupo.filter((alumno) => alumnoVieneOcioSemana(alumno.alumno_id));
-                const observacionesAutoGrupoOcio = observacionesAutomaticasGrupoOcio(presentes);
-                const disponibles = entrenadoresDisponiblesParaTurno(fecha, grupo.hora_inicio, grupo.hora_fin);
-                const entrenadorSeleccionado = entrenadorSeleccionadoOcioSemana(grupo.grupo_id);
+                const presentes = alumnosGrupo.filter((alumno) =>
+                  alumnoVieneOcioSemana(alumno.alumno_id)
+                );
+                const observacionesAutoGrupoOcio =
+                  observacionesAutomaticasGrupoOcio(presentes);
+                const disponibles = entrenadoresDisponiblesParaTurno(
+                  fecha,
+                  grupo.hora_inicio,
+                  grupo.hora_fin
+                );
+                const entrenadorSeleccionado = entrenadorSeleccionadoOcioSemana(
+                  grupo.grupo_id
+                );
                 const categoria = categoriaOcioGrupo(grupo);
 
                 return (
-                  <article key={`ocio-semana-${grupo.grupo_id}`} style={tarjeta}>
+                  <article
+                    key={`ocio-semana-${grupo.grupo_id}`}
+                    style={tarjeta}
+                  >
                     <div style={agendaCabeceraLinea}>
                       <div>
-                        <h3 style={{ margin: 0 }}>{nombreGrupoSemanalOcio(grupo)}</h3>
+                        <h3 style={{ margin: 0 }}>
+                          {nombreGrupoSemanalOcio(grupo)}
+                        </h3>
                         <p style={{ margin: '6px 0 0' }}>
-                          {capitalizarPrimera(grupo.dia_semana)} {formatearFecha(fecha)} · {horaCorta(grupo.hora_inicio)}-{horaCorta(grupo.hora_fin)} · {categoria} · Punto {grupo.punto_encuentro || '-'}
+                          {capitalizarPrimera(grupo.dia_semana)}{' '}
+                          {formatearFecha(fecha)} ·{' '}
+                          {horaCorta(grupo.hora_inicio)}-
+                          {horaCorta(grupo.hora_fin)} · {categoria} · Punto{' '}
+                          {grupo.punto_encuentro || '-'}
                         </p>
-                        <p style={{ margin: '6px 0 0', color: '#555' }}>{presentes.length}/{alumnosGrupo.length} vienen esta semana</p>
+                        <p style={{ margin: '6px 0 0', color: '#555' }}>
+                          {presentes.length}/{alumnosGrupo.length} vienen esta
+                          semana
+                        </p>
                       </div>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        <button onClick={() => prepararGrupoOcioSemana(grupo)} style={botonPrincipal}>Preparar grupo</button>
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 8,
+                          flexWrap: 'wrap',
+                          justifyContent: 'flex-end',
+                        }}
+                      >
+                        <button
+                          onClick={() => prepararGrupoOcioSemana(grupo)}
+                          style={botonPrincipal}
+                        >
+                          Preparar grupo
+                        </button>
                       </div>
                     </div>
 
                     <div style={gridFormulario}>
-                      <label style={labelCampo}>Entrenador de esta semana
+                      <label style={labelCampo}>
+                        Entrenador de esta semana
                         <select
                           value={entrenadorSeleccionado}
-                          onChange={(e) => setOcioSemanaEntrenadores((anterior) => ({ ...anterior, [grupo.grupo_id]: e.target.value }))}
+                          onChange={(e) =>
+                            setOcioSemanaEntrenadores((anterior) => ({
+                              ...anterior,
+                              [grupo.grupo_id]: e.target.value,
+                            }))
+                          }
                         >
                           <option value="">Pendiente de entrenador</option>
                           {disponibles.map((entrenador) => (
-                            <option key={entrenador.entrenador_id} value={entrenador.entrenador_id}>{entrenador.nombre_completo}</option>
+                            <option
+                              key={entrenador.entrenador_id}
+                              value={entrenador.entrenador_id}
+                            >
+                              {entrenador.nombre_completo}
+                            </option>
                           ))}
                         </select>
                       </label>
-                      <label style={labelCampo}>Trabajo diario automático
-                        <textarea value={trabajoDiarioOcioSemana(grupo)} readOnly rows={3} />
+                      <label style={labelCampo}>
+                        Trabajo diario automático
+                        <textarea
+                          value={trabajoDiarioOcioSemana(grupo)}
+                          readOnly
+                          rows={3}
+                        />
                       </label>
                     </div>
 
                     {disponibles.length === 0 && (
-                      <p style={{ ...avisoPendiente, marginTop: 10 }}>No hay entrenadores marcados como Disponible para este día/turno. Puedes preparar el grupo como pendiente de entrenador.</p>
+                      <p style={{ ...avisoPendiente, marginTop: 10 }}>
+                        No hay entrenadores marcados como Disponible para este
+                        día/turno. Puedes preparar el grupo como pendiente de
+                        entrenador.
+                      </p>
                     )}
 
                     {observacionesAutoGrupoOcio && (
                       <div style={{ ...avisoCompleto, marginTop: 10 }}>
                         <strong>Observaciones</strong>
-                        <div style={{ marginTop: 6 }}>{formatearObservaciones(observacionesAutoGrupoOcio)}</div>
+                        <div style={{ marginTop: 6 }}>
+                          {formatearObservaciones(observacionesAutoGrupoOcio)}
+                        </div>
                       </div>
                     )}
 
                     <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
-                      {alumnosGrupo.length === 0 && <div style={agendaVacio}>Este grupo estable no tiene alumnos asignados.</div>}
+                      {alumnosGrupo.length === 0 && (
+                        <div style={agendaVacio}>
+                          Este grupo estable no tiene alumnos asignados.
+                        </div>
+                      )}
                       {alumnosGrupo.map((alumno) => {
                         const viene = alumnoVieneOcioSemana(alumno.alumno_id);
                         return (
-                          <div key={`ocio-viene-${grupo.grupo_id}-${alumno.alumno_id}`} style={filaAlumnoAsistencia}>
+                          <div
+                            key={`ocio-viene-${grupo.grupo_id}-${alumno.alumno_id}`}
+                            style={filaAlumnoAsistencia}
+                          >
                             <div>
                               <strong>{alumno.alumno}</strong>
-                              <p style={{ margin: '4px 0 0', color: '#555' }}>Nivel {alumno.nivel_usado || '-'}{alumno.fecha_nacimiento ? ` · ${edadOcioAlumnoEnFecha(alumno, fecha) || '-'} años` : ''}</p>
-                              {cambioEntradaOcio(alumno.alumno_id, grupo.grupo_id) && (
-                                <p style={{ margin: '4px 0 0', color: '#0f766e', fontWeight: 800 }}>Cambio puntual desde {cambioEntradaOcio(alumno.alumno_id, grupo.grupo_id)?.grupo_origen || 'otro grupo'}</p>
+                              <p style={{ margin: '4px 0 0', color: '#555' }}>
+                                Nivel {alumno.nivel_usado || '-'}
+                                {alumno.fecha_nacimiento
+                                  ? ` · ${
+                                      edadOcioAlumnoEnFecha(alumno, fecha) ||
+                                      '-'
+                                    } años`
+                                  : ''}
+                              </p>
+                              {cambioEntradaOcio(
+                                alumno.alumno_id,
+                                grupo.grupo_id
+                              ) && (
+                                <p
+                                  style={{
+                                    margin: '4px 0 0',
+                                    color: '#0f766e',
+                                    fontWeight: 800,
+                                  }}
+                                >
+                                  Cambio puntual desde{' '}
+                                  {cambioEntradaOcio(
+                                    alumno.alumno_id,
+                                    grupo.grupo_id
+                                  )?.grupo_origen || 'otro grupo'}
+                                </p>
                               )}
                             </div>
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                              <button onClick={() => cambiarAsistenciaOcioSemana(alumno.alumno_id, true)} style={viene ? botonAsistenciaOk : botonAsistenciaOff}>Viene</button>
-                              <button onClick={() => cambiarAsistenciaOcioSemana(alumno.alumno_id, false)} style={!viene ? botonAsistenciaAusente : botonAsistenciaOff}>No viene</button>
+                            <div
+                              style={{
+                                display: 'flex',
+                                gap: 6,
+                                flexWrap: 'wrap',
+                              }}
+                            >
+                              <button
+                                onClick={() =>
+                                  cambiarAsistenciaOcioSemana(
+                                    alumno.alumno_id,
+                                    true
+                                  )
+                                }
+                                style={
+                                  viene ? botonAsistenciaOk : botonAsistenciaOff
+                                }
+                              >
+                                Viene
+                              </button>
+                              <button
+                                onClick={() =>
+                                  cambiarAsistenciaOcioSemana(
+                                    alumno.alumno_id,
+                                    false
+                                  )
+                                }
+                                style={
+                                  !viene
+                                    ? botonAsistenciaAusente
+                                    : botonAsistenciaOff
+                                }
+                              >
+                                No viene
+                              </button>
                             </div>
                           </div>
                         );
@@ -8668,9 +12613,17 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               <h3 style={{ marginTop: 0 }}>Resultado de preparación</h3>
               <div style={{ display: 'grid', gap: 8 }}>
                 {ocioSemanaResultados.map((resultado, indice) => (
-                  <div key={`${resultado.grupo_estable}-${resultado.fecha}-${indice}`} style={avisoCompleto}>
-                    <strong>{resultado.grupo_estable}</strong> · {formatearFecha(resultado.fecha)} · {resultado.hora_inicio?.slice(0,5)}-{resultado.hora_fin?.slice(0,5)} · {resultado.alumnos} alumnos · {resultado.entrenador || 'Pendiente entrenador'}
-                    <br />{resultado.estado}
+                  <div
+                    key={`${resultado.grupo_estable}-${resultado.fecha}-${indice}`}
+                    style={avisoCompleto}
+                  >
+                    <strong>{resultado.grupo_estable}</strong> ·{' '}
+                    {formatearFecha(resultado.fecha)} ·{' '}
+                    {resultado.hora_inicio?.slice(0, 5)}-
+                    {resultado.hora_fin?.slice(0, 5)} · {resultado.alumnos}{' '}
+                    alumnos · {resultado.entrenador || 'Pendiente entrenador'}
+                    <br />
+                    {resultado.estado}
                   </div>
                 ))}
               </div>
@@ -8696,7 +12649,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               marginBottom: 18,
             }}
           >
-            <article style={tarjetaInicioEstado(resumenInicio.reportesPendientes)}>
+            <article
+              style={tarjetaInicioEstado(resumenInicio.reportesPendientes)}
+            >
               <h3 style={{ margin: 0, fontSize: 16 }}>Reportes pendientes</h3>
               <p style={{ fontSize: 34, margin: '8px 0', fontWeight: 'bold' }}>
                 {resumenInicio.reportesPendientes}
@@ -8713,12 +12668,18 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               )}
             </article>
 
-            <article style={tarjetaInicioEstado(resumenInicio.asistenciasSinConfirmar)}>
-              <h3 style={{ margin: 0, fontSize: 16 }}>Asistencias sin confirmar</h3>
+            <article
+              style={tarjetaInicioEstado(resumenInicio.asistenciasSinConfirmar)}
+            >
+              <h3 style={{ margin: 0, fontSize: 16 }}>
+                Asistencias sin confirmar
+              </h3>
               <p style={{ fontSize: 34, margin: '8px 0', fontWeight: 'bold' }}>
                 {resumenInicio.asistenciasSinConfirmar}
               </p>
-              <p style={{ margin: 0 }}>Alumnos pendientes de Presente/Ausente.</p>
+              <p style={{ margin: 0 }}>
+                Alumnos pendientes de Presente/Ausente.
+              </p>
 
               {resumenInicio.asistenciasSinConfirmar > 0 && (
                 <button
@@ -8730,12 +12691,16 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               )}
             </article>
 
-            <article style={tarjetaInicioEstado(resumenInicio.gruposSinPublicar)}>
+            <article
+              style={tarjetaInicioEstado(resumenInicio.gruposSinPublicar)}
+            >
               <h3 style={{ margin: 0, fontSize: 16 }}>Grupos sin publicar</h3>
               <p style={{ fontSize: 34, margin: '8px 0', fontWeight: 'bold' }}>
                 {resumenInicio.gruposSinPublicar}
               </p>
-              <p style={{ margin: 0 }}>Grupos preparados que aún no ve el entrenador.</p>
+              <p style={{ margin: 0 }}>
+                Grupos preparados que aún no ve el entrenador.
+              </p>
 
               {resumenInicio.gruposSinPublicar > 0 && (
                 <button
@@ -8749,12 +12714,20 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               )}
             </article>
 
-            <article style={tarjetaInicioEstado(resumenInicio.entrenadoresSinConfirmar)}>
-              <h3 style={{ margin: 0, fontSize: 16 }}>Entrenadores sin confirmar</h3>
+            <article
+              style={tarjetaInicioEstado(
+                resumenInicio.entrenadoresSinConfirmar
+              )}
+            >
+              <h3 style={{ margin: 0, fontSize: 16 }}>
+                Entrenadores sin confirmar
+              </h3>
               <p style={{ fontSize: 34, margin: '8px 0', fontWeight: 'bold' }}>
                 {resumenInicio.entrenadoresSinConfirmar}
               </p>
-              <p style={{ margin: 0 }}>Asignaciones publicadas pendientes de confirmar.</p>
+              <p style={{ margin: 0 }}>
+                Asignaciones publicadas pendientes de confirmar.
+              </p>
 
               {resumenInicio.entrenadoresSinConfirmar > 0 && (
                 <button
@@ -8794,7 +12767,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
           {cargando && <p>Cargando...</p>}
 
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              flexWrap: 'wrap',
+              marginBottom: 16,
+            }}
+          >
             <button
               onClick={() => setFiltroPlanning('todos')}
               style={botonMenu(filtroPlanning === 'todos')}
@@ -8836,7 +12816,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                 }}
               >
                 <div>
-                  <h2 style={{ marginTop: 0 }}>{nombreGrupoVisualApp(detalle, 0)}</h2>
+                  <h2 style={{ marginTop: 0 }}>
+                    {nombreGrupoVisualApp(detalle, 0)}
+                  </h2>
                   <p>
                     {formatearFecha(detalle.fecha)} ·{' '}
                     {detalle.hora_inicio.slice(0, 5)}–
@@ -8904,7 +12886,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           {!cargando && planningFiltrado.length === 0 && (
             <article style={tarjeta}>
               <h3 style={{ marginTop: 0 }}>Sin grupos en este filtro</h3>
-              <p style={{ marginBottom: 0 }}>Cambia el filtro para ver otros grupos.</p>
+              <p style={{ marginBottom: 0 }}>
+                Cambia el filtro para ver otros grupos.
+              </p>
             </article>
           )}
 
@@ -8935,170 +12919,175 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               const estadoPlanning = !grupo.publicado
                 ? 'Sin publicar'
                 : entrenadoresSinConfirmar > 0
-                  ? 'Publicado · entrenador sin confirmar'
-                  : grupoTieneSeguimiento && asistentesPendientes > 0
-                    ? 'Asistencia pendiente'
-                    : grupoTieneSeguimiento && reportesPendientesGrupo > 0
-                      ? 'Reportes pendientes'
-                      : grupoTieneSeguimiento
-                        ? 'Grupo cerrado'
-                        : 'Publicado · pendiente de seguimiento';
+                ? 'Publicado · entrenador sin confirmar'
+                : grupoTieneSeguimiento && asistentesPendientes > 0
+                ? 'Asistencia pendiente'
+                : grupoTieneSeguimiento && reportesPendientesGrupo > 0
+                ? 'Reportes pendientes'
+                : grupoTieneSeguimiento
+                ? 'Grupo cerrado'
+                : 'Publicado · pendiente de seguimiento';
 
               const estiloEstadoPlanning = !grupo.publicado
                 ? avisoNeutral
                 : entrenadoresSinConfirmar > 0
-                  ? avisoPendiente
-                  : grupoTieneSeguimiento && asistentesPendientes > 0
-                    ? avisoPendiente
-                    : grupoTieneSeguimiento && reportesPendientesGrupo > 0
-                      ? avisoReportePendiente
-                      : grupoTieneSeguimiento
-                        ? avisoCompleto
-                        : avisoNeutral;
+                ? avisoPendiente
+                : grupoTieneSeguimiento && asistentesPendientes > 0
+                ? avisoPendiente
+                : grupoTieneSeguimiento && reportesPendientesGrupo > 0
+                ? avisoReportePendiente
+                : grupoTieneSeguimiento
+                ? avisoCompleto
+                : avisoNeutral;
 
               const textoConfirmacionGrupo = !grupo.publicado
                 ? 'Sin publicar'
                 : entrenadoresSinConfirmar > 0
-                  ? `Pendiente (${entrenadoresSinConfirmar})`
-                  : 'OK';
+                ? `Pendiente (${entrenadoresSinConfirmar})`
+                : 'OK';
 
               const textoAsistenciaGrupo = !grupo.publicado
                 ? 'Sin publicar'
                 : !grupoTieneSeguimiento
-                  ? 'Sin seguimiento'
-                  : asistentesPendientes > 0
-                    ? `Pendiente (${asistentesPendientes})`
-                    : 'Completa';
+                ? 'Sin seguimiento'
+                : asistentesPendientes > 0
+                ? `Pendiente (${asistentesPendientes})`
+                : 'Completa';
 
               const textoReportesGrupo = !grupo.publicado
                 ? 'Sin publicar'
                 : !grupoTieneSeguimiento
-                  ? 'Sin seguimiento'
-                  : reportesPendientesGrupo > 0
-                    ? `Pendientes (${reportesPendientesGrupo})`
-                    : 'Completos';
+                ? 'Sin seguimiento'
+                : reportesPendientesGrupo > 0
+                ? `Pendientes (${reportesPendientesGrupo})`
+                : 'Completos';
 
               return (
-              <article key={grupo.grupo_id} style={tarjeta}>
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    gap: 12,
-                  }}
-                >
-                  <div>
-                    <h3 style={{ margin: 0 }}>{nombreGrupoVisualApp(grupo, indiceGrupoPlanningHistorico)}</h3>
-                    <p style={{ margin: '6px 0' }}>
-                      {formatearFecha(grupo.fecha)} ·{' '}
-                      {grupo.hora_inicio.slice(0, 5)}–
-                      {grupo.hora_fin.slice(0, 5)} · {grupo.modalidad}
-                    </p>
-                  </div>
+                <article key={grupo.grupo_id} style={tarjeta}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                    }}
+                  >
+                    <div>
+                      <h3 style={{ margin: 0 }}>
+                        {nombreGrupoVisualApp(
+                          grupo,
+                          indiceGrupoPlanningHistorico
+                        )}
+                      </h3>
+                      <p style={{ margin: '6px 0' }}>
+                        {formatearFecha(grupo.fecha)} ·{' '}
+                        {grupo.hora_inicio.slice(0, 5)}–
+                        {grupo.hora_fin.slice(0, 5)} · {grupo.modalidad}
+                      </p>
+                    </div>
 
-                  <div style={{ textAlign: 'right' }}>
-                    <strong>{grupo.total_alumnos} niños</strong>
-                    <p style={{ margin: '6px 0' }}>
-                      Punto {grupo.punto_encuentro}
-                    </p>
-                    <p style={{ margin: '6px 0', fontWeight: 'bold' }}>
-                      {grupo.publicado ? 'Publicado' : 'Sin publicar'}
-                    </p>
-                  </div>
-                </div>
-
-                <hr />
-
-                <div style={estiloEstadoPlanning}>
-                  {estadoPlanning}
-                </div>
-
-                {grupo.publicado && (
-                  <div style={cierreJoseCaja}>
-                    <strong>Cierre del grupo</strong>
-
-                    <div style={cierreJoseGrid}>
-                      <div style={cierreJoseItem}>
-                        <span style={cierreJoseLabel}>Confirmación entrenador</span>
-                        <strong>{textoConfirmacionGrupo}</strong>
-                      </div>
-
-                      <div style={cierreJoseItem}>
-                        <span style={cierreJoseLabel}>Asistencia</span>
-                        <strong>{textoAsistenciaGrupo}</strong>
-                      </div>
-
-                      <div style={cierreJoseItem}>
-                        <span style={cierreJoseLabel}>Reportes</span>
-                        <strong>{textoReportesGrupo}</strong>
-                      </div>
-
-                      <div style={cierreJoseItem}>
-                        <span style={cierreJoseLabel}>Estado final</span>
-                        <strong>{estadoPlanning}</strong>
-                      </div>
+                    <div style={{ textAlign: 'right' }}>
+                      <strong>{grupo.total_alumnos} niños</strong>
+                      <p style={{ margin: '6px 0' }}>
+                        Punto {grupo.punto_encuentro}
+                      </p>
+                      <p style={{ margin: '6px 0', fontWeight: 'bold' }}>
+                        {grupo.publicado ? 'Publicado' : 'Sin publicar'}
+                      </p>
                     </div>
                   </div>
-                )}
 
-                <p>
-                  <strong>Entrenador:</strong>{' '}
-                  {grupo.entrenadores || 'Sin asignar'}
-                </p>
+                  <hr />
 
-                <p>
-                  <strong>Nivel:</strong> {grupo.nivel_grupo || '-'} ·{' '}
-                  <strong>Pista:</strong> {grupo.pista || '-'} ·{' '}
-                  <strong>Estado:</strong> {grupo.estado_grupo}
-                </p>
-
-                <p>
-                  <strong>Alumnos:</strong>
-                </p>
-                <div style={bloqueTexto}>
-                  {formatearAlumnosPlanning(grupo.alumnos)}
-                </div>
-
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 8,
-                    marginTop: 12,
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <button
-                    onClick={() =>
-                      cargarDetalleGrupo(
-                        grupo.nombre_grupo,
-                        grupo.fecha,
-                        grupo.hora_inicio
-                      )
-                    }
-                    style={botonSecundario}
-                  >
-                    Ver detalle
-                  </button>
-
-                  {!grupo.publicado && (
-                    <button
-                      onClick={() => publicarGrupo(grupo.grupo_id)}
-                      style={botonPrincipal}
-                    >
-                      Publicar grupo
-                    </button>
-                  )}
+                  <div style={estiloEstadoPlanning}>{estadoPlanning}</div>
 
                   {grupo.publicado && (
-                    <button
-                      onClick={() => despublicarGrupo(grupo.grupo_id)}
-                      style={botonPeligro}
-                    >
-                      Despublicar grupo
-                    </button>
+                    <div style={cierreJoseCaja}>
+                      <strong>Cierre del grupo</strong>
+
+                      <div style={cierreJoseGrid}>
+                        <div style={cierreJoseItem}>
+                          <span style={cierreJoseLabel}>
+                            Confirmación entrenador
+                          </span>
+                          <strong>{textoConfirmacionGrupo}</strong>
+                        </div>
+
+                        <div style={cierreJoseItem}>
+                          <span style={cierreJoseLabel}>Asistencia</span>
+                          <strong>{textoAsistenciaGrupo}</strong>
+                        </div>
+
+                        <div style={cierreJoseItem}>
+                          <span style={cierreJoseLabel}>Reportes</span>
+                          <strong>{textoReportesGrupo}</strong>
+                        </div>
+
+                        <div style={cierreJoseItem}>
+                          <span style={cierreJoseLabel}>Estado final</span>
+                          <strong>{estadoPlanning}</strong>
+                        </div>
+                      </div>
+                    </div>
                   )}
-                </div>
-              </article>
+
+                  <p>
+                    <strong>Entrenador:</strong>{' '}
+                    {grupo.entrenadores || 'Sin asignar'}
+                  </p>
+
+                  <p>
+                    <strong>Nivel:</strong> {grupo.nivel_grupo || '-'} ·{' '}
+                    <strong>Pista:</strong> {grupo.pista || '-'} ·{' '}
+                    <strong>Estado:</strong> {grupo.estado_grupo}
+                  </p>
+
+                  <p>
+                    <strong>Alumnos:</strong>
+                  </p>
+                  <div style={bloqueTexto}>
+                    {formatearAlumnosPlanning(grupo.alumnos)}
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      marginTop: 12,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <button
+                      onClick={() =>
+                        cargarDetalleGrupo(
+                          grupo.nombre_grupo,
+                          grupo.fecha,
+                          grupo.hora_inicio
+                        )
+                      }
+                      style={botonSecundario}
+                    >
+                      Ver detalle
+                    </button>
+
+                    {!grupo.publicado && (
+                      <button
+                        onClick={() => publicarGrupo(grupo.grupo_id)}
+                        style={botonPrincipal}
+                      >
+                        Publicar grupo
+                      </button>
+                    )}
+
+                    {grupo.publicado && (
+                      <button
+                        onClick={() => despublicarGrupo(grupo.grupo_id)}
+                        style={botonPeligro}
+                      >
+                        Despublicar grupo
+                      </button>
+                    )}
+                  </div>
+                </article>
               );
             })}
           </section>
@@ -9112,13 +13101,29 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               <p style={etiquetaSuperior}>VISTA ENTRENADOR · MÓVIL</p>
               <h2 style={{ margin: 0 }}>Panel del entrenador</h2>
               <div style={entrenadorHeroChips}>
-                <span>Semana {semanaAgendaActiva ? rangoSemanaAgenda(semanaAgendaActiva) : '-'}</span>
+                <span>
+                  Semana{' '}
+                  {semanaAgendaActiva
+                    ? rangoSemanaAgenda(semanaAgendaActiva)
+                    : '-'}
+                </span>
                 <span>{totalGruposVistaEntrenador} grupos publicados</span>
                 <span>{totalReportesVistaEntrenador} tareas pendientes</span>
-                <span>{totalDisponibilidadPendienteVistaEntrenador} disponibilidades pendientes</span>
+                <span>
+                  {totalDisponibilidadPendienteVistaEntrenador} disponibilidades
+                  pendientes
+                </span>
               </div>
             </div>
-            <button onClick={() => { cargarGruposEntrenador(); cargarDisponibilidad(); }} style={botonPrincipal}>Actualizar vista</button>
+            <button
+              onClick={() => {
+                cargarGruposEntrenador();
+                cargarDisponibilidad();
+              }}
+              style={botonPrincipal}
+            >
+              Actualizar vista
+            </button>
           </div>
 
           <article style={panelEntrenadorFiltroApp}>
@@ -9135,14 +13140,20 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               <button
                 type="button"
                 onClick={() => setTabVistaEntrenador('disponibilidad')}
-                style={tabEntrenadorModerno(tabVistaEntrenador === 'disponibilidad', '#0f766e')}
+                style={tabEntrenadorModerno(
+                  tabVistaEntrenador === 'disponibilidad',
+                  '#0f766e'
+                )}
               >
                 Disponibilidad semanal
               </button>
               <button
                 type="button"
                 onClick={() => setTabVistaEntrenador('grupos')}
-                style={tabEntrenadorModerno(tabVistaEntrenador === 'grupos', '#2563eb')}
+                style={tabEntrenadorModerno(
+                  tabVistaEntrenador === 'grupos',
+                  '#2563eb'
+                )}
               >
                 Grupos / reportes
               </button>
@@ -9151,1119 +13162,2730 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
           {cargando && <p>Cargando vista entrenador...</p>}
 
-          {!cargando && tabVistaEntrenador === 'disponibilidad' && disponibilidadSemanalEntrenador.filter((grupo) => grupo.entrenador.toLowerCase().includes(busquedaGrupoEntrenador.toLowerCase())).length > 0 && (
-            <section style={{ display: 'grid', gap: 12 }}>
-              <details style={chuletaEntrenadorMini}>
-                <summary>Chuleta disponibilidad</summary>
-                <p style={{ margin: '8px 0 0' }}>Primero se contesta disponibilidad. Después Jose monta los grupos solo con los entrenadores disponibles.</p>
-              </details>
-
-              {disponibilidadSemanalEntrenador
-                .filter((grupo) => grupo.entrenador.toLowerCase().includes(busquedaGrupoEntrenador.toLowerCase()))
-                .map((grupo) => (
-                  <article key={`disponibilidad-vista-${grupo.entrenador_id}`} style={tarjetaEntrenadorMovil}>
-                    <header style={cabeceraEntrenadorMovil}>
-                      <div>
-                        <p style={etiquetaSuperior}>DISPONIBILIDAD</p>
-                        <h3 style={{ margin: 0 }}>{grupo.entrenador}</h3>
-                      </div>
-                      <div style={resumenChipsMovil}>
-                        <span>{grupo.disponibles} disponibles</span>
-                        <span>{grupo.no_puedo} no pueden</span>
-                        <span>{grupo.pendientes} pendientes</span>
-                      </div>
-                    </header>
-
-                    {grupo.semanas.map((semana) => (
-                      <section key={`disp-vista-${grupo.entrenador_id}-${semana.inicio}`} style={bloqueSemanaMovil}>
-                        <div style={cabeceraSemanaMovil}>
-                          <div>
-                            <p style={etiquetaSuperior}>SEMANA DE TRABAJO</p>
-                            <h4 style={{ margin: 0 }}>{rangoSemanaAgenda(semana.inicio)}</h4>
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'grid', gap: 8 }}>
-                          {diasTrabajoSemanaAgenda(semana.inicio).map((dia) => {
-                            const turnosDia = semana.turnos.filter((turno) => turno.fecha === dia.fecha);
-                            return (
-                              <article key={`disp-vista-dia-${grupo.entrenador_id}-${dia.fecha}`} style={diaEntrenadorCard}>
-                                <div style={diaEntrenadorHeader}>
-                                  <div style={{ display: 'grid' }}>
-                                    <strong>{capitalizarPrimera(dia.nombre)}</strong>
-                                    <span>{formatearFecha(dia.fecha)}</span>
-                                  </div>
-                                </div>
-
-                                {turnosTrabajoDiaAgenda(dia.fecha).map((turnoBase) => {
-                                  const turno = turnosDia.find((item) => item.hora_inicio.slice(0, 5) === turnoBase.inicio && item.hora_fin.slice(0, 5) === turnoBase.fin);
-                                  const respuesta = turno?.respuesta || 'Pendiente';
-
-                                  return (
-                                    <div key={`disp-vista-turno-${grupo.entrenador_id}-${dia.fecha}-${turnoBase.inicio}`} style={miniTarjetaBlanca}>
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
-                                        <strong>{turnoBase.inicio}–{turnoBase.fin}</strong>
-                                        <span style={respuesta === 'Disponible' ? badgeTrabaja : respuesta === 'No puedo' ? badgeNoTrabaja : badgePendiente}>
-                                          {respuesta}
-                                        </span>
-                                      </div>
-                                      {turno && (
-                                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                                          <button onClick={() => responderDisponibilidadRapida(turno, 'Disponible')} style={respuesta === 'Disponible' ? botonAsistenciaOk : botonAsistenciaOff}>Disponible</button>
-                                          <button onClick={() => responderDisponibilidadRapida(turno, 'No puedo')} style={respuesta === 'No puedo' ? botonAsistenciaAusente : botonAsistenciaOff}>No puedo</button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                              </article>
-                            );
-                          })}
-                        </div>
-                      </section>
-                    ))}
-                  </article>
-                ))}
-            </section>
-          )}
-
-          {!cargando && ((tabVistaEntrenador === 'disponibilidad' && disponibilidadSemanalEntrenador.length === 0) || (tabVistaEntrenador === 'grupos' && gruposEntrenadorSemanal.length === 0)) && !error && (
-            <article style={tarjetaMovilVacia}>
-              <h3 style={{ marginTop: 0 }}>Sin datos en esta pestaña</h3>
-              <p style={{ marginBottom: 0 }}>En Disponibilidad semanal aparecerán los turnos antes de crear grupos. En Grupos/reportes aparecerán los grupos asignados cuando Jose los publique.</p>
-            </article>
-          )}
-
-          {tabVistaEntrenador === 'grupos' && gruposEntrenadorSemanal.map((bloqueEntrenador) => (
-            <article key={bloqueEntrenador.entrenador_id} style={tarjetaEntrenadorMovil}>
-              <header style={cabeceraEntrenadorMovil}>
-                <div>
-                  <p style={etiquetaSuperior}>ENTRENADOR</p>
-                  <h3 style={{ margin: 0 }}>{bloqueEntrenador.entrenador}</h3>
-                </div>
-                <div style={contadorGrandeMovil}>
-                  <strong>{bloqueEntrenador.total_grupos}</strong>
-                  <span>grupos</span>
-                </div>
-              </header>
-
-              {pendientesEntrenador(bloqueEntrenador.entrenador_id).length > 0 && (
-                <section style={avisoPendiente}>
-                  <strong>Aviso de tareas pendientes</strong>
-                  <p style={{ margin: '6px 0 0' }}>
-                    Tienes {pendientesEntrenador(bloqueEntrenador.entrenador_id).filter((reporte) => reporte.estado_reporte === 'Falta reporte').length} reportes pendientes y {pendientesEntrenador(bloqueEntrenador.entrenador_id).filter((reporte) => reporte.estado_reporte === 'Asistencia sin confirmar').length} asistencias sin confirmar. Entra en cada grupo y déjalo cerrado.
+          {!cargando &&
+            tabVistaEntrenador === 'disponibilidad' &&
+            disponibilidadSemanalEntrenador.filter((grupo) =>
+              grupo.entrenador
+                .toLowerCase()
+                .includes(busquedaGrupoEntrenador.toLowerCase())
+            ).length > 0 && (
+              <section style={{ display: 'grid', gap: 12 }}>
+                <details style={chuletaEntrenadorMini}>
+                  <summary>Chuleta disponibilidad</summary>
+                  <p style={{ margin: '8px 0 0' }}>
+                    Primero se contesta disponibilidad. Después Jose monta los
+                    grupos solo con los entrenadores disponibles.
                   </p>
-                </section>
-              )}
-
-              {disponibilidad.filter((turno) => turno.entrenador_id === bloqueEntrenador.entrenador_id && turno.aviso_enviado && turno.respuesta === 'Pendiente').length > 0 && (
-                <section style={avisoPendiente}>
-                  <strong>Disponibilidad pendiente en la app</strong>
-                  <p style={{ margin: '6px 0 10px' }}>Rellena estos turnos para que Jose pueda montar la semana.</p>
-                  <div style={{ display: 'grid', gap: 8 }}>
-                    {disponibilidad
-                      .filter((turno) => turno.entrenador_id === bloqueEntrenador.entrenador_id && turno.aviso_enviado && turno.respuesta === 'Pendiente')
-                      .sort((a, b) => `${a.fecha} ${a.hora_inicio}`.localeCompare(`${b.fecha} ${b.hora_inicio}`))
-                      .map((turno) => (
-                        <div key={`${turno.id}-vista-entrenador`} style={miniTarjetaBlanca}>
-                          <strong>{capitalizarPrimera(new Date(`${turno.fecha}T00:00:00`).toLocaleDateString('es-ES', { weekday: 'long' }))} {formatearFecha(turno.fecha)}</strong>
-                          <p style={{ margin: '4px 0 8px' }}>{turno.hora_inicio.slice(0, 5)}–{turno.hora_fin.slice(0, 5)}</p>
-                          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                            <button onClick={() => responderDisponibilidadRapida(turno, 'Disponible')} style={botonAsistenciaOk}>Disponible</button>
-                            <button onClick={() => responderDisponibilidadRapida(turno, 'No puedo')} style={botonAsistenciaAusente}>No puedo</button>
-                          </div>
-                        </div>
-                      ))}
-                  </div>
-                </section>
-              )}
-
-              {bloqueEntrenador.semanas.map((semana) => {
-                const totalReportesSemana = semana.grupos.reduce((total, grupo) => {
-                  const alumnosGrupo = alumnosDelGrupo(grupo.grupo_id, grupo.entrenador_id);
-                  return total + alumnosGrupo.filter((a) => a.estado_reporte === 'Falta reporte').length;
-                }, 0);
-
-                return (
-                  <section key={`${bloqueEntrenador.entrenador_id}-${semana.inicio}`} style={bloqueSemanaMovil}>
-                    <div style={cabeceraSemanaMovil}>
-                      <div>
-                        <p style={etiquetaSuperior}>SEMANA LUNES-DOMINGO</p>
-                        <h4 style={{ margin: 0 }}>{rangoSemanaAgenda(semana.inicio)}</h4>
-                      </div>
-                      <div style={resumenChipsMovil}>
-                        <span>{semana.grupos.length} grupos</span>
-                        <span>{totalReportesSemana} reportes pendientes</span>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gap: 10 }}>
-                      {diasTrabajoSemanaAgenda(semana.inicio).map((dia) => {
-                        const gruposDia = semana.grupos.filter((grupo) => grupo.fecha === dia.fecha);
-                        const trabajaDia = gruposDia.length > 0;
-
-                        return (
-                          <article key={`${bloqueEntrenador.entrenador_id}-${semana.inicio}-${dia.fecha}`} style={trabajaDia ? diaEntrenadorCard : diaEntrenadorCardLibre}>
-                            <div style={diaEntrenadorHeader}>
-                              <div style={{ display: 'grid' }}>
-                                <strong>{capitalizarPrimera(dia.nombre)}</strong>
-                                <span>{formatearFecha(dia.fecha)}</span>
-                              </div>
-                              <span style={trabajaDia ? badgeTrabaja : badgeNoTrabaja}>{trabajaDia ? 'TRABAJA' : 'Sin turno asignado'}</span>
-                            </div>
-
-                            {trabajaDia && turnosTrabajoDiaAgenda(dia.fecha).map((turno) => {
-                              const gruposTurno = gruposDia.filter(
-                                (grupo) => grupo.hora_inicio.slice(0, 5) === turno.inicio && grupo.hora_fin.slice(0, 5) === turno.fin
-                              );
-
-                              if (gruposTurno.length === 0) return null;
-
-                              return (
-                                <section key={`${dia.fecha}-${turno.inicio}-${turno.fin}`} style={turnoEntrenadorBox}>
-                                  <h4 style={{ margin: '0 0 8px' }}>{turno.inicio}–{turno.fin}</h4>
-
-                                  {gruposTurno.map((grupo, indiceGrupoEntrenadorTurno) => {
-                                    const alumnosGrupo = alumnosDelGrupo(grupo.grupo_id, grupo.entrenador_id);
-                                    const presentes = alumnosGrupo.filter((a) => a.estado_asistencia === 'Presente').length;
-                                    const ausentes = alumnosGrupo.filter((a) => a.estado_asistencia === 'Ausente').length;
-                                    const pendientes = alumnosGrupo.filter((a) => a.estado_asistencia === 'Pendiente').length;
-                                    const faltaReporte = alumnosGrupo.filter((a) => a.estado_reporte === 'Falta reporte').length;
-                                    const reportesEnviados = alumnosGrupo.filter((a) => a.estado_reporte === 'Reporte enviado').length;
-                                    const asistenciaCompleta = alumnosGrupo.length > 0 && pendientes === 0;
-                                    const grupoCerrado = asistenciaCompleta && faltaReporte === 0;
-
-                                    return (
-                                      <article key={`${grupo.entrenador_id}-${grupo.grupo_id}`} style={{ ...grupoEntrenadorCardMovil, ...estiloGrupoPorPistaApp(grupo) }}>
-                                        <div style={grupoEntrenadorTopMovil}>
-                                          <div>
-                                            <p style={badgeModalidadMovil}>{grupo.modalidad}</p>
-                                            <h3 style={{ margin: '4px 0' }}>{nombreGrupoVisualApp(grupo, indiceGrupoEntrenadorTurno)}</h3>
-                                            <p style={{ margin: 0 }}>
-                                              Nivel {grupo.nivel_grupo || '-'} · Pista {grupo.pista || '-'} · Punto {grupo.punto_encuentro || '-'}
-                                            </p>
-                                          </div>
-                                          <div style={contadorNinosMovil}>
-                                            <strong>{grupo.total_alumnos}</strong>
-                                            <span>niños</span>
-                                          </div>
-                                        </div>
-
-                                        <div style={grupoCerrado ? avisoCompleto : avisoPendiente}>
-                                          {grupoCerrado ? 'Grupo cerrado' : asistenciaCompleta ? 'Faltan reportes' : 'Falta asistencia'}
-                                        </div>
-
-                                        {grupo.estado_confirmacion !== 'Confirmado' && (
-                                          <button onClick={() => confirmarGrupoEntrenador(grupo.grupo_id, grupo.entrenador_id)} style={{ ...botonPrincipal, width: '100%' }}>
-                                            Grupo visto · Confirmo horario, punto, niños y trabajo diario
-                                          </button>
-                                        )}
-
-                                        <section style={bloqueInfoEntrenador}>
-                                          <h4>Niños del grupo</h4>
-                                          <ul style={{ margin: 0, paddingLeft: 18 }}>
-                                            {alumnosGrupo.map((alumno) => (
-                                              <li key={`${grupo.grupo_id}-${alumno.alumno_id}-lista`}>
-                                                <strong>{alumno.alumno} · Nivel {alumno.nivel_alumno || 'SIN NIVEL'}</strong>
-                                              </li>
-                                            ))}
-                                          </ul>
-                                        </section>
-
-                                        <section style={bloqueInfoEntrenador}>
-                                          <h4>Trabajo diario</h4>
-                                          <div style={bloqueTexto}>{formatearTrabajoDiario(grupo.trabajo_diario)}</div>
-                                        </section>
-
-                                        {grupo.observaciones_importantes && (
-                                          <section style={bloqueInfoEntrenador}>
-                                            <h4>Observaciones</h4>
-                                            <div style={bloqueTexto}>{formatearObservaciones(grupo.observaciones_importantes)}</div>
-                                          </section>
-                                        )}
-
-                                        <section style={bloqueInfoEntrenador}>
-                                          <h4>Asistencia y reportes</h4>
-                                          <div style={resumenChipsMovil}>
-                                            <span>Presentes {presentes}</span>
-                                            <span>Ausentes {ausentes}</span>
-                                            <span>Pendientes {pendientes}</span>
-                                            <span>Reportes {reportesEnviados}/{alumnosGrupo.length}</span>
-                                          </div>
-
-                                          <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-                                            {alumnosGrupo.map((alumno) => (
-                                              <div key={`${grupo.grupo_id}-${alumno.alumno_id}`} style={miniTarjetaBlanca}>
-                                                <div style={filaAlumnoEntrenadorMovil}>
-                                                  <div>
-                                                    <strong>{alumno.alumno} · Nivel {alumno.nivel_alumno || 'SIN NIVEL'}</strong>
-                                                    <p style={{ margin: '4px 0 0', fontSize: 13 }}>Asistencia: <strong>{alumno.estado_asistencia}</strong></p>
-                                                    <p style={{ margin: '4px 0 0', fontSize: 13 }}>Reporte: <strong>{alumno.estado_reporte}</strong></p>
-                                                  </div>
-                                                  <div style={botonesAsistenciaMovil}>
-                                                    <button onClick={() => marcarAsistencia(grupo.grupo_id, alumno.alumno_id, 'Presente')} style={alumno.estado_asistencia === 'Presente' ? botonAsistenciaOk : botonAsistenciaOff}>Presente</button>
-                                                    <button onClick={() => marcarAsistencia(grupo.grupo_id, alumno.alumno_id, 'Ausente')} style={alumno.estado_asistencia === 'Ausente' ? botonAsistenciaAusente : botonAsistenciaOff}>Ausente</button>
-                                                    <button onClick={() => marcarAsistencia(grupo.grupo_id, alumno.alumno_id, 'Pendiente')} style={alumno.estado_asistencia === 'Pendiente' ? botonAsistenciaPendiente : botonAsistenciaOff}>Pendiente</button>
-                                                  </div>
-                                                </div>
-
-                                                {alumno.estado_reporte === 'Falta reporte' && !formularioAbierto(alumno) && (
-                                                  <button onClick={() => abrirFormularioReporte(alumno)} style={{ ...botonPrincipal, marginTop: 10, width: '100%' }}>Rellenar reporte</button>
-                                                )}
-
-                                                {formularioAbierto(alumno) && (
-                                                  <div style={formularioCaja}>
-                                                    <h4 style={{ marginTop: 0 }}>Reporte de {alumno.alumno}</h4>
-                                                    <details style={ayudaReporteEntrenadorCaja}>
-                                                      <summary style={summaryAyudaReporteEntrenador}>Ver ayuda rápida para rellenar reporte</summary>
-                                                      <AyudaReporteEntrenador nivel={formReporte.nivel || alumno.nivel_alumno || grupo.nivel_grupo || ''} />
-                                                    </details>
-                                                    <div style={gridFormulario}>
-                                                      <CampoSelect label="Nivel" value={formReporte.nivel} opciones={opcionesNivel} onChange={(valor) => setFormReporte({ ...formReporte, nivel: valor })} />
-                                                      <CampoSelect label="Actitud" value={formReporte.actitud} opciones={opcionesActitud} onChange={(valor) => setFormReporte({ ...formReporte, actitud: valor })} />
-                                                      <CampoSelect label="Técnica" value={formReporte.tecnica} opciones={opcionesTecnica} onChange={(valor) => setFormReporte({ ...formReporte, tecnica: valor })} />
-                                                      <CampoSelect label="Pista" value={formReporte.pista} opciones={opcionesPista} onChange={(valor) => setFormReporte({ ...formReporte, pista: valor })} />
-                                                      <CampoSelect label="Autonomía" value={formReporte.autonomia} opciones={opcionesAutonomia} onChange={(valor) => setFormReporte({ ...formReporte, autonomia: valor })} />
-                                                      <CampoSelect label="Remontes" value={formReporte.remontes} opciones={opcionesRemontes} onChange={(valor) => setFormReporte({ ...formReporte, remontes: valor })} />
-                                                      <CampoSelect label="Incidencia" value={formReporte.incidencia} opciones={opcionesIncidencia} onChange={(valor) => setFormReporte({ ...formReporte, incidencia: valor })} />
-                                                      <CampoSelect label="Recomendación" value={formReporte.recomendacion} opciones={opcionesRecomendacion} onChange={(valor) => setFormReporte({ ...formReporte, recomendacion: valor })} />
-                                                    </div>
-                                                    <label style={labelCampo}>
-                                                      Observaciones
-                                                      <textarea value={formReporte.observaciones} onChange={(e) => setFormReporte({ ...formReporte, observaciones: e.target.value })} style={textarea} />
-                                                    </label>
-                                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-                                                      <button onClick={() => guardarReporteAlumno(alumno)} style={botonPrincipal}>Guardar reporte</button>
-                                                      <button onClick={cerrarFormularioReporte} style={botonSecundario}>Cancelar</button>
-                                                    </div>
-                                                  </div>
-                                                )}
-                                              </div>
-                                            ))}
-                                          </div>
-                                        </section>
-                                      </article>
-                                    );
-                                  })}
-                                </section>
-                              );
-                            })}
-                          </article>
-                        );
-                      })}
-                    </div>
-                  </section>
-                );
-              })}
-            </article>
-          ))}
-        </section>
-      )}
-
-      {pantalla === 'reportes' && (() => {
-        const totalReportesPendientes = reportesFiltrados.filter((reporte) => reporte.estado_reporte === 'Falta reporte').length;
-        const totalAsistenciasPendientes = reportesFiltrados.filter((reporte) => reporte.estado_reporte === 'Asistencia sin confirmar' || reporte.estado_asistencia === 'Pendiente').length;
-        const totalAmbosPendientes = reportesFiltrados.filter((reporte) => reporte.estado_reporte === 'Falta reporte' && reporte.estado_asistencia === 'Pendiente').length;
-        const totalEntrenadoresPendientes = reportesPorEntrenador.length;
-
-        const chipEstadoReporte = (reporte: ReportePendiente) => {
-          const faltaReporte = reporte.estado_reporte === 'Falta reporte';
-          const asistenciaPendiente = reporte.estado_reporte === 'Asistencia sin confirmar' || reporte.estado_asistencia === 'Pendiente';
-
-          if (faltaReporte && asistenciaPendiente) {
-            return {
-              texto: 'Reporte + asistencia',
-              estilo: { background: '#fee2e2', color: '#991b1b', border: '1px solid #fecaca' }
-            };
-          }
-
-          if (asistenciaPendiente) {
-            return {
-              texto: 'Asistencia pendiente',
-              estilo: { background: '#ffedd5', color: '#9a3412', border: '1px solid #fed7aa' }
-            };
-          }
-
-          return {
-            texto: 'Falta reporte',
-            estilo: { background: '#dbeafe', color: '#1d4ed8', border: '1px solid #bfdbfe' }
-          };
-        };
-
-        const metricasPendientes = [
-          {
-            titulo: 'Entrenadores',
-            valor: totalEntrenadoresPendientes,
-            detalle: 'con tareas',
-            estilo: { background: 'linear-gradient(135deg, #eff6ff, #ffffff)', border: '1px solid #bfdbfe', color: '#1e3a8a' }
-          },
-          {
-            titulo: 'Reportes',
-            valor: totalReportesPendientes,
-            detalle: 'por rellenar',
-            estilo: { background: 'linear-gradient(135deg, #eef2ff, #ffffff)', border: '1px solid #c7d2fe', color: '#3730a3' }
-          },
-          {
-            titulo: 'Asistencia',
-            valor: totalAsistenciasPendientes,
-            detalle: 'sin cerrar',
-            estilo: { background: 'linear-gradient(135deg, #fff7ed, #ffffff)', border: '1px solid #fed7aa', color: '#9a3412' }
-          },
-          {
-            titulo: 'Críticos',
-            valor: totalAmbosPendientes,
-            detalle: 'ambos pendientes',
-            estilo: { background: 'linear-gradient(135deg, #fef2f2, #ffffff)', border: '1px solid #fecaca', color: '#991b1b' }
-          }
-        ];
-
-        return (
-          <section>
-            <div style={{
-              ...cabeceraPantalla,
-              alignItems: 'center',
-              background: 'linear-gradient(135deg, #f8fbff, #eef7ff)',
-              border: '1px solid #dbeafe',
-              borderRadius: 24,
-              padding: 20,
-              boxShadow: '0 18px 45px rgba(15, 23, 42, 0.08)'
-            }}>
-              <div>
-                <p style={{ ...etiquetaSuperior, marginBottom: 6 }}>CONTROL SEMANAL</p>
-                <h2 style={{ margin: 0 }}>Reportes pendientes</h2>
-                <details style={{ marginTop: 10 }}>
-                  <summary style={{ cursor: 'pointer', fontWeight: 900, color: '#2563eb' }}>Ayuda rápida</summary>
-                  <div style={{
-                    marginTop: 10,
-                    padding: 12,
-                    borderRadius: 16,
-                    background: '#ffffff',
-                    border: '1px solid #dbeafe',
-                    color: '#334155',
-                    lineHeight: 1.45
-                  }}>
-                    <p style={{ margin: 0 }}>
-                      Revisión por semana y entrenador. Los pendientes ya aparecen en Vista entrenador; el WhatsApp solo sirve como recordatorio directo.
-                    </p>
-                  </div>
                 </details>
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <button onClick={copiarWhatsappPendientesReportes} style={botonPrincipal}>
-                  Ver WhatsApp general
-                </button>
-                <button onClick={cargarReportesPendientes} style={botonSecundario}>
-                  Actualizar
-                </button>
-              </div>
-            </div>
 
-            <article style={{
-              ...agendaBloqueBlanco,
-              marginTop: 16,
-              borderRadius: 24,
-              border: '1px solid #e2e8f0',
-              boxShadow: '0 14px 35px rgba(15, 23, 42, 0.06)'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap', marginBottom: 12 }}>
-                <div>
-                  <p style={{ ...etiquetaSuperior, marginBottom: 4 }}>SEMANA</p>
-                  <h3 style={{ margin: 0 }}>Semana a revisar</h3>
-                </div>
-                <span style={{
-                  padding: '8px 12px',
-                  borderRadius: 999,
-                  background: '#eef6ff',
-                  border: '1px solid #bfdbfe',
-                  color: '#1e40af',
-                  fontWeight: 900
-                }}>
-                  {rangoSemanaAgenda(semanaAgendaActiva)}
-                </span>
-              </div>
+                {disponibilidadSemanalEntrenador
+                  .filter((grupo) =>
+                    grupo.entrenador
+                      .toLowerCase()
+                      .includes(busquedaGrupoEntrenador.toLowerCase())
+                  )
+                  .map((grupo) => (
+                    <article
+                      key={`disponibilidad-vista-${grupo.entrenador_id}`}
+                      style={tarjetaEntrenadorMovil}
+                    >
+                      <header style={cabeceraEntrenadorMovil}>
+                        <div>
+                          <p style={etiquetaSuperior}>DISPONIBILIDAD</p>
+                          <h3 style={{ margin: 0 }}>{grupo.entrenador}</h3>
+                        </div>
+                        <div style={resumenChipsMovil}>
+                          <span>{grupo.disponibles} disponibles</span>
+                          <span>{grupo.no_puedo} no pueden</span>
+                          <span>{grupo.pendientes} pendientes</span>
+                        </div>
+                      </header>
 
-              <div style={gridFormulario}>
-                <label style={labelCampo}>
-                  Temporada
-                  <select
-                    value={anioInicioTemporadaAgenda}
-                    style={selectCampoAgenda}
-                    onChange={(e) => {
-                      const nuevoAnio = Number(e.target.value);
-                      setAnioInicioTemporadaAgenda(nuevoAnio);
-                      setMesAgenda(`${nuevoAnio}-09`);
-                      setSemanaAgendaInicio('');
-                    }}
-                  >
-                    {opcionesTemporadaAgenda.map((anio) => (
-                      <option key={anio} value={anio}>{nombreTemporadaAgenda(anio)}</option>
-                    ))}
-                  </select>
-                </label>
+                      {grupo.semanas.map((semana) => (
+                        <section
+                          key={`disp-vista-${grupo.entrenador_id}-${semana.inicio}`}
+                          style={bloqueSemanaMovil}
+                        >
+                          <div style={cabeceraSemanaMovil}>
+                            <div>
+                              <p style={etiquetaSuperior}>SEMANA DE TRABAJO</p>
+                              <h4 style={{ margin: 0 }}>
+                                {rangoSemanaAgenda(semana.inicio)}
+                              </h4>
+                            </div>
+                          </div>
 
-                <label style={labelCampo}>
-                  Mes
-                  <select
-                    value={mesAgendaActivo}
-                    style={selectCampoAgenda}
-                    onChange={(e) => {
-                      setMesAgenda(e.target.value);
-                      setSemanaAgendaInicio('');
-                    }}
-                  >
-                    {mesesAgenda.map((clave) => (
-                      <option key={clave} value={clave}>{nombreMesAgendaDesdeClave(clave)}</option>
-                    ))}
-                  </select>
-                </label>
+                          <div style={{ display: 'grid', gap: 8 }}>
+                            {diasTrabajoSemanaAgenda(semana.inicio).map(
+                              (dia) => {
+                                const turnosDia = semana.turnos.filter(
+                                  (turno) => turno.fecha === dia.fecha
+                                );
+                                return (
+                                  <article
+                                    key={`disp-vista-dia-${grupo.entrenador_id}-${dia.fecha}`}
+                                    style={diaEntrenadorCard}
+                                  >
+                                    <div style={diaEntrenadorHeader}>
+                                      <div style={{ display: 'grid' }}>
+                                        <strong>
+                                          {capitalizarPrimera(dia.nombre)}
+                                        </strong>
+                                        <span>{formatearFecha(dia.fecha)}</span>
+                                      </div>
+                                    </div>
 
-                <label style={labelCampo}>
-                  Semana lunes-domingo
-                  <select
-                    value={semanaAgendaActiva}
-                    style={selectCampoAgenda}
-                    onChange={(e) => setSemanaAgendaInicio(e.target.value)}
-                  >
-                    {semanasAgenda.map((semana) => (
-                      <option key={semana} value={semana}>Semana {rangoSemanaAgenda(semana)}</option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            </article>
+                                    {turnosTrabajoDiaAgenda(dia.fecha).map(
+                                      (turnoBase) => {
+                                        const turno = turnosDia.find(
+                                          (item) =>
+                                            item.hora_inicio.slice(0, 5) ===
+                                              turnoBase.inicio &&
+                                            item.hora_fin.slice(0, 5) ===
+                                              turnoBase.fin
+                                        );
+                                        const respuesta =
+                                          turno?.respuesta || 'Pendiente';
 
-            <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, margin: '16px 0' }}>
-              {metricasPendientes.map((metrica) => (
-                <article key={metrica.titulo} style={{
-                  ...metrica.estilo,
-                  borderRadius: 20,
-                  padding: 16,
-                  boxShadow: '0 12px 25px rgba(15, 23, 42, 0.05)'
-                }}>
-                  <p style={{ margin: 0, fontSize: 12, letterSpacing: 1, textTransform: 'uppercase', fontWeight: 900, opacity: 0.75 }}>{metrica.titulo}</p>
-                  <div style={{ display: 'flex', alignItems: 'end', gap: 8, marginTop: 6 }}>
-                    <strong style={{ fontSize: 30, lineHeight: 1 }}>{metrica.valor}</strong>
-                    <span style={{ fontWeight: 800, marginBottom: 4 }}>{metrica.detalle}</span>
-                  </div>
-                </article>
-              ))}
-            </section>
+                                        return (
+                                          <div
+                                            key={`disp-vista-turno-${grupo.entrenador_id}-${dia.fecha}-${turnoBase.inicio}`}
+                                            style={miniTarjetaBlanca}
+                                          >
+                                            <div
+                                              style={{
+                                                display: 'flex',
+                                                justifyContent: 'space-between',
+                                                gap: 8,
+                                                flexWrap: 'wrap',
+                                              }}
+                                            >
+                                              <strong>
+                                                {turnoBase.inicio}–
+                                                {turnoBase.fin}
+                                              </strong>
+                                              <span
+                                                style={
+                                                  respuesta === 'Disponible'
+                                                    ? badgeTrabaja
+                                                    : respuesta === 'No puedo'
+                                                    ? badgeNoTrabaja
+                                                    : badgePendiente
+                                                }
+                                              >
+                                                {respuesta}
+                                              </span>
+                                            </div>
+                                            {turno && (
+                                              <div
+                                                style={{
+                                                  display: 'flex',
+                                                  gap: 6,
+                                                  flexWrap: 'wrap',
+                                                  marginTop: 8,
+                                                }}
+                                              >
+                                                <button
+                                                  onClick={() =>
+                                                    responderDisponibilidadRapida(
+                                                      turno,
+                                                      'Disponible'
+                                                    )
+                                                  }
+                                                  style={
+                                                    respuesta === 'Disponible'
+                                                      ? botonAsistenciaOk
+                                                      : botonAsistenciaOff
+                                                  }
+                                                >
+                                                  Disponible
+                                                </button>
+                                                <button
+                                                  onClick={() =>
+                                                    responderDisponibilidadRapida(
+                                                      turno,
+                                                      'No puedo'
+                                                    )
+                                                  }
+                                                  style={
+                                                    respuesta === 'No puedo'
+                                                      ? botonAsistenciaAusente
+                                                      : botonAsistenciaOff
+                                                  }
+                                                >
+                                                  No puedo
+                                                </button>
+                                              </div>
+                                            )}
+                                          </div>
+                                        );
+                                      }
+                                    )}
+                                  </article>
+                                );
+                              }
+                            )}
+                          </div>
+                        </section>
+                      ))}
+                    </article>
+                  ))}
+              </section>
+            )}
 
-            <article style={{
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-              borderRadius: 22,
-              padding: 14,
-              marginBottom: 16,
-              boxShadow: '0 10px 24px rgba(15, 23, 42, 0.04)'
-            }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 12, alignItems: 'center' }}>
-                <input
-                  value={busquedaReportes}
-                  onChange={(e) => setBusquedaReportes(e.target.value)}
-                  placeholder="Buscar entrenador, alumno, grupo o modalidad..."
-                  style={{ ...buscador, margin: 0 }}
-                />
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                  <button onClick={() => setFiltroReportes('todos')} style={botonMenu(filtroReportes === 'todos')}>Todos</button>
-                  <button onClick={() => setFiltroReportes('faltan_reportes')} style={botonMenu(filtroReportes === 'faltan_reportes')}>Reportes</button>
-                  <button onClick={() => setFiltroReportes('asistencias_sin_confirmar')} style={botonMenu(filtroReportes === 'asistencias_sin_confirmar')}>Asistencia</button>
-                </div>
-              </div>
-            </article>
-
-            {cargando && <p>Cargando reportes pendientes...</p>}
-
-            {!cargando && reportesFiltrados.length === 0 && !error && (
-              <article style={{
-                ...tarjetaMovilVacia,
-                border: '1px solid #bbf7d0',
-                background: 'linear-gradient(135deg, #f0fdf4, #ffffff)',
-                borderRadius: 24
-              }}>
-                <h3 style={{ marginTop: 0 }}>Todo al día en esta semana</h3>
-                <p style={{ marginBottom: 0 }}>No hay reportes pendientes ni asistencias sin confirmar para la semana seleccionada.</p>
+          {!cargando &&
+            ((tabVistaEntrenador === 'disponibilidad' &&
+              disponibilidadSemanalEntrenador.length === 0) ||
+              (tabVistaEntrenador === 'grupos' &&
+                gruposEntrenadorSemanal.length === 0)) &&
+            !error && (
+              <article style={tarjetaMovilVacia}>
+                <h3 style={{ marginTop: 0 }}>Sin datos en esta pestaña</h3>
+                <p style={{ marginBottom: 0 }}>
+                  En Disponibilidad semanal aparecerán los turnos antes de crear
+                  grupos. En Grupos/reportes aparecerán los grupos asignados
+                  cuando Jose los publique.
+                </p>
               </article>
             )}
 
-            <section style={{ display: 'grid', gap: 14 }}>
-              {reportesPorEntrenador.map((grupo) => {
-                const faltanReportes = grupo.reportes.filter((reporte) => reporte.estado_reporte === 'Falta reporte');
-                const asistenciasSinConfirmar = grupo.reportes.filter((reporte) => reporte.estado_reporte === 'Asistencia sin confirmar' || reporte.estado_asistencia === 'Pendiente');
-                const ambosPendientes = grupo.reportes.filter((reporte) => reporte.estado_reporte === 'Falta reporte' && reporte.estado_asistencia === 'Pendiente');
-                const reportesPorFecha = grupo.reportes.reduce((acc, reporte) => {
-                  const clave = reporte.fecha;
-                  if (!acc[clave]) acc[clave] = [];
-                  acc[clave].push(reporte);
-                  return acc;
-                }, {} as Record<string, ReportePendiente[]>);
+          {tabVistaEntrenador === 'grupos' &&
+            gruposEntrenadorSemanal.map((bloqueEntrenador) => (
+              <article
+                key={bloqueEntrenador.entrenador_id}
+                style={tarjetaEntrenadorMovil}
+              >
+                <header style={cabeceraEntrenadorMovil}>
+                  <div>
+                    <p style={etiquetaSuperior}>ENTRENADOR</p>
+                    <h3 style={{ margin: 0 }}>{bloqueEntrenador.entrenador}</h3>
+                  </div>
+                  <div style={contadorGrandeMovil}>
+                    <strong>{bloqueEntrenador.total_grupos}</strong>
+                    <span>grupos</span>
+                  </div>
+                </header>
 
-                return (
-                  <article key={grupo.entrenador} style={{
-                    ...tarjetaEntrenadorMovil,
-                    borderRadius: 24,
-                    border: '1px solid #dbeafe',
-                    background: 'linear-gradient(135deg, #ffffff, #f8fbff)',
-                    boxShadow: '0 16px 35px rgba(15, 23, 42, 0.07)',
-                    overflow: 'hidden'
-                  }}>
-                    <header style={{
-                      ...cabeceraEntrenadorMovil,
-                      alignItems: 'center',
-                      borderBottom: '1px solid #e2e8f0',
-                      paddingBottom: 14
-                    }}>
-                      <div>
-                        <p style={{ ...etiquetaSuperior, marginBottom: 6 }}>ENTRENADOR</p>
-                        <h3 style={{ margin: 0 }}>{grupo.entrenador}</h3>
-                        <p style={{ margin: '6px 0 0', color: '#64748b', fontWeight: 700 }}>Semana {rangoSemanaAgenda(semanaAgendaActiva)}</p>
-                      </div>
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        <span style={{ padding: '8px 11px', borderRadius: 999, background: '#eef2ff', color: '#3730a3', border: '1px solid #c7d2fe', fontWeight: 900 }}>{faltanReportes.length} reportes</span>
-                        <span style={{ padding: '8px 11px', borderRadius: 999, background: '#fff7ed', color: '#9a3412', border: '1px solid #fed7aa', fontWeight: 900 }}>{asistenciasSinConfirmar.length} asistencias</span>
-                        {ambosPendientes.length > 0 && (
-                          <span style={{ padding: '8px 11px', borderRadius: 999, background: '#fef2f2', color: '#991b1b', border: '1px solid #fecaca', fontWeight: 900 }}>{ambosPendientes.length} críticos</span>
-                        )}
-                      </div>
-                    </header>
+                {pendientesEntrenador(bloqueEntrenador.entrenador_id).length >
+                  0 && (
+                  <section style={avisoPendiente}>
+                    <strong>Aviso de tareas pendientes</strong>
+                    <p style={{ margin: '6px 0 0' }}>
+                      Tienes{' '}
+                      {
+                        pendientesEntrenador(
+                          bloqueEntrenador.entrenador_id
+                        ).filter(
+                          (reporte) =>
+                            reporte.estado_reporte === 'Falta reporte'
+                        ).length
+                      }{' '}
+                      reportes pendientes y{' '}
+                      {
+                        pendientesEntrenador(
+                          bloqueEntrenador.entrenador_id
+                        ).filter(
+                          (reporte) =>
+                            reporte.estado_reporte ===
+                            'Asistencia sin confirmar'
+                        ).length
+                      }{' '}
+                      asistencias sin confirmar. Entra en cada grupo y déjalo
+                      cerrado.
+                    </p>
+                  </section>
+                )}
 
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14, alignItems: 'center', justifyContent: 'space-between' }}>
-                      <button onClick={() => copiarWhatsappPendientesEntrenador(grupo.entrenador, grupo.reportes)} style={botonPrincipal}>
-                        Ver WhatsApp personal
-                      </button>
-                      <span style={{ color: '#64748b', fontWeight: 800 }}>{grupo.reportes.length} tareas pendientes</span>
+                {disponibilidad.filter(
+                  (turno) =>
+                    turno.entrenador_id === bloqueEntrenador.entrenador_id &&
+                    turno.aviso_enviado &&
+                    turno.respuesta === 'Pendiente'
+                ).length > 0 && (
+                  <section style={avisoPendiente}>
+                    <strong>Disponibilidad pendiente en la app</strong>
+                    <p style={{ margin: '6px 0 10px' }}>
+                      Rellena estos turnos para que Jose pueda montar la semana.
+                    </p>
+                    <div style={{ display: 'grid', gap: 8 }}>
+                      {disponibilidad
+                        .filter(
+                          (turno) =>
+                            turno.entrenador_id ===
+                              bloqueEntrenador.entrenador_id &&
+                            turno.aviso_enviado &&
+                            turno.respuesta === 'Pendiente'
+                        )
+                        .sort((a, b) =>
+                          `${a.fecha} ${a.hora_inicio}`.localeCompare(
+                            `${b.fecha} ${b.hora_inicio}`
+                          )
+                        )
+                        .map((turno) => (
+                          <div
+                            key={`${turno.id}-vista-entrenador`}
+                            style={miniTarjetaBlanca}
+                          >
+                            <strong>
+                              {capitalizarPrimera(
+                                new Date(
+                                  `${turno.fecha}T00:00:00`
+                                ).toLocaleDateString('es-ES', {
+                                  weekday: 'long',
+                                })
+                              )}{' '}
+                              {formatearFecha(turno.fecha)}
+                            </strong>
+                            <p style={{ margin: '4px 0 8px' }}>
+                              {turno.hora_inicio.slice(0, 5)}–
+                              {turno.hora_fin.slice(0, 5)}
+                            </p>
+                            <div
+                              style={{
+                                display: 'flex',
+                                gap: 6,
+                                flexWrap: 'wrap',
+                              }}
+                            >
+                              <button
+                                onClick={() =>
+                                  responderDisponibilidadRapida(
+                                    turno,
+                                    'Disponible'
+                                  )
+                                }
+                                style={botonAsistenciaOk}
+                              >
+                                Disponible
+                              </button>
+                              <button
+                                onClick={() =>
+                                  responderDisponibilidadRapida(
+                                    turno,
+                                    'No puedo'
+                                  )
+                                }
+                                style={botonAsistenciaAusente}
+                              >
+                                No puedo
+                              </button>
+                            </div>
+                          </div>
+                        ))}
                     </div>
+                  </section>
+                )}
 
-                    <details style={{ marginTop: 12 }}>
-                      <summary style={{
+                {bloqueEntrenador.semanas.map((semana) => {
+                  const totalReportesSemana = semana.grupos.reduce(
+                    (total, grupo) => {
+                      const alumnosGrupo = alumnosDelGrupo(
+                        grupo.grupo_id,
+                        grupo.entrenador_id
+                      );
+                      return (
+                        total +
+                        alumnosGrupo.filter(
+                          (a) => a.estado_reporte === 'Falta reporte'
+                        ).length
+                      );
+                    },
+                    0
+                  );
+
+                  return (
+                    <section
+                      key={`${bloqueEntrenador.entrenador_id}-${semana.inicio}`}
+                      style={bloqueSemanaMovil}
+                    >
+                      <div style={cabeceraSemanaMovil}>
+                        <div>
+                          <p style={etiquetaSuperior}>SEMANA LUNES-DOMINGO</p>
+                          <h4 style={{ margin: 0 }}>
+                            {rangoSemanaAgenda(semana.inicio)}
+                          </h4>
+                        </div>
+                        <div style={resumenChipsMovil}>
+                          <span>{semana.grupos.length} grupos</span>
+                          <span>{totalReportesSemana} reportes pendientes</span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: 'grid', gap: 10 }}>
+                        {diasTrabajoSemanaAgenda(semana.inicio).map((dia) => {
+                          const gruposDia = semana.grupos.filter(
+                            (grupo) => grupo.fecha === dia.fecha
+                          );
+                          const trabajaDia = gruposDia.length > 0;
+
+                          return (
+                            <article
+                              key={`${bloqueEntrenador.entrenador_id}-${semana.inicio}-${dia.fecha}`}
+                              style={
+                                trabajaDia
+                                  ? diaEntrenadorCard
+                                  : diaEntrenadorCardLibre
+                              }
+                            >
+                              <div style={diaEntrenadorHeader}>
+                                <div style={{ display: 'grid' }}>
+                                  <strong>
+                                    {capitalizarPrimera(dia.nombre)}
+                                  </strong>
+                                  <span>{formatearFecha(dia.fecha)}</span>
+                                </div>
+                                <span
+                                  style={
+                                    trabajaDia ? badgeTrabaja : badgeNoTrabaja
+                                  }
+                                >
+                                  {trabajaDia
+                                    ? 'TRABAJA'
+                                    : 'Sin turno asignado'}
+                                </span>
+                              </div>
+
+                              {trabajaDia &&
+                                turnosTrabajoDiaAgenda(dia.fecha).map(
+                                  (turno) => {
+                                    const gruposTurno = gruposDia.filter(
+                                      (grupo) =>
+                                        grupo.hora_inicio.slice(0, 5) ===
+                                          turno.inicio &&
+                                        grupo.hora_fin.slice(0, 5) === turno.fin
+                                    );
+
+                                    if (gruposTurno.length === 0) return null;
+
+                                    return (
+                                      <section
+                                        key={`${dia.fecha}-${turno.inicio}-${turno.fin}`}
+                                        style={turnoEntrenadorBox}
+                                      >
+                                        <h4 style={{ margin: '0 0 8px' }}>
+                                          {turno.inicio}–{turno.fin}
+                                        </h4>
+
+                                        {gruposTurno.map(
+                                          (
+                                            grupo,
+                                            indiceGrupoEntrenadorTurno
+                                          ) => {
+                                            const alumnosGrupo =
+                                              alumnosDelGrupo(
+                                                grupo.grupo_id,
+                                                grupo.entrenador_id
+                                              );
+                                            const presentes =
+                                              alumnosGrupo.filter(
+                                                (a) =>
+                                                  a.estado_asistencia ===
+                                                  'Presente'
+                                              ).length;
+                                            const ausentes =
+                                              alumnosGrupo.filter(
+                                                (a) =>
+                                                  a.estado_asistencia ===
+                                                  'Ausente'
+                                              ).length;
+                                            const pendientes =
+                                              alumnosGrupo.filter(
+                                                (a) =>
+                                                  a.estado_asistencia ===
+                                                  'Pendiente'
+                                              ).length;
+                                            const faltaReporte =
+                                              alumnosGrupo.filter(
+                                                (a) =>
+                                                  a.estado_reporte ===
+                                                  'Falta reporte'
+                                              ).length;
+                                            const reportesEnviados =
+                                              alumnosGrupo.filter(
+                                                (a) =>
+                                                  a.estado_reporte ===
+                                                  'Reporte enviado'
+                                              ).length;
+                                            const asistenciaCompleta =
+                                              alumnosGrupo.length > 0 &&
+                                              pendientes === 0;
+                                            const grupoCerrado =
+                                              asistenciaCompleta &&
+                                              faltaReporte === 0;
+
+                                            return (
+                                              <article
+                                                key={`${grupo.entrenador_id}-${grupo.grupo_id}`}
+                                                style={{
+                                                  ...grupoEntrenadorCardMovil,
+                                                  ...estiloGrupoPorPistaApp(
+                                                    grupo
+                                                  ),
+                                                }}
+                                              >
+                                                <div
+                                                  style={
+                                                    grupoEntrenadorTopMovil
+                                                  }
+                                                >
+                                                  <div>
+                                                    <p
+                                                      style={
+                                                        badgeModalidadMovil
+                                                      }
+                                                    >
+                                                      {grupo.modalidad}
+                                                    </p>
+                                                    <h3
+                                                      style={{
+                                                        margin: '4px 0',
+                                                      }}
+                                                    >
+                                                      {nombreGrupoVisualApp(
+                                                        grupo,
+                                                        indiceGrupoEntrenadorTurno
+                                                      )}
+                                                    </h3>
+                                                    <p style={{ margin: 0 }}>
+                                                      Nivel{' '}
+                                                      {grupo.nivel_grupo || '-'}{' '}
+                                                      · Pista{' '}
+                                                      {grupo.pista || '-'} ·
+                                                      Punto{' '}
+                                                      {grupo.punto_encuentro ||
+                                                        '-'}
+                                                    </p>
+                                                  </div>
+                                                  <div
+                                                    style={contadorNinosMovil}
+                                                  >
+                                                    <strong>
+                                                      {grupo.total_alumnos}
+                                                    </strong>
+                                                    <span>niños</span>
+                                                  </div>
+                                                </div>
+
+                                                <div
+                                                  style={
+                                                    grupoCerrado
+                                                      ? avisoCompleto
+                                                      : avisoPendiente
+                                                  }
+                                                >
+                                                  {grupoCerrado
+                                                    ? 'Grupo cerrado'
+                                                    : asistenciaCompleta
+                                                    ? 'Faltan reportes'
+                                                    : 'Falta asistencia'}
+                                                </div>
+
+                                                {grupo.estado_confirmacion !==
+                                                  'Confirmado' && (
+                                                  <button
+                                                    onClick={() =>
+                                                      confirmarGrupoEntrenador(
+                                                        grupo.grupo_id,
+                                                        grupo.entrenador_id
+                                                      )
+                                                    }
+                                                    style={{
+                                                      ...botonPrincipal,
+                                                      width: '100%',
+                                                    }}
+                                                  >
+                                                    Grupo visto · Confirmo
+                                                    horario, punto, niños y
+                                                    trabajo diario
+                                                  </button>
+                                                )}
+
+                                                <section
+                                                  style={bloqueInfoEntrenador}
+                                                >
+                                                  <h4>Niños del grupo</h4>
+                                                  <ul
+                                                    style={{
+                                                      margin: 0,
+                                                      paddingLeft: 18,
+                                                    }}
+                                                  >
+                                                    {alumnosGrupo.map(
+                                                      (alumno) => (
+                                                        <li
+                                                          key={`${grupo.grupo_id}-${alumno.alumno_id}-lista`}
+                                                        >
+                                                          <strong>
+                                                            {alumno.alumno} ·
+                                                            Nivel{' '}
+                                                            {alumno.nivel_alumno ||
+                                                              'SIN NIVEL'}
+                                                          </strong>
+                                                        </li>
+                                                      )
+                                                    )}
+                                                  </ul>
+                                                </section>
+
+                                                <section
+                                                  style={bloqueInfoEntrenador}
+                                                >
+                                                  <h4>Trabajo diario</h4>
+                                                  <div style={bloqueTexto}>
+                                                    {formatearTrabajoDiario(
+                                                      grupo.trabajo_diario
+                                                    )}
+                                                  </div>
+                                                </section>
+
+                                                {grupo.observaciones_importantes && (
+                                                  <section
+                                                    style={bloqueInfoEntrenador}
+                                                  >
+                                                    <h4>Observaciones</h4>
+                                                    <div style={bloqueTexto}>
+                                                      {formatearObservaciones(
+                                                        grupo.observaciones_importantes
+                                                      )}
+                                                    </div>
+                                                  </section>
+                                                )}
+
+                                                <section
+                                                  style={bloqueInfoEntrenador}
+                                                >
+                                                  <h4>Asistencia y reportes</h4>
+                                                  <div
+                                                    style={resumenChipsMovil}
+                                                  >
+                                                    <span>
+                                                      Presentes {presentes}
+                                                    </span>
+                                                    <span>
+                                                      Ausentes {ausentes}
+                                                    </span>
+                                                    <span>
+                                                      Pendientes {pendientes}
+                                                    </span>
+                                                    <span>
+                                                      Reportes{' '}
+                                                      {reportesEnviados}/
+                                                      {alumnosGrupo.length}
+                                                    </span>
+                                                  </div>
+
+                                                  <div
+                                                    style={{
+                                                      display: 'grid',
+                                                      gap: 8,
+                                                      marginTop: 10,
+                                                    }}
+                                                  >
+                                                    {alumnosGrupo.map(
+                                                      (alumno) => (
+                                                        <div
+                                                          key={`${grupo.grupo_id}-${alumno.alumno_id}`}
+                                                          style={
+                                                            miniTarjetaBlanca
+                                                          }
+                                                        >
+                                                          <div
+                                                            style={
+                                                              filaAlumnoEntrenadorMovil
+                                                            }
+                                                          >
+                                                            <div>
+                                                              <strong>
+                                                                {alumno.alumno}{' '}
+                                                                · Nivel{' '}
+                                                                {alumno.nivel_alumno ||
+                                                                  'SIN NIVEL'}
+                                                              </strong>
+                                                              <p
+                                                                style={{
+                                                                  margin:
+                                                                    '4px 0 0',
+                                                                  fontSize: 13,
+                                                                }}
+                                                              >
+                                                                Asistencia:{' '}
+                                                                <strong>
+                                                                  {
+                                                                    alumno.estado_asistencia
+                                                                  }
+                                                                </strong>
+                                                              </p>
+                                                              <p
+                                                                style={{
+                                                                  margin:
+                                                                    '4px 0 0',
+                                                                  fontSize: 13,
+                                                                }}
+                                                              >
+                                                                Reporte:{' '}
+                                                                <strong>
+                                                                  {
+                                                                    alumno.estado_reporte
+                                                                  }
+                                                                </strong>
+                                                              </p>
+                                                            </div>
+                                                            <div
+                                                              style={
+                                                                botonesAsistenciaMovil
+                                                              }
+                                                            >
+                                                              <button
+                                                                onClick={() =>
+                                                                  marcarAsistencia(
+                                                                    grupo.grupo_id,
+                                                                    alumno.alumno_id,
+                                                                    'Presente'
+                                                                  )
+                                                                }
+                                                                style={
+                                                                  alumno.estado_asistencia ===
+                                                                  'Presente'
+                                                                    ? botonAsistenciaOk
+                                                                    : botonAsistenciaOff
+                                                                }
+                                                              >
+                                                                Presente
+                                                              </button>
+                                                              <button
+                                                                onClick={() =>
+                                                                  marcarAsistencia(
+                                                                    grupo.grupo_id,
+                                                                    alumno.alumno_id,
+                                                                    'Ausente'
+                                                                  )
+                                                                }
+                                                                style={
+                                                                  alumno.estado_asistencia ===
+                                                                  'Ausente'
+                                                                    ? botonAsistenciaAusente
+                                                                    : botonAsistenciaOff
+                                                                }
+                                                              >
+                                                                Ausente
+                                                              </button>
+                                                              <button
+                                                                onClick={() =>
+                                                                  marcarAsistencia(
+                                                                    grupo.grupo_id,
+                                                                    alumno.alumno_id,
+                                                                    'Pendiente'
+                                                                  )
+                                                                }
+                                                                style={
+                                                                  alumno.estado_asistencia ===
+                                                                  'Pendiente'
+                                                                    ? botonAsistenciaPendiente
+                                                                    : botonAsistenciaOff
+                                                                }
+                                                              >
+                                                                Pendiente
+                                                              </button>
+                                                            </div>
+                                                          </div>
+
+                                                          {alumno.estado_reporte ===
+                                                            'Falta reporte' &&
+                                                            !formularioAbierto(
+                                                              alumno
+                                                            ) && (
+                                                              <button
+                                                                onClick={() =>
+                                                                  abrirFormularioReporte(
+                                                                    alumno
+                                                                  )
+                                                                }
+                                                                style={{
+                                                                  ...botonPrincipal,
+                                                                  marginTop: 10,
+                                                                  width: '100%',
+                                                                }}
+                                                              >
+                                                                Rellenar reporte
+                                                              </button>
+                                                            )}
+
+                                                          {formularioAbierto(
+                                                            alumno
+                                                          ) && (
+                                                            <div
+                                                              style={
+                                                                formularioCaja
+                                                              }
+                                                            >
+                                                              <h4
+                                                                style={{
+                                                                  marginTop: 0,
+                                                                }}
+                                                              >
+                                                                Reporte de{' '}
+                                                                {alumno.alumno}
+                                                              </h4>
+                                                              <details
+                                                                style={
+                                                                  ayudaReporteEntrenadorCaja
+                                                                }
+                                                              >
+                                                                <summary
+                                                                  style={
+                                                                    summaryAyudaReporteEntrenador
+                                                                  }
+                                                                >
+                                                                  Ver ayuda
+                                                                  rápida para
+                                                                  rellenar
+                                                                  reporte
+                                                                </summary>
+                                                                <AyudaReporteEntrenador
+                                                                  nivel={
+                                                                    formReporte.nivel ||
+                                                                    alumno.nivel_alumno ||
+                                                                    grupo.nivel_grupo ||
+                                                                    ''
+                                                                  }
+                                                                />
+                                                              </details>
+                                                              <div
+                                                                style={
+                                                                  gridFormulario
+                                                                }
+                                                              >
+                                                                <CampoSelect
+                                                                  label="Nivel"
+                                                                  value={
+                                                                    formReporte.nivel
+                                                                  }
+                                                                  opciones={
+                                                                    opcionesNivel
+                                                                  }
+                                                                  onChange={(
+                                                                    valor
+                                                                  ) =>
+                                                                    setFormReporte(
+                                                                      {
+                                                                        ...formReporte,
+                                                                        nivel:
+                                                                          valor,
+                                                                      }
+                                                                    )
+                                                                  }
+                                                                />
+                                                                <CampoSelect
+                                                                  label="Actitud"
+                                                                  value={
+                                                                    formReporte.actitud
+                                                                  }
+                                                                  opciones={
+                                                                    opcionesActitud
+                                                                  }
+                                                                  onChange={(
+                                                                    valor
+                                                                  ) =>
+                                                                    setFormReporte(
+                                                                      {
+                                                                        ...formReporte,
+                                                                        actitud:
+                                                                          valor,
+                                                                      }
+                                                                    )
+                                                                  }
+                                                                />
+                                                                <CampoSelect
+                                                                  label="Técnica"
+                                                                  value={
+                                                                    formReporte.tecnica
+                                                                  }
+                                                                  opciones={
+                                                                    opcionesTecnica
+                                                                  }
+                                                                  onChange={(
+                                                                    valor
+                                                                  ) =>
+                                                                    setFormReporte(
+                                                                      {
+                                                                        ...formReporte,
+                                                                        tecnica:
+                                                                          valor,
+                                                                      }
+                                                                    )
+                                                                  }
+                                                                />
+                                                                <CampoSelect
+                                                                  label="Pista"
+                                                                  value={
+                                                                    formReporte.pista
+                                                                  }
+                                                                  opciones={
+                                                                    opcionesPista
+                                                                  }
+                                                                  onChange={(
+                                                                    valor
+                                                                  ) =>
+                                                                    setFormReporte(
+                                                                      {
+                                                                        ...formReporte,
+                                                                        pista:
+                                                                          valor,
+                                                                      }
+                                                                    )
+                                                                  }
+                                                                />
+                                                                <CampoSelect
+                                                                  label="Autonomía"
+                                                                  value={
+                                                                    formReporte.autonomia
+                                                                  }
+                                                                  opciones={
+                                                                    opcionesAutonomia
+                                                                  }
+                                                                  onChange={(
+                                                                    valor
+                                                                  ) =>
+                                                                    setFormReporte(
+                                                                      {
+                                                                        ...formReporte,
+                                                                        autonomia:
+                                                                          valor,
+                                                                      }
+                                                                    )
+                                                                  }
+                                                                />
+                                                                <CampoSelect
+                                                                  label="Remontes"
+                                                                  value={
+                                                                    formReporte.remontes
+                                                                  }
+                                                                  opciones={
+                                                                    opcionesRemontes
+                                                                  }
+                                                                  onChange={(
+                                                                    valor
+                                                                  ) =>
+                                                                    setFormReporte(
+                                                                      {
+                                                                        ...formReporte,
+                                                                        remontes:
+                                                                          valor,
+                                                                      }
+                                                                    )
+                                                                  }
+                                                                />
+                                                                <CampoSelect
+                                                                  label="Incidencia"
+                                                                  value={
+                                                                    formReporte.incidencia
+                                                                  }
+                                                                  opciones={
+                                                                    opcionesIncidencia
+                                                                  }
+                                                                  onChange={(
+                                                                    valor
+                                                                  ) =>
+                                                                    setFormReporte(
+                                                                      {
+                                                                        ...formReporte,
+                                                                        incidencia:
+                                                                          valor,
+                                                                      }
+                                                                    )
+                                                                  }
+                                                                />
+                                                                <CampoSelect
+                                                                  label="Recomendación"
+                                                                  value={
+                                                                    formReporte.recomendacion
+                                                                  }
+                                                                  opciones={
+                                                                    opcionesRecomendacion
+                                                                  }
+                                                                  onChange={(
+                                                                    valor
+                                                                  ) =>
+                                                                    setFormReporte(
+                                                                      {
+                                                                        ...formReporte,
+                                                                        recomendacion:
+                                                                          valor,
+                                                                      }
+                                                                    )
+                                                                  }
+                                                                />
+                                                              </div>
+                                                              <label
+                                                                style={
+                                                                  labelCampo
+                                                                }
+                                                              >
+                                                                Observaciones
+                                                                <textarea
+                                                                  value={
+                                                                    formReporte.observaciones
+                                                                  }
+                                                                  onChange={(
+                                                                    e
+                                                                  ) =>
+                                                                    setFormReporte(
+                                                                      {
+                                                                        ...formReporte,
+                                                                        observaciones:
+                                                                          e
+                                                                            .target
+                                                                            .value,
+                                                                      }
+                                                                    )
+                                                                  }
+                                                                  style={
+                                                                    textarea
+                                                                  }
+                                                                />
+                                                              </label>
+                                                              <div
+                                                                style={{
+                                                                  display:
+                                                                    'flex',
+                                                                  gap: 8,
+                                                                  flexWrap:
+                                                                    'wrap',
+                                                                  marginTop: 12,
+                                                                }}
+                                                              >
+                                                                <button
+                                                                  onClick={() =>
+                                                                    guardarReporteAlumno(
+                                                                      alumno
+                                                                    )
+                                                                  }
+                                                                  style={
+                                                                    botonPrincipal
+                                                                  }
+                                                                >
+                                                                  Guardar
+                                                                  reporte
+                                                                </button>
+                                                                <button
+                                                                  onClick={
+                                                                    cerrarFormularioReporte
+                                                                  }
+                                                                  style={
+                                                                    botonSecundario
+                                                                  }
+                                                                >
+                                                                  Cancelar
+                                                                </button>
+                                                              </div>
+                                                            </div>
+                                                          )}
+                                                        </div>
+                                                      )
+                                                    )}
+                                                  </div>
+                                                </section>
+                                              </article>
+                                            );
+                                          }
+                                        )}
+                                      </section>
+                                    );
+                                  }
+                                )}
+                            </article>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  );
+                })}
+              </article>
+            ))}
+        </section>
+      )}
+
+      {pantalla === 'reportes' &&
+        (() => {
+          const totalReportesPendientes = reportesFiltrados.filter(
+            (reporte) => reporte.estado_reporte === 'Falta reporte'
+          ).length;
+          const totalAsistenciasPendientes = reportesFiltrados.filter(
+            (reporte) =>
+              reporte.estado_reporte === 'Asistencia sin confirmar' ||
+              reporte.estado_asistencia === 'Pendiente'
+          ).length;
+          const totalAmbosPendientes = reportesFiltrados.filter(
+            (reporte) =>
+              reporte.estado_reporte === 'Falta reporte' &&
+              reporte.estado_asistencia === 'Pendiente'
+          ).length;
+          const totalEntrenadoresPendientes = reportesPorEntrenador.length;
+
+          const chipEstadoReporte = (reporte: ReportePendiente) => {
+            const faltaReporte = reporte.estado_reporte === 'Falta reporte';
+            const asistenciaPendiente =
+              reporte.estado_reporte === 'Asistencia sin confirmar' ||
+              reporte.estado_asistencia === 'Pendiente';
+
+            if (faltaReporte && asistenciaPendiente) {
+              return {
+                texto: 'Reporte + asistencia',
+                estilo: {
+                  background: '#fee2e2',
+                  color: '#991b1b',
+                  border: '1px solid #fecaca',
+                },
+              };
+            }
+
+            if (asistenciaPendiente) {
+              return {
+                texto: 'Asistencia pendiente',
+                estilo: {
+                  background: '#ffedd5',
+                  color: '#9a3412',
+                  border: '1px solid #fed7aa',
+                },
+              };
+            }
+
+            return {
+              texto: 'Falta reporte',
+              estilo: {
+                background: '#dbeafe',
+                color: '#1d4ed8',
+                border: '1px solid #bfdbfe',
+              },
+            };
+          };
+
+          const metricasPendientes = [
+            {
+              titulo: 'Entrenadores',
+              valor: totalEntrenadoresPendientes,
+              detalle: 'con tareas',
+              estilo: {
+                background: 'linear-gradient(135deg, #eff6ff, #ffffff)',
+                border: '1px solid #bfdbfe',
+                color: '#1e3a8a',
+              },
+            },
+            {
+              titulo: 'Reportes',
+              valor: totalReportesPendientes,
+              detalle: 'por rellenar',
+              estilo: {
+                background: 'linear-gradient(135deg, #eef2ff, #ffffff)',
+                border: '1px solid #c7d2fe',
+                color: '#3730a3',
+              },
+            },
+            {
+              titulo: 'Asistencia',
+              valor: totalAsistenciasPendientes,
+              detalle: 'sin cerrar',
+              estilo: {
+                background: 'linear-gradient(135deg, #fff7ed, #ffffff)',
+                border: '1px solid #fed7aa',
+                color: '#9a3412',
+              },
+            },
+            {
+              titulo: 'Críticos',
+              valor: totalAmbosPendientes,
+              detalle: 'ambos pendientes',
+              estilo: {
+                background: 'linear-gradient(135deg, #fef2f2, #ffffff)',
+                border: '1px solid #fecaca',
+                color: '#991b1b',
+              },
+            },
+          ];
+
+          return (
+            <section>
+              <div
+                style={{
+                  ...cabeceraPantalla,
+                  alignItems: 'center',
+                  background: 'linear-gradient(135deg, #f8fbff, #eef7ff)',
+                  border: '1px solid #dbeafe',
+                  borderRadius: 24,
+                  padding: 20,
+                  boxShadow: '0 18px 45px rgba(15, 23, 42, 0.08)',
+                }}
+              >
+                <div>
+                  <p style={{ ...etiquetaSuperior, marginBottom: 6 }}>
+                    CONTROL SEMANAL
+                  </p>
+                  <h2 style={{ margin: 0 }}>Reportes pendientes</h2>
+                  <details style={{ marginTop: 10 }}>
+                    <summary
+                      style={{
                         cursor: 'pointer',
                         fontWeight: 900,
-                        padding: '12px 14px',
+                        color: '#2563eb',
+                      }}
+                    >
+                      Ayuda rápida
+                    </summary>
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: 12,
                         borderRadius: 16,
-                        background: '#f8fafc',
-                        border: '1px solid #e2e8f0',
-                        color: '#0f172a'
-                      }}>
-                        Ver detalle de pendientes
-                      </summary>
-
-                      <section style={{ display: 'grid', gap: 12, marginTop: 12 }}>
-                        {Object.entries(reportesPorFecha).sort(([a], [b]) => a.localeCompare(b)).map(([fecha, reportesFecha]) => (
-                          <article key={`${grupo.entrenador}-${fecha}`} style={{
-                            border: '1px solid #e2e8f0',
-                            borderRadius: 18,
-                            background: '#ffffff',
-                            overflow: 'hidden'
-                          }}>
-                            <div style={{
-                              display: 'flex',
-                              justifyContent: 'space-between',
-                              gap: 10,
-                              flexWrap: 'wrap',
-                              padding: '12px 14px',
-                              background: '#f8fafc',
-                              borderBottom: '1px solid #e2e8f0'
-                            }}>
-                              <strong>{formatearFecha(fecha)}</strong>
-                              <span style={{ color: '#64748b', fontWeight: 800 }}>{reportesFecha.length} pendiente(s)</span>
-                            </div>
-
-                            <div style={{ display: 'grid', gap: 8, padding: 12 }}>
-                              {reportesFecha.map((reporte) => {
-                                const chip = chipEstadoReporte(reporte);
-                                return (
-                                  <div key={`${reporte.grupo_id}-${reporte.alumno_id}-${reporte.estado_reporte}`} style={{
-                                    ...miniTarjetaBlanca,
-                                    border: '1px solid #e2e8f0',
-                                    borderRadius: 16,
-                                    boxShadow: 'none'
-                                  }}>
-                                    <div style={{ display: 'grid', gap: 8 }}>
-                                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                                        <strong>{reporte.alumno}</strong>
-                                        <span style={{ ...chip.estilo, padding: '6px 10px', borderRadius: 999, fontWeight: 900, fontSize: 12 }}>{chip.texto}</span>
-                                      </div>
-
-                                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', color: '#475569', fontWeight: 700 }}>
-                                        <span>Nivel {reporte.nivel_alumno || 'SIN NIVEL'}</span>
-                                        <span>{reporte.modalidad}</span>
-                                        <span>{reporte.hora_inicio.slice(0, 5)}–{reporte.hora_fin.slice(0, 5)}</span>
-                                      </div>
-
-                                      <div style={{ display: 'grid', gap: 4, color: '#334155' }}>
-                                        <p style={{ margin: 0 }}><strong>Grupo:</strong> {reporte.nombre_grupo}</p>
-                                        <p style={{ margin: 0 }}><strong>Asistencia:</strong> {reporte.estado_asistencia} · <strong>Reporte:</strong> {reporte.estado_reporte}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </article>
-                        ))}
-                      </section>
-                    </details>
-                  </article>
-                );
-              })}
-            </section>
-          </section>
-        );
-      })()}
-
-      {pantalla === 'alumnos' && (() => {
-        const totalFichas = alumnos.length;
-        const totalSinNivel = alumnos.filter((alumno) => !(alumno.nivel_actual || alumno.ultimo_nivel_reportado || alumno.nivel_estimado)).length;
-        const totalSinReportes = alumnos.filter((alumno) => Number(alumno.total_reportes || 0) === 0).length;
-        const totalRevisarFicha = alumnos.filter((alumno) => String(alumno.estado_ficha || '').toLowerCase().includes('revis')).length;
-
-        const estiloFichaHero = {
-          ...agendaHero,
-          background: 'linear-gradient(135deg, #f5f3ff 0%, #eef2ff 48%, #f8fafc 100%)',
-          border: '1px solid #ddd6fe',
-          boxShadow: '0 18px 45px rgba(79, 70, 229, 0.10)'
-        };
-
-        const tarjetaMetricaFicha = (color: string, fondo: string) => ({
-          ...miniTarjetaBlanca,
-          border: `1px solid ${color}33`,
-          background: fondo,
-          minHeight: 82,
-          display: 'grid',
-          alignContent: 'center'
-        });
-
-        const badgeNivelFicha = (nivel: string) => {
-          const limpio = String(nivel || 'SIN NIVEL').toUpperCase();
-          let color = '#64748b';
-          let fondo = '#f8fafc';
-          if (limpio.includes('INICIACION') || limpio === 'A') { color = '#16a34a'; fondo = '#f0fdf4'; }
-          if (limpio === 'A+' || limpio === 'B') { color = '#2563eb'; fondo = '#eff6ff'; }
-          if (limpio.includes('B+') || limpio === 'C') { color = '#f97316'; fondo = '#fff7ed'; }
-          if (limpio.includes('C+') || limpio.includes('D')) { color = '#7c3aed'; fondo = '#f5f3ff'; }
-          if (limpio.includes('SIN')) { color = '#dc2626'; fondo = '#fef2f2'; }
-          return {
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '7px 12px',
-            borderRadius: 999,
-            border: `1px solid ${color}40`,
-            background: fondo,
-            color,
-            fontWeight: 900,
-            fontSize: 13,
-            letterSpacing: 0.2
-          };
-        };
-
-        const estiloTarjetaAlumno = (nivel: string) => {
-          const limpio = String(nivel || '').toUpperCase();
-          let borde = '#dbeafe';
-          let fondo = 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)';
-          if (limpio.includes('INICIACION') || limpio === 'A') { borde = '#bbf7d0'; fondo = 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)'; }
-          if (limpio === 'A+' || limpio === 'B') { borde = '#bfdbfe'; fondo = 'linear-gradient(135deg, #ffffff 0%, #eff6ff 100%)'; }
-          if (limpio.includes('B+') || limpio === 'C') { borde = '#fed7aa'; fondo = 'linear-gradient(135deg, #ffffff 0%, #fff7ed 100%)'; }
-          if (limpio.includes('C+') || limpio.includes('D')) { borde = '#ddd6fe'; fondo = 'linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)'; }
-          if (!limpio || limpio.includes('SIN')) { borde = '#fecaca'; fondo = 'linear-gradient(135deg, #ffffff 0%, #fef2f2 100%)'; }
-          return {
-            ...tarjeta,
-            border: `1px solid ${borde}`,
-            background: fondo,
-            boxShadow: '0 14px 30px rgba(15, 23, 42, 0.07)'
-          };
-        };
-
-        return (
-          <section style={{ display: 'grid', gap: 16 }}>
-            <article style={estiloFichaHero}>
-              <div>
-                <span style={{ ...agendaBadgeModalidad, background: '#f5f3ff', color: '#7c3aed', borderColor: '#ddd6fe' }}>FICHAS</span>
-                <h2 style={{ margin: '10px 0 0' }}>Alumnos</h2>
-                <p style={{ margin: '8px 0 0', color: '#475569', fontWeight: 650 }}>
-                  Baby e Intensivos juntos. Aquí queda el nivel real que usa toda la app.
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                <button
-                  type="button"
-                  onClick={() => setPantalla('ocioAlumnos')}
-                  style={{ ...botonSecundario, borderColor: '#bbf7d0', color: '#166534', background: '#f0fdf4' }}
+                        background: '#ffffff',
+                        border: '1px solid #dbeafe',
+                        color: '#334155',
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      <p style={{ margin: 0 }}>
+                        Revisión por semana y entrenador. Los pendientes ya
+                        aparecen en Vista entrenador; el WhatsApp solo sirve
+                        como recordatorio directo.
+                      </p>
+                    </div>
+                  </details>
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                    justifyContent: 'flex-end',
+                  }}
                 >
-                  Ver alumnos Ocio
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMostrarNuevoAlumnoManual((valor) => !valor)}
-                  style={botonPrincipal}
-                  title="Crear ficha manual para un niño que no viene de listado."
+                  <button
+                    onClick={copiarWhatsappPendientesReportes}
+                    style={botonPrincipal}
+                  >
+                    Ver WhatsApp general
+                  </button>
+                  <button
+                    onClick={cargarReportesPendientes}
+                    style={botonSecundario}
+                  >
+                    Actualizar
+                  </button>
+                </div>
+              </div>
+
+              <article
+                style={{
+                  ...agendaBloqueBlanco,
+                  marginTop: 16,
+                  borderRadius: 24,
+                  border: '1px solid #e2e8f0',
+                  boxShadow: '0 14px 35px rgba(15, 23, 42, 0.06)',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    marginBottom: 12,
+                  }}
                 >
-                  + Añadir alumno
-                </button>
-                <button onClick={cargarAlumnos} style={botonSecundario}>Refrescar</button>
-              </div>
-            </article>
-
-            <details style={{ ...agendaBloqueBlanco, padding: 14 }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 900, color: '#475569' }}>Ayuda rápida de esta pantalla</summary>
-              <div style={{ display: 'grid', gap: 8, marginTop: 10, color: '#475569' }}>
-                <p style={{ margin: 0 }}>Usa esta pantalla para revisar nivel real, historial, último reporte y evaluación técnica de Baby/Intensivos.</p>
-                <p style={{ margin: 0 }}>Ocio tiene su propia subpestaña porque funciona como escuela anual con grupo estable y día fijo.</p>
-              </div>
-            </details>
-
-            <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
-              <div style={tarjetaMetricaFicha('#7c3aed', '#f5f3ff')}>
-                <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>TOTAL</span>
-                <strong style={{ fontSize: 28 }}>{totalFichas}</strong>
-                <span>fichas</span>
-              </div>
-              <div style={tarjetaMetricaFicha('#dc2626', '#fef2f2')}>
-                <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>SIN NIVEL</span>
-                <strong style={{ fontSize: 28 }}>{totalSinNivel}</strong>
-                <span>revisar</span>
-              </div>
-              <div style={tarjetaMetricaFicha('#f97316', '#fff7ed')}>
-                <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>SIN REPORTES</span>
-                <strong style={{ fontSize: 28 }}>{totalSinReportes}</strong>
-                <span>sin histórico</span>
-              </div>
-              <div style={tarjetaMetricaFicha('#2563eb', '#eff6ff')}>
-                <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>REVISAR</span>
-                <strong style={{ fontSize: 28 }}>{totalRevisarFicha}</strong>
-                <span>fichas</span>
-              </div>
-            </section>
-
-            {mostrarNuevoAlumnoManual && (
-              <article style={{ ...agendaBloqueBlanco, borderColor: '#ddd6fe', background: '#faf5ff' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'flex-start' }}>
                   <div>
-                    <h3 style={{ marginTop: 0 }}>Crear alumno manual</h3>
-                    <p style={{ marginTop: 0, color: '#555' }}>
-                      Para niños que no vienen de Aimharder o pruebas. Si no sabes nivel, déjalo pendiente.
+                    <p style={{ ...etiquetaSuperior, marginBottom: 4 }}>
+                      SEMANA
                     </p>
+                    <h3 style={{ margin: 0 }}>Semana a revisar</h3>
                   </div>
-                  <button type="button" onClick={() => setMostrarNuevoAlumnoManual(false)} style={botonSecundario}>Cerrar</button>
+                  <span
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 999,
+                      background: '#eef6ff',
+                      border: '1px solid #bfdbfe',
+                      color: '#1e40af',
+                      fontWeight: 900,
+                    }}
+                  >
+                    {rangoSemanaAgenda(semanaAgendaActiva)}
+                  </span>
                 </div>
 
                 <div style={gridFormulario}>
                   <label style={labelCampo}>
-                    Nombre completo
-                    <input
-                      value={nuevoAlumnoNombre}
-                      onChange={(e) => setNuevoAlumnoNombre(e.target.value.toUpperCase())}
-                      placeholder="NOMBRE APELLIDO APELLIDO"
-                      style={inputCampo}
-                    />
-                  </label>
-
-                  <label style={labelCampo}>
-                    Nivel real inicial
+                    Temporada
                     <select
-                      value={nuevoAlumnoNivel}
-                      onChange={(e) => setNuevoAlumnoNivel(e.target.value)}
-                      style={selectCampo}
+                      value={anioInicioTemporadaAgenda}
+                      style={selectCampoAgenda}
+                      onChange={(e) => {
+                        const nuevoAnio = Number(e.target.value);
+                        setAnioInicioTemporadaAgenda(nuevoAnio);
+                        setMesAgenda(`${nuevoAnio}-09`);
+                        setSemanaAgendaInicio('');
+                      }}
                     >
-                      <option value="">Sin nivel / pendiente</option>
-                      {opcionesNivel.map((nivel) => (
-                        <option key={nivel} value={nivel}>{nivel}</option>
+                      {opcionesTemporadaAgenda.map((anio) => (
+                        <option key={anio} value={anio}>
+                          {nombreTemporadaAgenda(anio)}
+                        </option>
                       ))}
                     </select>
                   </label>
 
                   <label style={labelCampo}>
-                    Origen del nivel
+                    Mes
                     <select
-                      value={nuevoAlumnoOrigen}
-                      onChange={(e) => setNuevoAlumnoOrigen(e.target.value)}
-                      style={selectCampo}
+                      value={mesAgendaActivo}
+                      style={selectCampoAgenda}
+                      onChange={(e) => {
+                        setMesAgenda(e.target.value);
+                        setSemanaAgendaInicio('');
+                      }}
                     >
-                      <option value="Jose / Coordinador">Jose / Coordinador</option>
-                      <option value="Familia">Familia</option>
-                      <option value="Ventas / compañera">Ventas / compañera</option>
-                      <option value="Clase de prueba pendiente">Clase de prueba pendiente</option>
-                      <option value="Desconocido">Desconocido</option>
+                      {mesesAgenda.map((clave) => (
+                        <option key={clave} value={clave}>
+                          {nombreMesAgendaDesdeClave(clave)}
+                        </option>
+                      ))}
                     </select>
                   </label>
 
                   <label style={labelCampo}>
-                    Estado ficha
+                    Semana lunes-domingo
                     <select
-                      value={nuevoAlumnoEstado}
-                      onChange={(e) => setNuevoAlumnoEstado(e.target.value)}
-                      style={selectCampo}
+                      value={semanaAgendaActiva}
+                      style={selectCampoAgenda}
+                      onChange={(e) => setSemanaAgendaInicio(e.target.value)}
                     >
-                      <option value="pendiente completar">Pendiente completar</option>
-                      <option value="revisar">Revisar</option>
-                      <option value="completa">Completa</option>
+                      {semanasAgenda.map((semana) => (
+                        <option key={semana} value={semana}>
+                          Semana {rangoSemanaAgenda(semana)}
+                        </option>
+                      ))}
                     </select>
                   </label>
                 </div>
+              </article>
 
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-                  <button type="button" onClick={crearAlumnoManualBase} style={botonPrincipal}>
-                    Crear ficha
+              <section
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+                  gap: 12,
+                  margin: '16px 0',
+                }}
+              >
+                {metricasPendientes.map((metrica) => (
+                  <article
+                    key={metrica.titulo}
+                    style={{
+                      ...metrica.estilo,
+                      borderRadius: 20,
+                      padding: 16,
+                      boxShadow: '0 12px 25px rgba(15, 23, 42, 0.05)',
+                    }}
+                  >
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 12,
+                        letterSpacing: 1,
+                        textTransform: 'uppercase',
+                        fontWeight: 900,
+                        opacity: 0.75,
+                      }}
+                    >
+                      {metrica.titulo}
+                    </p>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'end',
+                        gap: 8,
+                        marginTop: 6,
+                      }}
+                    >
+                      <strong style={{ fontSize: 30, lineHeight: 1 }}>
+                        {metrica.valor}
+                      </strong>
+                      <span style={{ fontWeight: 800, marginBottom: 4 }}>
+                        {metrica.detalle}
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </section>
+
+              <article
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 22,
+                  padding: 14,
+                  marginBottom: 16,
+                  boxShadow: '0 10px 24px rgba(15, 23, 42, 0.04)',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr auto',
+                    gap: 12,
+                    alignItems: 'center',
+                  }}
+                >
+                  <input
+                    value={busquedaReportes}
+                    onChange={(e) => setBusquedaReportes(e.target.value)}
+                    placeholder="Buscar entrenador, alumno, grupo o modalidad..."
+                    style={{ ...buscador, margin: 0 }}
+                  />
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      justifyContent: 'flex-end',
+                    }}
+                  >
+                    <button
+                      onClick={() => setFiltroReportes('todos')}
+                      style={botonMenu(filtroReportes === 'todos')}
+                    >
+                      Todos
+                    </button>
+                    <button
+                      onClick={() => setFiltroReportes('faltan_reportes')}
+                      style={botonMenu(filtroReportes === 'faltan_reportes')}
+                    >
+                      Reportes
+                    </button>
+                    <button
+                      onClick={() =>
+                        setFiltroReportes('asistencias_sin_confirmar')
+                      }
+                      style={botonMenu(
+                        filtroReportes === 'asistencias_sin_confirmar'
+                      )}
+                    >
+                      Asistencia
+                    </button>
+                  </div>
+                </div>
+              </article>
+
+              {cargando && <p>Cargando reportes pendientes...</p>}
+
+              {!cargando && reportesFiltrados.length === 0 && !error && (
+                <article
+                  style={{
+                    ...tarjetaMovilVacia,
+                    border: '1px solid #bbf7d0',
+                    background: 'linear-gradient(135deg, #f0fdf4, #ffffff)',
+                    borderRadius: 24,
+                  }}
+                >
+                  <h3 style={{ marginTop: 0 }}>Todo al día en esta semana</h3>
+                  <p style={{ marginBottom: 0 }}>
+                    No hay reportes pendientes ni asistencias sin confirmar para
+                    la semana seleccionada.
+                  </p>
+                </article>
+              )}
+
+              <section style={{ display: 'grid', gap: 14 }}>
+                {reportesPorEntrenador.map((grupo) => {
+                  const faltanReportes = grupo.reportes.filter(
+                    (reporte) => reporte.estado_reporte === 'Falta reporte'
+                  );
+                  const asistenciasSinConfirmar = grupo.reportes.filter(
+                    (reporte) =>
+                      reporte.estado_reporte === 'Asistencia sin confirmar' ||
+                      reporte.estado_asistencia === 'Pendiente'
+                  );
+                  const ambosPendientes = grupo.reportes.filter(
+                    (reporte) =>
+                      reporte.estado_reporte === 'Falta reporte' &&
+                      reporte.estado_asistencia === 'Pendiente'
+                  );
+                  const reportesPorFecha = grupo.reportes.reduce(
+                    (acc, reporte) => {
+                      const clave = reporte.fecha;
+                      if (!acc[clave]) acc[clave] = [];
+                      acc[clave].push(reporte);
+                      return acc;
+                    },
+                    {} as Record<string, ReportePendiente[]>
+                  );
+
+                  return (
+                    <article
+                      key={grupo.entrenador}
+                      style={{
+                        ...tarjetaEntrenadorMovil,
+                        borderRadius: 24,
+                        border: '1px solid #dbeafe',
+                        background: 'linear-gradient(135deg, #ffffff, #f8fbff)',
+                        boxShadow: '0 16px 35px rgba(15, 23, 42, 0.07)',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <header
+                        style={{
+                          ...cabeceraEntrenadorMovil,
+                          alignItems: 'center',
+                          borderBottom: '1px solid #e2e8f0',
+                          paddingBottom: 14,
+                        }}
+                      >
+                        <div>
+                          <p style={{ ...etiquetaSuperior, marginBottom: 6 }}>
+                            ENTRENADOR
+                          </p>
+                          <h3 style={{ margin: 0 }}>{grupo.entrenador}</h3>
+                          <p
+                            style={{
+                              margin: '6px 0 0',
+                              color: '#64748b',
+                              fontWeight: 700,
+                            }}
+                          >
+                            Semana {rangoSemanaAgenda(semanaAgendaActiva)}
+                          </p>
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: 8,
+                            flexWrap: 'wrap',
+                            justifyContent: 'flex-end',
+                          }}
+                        >
+                          <span
+                            style={{
+                              padding: '8px 11px',
+                              borderRadius: 999,
+                              background: '#eef2ff',
+                              color: '#3730a3',
+                              border: '1px solid #c7d2fe',
+                              fontWeight: 900,
+                            }}
+                          >
+                            {faltanReportes.length} reportes
+                          </span>
+                          <span
+                            style={{
+                              padding: '8px 11px',
+                              borderRadius: 999,
+                              background: '#fff7ed',
+                              color: '#9a3412',
+                              border: '1px solid #fed7aa',
+                              fontWeight: 900,
+                            }}
+                          >
+                            {asistenciasSinConfirmar.length} asistencias
+                          </span>
+                          {ambosPendientes.length > 0 && (
+                            <span
+                              style={{
+                                padding: '8px 11px',
+                                borderRadius: 999,
+                                background: '#fef2f2',
+                                color: '#991b1b',
+                                border: '1px solid #fecaca',
+                                fontWeight: 900,
+                              }}
+                            >
+                              {ambosPendientes.length} críticos
+                            </span>
+                          )}
+                        </div>
+                      </header>
+
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 8,
+                          flexWrap: 'wrap',
+                          marginTop: 14,
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <button
+                          onClick={() =>
+                            copiarWhatsappPendientesEntrenador(
+                              grupo.entrenador,
+                              grupo.reportes
+                            )
+                          }
+                          style={botonPrincipal}
+                        >
+                          Ver WhatsApp personal
+                        </button>
+                        <span style={{ color: '#64748b', fontWeight: 800 }}>
+                          {grupo.reportes.length} tareas pendientes
+                        </span>
+                      </div>
+
+                      <details style={{ marginTop: 12 }}>
+                        <summary
+                          style={{
+                            cursor: 'pointer',
+                            fontWeight: 900,
+                            padding: '12px 14px',
+                            borderRadius: 16,
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            color: '#0f172a',
+                          }}
+                        >
+                          Ver detalle de pendientes
+                        </summary>
+
+                        <section
+                          style={{ display: 'grid', gap: 12, marginTop: 12 }}
+                        >
+                          {Object.entries(reportesPorFecha)
+                            .sort(([a], [b]) => a.localeCompare(b))
+                            .map(([fecha, reportesFecha]) => (
+                              <article
+                                key={`${grupo.entrenador}-${fecha}`}
+                                style={{
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: 18,
+                                  background: '#ffffff',
+                                  overflow: 'hidden',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    gap: 10,
+                                    flexWrap: 'wrap',
+                                    padding: '12px 14px',
+                                    background: '#f8fafc',
+                                    borderBottom: '1px solid #e2e8f0',
+                                  }}
+                                >
+                                  <strong>{formatearFecha(fecha)}</strong>
+                                  <span
+                                    style={{
+                                      color: '#64748b',
+                                      fontWeight: 800,
+                                    }}
+                                  >
+                                    {reportesFecha.length} pendiente(s)
+                                  </span>
+                                </div>
+
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gap: 8,
+                                    padding: 12,
+                                  }}
+                                >
+                                  {reportesFecha.map((reporte) => {
+                                    const chip = chipEstadoReporte(reporte);
+                                    return (
+                                      <div
+                                        key={`${reporte.grupo_id}-${reporte.alumno_id}-${reporte.estado_reporte}`}
+                                        style={{
+                                          ...miniTarjetaBlanca,
+                                          border: '1px solid #e2e8f0',
+                                          borderRadius: 16,
+                                          boxShadow: 'none',
+                                        }}
+                                      >
+                                        <div
+                                          style={{ display: 'grid', gap: 8 }}
+                                        >
+                                          <div
+                                            style={{
+                                              display: 'flex',
+                                              justifyContent: 'space-between',
+                                              gap: 10,
+                                              flexWrap: 'wrap',
+                                            }}
+                                          >
+                                            <strong>{reporte.alumno}</strong>
+                                            <span
+                                              style={{
+                                                ...chip.estilo,
+                                                padding: '6px 10px',
+                                                borderRadius: 999,
+                                                fontWeight: 900,
+                                                fontSize: 12,
+                                              }}
+                                            >
+                                              {chip.texto}
+                                            </span>
+                                          </div>
+
+                                          <div
+                                            style={{
+                                              display: 'flex',
+                                              gap: 8,
+                                              flexWrap: 'wrap',
+                                              color: '#475569',
+                                              fontWeight: 700,
+                                            }}
+                                          >
+                                            <span>
+                                              Nivel{' '}
+                                              {reporte.nivel_alumno ||
+                                                'SIN NIVEL'}
+                                            </span>
+                                            <span>{reporte.modalidad}</span>
+                                            <span>
+                                              {reporte.hora_inicio.slice(0, 5)}–
+                                              {reporte.hora_fin.slice(0, 5)}
+                                            </span>
+                                          </div>
+
+                                          <div
+                                            style={{
+                                              display: 'grid',
+                                              gap: 4,
+                                              color: '#334155',
+                                            }}
+                                          >
+                                            <p style={{ margin: 0 }}>
+                                              <strong>Grupo:</strong>{' '}
+                                              {reporte.nombre_grupo}
+                                            </p>
+                                            <p style={{ margin: 0 }}>
+                                              <strong>Asistencia:</strong>{' '}
+                                              {reporte.estado_asistencia} ·{' '}
+                                              <strong>Reporte:</strong>{' '}
+                                              {reporte.estado_reporte}
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </article>
+                            ))}
+                        </section>
+                      </details>
+                    </article>
+                  );
+                })}
+              </section>
+            </section>
+          );
+        })()}
+
+      {pantalla === 'alumnos' &&
+        (() => {
+          const totalFichas = alumnos.length;
+          const totalSinNivel = alumnos.filter(
+            (alumno) =>
+              !(
+                alumno.nivel_actual ||
+                alumno.ultimo_nivel_reportado ||
+                alumno.nivel_estimado
+              )
+          ).length;
+          const totalSinReportes = alumnos.filter(
+            (alumno) => Number(alumno.total_reportes || 0) === 0
+          ).length;
+          const totalRevisarFicha = alumnos.filter((alumno) =>
+            String(alumno.estado_ficha || '')
+              .toLowerCase()
+              .includes('revis')
+          ).length;
+
+          const estiloFichaHero = {
+            ...agendaHero,
+            background:
+              'linear-gradient(135deg, #f5f3ff 0%, #eef2ff 48%, #f8fafc 100%)',
+            border: '1px solid #ddd6fe',
+            boxShadow: '0 18px 45px rgba(79, 70, 229, 0.10)',
+          };
+
+          const tarjetaMetricaFicha = (color: string, fondo: string) => ({
+            ...miniTarjetaBlanca,
+            border: `1px solid ${color}33`,
+            background: fondo,
+            minHeight: 82,
+            display: 'grid',
+            alignContent: 'center',
+          });
+
+          const badgeNivelFicha = (nivel: string) => {
+            const limpio = String(nivel || 'SIN NIVEL').toUpperCase();
+            let color = '#64748b';
+            let fondo = '#f8fafc';
+            if (limpio.includes('INICIACION') || limpio === 'A') {
+              color = '#16a34a';
+              fondo = '#f0fdf4';
+            }
+            if (limpio === 'A+' || limpio === 'B') {
+              color = '#2563eb';
+              fondo = '#eff6ff';
+            }
+            if (limpio.includes('B+') || limpio === 'C') {
+              color = '#f97316';
+              fondo = '#fff7ed';
+            }
+            if (limpio.includes('C+') || limpio.includes('D')) {
+              color = '#7c3aed';
+              fondo = '#f5f3ff';
+            }
+            if (limpio.includes('SIN')) {
+              color = '#dc2626';
+              fondo = '#fef2f2';
+            }
+            return {
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '7px 12px',
+              borderRadius: 999,
+              border: `1px solid ${color}40`,
+              background: fondo,
+              color,
+              fontWeight: 900,
+              fontSize: 13,
+              letterSpacing: 0.2,
+            };
+          };
+
+          const estiloTarjetaAlumno = (nivel: string) => {
+            const limpio = String(nivel || '').toUpperCase();
+            let borde = '#dbeafe';
+            let fondo = 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)';
+            if (limpio.includes('INICIACION') || limpio === 'A') {
+              borde = '#bbf7d0';
+              fondo = 'linear-gradient(135deg, #ffffff 0%, #f0fdf4 100%)';
+            }
+            if (limpio === 'A+' || limpio === 'B') {
+              borde = '#bfdbfe';
+              fondo = 'linear-gradient(135deg, #ffffff 0%, #eff6ff 100%)';
+            }
+            if (limpio.includes('B+') || limpio === 'C') {
+              borde = '#fed7aa';
+              fondo = 'linear-gradient(135deg, #ffffff 0%, #fff7ed 100%)';
+            }
+            if (limpio.includes('C+') || limpio.includes('D')) {
+              borde = '#ddd6fe';
+              fondo = 'linear-gradient(135deg, #ffffff 0%, #f5f3ff 100%)';
+            }
+            if (!limpio || limpio.includes('SIN')) {
+              borde = '#fecaca';
+              fondo = 'linear-gradient(135deg, #ffffff 0%, #fef2f2 100%)';
+            }
+            return {
+              ...tarjeta,
+              border: `1px solid ${borde}`,
+              background: fondo,
+              boxShadow: '0 14px 30px rgba(15, 23, 42, 0.07)',
+            };
+          };
+
+          return (
+            <section style={{ display: 'grid', gap: 16 }}>
+              <article style={estiloFichaHero}>
+                <div>
+                  <span
+                    style={{
+                      ...agendaBadgeModalidad,
+                      background: '#f5f3ff',
+                      color: '#7c3aed',
+                      borderColor: '#ddd6fe',
+                    }}
+                  >
+                    FICHAS
+                  </span>
+                  <h2 style={{ margin: '10px 0 0' }}>Alumnos</h2>
+                  <p
+                    style={{
+                      margin: '8px 0 0',
+                      color: '#475569',
+                      fontWeight: 650,
+                    }}
+                  >
+                    Baby e Intensivos juntos. Aquí queda el nivel real que usa
+                    toda la app.
+                  </p>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 10,
+                    flexWrap: 'wrap',
+                    justifyContent: 'flex-end',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => setPantalla('ocioAlumnos')}
+                    style={{
+                      ...botonSecundario,
+                      borderColor: '#bbf7d0',
+                      color: '#166534',
+                      background: '#f0fdf4',
+                    }}
+                  >
+                    Ver alumnos Ocio
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMostrarNuevoAlumnoManual((valor) => !valor)
+                    }
+                    style={botonPrincipal}
+                    title="Crear ficha manual para un niño que no viene de listado."
+                  >
+                    + Añadir alumno
+                  </button>
+                  <button onClick={cargarAlumnos} style={botonSecundario}>
+                    Refrescar
                   </button>
                 </div>
               </article>
-            )}
 
-            <article style={agendaBloqueBlanco}>
-              <div style={{ display: 'grid', gap: 12 }}>
-                <input
-                  value={busquedaAlumno}
-                  onChange={(e) => setBusquedaAlumno(e.target.value)}
-                  placeholder="Buscar alumno por nombre..."
-                  style={{ ...buscador, margin: 0 }}
-                />
-
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button onClick={() => setFiltroAlumnos('todos')} style={botonMenu(filtroAlumnos === 'todos')}>Todos</button>
-                  <button onClick={() => setFiltroAlumnos('sin_nivel')} style={botonMenu(filtroAlumnos === 'sin_nivel')}>Sin nivel</button>
-                  <button onClick={() => setFiltroAlumnos('sin_reportes')} style={botonMenu(filtroAlumnos === 'sin_reportes')}>Sin reportes</button>
+              <details style={{ ...agendaBloqueBlanco, padding: 14 }}>
+                <summary
+                  style={{
+                    cursor: 'pointer',
+                    fontWeight: 900,
+                    color: '#475569',
+                  }}
+                >
+                  Ayuda rápida de esta pantalla
+                </summary>
+                <div
+                  style={{
+                    display: 'grid',
+                    gap: 8,
+                    marginTop: 10,
+                    color: '#475569',
+                  }}
+                >
+                  <p style={{ margin: 0 }}>
+                    Usa esta pantalla para revisar nivel real, historial, último
+                    reporte y evaluación técnica de Baby/Intensivos.
+                  </p>
+                  <p style={{ margin: 0 }}>
+                    Ocio tiene su propia subpestaña porque funciona como escuela
+                    anual con grupo estable y día fijo.
+                  </p>
                 </div>
-              </div>
-            </article>
+              </details>
 
-            {cargando && <p>Cargando alumnos...</p>}
+              <section
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                  gap: 10,
+                }}
+              >
+                <div style={tarjetaMetricaFicha('#7c3aed', '#f5f3ff')}>
+                  <span
+                    style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
+                  >
+                    TOTAL
+                  </span>
+                  <strong style={{ fontSize: 28 }}>{totalFichas}</strong>
+                  <span>fichas</span>
+                </div>
+                <div style={tarjetaMetricaFicha('#dc2626', '#fef2f2')}>
+                  <span
+                    style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
+                  >
+                    SIN NIVEL
+                  </span>
+                  <strong style={{ fontSize: 28 }}>{totalSinNivel}</strong>
+                  <span>revisar</span>
+                </div>
+                <div style={tarjetaMetricaFicha('#f97316', '#fff7ed')}>
+                  <span
+                    style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
+                  >
+                    SIN REPORTES
+                  </span>
+                  <strong style={{ fontSize: 28 }}>{totalSinReportes}</strong>
+                  <span>sin histórico</span>
+                </div>
+                <div style={tarjetaMetricaFicha('#2563eb', '#eff6ff')}>
+                  <span
+                    style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
+                  >
+                    REVISAR
+                  </span>
+                  <strong style={{ fontSize: 28 }}>{totalRevisarFicha}</strong>
+                  <span>fichas</span>
+                </div>
+              </section>
 
-            <section style={{ display: 'grid', gap: 12 }}>
-              {alumnosFiltrados.map((alumno) => {
-                const editandoEsteAlumno = alumnoEditandoId === alumno.alumno_id;
-                const nivelPrincipal = alumno.nivel_actual || alumno.ultimo_nivel_reportado || alumno.nivel_estimado || 'SIN NIVEL';
-                const sinReportes = Number(alumno.total_reportes || 0) === 0;
-                const nivelUsadoPorApp = alumno.nivel_actual || alumno.ultimo_nivel_reportado || alumno.nivel_estimado || '-';
-                const ultimoNivelReporte = alumno.ultimo_nivel_reportado || '';
-                const nivelDifiereUltimoReporte = Boolean(
-                  alumno.nivel_actual &&
-                  ultimoNivelReporte &&
-                  String(alumno.nivel_actual).trim().toUpperCase() !== String(ultimoNivelReporte).trim().toUpperCase()
-                );
-                const nivelProvisional = !alumno.nivel_actual && Boolean(alumno.nivel_estimado);
-                const historialAbierto = historialAlumnoAbiertoId === alumno.alumno_id;
-
-                return (
-                  <article key={alumno.alumno_id} style={estiloTarjetaAlumno(nivelPrincipal)}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 14, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                      <div style={{ minWidth: 260, flex: 1 }}>
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }}>
-                          <span style={badgeNivelFicha(nivelPrincipal)}>Nivel {nivelPrincipal}</span>
-                          <span style={{ ...agendaBadgeModalidad, background: sinReportes ? '#fff7ed' : '#ecfdf5', color: sinReportes ? '#c2410c' : '#047857', borderColor: sinReportes ? '#fed7aa' : '#bbf7d0' }}>
-                            {sinReportes ? 'Sin reportes' : `${alumno.total_reportes || 0} reportes`}
-                          </span>
-                          <span style={{ ...agendaBadgeModalidad, background: '#f8fafc', color: '#475569', borderColor: '#e2e8f0' }}>
-                            {alumno.estado_ficha || 'sin estado'}
-                          </span>
-                        </div>
-
-                        <h3 style={{ margin: 0 }}>{alumno.alumno}</h3>
-                        <p style={{ margin: '8px 0 0', color: '#475569', fontWeight: 700 }}>
-                          Entrenamientos: {alumno.total_entrenamientos_realizados || 0} · Origen nivel: {alumno.origen_nivel_estimado || '-'}
-                        </p>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                        <button
-                          type="button"
-                          onClick={() => editarAlumnoBaseRapido(alumno)}
-                          style={botonMini}
-                          title="Editar nombre, nivel real, origen del nivel y estado de ficha."
-                        >
-                          Editar ficha
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => abrirEvaluacionAlumno(alumno)}
-                          style={botonMini}
-                          title="Previsualizar la evaluación técnica generada desde todos los reportes del alumno."
-                        >
-                          Ver evaluación
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => borrarAlumnoBase(alumno)}
-                          style={botonPeligroMini}
-                          title="Eliminar la ficha completa del alumno y sus datos asociados."
-                        >
-                          Eliminar
-                        </button>
-                      </div>
+              {mostrarNuevoAlumnoManual && (
+                <article
+                  style={{
+                    ...agendaBloqueBlanco,
+                    borderColor: '#ddd6fe',
+                    background: '#faf5ff',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      flexWrap: 'wrap',
+                      alignItems: 'flex-start',
+                    }}
+                  >
+                    <div>
+                      <h3 style={{ marginTop: 0 }}>Crear alumno manual</h3>
+                      <p style={{ marginTop: 0, color: '#555' }}>
+                        Para niños que no vienen de Aimharder o pruebas. Si no
+                        sabes nivel, déjalo pendiente.
+                      </p>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => setMostrarNuevoAlumnoManual(false)}
+                      style={botonSecundario}
+                    >
+                      Cerrar
+                    </button>
+                  </div>
 
-                    {editandoEsteAlumno && (
-                      <div style={{ ...miniTarjetaBlanca, marginTop: 12, border: '1px solid #ddd6fe' }}>
-                        <h4 style={{ marginTop: 0 }}>Editar ficha operativa</h4>
-                        <p style={{ marginTop: 0, color: '#475569' }}>
-                          Este nivel se guarda como nivel real y se usa en recomendador, grupos, listados y vista entrenador.
-                        </p>
+                  <div style={gridFormulario}>
+                    <label style={labelCampo}>
+                      Nombre completo
+                      <input
+                        value={nuevoAlumnoNombre}
+                        onChange={(e) =>
+                          setNuevoAlumnoNombre(e.target.value.toUpperCase())
+                        }
+                        placeholder="NOMBRE APELLIDO APELLIDO"
+                        style={inputCampo}
+                      />
+                    </label>
 
-                        <div style={gridFormulario}>
-                          <label style={labelCampo}>
-                            Nombre
-                            <input
-                              value={alumnoEditNombre}
-                              onChange={(e) => setAlumnoEditNombre(e.target.value.toUpperCase())}
-                              style={inputCampo}
-                            />
-                          </label>
+                    <label style={labelCampo}>
+                      Nivel real inicial
+                      <select
+                        value={nuevoAlumnoNivel}
+                        onChange={(e) => setNuevoAlumnoNivel(e.target.value)}
+                        style={selectCampo}
+                      >
+                        <option value="">Sin nivel / pendiente</option>
+                        {opcionesNivel.map((nivel) => (
+                          <option key={nivel} value={nivel}>
+                            {nivel}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-                          <label style={labelCampo}>
-                            Nivel real de ficha
-                            <select value={alumnoEditNivel} onChange={(e) => setAlumnoEditNivel(e.target.value)} style={selectCampo}>
-                              <option value="">Sin nivel / pendiente</option>
-                              {opcionesNivel.map((nivel) => (
-                                <option key={nivel} value={nivel}>{nivel}</option>
-                              ))}
-                            </select>
-                          </label>
+                    <label style={labelCampo}>
+                      Origen del nivel
+                      <select
+                        value={nuevoAlumnoOrigen}
+                        onChange={(e) => setNuevoAlumnoOrigen(e.target.value)}
+                        style={selectCampo}
+                      >
+                        <option value="Jose / Coordinador">
+                          Jose / Coordinador
+                        </option>
+                        <option value="Familia">Familia</option>
+                        <option value="Ventas / compañera">
+                          Ventas / compañera
+                        </option>
+                        <option value="Clase de prueba pendiente">
+                          Clase de prueba pendiente
+                        </option>
+                        <option value="Desconocido">Desconocido</option>
+                      </select>
+                    </label>
 
-                          <label style={labelCampo}>
-                            Origen del nivel
-                            <select value={alumnoEditOrigen} onChange={(e) => setAlumnoEditOrigen(e.target.value)} style={selectCampo}>
-                              <option value="Jose / Coordinador">Jose / Coordinador</option>
-                              <option value="Familia">Familia</option>
-                              <option value="Ventas / compañera">Ventas / compañera</option>
-                              <option value="Clase de prueba pendiente">Clase de prueba pendiente</option>
-                              <option value="Desconocido">Desconocido</option>
-                            </select>
-                          </label>
+                    <label style={labelCampo}>
+                      Estado ficha
+                      <select
+                        value={nuevoAlumnoEstado}
+                        onChange={(e) => setNuevoAlumnoEstado(e.target.value)}
+                        style={selectCampo}
+                      >
+                        <option value="pendiente completar">
+                          Pendiente completar
+                        </option>
+                        <option value="revisar">Revisar</option>
+                        <option value="completa">Completa</option>
+                      </select>
+                    </label>
+                  </div>
 
-                          <label style={labelCampo}>
-                            Estado ficha
-                            <select value={alumnoEditEstado} onChange={(e) => setAlumnoEditEstado(e.target.value)} style={selectCampo}>
-                              <option value="pendiente completar">Pendiente completar</option>
-                              <option value="revisar">Revisar</option>
-                              <option value="completa">Completa</option>
-                            </select>
-                          </label>
-                        </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      marginTop: 12,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={crearAlumnoManualBase}
+                      style={botonPrincipal}
+                    >
+                      Crear ficha
+                    </button>
+                  </div>
+                </article>
+              )}
 
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-                          <button type="button" onClick={() => guardarAlumnoBase(alumno.alumno_id)} style={botonPrincipal}>
-                            Guardar cambios
-                          </button>
-                          <button type="button" onClick={cerrarEditorAlumnoBase} style={botonSecundario}>
-                            Cancelar
-                          </button>
-                        </div>
-                      </div>
-                    )}
+              <article style={agendaBloqueBlanco}>
+                <div style={{ display: 'grid', gap: 12 }}>
+                  <input
+                    value={busquedaAlumno}
+                    onChange={(e) => setBusquedaAlumno(e.target.value)}
+                    placeholder="Buscar alumno por nombre..."
+                    style={{ ...buscador, margin: 0 }}
+                  />
 
-                    {evaluacionAlumnoActivaId === alumno.alumno_id && (
-                      <div style={{ ...miniTarjetaBlanca, marginTop: 12, border: '1px solid #bfdbfe' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                          <div>
-                            <h4 style={{ margin: 0 }}>Vista previa evaluación técnica</h4>
-                            <p style={{ margin: '6px 0 0', color: '#555' }}>
-                              Revisa el texto antes de copiarlo para dejarlo bonito para padres.
-                            </p>
-                          </div>
-                          <button type="button" onClick={() => { setEvaluacionAlumnoActivaId(null); setEvaluacionAlumnoTexto(''); }} style={botonSecundario}>
-                            Cerrar
-                          </button>
-                        </div>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => setFiltroAlumnos('todos')}
+                      style={botonMenu(filtroAlumnos === 'todos')}
+                    >
+                      Todos
+                    </button>
+                    <button
+                      onClick={() => setFiltroAlumnos('sin_nivel')}
+                      style={botonMenu(filtroAlumnos === 'sin_nivel')}
+                    >
+                      Sin nivel
+                    </button>
+                    <button
+                      onClick={() => setFiltroAlumnos('sin_reportes')}
+                      style={botonMenu(filtroAlumnos === 'sin_reportes')}
+                    >
+                      Sin reportes
+                    </button>
+                  </div>
+                </div>
+              </article>
 
-                        <textarea
-                          readOnly
-                          value={evaluacionAlumnoTexto}
-                          style={{ ...textarea, minHeight: 260, marginTop: 12, whiteSpace: 'pre-wrap' }}
-                        />
+              {cargando && <p>Cargando alumnos...</p>}
 
-                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-                          <button type="button" onClick={copiarEvaluacionAlumnoTexto} style={botonPrincipal}>
-                            Copiar para ChatGPT
-                          </button>
-                        </div>
-                      </div>
-                    )}
+              <section style={{ display: 'grid', gap: 12 }}>
+                {alumnosFiltrados.map((alumno) => {
+                  const editandoEsteAlumno =
+                    alumnoEditandoId === alumno.alumno_id;
+                  const nivelPrincipal =
+                    alumno.nivel_actual ||
+                    alumno.ultimo_nivel_reportado ||
+                    alumno.nivel_estimado ||
+                    'SIN NIVEL';
+                  const sinReportes = Number(alumno.total_reportes || 0) === 0;
+                  const nivelUsadoPorApp =
+                    alumno.nivel_actual ||
+                    alumno.ultimo_nivel_reportado ||
+                    alumno.nivel_estimado ||
+                    '-';
+                  const ultimoNivelReporte =
+                    alumno.ultimo_nivel_reportado || '';
+                  const nivelDifiereUltimoReporte = Boolean(
+                    alumno.nivel_actual &&
+                      ultimoNivelReporte &&
+                      String(alumno.nivel_actual).trim().toUpperCase() !==
+                        String(ultimoNivelReporte).trim().toUpperCase()
+                  );
+                  const nivelProvisional =
+                    !alumno.nivel_actual && Boolean(alumno.nivel_estimado);
+                  const historialAbierto =
+                    historialAlumnoAbiertoId === alumno.alumno_id;
 
-                    <div style={{ marginTop: 12 }}>
-                      <button
-                        type="button"
-                        onClick={() => setHistorialAlumnoAbiertoId(historialAbierto ? null : alumno.alumno_id)}
+                  return (
+                    <article
+                      key={alumno.alumno_id}
+                      style={estiloTarjetaAlumno(nivelPrincipal)}
+                    >
+                      <div
                         style={{
-                          ...botonSecundario,
-                          width: '100%',
+                          display: 'flex',
                           justifyContent: 'space-between',
-                          borderColor: historialAbierto ? '#bfdbfe' : '#e2e8f0',
-                          background: historialAbierto ? '#eff6ff' : '#ffffff',
-                          color: '#0f172a',
-                          fontWeight: 900
+                          gap: 14,
+                          alignItems: 'flex-start',
+                          flexWrap: 'wrap',
                         }}
                       >
-                        <span>{historialAbierto ? '▼' : '▶'} Historial técnico / último reporte</span>
-                        <span style={{ fontSize: 13, color: '#64748b' }}>
-                          Nivel app {nivelUsadoPorApp} · Último reporte {alumno.ultima_fecha_reporte ? formatearFecha(alumno.ultima_fecha_reporte) : '-'}
-                        </span>
-                      </button>
-
-                      {historialAbierto && (
-                        <div style={{ ...miniTarjetaBlanca, marginTop: 10, display: 'grid', gap: 12, border: '1px solid #bfdbfe', background: '#f8fbff' }}>
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
-                            <div style={{ ...miniTarjetaBlanca, padding: 12, background: '#ffffff' }}>
-                              <div style={{ fontSize: 12, fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Nivel usado por la app</div>
-                              <div style={{ fontSize: 24, fontWeight: 950, color: '#0f172a', marginTop: 4 }}>{nivelUsadoPorApp}</div>
-                              <div style={{ color: '#64748b', fontWeight: 700, marginTop: 4 }}>Este es el nivel real para recomendador y grupos.</div>
-                            </div>
-
-                            <div style={{ ...miniTarjetaBlanca, padding: 12, background: '#ffffff' }}>
-                              <div style={{ fontSize: 12, fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Último reporte</div>
-                              <div style={{ fontSize: 24, fontWeight: 950, color: nivelDifiereUltimoReporte ? '#c2410c' : '#047857', marginTop: 4 }}>
-                                {alumno.ultimo_nivel_reportado || '-'}
-                              </div>
-                              <div style={{ color: '#64748b', fontWeight: 700, marginTop: 4 }}>
-                                {alumno.ultima_fecha_reporte ? formatearFecha(alumno.ultima_fecha_reporte) : 'Sin fecha de reporte'}
-                              </div>
-                            </div>
-
-                            <div style={{ ...miniTarjetaBlanca, padding: 12, background: '#ffffff' }}>
-                              <div style={{ fontSize: 12, fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>Origen del nivel</div>
-                              <div style={{ fontSize: 18, fontWeight: 900, color: '#0f172a', marginTop: 6 }}>{alumno.origen_nivel_estimado || '-'}</div>
-                              <div style={{ color: '#64748b', fontWeight: 700, marginTop: 4 }}>Solo avisa si el nivel no está confirmado.</div>
-                            </div>
+                        <div style={{ minWidth: 260, flex: 1 }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 8,
+                              flexWrap: 'wrap',
+                              alignItems: 'center',
+                              marginBottom: 8,
+                            }}
+                          >
+                            <span style={badgeNivelFicha(nivelPrincipal)}>
+                              Nivel {nivelPrincipal}
+                            </span>
+                            <span
+                              style={{
+                                ...agendaBadgeModalidad,
+                                background: sinReportes ? '#fff7ed' : '#ecfdf5',
+                                color: sinReportes ? '#c2410c' : '#047857',
+                                borderColor: sinReportes
+                                  ? '#fed7aa'
+                                  : '#bbf7d0',
+                              }}
+                            >
+                              {sinReportes
+                                ? 'Sin reportes'
+                                : `${alumno.total_reportes || 0} reportes`}
+                            </span>
+                            <span
+                              style={{
+                                ...agendaBadgeModalidad,
+                                background: '#f8fafc',
+                                color: '#475569',
+                                borderColor: '#e2e8f0',
+                              }}
+                            >
+                              {alumno.estado_ficha || 'sin estado'}
+                            </span>
                           </div>
 
-                          {nivelDifiereUltimoReporte && (
-                            <div style={{ padding: 12, borderRadius: 16, border: '1px solid #fed7aa', background: '#fff7ed', color: '#9a3412', fontWeight: 800 }}>
-                              Revisar nivel: el nivel usado por la app no coincide con el último nivel reportado por entrenador.
-                            </div>
-                          )}
+                          <h3 style={{ margin: 0 }}>{alumno.alumno}</h3>
+                          <p
+                            style={{
+                              margin: '8px 0 0',
+                              color: '#475569',
+                              fontWeight: 700,
+                            }}
+                          >
+                            Entrenamientos:{' '}
+                            {alumno.total_entrenamientos_realizados || 0} ·
+                            Origen nivel: {alumno.origen_nivel_estimado || '-'}
+                          </p>
+                        </div>
 
-                          {nivelProvisional && (
-                            <div style={{ padding: 12, borderRadius: 16, border: '1px solid #fde68a', background: '#fffbeb', color: '#92400e', fontWeight: 800 }}>
-                              Nivel provisional: todavía no hay nivel real confirmado en ficha. Usar con aviso en grupos.
-                            </div>
-                          )}
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: 8,
+                            flexWrap: 'wrap',
+                            justifyContent: 'flex-end',
+                          }}
+                        >
+                          <button
+                            type="button"
+                            onClick={() => editarAlumnoBaseRapido(alumno)}
+                            style={botonMini}
+                            title="Editar nombre, nivel real, origen del nivel y estado de ficha."
+                          >
+                            Editar ficha
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => abrirEvaluacionAlumno(alumno)}
+                            style={botonMini}
+                            title="Previsualizar la evaluación técnica generada desde todos los reportes del alumno."
+                          >
+                            Ver evaluación
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => borrarAlumnoBase(alumno)}
+                            style={botonPeligroMini}
+                            title="Eliminar la ficha completa del alumno y sus datos asociados."
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
 
-                          <details style={{ border: '1px solid #e2e8f0', borderRadius: 16, padding: 12, background: '#ffffff' }}>
-                            <summary style={{ cursor: 'pointer', fontWeight: 900, color: '#334155' }}>Ver datos históricos del nivel</summary>
-                            <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
-                              <p style={{ margin: 0 }}><strong>Nivel inicial / estimado:</strong> {alumno.nivel_estimado || '-'}</p>
-                              <p style={{ margin: 0 }}><strong>Último nivel reportado:</strong> {alumno.ultimo_nivel_reportado || '-'}</p>
-                              <p style={{ margin: 0 }}><strong>Nivel usado por la app:</strong> {nivelUsadoPorApp}</p>
-                              <p style={{ margin: 0 }}><strong>Origen:</strong> {alumno.origen_nivel_estimado || '-'}</p>
-                            </div>
-                          </details>
+                      {editandoEsteAlumno && (
+                        <div
+                          style={{
+                            ...miniTarjetaBlanca,
+                            marginTop: 12,
+                            border: '1px solid #ddd6fe',
+                          }}
+                        >
+                          <h4 style={{ marginTop: 0 }}>
+                            Editar ficha operativa
+                          </h4>
+                          <p style={{ marginTop: 0, color: '#475569' }}>
+                            Este nivel se guarda como nivel real y se usa en
+                            recomendador, grupos, listados y vista entrenador.
+                          </p>
 
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 8 }}>
-                            <p style={{ margin: 0 }}><strong>Última modalidad:</strong> {alumno.ultima_modalidad || '-'}</p>
-                            <p style={{ margin: 0 }}><strong>Pista:</strong> {alumno.ultima_pista || '-'}</p>
-                            <p style={{ margin: 0 }}><strong>Última actitud:</strong> {alumno.ultima_actitud || '-'}</p>
-                            <p style={{ margin: 0 }}><strong>Última técnica:</strong> {alumno.ultima_tecnica || '-'}</p>
-                            <p style={{ margin: 0 }}><strong>Última recomendación:</strong> {alumno.ultima_recomendacion || '-'}</p>
+                          <div style={gridFormulario}>
+                            <label style={labelCampo}>
+                              Nombre
+                              <input
+                                value={alumnoEditNombre}
+                                onChange={(e) =>
+                                  setAlumnoEditNombre(
+                                    e.target.value.toUpperCase()
+                                  )
+                                }
+                                style={inputCampo}
+                              />
+                            </label>
+
+                            <label style={labelCampo}>
+                              Nivel real de ficha
+                              <select
+                                value={alumnoEditNivel}
+                                onChange={(e) =>
+                                  setAlumnoEditNivel(e.target.value)
+                                }
+                                style={selectCampo}
+                              >
+                                <option value="">Sin nivel / pendiente</option>
+                                {opcionesNivel.map((nivel) => (
+                                  <option key={nivel} value={nivel}>
+                                    {nivel}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+
+                            <label style={labelCampo}>
+                              Origen del nivel
+                              <select
+                                value={alumnoEditOrigen}
+                                onChange={(e) =>
+                                  setAlumnoEditOrigen(e.target.value)
+                                }
+                                style={selectCampo}
+                              >
+                                <option value="Jose / Coordinador">
+                                  Jose / Coordinador
+                                </option>
+                                <option value="Familia">Familia</option>
+                                <option value="Ventas / compañera">
+                                  Ventas / compañera
+                                </option>
+                                <option value="Clase de prueba pendiente">
+                                  Clase de prueba pendiente
+                                </option>
+                                <option value="Desconocido">Desconocido</option>
+                              </select>
+                            </label>
+
+                            <label style={labelCampo}>
+                              Estado ficha
+                              <select
+                                value={alumnoEditEstado}
+                                onChange={(e) =>
+                                  setAlumnoEditEstado(e.target.value)
+                                }
+                                style={selectCampo}
+                              >
+                                <option value="pendiente completar">
+                                  Pendiente completar
+                                </option>
+                                <option value="revisar">Revisar</option>
+                                <option value="completa">Completa</option>
+                              </select>
+                            </label>
+                          </div>
+
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 8,
+                              flexWrap: 'wrap',
+                              marginTop: 12,
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() =>
+                                guardarAlumnoBase(alumno.alumno_id)
+                              }
+                              style={botonPrincipal}
+                            >
+                              Guardar cambios
+                            </button>
+                            <button
+                              type="button"
+                              onClick={cerrarEditorAlumnoBase}
+                              style={botonSecundario}
+                            >
+                              Cancelar
+                            </button>
                           </div>
                         </div>
                       )}
-                    </div>
-                  </article>
-                );
-              })}
+
+                      {evaluacionAlumnoActivaId === alumno.alumno_id && (
+                        <div
+                          style={{
+                            ...miniTarjetaBlanca,
+                            marginTop: 12,
+                            border: '1px solid #bfdbfe',
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              gap: 12,
+                              alignItems: 'flex-start',
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <div>
+                              <h4 style={{ margin: 0 }}>
+                                Vista previa evaluación técnica
+                              </h4>
+                              <p style={{ margin: '6px 0 0', color: '#555' }}>
+                                Revisa el texto antes de copiarlo para dejarlo
+                                bonito para padres.
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEvaluacionAlumnoActivaId(null);
+                                setEvaluacionAlumnoTexto('');
+                              }}
+                              style={botonSecundario}
+                            >
+                              Cerrar
+                            </button>
+                          </div>
+
+                          <textarea
+                            readOnly
+                            value={evaluacionAlumnoTexto}
+                            style={{
+                              ...textarea,
+                              minHeight: 260,
+                              marginTop: 12,
+                              whiteSpace: 'pre-wrap',
+                            }}
+                          />
+
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 8,
+                              flexWrap: 'wrap',
+                              marginTop: 12,
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={copiarEvaluacionAlumnoTexto}
+                              style={botonPrincipal}
+                            >
+                              Copiar para ChatGPT
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      <div style={{ marginTop: 12 }}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setHistorialAlumnoAbiertoId(
+                              historialAbierto ? null : alumno.alumno_id
+                            )
+                          }
+                          style={{
+                            ...botonSecundario,
+                            width: '100%',
+                            justifyContent: 'space-between',
+                            borderColor: historialAbierto
+                              ? '#bfdbfe'
+                              : '#e2e8f0',
+                            background: historialAbierto
+                              ? '#eff6ff'
+                              : '#ffffff',
+                            color: '#0f172a',
+                            fontWeight: 900,
+                          }}
+                        >
+                          <span>
+                            {historialAbierto ? '▼' : '▶'} Historial técnico /
+                            último reporte
+                          </span>
+                          <span style={{ fontSize: 13, color: '#64748b' }}>
+                            Nivel app {nivelUsadoPorApp} · Último reporte{' '}
+                            {alumno.ultima_fecha_reporte
+                              ? formatearFecha(alumno.ultima_fecha_reporte)
+                              : '-'}
+                          </span>
+                        </button>
+
+                        {historialAbierto && (
+                          <div
+                            style={{
+                              ...miniTarjetaBlanca,
+                              marginTop: 10,
+                              display: 'grid',
+                              gap: 12,
+                              border: '1px solid #bfdbfe',
+                              background: '#f8fbff',
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns:
+                                  'repeat(auto-fit, minmax(180px, 1fr))',
+                                gap: 10,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  ...miniTarjetaBlanca,
+                                  padding: 12,
+                                  background: '#ffffff',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    fontWeight: 900,
+                                    color: '#64748b',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: 0.5,
+                                  }}
+                                >
+                                  Nivel usado por la app
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: 24,
+                                    fontWeight: 950,
+                                    color: '#0f172a',
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  {nivelUsadoPorApp}
+                                </div>
+                                <div
+                                  style={{
+                                    color: '#64748b',
+                                    fontWeight: 700,
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  Este es el nivel real para recomendador y
+                                  grupos.
+                                </div>
+                              </div>
+
+                              <div
+                                style={{
+                                  ...miniTarjetaBlanca,
+                                  padding: 12,
+                                  background: '#ffffff',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    fontWeight: 900,
+                                    color: '#64748b',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: 0.5,
+                                  }}
+                                >
+                                  Último reporte
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: 24,
+                                    fontWeight: 950,
+                                    color: nivelDifiereUltimoReporte
+                                      ? '#c2410c'
+                                      : '#047857',
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  {alumno.ultimo_nivel_reportado || '-'}
+                                </div>
+                                <div
+                                  style={{
+                                    color: '#64748b',
+                                    fontWeight: 700,
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  {alumno.ultima_fecha_reporte
+                                    ? formatearFecha(
+                                        alumno.ultima_fecha_reporte
+                                      )
+                                    : 'Sin fecha de reporte'}
+                                </div>
+                              </div>
+
+                              <div
+                                style={{
+                                  ...miniTarjetaBlanca,
+                                  padding: 12,
+                                  background: '#ffffff',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    fontSize: 12,
+                                    fontWeight: 900,
+                                    color: '#64748b',
+                                    textTransform: 'uppercase',
+                                    letterSpacing: 0.5,
+                                  }}
+                                >
+                                  Origen del nivel
+                                </div>
+                                <div
+                                  style={{
+                                    fontSize: 18,
+                                    fontWeight: 900,
+                                    color: '#0f172a',
+                                    marginTop: 6,
+                                  }}
+                                >
+                                  {alumno.origen_nivel_estimado || '-'}
+                                </div>
+                                <div
+                                  style={{
+                                    color: '#64748b',
+                                    fontWeight: 700,
+                                    marginTop: 4,
+                                  }}
+                                >
+                                  Solo avisa si el nivel no está confirmado.
+                                </div>
+                              </div>
+                            </div>
+
+                            {nivelDifiereUltimoReporte && (
+                              <div
+                                style={{
+                                  padding: 12,
+                                  borderRadius: 16,
+                                  border: '1px solid #fed7aa',
+                                  background: '#fff7ed',
+                                  color: '#9a3412',
+                                  fontWeight: 800,
+                                }}
+                              >
+                                Revisar nivel: el nivel usado por la app no
+                                coincide con el último nivel reportado por
+                                entrenador.
+                              </div>
+                            )}
+
+                            {nivelProvisional && (
+                              <div
+                                style={{
+                                  padding: 12,
+                                  borderRadius: 16,
+                                  border: '1px solid #fde68a',
+                                  background: '#fffbeb',
+                                  color: '#92400e',
+                                  fontWeight: 800,
+                                }}
+                              >
+                                Nivel provisional: todavía no hay nivel real
+                                confirmado en ficha. Usar con aviso en grupos.
+                              </div>
+                            )}
+
+                            <details
+                              style={{
+                                border: '1px solid #e2e8f0',
+                                borderRadius: 16,
+                                padding: 12,
+                                background: '#ffffff',
+                              }}
+                            >
+                              <summary
+                                style={{
+                                  cursor: 'pointer',
+                                  fontWeight: 900,
+                                  color: '#334155',
+                                }}
+                              >
+                                Ver datos históricos del nivel
+                              </summary>
+                              <div
+                                style={{
+                                  display: 'grid',
+                                  gap: 6,
+                                  marginTop: 10,
+                                }}
+                              >
+                                <p style={{ margin: 0 }}>
+                                  <strong>Nivel inicial / estimado:</strong>{' '}
+                                  {alumno.nivel_estimado || '-'}
+                                </p>
+                                <p style={{ margin: 0 }}>
+                                  <strong>Último nivel reportado:</strong>{' '}
+                                  {alumno.ultimo_nivel_reportado || '-'}
+                                </p>
+                                <p style={{ margin: 0 }}>
+                                  <strong>Nivel usado por la app:</strong>{' '}
+                                  {nivelUsadoPorApp}
+                                </p>
+                                <p style={{ margin: 0 }}>
+                                  <strong>Origen:</strong>{' '}
+                                  {alumno.origen_nivel_estimado || '-'}
+                                </p>
+                              </div>
+                            </details>
+
+                            <div
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns:
+                                  'repeat(auto-fit, minmax(220px, 1fr))',
+                                gap: 8,
+                              }}
+                            >
+                              <p style={{ margin: 0 }}>
+                                <strong>Última modalidad:</strong>{' '}
+                                {alumno.ultima_modalidad || '-'}
+                              </p>
+                              <p style={{ margin: 0 }}>
+                                <strong>Pista:</strong>{' '}
+                                {alumno.ultima_pista || '-'}
+                              </p>
+                              <p style={{ margin: 0 }}>
+                                <strong>Última actitud:</strong>{' '}
+                                {alumno.ultima_actitud || '-'}
+                              </p>
+                              <p style={{ margin: 0 }}>
+                                <strong>Última técnica:</strong>{' '}
+                                {alumno.ultima_tecnica || '-'}
+                              </p>
+                              <p style={{ margin: 0 }}>
+                                <strong>Última recomendación:</strong>{' '}
+                                {alumno.ultima_recomendacion || '-'}
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </article>
+                  );
+                })}
+              </section>
             </section>
-          </section>
-        );
-      })()}
+          );
+        })()}
 
       {pantalla === 'entrenadores' && (
         <section>
@@ -10271,11 +15893,16 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
             <div>
               <h2>Entrenadores / gestión</h2>
               <p style={{ margin: '6px 0 0', color: '#555' }}>
-                Alta, contacto, especialidades, chaqueta y documentación. Los cobros se gestionan en Cobros.
+                Alta, contacto, especialidades, chaqueta y documentación. Los
+                cobros se gestionan en Cobros.
               </p>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button type="button" onClick={abrirNuevoEntrenador} style={botonPrincipal}>
+              <button
+                type="button"
+                onClick={abrirNuevoEntrenador}
+                style={botonPrincipal}
+              >
                 + Añadir entrenador
               </button>
               <button onClick={cargarEntrenadores} style={botonSecundario}>
@@ -10286,9 +15913,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
           {mostrarFormularioEntrenador && (
             <article style={agendaBloqueBlanco}>
-              <h3 style={{ marginTop: 0 }}>{formEntrenador.id ? 'Editar entrenador' : 'Alta de entrenador'}</h3>
+              <h3 style={{ marginTop: 0 }}>
+                {formEntrenador.id ? 'Editar entrenador' : 'Alta de entrenador'}
+              </h3>
               <p style={{ marginTop: 0, color: '#555' }}>
-                Para que puedan usar la app necesitas al menos nombre. El email es recomendable para acceso/login y el teléfono para WhatsApp.
+                Para que puedan usar la app necesitas al menos nombre. El email
+                es recomendable para acceso/login y el teléfono para WhatsApp.
               </p>
 
               <div style={gridFormulario}>
@@ -10296,7 +15926,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   Nombre completo
                   <input
                     value={formEntrenador.nombre}
-                    onChange={(e) => setFormEntrenador({ ...formEntrenador, nombre: e.target.value })}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        nombre: e.target.value,
+                      })
+                    }
                     placeholder="Nombre y apellidos"
                     style={inputCampo}
                   />
@@ -10306,7 +15941,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   Email acceso app
                   <input
                     value={formEntrenador.email}
-                    onChange={(e) => setFormEntrenador({ ...formEntrenador, email: e.target.value })}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        email: e.target.value,
+                      })
+                    }
                     placeholder="correo@ejemplo.com"
                     style={inputCampo}
                   />
@@ -10316,7 +15956,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   Teléfono / WhatsApp
                   <input
                     value={formEntrenador.telefono}
-                    onChange={(e) => setFormEntrenador({ ...formEntrenador, telefono: e.target.value })}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        telefono: e.target.value,
+                      })
+                    }
                     placeholder="600000000"
                     style={inputCampo}
                   />
@@ -10326,7 +15971,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   Tarifa por turno
                   <input
                     value={formEntrenador.tarifa}
-                    onChange={(e) => setFormEntrenador({ ...formEntrenador, tarifa: e.target.value })}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        tarifa: e.target.value,
+                      })
+                    }
                     placeholder="0"
                     type="number"
                     style={inputCampo}
@@ -10334,12 +15984,24 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                 </label>
               </div>
 
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 12 }}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 10,
+                  flexWrap: 'wrap',
+                  marginTop: 12,
+                }}
+              >
                 <label style={{ ...miniTarjetaBlanca, cursor: 'pointer' }}>
                   <input
                     type="checkbox"
                     checked={formEntrenador.activo}
-                    onChange={(e) => setFormEntrenador({ ...formEntrenador, activo: e.target.checked })}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        activo: e.target.checked,
+                      })
+                    }
                   />{' '}
                   Activo esta temporada
                 </label>
@@ -10347,7 +16009,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   <input
                     type="checkbox"
                     checked={formEntrenador.chaqueta}
-                    onChange={(e) => setFormEntrenador({ ...formEntrenador, chaqueta: e.target.checked })}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        chaqueta: e.target.checked,
+                      })
+                    }
                   />{' '}
                   Chaqueta entregada
                 </label>
@@ -10356,11 +16023,20 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               <h4>Especialidades</h4>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {opcionesEspecialidadEntrenador.map((especialidad) => (
-                  <label key={especialidad} style={botonMenu(formEntrenador.especialidades.includes(especialidad))}>
+                  <label
+                    key={especialidad}
+                    style={botonMenu(
+                      formEntrenador.especialidades.includes(especialidad)
+                    )}
+                  >
                     <input
                       type="checkbox"
-                      checked={formEntrenador.especialidades.includes(especialidad)}
-                      onChange={() => alternarEspecialidadEntrenador(especialidad)}
+                      checked={formEntrenador.especialidades.includes(
+                        especialidad
+                      )}
+                      onChange={() =>
+                        alternarEspecialidadEntrenador(especialidad)
+                      }
                       style={{ display: 'none' }}
                     />
                     {especialidad}
@@ -10374,17 +16050,31 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   Titulación
                   <select
                     value={formEntrenador.titulacionEstado}
-                    onChange={(e) => setFormEntrenador({ ...formEntrenador, titulacionEstado: e.target.value })}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        titulacionEstado: e.target.value,
+                      })
+                    }
                     style={selectCampo}
                   >
-                    {opcionesDocumentoEntrenador.map((opcion) => <option key={opcion} value={opcion}>{opcion}</option>)}
+                    {opcionesDocumentoEntrenador.map((opcion) => (
+                      <option key={opcion} value={opcion}>
+                        {opcion}
+                      </option>
+                    ))}
                   </select>
                 </label>
                 <label style={labelCampo}>
                   Enlace titulación
                   <input
                     value={formEntrenador.titulacionUrl}
-                    onChange={(e) => setFormEntrenador({ ...formEntrenador, titulacionUrl: e.target.value })}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        titulacionUrl: e.target.value,
+                      })
+                    }
                     placeholder="Drive / PDF / enlace interno"
                     style={inputCampo}
                   />
@@ -10393,17 +16083,31 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   Antecedentes sexuales
                   <select
                     value={formEntrenador.antecedentesEstado}
-                    onChange={(e) => setFormEntrenador({ ...formEntrenador, antecedentesEstado: e.target.value })}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        antecedentesEstado: e.target.value,
+                      })
+                    }
                     style={selectCampo}
                   >
-                    {opcionesDocumentoEntrenador.map((opcion) => <option key={opcion} value={opcion}>{opcion}</option>)}
+                    {opcionesDocumentoEntrenador.map((opcion) => (
+                      <option key={opcion} value={opcion}>
+                        {opcion}
+                      </option>
+                    ))}
                   </select>
                 </label>
                 <label style={labelCampo}>
                   Enlace antecedentes
                   <input
                     value={formEntrenador.antecedentesUrl}
-                    onChange={(e) => setFormEntrenador({ ...formEntrenador, antecedentesUrl: e.target.value })}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        antecedentesUrl: e.target.value,
+                      })
+                    }
                     placeholder="Drive / PDF / enlace interno"
                     style={inputCampo}
                   />
@@ -10414,14 +16118,30 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                 Observaciones internas
                 <textarea
                   value={formEntrenador.observaciones}
-                  onChange={(e) => setFormEntrenador({ ...formEntrenador, observaciones: e.target.value })}
+                  onChange={(e) =>
+                    setFormEntrenador({
+                      ...formEntrenador,
+                      observaciones: e.target.value,
+                    })
+                  }
                   placeholder="Disponibilidad especial, forma de trabajar, restricciones, notas de coordinación..."
                   style={{ ...inputCampo, minHeight: 80 }}
                 />
               </label>
 
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
-                <button type="button" onClick={guardarEntrenadorGestion} style={botonPrincipal}>
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  marginTop: 14,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={guardarEntrenadorGestion}
+                  style={botonPrincipal}
+                >
                   Guardar entrenador
                 </button>
                 <button
@@ -10445,12 +16165,46 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
             style={buscador}
           />
 
-          <nav style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 16 }}>
-            <button onClick={() => setFiltroEntrenadores('todos')} style={botonMenu(filtroEntrenadores === 'todos')}>Todos</button>
-            <button onClick={() => setFiltroEntrenadores('activos')} style={botonMenu(filtroEntrenadores === 'activos')}>Activos</button>
-            <button onClick={() => setFiltroEntrenadores('inactivos')} style={botonMenu(filtroEntrenadores === 'inactivos')}>Inactivos</button>
-            <button onClick={() => setFiltroEntrenadores('sin_chaqueta')} style={botonMenu(filtroEntrenadores === 'sin_chaqueta')}>Sin chaqueta</button>
-            <button onClick={() => setFiltroEntrenadores('documentacion_pendiente')} style={botonMenu(filtroEntrenadores === 'documentacion_pendiente')}>Documentación pendiente</button>
+          <nav
+            style={{
+              display: 'flex',
+              gap: 8,
+              flexWrap: 'wrap',
+              marginBottom: 16,
+            }}
+          >
+            <button
+              onClick={() => setFiltroEntrenadores('todos')}
+              style={botonMenu(filtroEntrenadores === 'todos')}
+            >
+              Todos
+            </button>
+            <button
+              onClick={() => setFiltroEntrenadores('activos')}
+              style={botonMenu(filtroEntrenadores === 'activos')}
+            >
+              Activos
+            </button>
+            <button
+              onClick={() => setFiltroEntrenadores('inactivos')}
+              style={botonMenu(filtroEntrenadores === 'inactivos')}
+            >
+              Inactivos
+            </button>
+            <button
+              onClick={() => setFiltroEntrenadores('sin_chaqueta')}
+              style={botonMenu(filtroEntrenadores === 'sin_chaqueta')}
+            >
+              Sin chaqueta
+            </button>
+            <button
+              onClick={() => setFiltroEntrenadores('documentacion_pendiente')}
+              style={botonMenu(
+                filtroEntrenadores === 'documentacion_pendiente'
+              )}
+            >
+              Documentación pendiente
+            </button>
           </nav>
 
           {cargando && <p>Cargando entrenadores...</p>}
@@ -10458,7 +16212,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           {!cargando && entrenadoresFiltrados.length === 0 && !error && (
             <article style={tarjetaMovilVacia}>
               <h3 style={{ marginTop: 0 }}>Sin entrenadores en este filtro</h3>
-              <p style={{ marginBottom: 0 }}>Puedes añadir el primer entrenador con el botón superior.</p>
+              <p style={{ marginBottom: 0 }}>
+                Puedes añadir el primer entrenador con el botón superior.
+              </p>
             </article>
           )}
 
@@ -10470,19 +16226,38 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
               return (
                 <article key={entrenador.entrenador_id} style={tarjeta}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      flexWrap: 'wrap',
+                      alignItems: 'flex-start',
+                    }}
+                  >
                     <div>
                       <p style={etiquetaSuperior}>ENTRENADOR</p>
-                      <h3 style={{ margin: 0 }}>{entrenador.nombre_completo}</h3>
+                      <h3 style={{ margin: 0 }}>
+                        {entrenador.nombre_completo}
+                      </h3>
                       <p style={{ margin: '6px 0 0', color: '#555' }}>
-                        {entrenador.activo ? 'Activo' : 'Inactivo'} · Chaqueta: {entrenador.chaqueta_entregada ? 'Sí' : 'No'}
+                        {entrenador.activo ? 'Activo' : 'Inactivo'} · Chaqueta:{' '}
+                        {entrenador.chaqueta_entregada ? 'Sí' : 'No'}
                       </p>
                     </div>
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                      <button type="button" onClick={() => abrirEditarEntrenador(entrenador)} style={botonMini}>
+                      <button
+                        type="button"
+                        onClick={() => abrirEditarEntrenador(entrenador)}
+                        style={botonMini}
+                      >
                         Editar ficha
                       </button>
-                      <button type="button" onClick={() => eliminarEntrenadorGestion(entrenador)} style={botonPeligro}>
+                      <button
+                        type="button"
+                        onClick={() => eliminarEntrenadorGestion(entrenador)}
+                        style={botonPeligro}
+                      >
                         Eliminar
                       </button>
                     </div>
@@ -10496,27 +16271,62 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                     </div>
                     <div style={miniMetrica}>
                       <strong>Especialidades</strong>
-                      <span>{(entrenador.especialidades || []).length > 0 ? (entrenador.especialidades || []).join(' · ') : 'Sin marcar'}</span>
+                      <span>
+                        {(entrenador.especialidades || []).length > 0
+                          ? (entrenador.especialidades || []).join(' · ')
+                          : 'Sin marcar'}
+                      </span>
                     </div>
                     <div style={miniMetrica}>
                       <strong>Documentación</strong>
-                      <span>Titulación: {entrenador.titulacion_estado || 'Pendiente'}</span>
-                      <span>Antecedentes: {entrenador.antecedentes_estado || 'Pendiente'}</span>
+                      <span>
+                        Titulación:{' '}
+                        {entrenador.titulacion_estado || 'Pendiente'}
+                      </span>
+                      <span>
+                        Antecedentes:{' '}
+                        {entrenador.antecedentes_estado || 'Pendiente'}
+                      </span>
                     </div>
                     <div style={miniMetrica}>
                       <strong>Estado operativo</strong>
-                      <span>{documentacionOk ? 'Documentación OK' : 'Revisar documentación'}</span>
-                      <span>Tarifa: {entrenador.tarifa_por_turno || 0} € / turno</span>
+                      <span>
+                        {documentacionOk
+                          ? 'Documentación OK'
+                          : 'Revisar documentación'}
+                      </span>
+                      <span>
+                        Tarifa: {entrenador.tarifa_por_turno || 0} € / turno
+                      </span>
                     </div>
                   </div>
 
-                  {(entrenador.titulacion_url || entrenador.antecedentes_url || entrenador.observaciones_internas) && (
+                  {(entrenador.titulacion_url ||
+                    entrenador.antecedentes_url ||
+                    entrenador.observaciones_internas) && (
                     <details>
-                      <summary style={{ cursor: 'pointer', fontWeight: 900 }}>Ver documentos y notas</summary>
+                      <summary style={{ cursor: 'pointer', fontWeight: 900 }}>
+                        Ver documentos y notas
+                      </summary>
                       <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
-                        <p style={{ margin: 0 }}><strong>Titulación:</strong> {entrenador.titulacion_url || '-'} {entrenador.titulacion_observaciones ? `· ${entrenador.titulacion_observaciones}` : ''}</p>
-                        <p style={{ margin: 0 }}><strong>Antecedentes:</strong> {entrenador.antecedentes_url || '-'} {entrenador.antecedentes_observaciones ? `· ${entrenador.antecedentes_observaciones}` : ''}</p>
-                        <p style={{ margin: 0 }}><strong>Notas:</strong> {entrenador.observaciones_internas || '-'}</p>
+                        <p style={{ margin: 0 }}>
+                          <strong>Titulación:</strong>{' '}
+                          {entrenador.titulacion_url || '-'}{' '}
+                          {entrenador.titulacion_observaciones
+                            ? `· ${entrenador.titulacion_observaciones}`
+                            : ''}
+                        </p>
+                        <p style={{ margin: 0 }}>
+                          <strong>Antecedentes:</strong>{' '}
+                          {entrenador.antecedentes_url || '-'}{' '}
+                          {entrenador.antecedentes_observaciones
+                            ? `· ${entrenador.antecedentes_observaciones}`
+                            : ''}
+                        </p>
+                        <p style={{ margin: 0 }}>
+                          <strong>Notas:</strong>{' '}
+                          {entrenador.observaciones_internas || '-'}
+                        </p>
                       </div>
                     </details>
                   )}
@@ -10533,13 +16343,30 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
             <div>
               <h2 style={{ margin: 0 }}>Disponibilidad semanal</h2>
               <p style={{ margin: '6px 0 0' }}>
-                Flujo correcto: 1) pides disponibilidad por semana, 2) entrenadores responden Disponible/No puedo, 3) Jose crea grupos solo con los disponibles, 4) envías aviso de grupos asignados.
+                Flujo correcto: 1) pides disponibilidad por semana, 2)
+                entrenadores responden Disponible/No puedo, 3) Jose crea grupos
+                solo con los disponibles, 4) envías aviso de grupos asignados.
               </p>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={crearDisponibilidadSemanaActual} style={botonSecundario}>1 · Crear turnos</button>
-              <button onClick={enviarAvisoDisponibilidadSemana} style={botonPrincipal}>2 · Enviar aviso en app</button>
-              <button onClick={copiarMensajeDisponibilidadSemana} style={botonSecundario}>3 · Ver recordatorio WhatsApp</button>
+              <button
+                onClick={crearDisponibilidadSemanaActual}
+                style={botonSecundario}
+              >
+                1 · Crear turnos
+              </button>
+              <button
+                onClick={enviarAvisoDisponibilidadSemana}
+                style={botonPrincipal}
+              >
+                2 · Enviar aviso en app
+              </button>
+              <button
+                onClick={copiarMensajeDisponibilidadSemana}
+                style={botonSecundario}
+              >
+                3 · Ver recordatorio WhatsApp
+              </button>
             </div>
           </div>
 
@@ -10559,7 +16386,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   }}
                 >
                   {opcionesTemporadaAgenda.map((anio) => (
-                    <option key={anio} value={anio}>{nombreTemporadaAgenda(anio)}</option>
+                    <option key={anio} value={anio}>
+                      {nombreTemporadaAgenda(anio)}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -10575,7 +16404,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   }}
                 >
                   {mesesAgenda.map((clave) => (
-                    <option key={clave} value={clave}>{nombreMesAgendaDesdeClave(clave)}</option>
+                    <option key={clave} value={clave}>
+                      {nombreMesAgendaDesdeClave(clave)}
+                    </option>
                   ))}
                 </select>
               </label>
@@ -10587,37 +16418,81 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   onChange={(e) => setSemanaAgendaInicio(e.target.value)}
                 >
                   {semanasAgenda.map((semana) => (
-                    <option key={semana} value={semana}>Semana {rangoSemanaAgenda(semana)}</option>
+                    <option key={semana} value={semana}>
+                      Semana {rangoSemanaAgenda(semana)}
+                    </option>
                   ))}
                 </select>
               </label>
             </div>
             <p style={{ margin: '10px 0 0', fontWeight: 800 }}>
-              Disponibilidad seleccionada: Semana {semanaAgendaActiva ? rangoSemanaAgenda(semanaAgendaActiva) : '-'}
+              Disponibilidad seleccionada: Semana{' '}
+              {semanaAgendaActiva ? rangoSemanaAgenda(semanaAgendaActiva) : '-'}
             </p>
           </article>
 
-          <input value={busquedaDisponibilidad} onChange={(e) => setBusquedaDisponibilidad(e.target.value)} placeholder="Buscar entrenador..." style={buscador} />
+          <input
+            value={busquedaDisponibilidad}
+            onChange={(e) => setBusquedaDisponibilidad(e.target.value)}
+            placeholder="Buscar entrenador..."
+            style={buscador}
+          />
 
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 4 }}>
-            <button onClick={() => setFiltroDisponibilidad('todos')} style={botonMenu(filtroDisponibilidad === 'todos')}>Todos</button>
-            <button onClick={() => setFiltroDisponibilidad('disponibles')} style={botonMenu(filtroDisponibilidad === 'disponibles')}>Disponibles</button>
-            <button onClick={() => setFiltroDisponibilidad('no_puedo')} style={botonMenu(filtroDisponibilidad === 'no_puedo')}>No puedo</button>
-            <button onClick={() => setFiltroDisponibilidad('pendientes')} style={botonMenu(filtroDisponibilidad === 'pendientes')}>Pendientes</button>
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              flexWrap: 'wrap',
+              marginBottom: 4,
+            }}
+          >
+            <button
+              onClick={() => setFiltroDisponibilidad('todos')}
+              style={botonMenu(filtroDisponibilidad === 'todos')}
+            >
+              Todos
+            </button>
+            <button
+              onClick={() => setFiltroDisponibilidad('disponibles')}
+              style={botonMenu(filtroDisponibilidad === 'disponibles')}
+            >
+              Disponibles
+            </button>
+            <button
+              onClick={() => setFiltroDisponibilidad('no_puedo')}
+              style={botonMenu(filtroDisponibilidad === 'no_puedo')}
+            >
+              No puedo
+            </button>
+            <button
+              onClick={() => setFiltroDisponibilidad('pendientes')}
+              style={botonMenu(filtroDisponibilidad === 'pendientes')}
+            >
+              Pendientes
+            </button>
           </div>
 
           <article style={avisoNeutral}>
-            Vista rápida tipo Google Forms: por cada día y turno ves quién está Disponible, quién No puede y quién falta por contestar. Esta pantalla funciona antes de crear grupos.
+            Vista rápida tipo Google Forms: por cada día y turno ves quién está
+            Disponible, quién No puede y quién falta por contestar. Esta
+            pantalla funciona antes de crear grupos.
           </article>
 
           {cargando && <p>Cargando disponibilidad...</p>}
 
-          {!cargando && disponibilidadSemanalEntrenador.length === 0 && !error && (
-            <article style={tarjetaMovilVacia}>
-              <h3 style={{ marginTop: 0 }}>Sin disponibilidad creada para esta semana</h3>
-              <p style={{ marginBottom: 0 }}>Selecciona temporada y semana arriba. Luego pulsa “Crear turnos”.</p>
-            </article>
-          )}
+          {!cargando &&
+            disponibilidadSemanalEntrenador.length === 0 &&
+            !error && (
+              <article style={tarjetaMovilVacia}>
+                <h3 style={{ marginTop: 0 }}>
+                  Sin disponibilidad creada para esta semana
+                </h3>
+                <p style={{ marginBottom: 0 }}>
+                  Selecciona temporada y semana arriba. Luego pulsa “Crear
+                  turnos”.
+                </p>
+              </article>
+            )}
 
           <section style={{ display: 'grid', gap: 16 }}>
             {disponibilidadPorTurno.map((turno) => (
@@ -10626,7 +16501,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   <div>
                     <p style={etiquetaSuperior}>DÍA / TURNO</p>
                     <h3 style={{ margin: 0 }}>
-                      {capitalizarPrimera(new Date(`${turno.fecha}T00:00:00`).toLocaleDateString('es-ES', { weekday: 'long' }))} {formatearFecha(turno.fecha)} · {turno.hora_inicio.slice(0, 5)}–{turno.hora_fin.slice(0, 5)}
+                      {capitalizarPrimera(
+                        new Date(`${turno.fecha}T00:00:00`).toLocaleDateString(
+                          'es-ES',
+                          { weekday: 'long' }
+                        )
+                      )}{' '}
+                      {formatearFecha(turno.fecha)} ·{' '}
+                      {turno.hora_inicio.slice(0, 5)}–
+                      {turno.hora_fin.slice(0, 5)}
                     </h3>
                   </div>
                   <div style={resumenChipsMovil}>
@@ -10640,20 +16523,32 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   <div style={miniTarjetaBlanca}>
                     <strong>Disponibles para asignar grupo</strong>
                     <p style={{ margin: '6px 0 0' }}>
-                      {turno.disponibles.length > 0 ? turno.disponibles.join(' · ') : 'Nadie ha marcado Disponible todavía.'}
+                      {turno.disponibles.length > 0
+                        ? turno.disponibles.join(' · ')
+                        : 'Nadie ha marcado Disponible todavía.'}
                     </p>
                   </div>
 
                   <details>
-                    <summary style={{ cursor: 'pointer', fontWeight: 800 }}>Ver No pueden / Pendientes</summary>
+                    <summary style={{ cursor: 'pointer', fontWeight: 800 }}>
+                      Ver No pueden / Pendientes
+                    </summary>
                     <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
                       <div style={miniTarjetaBlanca}>
                         <strong>No pueden</strong>
-                        <p style={{ margin: '6px 0 0' }}>{turno.no_puedo.length > 0 ? turno.no_puedo.join(' · ') : 'Nadie.'}</p>
+                        <p style={{ margin: '6px 0 0' }}>
+                          {turno.no_puedo.length > 0
+                            ? turno.no_puedo.join(' · ')
+                            : 'Nadie.'}
+                        </p>
                       </div>
                       <div style={miniTarjetaBlanca}>
                         <strong>Pendientes</strong>
-                        <p style={{ margin: '6px 0 0' }}>{turno.pendientes.length > 0 ? turno.pendientes.join(' · ') : 'Nadie pendiente.'}</p>
+                        <p style={{ margin: '6px 0 0' }}>
+                          {turno.pendientes.length > 0
+                            ? turno.pendientes.join(' · ')
+                            : 'Nadie pendiente.'}
+                        </p>
                       </div>
                     </div>
                   </details>
@@ -10663,38 +16558,120 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           </section>
 
           <details style={agendaBloqueBlanco}>
-            <summary style={{ cursor: 'pointer', fontWeight: 900 }}>Ver detalle por entrenador</summary>
+            <summary style={{ cursor: 'pointer', fontWeight: 900 }}>
+              Ver detalle por entrenador
+            </summary>
             <section style={{ display: 'grid', gap: 16, marginTop: 12 }}>
               {disponibilidadSemanalEntrenador.map((grupo) => (
-                <article key={grupo.entrenador_id} style={tarjetaEntrenadorMovil}>
+                <article
+                  key={grupo.entrenador_id}
+                  style={tarjetaEntrenadorMovil}
+                >
                   <header style={cabeceraEntrenadorMovil}>
-                    <div><p style={etiquetaSuperior}>ENTRENADOR</p><h3 style={{ margin: 0 }}>{grupo.entrenador}</h3></div>
-                    <div style={resumenChipsMovil}><span>{grupo.disponibles} disponibles</span><span>{grupo.no_puedo} no puedo</span><span>{grupo.pendientes} pendientes</span></div>
+                    <div>
+                      <p style={etiquetaSuperior}>ENTRENADOR</p>
+                      <h3 style={{ margin: 0 }}>{grupo.entrenador}</h3>
+                    </div>
+                    <div style={resumenChipsMovil}>
+                      <span>{grupo.disponibles} disponibles</span>
+                      <span>{grupo.no_puedo} no puedo</span>
+                      <span>{grupo.pendientes} pendientes</span>
+                    </div>
                   </header>
                   {grupo.semanas.map((semana) => (
-                    <section key={`${grupo.entrenador_id}-${semana.inicio}`} style={bloqueSemanaMovil}>
-                      <h4 style={{ marginTop: 0 }}>Semana {rangoSemanaAgenda(semana.inicio)}</h4>
+                    <section
+                      key={`${grupo.entrenador_id}-${semana.inicio}`}
+                      style={bloqueSemanaMovil}
+                    >
+                      <h4 style={{ marginTop: 0 }}>
+                        Semana {rangoSemanaAgenda(semana.inicio)}
+                      </h4>
                       <div style={{ display: 'grid', gap: 8 }}>
                         {diasTrabajoSemanaAgenda(semana.inicio).map((dia) => {
-                          const turnosDia = semana.turnos.filter((turno) => turno.fecha === dia.fecha);
+                          const turnosDia = semana.turnos.filter(
+                            (turno) => turno.fecha === dia.fecha
+                          );
                           return (
-                            <article key={`${grupo.entrenador_id}-${dia.fecha}`} style={diaEntrenadorCard}>
-                              <div style={diaEntrenadorHeader}><div style={{ display: 'grid' }}><strong>{capitalizarPrimera(dia.nombre)}</strong><span>{formatearFecha(dia.fecha)}</span></div></div>
-                              {turnosTrabajoDiaAgenda(dia.fecha).map((turnoBase) => {
-                                const turno = turnosDia.find((item) => item.hora_inicio.slice(0, 5) === turnoBase.inicio && item.hora_fin.slice(0, 5) === turnoBase.fin);
-                                return (
-                                  <div key={`${dia.fecha}-${turnoBase.inicio}`} style={miniTarjetaBlanca}>
-                                    <strong>{turnoBase.inicio}–{turnoBase.fin}</strong>
-                                    <p style={{ margin: '4px 0 0' }}>Respuesta: <strong>{turno?.respuesta || 'Pendiente'}</strong></p>
-                                    {turno && (
-                                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
-                                        <button onClick={() => responderDisponibilidadRapida(turno, 'Disponible')} style={turno.respuesta === 'Disponible' ? botonAsistenciaOk : botonAsistenciaOff}>Disponible</button>
-                                        <button onClick={() => responderDisponibilidadRapida(turno, 'No puedo')} style={turno.respuesta === 'No puedo' ? botonAsistenciaAusente : botonAsistenciaOff}>No puedo</button>
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
+                            <article
+                              key={`${grupo.entrenador_id}-${dia.fecha}`}
+                              style={diaEntrenadorCard}
+                            >
+                              <div style={diaEntrenadorHeader}>
+                                <div style={{ display: 'grid' }}>
+                                  <strong>
+                                    {capitalizarPrimera(dia.nombre)}
+                                  </strong>
+                                  <span>{formatearFecha(dia.fecha)}</span>
+                                </div>
+                              </div>
+                              {turnosTrabajoDiaAgenda(dia.fecha).map(
+                                (turnoBase) => {
+                                  const turno = turnosDia.find(
+                                    (item) =>
+                                      item.hora_inicio.slice(0, 5) ===
+                                        turnoBase.inicio &&
+                                      item.hora_fin.slice(0, 5) ===
+                                        turnoBase.fin
+                                  );
+                                  return (
+                                    <div
+                                      key={`${dia.fecha}-${turnoBase.inicio}`}
+                                      style={miniTarjetaBlanca}
+                                    >
+                                      <strong>
+                                        {turnoBase.inicio}–{turnoBase.fin}
+                                      </strong>
+                                      <p style={{ margin: '4px 0 0' }}>
+                                        Respuesta:{' '}
+                                        <strong>
+                                          {turno?.respuesta || 'Pendiente'}
+                                        </strong>
+                                      </p>
+                                      {turno && (
+                                        <div
+                                          style={{
+                                            display: 'flex',
+                                            gap: 6,
+                                            flexWrap: 'wrap',
+                                            marginTop: 8,
+                                          }}
+                                        >
+                                          <button
+                                            onClick={() =>
+                                              responderDisponibilidadRapida(
+                                                turno,
+                                                'Disponible'
+                                              )
+                                            }
+                                            style={
+                                              turno.respuesta === 'Disponible'
+                                                ? botonAsistenciaOk
+                                                : botonAsistenciaOff
+                                            }
+                                          >
+                                            Disponible
+                                          </button>
+                                          <button
+                                            onClick={() =>
+                                              responderDisponibilidadRapida(
+                                                turno,
+                                                'No puedo'
+                                              )
+                                            }
+                                            style={
+                                              turno.respuesta === 'No puedo'
+                                                ? botonAsistenciaAusente
+                                                : botonAsistenciaOff
+                                            }
+                                          >
+                                            No puedo
+                                          </button>
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                }
+                              )}
                             </article>
                           );
                         })}
@@ -10713,79 +16690,147 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           <article style={agendaHero}>
             <div>
               <h2 style={{ margin: 0 }}>Cobros entrenadores</h2>
-              <p style={{ margin: '8px 0 0' }}>Resumen mensual unificado: Baby, Intensivos y Ocio. Se calcula por turnos trabajados x tarifa por sesión, con ajustes manuales si hace falta.</p>
+              <p style={{ margin: '8px 0 0' }}>
+                Resumen mensual unificado: Baby, Intensivos y Ocio. Se calcula
+                por turnos trabajados x tarifa por sesión, con ajustes manuales
+                si hace falta.
+              </p>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={cargarCobros} style={botonSecundario}>Actualizar</button>
-              <button onClick={abrirPdfCobrosConjunto} style={botonPrincipal}>PDF conjunto dirección</button>
+              <button onClick={cargarCobros} style={botonSecundario}>
+                Actualizar
+              </button>
+              <button onClick={abrirPdfCobrosConjunto} style={botonPrincipal}>
+                PDF conjunto dirección
+              </button>
             </div>
           </article>
 
           <article style={agendaBloqueBlanco}>
             <h3 style={{ marginTop: 0 }}>Mes a revisar</h3>
             <div style={gridFormulario}>
-              <label style={labelCampo}>Año
-                <select value={anioCobros} onChange={(e) => setAnioCobros(Number(e.target.value))} style={selectCampo}>
-                  {aniosCobrosOpciones.map((anio) => <option key={anio} value={anio}>{anio}</option>)}
+              <label style={labelCampo}>
+                Año
+                <select
+                  value={anioCobros}
+                  onChange={(e) => setAnioCobros(Number(e.target.value))}
+                  style={selectCampo}
+                >
+                  {aniosCobrosOpciones.map((anio) => (
+                    <option key={anio} value={anio}>
+                      {anio}
+                    </option>
+                  ))}
                 </select>
               </label>
-              <label style={labelCampo}>Mes
-                <select value={mesCobros} onChange={(e) => setMesCobros(Number(e.target.value))} style={selectCampo}>
-                  {Array.from({ length: 12 }, (_, indice) => indice + 1).map((mes) => <option key={mes} value={mes}>{nombreMes(mes)}</option>)}
+              <label style={labelCampo}>
+                Mes
+                <select
+                  value={mesCobros}
+                  onChange={(e) => setMesCobros(Number(e.target.value))}
+                  style={selectCampo}
+                >
+                  {Array.from({ length: 12 }, (_, indice) => indice + 1).map(
+                    (mes) => (
+                      <option key={mes} value={mes}>
+                        {nombreMes(mes)}
+                      </option>
+                    )
+                  )}
                 </select>
               </label>
               <div style={{ ...labelCampo, justifyContent: 'flex-end' }}>
-                <button onClick={cargarCobros} style={botonPrincipal}>Ver mes</button>
+                <button onClick={cargarCobros} style={botonPrincipal}>
+                  Ver mes
+                </button>
               </div>
             </div>
           </article>
 
           <article style={agendaBloqueBlanco}>
             <h3 style={{ marginTop: 0 }}>Añadir entreno manual</h3>
-            <p style={{ marginTop: 0, color: '#555' }}>Para entrenos que no estén registrados en Baby, Intensivos u Ocio. Cuenta como un turno más en el mes del entrenador.</p>
+            <p style={{ marginTop: 0, color: '#555' }}>
+              Para entrenos que no estén registrados en Baby, Intensivos u Ocio.
+              Cuenta como un turno más en el mes del entrenador.
+            </p>
             <div style={gridFormulario}>
-              <label style={labelCampo}>Entrenador
+              <label style={labelCampo}>
+                Entrenador
                 <select
                   value={formCobroManual.entrenadorId}
-                  onChange={(e) => setFormCobroManual({ ...formCobroManual, entrenadorId: e.target.value })}
+                  onChange={(e) =>
+                    setFormCobroManual({
+                      ...formCobroManual,
+                      entrenadorId: e.target.value,
+                    })
+                  }
                   style={selectCampo}
                 >
                   <option value="">Elegir entrenador</option>
-                  {entrenadores.filter((entrenador) => entrenador.activo !== false).map((entrenador) => (
-                    <option key={entrenador.entrenador_id} value={entrenador.entrenador_id}>
-                      {entrenador.nombre_completo}
-                    </option>
-                  ))}
+                  {entrenadores
+                    .filter((entrenador) => entrenador.activo !== false)
+                    .map((entrenador) => (
+                      <option
+                        key={entrenador.entrenador_id}
+                        value={entrenador.entrenador_id}
+                      >
+                        {entrenador.nombre_completo}
+                      </option>
+                    ))}
                 </select>
               </label>
-              <label style={labelCampo}>Fecha
+              <label style={labelCampo}>
+                Fecha
                 <input
                   type="date"
                   value={formCobroManual.fecha}
-                  onChange={(e) => setFormCobroManual({ ...formCobroManual, fecha: e.target.value })}
+                  onChange={(e) =>
+                    setFormCobroManual({
+                      ...formCobroManual,
+                      fecha: e.target.value,
+                    })
+                  }
                   style={inputCampo}
                 />
               </label>
-              <label style={labelCampo}>Inicio
+              <label style={labelCampo}>
+                Inicio
                 <input
                   type="time"
                   value={formCobroManual.horaInicio}
-                  onChange={(e) => setFormCobroManual({ ...formCobroManual, horaInicio: e.target.value })}
+                  onChange={(e) =>
+                    setFormCobroManual({
+                      ...formCobroManual,
+                      horaInicio: e.target.value,
+                    })
+                  }
                   style={inputCampo}
                 />
               </label>
-              <label style={labelCampo}>Fin
+              <label style={labelCampo}>
+                Fin
                 <input
                   type="time"
                   value={formCobroManual.horaFin}
-                  onChange={(e) => setFormCobroManual({ ...formCobroManual, horaFin: e.target.value })}
+                  onChange={(e) =>
+                    setFormCobroManual({
+                      ...formCobroManual,
+                      horaFin: e.target.value,
+                    })
+                  }
                   style={inputCampo}
                 />
               </label>
-              <label style={labelCampo}>Modalidad
+              <label style={labelCampo}>
+                Modalidad
                 <select
                   value={formCobroManual.modalidad}
-                  onChange={(e) => setFormCobroManual({ ...formCobroManual, modalidad: e.target.value })}
+                  onChange={(e) =>
+                    setFormCobroManual({
+                      ...formCobroManual,
+                      modalidad: e.target.value,
+                    })
+                  }
                   style={selectCampo}
                 >
                   <option value="BABY">Baby</option>
@@ -10793,66 +16838,120 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   <option value="OCIO">Ocio</option>
                 </select>
               </label>
-              <label style={labelCampo}>Nombre / motivo
+              <label style={labelCampo}>
+                Nombre / motivo
                 <input
                   value={formCobroManual.nombreGrupo}
-                  onChange={(e) => setFormCobroManual({ ...formCobroManual, nombreGrupo: e.target.value })}
+                  onChange={(e) =>
+                    setFormCobroManual({
+                      ...formCobroManual,
+                      nombreGrupo: e.target.value,
+                    })
+                  }
                   placeholder="Apoyo pista / entreno manual / sustitución..."
                   style={inputCampo}
                 />
               </label>
-              <label style={labelCampo}>Niños
+              <label style={labelCampo}>
+                Niños
                 <input
                   type="number"
                   value={formCobroManual.totalAlumnos}
-                  onChange={(e) => setFormCobroManual({ ...formCobroManual, totalAlumnos: e.target.value })}
+                  onChange={(e) =>
+                    setFormCobroManual({
+                      ...formCobroManual,
+                      totalAlumnos: e.target.value,
+                    })
+                  }
                   style={inputCampo}
                 />
               </label>
-              <label style={labelCampo}>Importe especial opcional
+              <label style={labelCampo}>
+                Importe especial opcional
                 <input
                   value={formCobroManual.importeOverride}
-                  onChange={(e) => setFormCobroManual({ ...formCobroManual, importeOverride: e.target.value })}
+                  onChange={(e) =>
+                    setFormCobroManual({
+                      ...formCobroManual,
+                      importeOverride: e.target.value,
+                    })
+                  }
                   placeholder="Vacío = tarifa del entrenador"
                   style={inputCampo}
                 />
               </label>
-              <label style={{ ...labelCampo, gridColumn: '1 / -1' }}>Observaciones
+              <label style={{ ...labelCampo, gridColumn: '1 / -1' }}>
+                Observaciones
                 <textarea
                   value={formCobroManual.observaciones}
-                  onChange={(e) => setFormCobroManual({ ...formCobroManual, observaciones: e.target.value })}
+                  onChange={(e) =>
+                    setFormCobroManual({
+                      ...formCobroManual,
+                      observaciones: e.target.value,
+                    })
+                  }
                   rows={2}
                   placeholder="Nota para dirección si hace falta..."
                   style={textareaCampo}
                 />
               </label>
             </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
-              <button onClick={crearEntrenoManualCobro} style={botonPrincipal}>Añadir entreno manual</button>
-              <button onClick={() => setFormCobroManual(cobroManualInicial())} style={botonSecundario}>Limpiar formulario</button>
+            <div
+              style={{
+                display: 'flex',
+                gap: 8,
+                flexWrap: 'wrap',
+                marginTop: 12,
+              }}
+            >
+              <button onClick={crearEntrenoManualCobro} style={botonPrincipal}>
+                Añadir entreno manual
+              </button>
+              <button
+                onClick={() => setFormCobroManual(cobroManualInicial())}
+                style={botonSecundario}
+              >
+                Limpiar formulario
+              </button>
             </div>
           </article>
 
-          <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 10 }}>
+          <section
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+              gap: 10,
+            }}
+          >
             <article style={miniTarjetaBlanca}>
               <strong>Total mes</strong>
-              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>{formatearEuros(totalGeneralCobrosMes)}</p>
+              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>
+                {formatearEuros(totalGeneralCobrosMes)}
+              </p>
             </article>
             <article style={miniTarjetaBlanca}>
               <strong>Turnos</strong>
-              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>{totalTurnosCobrosMes}</p>
+              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>
+                {totalTurnosCobrosMes}
+              </p>
             </article>
             <article style={miniTarjetaBlanca}>
               <strong>Baby</strong>
-              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>{totalBabyCobrosMes}</p>
+              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>
+                {totalBabyCobrosMes}
+              </p>
             </article>
             <article style={miniTarjetaBlanca}>
               <strong>Intensivos</strong>
-              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>{totalIntensivosCobrosMes}</p>
+              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>
+                {totalIntensivosCobrosMes}
+              </p>
             </article>
             <article style={miniTarjetaBlanca}>
               <strong>Ocio</strong>
-              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>{totalOcioCobrosMes}</p>
+              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>
+                {totalOcioCobrosMes}
+              </p>
             </article>
           </section>
 
@@ -10864,11 +16963,36 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           />
 
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button onClick={() => setFiltroCobros('todos')} style={botonMenu(filtroCobros === 'todos')}>Todos</button>
-            <button onClick={() => setFiltroCobros('pendiente')} style={botonMenu(filtroCobros === 'pendiente')}>Pendiente</button>
-            <button onClick={() => setFiltroCobros('cerrado')} style={botonMenu(filtroCobros === 'cerrado')}>Cerrado / pagado</button>
-            <button onClick={() => setFiltroCobros('incidencias')} style={botonMenu(filtroCobros === 'incidencias')}>Con incidencias</button>
-            <button onClick={() => setFiltroCobros('este_mes')} style={botonMenu(filtroCobros === 'este_mes')}>Este mes</button>
+            <button
+              onClick={() => setFiltroCobros('todos')}
+              style={botonMenu(filtroCobros === 'todos')}
+            >
+              Todos
+            </button>
+            <button
+              onClick={() => setFiltroCobros('pendiente')}
+              style={botonMenu(filtroCobros === 'pendiente')}
+            >
+              Pendiente
+            </button>
+            <button
+              onClick={() => setFiltroCobros('cerrado')}
+              style={botonMenu(filtroCobros === 'cerrado')}
+            >
+              Cerrado / pagado
+            </button>
+            <button
+              onClick={() => setFiltroCobros('incidencias')}
+              style={botonMenu(filtroCobros === 'incidencias')}
+            >
+              Con incidencias
+            </button>
+            <button
+              onClick={() => setFiltroCobros('este_mes')}
+              style={botonMenu(filtroCobros === 'este_mes')}
+            >
+              Este mes
+            </button>
           </div>
 
           {cargando && <p>Cargando cobros...</p>}
@@ -10876,7 +17000,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           {!cargando && cobrosFiltrados.length === 0 && !error && (
             <article style={tarjeta}>
               <h3 style={{ marginTop: 0 }}>Sin cobros</h3>
-              <p style={{ marginBottom: 0 }}>No hay turnos con entrenador asignado para este mes. Cuando prepares/publices grupos de Baby, Intensivos u Ocio, aparecerán aquí.</p>
+              <p style={{ marginBottom: 0 }}>
+                No hay turnos con entrenador asignado para este mes. Cuando
+                prepares/publices grupos de Baby, Intensivos u Ocio, aparecerán
+                aquí.
+              </p>
             </article>
           )}
 
@@ -10884,55 +17012,147 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
             {cobrosFiltrados.map((cobro) => {
               const detalles = detallesDeCobro(cobro.entrenador_id);
               return (
-                <article key={`${cobro.entrenador_id}-${cobro.anio}-${cobro.mes}`} style={tarjeta}>
+                <article
+                  key={`${cobro.entrenador_id}-${cobro.anio}-${cobro.mes}`}
+                  style={tarjeta}
+                >
                   <div style={agendaCabeceraLinea}>
                     <div>
                       <h3 style={{ margin: 0 }}>{cobro.entrenador}</h3>
                       <p style={{ margin: '6px 0 0', color: '#555' }}>
-                        {nombreMes(cobro.mes)} {cobro.anio} · {cobro.temporada} · Estado: <strong>{cobro.estado_mes}</strong>
+                        {nombreMes(cobro.mes)} {cobro.anio} · {cobro.temporada}{' '}
+                        · Estado: <strong>{cobro.estado_mes}</strong>
                       </p>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <p style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>{formatearEuros(cobro.total_mes)}</p>
-                      <p style={{ margin: '4px 0 0', color: '#555' }}>{cobro.total_turnos_computables} turnos</p>
+                      <p style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>
+                        {formatearEuros(cobro.total_mes)}
+                      </p>
+                      <p style={{ margin: '4px 0 0', color: '#555' }}>
+                        {cobro.total_turnos_computables} turnos
+                      </p>
                     </div>
                   </div>
 
-                  <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: 8, marginTop: 12 }}>
-                    <div style={miniTarjetaBlanca}><strong>Baby</strong><br />{cobro.total_turnos_baby || 0} turnos</div>
-                    <div style={miniTarjetaBlanca}><strong>Intensivos</strong><br />{cobro.total_turnos_intensivos || 0} turnos</div>
-                    <div style={miniTarjetaBlanca}><strong>Ocio</strong><br />{cobro.total_turnos_ocio || 0} turnos</div>
-                    <div style={miniTarjetaBlanca}><strong>Subtotal</strong><br />{formatearEuros(cobro.subtotal_sesiones)}</div>
-                    <div style={miniTarjetaBlanca}><strong>Ajustes</strong><br />{formatearEuros(cobro.ajustes_total)}</div>
+                  <section
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns:
+                        'repeat(auto-fit, minmax(130px, 1fr))',
+                      gap: 8,
+                      marginTop: 12,
+                    }}
+                  >
+                    <div style={miniTarjetaBlanca}>
+                      <strong>Baby</strong>
+                      <br />
+                      {cobro.total_turnos_baby || 0} turnos
+                    </div>
+                    <div style={miniTarjetaBlanca}>
+                      <strong>Intensivos</strong>
+                      <br />
+                      {cobro.total_turnos_intensivos || 0} turnos
+                    </div>
+                    <div style={miniTarjetaBlanca}>
+                      <strong>Ocio</strong>
+                      <br />
+                      {cobro.total_turnos_ocio || 0} turnos
+                    </div>
+                    <div style={miniTarjetaBlanca}>
+                      <strong>Subtotal</strong>
+                      <br />
+                      {formatearEuros(cobro.subtotal_sesiones)}
+                    </div>
+                    <div style={miniTarjetaBlanca}>
+                      <strong>Ajustes</strong>
+                      <br />
+                      {formatearEuros(cobro.ajustes_total)}
+                    </div>
                   </section>
 
                   <div style={{ ...gridFormulario, marginTop: 12 }}>
-                    <label style={labelCampo}>Tarifa por sesión
+                    <label style={labelCampo}>
+                      Tarifa por sesión
                       <input
                         type="number"
-                        value={tarifasEditadasCobros[cobro.entrenador_id] ?? String(cobro.tarifa_por_turno ?? 0)}
-                        onChange={(e) => setTarifasEditadasCobros({ ...tarifasEditadasCobros, [cobro.entrenador_id]: e.target.value })}
+                        value={
+                          tarifasEditadasCobros[cobro.entrenador_id] ??
+                          String(cobro.tarifa_por_turno ?? 0)
+                        }
+                        onChange={(e) =>
+                          setTarifasEditadasCobros({
+                            ...tarifasEditadasCobros,
+                            [cobro.entrenador_id]: e.target.value,
+                          })
+                        }
                         style={inputCampo}
                       />
                     </label>
                     <div style={{ ...labelCampo, justifyContent: 'flex-end' }}>
-                      <button onClick={() => guardarTarifaCobro(cobro)} style={botonSecundario}>Guardar tarifa</button>
+                      <button
+                        onClick={() => guardarTarifaCobro(cobro)}
+                        style={botonSecundario}
+                      >
+                        Guardar tarifa
+                      </button>
                     </div>
                     <div style={{ ...labelCampo, justifyContent: 'flex-end' }}>
-                      <button onClick={() => crearAjusteCobro(cobro)} style={botonSecundario}>+ Ajuste manual</button>
+                      <button
+                        onClick={() => crearAjusteCobro(cobro)}
+                        style={botonSecundario}
+                      >
+                        + Ajuste manual
+                      </button>
                     </div>
                     <div style={{ ...labelCampo, justifyContent: 'flex-end' }}>
-                      <button onClick={() => abrirPdfCobroEntrenador(cobro)} style={botonPrincipal}>PDF individual</button>
+                      <button
+                        onClick={() => abrirPdfCobroEntrenador(cobro)}
+                        style={botonPrincipal}
+                      >
+                        PDF individual
+                      </button>
                     </div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
-                    <button onClick={() => cambiarEstadoCobro(cobro, 'abierto')} style={botonMenu(cobro.estado_mes === 'abierto')}>Abierto</button>
-                    <button onClick={() => cambiarEstadoCobro(cobro, 'revisado')} style={botonMenu(cobro.estado_mes === 'revisado')}>Revisado</button>
-                    <button onClick={() => cambiarEstadoCobro(cobro, 'cerrado')} style={botonMenu(cobro.estado_mes === 'cerrado')}>Cerrado</button>
-                    <button onClick={() => cambiarEstadoCobro(cobro, 'pagado')} style={botonMenu(cobro.estado_mes === 'pagado')}>Pagado</button>
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      marginTop: 10,
+                    }}
+                  >
+                    <button
+                      onClick={() => cambiarEstadoCobro(cobro, 'abierto')}
+                      style={botonMenu(cobro.estado_mes === 'abierto')}
+                    >
+                      Abierto
+                    </button>
+                    <button
+                      onClick={() => cambiarEstadoCobro(cobro, 'revisado')}
+                      style={botonMenu(cobro.estado_mes === 'revisado')}
+                    >
+                      Revisado
+                    </button>
+                    <button
+                      onClick={() => cambiarEstadoCobro(cobro, 'cerrado')}
+                      style={botonMenu(cobro.estado_mes === 'cerrado')}
+                    >
+                      Cerrado
+                    </button>
+                    <button
+                      onClick={() => cambiarEstadoCobro(cobro, 'pagado')}
+                      style={botonMenu(cobro.estado_mes === 'pagado')}
+                    >
+                      Pagado
+                    </button>
                     {Number(cobro.ajustes_total || 0) !== 0 && (
-                      <button onClick={() => limpiarAjustesCobro(cobro)} style={botonPeligroMini}>Limpiar ajustes</button>
+                      <button
+                        onClick={() => limpiarAjustesCobro(cobro)}
+                        style={botonPeligroMini}
+                      >
+                        Limpiar ajustes
+                      </button>
                     )}
                   </div>
 
@@ -10944,24 +17164,63 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
                   {cobro.pendientes_revisar > 0 && (
                     <div style={{ ...avisoPendiente, marginTop: 10 }}>
-                      Hay {cobro.pendientes_revisar} turno(s) pendiente(s) de revisar/publicar antes de cerrar el mes.
+                      Hay {cobro.pendientes_revisar} turno(s) pendiente(s) de
+                      revisar/publicar antes de cerrar el mes.
                     </div>
                   )}
 
                   <details style={{ marginTop: 12 }}>
-                    <summary style={{ cursor: 'pointer', fontWeight: 800 }}>Ver detalle de turnos ({detalles.length})</summary>
+                    <summary style={{ cursor: 'pointer', fontWeight: 800 }}>
+                      Ver detalle de turnos ({detalles.length})
+                    </summary>
                     <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
                       {detalles.map((detalleCobro) => (
-                        <div key={`${detalleCobro.entrenador_id}-${detalleCobro.grupo_id}-${detalleCobro.fecha}-${detalleCobro.hora_inicio}`} style={miniTarjetaBlanca}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'flex-start' }}>
+                        <div
+                          key={`${detalleCobro.entrenador_id}-${detalleCobro.grupo_id}-${detalleCobro.fecha}-${detalleCobro.hora_inicio}`}
+                          style={miniTarjetaBlanca}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              gap: 8,
+                              alignItems: 'flex-start',
+                            }}
+                          >
                             <div>
-                              <strong>{formatearFecha(detalleCobro.fecha)} · {horaCorta(detalleCobro.hora_inicio)}-{horaCorta(detalleCobro.hora_fin)} · {detalleCobro.modalidad}</strong>
-                              {detalleCobro.origen_cobro === 'MANUAL' && <span style={{ marginLeft: 8, fontWeight: 900 }}>MANUAL</span>}
-                              <p style={{ margin: '5px 0 0' }}>{detalleCobro.nombre_grupo} · {detalleCobro.total_alumnos} niños · {formatearEuros(detalleCobro.importe_turno)}</p>
-                              {detalleCobro.observaciones && <p style={{ margin: '5px 0 0', color: '#555' }}>{detalleCobro.observaciones}</p>}
+                              <strong>
+                                {formatearFecha(detalleCobro.fecha)} ·{' '}
+                                {horaCorta(detalleCobro.hora_inicio)}-
+                                {horaCorta(detalleCobro.hora_fin)} ·{' '}
+                                {detalleCobro.modalidad}
+                              </strong>
+                              {detalleCobro.origen_cobro === 'MANUAL' && (
+                                <span
+                                  style={{ marginLeft: 8, fontWeight: 900 }}
+                                >
+                                  MANUAL
+                                </span>
+                              )}
+                              <p style={{ margin: '5px 0 0' }}>
+                                {detalleCobro.nombre_grupo} ·{' '}
+                                {detalleCobro.total_alumnos} niños ·{' '}
+                                {formatearEuros(detalleCobro.importe_turno)}
+                              </p>
+                              {detalleCobro.observaciones && (
+                                <p style={{ margin: '5px 0 0', color: '#555' }}>
+                                  {detalleCobro.observaciones}
+                                </p>
+                              )}
                             </div>
                             {detalleCobro.origen_cobro === 'MANUAL' && (
-                              <button onClick={() => eliminarEntrenoManualCobro(detalleCobro)} style={botonPeligroMini}>Eliminar</button>
+                              <button
+                                onClick={() =>
+                                  eliminarEntrenoManualCobro(detalleCobro)
+                                }
+                                style={botonPeligroMini}
+                              >
+                                Eliminar
+                              </button>
                             )}
                           </div>
                         </div>
@@ -10971,7 +17230,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
                   {cobro.detalle_ajustes && (
                     <details style={{ marginTop: 12 }}>
-                      <summary style={{ cursor: 'pointer', fontWeight: 800 }}>Ver ajustes manuales</summary>
+                      <summary style={{ cursor: 'pointer', fontWeight: 800 }}>
+                        Ver ajustes manuales
+                      </summary>
                       <pre style={bloqueTexto}>{cobro.detalle_ajustes}</pre>
                     </details>
                   )}
@@ -10982,7 +17243,164 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         </section>
       )}
 
-      {pantalla === 'intensivos' && PantallaIntensivos({ abrirPanelIntensivo, actualizarDiaIntensivoDesdeApp, actualizarDiplomaIntensivo, actualizarNivelAlumnoIntensivo, actualizarRecuperacionIntensivo, agendaBadgeModalidad, agruparRecomendacionesDia, alumnoSeleccionadoIntensivoId, alumnosDelIntensivo, alumnosDisponiblesParaIntensivo, asistenciasDelIntensivoDia, autoproponerNivelesDiploma, avisoCompleto, avisoDisponibilidadDiaIntensivo, avisoNeutral, avisoPendiente, ayudaDesplegableCompacta, añadirAlumnoAIntensivo, barraPasosIntensivo, borrarDiaIntensivoDesdeApp, borrarGrupoIntensivo, borrarIntensivoCompleto, botonMenu, botonPasoIntensivo, botonPeligro, botonPeligroMini, botonPrincipal, botonSecundario, buscador, busquedaAlumnoIntensivo, busquedaIntensivos, cabeceraPantalla, calcularFechasCuatroSesionesIntensivo, cargando, cargarIntensivos, cerrarPanelesIntensivo, chipResumenCursoIntensivo, claveAlumnoRecomendado, claveGrupoRecomendado, codigoNivelPorId, crearCuatroSesionesIntensivo, crearGrupoDesdeRecomendacion, crearGrupoNormalIntensivo, crearIntensivoDesdeApp, destinoAlumnoRecomendado, diaActivoIntensivoId, diaAsistenciaSeleccionadoId, diaEditandoIntensivoId, diaGrupoSeleccionadoId, diaIntensivoInicial, diasDelIntensivo, eliminarRecuperacionIntensivo, entrenadores, entrenadoresApoyoPorGrupoRecomendado, entrenadoresDisponiblesDiaIntensivo, entrenadoresPorGrupoRecomendado, error, estiloBadgePistaApp, estiloGrupoPorPistaApp, estiloValidacionPedagogicaApp, etiquetaPistaVisualApp, etiquetaSuperior, filtroIntensivos, formDiaIntensivo, formGrupoIntensivo, formIntensivo, formatearFecha, formatearObservaciones, formularioCaja, generarMásDesdeAsistencias, generarRecomendacionGruposIntensivo, generarTrabajoDiarioAutomaticoGrupo, gestionarAlumnosIntensivoId, gestionarAsistenciaIntensivoId, gestionarDiplomasIntensivoId, gestionarGruposIntensivoId, gestionarMásIntensivoId, gestionarPanelControlIntensivoId, gridFormulario, gruposDestinoRecuperacion, gruposNormalesDelDiaIntensivo, guardarDiaIntensivo, inputCampo, intensivoCursoAbiertoId, intensivoInicial, intensivos, intensivosFiltrados, labelCampo, marcarAsistenciaIntensivo, miniTarjetaBlanca, mostrarFormularioIntensivo, mostrarPlantillaCuatroSesionesIntensivoId, mostrarVolcadoIntensivoId, necesitaDosEntrenadoresGrupoApp, nivelesDiplomaIntensivo, nombreGrupoVisualApp, nombresGruposBaseRecomendados, observacionesAutomaticasGrupoIntensivo, observacionesAutomaticasGrupoIntensivoManual, observacionesPorGrupoRecomendado, opcionesEstadoDiplomaIntensivo, opcionesEstadoRecuperacionIntensivo, opcionesNivel, opcionesOrigenNivelAlumno, opcionesPistaGrupoIntensivo, opcionesRecomendacionIntensivo, panelControlDelIntensivo, plantillaCuatroSesionesInicial, plantillaCuatroSesionesIntensivo, prepararEdicionDiaIntensivo, quitarAlumnoDeIntensivo, recomendacionesDelDiaIntensivo, recuperacionesDelIntensivo, reportesDetalleAlumnoIntensivo, responsableReporteRecomendadoApp, responsablesReportePorGrupoRecomendado, resultadoVolcadoIntensivo, resumenAlumnoIntensivo, resumenFinalDelIntensivo, resumenReportesDelIntensivo, selectCampo, setAlumnoSeleccionadoIntensivoId, setBusquedaAlumnoIntensivo, setBusquedaIntensivos, setDestinoAlumnoRecomendado, setDiaEditandoIntensivoId, setDiaGrupoSeleccionadoId, setEntrenadoresApoyoPorGrupoRecomendado, setEntrenadoresPorGrupoRecomendado, setFiltroIntensivos, setFormDiaIntensivo, setFormGrupoIntensivo, setFormIntensivo, setGestionarAlumnosIntensivoId, setGestionarDiplomasIntensivoId, setGestionarMásIntensivoId, setIntensivoCursoAbiertoId, setMostrarFormularioIntensivo, setMostrarPlantillaCuatroSesionesIntensivoId, setMostrarVolcadoIntensivoId, setObservacionesPorGrupoRecomendado, setPlantillaCuatroSesionesIntensivo, setRecomendacionesGrupoIntensivo, setResponsablesReportePorGrupoRecomendado, setResultadoVolcadoIntensivo, setTextoVolcadoIntensivo, setTrabajoDiarioPorGrupoRecomendado, tarjeta, tarjetaIntensivoCurso, textoBaseDiplomaIntensivo, textoNecesidadDosEntrenadoresApp, textoValidacionPedagogicaGrupoApp, textoVolcadoIntensivo, trabajoDiarioPorGrupoRecomendado, volcarListadoAlumnosIntensivo })}
+      {pantalla === 'intensivos' &&
+        PantallaIntensivos({
+          abrirPanelIntensivo,
+          actualizarDiaIntensivoDesdeApp,
+          actualizarDiplomaIntensivo,
+          actualizarNivelAlumnoIntensivo,
+          actualizarRecuperacionIntensivo,
+          agendaBadgeModalidad,
+          agruparRecomendacionesDia,
+          alumnoSeleccionadoIntensivoId,
+          alumnosDelIntensivo,
+          alumnosDisponiblesParaIntensivo,
+          asistenciasDelIntensivoDia,
+          autoproponerNivelesDiploma,
+          avisoCompleto,
+          avisoDisponibilidadDiaIntensivo,
+          avisoNeutral,
+          avisoPendiente,
+          ayudaDesplegableCompacta,
+          añadirAlumnoAIntensivo,
+          barraPasosIntensivo,
+          borrarDiaIntensivoDesdeApp,
+          borrarGrupoIntensivo,
+          borrarIntensivoCompleto,
+          botonMenu,
+          botonPasoIntensivo,
+          botonPeligro,
+          botonPeligroMini,
+          botonPrincipal,
+          botonSecundario,
+          buscador,
+          busquedaAlumnoIntensivo,
+          busquedaIntensivos,
+          cabeceraPantalla,
+          calcularFechasCuatroSesionesIntensivo,
+          cargando,
+          cargarIntensivos,
+          cerrarPanelesIntensivo,
+          chipResumenCursoIntensivo,
+          claveAlumnoRecomendado,
+          claveGrupoRecomendado,
+          codigoNivelPorId,
+          crearCuatroSesionesIntensivo,
+          crearGrupoDesdeRecomendacion,
+          crearGrupoNormalIntensivo,
+          crearIntensivoDesdeApp,
+          destinoAlumnoRecomendado,
+          diaActivoIntensivoId,
+          diaAsistenciaSeleccionadoId,
+          diaEditandoIntensivoId,
+          diaGrupoSeleccionadoId,
+          diaIntensivoInicial,
+          diasDelIntensivo,
+          eliminarRecuperacionIntensivo,
+          entrenadores,
+          entrenadoresApoyoPorGrupoRecomendado,
+          entrenadoresDisponiblesDiaIntensivo,
+          entrenadoresPorGrupoRecomendado,
+          error,
+          estiloBadgePistaApp,
+          estiloGrupoPorPistaApp,
+          estiloValidacionPedagogicaApp,
+          etiquetaPistaVisualApp,
+          etiquetaSuperior,
+          filtroIntensivos,
+          formDiaIntensivo,
+          formGrupoIntensivo,
+          formIntensivo,
+          formatearFecha,
+          formatearObservaciones,
+          formularioCaja,
+          generarMásDesdeAsistencias,
+          generarRecomendacionGruposIntensivo,
+          generarTrabajoDiarioAutomaticoGrupo,
+          gestionarAlumnosIntensivoId,
+          gestionarAsistenciaIntensivoId,
+          gestionarDiplomasIntensivoId,
+          gestionarGruposIntensivoId,
+          gestionarMásIntensivoId,
+          gestionarPanelControlIntensivoId,
+          gridFormulario,
+          gruposDestinoRecuperacion,
+          gruposNormalesDelDiaIntensivo,
+          guardarDiaIntensivo,
+          inputCampo,
+          intensivoCursoAbiertoId,
+          intensivoInicial,
+          intensivos,
+          intensivosFiltrados,
+          labelCampo,
+          marcarAsistenciaIntensivo,
+          miniTarjetaBlanca,
+          mostrarFormularioIntensivo,
+          mostrarPlantillaCuatroSesionesIntensivoId,
+          mostrarVolcadoIntensivoId,
+          necesitaDosEntrenadoresGrupoApp,
+          nivelesDiplomaIntensivo,
+          nombreGrupoVisualApp,
+          nombresGruposBaseRecomendados,
+          observacionesAutomaticasGrupoIntensivo,
+          observacionesAutomaticasGrupoIntensivoManual,
+          observacionesPorGrupoRecomendado,
+          opcionesEstadoDiplomaIntensivo,
+          opcionesEstadoRecuperacionIntensivo,
+          opcionesNivel,
+          opcionesOrigenNivelAlumno,
+          opcionesPistaGrupoIntensivo,
+          opcionesRecomendacionIntensivo,
+          panelControlDelIntensivo,
+          plantillaCuatroSesionesInicial,
+          plantillaCuatroSesionesIntensivo,
+          prepararEdicionDiaIntensivo,
+          quitarAlumnoDeIntensivo,
+          recomendacionesDelDiaIntensivo,
+          recuperacionesDelIntensivo,
+          reportesDetalleAlumnoIntensivo,
+          responsableReporteRecomendadoApp,
+          responsablesReportePorGrupoRecomendado,
+          resultadoVolcadoIntensivo,
+          resumenAlumnoIntensivo,
+          resumenFinalDelIntensivo,
+          resumenReportesDelIntensivo,
+          selectCampo,
+          setAlumnoSeleccionadoIntensivoId,
+          setBusquedaAlumnoIntensivo,
+          setBusquedaIntensivos,
+          setDestinoAlumnoRecomendado,
+          setDiaEditandoIntensivoId,
+          setDiaGrupoSeleccionadoId,
+          setEntrenadoresApoyoPorGrupoRecomendado,
+          setEntrenadoresPorGrupoRecomendado,
+          setFiltroIntensivos,
+          setFormDiaIntensivo,
+          setFormGrupoIntensivo,
+          setFormIntensivo,
+          setGestionarAlumnosIntensivoId,
+          setGestionarDiplomasIntensivoId,
+          setGestionarMásIntensivoId,
+          setIntensivoCursoAbiertoId,
+          setMostrarFormularioIntensivo,
+          setMostrarPlantillaCuatroSesionesIntensivoId,
+          setMostrarVolcadoIntensivoId,
+          setObservacionesPorGrupoRecomendado,
+          setPlantillaCuatroSesionesIntensivo,
+          setRecomendacionesGrupoIntensivo,
+          setResponsablesReportePorGrupoRecomendado,
+          setResultadoVolcadoIntensivo,
+          setTextoVolcadoIntensivo,
+          setTrabajoDiarioPorGrupoRecomendado,
+          tarjeta,
+          tarjetaIntensivoCurso,
+          textoBaseDiplomaIntensivo,
+          textoNecesidadDosEntrenadoresApp,
+          textoValidacionPedagogicaGrupoApp,
+          textoVolcadoIntensivo,
+          trabajoDiarioPorGrupoRecomendado,
+          volcarListadoAlumnosIntensivo,
+        })}
 
       {pantalla === 'listados' && (
         <section>
@@ -11088,24 +17506,33 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   );
 }
 
-
 function AppConAuth() {
   const [sesion, setSesion] = useState<SesionAuthApp | null>(null);
   const [perfil, setPerfil] = useState<PerfilUsuarioApp | null>(null);
-  const [sesionInvitacion, setSesionInvitacion] = useState<SesionAuthApp | null>(null);
+  const [sesionInvitacion, setSesionInvitacion] =
+    useState<SesionAuthApp | null>(null);
   const [cargandoAuth, setCargandoAuth] = useState(true);
   const [errorAuth, setErrorAuth] = useState('');
 
   async function activarSesion(nuevaSesion: SesionAuthApp) {
-    const usuario = nuevaSesion.user.id ? nuevaSesion.user : await obtenerUsuarioAuthApp(nuevaSesion.access_token);
+    const usuario = nuevaSesion.user.id
+      ? nuevaSesion.user
+      : await obtenerUsuarioAuthApp(nuevaSesion.access_token);
     const sesionCompleta = { ...nuevaSesion, user: usuario };
-    const perfilUsuario = await cargarPerfilUsuarioApp(sesionCompleta.access_token, usuario.id);
+    const perfilUsuario = await cargarPerfilUsuarioApp(
+      sesionCompleta.access_token,
+      usuario.id
+    );
 
     if (!perfilUsuario) {
       borrarSesionAuthApp();
       setSesion(null);
       setPerfil(null);
-      setErrorAuth(`La cuenta ${usuario.email || ''} existe en Supabase Auth, pero todavía no tiene perfil en usuarios_app. Crea/vincula el perfil y vuelve a entrar.`);
+      setErrorAuth(
+        `La cuenta ${
+          usuario.email || ''
+        } existe en Supabase Auth, pero todavía no tiene perfil en usuarios_app. Crea/vincula el perfil y vuelve a entrar.`
+      );
       return;
     }
 
@@ -11136,7 +17563,9 @@ function AppConAuth() {
           await activarSesion({ ...guardada, user: usuario });
         } catch (error) {
           if (guardada.refresh_token) {
-            const refrescada = await refrescarSesionAuthApp(guardada.refresh_token);
+            const refrescada = await refrescarSesionAuthApp(
+              guardada.refresh_token
+            );
             await activarSesion(refrescada);
           } else {
             borrarSesionAuthApp();
@@ -11184,7 +17613,12 @@ function AppConAuth() {
   }
 
   if (sesionInvitacion) {
-    return <PantallaCrearPasswordApp sesionInvitacion={sesionInvitacion} onCompletado={completarInvitacion} />;
+    return (
+      <PantallaCrearPasswordApp
+        sesionInvitacion={sesionInvitacion}
+        onCompletado={completarInvitacion}
+      />
+    );
   }
 
   if (errorAuth && !sesion && !perfil) {
