@@ -991,6 +991,373 @@ type ResumenInicio = {
 const SUPABASE_URL = 'https://natxwawulodkoauqkwqz.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_xeLKsuImDbVd9tnoBzSxXw_KAqod1bu';
 
+
+type RolUsuarioApp = 'coordinador_jefe' | 'coordinador' | 'entrenador';
+
+type PerfilUsuarioApp = {
+  id: string;
+  auth_user_id: string;
+  email: string;
+  nombre: string;
+  rol: RolUsuarioApp;
+  entrenador_id: string | null;
+  activo: boolean;
+};
+
+type SesionAuthApp = {
+  access_token: string;
+  refresh_token?: string;
+  expires_at?: number;
+  user: {
+    id: string;
+    email?: string;
+  };
+};
+
+type AppContenidoProps = {
+  perfilUsuario?: PerfilUsuarioApp;
+  onLogout?: () => void;
+};
+
+const MITICO_AUTH_STORAGE_KEY = 'mitico_auth_session_v1';
+
+function rolUsuarioTextoApp(rol?: string) {
+  if (rol === 'coordinador_jefe') return 'Coordinador jefe';
+  if (rol === 'coordinador') return 'Coordinador';
+  return 'Entrenador';
+}
+
+function esRolCoordinacionApp(rol?: string) {
+  return rol === 'coordinador_jefe' || rol === 'coordinador';
+}
+
+function limpiarUrlAuthApp() {
+  if (typeof window === 'undefined') return;
+  const limpia = `${window.location.origin}${window.location.pathname}`;
+  window.history.replaceState({}, document.title, limpia);
+}
+
+function leerSesionGuardadaApp(): SesionAuthApp | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(MITICO_AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as SesionAuthApp;
+  } catch {
+    return null;
+  }
+}
+
+function guardarSesionAuthApp(sesion: SesionAuthApp) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(MITICO_AUTH_STORAGE_KEY, JSON.stringify(sesion));
+}
+
+function borrarSesionAuthApp() {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(MITICO_AUTH_STORAGE_KEY);
+}
+
+function extraerSesionInvitacionDesdeUrlApp(): SesionAuthApp | null {
+  if (typeof window === 'undefined') return null;
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const search = new URLSearchParams(window.location.search.replace(/^\?/, ''));
+  const accessToken = hash.get('access_token') || search.get('access_token');
+  const refreshToken = hash.get('refresh_token') || search.get('refresh_token') || undefined;
+  const expiresIn = Number(hash.get('expires_in') || search.get('expires_in') || 0);
+  const type = hash.get('type') || search.get('type') || '';
+
+  if (!accessToken) return null;
+
+  return {
+    access_token: accessToken,
+    refresh_token: refreshToken,
+    expires_at: expiresIn ? Math.floor(Date.now() / 1000) + expiresIn : undefined,
+    user: { id: '', email: '' },
+  };
+}
+
+async function authRequestApp<T>(ruta: string, opciones: RequestInit = {}): Promise<T> {
+  const respuesta = await fetch(`${SUPABASE_URL}/auth/v1/${ruta}`, {
+    ...opciones,
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json',
+      ...(opciones.headers || {}),
+    },
+  });
+
+  const texto = await respuesta.text();
+  let datos: any = null;
+  try {
+    datos = texto ? JSON.parse(texto) : null;
+  } catch {
+    datos = texto;
+  }
+
+  if (!respuesta.ok) {
+    const mensaje = typeof datos === 'string' ? datos : datos?.msg || datos?.message || texto || 'Error de autenticación';
+    throw new Error(mensaje);
+  }
+
+  return datos as T;
+}
+
+async function iniciarSesionEmailPasswordApp(email: string, password: string): Promise<SesionAuthApp> {
+  const datos: any = await authRequestApp('token?grant_type=password', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+
+  return {
+    access_token: datos.access_token,
+    refresh_token: datos.refresh_token,
+    expires_at: datos.expires_at,
+    user: {
+      id: datos.user?.id || '',
+      email: datos.user?.email || email,
+    },
+  };
+}
+
+async function refrescarSesionAuthApp(refreshToken: string): Promise<SesionAuthApp> {
+  const datos: any = await authRequestApp('token?grant_type=refresh_token', {
+    method: 'POST',
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+
+  return {
+    access_token: datos.access_token,
+    refresh_token: datos.refresh_token || refreshToken,
+    expires_at: datos.expires_at,
+    user: {
+      id: datos.user?.id || '',
+      email: datos.user?.email || '',
+    },
+  };
+}
+
+async function obtenerUsuarioAuthApp(accessToken: string): Promise<{ id: string; email?: string }> {
+  const datos: any = await authRequestApp('user', {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  return {
+    id: datos.id || datos.user?.id || '',
+    email: datos.email || datos.user?.email || '',
+  };
+}
+
+async function actualizarPasswordInvitacionApp(accessToken: string, password: string) {
+  await authRequestApp('user', {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ password }),
+  });
+}
+
+async function cargarPerfilUsuarioApp(accessToken: string, userId: string): Promise<PerfilUsuarioApp | null> {
+  const respuesta = await fetch(
+    `${SUPABASE_URL}/rest/v1/usuarios_app?select=id,auth_user_id,email,nombre,rol,entrenador_id,activo&auth_user_id=eq.${encodeURIComponent(userId)}&activo=eq.true&limit=1`,
+    {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!respuesta.ok) {
+    const texto = await respuesta.text();
+    throw new Error(texto || 'No se pudo cargar el perfil del usuario.');
+  }
+
+  const perfiles = await respuesta.json();
+  return perfiles[0] || null;
+}
+
+const authShellApp: React.CSSProperties = {
+  minHeight: '100vh',
+  display: 'grid',
+  placeItems: 'center',
+  padding: 18,
+  background: 'linear-gradient(135deg, #eaf3ff 0%, #f8fbff 42%, #ecfdf5 100%)',
+  color: '#0f172a',
+};
+
+const authCardApp: React.CSSProperties = {
+  width: '100%',
+  maxWidth: 520,
+  background: 'rgba(255,255,255,0.92)',
+  border: '1px solid #dbeafe',
+  borderRadius: 28,
+  boxShadow: '0 24px 70px rgba(15,23,42,0.16)',
+  padding: 24,
+};
+
+const authInputApp: React.CSSProperties = {
+  width: '100%',
+  boxSizing: 'border-box',
+  border: '1px solid #cbd5e1',
+  borderRadius: 16,
+  padding: '13px 14px',
+  fontSize: 16,
+};
+
+const authBotonApp: React.CSSProperties = {
+  width: '100%',
+  border: '0',
+  borderRadius: 16,
+  padding: '14px 18px',
+  background: '#2563eb',
+  color: '#fff',
+  fontWeight: 900,
+  fontSize: 16,
+  cursor: 'pointer',
+  boxShadow: '0 14px 24px rgba(37,99,235,0.24)',
+};
+
+function PantallaLoginApp({ onLogin }: { onLogin: (email: string, password: string) => Promise<void> }) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [cargandoAuth, setCargandoAuth] = useState(false);
+  const [errorAuth, setErrorAuth] = useState('');
+
+  async function enviarLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setErrorAuth('');
+    if (!email.trim() || !password) {
+      setErrorAuth('Mete email y contraseña.');
+      return;
+    }
+    try {
+      setCargandoAuth(true);
+      await onLogin(email.trim(), password);
+    } catch (error: any) {
+      setErrorAuth(error?.message || 'No se ha podido iniciar sesión.');
+    } finally {
+      setCargandoAuth(false);
+    }
+  }
+
+  return (
+    <main style={authShellApp}>
+      <form onSubmit={enviarLogin} style={authCardApp}>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 18 }}>
+          <img src={LOGO_MITICO_CLUB} alt="Mítico Club" style={{ width: 64, height: 64, borderRadius: 18, objectFit: 'contain', background: '#fff', border: '1px solid #e5e7eb' }} />
+          <div>
+            <p style={{ margin: 0, color: '#2563eb', fontWeight: 900, letterSpacing: 2, textTransform: 'uppercase', fontSize: 12 }}>Acceso privado</p>
+            <h1 style={{ margin: '4px 0 0', fontSize: 26 }}>Mítico Baby / Ocio</h1>
+          </div>
+        </div>
+
+        <p style={{ marginTop: 0, color: '#475569', lineHeight: 1.45 }}>
+          Entra con tu email y contraseña. Si eres entrenador, solo verás tu panel de trabajo.
+        </p>
+
+        <label style={{ display: 'grid', gap: 7, fontWeight: 800, marginBottom: 12 }}>
+          Email
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} style={authInputApp} placeholder="tu@email.com" autoComplete="email" />
+        </label>
+
+        <label style={{ display: 'grid', gap: 7, fontWeight: 800, marginBottom: 16 }}>
+          Contraseña
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={authInputApp} placeholder="Contraseña" autoComplete="current-password" />
+        </label>
+
+        {errorAuth && <div style={{ background: '#fff1f2', color: '#be123c', border: '1px solid #fecdd3', borderRadius: 16, padding: 12, marginBottom: 12, fontWeight: 800 }}>{errorAuth}</div>}
+
+        <button type="submit" disabled={cargandoAuth} style={{ ...authBotonApp, opacity: cargandoAuth ? 0.7 : 1 }}>
+          {cargandoAuth ? 'Entrando...' : 'Entrar'}
+        </button>
+      </form>
+    </main>
+  );
+}
+
+function PantallaCrearPasswordApp({ sesionInvitacion, onCompletado }: { sesionInvitacion: SesionAuthApp; onCompletado: (sesion: SesionAuthApp) => Promise<void> }) {
+  const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
+  const [cargandoAuth, setCargandoAuth] = useState(false);
+  const [errorAuth, setErrorAuth] = useState('');
+
+  async function guardarPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setErrorAuth('');
+    if (password.length < 8) {
+      setErrorAuth('La contraseña debe tener mínimo 8 caracteres.');
+      return;
+    }
+    if (password !== password2) {
+      setErrorAuth('Las contraseñas no coinciden.');
+      return;
+    }
+
+    try {
+      setCargandoAuth(true);
+      await actualizarPasswordInvitacionApp(sesionInvitacion.access_token, password);
+      const usuario = await obtenerUsuarioAuthApp(sesionInvitacion.access_token);
+      await onCompletado({ ...sesionInvitacion, user: usuario });
+      limpiarUrlAuthApp();
+    } catch (error: any) {
+      setErrorAuth(error?.message || 'No se ha podido guardar la contraseña.');
+    } finally {
+      setCargandoAuth(false);
+    }
+  }
+
+  return (
+    <main style={authShellApp}>
+      <form onSubmit={guardarPassword} style={authCardApp}>
+        <div style={{ display: 'flex', gap: 14, alignItems: 'center', marginBottom: 18 }}>
+          <img src={LOGO_MITICO_CLUB} alt="Mítico Club" style={{ width: 64, height: 64, borderRadius: 18, objectFit: 'contain', background: '#fff', border: '1px solid #e5e7eb' }} />
+          <div>
+            <p style={{ margin: 0, color: '#16a34a', fontWeight: 900, letterSpacing: 2, textTransform: 'uppercase', fontSize: 12 }}>Invitación aceptada</p>
+            <h1 style={{ margin: '4px 0 0', fontSize: 26 }}>Crea tu contraseña</h1>
+          </div>
+        </div>
+
+        <p style={{ marginTop: 0, color: '#475569', lineHeight: 1.45 }}>
+          Pon tu contraseña para entrar después con email y contraseña desde el móvil.
+        </p>
+
+        <label style={{ display: 'grid', gap: 7, fontWeight: 800, marginBottom: 12 }}>
+          Nueva contraseña
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} style={authInputApp} placeholder="Mínimo 8 caracteres" autoComplete="new-password" />
+        </label>
+
+        <label style={{ display: 'grid', gap: 7, fontWeight: 800, marginBottom: 16 }}>
+          Repetir contraseña
+          <input type="password" value={password2} onChange={(e) => setPassword2(e.target.value)} style={authInputApp} placeholder="Repite la contraseña" autoComplete="new-password" />
+        </label>
+
+        {errorAuth && <div style={{ background: '#fff1f2', color: '#be123c', border: '1px solid #fecdd3', borderRadius: 16, padding: 12, marginBottom: 12, fontWeight: 800 }}>{errorAuth}</div>}
+
+        <button type="submit" disabled={cargandoAuth} style={{ ...authBotonApp, opacity: cargandoAuth ? 0.7 : 1 }}>
+          {cargandoAuth ? 'Guardando...' : 'Guardar contraseña y entrar'}
+        </button>
+      </form>
+    </main>
+  );
+}
+
+function PantallaAuthErrorApp({ mensaje, onSalir }: { mensaje: string; onSalir: () => void }) {
+  return (
+    <main style={authShellApp}>
+      <section style={authCardApp}>
+        <h1 style={{ marginTop: 0 }}>Acceso pendiente de configurar</h1>
+        <p style={{ color: '#475569', lineHeight: 1.45 }}>{mensaje}</p>
+        <button type="button" onClick={onSalir} style={authBotonApp}>Volver al login</button>
+      </section>
+    </main>
+  );
+}
+
 const opcionesNivel = [
   'INICIACION',
   'A',
@@ -1233,7 +1600,10 @@ function mesesTemporadaAgenda(anioInicio: number) {
   ];
 }
 
-function AppContenido() {
+function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
+  const esCoordinadorApp = !perfilUsuario || esRolCoordinacionApp(perfilUsuario.rol);
+  const esEntrenadorApp = Boolean(perfilUsuario && !esCoordinadorApp);
+  const entrenadorIdSesionApp = perfilUsuario?.entrenador_id || "";
   const [pantalla, setPantalla] = useState<
     | 'agenda'
     | 'resumenDia'
@@ -1253,7 +1623,13 @@ function AppContenido() {
     | 'exportaciones'
     | 'intensivos'
     | 'listados'
-  >('agenda');
+  >(esEntrenadorApp ? 'entrenador' : 'agenda');
+
+  useEffect(() => {
+    if (esEntrenadorApp && pantalla !== 'entrenador') {
+      setPantalla('entrenador');
+    }
+  }, [esEntrenadorApp, pantalla]);
 
   const [avisos, setAvisos] = useState<AvisoJose[]>([]);
   const [resumenInicio, setResumenInicio] = useState<ResumenInicio>({
@@ -5856,6 +6232,8 @@ function AppContenido() {
   });
 
   const gruposEntrenadorFiltrados = gruposEntrenador.filter((grupo) => {
+    if (!esCoordinadorApp && entrenadorIdSesionApp && grupo.entrenador_id !== entrenadorIdSesionApp) return false;
+    if (!esCoordinadorApp && !entrenadorIdSesionApp) return false;
     const texto = `${grupo.entrenador} ${grupo.nombre_grupo} ${
       grupo.modalidad
     } ${grupo.alumnos || ''}`.toLowerCase();
@@ -5882,6 +6260,8 @@ function AppContenido() {
   });
 
   const disponibilidadFiltrada = disponibilidad.filter((item) => {
+    if (!esCoordinadorApp && entrenadorIdSesionApp && item.entrenador_id !== entrenadorIdSesionApp) return false;
+    if (!esCoordinadorApp && !entrenadorIdSesionApp) return false;
     const coincideSemana = semanaAgendaActiva
       ? item.fecha_inicio === semanaAgendaActiva
       : true;
@@ -5906,6 +6286,8 @@ function AppContenido() {
     : '';
 
   const reportesFiltrados = reportesPendientes.filter((reporte) => {
+    if (!esCoordinadorApp && entrenadorIdSesionApp && reporte.entrenador_id !== entrenadorIdSesionApp) return false;
+    if (!esCoordinadorApp && !entrenadorIdSesionApp) return false;
     const texto =
       `${reporte.entrenador} ${reporte.alumno} ${reporte.nombre_grupo} ${reporte.modalidad} ${reporte.estado_reporte}`.toLowerCase();
 
@@ -6105,7 +6487,7 @@ function AppContenido() {
   );
   const totalGruposVistaEntrenador = gruposEntrenadorSemanal.reduce((total, entrenador) => total + Number(entrenador.total_grupos || 0), 0);
   const totalReportesVistaEntrenador = reportesFiltrados.filter((reporte) => reporte.estado_reporte === 'Falta reporte' || reporte.estado_reporte === 'Asistencia sin confirmar').length;
-  const totalDisponibilidadPendienteVistaEntrenador = disponibilidad.filter((turno) => turno.aviso_enviado && turno.respuesta === 'Pendiente').length;
+  const totalDisponibilidadPendienteVistaEntrenador = disponibilidadFiltrada.filter((turno) => turno.aviso_enviado && turno.respuesta === 'Pendiente').length;
 
   function alumnosDelGrupo(grupoId: string, entrenadorId: string) {
     return alumnosReporteEntrenador.filter(
@@ -6796,8 +7178,18 @@ function AppContenido() {
             <span>Semana de trabajo</span>
             <strong>{semanaAgendaActiva ? rangoSemanaAgenda(semanaAgendaActiva) : '-'}</strong>
           </div>
+
+          {perfilUsuario && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              <span style={{ border: '1px solid #cbd5e1', background: '#fff', borderRadius: 999, padding: '8px 12px', fontWeight: 900 }}>
+                {perfilUsuario.nombre} · {rolUsuarioTextoApp(perfilUsuario.rol)}
+              </span>
+              <button type="button" onClick={onLogout} style={botonSecundario}>Salir</button>
+            </div>
+          )}
         </div>
 
+        {esCoordinadorApp ? (
         <nav style={menuPrincipalApp}>
           <div style={menuBloqueColor('#2563eb', '#eff6ff')}>
             <span style={menuTituloColor('#2563eb')}>Trabajo semanal</span>
@@ -6837,6 +7229,14 @@ function AppContenido() {
             <button onClick={() => setPantalla('exportaciones')} style={botonMenuColor(pantalla === 'exportaciones', '#e11d48')}>Exportaciones</button>
           </div>
         </nav>
+        ) : (
+          <nav style={menuPrincipalApp}>
+            <div style={menuBloqueColor('#0f766e', '#ecfdf5')}>
+              <span style={menuTituloColor('#0f766e')}>Entrenador</span>
+              <button onClick={() => setPantalla('entrenador')} style={botonMenuColor(true, '#0f766e')}>Mi panel</button>
+            </div>
+          </nav>
+        )}
       </header>
 
       {whatsappPreview && (
@@ -8722,12 +9122,14 @@ function AppContenido() {
           </div>
 
           <article style={panelEntrenadorFiltroApp}>
-            <input
-              value={busquedaGrupoEntrenador}
-              onChange={(e) => setBusquedaGrupoEntrenador(e.target.value)}
-              placeholder="Buscar entrenador..."
-              style={inputEntrenadorBusqueda}
-            />
+            {esCoordinadorApp && (
+              <input
+                value={busquedaGrupoEntrenador}
+                onChange={(e) => setBusquedaGrupoEntrenador(e.target.value)}
+                placeholder="Buscar entrenador..."
+                style={inputEntrenadorBusqueda}
+              />
+            )}
 
             <div style={tabBarEntrenadorModerno}>
               <button
@@ -10687,10 +11089,119 @@ function AppContenido() {
 }
 
 
+function AppConAuth() {
+  const [sesion, setSesion] = useState<SesionAuthApp | null>(null);
+  const [perfil, setPerfil] = useState<PerfilUsuarioApp | null>(null);
+  const [sesionInvitacion, setSesionInvitacion] = useState<SesionAuthApp | null>(null);
+  const [cargandoAuth, setCargandoAuth] = useState(true);
+  const [errorAuth, setErrorAuth] = useState('');
+
+  async function activarSesion(nuevaSesion: SesionAuthApp) {
+    const usuario = nuevaSesion.user.id ? nuevaSesion.user : await obtenerUsuarioAuthApp(nuevaSesion.access_token);
+    const sesionCompleta = { ...nuevaSesion, user: usuario };
+    const perfilUsuario = await cargarPerfilUsuarioApp(sesionCompleta.access_token, usuario.id);
+
+    if (!perfilUsuario) {
+      borrarSesionAuthApp();
+      setSesion(null);
+      setPerfil(null);
+      setErrorAuth(`La cuenta ${usuario.email || ''} existe en Supabase Auth, pero todavía no tiene perfil en usuarios_app. Crea/vincula el perfil y vuelve a entrar.`);
+      return;
+    }
+
+    guardarSesionAuthApp(sesionCompleta);
+    setSesion(sesionCompleta);
+    setPerfil(perfilUsuario);
+    setErrorAuth('');
+  }
+
+  useEffect(() => {
+    async function iniciarAuth() {
+      try {
+        const sesionUrl = extraerSesionInvitacionDesdeUrlApp();
+        if (sesionUrl) {
+          setSesionInvitacion(sesionUrl);
+          setCargandoAuth(false);
+          return;
+        }
+
+        const guardada = leerSesionGuardadaApp();
+        if (!guardada) {
+          setCargandoAuth(false);
+          return;
+        }
+
+        try {
+          const usuario = await obtenerUsuarioAuthApp(guardada.access_token);
+          await activarSesion({ ...guardada, user: usuario });
+        } catch (error) {
+          if (guardada.refresh_token) {
+            const refrescada = await refrescarSesionAuthApp(guardada.refresh_token);
+            await activarSesion(refrescada);
+          } else {
+            borrarSesionAuthApp();
+          }
+        }
+      } catch (error: any) {
+        borrarSesionAuthApp();
+        setErrorAuth(error?.message || 'No se ha podido comprobar la sesión.');
+      } finally {
+        setCargandoAuth(false);
+      }
+    }
+
+    iniciarAuth();
+  }, []);
+
+  async function login(email: string, password: string) {
+    const nuevaSesion = await iniciarSesionEmailPasswordApp(email, password);
+    await activarSesion(nuevaSesion);
+  }
+
+  async function completarInvitacion(sesionNueva: SesionAuthApp) {
+    await activarSesion(sesionNueva);
+    setSesionInvitacion(null);
+  }
+
+  function salir() {
+    borrarSesionAuthApp();
+    setSesion(null);
+    setPerfil(null);
+    setSesionInvitacion(null);
+    setErrorAuth('');
+    limpiarUrlAuthApp();
+  }
+
+  if (cargandoAuth) {
+    return (
+      <main style={authShellApp}>
+        <section style={authCardApp}>
+          <h1 style={{ marginTop: 0 }}>Cargando acceso...</h1>
+          <p style={{ color: '#475569' }}>Comprobando sesión privada.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (sesionInvitacion) {
+    return <PantallaCrearPasswordApp sesionInvitacion={sesionInvitacion} onCompletado={completarInvitacion} />;
+  }
+
+  if (errorAuth && !sesion && !perfil) {
+    return <PantallaAuthErrorApp mensaje={errorAuth} onSalir={salir} />;
+  }
+
+  if (!sesion || !perfil) {
+    return <PantallaLoginApp onLogin={login} />;
+  }
+
+  return <AppContenido perfilUsuario={perfil} onLogout={salir} />;
+}
+
 export default function App() {
   return (
     <PantallaSegura>
-      <AppContenido />
+      <AppConAuth />
     </PantallaSegura>
   );
 }
