@@ -11962,10 +11962,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                 </select>
               </label>
               <label style={labelCampo}>
-                Semana lunes-domingo
+                <span>Semana lunes-domingo</span>
                 <select
                   value={semanaAgendaActiva}
                   onChange={(e) => setSemanaAgendaInicio(e.target.value)}
+                  style={selectCampo}
                 >
                   {semanasAgenda.map((semana) => (
                     <option key={semana} value={semana}>
