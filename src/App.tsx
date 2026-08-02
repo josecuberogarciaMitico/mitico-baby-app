@@ -2059,6 +2059,17 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     reporteInicial()
   );
 
+  useEffect(() => {
+    if (!reporteActivo || window.innerWidth > 719) return;
+
+    const overflowAnterior = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = overflowAnterior;
+    };
+  }, [reporteActivo]);
+
   const [alumnos, setAlumnos] = useState<AlumnoResumen[]>([]);
   const [busquedaAlumno, setBusquedaAlumno] = useState('');
   const [filtroAlumnos, setFiltroAlumnos] = useState<
@@ -14140,14 +14151,22 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                                 formularioCaja
                                                               }
                                                             >
-                                                              <h4
-                                                                style={{
-                                                                  marginTop: 0,
-                                                                }}
-                                                              >
-                                                                Reporte de{' '}
-                                                                {alumno.alumno}
-                                                              </h4>
+                                                              <div className="trainer-report-sheet-header">
+                                                                <div>
+                                                                  <span className="trainer-report-sheet-kicker">Reporte del alumno</span>
+                                                                  <h4>
+                                                                    {alumno.alumno}
+                                                                  </h4>
+                                                                </div>
+                                                                <button
+                                                                  type="button"
+                                                                  className="trainer-report-sheet-close"
+                                                                  onClick={cerrarFormularioReporte}
+                                                                  aria-label="Cerrar reporte"
+                                                                >
+                                                                  Cerrar
+                                                                </button>
+                                                              </div>
                                                               <details
                                                                 style={
                                                                   ayudaReporteEntrenadorCaja
@@ -14368,6 +14387,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                                 />
                                                               </label>
                                                               <div
+                                                                className="trainer-report-actions"
                                                                 style={{
                                                                   display:
                                                                     'flex',
