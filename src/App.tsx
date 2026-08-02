@@ -1013,6 +1013,11 @@ type ReporteActivo = {
   alumno_id: string;
 };
 
+type GrupoActivoEntrenador = {
+  grupo_id: string;
+  entrenador_id: string;
+};
+
 type IntensivoFormState = {
   temporada: string;
   nombre: string;
@@ -2053,6 +2058,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     });
   };
 
+  const [grupoActivoEntrenador, setGrupoActivoEntrenador] =
+    useState<GrupoActivoEntrenador | null>(null);
+  const [seccionGrupoEntrenador, setSeccionGrupoEntrenador] = useState<
+    'asistencia' | 'trabajo' | 'observaciones'
+  >('asistencia');
   const [reporteActivo, setReporteActivo] = useState<ReporteActivo | null>(
     null
   );
@@ -2060,8 +2070,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     reporteInicial()
   );
 
+  const overlayEntrenadorAbierto = Boolean(
+    grupoActivoEntrenador || reporteActivo
+  );
+
   useEffect(() => {
-    if (!reporteActivo || typeof window === 'undefined') return;
+    if (!overlayEntrenadorAbierto || typeof window === 'undefined') return;
     if (!window.matchMedia('(max-width: 719px)').matches) return;
 
     const scrollY = window.scrollY;
@@ -2090,7 +2104,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       document.body.style.overflow = estilosPrevios.overflow;
       window.scrollTo({ top: scrollY, behavior: 'auto' });
     };
-  }, [reporteActivo]);
+  }, [overlayEntrenadorAbierto]);
 
   const [alumnos, setAlumnos] = useState<AlumnoResumen[]>([]);
   const [busquedaAlumno, setBusquedaAlumno] = useState('');
@@ -2784,6 +2798,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   function cerrarFormularioReporte() {
     setReporteActivo(null);
     setFormReporte(reporteInicial());
+  }
+
+  function cerrarGrupoEntrenador() {
+    setGrupoActivoEntrenador(null);
+    setSeccionGrupoEntrenador('asistencia');
   }
 
   async function guardarReporteAlumno(alumno: AlumnoReporteEntrenador) {
@@ -8234,13 +8253,25 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     );
   }
 
+  function gruposSinConfirmarEntrenadorVista(entrenadorId: string) {
+    return gruposVistaEntrenador.filter(
+      (grupo) =>
+        grupo.entrenador_id === entrenadorId &&
+        grupo.estado_confirmacion !== 'Confirmado'
+    );
+  }
+
   const totalGruposVistaEntrenador = gruposVistaEntrenador.length;
-  const totalReportesVistaEntrenador = alumnosVistaEntrenador.filter(
-    (alumno) =>
-      alumno.estado_reporte === 'Falta reporte' ||
-      alumno.estado_reporte === 'Asistencia sin confirmar' ||
-      alumno.estado_asistencia === 'Pendiente'
-  ).length;
+  const totalReportesVistaEntrenador =
+    alumnosVistaEntrenador.filter(
+      (alumno) =>
+        alumno.estado_reporte === 'Falta reporte' ||
+        alumno.estado_reporte === 'Asistencia sin confirmar' ||
+        alumno.estado_asistencia === 'Pendiente'
+    ).length +
+    gruposVistaEntrenador.filter(
+      (grupo) => grupo.estado_confirmacion !== 'Confirmado'
+    ).length;
   const totalDisponibilidadPendienteVistaEntrenador =
     disponibilidadVistaEntrenador.filter(
       (turno) => (turno.respuesta || 'Pendiente') === 'Pendiente'
@@ -13793,12 +13824,22 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   </div>
                 </header>
 
-                {pendientesEntrenadorVista(bloqueEntrenador.entrenador_id).length >
-                  0 && (
+                {(pendientesEntrenadorVista(
+                  bloqueEntrenador.entrenador_id
+                ).length > 0 ||
+                  gruposSinConfirmarEntrenadorVista(
+                    bloqueEntrenador.entrenador_id
+                  ).length > 0) && (
                   <section style={avisoPendiente}>
                     <strong>Aviso de tareas pendientes</strong>
                     <p style={{ margin: '6px 0 0' }}>
                       Tienes{' '}
+                      {
+                        gruposSinConfirmarEntrenadorVista(
+                          bloqueEntrenador.entrenador_id
+                        ).length
+                      }{' '}
+                      grupos sin confirmar,{' '}
                       {
                         pendientesEntrenadorVista(
                           bloqueEntrenador.entrenador_id
@@ -13814,11 +13855,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                         ).filter(
                           (reporte) =>
                             reporte.estado_reporte ===
-                            'Asistencia sin confirmar'
+                              'Asistencia sin confirmar' ||
+                            reporte.estado_asistencia === 'Pendiente'
                         ).length
                       }{' '}
-                      asistencias sin confirmar. Entra en cada grupo y déjalo
-                      cerrado.
+                      asistencias pendientes. Confirma primero los grupos nuevos y
+                      completa después asistencia y reportes.
                     </p>
                   </section>
                 )}
@@ -14082,14 +14124,37 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                             const asistenciaCompleta =
                                               alumnosGrupo.length > 0 &&
                                               pendientes === 0;
-                                            const grupoCerrado =
-                                              asistenciaCompleta &&
-                                              faltaReporte === 0;
+                                            const estadoAccionGrupo =
+                                              grupo.estado_confirmacion !== 'Confirmado'
+                                                ? 'Pendiente de confirmar'
+                                                : !asistenciaCompleta
+                                                ? 'Falta asistencia'
+                                                : faltaReporte > 0
+                                                ? 'Faltan reportes'
+                                                : '';
+                                            const esGrupoActivo =
+                                              grupoActivoEntrenador?.grupo_id ===
+                                                grupo.grupo_id &&
+                                              grupoActivoEntrenador?.entrenador_id ===
+                                                grupo.entrenador_id;
+                                            const grupoDomId = `trainer-group-${grupo.entrenador_id}-${grupo.grupo_id}`.replace(
+                                              /[^a-zA-Z0-9_-]/g,
+                                              '-'
+                                            );
 
-                                            return (
+                                            const tarjetaGrupoEntrenador = (
                                               <article
                                                 key={`${grupo.entrenador_id}-${grupo.grupo_id}`}
-                                                className="trainer-group-card"
+                                                className={`trainer-group-card ${
+                                                  esGrupoActivo
+                                                    ? 'is-sheet-open'
+                                                    : ''
+                                                }`}
+                                                data-active-section={
+                                                  esGrupoActivo
+                                                    ? seccionGrupoEntrenador
+                                                    : undefined
+                                                }
                                                 style={{
                                                   ...grupoEntrenadorCardMovil,
                                                   ...estiloGrupoPorPistaApp(
@@ -14097,6 +14162,39 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                   ),
                                                 }}
                                               >
+                                                <div className="trainer-group-sheet-header">
+                                                  <div>
+                                                    <span className="trainer-group-sheet-kicker">
+                                                      Grupo de entrenamiento
+                                                    </span>
+                                                    <h3>
+                                                      {nombreGrupoVisualApp(
+                                                        grupo,
+                                                        indiceGrupoEntrenadorTurno
+                                                      )}
+                                                    </h3>
+                                                    <p>
+                                                      {capitalizarPrimera(
+                                                        new Date(
+                                                          `${grupo.fecha}T00:00:00`
+                                                        ).toLocaleDateString(
+                                                          'es-ES',
+                                                          { weekday: 'long' }
+                                                        )
+                                                      )}{' '}
+                                                      · {grupo.hora_inicio}–
+                                                      {grupo.hora_fin}
+                                                    </p>
+                                                  </div>
+                                                  <button
+                                                    type="button"
+                                                    className="trainer-group-sheet-close"
+                                                    onClick={cerrarGrupoEntrenador}
+                                                  >
+                                                    Cerrar
+                                                  </button>
+                                                </div>
+
                                                 <div
                                                   style={
                                                     grupoEntrenadorTopMovil
@@ -14140,23 +14238,73 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                   </div>
                                                 </div>
 
-                                                <div
-                                                  style={
-                                                    grupoCerrado
-                                                      ? avisoCompleto
-                                                      : avisoPendiente
-                                                  }
+                                                {estadoAccionGrupo && (
+                                                  <div
+                                                    className="trainer-group-action-status"
+                                                    style={avisoPendiente}
+                                                  >
+                                                    {estadoAccionGrupo}
+                                                  </div>
+                                                )}
+
+                                                <nav
+                                                  className="trainer-group-quick-nav"
+                                                  aria-label="Secciones del grupo"
                                                 >
-                                                  {grupoCerrado
-                                                    ? 'Grupo cerrado'
-                                                    : asistenciaCompleta
-                                                    ? 'Faltan reportes'
-                                                    : 'Falta asistencia'}
-                                                </div>
+                                                  <button
+                                                    type="button"
+                                                    className={
+                                                      seccionGrupoEntrenador ===
+                                                      'asistencia'
+                                                        ? 'is-active'
+                                                        : ''
+                                                    }
+                                                    onClick={() =>
+                                                      setSeccionGrupoEntrenador(
+                                                        'asistencia'
+                                                      )
+                                                    }
+                                                  >
+                                                    Asistencia
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    className={
+                                                      seccionGrupoEntrenador ===
+                                                      'trabajo'
+                                                        ? 'is-active'
+                                                        : ''
+                                                    }
+                                                    onClick={() =>
+                                                      setSeccionGrupoEntrenador(
+                                                        'trabajo'
+                                                      )
+                                                    }
+                                                  >
+                                                    Trabajo diario
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    className={
+                                                      seccionGrupoEntrenador ===
+                                                      'observaciones'
+                                                        ? 'is-active'
+                                                        : ''
+                                                    }
+                                                    onClick={() =>
+                                                      setSeccionGrupoEntrenador(
+                                                        'observaciones'
+                                                      )
+                                                    }
+                                                  >
+                                                    Observaciones
+                                                  </button>
+                                                </nav>
 
                                                 {grupo.estado_confirmacion !==
                                                   'Confirmado' && (
                                                   <button
+                                                    type="button"
                                                     className="trainer-confirm-button"
                                                     onClick={() =>
                                                       confirmarGrupoEntrenador(
@@ -14173,8 +14321,31 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                   </button>
                                                 )}
 
+                                                <button
+                                                  type="button"
+                                                  className="trainer-open-group-button"
+                                                  onClick={() => {
+                                                    setSeccionGrupoEntrenador(
+                                                      'asistencia'
+                                                    );
+                                                    setGrupoActivoEntrenador({
+                                                      grupo_id: grupo.grupo_id,
+                                                      entrenador_id:
+                                                        grupo.entrenador_id,
+                                                    });
+                                                  }}
+                                                >
+                                                  Abrir grupo
+                                                </button>
+
                                                 <section
-                                                  className="trainer-attendance-panel"
+                                                  id={`${grupoDomId}-asistencia`}
+                                                  className={`trainer-attendance-panel trainer-group-section-anchor ${
+                                                    seccionGrupoEntrenador ===
+                                                    'asistencia'
+                                                      ? 'is-active-section'
+                                                      : ''
+                                                  }`}
                                                   style={bloqueInfoEntrenador}
                                                 >
                                                   <div className="trainer-attendance-heading">
@@ -14348,33 +14519,76 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                 </section>
 
                                                 <details
-                                                  className="trainer-info-details trainer-work-details"
+                                                  id={`${grupoDomId}-trabajo`}
+                                                  className={`trainer-info-details trainer-work-details trainer-group-section-anchor ${
+                                                    seccionGrupoEntrenador ===
+                                                    'trabajo'
+                                                      ? 'is-active-section'
+                                                      : ''
+                                                  }`}
+                                                  open={
+                                                    esGrupoActivo &&
+                                                    seccionGrupoEntrenador ===
+                                                      'trabajo'
+                                                      ? true
+                                                      : undefined
+                                                  }
                                                   style={bloqueInfoEntrenador}
                                                 >
                                                   <summary>Trabajo diario</summary>
                                                   <div style={bloqueTexto}>
                                                     {formatearTrabajoDiario(
-                                                      grupo.trabajo_diario
+                                                      grupo.trabajo_diario ?? null
                                                     )}
                                                   </div>
                                                 </details>
 
-                                                {grupo.observaciones_importantes && (
-                                                  <details
-                                                    className="trainer-info-details trainer-observations-details"
-                                                    style={bloqueInfoEntrenador}
-                                                  >
-                                                    <summary>Observaciones importantes</summary>
-                                                    <div style={bloqueTexto}>
-                                                      {formatearObservaciones(
-                                                        grupo.observaciones_importantes
-                                                      )}
-                                                    </div>
-                                                  </details>
-                                                )}
+                                                <details
+                                                  id={`${grupoDomId}-observaciones`}
+                                                  className={`trainer-info-details trainer-observations-details trainer-group-section-anchor ${
+                                                    seccionGrupoEntrenador ===
+                                                    'observaciones'
+                                                      ? 'is-active-section'
+                                                      : ''
+                                                  }`}
+                                                  open={
+                                                    esGrupoActivo &&
+                                                    seccionGrupoEntrenador ===
+                                                      'observaciones'
+                                                      ? true
+                                                      : undefined
+                                                  }
+                                                  style={bloqueInfoEntrenador}
+                                                >
+                                                  <summary>Observaciones importantes</summary>
+                                                  <div style={bloqueTexto}>
+                                                    {formatearObservaciones(
+                                                      grupo.observaciones_importantes ??
+                                                        null
+                                                    )}
+                                                  </div>
+                                                </details>
 
                                               </article>
                                             );
+
+                                            const mostrarGrupoEnPortal =
+                                              esGrupoActivo &&
+                                              typeof document !== 'undefined' &&
+                                              typeof window !== 'undefined' &&
+                                              window.matchMedia(
+                                                '(max-width: 719px)'
+                                              ).matches;
+
+                                            if (mostrarGrupoEnPortal) {
+                                              return createPortal(
+                                                tarjetaGrupoEntrenador,
+                                                document.body,
+                                                `grupo-entrenador-${grupo.entrenador_id}-${grupo.grupo_id}`
+                                              );
+                                            }
+
+                                            return tarjetaGrupoEntrenador;
                                           }
                                         )}
                                         </div>

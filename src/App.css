@@ -1021,3 +1021,246 @@
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }
+
+
+/* =========================================================
+   AJUSTE 9 · GRUPO MÓVIL EN PORTAL REAL
+   La jerarquía semana > día > turno se conserva como índice.
+   Al abrir un grupo, React lo renderiza directamente en <body>,
+   fuera de acordeones y contenedores con overflow propios.
+   Escritorio mantiene la tarjeta integrada y toda su amplitud.
+   ========================================================= */
+
+.trainer-group-sheet-header,
+.trainer-open-group-button,
+.trainer-group-quick-nav {
+  display: none;
+}
+
+@media (max-width: 719px) {
+  .trainer-group-card:not(.is-sheet-open) > .trainer-attendance-panel,
+  .trainer-group-card:not(.is-sheet-open) > .trainer-info-details {
+    display: none !important;
+  }
+
+  .trainer-group-card:not(.is-sheet-open) .trainer-open-group-button {
+    display: block;
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 14px;
+    border: 1px solid rgba(37, 99, 235, 0.34);
+    border-radius: 14px;
+    background: linear-gradient(
+      135deg,
+      rgba(239, 246, 255, 0.98),
+      #ffffff
+    );
+    color: #1d4ed8;
+    font-size: 15px;
+    font-weight: 900;
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.13);
+  }
+
+  .trainer-group-card:not(.is-sheet-open) > .trainer-confirm-button {
+    display: block !important;
+    width: 100% !important;
+    min-height: 48px;
+    margin: 0 !important;
+    border: 1px solid #1d4ed8 !important;
+    background: #2563eb !important;
+    color: #ffffff !important;
+    font-size: 15px;
+    font-weight: 900;
+    box-shadow: 0 10px 22px rgba(37, 99, 235, 0.24) !important;
+  }
+
+  .trainer-group-card:not(.is-sheet-open) > .trainer-group-action-status {
+    margin: 0 !important;
+  }
+
+  .trainer-group-card.is-sheet-open {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147483646 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100vw !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding:
+      max(12px, env(safe-area-inset-top))
+      14px
+      max(18px, env(safe-area-inset-bottom)) !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #f8fafc !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: none !important;
+    isolation: isolate;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-group-sheet-header {
+    position: sticky;
+    top: calc(-1 * max(12px, env(safe-area-inset-top)));
+    z-index: 8;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    width: auto;
+    margin:
+      calc(-1 * max(12px, env(safe-area-inset-top)))
+      -14px
+      2px;
+    padding:
+      max(12px, env(safe-area-inset-top))
+      14px
+      12px;
+    border-bottom: 1px solid #e2e8f0;
+    background: rgba(248, 250, 252, 0.98);
+    backdrop-filter: blur(12px);
+  }
+
+  .trainer-group-sheet-header h3 {
+    margin: 2px 0 4px;
+    font-size: 20px;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .trainer-group-sheet-header p {
+    margin: 0;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .trainer-group-sheet-kicker {
+    display: block;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .trainer-group-sheet-close {
+    flex: 0 0 auto;
+    min-height: 42px;
+    padding: 9px 13px;
+    border: 1px solid rgba(148, 163, 184, 0.48);
+    border-radius: 14px;
+    background: #ffffff;
+    color: #334155;
+    font-weight: 900;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-open-group-button {
+    display: none !important;
+  }
+
+
+  .trainer-group-card.is-sheet-open .trainer-group-quick-nav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #dbeafe;
+    border-radius: 16px;
+    background: #ffffff;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-group-quick-nav button {
+    min-width: 0;
+    min-height: 42px;
+    padding: 8px 6px;
+    border: 1px solid rgba(37, 99, 235, 0.28);
+    border-radius: 12px;
+    background: linear-gradient(135deg, #eff6ff, #ffffff);
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1.15;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-group-quick-nav button:active,
+  .trainer-group-card.is-sheet-open .trainer-group-quick-nav button.is-active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-group-section-anchor {
+    scroll-margin-top: 96px;
+  }
+
+  .trainer-group-card.is-sheet-open > *,
+  .trainer-group-card.is-sheet-open .trainer-attendance-panel,
+  .trainer-group-card.is-sheet-open .trainer-info-details,
+  .trainer-group-card.is-sheet-open .trainer-student-row {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-attendance-panel,
+  .trainer-group-card.is-sheet-open .trainer-info-details {
+    display: none !important;
+  }
+
+  .trainer-group-card.is-sheet-open[data-active-section='asistencia']
+    .trainer-attendance-panel,
+  .trainer-group-card.is-sheet-open[data-active-section='trabajo']
+    .trainer-work-details,
+  .trainer-group-card.is-sheet-open[data-active-section='observaciones']
+    .trainer-observations-details {
+    display: block !important;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-attendance-panel {
+    padding: 12px !important;
+    overflow: visible !important;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-student-row {
+    overflow: visible !important;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-info-details {
+    overflow: hidden !important;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-info-details > summary {
+    pointer-events: none;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-confirm-button {
+    display: none !important;
+  }
+}
+
+@media (min-width: 720px) {
+  .trainer-group-sheet-header,
+  .trainer-open-group-button {
+    display: none !important;
+  }
+}
+
+
+/* =========================================================
+   AJUSTE 11 · NAVEGACIÓN REAL DEL GRUPO Y CONFIRMACIÓN CLARA
+   En móvil cada pestaña muestra su contenido inmediatamente debajo.
+   La confirmación se realiza desde la tarjeta compacta y desaparece al guardarse.
+   Los estados completos no muestran una franja verde innecesaria.
+   ========================================================= */
