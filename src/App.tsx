@@ -547,6 +547,23 @@ type BorradorDisponibilidadEditor = {
   dias: DiaDisponibilidadEditor[];
 };
 
+type EstadoServidorDisponibilidadEditor =
+  | 'sin_preparar'
+  | 'borrador'
+  | 'publicado';
+
+type RespuestaDisponibilidadEditorServidor = {
+  existe: boolean;
+  semana_inicio: string;
+  estado: EstadoServidorDisponibilidadEditor;
+  fuente: 'plantilla' | 'borrador' | 'publicado';
+  fecha_limite: string | null;
+  publicada_at: string | null;
+  version_publicada: number;
+  actualizado_en?: string | null;
+  dias: DiaDisponibilidadEditor[];
+};
+
 function idTurnoDisponibilidadEditor() {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
     return crypto.randomUUID();
@@ -570,6 +587,12 @@ function sumarDiasEditor(fechaIso: string, dias: number) {
 function fechaLimiteAutomaticaDisponibilidadEditor(semanaInicio: string) {
   // Las semanas del calendario de temporada comienzan siempre en lunes.
   return `${semanaInicio}T13:00`;
+}
+
+function formatearFechaHoraDisponibilidadEditor(valor: string) {
+  if (!valor) return '-';
+  const [fecha, hora = ''] = valor.split('T');
+  return `${formatearFecha(fecha)}${hora ? ` · ${hora.slice(0, 5)}` : ''}`;
 }
 
 function turnoEditor(
@@ -694,6 +717,47 @@ function normalizarBorradorDisponibilidadEditor(
         ...diaPlantilla,
         activo: Boolean(guardado.activo),
         turnos: turnosNormalizados,
+      };
+    }),
+  };
+}
+
+function normalizarBorradorDisponibilidadEditorServidor(
+  respuesta: RespuestaDisponibilidadEditorServidor
+): BorradorDisponibilidadEditor {
+  const plantilla = crearBorradorDisponibilidadEditor(respuesta.semana_inicio);
+  const diasServidor = new Map(
+    (respuesta.dias || []).map((dia) => [dia.fecha, dia])
+  );
+
+  return {
+    ...plantilla,
+    fecha_limite:
+      respuesta.fecha_limite ||
+      fechaLimiteAutomaticaDisponibilidadEditor(respuesta.semana_inicio),
+    fecha_limite_manual:
+      Boolean(respuesta.fecha_limite) &&
+      respuesta.fecha_limite !==
+        fechaLimiteAutomaticaDisponibilidadEditor(respuesta.semana_inicio),
+    actualizado_en: respuesta.actualizado_en || respuesta.publicada_at || null,
+    dias: plantilla.dias.map((diaPlantilla) => {
+      const diaServidor = diasServidor.get(diaPlantilla.fecha);
+      if (!diaServidor) {
+        return { ...diaPlantilla, activo: false, turnos: [] };
+      }
+
+      const turnos = Array.isArray(diaServidor.turnos)
+        ? diaServidor.turnos
+        : [];
+
+      return {
+        ...diaPlantilla,
+        activo: Boolean(diaServidor.activo),
+        turnos: diaPermiteVariosTurnosDisponibilidadEditor(
+          diaPlantilla.nombre
+        )
+          ? turnos
+          : turnos.slice(0, 1),
       };
     }),
   };
@@ -2410,6 +2474,16 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     categoriaResumenDisponibilidad,
     setCategoriaResumenDisponibilidad,
   ] = useState<Record<string, 'disponibles' | 'no_puedo' | 'pendientes'>>({});
+  const [estadoServidorDisponibilidadEditor, setEstadoServidorDisponibilidadEditor] =
+    useState<EstadoServidorDisponibilidadEditor>('sin_preparar');
+  const [publicadaAtDisponibilidadEditor, setPublicadaAtDisponibilidadEditor] =
+    useState<string | null>(null);
+  const [versionPublicadaDisponibilidadEditor, setVersionPublicadaDisponibilidadEditor] =
+    useState(0);
+  const [guardandoDisponibilidadEditor, setGuardandoDisponibilidadEditor] =
+    useState(false);
+  const [publicandoDisponibilidadEditor, setPublicandoDisponibilidadEditor] =
+    useState(false);
 
   const [reportesPendientes, setReportesPendientes] = useState<
     ReportePendiente[]
@@ -2691,6 +2765,52 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     }
 
     return respuesta.json();
+  }
+
+  async function ejecutarFuncionAuthJson<T>(
+    nombreFuncion: string,
+    body: object
+  ): Promise<T> {
+    const sesionActual = leerSesionGuardadaApp();
+    const accessToken = sesionActual?.access_token;
+
+    if (!accessToken) {
+      throw new Error('La sesión ha caducado. Sal y vuelve a entrar.');
+    }
+
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
+      {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    const texto = await respuesta.text();
+    let datos: unknown = null;
+    try {
+      datos = texto ? JSON.parse(texto) : null;
+    } catch {
+      datos = texto;
+    }
+
+    if (!respuesta.ok) {
+      const mensaje =
+        typeof datos === 'string'
+          ? datos
+          : (datos as any)?.message ||
+            (datos as any)?.hint ||
+            texto ||
+            'Error conectando con Supabase';
+      throw new Error(mensaje);
+    }
+
+    return datos as T;
   }
 
   async function cargarInicio() {
@@ -3711,40 +3831,96 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     : [];
 
   useEffect(() => {
-    setDiaDisponibilidadEditorAbierto(null);
-    setTurnoResumenDisponibilidadAbierto(null);
+    let cancelado = false;
 
-    if (!semanaAgendaActiva) {
-      setBorradorDisponibilidadEditor(null);
-      return;
-    }
+    async function cargarEditorSemana() {
+      setDiaDisponibilidadEditorAbierto(null);
+      setTurnoResumenDisponibilidadAbierto(null);
+      setPublicadaAtDisponibilidadEditor(null);
+      setVersionPublicadaDisponibilidadEditor(0);
+      setEstadoServidorDisponibilidadEditor('sin_preparar');
 
-    try {
-      const guardado = window.localStorage.getItem(
-        claveStorageDisponibilidadEditor(semanaAgendaActiva)
-      );
-      if (guardado) {
-        const borrador = JSON.parse(guardado) as BorradorDisponibilidadEditor;
-        if (
-          borrador?.version === 1 &&
-          borrador.semana_inicio === semanaAgendaActiva &&
-          Array.isArray(borrador.dias)
-        ) {
-          setBorradorDisponibilidadEditor(
-            normalizarBorradorDisponibilidadEditor(borrador)
+      if (!semanaAgendaActiva) {
+        setBorradorDisponibilidadEditor(null);
+        return;
+      }
+
+      let borradorLocal: BorradorDisponibilidadEditor | null = null;
+      try {
+        const guardado = window.localStorage.getItem(
+          claveStorageDisponibilidadEditor(semanaAgendaActiva)
+        );
+        if (guardado) {
+          const borrador = JSON.parse(guardado) as BorradorDisponibilidadEditor;
+          if (
+            borrador?.version === 1 &&
+            borrador.semana_inicio === semanaAgendaActiva &&
+            Array.isArray(borrador.dias)
+          ) {
+            borradorLocal = normalizarBorradorDisponibilidadEditor(borrador);
+          }
+        }
+      } catch {
+        borradorLocal = null;
+      }
+
+      try {
+        const respuesta =
+          await ejecutarFuncionAuthJson<RespuestaDisponibilidadEditorServidor>(
+            'obtener_disponibilidad_semana_editor_app',
+            { p_semana_inicio: semanaAgendaActiva }
           );
-          setMensajeDisponibilidadEditor('Borrador local recuperado.');
+
+        if (cancelado) return;
+
+        if (respuesta?.existe) {
+          const borradorServidor =
+            normalizarBorradorDisponibilidadEditorServidor(respuesta);
+          setBorradorDisponibilidadEditor(borradorServidor);
+          setEstadoServidorDisponibilidadEditor(respuesta.estado);
+          setPublicadaAtDisponibilidadEditor(respuesta.publicada_at || null);
+          setVersionPublicadaDisponibilidadEditor(
+            Number(respuesta.version_publicada || 0)
+          );
+          setMensajeDisponibilidadEditor(
+            respuesta.estado === 'publicado'
+              ? 'Semana publicada recuperada desde Supabase.'
+              : 'Borrador recuperado desde Supabase.'
+          );
+          window.localStorage.setItem(
+            claveStorageDisponibilidadEditor(semanaAgendaActiva),
+            JSON.stringify(borradorServidor)
+          );
           return;
         }
+      } catch (err) {
+        if (cancelado) return;
+        const mensaje = err instanceof Error ? err.message : '';
+        setMensajeDisponibilidadEditor(
+          borradorLocal
+            ? `Borrador local recuperado. Supabase todavía no está conectado${
+                mensaje ? `: ${mensaje}` : '.'
+              }`
+            : 'Plantilla semanal preparada. Ejecuta el SQL del Sprint 2B para guardar en Supabase.'
+        );
       }
-    } catch {
-      // Si el borrador local estuviera dañado, se crea una plantilla limpia.
+
+      if (cancelado) return;
+      setBorradorDisponibilidadEditor(
+        borradorLocal || crearBorradorDisponibilidadEditor(semanaAgendaActiva)
+      );
+      if (!borradorLocal) {
+        setMensajeDisponibilidadEditor((actual) =>
+          actual || 'Plantilla semanal preparada.'
+        );
+      }
     }
 
-    setBorradorDisponibilidadEditor(
-      crearBorradorDisponibilidadEditor(semanaAgendaActiva)
-    );
-    setMensajeDisponibilidadEditor('Plantilla semanal preparada.');
+    void cargarEditorSemana();
+
+    return () => {
+      cancelado = true;
+    };
   }, [semanaAgendaActiva]);
 
   function actualizarBorradorDisponibilidadEditor(
@@ -3892,20 +4068,174 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     }));
   }
 
-  function guardarBorradorDisponibilidadEditor() {
-    if (!borradorDisponibilidadEditor) return;
-    const guardado: BorradorDisponibilidadEditor = {
-      ...normalizarBorradorDisponibilidadEditor(
-        borradorDisponibilidadEditor
-      ),
-      actualizado_en: new Date().toISOString(),
-    };
-    window.localStorage.setItem(
-      claveStorageDisponibilidadEditor(guardado.semana_inicio),
-      JSON.stringify(guardado)
+  function validarBorradorDisponibilidadEditor(
+    borrador: BorradorDisponibilidadEditor
+  ): string | null {
+    const diasActivos = borrador.dias.filter((dia) => dia.activo);
+    if (diasActivos.length === 0) {
+      return 'Activa al menos un día antes de guardar.';
+    }
+
+    for (const dia of diasActivos) {
+      if (dia.turnos.length === 0) {
+        return `${capitalizarPrimera(dia.nombre)} está activo pero no tiene turnos.`;
+      }
+
+      if (
+        !diaPermiteVariosTurnosDisponibilidadEditor(dia.nombre) &&
+        dia.turnos.length > 1
+      ) {
+        return `${capitalizarPrimera(
+          dia.nombre
+        )} solo puede tener un turno.`;
+      }
+
+      for (const turno of dia.turnos) {
+        if (!turno.hora_inicio || !turno.hora_fin) {
+          return `Completa el horario de ${dia.nombre}.`;
+        }
+        if (turno.hora_fin <= turno.hora_inicio) {
+          return `La hora final de ${dia.nombre} debe ser posterior a la inicial.`;
+        }
+        if (turno.modalidades.length === 0) {
+          return `Selecciona al menos una modalidad en ${dia.nombre}.`;
+        }
+      }
+    }
+
+    if (!borrador.fecha_limite) {
+      return 'La fecha límite para responder es obligatoria.';
+    }
+
+    return null;
+  }
+
+  async function guardarBorradorDisponibilidadEditor(): Promise<boolean> {
+    if (!borradorDisponibilidadEditor || guardandoDisponibilidadEditor) {
+      return false;
+    }
+
+    const normalizado = normalizarBorradorDisponibilidadEditor(
+      borradorDisponibilidadEditor
     );
-    setBorradorDisponibilidadEditor(guardado);
-    setMensajeDisponibilidadEditor('Borrador guardado en este navegador.');
+    const errorValidacion = validarBorradorDisponibilidadEditor(normalizado);
+    if (errorValidacion) {
+      alert(errorValidacion);
+      return false;
+    }
+
+    setGuardandoDisponibilidadEditor(true);
+    setMensajeDisponibilidadEditor('Guardando borrador en Supabase...');
+
+    try {
+      const respuesta =
+        await ejecutarFuncionAuthJson<RespuestaDisponibilidadEditorServidor>(
+          'guardar_borrador_disponibilidad_semana_editor_app',
+          {
+            p_semana_inicio: normalizado.semana_inicio,
+            p_fecha_limite: normalizado.fecha_limite,
+            p_dias: normalizado.dias,
+          }
+        );
+
+      const guardado = normalizarBorradorDisponibilidadEditorServidor(
+        respuesta
+      );
+      window.localStorage.setItem(
+        claveStorageDisponibilidadEditor(guardado.semana_inicio),
+        JSON.stringify(guardado)
+      );
+      setBorradorDisponibilidadEditor(guardado);
+      setEstadoServidorDisponibilidadEditor('borrador');
+      setPublicadaAtDisponibilidadEditor(respuesta.publicada_at || null);
+      setVersionPublicadaDisponibilidadEditor(
+        Number(respuesta.version_publicada || 0)
+      );
+      setMensajeDisponibilidadEditor(
+        'Borrador guardado en Supabase y protegido en este navegador.'
+      );
+      return true;
+    } catch (err) {
+      const mensaje =
+        err instanceof Error ? err.message : 'No se pudo guardar el borrador.';
+      setMensajeDisponibilidadEditor(`Error: ${mensaje}`);
+      alert(
+        `${mensaje}
+
+Comprueba que has ejecutado el SQL del Sprint 2B y que sigues con la sesión iniciada.`
+      );
+      return false;
+    } finally {
+      setGuardandoDisponibilidadEditor(false);
+    }
+  }
+
+  async function publicarDisponibilidadEditor() {
+    if (!borradorDisponibilidadEditor || publicandoDisponibilidadEditor) return;
+
+    const errorValidacion = validarBorradorDisponibilidadEditor(
+      borradorDisponibilidadEditor
+    );
+    if (errorValidacion) {
+      alert(errorValidacion);
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Publicar la disponibilidad de la semana ${rangoSemanaAgenda(
+        borradorDisponibilidadEditor.semana_inicio
+      )}?
+
+${resumenBorradorDisponibilidadEditor.dias} días · ${
+        resumenBorradorDisponibilidadEditor.turnos
+      } turnos
+Límite: ${formatearFechaHoraDisponibilidadEditor(
+        borradorDisponibilidadEditor.fecha_limite
+      )}
+
+En Sprint 2B quedará publicada y protegida en Supabase. La Vista entrenador se conectará a esta publicación en Sprint 2C.`
+    );
+    if (!confirmar) return;
+
+    setPublicandoDisponibilidadEditor(true);
+    setMensajeDisponibilidadEditor('Guardando y publicando semana...');
+
+    try {
+      const guardado = await guardarBorradorDisponibilidadEditor();
+      if (!guardado) return;
+
+      const respuesta =
+        await ejecutarFuncionAuthJson<RespuestaDisponibilidadEditorServidor>(
+          'publicar_disponibilidad_semana_editor_app',
+          { p_semana_inicio: borradorDisponibilidadEditor.semana_inicio }
+        );
+
+      const publicado = normalizarBorradorDisponibilidadEditorServidor(
+        respuesta
+      );
+      window.localStorage.setItem(
+        claveStorageDisponibilidadEditor(publicado.semana_inicio),
+        JSON.stringify(publicado)
+      );
+      setBorradorDisponibilidadEditor(publicado);
+      setEstadoServidorDisponibilidadEditor('publicado');
+      setPublicadaAtDisponibilidadEditor(respuesta.publicada_at || null);
+      setVersionPublicadaDisponibilidadEditor(
+        Number(respuesta.version_publicada || 1)
+      );
+      setMensajeDisponibilidadEditor(
+        'Disponibilidad publicada correctamente en Supabase.'
+      );
+      setVistaPreviaDisponibilidadEditor(false);
+      alert('Disponibilidad publicada correctamente.');
+    } catch (err) {
+      const mensaje =
+        err instanceof Error ? err.message : 'No se pudo publicar la semana.';
+      setMensajeDisponibilidadEditor(`Error publicando: ${mensaje}`);
+      alert(mensaje);
+    } finally {
+      setPublicandoDisponibilidadEditor(false);
+    }
   }
 
   function restaurarPlantillaDisponibilidadEditor() {
@@ -17490,13 +17820,43 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
             <section className="availability-editor-shell">
               <header className="availability-editor-toolbar">
                 <div>
-                  <span className="availability-editor-kicker">EDITOR DE LA SEMANA</span>
+                  <div className="availability-editor-title-row">
+                    <span className="availability-editor-kicker">EDITOR DE LA SEMANA</span>
+                    <span
+                      className={`availability-server-status availability-server-status--${estadoServidorDisponibilidadEditor}`}
+                    >
+                      {estadoServidorDisponibilidadEditor === 'publicado'
+                        ? `Publicado${
+                            versionPublicadaDisponibilidadEditor > 0
+                              ? ` · v${versionPublicadaDisponibilidadEditor}`
+                              : ''
+                          }`
+                        : estadoServidorDisponibilidadEditor === 'borrador'
+                        ? 'Borrador en Supabase'
+                        : 'Sin preparar'}
+                    </span>
+                  </div>
                   <h3>
                     {rangoSemanaAgenda(
                       borradorDisponibilidadEditor.semana_inicio
                     )}
                   </h3>
                   <p>{mensajeDisponibilidadEditor}</p>
+                  {publicadaAtDisponibilidadEditor && (
+                    <small className="availability-published-at">
+                      Última publicación:{' '}
+                      {new Date(publicadaAtDisponibilidadEditor).toLocaleString(
+                        'es-ES',
+                        {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        }
+                      )}
+                    </small>
+                  )}
                 </div>
                 <div className="availability-editor-actions">
                   <button
@@ -17516,9 +17876,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   <button
                     type="button"
                     className="availability-primary-button"
-                    onClick={guardarBorradorDisponibilidadEditor}
+                    onClick={() => void guardarBorradorDisponibilidadEditor()}
+                    disabled={
+                      guardandoDisponibilidadEditor ||
+                      publicandoDisponibilidadEditor
+                    }
                   >
-                    Guardar borrador
+                    {guardandoDisponibilidadEditor
+                      ? 'Guardando...'
+                      : 'Guardar borrador'}
                   </button>
                 </div>
               </header>
@@ -17818,19 +18184,28 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
               <footer className="availability-editor-footer">
                 <div>
-                  <strong>Publicación real todavía protegida</strong>
+                  <strong>Publicación protegida en Supabase</strong>
                   <span>
-                    En este Sprint 2A el borrador no cambia lo que ven los
-                    entrenadores. La conexión segura con Supabase se activa en
-                    el Sprint 2B.
+                    Guardar conserva el borrador. Publicar crea una copia estable
+                    de esta semana. La Vista entrenador seguirá usando el sistema
+                    actual hasta conectar Sprint 2C.
                   </span>
                 </div>
                 <button
                   type="button"
                   className="availability-publish-button"
-                  disabled
+                  onClick={() => void publicarDisponibilidadEditor()}
+                  disabled={
+                    guardandoDisponibilidadEditor ||
+                    publicandoDisponibilidadEditor ||
+                    resumenBorradorDisponibilidadEditor.turnos === 0
+                  }
                 >
-                  Publicar disponibilidad · Sprint 2B
+                  {publicandoDisponibilidadEditor
+                    ? 'Publicando...'
+                    : estadoServidorDisponibilidadEditor === 'publicado'
+                    ? 'Volver a publicar cambios'
+                    : 'Publicar disponibilidad'}
                 </button>
               </footer>
 
@@ -18895,12 +19270,33 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                 <button
                   type="button"
                   className="availability-primary-button"
-                  onClick={() => {
-                    guardarBorradorDisponibilidadEditor();
-                    setVistaPreviaDisponibilidadEditor(false);
+                  disabled={
+                    guardandoDisponibilidadEditor ||
+                    publicandoDisponibilidadEditor
+                  }
+                  onClick={async () => {
+                    const guardado =
+                      await guardarBorradorDisponibilidadEditor();
+                    if (guardado) setVistaPreviaDisponibilidadEditor(false);
                   }}
                 >
-                  Guardar borrador
+                  {guardandoDisponibilidadEditor
+                    ? 'Guardando...'
+                    : 'Guardar borrador'}
+                </button>
+                <button
+                  type="button"
+                  className="availability-publish-button"
+                  disabled={
+                    guardandoDisponibilidadEditor ||
+                    publicandoDisponibilidadEditor ||
+                    resumenBorradorDisponibilidadEditor.turnos === 0
+                  }
+                  onClick={() => void publicarDisponibilidadEditor()}
+                >
+                  {publicandoDisponibilidadEditor
+                    ? 'Publicando...'
+                    : 'Publicar semana'}
                 </button>
               </footer>
             </section>
