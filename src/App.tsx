@@ -517,6 +517,7 @@ type DisponibilidadEntrenador = {
   aviso_enviado_at: string | null;
   fecha_limite: string | null;
   especialidades: string[] | null;
+  fuente?: 'legacy' | 'editor';
 };
 
 
@@ -562,6 +563,17 @@ type RespuestaDisponibilidadEditorServidor = {
   version_publicada: number;
   actualizado_en?: string | null;
   dias: DiaDisponibilidadEditor[];
+};
+
+type RespuestaDisponibilidadPublicadaEntrenadoresEditor = {
+  gestionada: boolean;
+  existe: boolean;
+  semana_inicio: string;
+  estado: 'sin_preparar' | 'sin_publicar' | 'publicado';
+  fecha_limite?: string | null;
+  publicada_at: string | null;
+  version_publicada: number;
+  turnos: DisponibilidadEntrenador[];
 };
 
 function idTurnoDisponibilidadEditor() {
@@ -2454,6 +2466,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [disponibilidad, setDisponibilidad] = useState<
     DisponibilidadEntrenador[]
   >([]);
+  const [disponibilidadEditorVista, setDisponibilidadEditorVista] = useState<
+    RespuestaDisponibilidadPublicadaEntrenadoresEditor | null
+  >(null);
   const [busquedaDisponibilidad, setBusquedaDisponibilidad] = useState('');
   const [filtroDisponibilidad, setFiltroDisponibilidad] = useState<
     'todos' | 'disponibles' | 'no_puedo' | 'pendientes'
@@ -4193,7 +4208,11 @@ Límite: ${formatearFechaHoraDisponibilidadEditor(
         borradorDisponibilidadEditor.fecha_limite
       )}
 
-En Sprint 2B quedará publicada y protegida en Supabase. La Vista entrenador se conectará a esta publicación en Sprint 2C.`
+La Vista entrenador recibirá esta publicación inmediatamente.${
+        versionPublicadaDisponibilidadEditor > 0
+          ? '\n\nATENCIÓN: al volver a publicar se reiniciarán las respuestas de esta semana para que todos confirmen de nuevo los horarios.'
+          : ''
+      }`
     );
     if (!confirmar) return;
 
@@ -4224,10 +4243,13 @@ En Sprint 2B quedará publicada y protegida en Supabase. La Vista entrenador se 
         Number(respuesta.version_publicada || 1)
       );
       setMensajeDisponibilidadEditor(
-        'Disponibilidad publicada correctamente en Supabase.'
+        'Disponibilidad publicada y enviada a la Vista entrenador.'
       );
       setVistaPreviaDisponibilidadEditor(false);
-      alert('Disponibilidad publicada correctamente.');
+      await cargarDisponibilidad();
+      alert(
+        'Disponibilidad publicada. Los entrenadores ya pueden responder desde su panel.'
+      );
     } catch (err) {
       const mensaje =
         err instanceof Error ? err.message : 'No se pudo publicar la semana.';
@@ -4819,14 +4841,81 @@ En Sprint 2B quedará publicada y protegida en Supabase. La Vista entrenador se 
     setDetalle(null);
 
     try {
-      const data = await consultarSupabase<DisponibilidadEntrenador>(
+      const datosLegacy = await consultarSupabase<DisponibilidadEntrenador>(
         'v_disponibilidad_entrenador',
         'select=*&order=entrenador.asc,fecha.asc,hora_inicio.asc'
       );
-      setDisponibilidad(data);
+
+      const fechaReferenciaDisponibilidad = new Date();
+      if (
+        fechaReferenciaDisponibilidad.getDay() === 1 &&
+        fechaReferenciaDisponibilidad.getHours() < 6
+      ) {
+        fechaReferenciaDisponibilidad.setDate(
+          fechaReferenciaDisponibilidad.getDate() - 1
+        );
+      }
+      const semanaOperativaDisponibilidad = inicioSemanaAgenda(
+        claveFechaAgenda(fechaReferenciaDisponibilidad)
+      );
+      const semanaConsulta = esCoordinadorApp
+        ? semanaAgendaActiva || semanaOperativaDisponibilidad
+        : semanaOperativaDisponibilidad;
+      let respuestaEditor: RespuestaDisponibilidadPublicadaEntrenadoresEditor | null = null;
+
+      if (semanaConsulta) {
+        try {
+          respuestaEditor =
+            await ejecutarFuncionAuthJson<RespuestaDisponibilidadPublicadaEntrenadoresEditor>(
+              'obtener_disponibilidad_publicada_entrenadores_editor_app',
+              { p_semana_inicio: semanaConsulta }
+            );
+        } catch (errEditor) {
+          // El sistema anterior permanece como respaldo si todavía no se ha
+          // instalado Sprint 2C o Supabase devuelve un error puntual.
+          console.warn('No se pudo cargar la disponibilidad del editor:', errEditor);
+        }
+      }
+
+      setDisponibilidadEditorVista(respuestaEditor);
+
+      if (respuestaEditor?.gestionada && semanaConsulta) {
+        // En una semana gestionada por el editor, la publicación nueva sustituye
+        // únicamente a los turnos legacy de esa semana. El histórico anterior no
+        // se toca y sigue disponible para consultas y cierres.
+        const fechaFinSemanaConsulta = claveFechaAgenda(
+          new Date(
+            crearFechaAgenda(semanaConsulta).getTime() +
+              6 * 24 * 60 * 60 * 1000
+          )
+        );
+
+        // Los turnos TEST/legacy no siempre guardan `fecha_inicio` como el lunes
+        // exacto de la semana. Por eso se sustituyen usando la fecha real del
+        // turno y el rango lunes-domingo de la semana publicada.
+        const restoHistorico = datosLegacy.filter((turno) => {
+          const fechaTurno = String(turno.fecha || '').slice(0, 10);
+          if (!fechaTurno) return true;
+
+          return (
+            fechaTurno < semanaConsulta ||
+            fechaTurno > fechaFinSemanaConsulta
+          );
+        });
+        const turnosEditor = (respuestaEditor.turnos || []).map((turno) => ({
+          ...turno,
+          fuente: 'editor' as const,
+        }));
+        setDisponibilidad([...restoHistorico, ...turnosEditor]);
+      } else {
+        setDisponibilidad(
+          datosLegacy.map((turno) => ({ ...turno, fuente: 'legacy' as const }))
+        );
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
       setDisponibilidad([]);
+      setDisponibilidadEditorVista(null);
     }
 
     setCargando(false);
@@ -6112,11 +6201,22 @@ En Sprint 2B quedará publicada y protegida en Supabase. La Vista entrenador se 
     );
 
     try {
-      await ejecutarFuncion('responder_disponibilidad_turno_por_id_app', {
-        p_disponibilidad_id: turno.id,
-        p_respuesta: respuesta,
-        p_comentario: turno.comentario || null,
-      });
+      if (turno.fuente === 'editor') {
+        await ejecutarFuncionAuthJson(
+          'responder_disponibilidad_editor_app',
+          {
+            p_respuesta_id: turno.id,
+            p_respuesta: respuesta,
+            p_comentario: turno.comentario || null,
+          }
+        );
+      } else {
+        await ejecutarFuncion('responder_disponibilidad_turno_por_id_app', {
+          p_disponibilidad_id: turno.id,
+          p_respuesta: respuesta,
+          p_comentario: turno.comentario || null,
+        });
+      }
     } catch (err) {
       // Si Supabase falla, recuperamos el estado anterior para no mostrar un
       // dato como guardado cuando realmente no lo está.
@@ -6137,20 +6237,75 @@ En Sprint 2B quedará publicada y protegida en Supabase. La Vista entrenador se 
     const semana = semanaAgendaActiva || semanaActualAgenda;
     if (!semana)
       return 'Selecciona una semana antes de copiar el recordatorio.';
-    const dias = diasTrabajoSemanaAgenda(semana);
-    let mensaje = `*Disponibilidad Mítico Baby / Ocio*\nSemana ${rangoSemanaAgenda(
-      semana
-    )}\n\nPor favor confirma tu disponibilidad para estos turnos:\n\n`;
 
-    dias.forEach((dia) => {
-      mensaje += `*${capitalizarPrimera(dia.nombre)} ${formatearFecha(
-        dia.fecha
-      )}*\n`;
-      turnosTrabajoDiaAgenda(dia.fecha).forEach((turno) => {
-        mensaje += `- ${turno.inicio}–${turno.fin}\n`;
+    const turnosPublicadosUnicos = Array.from(
+      new Map(
+        disponibilidad
+          .filter(
+            (turno) =>
+              turno.fecha_inicio === semana &&
+              turno.aviso_enviado &&
+              turno.fuente === 'editor'
+          )
+          .map(
+            (turno) =>
+              [
+                `${turno.fecha}__${horaCorta(
+                  turno.hora_inicio
+                )}__${horaCorta(turno.hora_fin)}`,
+                turno,
+              ] as [string, DisponibilidadEntrenador]
+          )
+      ).values()
+    ).sort((a, b) =>
+      `${a.fecha} ${a.hora_inicio}`.localeCompare(
+        `${b.fecha} ${b.hora_inicio}`
+      )
+    );
+
+    let mensaje = `*Disponibilidad Mítico Baby / Ocio*
+Semana ${rangoSemanaAgenda(
+      semana
+    )}
+
+Por favor confirma tu disponibilidad para estos turnos:
+
+`;
+
+    if (turnosPublicadosUnicos.length > 0) {
+      const porDia = new Map<string, DisponibilidadEntrenador[]>();
+      turnosPublicadosUnicos.forEach((turno) => {
+        const actuales = porDia.get(turno.fecha) || [];
+        actuales.push(turno);
+        porDia.set(turno.fecha, actuales);
       });
-      mensaje += '\n';
-    });
+
+      Array.from(porDia.entries())
+        .sort(([fechaA], [fechaB]) => fechaA.localeCompare(fechaB))
+        .forEach(([fecha, turnosDia]) => {
+          mensaje += `*${capitalizarPrimera(
+            new Date(`${fecha}T00:00:00`).toLocaleDateString('es-ES', {
+              weekday: 'long',
+            })
+          )} ${formatearFecha(fecha)}*\n`;
+          turnosDia.forEach((turno) => {
+            mensaje += `- ${horaCorta(turno.hora_inicio)}–${horaCorta(
+              turno.hora_fin
+            )}${turno.nombre_turno ? ` · ${turno.nombre_turno}` : ''}\n`;
+          });
+          mensaje += '\n';
+        });
+    } else {
+      diasTrabajoSemanaAgenda(semana).forEach((dia) => {
+        mensaje += `*${capitalizarPrimera(dia.nombre)} ${formatearFecha(
+          dia.fecha
+        )}*\n`;
+        turnosTrabajoDiaAgenda(dia.fecha).forEach((turno) => {
+          mensaje += `- ${turno.inicio}–${turno.fin}\n`;
+        });
+        mensaje += '\n';
+      });
+    }
 
     mensaje +=
       'No hace falta responder por WhatsApp: rellenadlo en la app. Gracias equipo.';
@@ -8417,6 +8572,19 @@ En Sprint 2B quedará publicada y protegida en Supabase. La Vista entrenador se 
     }
     if (pantalla === 'listados') cargarListados();
   }, [pantalla]);
+
+  useEffect(() => {
+    if (
+      pantalla === 'disponibilidad' ||
+      pantalla === 'agenda' ||
+      pantalla === 'resumenDia' ||
+      pantalla === 'ocioSemana' ||
+      pantalla === 'intensivos' ||
+      pantalla === 'entrenador'
+    ) {
+      void cargarDisponibilidad();
+    }
+  }, [semanaAgendaActiva]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -14310,6 +14478,12 @@ En Sprint 2B quedará publicada y protegida en Supabase. La Vista entrenador se 
                   {totalDisponibilidadPendienteVistaEntrenador} disponibilidades
                   pendientes
                 </span>
+                {disponibilidadEditorVista?.existe && (
+                  <span>
+                    Disponibilidad publicada · v
+                    {disponibilidadEditorVista.version_publicada}
+                  </span>
+                )}
               </div>
             </div>
             <button
@@ -14552,11 +14726,19 @@ En Sprint 2B quedará publicada y protegida en Supabase. La Vista entrenador se 
                 gruposSemanalVistaEntrenador.length === 0)) &&
             !error && (
               <article style={tarjetaMovilVacia}>
-                <h3 style={{ marginTop: 0 }}>Sin datos en esta pestaña</h3>
+                <h3 style={{ marginTop: 0 }}>
+                  {tabVistaEntrenador === 'disponibilidad' &&
+                  disponibilidadEditorVista?.gestionada &&
+                  !disponibilidadEditorVista.existe
+                    ? 'Disponibilidad pendiente de publicación'
+                    : 'Sin datos en esta pestaña'}
+                </h3>
                 <p style={{ marginBottom: 0 }}>
-                  La semana está limpia. La disponibilidad y los grupos aparecerán
-                  cuando Jose los publique. Las tareas anteriores pendientes
-                  seguirán visibles hasta completarlas.
+                  {tabVistaEntrenador === 'disponibilidad' &&
+                  disponibilidadEditorVista?.gestionada &&
+                  !disponibilidadEditorVista.existe
+                    ? 'Jose está preparando la semana. Los turnos aparecerán aquí únicamente cuando publique la versión definitiva.'
+                    : 'La semana está limpia. La disponibilidad y los grupos aparecerán cuando Jose los publique. Las tareas anteriores pendientes seguirán visibles hasta completarlas.'}
                 </p>
               </article>
             )}
@@ -17502,12 +17684,22 @@ En Sprint 2B quedará publicada y protegida en Supabase. La Vista entrenador se 
               <span className="availability-editor-kicker">SPRINT 2 · EDITOR SEMANAL</span>
               <h2>Disponibilidad semanal</h2>
               <p>
-                Prepara solo los días y turnos reales. Guarda el borrador,
-                revísalo y publícalo cuando esté conectado en el Sprint 2B.
+                Prepara solo los días y turnos reales. Al publicar, la semana
+                sustituye automáticamente al sistema anterior en la Vista entrenador.
               </p>
             </div>
             <div className="availability-editor-hero-status">
-              <strong>Borrador</strong>
+              <strong>
+                {estadoServidorDisponibilidadEditor === 'publicado'
+                  ? `Publicado${
+                      versionPublicadaDisponibilidadEditor > 0
+                        ? ` · v${versionPublicadaDisponibilidadEditor}`
+                        : ''
+                    }`
+                  : estadoServidorDisponibilidadEditor === 'borrador'
+                  ? 'Borrador'
+                  : 'Sin preparar'}
+              </strong>
               <span>
                 {resumenBorradorDisponibilidadEditor.dias} días ·{' '}
                 {resumenBorradorDisponibilidadEditor.turnos} turnos

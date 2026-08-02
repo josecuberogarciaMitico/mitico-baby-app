@@ -2420,3 +2420,78 @@
     width: 100%;
   }
 }
+
+/* Sprint 2B · estados de Supabase y publicación real */
+.availability-editor-title-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.availability-editor-title-row .availability-editor-kicker {
+  margin-bottom: 0;
+}
+
+.availability-server-status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 5px 10px;
+  border: 1px solid;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.availability-server-status--sin_preparar {
+  border-color: #cbd5e1;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.availability-server-status--borrador {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+.availability-server-status--publicado {
+  border-color: #16a34a;
+  background: #dcfce7;
+  color: #166534;
+}
+
+.availability-published-at {
+  display: block;
+  margin-top: 6px;
+  color: #64748b;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.availability-publish-button {
+  border-color: #166534;
+  background: #16a34a;
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 9px 20px rgba(22, 163, 74, 0.2);
+}
+
+.availability-primary-button:disabled,
+.availability-publish-button:disabled,
+.availability-soft-button:disabled {
+  border-color: #d6d3d1;
+  background: #e7e5e4;
+  color: #78716c;
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.78;
+}
+
+@media (max-width: 719px) {
+  .availability-editor-title-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}
