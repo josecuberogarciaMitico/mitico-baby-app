@@ -834,79 +834,103 @@
   }
 }
 
+
 /* =========================================================
-   AJUSTE 6 · REPORTE A ANCHO COMPLETO EN MÓVIL
-   Mantiene los acordeones abiertos detrás y usa una hoja de
-   trabajo a pantalla completa solo mientras se rellena el reporte.
-   En escritorio conserva el formulario integrado y ancho.
+   AJUSTE 7 · REPORTE MÓVIL EN PORTAL REAL
+   El formulario móvil se renderiza directamente en <body>,
+   fuera de acordeones y contenedores con ancho/overflow propios.
    ========================================================= */
+
+.trainer-report-overlay {
+  display: none;
+}
 
 .trainer-report-sheet-header {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 14px;
 }
 
-.trainer-report-sheet-header h4 {
-  margin: 3px 0 0;
-  font-size: 18px;
-  line-height: 1.25;
+.trainer-report-sheet-header h3 {
+  margin: 2px 0 4px;
+  font-size: 20px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.trainer-report-sheet-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.35;
   overflow-wrap: anywhere;
 }
 
 .trainer-report-sheet-kicker {
   display: block;
   color: #64748b;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 900;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
 .trainer-report-sheet-close {
   flex: 0 0 auto;
-  min-height: 40px;
-  padding: 8px 12px;
-  border: 1px solid rgba(148, 163, 184, 0.42);
-  border-radius: 13px;
+  min-height: 42px;
+  padding: 9px 13px;
+  border: 1px solid rgba(148, 163, 184, 0.48);
+  border-radius: 14px;
   background: #ffffff;
   color: #334155;
   font-weight: 900;
 }
 
-.trainer-report-actions button {
-  min-height: 46px;
-}
-
 @media (max-width: 719px) {
-  .trainer-report-form {
-    position: fixed !important;
-    inset: 0 !important;
-    z-index: 9999 !important;
-    width: 100vw !important;
-    max-width: 100vw !important;
-    height: 100dvh !important;
-    max-height: 100dvh !important;
-    margin: 0 !important;
+  .trainer-report-form--inline {
+    display: none !important;
+  }
+
+  .trainer-report-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    display: flex;
+    width: 100%;
+    height: 100dvh;
+    min-width: 0;
+    background: #f8fafc;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .trainer-report-form--sheet {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    height: 100%;
+    margin: 0;
     padding:
       max(12px, env(safe-area-inset-top))
       14px
-      max(16px, env(safe-area-inset-bottom)) !important;
-    border: 0 !important;
-    border-radius: 0 !important;
-    background: #f8fafc !important;
-    overflow-x: hidden !important;
-    overflow-y: auto !important;
+      max(18px, env(safe-area-inset-bottom));
+    border: 0;
+    border-radius: 0;
+    background: #f8fafc;
+    overflow-x: hidden;
+    overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    box-shadow: none !important;
+    box-shadow: none;
   }
 
-  .trainer-report-sheet-header {
+  .trainer-report-form--sheet .trainer-report-sheet-header {
     position: sticky;
     top: calc(-1 * max(12px, env(safe-area-inset-top)));
-    z-index: 3;
+    z-index: 5;
     margin:
       calc(-1 * max(12px, env(safe-area-inset-top)))
       -14px
@@ -915,72 +939,85 @@
       max(12px, env(safe-area-inset-top))
       14px
       12px;
-    background: rgba(248, 250, 252, 0.97);
     border-bottom: 1px solid #e2e8f0;
+    background: rgba(248, 250, 252, 0.98);
     backdrop-filter: blur(12px);
   }
 
-  .trainer-report-sheet-header h4 {
-    font-size: 18px;
-  }
-
-  .trainer-report-form > details {
+  .trainer-report-form--sheet > details {
+    width: 100% !important;
+    max-width: 100% !important;
     border-radius: 15px !important;
   }
 
-  .trainer-report-grid {
+  .trainer-report-form--sheet .trainer-report-grid {
     grid-template-columns: minmax(0, 1fr) !important;
     gap: 12px !important;
-  }
-
-  .trainer-report-form label {
-    font-size: 15px;
-  }
-
-  .trainer-report-form select,
-  .trainer-report-form textarea,
-  .trainer-report-form input {
     width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .trainer-report-form--sheet label,
+  .trainer-report-form--sheet select,
+  .trainer-report-form--sheet textarea,
+  .trainer-report-form--sheet input,
+  .trainer-report-form--sheet summary {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .trainer-report-form--sheet select,
+  .trainer-report-form--sheet textarea,
+  .trainer-report-form--sheet input {
     min-height: 48px;
     font-size: 16px !important;
   }
 
-  .trainer-report-form textarea {
-    min-height: 128px;
+  .trainer-report-form--sheet textarea {
+    min-height: 132px;
   }
 
-  .trainer-report-actions {
+  .trainer-report-form--sheet .trainer-report-actions {
     position: sticky;
-    bottom: calc(-1 * max(16px, env(safe-area-inset-bottom)));
-    z-index: 3;
+    bottom: calc(-1 * max(18px, env(safe-area-inset-bottom)));
+    z-index: 5;
     display: grid !important;
-    grid-template-columns: minmax(0, 1.35fr) minmax(0, 0.65fr);
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.72fr);
+    gap: 10px !important;
+    width: auto !important;
     margin:
       18px
       -14px
-      calc(-1 * max(16px, env(safe-area-inset-bottom))) !important;
+      calc(-1 * max(18px, env(safe-area-inset-bottom))) !important;
     padding:
       12px
       14px
-      max(16px, env(safe-area-inset-bottom));
-    background: rgba(248, 250, 252, 0.97);
+      max(18px, env(safe-area-inset-bottom));
     border-top: 1px solid #e2e8f0;
+    background: rgba(248, 250, 252, 0.98);
     backdrop-filter: blur(12px);
   }
 
-  .trainer-report-actions button {
-    width: 100%;
+  .trainer-report-form--sheet .trainer-report-actions button {
+    width: 100% !important;
+    min-height: 48px;
     margin: 0 !important;
   }
 }
 
 @media (min-width: 720px) {
-  .trainer-report-form {
+  .trainer-report-form--sheet {
+    display: none !important;
+  }
+
+  .trainer-report-form--inline {
     width: 100% !important;
     max-width: none !important;
   }
 
-  .trainer-report-grid {
+  .trainer-report-form--inline .trainer-report-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
 }

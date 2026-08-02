@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import './App.css';
 import { LOGO_MITICO_CLUB, FOTO_MITICO_HERO } from './assets/imagenes';
 import {
@@ -2060,13 +2061,34 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   );
 
   useEffect(() => {
-    if (!reporteActivo || window.innerWidth > 719) return;
+    if (!reporteActivo || typeof window === 'undefined') return;
+    if (!window.matchMedia('(max-width: 719px)').matches) return;
 
-    const overflowAnterior = document.body.style.overflow;
+    const scrollY = window.scrollY;
+    const estilosPrevios = {
+      position: document.body.style.position,
+      top: document.body.style.top,
+      left: document.body.style.left,
+      right: document.body.style.right,
+      width: document.body.style.width,
+      overflow: document.body.style.overflow,
+    };
+
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
     document.body.style.overflow = 'hidden';
 
     return () => {
-      document.body.style.overflow = overflowAnterior;
+      document.body.style.position = estilosPrevios.position;
+      document.body.style.top = estilosPrevios.top;
+      document.body.style.left = estilosPrevios.left;
+      document.body.style.right = estilosPrevios.right;
+      document.body.style.width = estilosPrevios.width;
+      document.body.style.overflow = estilosPrevios.overflow;
+      window.scrollTo({ top: scrollY, behavior: 'auto' });
     };
   }, [reporteActivo]);
 
@@ -8477,6 +8499,175 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     );
   }
 
+  const alumnoReporteActivo = reporteActivo
+    ? alumnosReporteEntrenador.find(
+        (alumno) =>
+          alumno.grupo_id === reporteActivo.grupo_id &&
+          alumno.alumno_id === reporteActivo.alumno_id
+      ) || null
+    : null;
+
+  const grupoReporteActivo = reporteActivo
+    ? gruposEntrenador.find((grupo) => grupo.grupo_id === reporteActivo.grupo_id) || null
+    : null;
+
+  function renderFormularioReporteEntrenador(
+    alumno: AlumnoReporteEntrenador,
+    nivelGrupo: string,
+    modo: 'inline' | 'sheet'
+  ) {
+    const esSheet = modo === 'sheet';
+
+    return (
+      <div
+        className={`trainer-report-form trainer-report-form--${modo}`}
+        style={esSheet ? undefined : formularioCaja}
+      >
+        {esSheet ? (
+          <div className="trainer-report-sheet-header">
+            <div>
+              <span className="trainer-report-sheet-kicker">Reporte del alumno</span>
+              <h3>{alumno.alumno}</h3>
+              <p>
+                {alumno.nombre_grupo}
+                {alumno.nivel_alumno ? ` · Nivel ${alumno.nivel_alumno}` : ''}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="trainer-report-sheet-close"
+              onClick={cerrarFormularioReporte}
+            >
+              Cerrar
+            </button>
+          </div>
+        ) : (
+          <h4 style={{ marginTop: 0 }}>Reporte de {alumno.alumno}</h4>
+        )}
+
+        <details style={ayudaReporteEntrenadorCaja}>
+          <summary style={summaryAyudaReporteEntrenador}>
+            Ver ayuda rápida para rellenar reporte
+          </summary>
+          <AyudaReporteEntrenador
+            nivel={
+              formReporte.nivel ||
+              alumno.nivel_alumno ||
+              nivelGrupo ||
+              ''
+            }
+          />
+        </details>
+
+        <div className="trainer-report-grid" style={gridFormulario}>
+          <CampoSelect
+            label="Nivel"
+            value={formReporte.nivel}
+            opciones={opcionesNivel}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, nivel: valor })
+            }
+          />
+          <CampoSelect
+            label="Actitud"
+            value={formReporte.actitud}
+            opciones={opcionesActitud}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, actitud: valor })
+            }
+          />
+          <CampoSelect
+            label="Técnica"
+            value={formReporte.tecnica}
+            opciones={opcionesTecnica}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, tecnica: valor })
+            }
+          />
+          <CampoSelect
+            label="Pista"
+            value={formReporte.pista}
+            opciones={opcionesPista}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, pista: valor })
+            }
+          />
+          <CampoSelect
+            label="Autonomía"
+            value={formReporte.autonomia}
+            opciones={opcionesAutonomia}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, autonomia: valor })
+            }
+          />
+          <CampoSelect
+            label="Remontes"
+            value={formReporte.remontes}
+            opciones={opcionesRemontes}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, remontes: valor })
+            }
+          />
+          <CampoSelect
+            label="Incidencia"
+            value={formReporte.incidencia}
+            opciones={opcionesIncidencia}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, incidencia: valor })
+            }
+          />
+          <CampoSelect
+            label="Recomendación"
+            value={formReporte.recomendacion}
+            opciones={opcionesRecomendacion}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, recomendacion: valor })
+            }
+          />
+        </div>
+
+        <label style={labelCampo}>
+          Observaciones
+          <textarea
+            value={formReporte.observaciones}
+            onChange={(e) =>
+              setFormReporte({
+                ...formReporte,
+                observaciones: e.target.value,
+              })
+            }
+            style={textarea}
+          />
+        </label>
+
+        <div
+          className="trainer-report-actions"
+          style={{
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'wrap',
+            marginTop: 12,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => guardarReporteAlumno(alumno)}
+            style={botonPrincipal}
+          >
+            Guardar reporte
+          </button>
+          <button
+            type="button"
+            onClick={cerrarFormularioReporte}
+            style={botonSecundario}
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   function calcularEstadoPlanning(grupo: GrupoPlanning) {
     const alumnosEstadoGrupo = alumnosReporteEntrenador.filter(
       (alumno) => alumno.grupo_id === grupo.grupo_id
@@ -14144,285 +14335,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
                                                           {formularioAbierto(
                                                             alumno
-                                                          ) && (
-                                                            <div
-                                                              className="trainer-report-form"
-                                                              style={
-                                                                formularioCaja
-                                                              }
-                                                            >
-                                                              <div className="trainer-report-sheet-header">
-                                                                <div>
-                                                                  <span className="trainer-report-sheet-kicker">Reporte del alumno</span>
-                                                                  <h4>
-                                                                    {alumno.alumno}
-                                                                  </h4>
-                                                                </div>
-                                                                <button
-                                                                  type="button"
-                                                                  className="trainer-report-sheet-close"
-                                                                  onClick={cerrarFormularioReporte}
-                                                                  aria-label="Cerrar reporte"
-                                                                >
-                                                                  Cerrar
-                                                                </button>
-                                                              </div>
-                                                              <details
-                                                                style={
-                                                                  ayudaReporteEntrenadorCaja
-                                                                }
-                                                              >
-                                                                <summary
-                                                                  style={
-                                                                    summaryAyudaReporteEntrenador
-                                                                  }
-                                                                >
-                                                                  Ver ayuda
-                                                                  rápida para
-                                                                  rellenar
-                                                                  reporte
-                                                                </summary>
-                                                                <AyudaReporteEntrenador
-                                                                  nivel={
-                                                                    formReporte.nivel ||
-                                                                    alumno.nivel_alumno ||
-                                                                    grupo.nivel_grupo ||
-                                                                    ''
-                                                                  }
-                                                                />
-                                                              </details>
-                                                              <div
-                                                                className="trainer-report-grid"
-                                                                style={
-                                                                  gridFormulario
-                                                                }
-                                                              >
-                                                                <CampoSelect
-                                                                  label="Nivel"
-                                                                  value={
-                                                                    formReporte.nivel
-                                                                  }
-                                                                  opciones={
-                                                                    opcionesNivel
-                                                                  }
-                                                                  onChange={(
-                                                                    valor
-                                                                  ) =>
-                                                                    setFormReporte(
-                                                                      {
-                                                                        ...formReporte,
-                                                                        nivel:
-                                                                          valor,
-                                                                      }
-                                                                    )
-                                                                  }
-                                                                />
-                                                                <CampoSelect
-                                                                  label="Actitud"
-                                                                  value={
-                                                                    formReporte.actitud
-                                                                  }
-                                                                  opciones={
-                                                                    opcionesActitud
-                                                                  }
-                                                                  onChange={(
-                                                                    valor
-                                                                  ) =>
-                                                                    setFormReporte(
-                                                                      {
-                                                                        ...formReporte,
-                                                                        actitud:
-                                                                          valor,
-                                                                      }
-                                                                    )
-                                                                  }
-                                                                />
-                                                                <CampoSelect
-                                                                  label="Técnica"
-                                                                  value={
-                                                                    formReporte.tecnica
-                                                                  }
-                                                                  opciones={
-                                                                    opcionesTecnica
-                                                                  }
-                                                                  onChange={(
-                                                                    valor
-                                                                  ) =>
-                                                                    setFormReporte(
-                                                                      {
-                                                                        ...formReporte,
-                                                                        tecnica:
-                                                                          valor,
-                                                                      }
-                                                                    )
-                                                                  }
-                                                                />
-                                                                <CampoSelect
-                                                                  label="Pista"
-                                                                  value={
-                                                                    formReporte.pista
-                                                                  }
-                                                                  opciones={
-                                                                    opcionesPista
-                                                                  }
-                                                                  onChange={(
-                                                                    valor
-                                                                  ) =>
-                                                                    setFormReporte(
-                                                                      {
-                                                                        ...formReporte,
-                                                                        pista:
-                                                                          valor,
-                                                                      }
-                                                                    )
-                                                                  }
-                                                                />
-                                                                <CampoSelect
-                                                                  label="Autonomía"
-                                                                  value={
-                                                                    formReporte.autonomia
-                                                                  }
-                                                                  opciones={
-                                                                    opcionesAutonomia
-                                                                  }
-                                                                  onChange={(
-                                                                    valor
-                                                                  ) =>
-                                                                    setFormReporte(
-                                                                      {
-                                                                        ...formReporte,
-                                                                        autonomia:
-                                                                          valor,
-                                                                      }
-                                                                    )
-                                                                  }
-                                                                />
-                                                                <CampoSelect
-                                                                  label="Remontes"
-                                                                  value={
-                                                                    formReporte.remontes
-                                                                  }
-                                                                  opciones={
-                                                                    opcionesRemontes
-                                                                  }
-                                                                  onChange={(
-                                                                    valor
-                                                                  ) =>
-                                                                    setFormReporte(
-                                                                      {
-                                                                        ...formReporte,
-                                                                        remontes:
-                                                                          valor,
-                                                                      }
-                                                                    )
-                                                                  }
-                                                                />
-                                                                <CampoSelect
-                                                                  label="Incidencia"
-                                                                  value={
-                                                                    formReporte.incidencia
-                                                                  }
-                                                                  opciones={
-                                                                    opcionesIncidencia
-                                                                  }
-                                                                  onChange={(
-                                                                    valor
-                                                                  ) =>
-                                                                    setFormReporte(
-                                                                      {
-                                                                        ...formReporte,
-                                                                        incidencia:
-                                                                          valor,
-                                                                      }
-                                                                    )
-                                                                  }
-                                                                />
-                                                                <CampoSelect
-                                                                  label="Recomendación"
-                                                                  value={
-                                                                    formReporte.recomendacion
-                                                                  }
-                                                                  opciones={
-                                                                    opcionesRecomendacion
-                                                                  }
-                                                                  onChange={(
-                                                                    valor
-                                                                  ) =>
-                                                                    setFormReporte(
-                                                                      {
-                                                                        ...formReporte,
-                                                                        recomendacion:
-                                                                          valor,
-                                                                      }
-                                                                    )
-                                                                  }
-                                                                />
-                                                              </div>
-                                                              <label
-                                                                style={
-                                                                  labelCampo
-                                                                }
-                                                              >
-                                                                Observaciones
-                                                                <textarea
-                                                                  value={
-                                                                    formReporte.observaciones
-                                                                  }
-                                                                  onChange={(
-                                                                    e
-                                                                  ) =>
-                                                                    setFormReporte(
-                                                                      {
-                                                                        ...formReporte,
-                                                                        observaciones:
-                                                                          e
-                                                                            .target
-                                                                            .value,
-                                                                      }
-                                                                    )
-                                                                  }
-                                                                  style={
-                                                                    textarea
-                                                                  }
-                                                                />
-                                                              </label>
-                                                              <div
-                                                                className="trainer-report-actions"
-                                                                style={{
-                                                                  display:
-                                                                    'flex',
-                                                                  gap: 8,
-                                                                  flexWrap:
-                                                                    'wrap',
-                                                                  marginTop: 12,
-                                                                }}
-                                                              >
-                                                                <button
-                                                                  onClick={() =>
-                                                                    guardarReporteAlumno(
-                                                                      alumno
-                                                                    )
-                                                                  }
-                                                                  style={
-                                                                    botonPrincipal
-                                                                  }
-                                                                >
-                                                                  Guardar
-                                                                  reporte
-                                                                </button>
-                                                                <button
-                                                                  onClick={
-                                                                    cerrarFormularioReporte
-                                                                  }
-                                                                  style={
-                                                                    botonSecundario
-                                                                  }
-                                                                >
-                                                                  Cancelar
-                                                                </button>
-                                                              </div>
-                                                            </div>
-                                                          )}
+                                                          ) &&
+                                                            renderFormularioReporteEntrenador(
+                                                              alumno,
+                                                              grupo.nivel_grupo,
+                                                              'inline'
+                                                            )}
                                                         </div>
                                                       )
                                                     )}
@@ -17774,6 +17692,24 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           </section>
         </section>
       )}
+
+      {alumnoReporteActivo &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="trainer-report-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Reporte de ${alumnoReporteActivo.alumno}`}
+          >
+            {renderFormularioReporteEntrenador(
+              alumnoReporteActivo,
+              grupoReporteActivo?.nivel_grupo || '',
+              'sheet'
+            )}
+          </div>,
+          document.body
+        )}
     </main>
   );
 }
