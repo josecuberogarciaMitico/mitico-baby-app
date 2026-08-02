@@ -2010,6 +2010,47 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [tabVistaEntrenador, setTabVistaEntrenador] = useState<
     'disponibilidad' | 'grupos'
   >('disponibilidad');
+  const [diaDisponibilidadAbierto, setDiaDisponibilidadAbierto] =
+    useState('');
+
+  const gestionarDiaDisponibilidad = (
+    claveDia: string,
+    event: React.SyntheticEvent<HTMLDetailsElement>
+  ) => {
+    if (event.target !== event.currentTarget) return;
+
+    if (event.currentTarget.open) {
+      setDiaDisponibilidadAbierto(claveDia);
+      return;
+    }
+
+    // El día seleccionado permanece abierto. Solo se cierra al abrir otro día.
+    setDiaDisponibilidadAbierto((actual) =>
+      actual === claveDia ? claveDia : actual
+    );
+  };
+
+  const cerrarAcordeonesHermanos = (
+    event: React.SyntheticEvent<HTMLDetailsElement>
+  ) => {
+    if (event.target !== event.currentTarget) return;
+
+    const actual = event.currentTarget;
+    if (!actual.open) return;
+
+    const contenedor = actual.parentElement;
+    if (!contenedor) return;
+
+    Array.from(contenedor.children).forEach((elemento) => {
+      if (
+        elemento instanceof HTMLDetailsElement &&
+        elemento !== actual &&
+        elemento.open
+      ) {
+        elemento.open = false;
+      }
+    });
+  };
 
   const [reporteActivo, setReporteActivo] = useState<ReporteActivo | null>(
     null
@@ -8039,19 +8080,177 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const gruposEntrenadorSemanal = agruparGruposEntrenadorSemanal(
     gruposEntrenadorFiltrados
   );
-  const totalGruposVistaEntrenador = gruposEntrenadorSemanal.reduce(
-    (total, entrenador) => total + Number(entrenador.total_grupos || 0),
-    0
+
+  // La vista del entrenador es operativa, no histórica.
+  // En móvil y escritorio muestra la semana vigente publicada y conserva
+  // únicamente tareas anteriores que todavía necesitan una acción.
+  // Ningún dato se elimina de Supabase.
+  const fechaReferenciaVistaEntrenador = new Date();
+  if (
+    fechaReferenciaVistaEntrenador.getDay() === 1 &&
+    fechaReferenciaVistaEntrenador.getHours() < 6
+  ) {
+    fechaReferenciaVistaEntrenador.setDate(
+      fechaReferenciaVistaEntrenador.getDate() - 1
+    );
+  }
+  const semanaActualVistaEntrenador = inicioSemanaAgenda(
+    claveFechaAgenda(fechaReferenciaVistaEntrenador)
   );
-  const totalReportesVistaEntrenador = reportesFiltrados.filter(
-    (reporte) =>
-      reporte.estado_reporte === 'Falta reporte' ||
-      reporte.estado_reporte === 'Asistencia sin confirmar'
+  const semanaVistaEntrenadorInicio = esCoordinadorApp
+    ? semanaAgendaActiva || semanaActualVistaEntrenador
+    : semanaActualVistaEntrenador;
+  const semanaVistaEntrenadorFin = semanaVistaEntrenadorInicio
+    ? claveFechaAgenda(
+        new Date(
+          crearFechaAgenda(semanaVistaEntrenadorInicio).getTime() +
+            6 * 24 * 60 * 60 * 1000
+        )
+      )
+    : '';
+
+  function grupoTienePendientesVistaEntrenador(grupo: GrupoEntrenadorApp) {
+    const alumnosGrupo = alumnosReporteEntrenador.filter(
+      (alumno) =>
+        alumno.grupo_id === grupo.grupo_id &&
+        alumno.entrenador_id === grupo.entrenador_id
+    );
+
+    return (
+      grupo.estado_confirmacion !== 'Confirmado' ||
+      alumnosGrupo.some(
+        (alumno) =>
+          alumno.estado_asistencia === 'Pendiente' ||
+          alumno.estado_reporte === 'Falta reporte' ||
+          alumno.estado_reporte === 'Asistencia sin confirmar'
+      )
+    );
+  }
+
+  const disponibilidadVistaEntrenador = disponibilidad.filter((turno) => {
+    if (!turno.aviso_enviado) return false;
+    if (
+      !esCoordinadorApp &&
+      entrenadorIdSesionApp &&
+      turno.entrenador_id !== entrenadorIdSesionApp
+    )
+      return false;
+    if (!esCoordinadorApp && !entrenadorIdSesionApp) return false;
+    if (
+      semanaVistaEntrenadorInicio &&
+      turno.fecha_inicio !== semanaVistaEntrenadorInicio
+    )
+      return false;
+
+    return turno.entrenador
+      .toLowerCase()
+      .includes(busquedaGrupoEntrenador.toLowerCase());
+  });
+
+  const disponibilidadSemanalVistaEntrenador = agruparDisponibilidadSemanal(
+    disponibilidadVistaEntrenador
+  );
+
+  const gruposVistaEntrenador = gruposEntrenadorFiltrados.filter((grupo) => {
+    if (!semanaVistaEntrenadorInicio) return true;
+
+    const perteneceSemanaVigente =
+      grupo.fecha >= semanaVistaEntrenadorInicio &&
+      grupo.fecha <= semanaVistaEntrenadorFin;
+    const esAnterior = grupo.fecha < semanaVistaEntrenadorInicio;
+
+    return (
+      perteneceSemanaVigente ||
+      (esAnterior && grupoTienePendientesVistaEntrenador(grupo))
+    );
+  });
+
+  const gruposSemanalVistaEntrenador = agruparGruposEntrenadorSemanal(
+    gruposVistaEntrenador
+  );
+
+  const clavesGruposVistaEntrenador = new Set(
+    gruposVistaEntrenador.map(
+      (grupo) => `${grupo.entrenador_id}__${grupo.grupo_id}`
+    )
+  );
+
+  const alumnosVistaEntrenador = alumnosReporteEntrenador.filter((alumno) =>
+    clavesGruposVistaEntrenador.has(
+      `${alumno.entrenador_id}__${alumno.grupo_id}`
+    )
+  );
+
+  function pendientesEntrenadorVista(entrenadorId: string) {
+    return alumnosVistaEntrenador.filter(
+      (alumno) =>
+        alumno.entrenador_id === entrenadorId &&
+        (alumno.estado_asistencia === 'Pendiente' ||
+          alumno.estado_reporte === 'Falta reporte' ||
+          alumno.estado_reporte === 'Asistencia sin confirmar')
+    );
+  }
+
+  const totalGruposVistaEntrenador = gruposVistaEntrenador.length;
+  const totalReportesVistaEntrenador = alumnosVistaEntrenador.filter(
+    (alumno) =>
+      alumno.estado_reporte === 'Falta reporte' ||
+      alumno.estado_reporte === 'Asistencia sin confirmar' ||
+      alumno.estado_asistencia === 'Pendiente'
   ).length;
   const totalDisponibilidadPendienteVistaEntrenador =
-    disponibilidadFiltrada.filter(
-      (turno) => turno.aviso_enviado && turno.respuesta === 'Pendiente'
+    disponibilidadVistaEntrenador.filter(
+      (turno) => (turno.respuesta || 'Pendiente') === 'Pendiente'
     ).length;
+
+  function diasDisponibilidadVistaEntrenador(
+    turnos: DisponibilidadEntrenador[]
+  ) {
+    const mapa = new Map<string, DisponibilidadEntrenador[]>();
+    turnos.forEach((turno) => {
+      if (!mapa.has(turno.fecha)) mapa.set(turno.fecha, []);
+      mapa.get(turno.fecha)!.push(turno);
+    });
+
+    return Array.from(mapa.entries())
+      .map(([fecha, turnosDia]) => ({
+        fecha,
+        turnos: turnosDia.sort((a, b) =>
+          a.hora_inicio.localeCompare(b.hora_inicio)
+        ),
+      }))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha));
+  }
+
+  function diasGruposVistaEntrenador(grupos: GrupoEntrenadorApp[]) {
+    const mapaDias = new Map<
+      string,
+      Map<string, { hora_inicio: string; hora_fin: string; grupos: GrupoEntrenadorApp[] }>
+    >();
+
+    grupos.forEach((grupo) => {
+      if (!mapaDias.has(grupo.fecha)) mapaDias.set(grupo.fecha, new Map());
+      const claveTurno = `${grupo.hora_inicio.slice(0, 5)}__${grupo.hora_fin.slice(0, 5)}`;
+      const turnosDia = mapaDias.get(grupo.fecha)!;
+      if (!turnosDia.has(claveTurno)) {
+        turnosDia.set(claveTurno, {
+          hora_inicio: grupo.hora_inicio.slice(0, 5),
+          hora_fin: grupo.hora_fin.slice(0, 5),
+          grupos: [],
+        });
+      }
+      turnosDia.get(claveTurno)!.grupos.push(grupo);
+    });
+
+    return Array.from(mapaDias.entries())
+      .map(([fecha, turnosDia]) => ({
+        fecha,
+        turnos: Array.from(turnosDia.values()).sort((a, b) =>
+          a.hora_inicio.localeCompare(b.hora_inicio)
+        ),
+      }))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha));
+  }
 
   function alumnosDelGrupo(grupoId: string, entrenadorId: string) {
     return alumnosReporteEntrenador.filter(
@@ -13096,16 +13295,16 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       )}
 
       {pantalla === 'entrenador' && (
-        <section style={vistaEntrenadorShell}>
-          <div style={entrenadorHeroApp}>
+        <section className="trainer-view" style={vistaEntrenadorShell}>
+          <div className="trainer-hero" style={entrenadorHeroApp}>
             <div>
-              <p style={etiquetaSuperior}>VISTA ENTRENADOR · MÓVIL</p>
+              <p style={etiquetaSuperior}>VISTA ENTRENADOR · RESPONSIVE</p>
               <h2 style={{ margin: 0 }}>Panel del entrenador</h2>
               <div style={entrenadorHeroChips}>
                 <span>
                   Semana{' '}
-                  {semanaAgendaActiva
-                    ? rangoSemanaAgenda(semanaAgendaActiva)
+                  {semanaVistaEntrenadorInicio
+                    ? rangoSemanaAgenda(semanaVistaEntrenadorInicio)
                     : '-'}
                 </span>
                 <span>{totalGruposVistaEntrenador} grupos publicados</span>
@@ -13127,7 +13326,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
             </button>
           </div>
 
-          <article style={panelEntrenadorFiltroApp}>
+          <article className="trainer-toolbar" style={panelEntrenadorFiltroApp}>
             {esCoordinadorApp && (
               <input
                 value={busquedaGrupoEntrenador}
@@ -13137,9 +13336,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               />
             )}
 
-            <div style={tabBarEntrenadorModerno}>
+            <div className="trainer-tabs" style={tabBarEntrenadorModerno}>
               <button
                 type="button"
+                className={`trainer-tab trainer-tab--availability ${
+                  tabVistaEntrenador === 'disponibilidad' ? 'is-active' : ''
+                }`}
                 onClick={() => setTabVistaEntrenador('disponibilidad')}
                 style={tabEntrenadorModerno(
                   tabVistaEntrenador === 'disponibilidad',
@@ -13150,6 +13352,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
               </button>
               <button
                 type="button"
+                className={`trainer-tab trainer-tab--groups ${
+                  tabVistaEntrenador === 'grupos' ? 'is-active' : ''
+                }`}
                 onClick={() => setTabVistaEntrenador('grupos')}
                 style={tabEntrenadorModerno(
                   tabVistaEntrenador === 'grupos',
@@ -13165,21 +13370,22 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
           {!cargando &&
             tabVistaEntrenador === 'disponibilidad' &&
-            disponibilidadSemanalEntrenador.filter((grupo) =>
+            disponibilidadSemanalVistaEntrenador.filter((grupo) =>
               grupo.entrenador
                 .toLowerCase()
                 .includes(busquedaGrupoEntrenador.toLowerCase())
             ).length > 0 && (
               <section style={{ display: 'grid', gap: 12 }}>
-                <details style={chuletaEntrenadorMini}>
-                  <summary>Chuleta disponibilidad</summary>
-                  <p style={{ margin: '8px 0 0' }}>
-                    Primero se contesta disponibilidad. Después Jose monta los
-                    grupos solo con los entrenadores disponibles.
+                <section className="trainer-availability-reminder">
+                  <strong>Recordatorio semanal</strong>
+                  <p style={{ margin: '6px 0 0' }}>
+                    Envía tu disponibilidad antes de las 13:00 del lunes. A
+                    partir de esa hora, Jose empezará a organizar los grupos de
+                    la semana.
                   </p>
-                </details>
+                </section>
 
-                {disponibilidadSemanalEntrenador
+                {disponibilidadSemanalVistaEntrenador
                   .filter((grupo) =>
                     grupo.entrenador
                       .toLowerCase()
@@ -13202,133 +13408,141 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                         </div>
                       </header>
 
-                      {grupo.semanas.map((semana) => (
-                        <section
-                          key={`disp-vista-${grupo.entrenador_id}-${semana.inicio}`}
-                          style={bloqueSemanaMovil}
-                        >
-                          <div style={cabeceraSemanaMovil}>
-                            <div>
-                              <p style={etiquetaSuperior}>SEMANA DE TRABAJO</p>
-                              <h4 style={{ margin: 0 }}>
-                                {rangoSemanaAgenda(semana.inicio)}
-                              </h4>
-                            </div>
-                          </div>
+                      {grupo.semanas.map((semana) => {
+                        const diasPublicados =
+                          diasDisponibilidadVistaEntrenador(semana.turnos);
 
-                          <div style={{ display: 'grid', gap: 8 }}>
-                            {diasTrabajoSemanaAgenda(semana.inicio).map(
-                              (dia) => {
-                                const turnosDia = semana.turnos.filter(
-                                  (turno) => turno.fecha === dia.fecha
+                        return (
+                          <section
+                            key={`disp-vista-${grupo.entrenador_id}-${semana.inicio}`}
+                            className="trainer-week-block"
+                            style={bloqueSemanaMovil}
+                          >
+                            <div style={cabeceraSemanaMovil}>
+                              <div>
+                                <p style={etiquetaSuperior}>SEMANA PUBLICADA</p>
+                                <h4 style={{ margin: 0 }}>
+                                  {rangoSemanaAgenda(semana.inicio)}
+                                </h4>
+                              </div>
+                              <span style={miniBadge}>
+                                {semana.turnos.length} turnos
+                              </span>
+                            </div>
+
+                            <div className="trainer-day-grid">
+                              {diasPublicados.map((dia, indiceDia) => {
+                                const pendientesDia = dia.turnos.filter(
+                                  (turno) =>
+                                    (turno.respuesta || 'Pendiente') ===
+                                    'Pendiente'
+                                ).length;
+                                const nombreDia = capitalizarPrimera(
+                                  new Date(
+                                    `${dia.fecha}T00:00:00`
+                                  ).toLocaleDateString('es-ES', {
+                                    weekday: 'long',
+                                  })
                                 );
+                                const claveDiaDisponibilidad = `${grupo.entrenador_id}-${dia.fecha}`;
+                                const abrirDiaPorDefecto =
+                                  dia.fecha === hoyAgendaClave ||
+                                  diasPublicados.length === 1 ||
+                                  (indiceDia === 0 && pendientesDia > 0);
+                                const diaEstaAbierto = diaDisponibilidadAbierto
+                                  ? diaDisponibilidadAbierto ===
+                                    claveDiaDisponibilidad
+                                  : abrirDiaPorDefecto;
+
                                 return (
-                                  <article
+                                  <details
                                     key={`disp-vista-dia-${grupo.entrenador_id}-${dia.fecha}`}
+                                    className="trainer-day-accordion"
                                     style={diaEntrenadorCard}
+                                    open={diaEstaAbierto}
+                                    onToggle={(event) =>
+                                      gestionarDiaDisponibilidad(
+                                        claveDiaDisponibilidad,
+                                        event
+                                      )
+                                    }
                                   >
-                                    <div style={diaEntrenadorHeader}>
+                                    <summary className="trainer-accordion-summary">
                                       <div style={{ display: 'grid' }}>
-                                        <strong>
-                                          {capitalizarPrimera(dia.nombre)}
-                                        </strong>
+                                        <strong>{nombreDia}</strong>
                                         <span>{formatearFecha(dia.fecha)}</span>
                                       </div>
-                                    </div>
+                                      <div style={resumenChipsMovil}>
+                                        <span>{dia.turnos.length} turnos</span>
+                                        {pendientesDia > 0 && (
+                                          <span>{pendientesDia} pendientes</span>
+                                        )}
+                                      </div>
+                                    </summary>
 
-                                    {turnosTrabajoDiaAgenda(dia.fecha).map(
-                                      (turnoBase) => {
-                                        const turno = turnosDia.find(
-                                          (item) =>
-                                            item.hora_inicio.slice(0, 5) ===
-                                              turnoBase.inicio &&
-                                            item.hora_fin.slice(0, 5) ===
-                                              turnoBase.fin
-                                        );
+                                    <div className="trainer-shift-list">
+                                      {dia.turnos.map((turno) => {
                                         const respuesta =
-                                          turno?.respuesta || 'Pendiente';
+                                          turno.respuesta || 'Pendiente';
 
                                         return (
                                           <div
-                                            key={`disp-vista-turno-${grupo.entrenador_id}-${dia.fecha}-${turnoBase.inicio}`}
+                                            key={`disp-vista-turno-${turno.id}`}
+                                            className="trainer-availability-row"
                                             style={miniTarjetaBlanca}
                                           >
-                                            <div
-                                              style={{
-                                                display: 'flex',
-                                                justifyContent: 'space-between',
-                                                gap: 8,
-                                                flexWrap: 'wrap',
-                                              }}
-                                            >
+                                            <div className="trainer-availability-main">
                                               <strong>
-                                                {turnoBase.inicio}–
-                                                {turnoBase.fin}
+                                                {turno.hora_inicio.slice(0, 5)}–
+                                                {turno.hora_fin.slice(0, 5)}
                                               </strong>
-                                              <span
-                                                style={
+                                              {turno.nombre_turno && (
+                                                <span>{turno.nombre_turno}</span>
+                                              )}
+                                            </div>
+                                            <div className="trainer-availability-actions">
+                                              <button
+                                                className={`trainer-soft-button trainer-soft-button--success ${
                                                   respuesta === 'Disponible'
-                                                    ? badgeTrabaja
-                                                    : respuesta === 'No puedo'
-                                                    ? badgeNoTrabaja
-                                                    : badgePendiente
+                                                    ? 'is-active'
+                                                    : ''
+                                                }`}
+                                                onClick={() =>
+                                                  responderDisponibilidadRapida(
+                                                    turno,
+                                                    'Disponible'
+                                                  )
                                                 }
                                               >
-                                                {respuesta}
-                                              </span>
-                                            </div>
-                                            {turno && (
-                                              <div
-                                                style={{
-                                                  display: 'flex',
-                                                  gap: 6,
-                                                  flexWrap: 'wrap',
-                                                  marginTop: 8,
-                                                }}
+                                                Disponible
+                                              </button>
+                                              <button
+                                                className={`trainer-soft-button trainer-soft-button--danger ${
+                                                  respuesta === 'No puedo'
+                                                    ? 'is-active'
+                                                    : ''
+                                                }`}
+                                                onClick={() =>
+                                                  responderDisponibilidadRapida(
+                                                    turno,
+                                                    'No puedo'
+                                                  )
+                                                }
                                               >
-                                                <button
-                                                  onClick={() =>
-                                                    responderDisponibilidadRapida(
-                                                      turno,
-                                                      'Disponible'
-                                                    )
-                                                  }
-                                                  style={
-                                                    respuesta === 'Disponible'
-                                                      ? botonAsistenciaOk
-                                                      : botonAsistenciaOff
-                                                  }
-                                                >
-                                                  Disponible
-                                                </button>
-                                                <button
-                                                  onClick={() =>
-                                                    responderDisponibilidadRapida(
-                                                      turno,
-                                                      'No puedo'
-                                                    )
-                                                  }
-                                                  style={
-                                                    respuesta === 'No puedo'
-                                                      ? botonAsistenciaAusente
-                                                      : botonAsistenciaOff
-                                                  }
-                                                >
-                                                  No puedo
-                                                </button>
-                                              </div>
-                                            )}
+                                                No disponible
+                                              </button>
+                                            </div>
                                           </div>
                                         );
-                                      }
-                                    )}
-                                  </article>
+                                      })}
+                                    </div>
+                                  </details>
                                 );
-                              }
-                            )}
-                          </div>
-                        </section>
-                      ))}
+                              })}
+                            </div>
+                          </section>
+                        );
+                      })}
                     </article>
                   ))}
               </section>
@@ -13336,22 +13550,22 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
           {!cargando &&
             ((tabVistaEntrenador === 'disponibilidad' &&
-              disponibilidadSemanalEntrenador.length === 0) ||
+              disponibilidadSemanalVistaEntrenador.length === 0) ||
               (tabVistaEntrenador === 'grupos' &&
-                gruposEntrenadorSemanal.length === 0)) &&
+                gruposSemanalVistaEntrenador.length === 0)) &&
             !error && (
               <article style={tarjetaMovilVacia}>
                 <h3 style={{ marginTop: 0 }}>Sin datos en esta pestaña</h3>
                 <p style={{ marginBottom: 0 }}>
-                  En Disponibilidad semanal aparecerán los turnos antes de crear
-                  grupos. En Grupos/reportes aparecerán los grupos asignados
-                  cuando Jose los publique.
+                  La semana está limpia. La disponibilidad y los grupos aparecerán
+                  cuando Jose los publique. Las tareas anteriores pendientes
+                  seguirán visibles hasta completarlas.
                 </p>
               </article>
             )}
 
           {tabVistaEntrenador === 'grupos' &&
-            gruposEntrenadorSemanal.map((bloqueEntrenador) => (
+            gruposSemanalVistaEntrenador.map((bloqueEntrenador) => (
               <article
                 key={bloqueEntrenador.entrenador_id}
                 style={tarjetaEntrenadorMovil}
@@ -13367,14 +13581,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   </div>
                 </header>
 
-                {pendientesEntrenador(bloqueEntrenador.entrenador_id).length >
+                {pendientesEntrenadorVista(bloqueEntrenador.entrenador_id).length >
                   0 && (
                   <section style={avisoPendiente}>
                     <strong>Aviso de tareas pendientes</strong>
                     <p style={{ margin: '6px 0 0' }}>
                       Tienes{' '}
                       {
-                        pendientesEntrenador(
+                        pendientesEntrenadorVista(
                           bloqueEntrenador.entrenador_id
                         ).filter(
                           (reporte) =>
@@ -13383,7 +13597,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                       }{' '}
                       reportes pendientes y{' '}
                       {
-                        pendientesEntrenador(
+                        pendientesEntrenadorVista(
                           bloqueEntrenador.entrenador_id
                         ).filter(
                           (reporte) =>
@@ -13397,7 +13611,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   </section>
                 )}
 
-                {disponibilidad.filter(
+                {disponibilidadVistaEntrenador.filter(
                   (turno) =>
                     turno.entrenador_id === bloqueEntrenador.entrenador_id &&
                     turno.aviso_enviado &&
@@ -13409,7 +13623,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                       Rellena estos turnos para que Jose pueda montar la semana.
                     </p>
                     <div style={{ display: 'grid', gap: 8 }}>
-                      {disponibilidad
+                      {disponibilidadVistaEntrenador
                         .filter(
                           (turno) =>
                             turno.entrenador_id ===
@@ -13449,26 +13663,26 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                               }}
                             >
                               <button
+                                className="trainer-soft-button trainer-soft-button--success"
                                 onClick={() =>
                                   responderDisponibilidadRapida(
                                     turno,
                                     'Disponible'
                                   )
                                 }
-                                style={botonAsistenciaOk}
                               >
                                 Disponible
                               </button>
                               <button
+                                className="trainer-soft-button trainer-soft-button--danger"
                                 onClick={() =>
                                   responderDisponibilidadRapida(
                                     turno,
                                     'No puedo'
                                   )
                                 }
-                                style={botonAsistenciaAusente}
                               >
-                                No puedo
+                                No disponible
                               </button>
                             </div>
                           </div>
@@ -13487,87 +13701,133 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                       return (
                         total +
                         alumnosGrupo.filter(
-                          (a) => a.estado_reporte === 'Falta reporte'
+                          (a) =>
+                            a.estado_reporte === 'Falta reporte' ||
+                            a.estado_reporte ===
+                              'Asistencia sin confirmar' ||
+                            a.estado_asistencia === 'Pendiente'
                         ).length
                       );
                     },
                     0
                   );
+                  const esSemanaVigente =
+                    semana.inicio === semanaVistaEntrenadorInicio;
 
                   return (
-                    <section
+                    <details
                       key={`${bloqueEntrenador.entrenador_id}-${semana.inicio}`}
+                      className={`trainer-week-block ${
+                        esSemanaVigente ? 'is-current' : 'is-previous-pending'
+                      }`}
                       style={bloqueSemanaMovil}
+                      onToggle={cerrarAcordeonesHermanos}
+                      defaultOpen={esSemanaVigente}
                     >
-                      <div style={cabeceraSemanaMovil}>
+                      <summary
+                        className="trainer-week-summary"
+                        style={cabeceraSemanaMovil}
+                      >
                         <div>
-                          <p style={etiquetaSuperior}>SEMANA LUNES-DOMINGO</p>
+                          <p style={etiquetaSuperior}>
+                            {esSemanaVigente
+                              ? 'SEMANA ACTUAL'
+                              : 'PENDIENTES ANTERIORES'}
+                          </p>
                           <h4 style={{ margin: 0 }}>
                             {rangoSemanaAgenda(semana.inicio)}
                           </h4>
                         </div>
                         <div style={resumenChipsMovil}>
                           <span>{semana.grupos.length} grupos</span>
-                          <span>{totalReportesSemana} reportes pendientes</span>
+                          <span>{totalReportesSemana} tareas pendientes</span>
                         </div>
-                      </div>
+                      </summary>
 
-                      <div style={{ display: 'grid', gap: 10 }}>
-                        {diasTrabajoSemanaAgenda(semana.inicio).map((dia) => {
-                          const gruposDia = semana.grupos.filter(
-                            (grupo) => grupo.fecha === dia.fecha
-                          );
-                          const trabajaDia = gruposDia.length > 0;
+                      <div className="trainer-day-grid">
+                        {diasGruposVistaEntrenador(semana.grupos).map(
+                          (dia, indiceDia) => {
+                            const gruposDia = dia.turnos.flatMap(
+                              (turno) => turno.grupos
+                            );
+                            const pendientesDia = gruposDia.filter(
+                              (grupo) =>
+                                grupoTienePendientesVistaEntrenador(grupo)
+                            ).length;
+                            const nombreDia = capitalizarPrimera(
+                              new Date(
+                                `${dia.fecha}T00:00:00`
+                              ).toLocaleDateString('es-ES', {
+                                weekday: 'long',
+                              })
+                            );
 
-                          return (
-                            <article
-                              key={`${bloqueEntrenador.entrenador_id}-${semana.inicio}-${dia.fecha}`}
-                              style={
-                                trabajaDia
-                                  ? diaEntrenadorCard
-                                  : diaEntrenadorCardLibre
-                              }
-                            >
-                              <div style={diaEntrenadorHeader}>
-                                <div style={{ display: 'grid' }}>
-                                  <strong>
-                                    {capitalizarPrimera(dia.nombre)}
-                                  </strong>
-                                  <span>{formatearFecha(dia.fecha)}</span>
-                                </div>
-                                <span
-                                  style={
-                                    trabajaDia ? badgeTrabaja : badgeNoTrabaja
-                                  }
-                                >
-                                  {trabajaDia
-                                    ? 'TRABAJA'
-                                    : 'Sin turno asignado'}
-                                </span>
-                              </div>
+                            return (
+                              <details
+                                key={`${bloqueEntrenador.entrenador_id}-${semana.inicio}-${dia.fecha}`}
+                                className="trainer-day-accordion"
+                                style={diaEntrenadorCard}
+                                    onToggle={cerrarAcordeonesHermanos}
+                                defaultOpen={
+                                  dia.fecha === hoyAgendaClave ||
+                                  (indiceDia === 0 &&
+                                    semana.inicio ===
+                                      semanaVistaEntrenadorInicio)
+                                }
+                              >
+                                <summary className="trainer-accordion-summary">
+                                  <div style={{ display: 'grid' }}>
+                                    <strong>{nombreDia}</strong>
+                                    <span>{formatearFecha(dia.fecha)}</span>
+                                  </div>
+                                  <div style={resumenChipsMovil}>
+                                    <span>{gruposDia.length} grupos</span>
+                                    {pendientesDia > 0 && (
+                                      <span>{pendientesDia} pendientes</span>
+                                    )}
+                                  </div>
+                                </summary>
 
-                              {trabajaDia &&
-                                turnosTrabajoDiaAgenda(dia.fecha).map(
-                                  (turno) => {
-                                    const gruposTurno = gruposDia.filter(
+                                <div className="trainer-turn-grid">
+                                  {dia.turnos.map((turno, indiceTurno) => {
+                                    const gruposTurno = turno.grupos;
+                                    const pendientesTurno = gruposTurno.filter(
                                       (grupo) =>
-                                        grupo.hora_inicio.slice(0, 5) ===
-                                          turno.inicio &&
-                                        grupo.hora_fin.slice(0, 5) === turno.fin
-                                    );
-
-                                    if (gruposTurno.length === 0) return null;
+                                        grupoTienePendientesVistaEntrenador(
+                                          grupo
+                                        )
+                                    ).length;
 
                                     return (
-                                      <section
-                                        key={`${dia.fecha}-${turno.inicio}-${turno.fin}`}
+                                      <details
+                                        key={`${dia.fecha}-${turno.hora_inicio}-${turno.hora_fin}`}
+                                        className="trainer-shift-accordion"
                                         style={turnoEntrenadorBox}
+                                        onToggle={cerrarAcordeonesHermanos}
+                                        defaultOpen={
+                                          (dia.fecha === hoyAgendaClave &&
+                                            indiceTurno === 0) ||
+                                          (dia.turnos.length === 1 &&
+                                            indiceTurno === 0)
+                                        }
                                       >
-                                        <h4 style={{ margin: '0 0 8px' }}>
-                                          {turno.inicio}–{turno.fin}
-                                        </h4>
+                                        <summary className="trainer-shift-summary">
+                                          <strong>
+                                            {turno.hora_inicio}–
+                                            {turno.hora_fin}
+                                          </strong>
+                                          <div style={resumenChipsMovil}>
+                                            <span>{gruposTurno.length} grupos</span>
+                                            {pendientesTurno > 0 && (
+                                              <span>
+                                                {pendientesTurno} pendientes
+                                              </span>
+                                            )}
+                                          </div>
+                                        </summary>
 
-                                        {gruposTurno.map(
+                                        <div className="trainer-groups-list">
+                                          {gruposTurno.map(
                                           (
                                             grupo,
                                             indiceGrupoEntrenadorTurno
@@ -13617,6 +13877,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                             return (
                                               <article
                                                 key={`${grupo.entrenador_id}-${grupo.grupo_id}`}
+                                                className="trainer-group-card"
                                                 style={{
                                                   ...grupoEntrenadorCardMovil,
                                                   ...estiloGrupoPorPistaApp(
@@ -13684,6 +13945,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                 {grupo.estado_confirmacion !==
                                                   'Confirmado' && (
                                                   <button
+                                                    className="trainer-confirm-button"
                                                     onClick={() =>
                                                       confirmarGrupoEntrenador(
                                                         grupo.grupo_id,
@@ -13695,67 +13957,18 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                       width: '100%',
                                                     }}
                                                   >
-                                                    Grupo visto · Confirmo
-                                                    horario, punto, niños y
-                                                    trabajo diario
+                                                    Confirmar grupo
                                                   </button>
                                                 )}
 
                                                 <section
+                                                  className="trainer-attendance-panel"
                                                   style={bloqueInfoEntrenador}
                                                 >
-                                                  <h4>Niños del grupo</h4>
-                                                  <ul
-                                                    style={{
-                                                      margin: 0,
-                                                      paddingLeft: 18,
-                                                    }}
-                                                  >
-                                                    {alumnosGrupo.map(
-                                                      (alumno) => (
-                                                        <li
-                                                          key={`${grupo.grupo_id}-${alumno.alumno_id}-lista`}
-                                                        >
-                                                          <strong>
-                                                            {alumno.alumno} ·
-                                                            Nivel{' '}
-                                                            {alumno.nivel_alumno ||
-                                                              'SIN NIVEL'}
-                                                          </strong>
-                                                        </li>
-                                                      )
-                                                    )}
-                                                  </ul>
-                                                </section>
-
-                                                <section
-                                                  style={bloqueInfoEntrenador}
-                                                >
-                                                  <h4>Trabajo diario</h4>
-                                                  <div style={bloqueTexto}>
-                                                    {formatearTrabajoDiario(
-                                                      grupo.trabajo_diario
-                                                    )}
+                                                  <div className="trainer-attendance-heading">
+                                                    <h4>Niños del grupo · asistencia y reportes</h4>
+                                                    <span>Marca la asistencia al llegar</span>
                                                   </div>
-                                                </section>
-
-                                                {grupo.observaciones_importantes && (
-                                                  <section
-                                                    style={bloqueInfoEntrenador}
-                                                  >
-                                                    <h4>Observaciones</h4>
-                                                    <div style={bloqueTexto}>
-                                                      {formatearObservaciones(
-                                                        grupo.observaciones_importantes
-                                                      )}
-                                                    </div>
-                                                  </section>
-                                                )}
-
-                                                <section
-                                                  style={bloqueInfoEntrenador}
-                                                >
-                                                  <h4>Asistencia y reportes</h4>
                                                   <div
                                                     style={resumenChipsMovil}
                                                   >
@@ -13786,14 +13999,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                       (alumno) => (
                                                         <div
                                                           key={`${grupo.grupo_id}-${alumno.alumno_id}`}
-                                                          style={
-                                                            miniTarjetaBlanca
-                                                          }
+                                                          className="trainer-student-row"
+                                                          style={miniTarjetaBlanca}
                                                         >
                                                           <div
-                                                            style={
-                                                              filaAlumnoEntrenadorMovil
-                                                            }
+                                                            className="trainer-student-main"
+                                                            style={filaAlumnoEntrenadorMovil}
                                                           >
                                                             <div>
                                                               <strong>
@@ -13832,11 +14043,16 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                               </p>
                                                             </div>
                                                             <div
-                                                              style={
-                                                                botonesAsistenciaMovil
-                                                              }
+                                                              className="trainer-attendance-actions"
+                                                              style={botonesAsistenciaMovil}
                                                             >
                                                               <button
+                                                                className={`trainer-soft-button trainer-soft-button--success ${
+                                                                  alumno.estado_asistencia ===
+                                                                  'Presente'
+                                                                    ? 'is-active'
+                                                                    : ''
+                                                                }`}
                                                                 onClick={() =>
                                                                   marcarAsistencia(
                                                                     grupo.grupo_id,
@@ -13844,16 +14060,16 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                                     'Presente'
                                                                   )
                                                                 }
-                                                                style={
-                                                                  alumno.estado_asistencia ===
-                                                                  'Presente'
-                                                                    ? botonAsistenciaOk
-                                                                    : botonAsistenciaOff
-                                                                }
                                                               >
                                                                 Presente
                                                               </button>
                                                               <button
+                                                                className={`trainer-soft-button trainer-soft-button--danger ${
+                                                                  alumno.estado_asistencia ===
+                                                                  'Ausente'
+                                                                    ? 'is-active'
+                                                                    : ''
+                                                                }`}
                                                                 onClick={() =>
                                                                   marcarAsistencia(
                                                                     grupo.grupo_id,
@@ -13861,28 +14077,22 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                                     'Ausente'
                                                                   )
                                                                 }
-                                                                style={
-                                                                  alumno.estado_asistencia ===
-                                                                  'Ausente'
-                                                                    ? botonAsistenciaAusente
-                                                                    : botonAsistenciaOff
-                                                                }
                                                               >
                                                                 Ausente
                                                               </button>
                                                               <button
+                                                                className={`trainer-soft-button trainer-soft-button--warning ${
+                                                                  alumno.estado_asistencia ===
+                                                                  'Pendiente'
+                                                                    ? 'is-active'
+                                                                    : ''
+                                                                }`}
                                                                 onClick={() =>
                                                                   marcarAsistencia(
                                                                     grupo.grupo_id,
                                                                     alumno.alumno_id,
                                                                     'Pendiente'
                                                                   )
-                                                                }
-                                                                style={
-                                                                  alumno.estado_asistencia ===
-                                                                  'Pendiente'
-                                                                    ? botonAsistenciaPendiente
-                                                                    : botonAsistenciaOff
                                                                 }
                                                               >
                                                                 Pendiente
@@ -14186,19 +14396,48 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                     )}
                                                   </div>
                                                 </section>
+
+                                                <details
+                                                  className="trainer-info-details trainer-work-details"
+                                                  style={bloqueInfoEntrenador}
+                                                >
+                                                  <summary>Trabajo diario</summary>
+                                                  <div style={bloqueTexto}>
+                                                    {formatearTrabajoDiario(
+                                                      grupo.trabajo_diario
+                                                    )}
+                                                  </div>
+                                                </details>
+
+                                                {grupo.observaciones_importantes && (
+                                                  <details
+                                                    className="trainer-info-details trainer-observations-details"
+                                                    style={bloqueInfoEntrenador}
+                                                  >
+                                                    <summary>Observaciones importantes</summary>
+                                                    <div style={bloqueTexto}>
+                                                      {formatearObservaciones(
+                                                        grupo.observaciones_importantes
+                                                      )}
+                                                    </div>
+                                                  </details>
+                                                )}
+
                                               </article>
                                             );
                                           }
                                         )}
-                                      </section>
+                                        </div>
+                                      </details>
                                     );
-                                  }
-                                )}
-                            </article>
-                          );
-                        })}
+                                  })}
+                                </div>
+                              </details>
+                            );
+                          }
+                        )}
                       </div>
-                    </section>
+                    </details>
                   );
                 })}
               </article>
