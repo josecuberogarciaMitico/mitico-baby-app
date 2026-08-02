@@ -17679,46 +17679,57 @@ Por favor confirma tu disponibilidad para estos turnos:
 
       {pantalla === 'disponibilidad' && (
         <section style={{ display: 'grid', gap: 16 }}>
-          <div className="availability-editor-hero">
-            <div>
-              <span className="availability-editor-kicker">SPRINT 2 · EDITOR SEMANAL</span>
-              <h2>Disponibilidad semanal</h2>
-              <p>
-                Prepara solo los días y turnos reales. Al publicar, la semana
-                sustituye automáticamente al sistema anterior en la Vista entrenador.
-              </p>
+          <div className="availability-flow-card">
+            <div className="availability-flow-head">
+              <div>
+                <h2>Disponibilidad semanal</h2>
+                <p>
+                  Configura solo los días y turnos reales de la semana y publica
+                  la versión que verá la Vista entrenador.
+                </p>
+              </div>
+
+              <div className="availability-editor-hero-status">
+                <strong>
+                  {estadoServidorDisponibilidadEditor === 'publicado'
+                    ? `Publicado${
+                        versionPublicadaDisponibilidadEditor > 0
+                          ? ` · v${versionPublicadaDisponibilidadEditor}`
+                          : ''
+                      }`
+                    : estadoServidorDisponibilidadEditor === 'borrador'
+                    ? 'Borrador'
+                    : 'Sin preparar'}
+                </strong>
+                <span>
+                  {resumenBorradorDisponibilidadEditor.dias} días ·{' '}
+                  {resumenBorradorDisponibilidadEditor.turnos} turnos
+                </span>
+              </div>
             </div>
-            <div className="availability-editor-hero-status">
-              <strong>
-                {estadoServidorDisponibilidadEditor === 'publicado'
-                  ? `Publicado${
-                      versionPublicadaDisponibilidadEditor > 0
-                        ? ` · v${versionPublicadaDisponibilidadEditor}`
-                        : ''
-                    }`
-                  : estadoServidorDisponibilidadEditor === 'borrador'
-                  ? 'Borrador'
-                  : 'Sin preparar'}
-              </strong>
-              <span>
-                {resumenBorradorDisponibilidadEditor.dias} días ·{' '}
-                {resumenBorradorDisponibilidadEditor.turnos} turnos
-              </span>
-            </div>
+
+            <details className="availability-flow-details">
+              <summary>Chuleta rápida del flujo</summary>
+              <ol>
+                <li>Selecciona la semana que vas a preparar.</li>
+                <li>Activa solo los días reales y ajusta sus turnos.</li>
+                <li>Guarda borrador mientras estés revisando.</li>
+                <li>Publica cuando la semana ya esté correcta.</li>
+                <li>
+                  Revisa después las respuestas en “Disponibilidad recibida por
+                  turno”.
+                </li>
+                <li>
+                  La Vista entrenador usará siempre la última versión publicada.
+                </li>
+              </ol>
+            </details>
           </div>
 
           <section className="availability-response-summary">
             <header className="availability-response-summary-header">
               <div>
-                <span className="availability-editor-kicker">
-                  RESUMEN DE RESPUESTAS
-                </span>
                 <h3>Disponibilidad recibida por turno</h3>
-                <p>
-                  Abre un turno para ver quién está disponible, quién no puede
-                  y quién falta por contestar. Al abrir otro, el anterior se
-                  cierra automáticamente.
-                </p>
               </div>
               <span className="availability-response-total">
                 {disponibilidadPorTurno.length}{' '}
@@ -18401,118 +18412,113 @@ Por favor confirma tu disponibilidad para estos turnos:
                 </button>
               </footer>
 
-              <details className="availability-legacy-tools">
-                <summary>Sistema actual de respaldo</summary>
-                <p>
-                  Estos botones mantienen el sistema anterior mientras
-                  comprobamos el nuevo editor.
-                </p>
-                <div>
-                  <button
-                    type="button"
-                    onClick={crearDisponibilidadSemanaActual}
-                    style={botonSecundario}
-                  >
-                    Crear turnos actuales
-                  </button>
-                  <button
-                    type="button"
-                    onClick={enviarAvisoDisponibilidadSemana}
-                    style={botonPrincipal}
-                  >
-                    Enviar aviso actual
-                  </button>
-                  <button
-                    type="button"
-                    onClick={copiarMensajeDisponibilidadSemana}
-                    style={botonSecundario}
-                  >
-                    Recordatorio WhatsApp
-                  </button>
-                </div>
-              </details>
+
             </section>
           )}
 
-          <details style={agendaBloqueBlanco}>
-            <summary style={{ cursor: 'pointer', fontWeight: 900 }}>
-              Ver detalle por entrenador
-            </summary>
-            <section style={{ display: 'grid', gap: 16, marginTop: 12 }}>
+          <section className="availability-trainer-details">
+            <div className="availability-trainer-details-header">
+              <div>
+                <h3>Detalle por entrenador</h3>
+                <p>
+                  Consulta cada entrenador por desplegables sin abrir todo el
+                  histórico a la vez.
+                </p>
+              </div>
+
+              <span className="availability-response-total">
+                {disponibilidadSemanalEntrenador.length}{' '}
+                {disponibilidadSemanalEntrenador.length === 1
+                  ? 'entrenador'
+                  : 'entrenadores'}
+              </span>
+            </div>
+
+            <div className="availability-trainer-details-list">
               {disponibilidadSemanalEntrenador.map((grupo) => (
-                <article
+                <details
                   key={grupo.entrenador_id}
-                  style={tarjetaEntrenadorMovil}
+                  className="availability-trainer-detail-card"
                 >
-                  <header style={cabeceraEntrenadorMovil}>
-                    <div>
-                      <p style={etiquetaSuperior}>ENTRENADOR</p>
-                      <h3 style={{ margin: 0 }}>{grupo.entrenador}</h3>
+                  <summary className="availability-trainer-detail-summary">
+                    <div className="availability-trainer-detail-name">
+                      <span className="availability-editor-kicker">
+                        ENTRENADOR
+                      </span>
+                      <strong>{grupo.entrenador}</strong>
                     </div>
-                    <div style={resumenChipsMovil}>
-                      <span>{grupo.disponibles} disponibles</span>
-                      <span>{grupo.no_puedo} no puedo</span>
-                      <span>{grupo.pendientes} pendientes</span>
+
+                    <div className="availability-trainer-detail-metrics">
+                      <span className="is-success">
+                        {grupo.disponibles} disponibles
+                      </span>
+                      <span className="is-danger">
+                        {grupo.no_puedo} no puedo
+                      </span>
+                      <span className="is-warning">
+                        {grupo.pendientes} pendientes
+                      </span>
                     </div>
-                  </header>
-                  {grupo.semanas.map((semana) => (
-                    <section
-                      key={`${grupo.entrenador_id}-${semana.inicio}`}
-                      style={bloqueSemanaMovil}
-                    >
-                      <h4 style={{ marginTop: 0 }}>
-                        Semana {rangoSemanaAgenda(semana.inicio)}
-                      </h4>
-                      <div style={{ display: 'grid', gap: 8 }}>
-                        {diasTrabajoSemanaAgenda(semana.inicio).map((dia) => {
-                          const turnosDia = semana.turnos.filter(
-                            (turno) => turno.fecha === dia.fecha
-                          );
-                          return (
-                            <article
-                              key={`${grupo.entrenador_id}-${dia.fecha}`}
-                              style={diaEntrenadorCard}
-                            >
-                              <div style={diaEntrenadorHeader}>
-                                <div style={{ display: 'grid' }}>
-                                  <strong>
-                                    {capitalizarPrimera(dia.nombre)}
-                                  </strong>
-                                  <span>{formatearFecha(dia.fecha)}</span>
-                                </div>
-                              </div>
-                              {turnosTrabajoDiaAgenda(dia.fecha).map(
-                                (turnoBase) => {
-                                  const turno = turnosDia.find(
-                                    (item) =>
-                                      item.hora_inicio.slice(0, 5) ===
-                                        turnoBase.inicio &&
-                                      item.hora_fin.slice(0, 5) ===
-                                        turnoBase.fin
-                                  );
-                                  return (
-                                    <div
-                                      key={`${dia.fecha}-${turnoBase.inicio}`}
-                                      style={miniTarjetaBlanca}
-                                    >
-                                      <strong>
-                                        {turnoBase.inicio}–{turnoBase.fin}
-                                      </strong>
-                                      <p style={{ margin: '4px 0 0' }}>
-                                        Respuesta:{' '}
+                  </summary>
+
+                  <div className="availability-trainer-detail-body">
+                    {grupo.semanas.map((semana) => (
+                      <section
+                        key={`${grupo.entrenador_id}-${semana.inicio}`}
+                        className="availability-trainer-week-card"
+                      >
+                        <h4>Semana {rangoSemanaAgenda(semana.inicio)}</h4>
+
+                        <div className="availability-trainer-day-list">
+                          {diasTrabajoSemanaAgenda(semana.inicio).map((dia) => {
+                            const turnosDia = semana.turnos.filter(
+                              (turno) => turno.fecha === dia.fecha
+                            );
+
+                            return (
+                              <details
+                                key={`${grupo.entrenador_id}-${dia.fecha}`}
+                                className="availability-trainer-day-card"
+                              >
+                                <summary className="availability-trainer-day-summary">
+                                  <div>
+                                    <strong>
+                                      {capitalizarPrimera(dia.nombre)}
+                                    </strong>
+                                    <span>{formatearFecha(dia.fecha)}</span>
+                                  </div>
+                                  <small>
+                                    {turnosDia.length}{' '}
+                                    {turnosDia.length === 1
+                                      ? 'turno'
+                                      : 'turnos'}
+                                  </small>
+                                </summary>
+
+                                <div className="availability-trainer-day-turns">
+                                  {turnosDia.length === 0 ? (
+                                    <p className="availability-trainer-no-turns">
+                                      Sin turnos publicados para este día.
+                                    </p>
+                                  ) : (
+                                    turnosDia.map((turno) => (
+                                      <div
+                                        key={`${turno.fecha}-${turno.hora_inicio}-${turno.hora_fin}`}
+                                        className="availability-trainer-turn-card"
+                                      >
                                         <strong>
-                                          {turno?.respuesta || 'Pendiente'}
+                                          {turno.hora_inicio.slice(0, 5)}–
+                                          {turno.hora_fin.slice(0, 5)}
                                         </strong>
-                                      </p>
-                                      {turno && (
-                                        <div
-                                          style={{
-                                            display: 'flex',
-                                            gap: 6,
-                                            flexWrap: 'wrap',
-                                            marginTop: 8,
-                                          }}
-                                        >
+
+                                        <p>
+                                          Respuesta:{' '}
+                                          <strong>
+                                            {turno.respuesta || 'Pendiente'}
+                                          </strong>
+                                        </p>
+
+                                        <div className="availability-trainer-turn-actions">
                                           <button
                                             onClick={() =>
                                               responderDisponibilidadRapida(
@@ -18528,6 +18534,7 @@ Por favor confirma tu disponibilidad para estos turnos:
                                           >
                                             Disponible
                                           </button>
+
                                           <button
                                             onClick={() =>
                                               responderDisponibilidadRapida(
@@ -18544,21 +18551,21 @@ Por favor confirma tu disponibilidad para estos turnos:
                                             No puedo
                                           </button>
                                         </div>
-                                      )}
-                                    </div>
-                                  );
-                                }
-                              )}
-                            </article>
-                          );
-                        })}
-                      </div>
-                    </section>
-                  ))}
-                </article>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              </details>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                </details>
               ))}
-            </section>
-          </details>
+            </div>
+          </section>
         </section>
       )}
 
