@@ -1264,3 +1264,33 @@
    La confirmación se realiza desde la tarjeta compacta y desaparece al guardarse.
    Los estados completos no muestran una franja verde innecesaria.
    ========================================================= */
+
+/* =========================================================
+   AJUSTE 12 · HOTFIX DE ESCRITORIO PARA GRUPOS
+   Los días abiertos de Grupos / reportes ocupan todo el ancho
+   disponible. Evita una cuadrícula dentro de otra que estrechaba
+   asistencia y hacía que los nombres se mostrasen en vertical.
+   Disponibilidad semanal conserva su diseño de dos columnas.
+   ========================================================= */
+
+@media (min-width: 720px) {
+  .trainer-day-grid--groups > .trainer-day-accordion[open] {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (min-width: 1040px) {
+  .trainer-day-grid--groups .trainer-group-card {
+    grid-template-columns: minmax(0, 1.25fr) minmax(300px, 0.75fr);
+  }
+
+  .trainer-day-grid--groups .trainer-attendance-panel,
+  .trainer-day-grid--groups .trainer-student-row,
+  .trainer-day-grid--groups .trainer-student-main {
+    min-width: 0;
+  }
+
+  .trainer-day-grid--groups .trainer-student-main {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, auto) !important;
+  }
+}
