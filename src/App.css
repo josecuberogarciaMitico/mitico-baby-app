@@ -701,3 +701,135 @@
   color: #ffffff !important;
   box-shadow: 0 10px 22px rgba(22, 163, 74, 0.28) !important;
 }
+
+/* =========================================================
+   AJUSTE 5 · EXPERIENCIA MÓVIL ENTRENADOR
+   - La disponibilidad se guarda sin desmontar la pantalla ni mover el scroll.
+   - Asistencia adaptable: 2 botones + Pendiente a ancho completo en móvil.
+   - Formulario de reporte en una sola columna, sin desbordes laterales.
+   ========================================================= */
+
+.trainer-student-row,
+.trainer-student-main,
+.trainer-attendance-actions,
+.trainer-report-form,
+.trainer-report-grid {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.trainer-student-row {
+  overflow: hidden;
+}
+
+.trainer-student-main {
+  display: grid !important;
+}
+
+.trainer-student-main strong,
+.trainer-student-main p {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.trainer-attendance-actions {
+  min-width: 0 !important;
+}
+
+.trainer-attendance-actions .trainer-soft-button {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trainer-report-form {
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.trainer-report-grid {
+  display: grid !important;
+}
+
+.trainer-report-form label,
+.trainer-report-form select,
+.trainer-report-form textarea,
+.trainer-report-form input,
+.trainer-report-form details,
+.trainer-report-form summary {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.trainer-report-form summary {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 719px) {
+  .trainer-student-main,
+  .trainer-report-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .trainer-attendance-panel {
+    padding: 10px !important;
+  }
+
+  .trainer-student-row {
+    padding: 11px !important;
+  }
+
+  .trainer-attendance-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .trainer-attendance-actions .trainer-soft-button {
+    min-height: 44px;
+    padding: 9px 6px !important;
+    font-size: 13px !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+    text-overflow: clip;
+  }
+
+  .trainer-attendance-actions .trainer-soft-button:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .trainer-report-form {
+    margin-top: 10px !important;
+    padding: 10px !important;
+    border-radius: 14px !important;
+  }
+
+  .trainer-report-form h4 {
+    font-size: 16px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .trainer-report-grid {
+    gap: 9px !important;
+  }
+
+  .trainer-report-form select,
+  .trainer-report-form textarea,
+  .trainer-report-form input {
+    font-size: 16px !important;
+  }
+
+  .trainer-info-details,
+  .trainer-attendance-panel,
+  .trainer-group-card {
+    max-width: 100%;
+    overflow: hidden;
+  }
+}

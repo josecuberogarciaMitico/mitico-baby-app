@@ -5296,9 +5296,17 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     turno: DisponibilidadEntrenador,
     respuesta: 'Disponible' | 'No puedo' | 'Pendiente'
   ) {
-    const scrollActual = window.scrollY;
-    setCargando(true);
+    const respuestaAnterior = turno.respuesta;
     setError('');
+
+    // Actualización optimista: el botón cambia al instante y la pantalla no
+    // desaparece mientras Supabase guarda la respuesta. Así evitamos el salto
+    // de scroll en móvil y mantenemos abierto el día que está usando el entrenador.
+    setDisponibilidad((actual) =>
+      actual.map((registro) =>
+        registro.id === turno.id ? { ...registro, respuesta } : registro
+      )
+    );
 
     try {
       await ejecutarFuncion('responder_disponibilidad_turno_por_id_app', {
@@ -5306,18 +5314,20 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_respuesta: respuesta,
         p_comentario: turno.comentario || null,
       });
-      await cargarDisponibilidad();
-      setTimeout(
-        () => window.scrollTo({ top: scrollActual, behavior: 'auto' }),
-        0
-      );
     } catch (err) {
+      // Si Supabase falla, recuperamos el estado anterior para no mostrar un
+      // dato como guardado cuando realmente no lo está.
+      setDisponibilidad((actual) =>
+        actual.map((registro) =>
+          registro.id === turno.id
+            ? { ...registro, respuesta: respuestaAnterior }
+            : registro
+        )
+      );
       setError(
         err instanceof Error ? err.message : 'Error guardando disponibilidad'
       );
     }
-
-    setCargando(false);
   }
 
   function mensajeDisponibilidadSemana() {
@@ -14125,6 +14135,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                             alumno
                                                           ) && (
                                                             <div
+                                                              className="trainer-report-form"
                                                               style={
                                                                 formularioCaja
                                                               }
@@ -14162,6 +14173,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                                 />
                                                               </details>
                                                               <div
+                                                                className="trainer-report-grid"
                                                                 style={
                                                                   gridFormulario
                                                                 }
