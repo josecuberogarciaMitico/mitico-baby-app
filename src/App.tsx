@@ -13998,7 +13998,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                         </div>
                       </summary>
 
-                      <div className="trainer-day-grid">
+                      <div className="trainer-day-grid trainer-day-grid--groups">
                         {diasGruposVistaEntrenador(semana.grupos).map(
                           (dia, indiceDia) => {
                             const gruposDia = dia.turnos.flatMap(
