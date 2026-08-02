@@ -519,6 +519,190 @@ type DisponibilidadEntrenador = {
   especialidades: string[] | null;
 };
 
+
+type ModalidadDisponibilidadEditor = 'Baby' | 'Ocio' | 'Intensivos';
+
+type TurnoDisponibilidadEditor = {
+  id: string;
+  hora_inicio: string;
+  hora_fin: string;
+  modalidades: ModalidadDisponibilidadEditor[];
+  nota: string;
+};
+
+type DiaDisponibilidadEditor = {
+  fecha: string;
+  nombre: string;
+  activo: boolean;
+  turnos: TurnoDisponibilidadEditor[];
+};
+
+type BorradorDisponibilidadEditor = {
+  version: 1;
+  semana_inicio: string;
+  fecha_limite: string;
+  fecha_limite_manual?: boolean;
+  estado: 'Borrador';
+  actualizado_en: string | null;
+  dias: DiaDisponibilidadEditor[];
+};
+
+function idTurnoDisponibilidadEditor() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+  return `turno-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function fechaIsoEditor(fecha: Date) {
+  const anio = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  return `${anio}-${mes}-${dia}`;
+}
+
+function sumarDiasEditor(fechaIso: string, dias: number) {
+  const fecha = new Date(`${fechaIso}T12:00:00`);
+  fecha.setDate(fecha.getDate() + dias);
+  return fechaIsoEditor(fecha);
+}
+
+function fechaLimiteAutomaticaDisponibilidadEditor(semanaInicio: string) {
+  // Las semanas del calendario de temporada comienzan siempre en lunes.
+  return `${semanaInicio}T13:00`;
+}
+
+function turnoEditor(
+  hora_inicio: string,
+  hora_fin: string,
+  modalidades: ModalidadDisponibilidadEditor[]
+): TurnoDisponibilidadEditor {
+  return {
+    id: idTurnoDisponibilidadEditor(),
+    hora_inicio,
+    hora_fin,
+    modalidades,
+    nota: '',
+  };
+}
+
+function diaPermiteVariosTurnosDisponibilidadEditor(nombre: string) {
+  const dia = nombre.trim().toLowerCase();
+  return dia === 'sábado' || dia === 'domingo';
+}
+
+function turnoInicialDisponibilidadEditor(
+  nombreDia: string
+): TurnoDisponibilidadEditor {
+  const dia = nombreDia.trim().toLowerCase();
+  if (dia === 'sábado' || dia === 'domingo') {
+    return turnoEditor('09:45', '11:45', ['Baby', 'Ocio']);
+  }
+  return turnoEditor('18:00', '20:00', ['Baby']);
+}
+
+function crearBorradorDisponibilidadEditor(
+  semanaInicio: string
+): BorradorDisponibilidadEditor {
+  const diasConfigurados: Array<{
+    nombre: string;
+    offset: number;
+    turnos: TurnoDisponibilidadEditor[];
+  }> = [
+    {
+      nombre: 'miércoles',
+      offset: 2,
+      turnos: [turnoEditor('18:00', '20:00', ['Baby'])],
+    },
+    {
+      nombre: 'jueves',
+      offset: 3,
+      turnos: [turnoEditor('18:00', '20:00', ['Baby'])],
+    },
+    {
+      nombre: 'viernes',
+      offset: 4,
+      turnos: [turnoEditor('18:00', '20:00', ['Baby'])],
+    },
+    {
+      nombre: 'sábado',
+      offset: 5,
+      turnos: [
+        turnoEditor('09:45', '11:45', ['Baby', 'Ocio']),
+        turnoEditor('12:00', '14:00', ['Baby', 'Ocio']),
+        turnoEditor('14:30', '16:30', ['Intensivos']),
+      ],
+    },
+    {
+      nombre: 'domingo',
+      offset: 6,
+      turnos: [
+        turnoEditor('09:45', '11:45', ['Baby', 'Ocio']),
+        turnoEditor('12:00', '14:00', ['Baby', 'Ocio']),
+      ],
+    },
+  ];
+
+  return {
+    version: 1,
+    semana_inicio: semanaInicio,
+    fecha_limite: fechaLimiteAutomaticaDisponibilidadEditor(semanaInicio),
+    fecha_limite_manual: false,
+    estado: 'Borrador',
+    actualizado_en: null,
+    dias: diasConfigurados.map((dia) => ({
+      fecha: sumarDiasEditor(semanaInicio, dia.offset),
+      nombre: dia.nombre,
+      activo: true,
+      turnos: dia.turnos,
+    })),
+  };
+}
+
+function normalizarBorradorDisponibilidadEditor(
+  borrador: BorradorDisponibilidadEditor
+): BorradorDisponibilidadEditor {
+  const plantilla = crearBorradorDisponibilidadEditor(borrador.semana_inicio);
+  const guardadosPorNombre = new Map(
+    (borrador.dias || []).map((dia) => [dia.nombre.toLowerCase(), dia])
+  );
+
+  const fechaLimiteManual = borrador.fecha_limite_manual === true;
+
+  return {
+    ...borrador,
+    fecha_limite:
+      fechaLimiteManual && borrador.fecha_limite
+        ? borrador.fecha_limite
+        : fechaLimiteAutomaticaDisponibilidadEditor(borrador.semana_inicio),
+    fecha_limite_manual: fechaLimiteManual,
+    dias: plantilla.dias.map((diaPlantilla) => {
+      const guardado = guardadosPorNombre.get(diaPlantilla.nombre);
+      if (!guardado) return diaPlantilla;
+
+      const turnosGuardados = Array.isArray(guardado.turnos)
+        ? guardado.turnos
+        : [];
+      const turnosNormalizados =
+        turnosGuardados.length > 0
+          ? diaPermiteVariosTurnosDisponibilidadEditor(diaPlantilla.nombre)
+            ? turnosGuardados
+            : turnosGuardados.slice(0, 1)
+          : [];
+
+      return {
+        ...diaPlantilla,
+        activo: Boolean(guardado.activo),
+        turnos: turnosNormalizados,
+      };
+    }),
+  };
+}
+
+function claveStorageDisponibilidadEditor(semanaInicio: string) {
+  return `mitico_disponibilidad_editor_v1_${semanaInicio}`;
+}
+
 type ReportePendiente = {
   entrenador_id: string;
   entrenador: string;
@@ -2211,6 +2395,22 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     'todos' | 'disponibles' | 'no_puedo' | 'pendientes'
   >('todos');
 
+
+  const [borradorDisponibilidadEditor, setBorradorDisponibilidadEditor] =
+    useState<BorradorDisponibilidadEditor | null>(null);
+  const [vistaPreviaDisponibilidadEditor, setVistaPreviaDisponibilidadEditor] =
+    useState(false);
+  const [mensajeDisponibilidadEditor, setMensajeDisponibilidadEditor] =
+    useState('');
+  const [diaDisponibilidadEditorAbierto, setDiaDisponibilidadEditorAbierto] =
+    useState<string | null>(null);
+  const [turnoResumenDisponibilidadAbierto, setTurnoResumenDisponibilidadAbierto] =
+    useState<string | null>(null);
+  const [
+    categoriaResumenDisponibilidad,
+    setCategoriaResumenDisponibilidad,
+  ] = useState<Record<string, 'disponibles' | 'no_puedo' | 'pendientes'>>({});
+
   const [reportesPendientes, setReportesPendientes] = useState<
     ReportePendiente[]
   >([]);
@@ -3509,6 +3709,227 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const diasSemanaAgenda = semanaAgendaActiva
     ? diasTrabajoSemanaAgenda(semanaAgendaActiva)
     : [];
+
+  useEffect(() => {
+    setDiaDisponibilidadEditorAbierto(null);
+    setTurnoResumenDisponibilidadAbierto(null);
+
+    if (!semanaAgendaActiva) {
+      setBorradorDisponibilidadEditor(null);
+      return;
+    }
+
+    try {
+      const guardado = window.localStorage.getItem(
+        claveStorageDisponibilidadEditor(semanaAgendaActiva)
+      );
+      if (guardado) {
+        const borrador = JSON.parse(guardado) as BorradorDisponibilidadEditor;
+        if (
+          borrador?.version === 1 &&
+          borrador.semana_inicio === semanaAgendaActiva &&
+          Array.isArray(borrador.dias)
+        ) {
+          setBorradorDisponibilidadEditor(
+            normalizarBorradorDisponibilidadEditor(borrador)
+          );
+          setMensajeDisponibilidadEditor('Borrador local recuperado.');
+          return;
+        }
+      }
+    } catch {
+      // Si el borrador local estuviera dañado, se crea una plantilla limpia.
+    }
+
+    setBorradorDisponibilidadEditor(
+      crearBorradorDisponibilidadEditor(semanaAgendaActiva)
+    );
+    setMensajeDisponibilidadEditor('Plantilla semanal preparada.');
+  }, [semanaAgendaActiva]);
+
+  function actualizarBorradorDisponibilidadEditor(
+    actualizar: (actual: BorradorDisponibilidadEditor) => BorradorDisponibilidadEditor
+  ) {
+    setBorradorDisponibilidadEditor((actual) =>
+      actual
+        ? {
+            ...actualizar(actual),
+            actualizado_en: null,
+            estado: 'Borrador',
+          }
+        : actual
+    );
+    setMensajeDisponibilidadEditor('Cambios sin guardar.');
+  }
+
+  function activarDiaDisponibilidadEditor(fecha: string, activo: boolean) {
+    actualizarBorradorDisponibilidadEditor((actual) => ({
+      ...actual,
+      dias: actual.dias.map((dia) => {
+        if (dia.fecha !== fecha) return dia;
+        const turnos =
+          activo && dia.turnos.length === 0
+            ? [turnoInicialDisponibilidadEditor(dia.nombre)]
+            : dia.turnos;
+        return { ...dia, activo, turnos };
+      }),
+    }));
+
+    setDiaDisponibilidadEditorAbierto((actual) =>
+      activo ? fecha : actual === fecha ? null : actual
+    );
+  }
+
+  function añadirTurnoDisponibilidadEditor(fecha: string) {
+    actualizarBorradorDisponibilidadEditor((actual) => ({
+      ...actual,
+      dias: actual.dias.map((dia) => {
+        if (dia.fecha !== fecha) return dia;
+        if (!diaPermiteVariosTurnosDisponibilidadEditor(dia.nombre)) {
+          return {
+            ...dia,
+            activo: true,
+            turnos:
+              dia.turnos.length > 0
+                ? dia.turnos.slice(0, 1)
+                : [turnoInicialDisponibilidadEditor(dia.nombre)],
+          };
+        }
+
+        return {
+          ...dia,
+          activo: true,
+          turnos: [
+            ...dia.turnos,
+            turnoInicialDisponibilidadEditor(dia.nombre),
+          ],
+        };
+      }),
+    }));
+    setDiaDisponibilidadEditorAbierto(fecha);
+  }
+
+  function actualizarTurnoDisponibilidadEditor(
+    fecha: string,
+    turnoId: string,
+    cambios: Partial<TurnoDisponibilidadEditor>
+  ) {
+    actualizarBorradorDisponibilidadEditor((actual) => ({
+      ...actual,
+      dias: actual.dias.map((dia) =>
+        dia.fecha === fecha
+          ? {
+              ...dia,
+              turnos: dia.turnos.map((turno) =>
+                turno.id === turnoId ? { ...turno, ...cambios } : turno
+              ),
+            }
+          : dia
+      ),
+    }));
+  }
+
+  function alternarModalidadDisponibilidadEditor(
+    fecha: string,
+    turnoId: string,
+    modalidad: ModalidadDisponibilidadEditor
+  ) {
+    const dia = borradorDisponibilidadEditor?.dias.find(
+      (item) => item.fecha === fecha
+    );
+    const turno = dia?.turnos.find((item) => item.id === turnoId);
+    if (!turno) return;
+
+    const modalidades = turno.modalidades.includes(modalidad)
+      ? turno.modalidades.filter((item) => item !== modalidad)
+      : [...turno.modalidades, modalidad];
+
+    actualizarTurnoDisponibilidadEditor(fecha, turnoId, {
+      modalidades: modalidades.length > 0 ? modalidades : [modalidad],
+    });
+  }
+
+  function duplicarTurnoDisponibilidadEditor(
+    fecha: string,
+    turnoId: string
+  ) {
+    actualizarBorradorDisponibilidadEditor((actual) => ({
+      ...actual,
+      dias: actual.dias.map((dia) => {
+        if (dia.fecha !== fecha) return dia;
+        if (!diaPermiteVariosTurnosDisponibilidadEditor(dia.nombre)) {
+          return { ...dia, turnos: dia.turnos.slice(0, 1) };
+        }
+
+        const indice = dia.turnos.findIndex((turno) => turno.id === turnoId);
+        if (indice < 0) return dia;
+        const copia = {
+          ...dia.turnos[indice],
+          id: idTurnoDisponibilidadEditor(),
+        };
+        const turnos = [...dia.turnos];
+        turnos.splice(indice + 1, 0, copia);
+        return { ...dia, turnos };
+      }),
+    }));
+  }
+
+  function eliminarTurnoDisponibilidadEditor(
+    fecha: string,
+    turnoId: string
+  ) {
+    actualizarBorradorDisponibilidadEditor((actual) => ({
+      ...actual,
+      dias: actual.dias.map((dia) => {
+        if (dia.fecha !== fecha) return dia;
+        if (!diaPermiteVariosTurnosDisponibilidadEditor(dia.nombre)) {
+          return dia;
+        }
+
+        const turnos = dia.turnos.filter((turno) => turno.id !== turnoId);
+        return { ...dia, turnos, activo: turnos.length > 0 && dia.activo };
+      }),
+    }));
+  }
+
+  function guardarBorradorDisponibilidadEditor() {
+    if (!borradorDisponibilidadEditor) return;
+    const guardado: BorradorDisponibilidadEditor = {
+      ...normalizarBorradorDisponibilidadEditor(
+        borradorDisponibilidadEditor
+      ),
+      actualizado_en: new Date().toISOString(),
+    };
+    window.localStorage.setItem(
+      claveStorageDisponibilidadEditor(guardado.semana_inicio),
+      JSON.stringify(guardado)
+    );
+    setBorradorDisponibilidadEditor(guardado);
+    setMensajeDisponibilidadEditor('Borrador guardado en este navegador.');
+  }
+
+  function restaurarPlantillaDisponibilidadEditor() {
+    if (!semanaAgendaActiva) return;
+    const confirmar = window.confirm(
+      '¿Restaurar la plantilla habitual? Se perderán los cambios no guardados de esta semana.'
+    );
+    if (!confirmar) return;
+    const plantilla = crearBorradorDisponibilidadEditor(semanaAgendaActiva);
+    setBorradorDisponibilidadEditor(plantilla);
+    setDiaDisponibilidadEditorAbierto(null);
+    setMensajeDisponibilidadEditor('Plantilla habitual restaurada.');
+  }
+
+  const resumenBorradorDisponibilidadEditor =
+    borradorDisponibilidadEditor?.dias.reduce(
+      (resumen, dia) => {
+        if (!dia.activo) return resumen;
+        resumen.dias += 1;
+        resumen.turnos += dia.turnos.length;
+        return resumen;
+      },
+      { dias: 0, turnos: 0 }
+    ) || { dias: 0, turnos: 0 };
 
   function fechaGrupoOcioSemana(grupo: OcioGrupoApp) {
     const semana = semanaAgendaActiva || semanaActualAgenda;
@@ -8073,7 +8494,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   );
   const disponibilidadPorTurno = agruparDisponibilidadPorTurno(
     disponibilidadFiltrada
-  );
+  ).filter((turno) => {
+    const diaSemana = new Date(`${turno.fecha}T12:00:00`).getDay();
+    return diaSemana !== 1 && diaSemana !== 2;
+  });
 
   const sesionAgendaActiva = agendaSesionesDirectas.find(
     (sesion) => sesion.sesion_id === agendaSesionActivaId
@@ -16743,36 +17167,263 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
       {pantalla === 'disponibilidad' && (
         <section style={{ display: 'grid', gap: 16 }}>
-          <div style={cabeceraPantallaMovil}>
+          <div className="availability-editor-hero">
             <div>
-              <h2 style={{ margin: 0 }}>Disponibilidad semanal</h2>
-              <p style={{ margin: '6px 0 0' }}>
-                Flujo correcto: 1) pides disponibilidad por semana, 2)
-                entrenadores responden Disponible/No puedo, 3) Jose crea grupos
-                solo con los disponibles, 4) envías aviso de grupos asignados.
+              <span className="availability-editor-kicker">SPRINT 2 · EDITOR SEMANAL</span>
+              <h2>Disponibilidad semanal</h2>
+              <p>
+                Prepara solo los días y turnos reales. Guarda el borrador,
+                revísalo y publícalo cuando esté conectado en el Sprint 2B.
               </p>
             </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button
-                onClick={crearDisponibilidadSemanaActual}
-                style={botonSecundario}
-              >
-                1 · Crear turnos
-              </button>
-              <button
-                onClick={enviarAvisoDisponibilidadSemana}
-                style={botonPrincipal}
-              >
-                2 · Enviar aviso en app
-              </button>
-              <button
-                onClick={copiarMensajeDisponibilidadSemana}
-                style={botonSecundario}
-              >
-                3 · Ver recordatorio WhatsApp
-              </button>
+            <div className="availability-editor-hero-status">
+              <strong>Borrador</strong>
+              <span>
+                {resumenBorradorDisponibilidadEditor.dias} días ·{' '}
+                {resumenBorradorDisponibilidadEditor.turnos} turnos
+              </span>
             </div>
           </div>
+
+          <section className="availability-response-summary">
+            <header className="availability-response-summary-header">
+              <div>
+                <span className="availability-editor-kicker">
+                  RESUMEN DE RESPUESTAS
+                </span>
+                <h3>Disponibilidad recibida por turno</h3>
+                <p>
+                  Abre un turno para ver quién está disponible, quién no puede
+                  y quién falta por contestar. Al abrir otro, el anterior se
+                  cierra automáticamente.
+                </p>
+              </div>
+              <span className="availability-response-total">
+                {disponibilidadPorTurno.length}{' '}
+                {disponibilidadPorTurno.length === 1 ? 'turno' : 'turnos'}
+              </span>
+            </header>
+
+            <div className="availability-response-controls">
+              <input
+                value={busquedaDisponibilidad}
+                onChange={(e) => setBusquedaDisponibilidad(e.target.value)}
+                placeholder="Buscar entrenador..."
+                aria-label="Buscar entrenador en disponibilidad"
+              />
+              <div className="availability-response-filter-buttons">
+                <button
+                  type="button"
+                  className={filtroDisponibilidad === 'todos' ? 'is-active' : ''}
+                  onClick={() => setFiltroDisponibilidad('todos')}
+                >
+                  Todos
+                </button>
+                <button
+                  type="button"
+                  className={
+                    filtroDisponibilidad === 'disponibles' ? 'is-active' : ''
+                  }
+                  onClick={() => setFiltroDisponibilidad('disponibles')}
+                >
+                  Disponibles
+                </button>
+                <button
+                  type="button"
+                  className={
+                    filtroDisponibilidad === 'no_puedo' ? 'is-active' : ''
+                  }
+                  onClick={() => setFiltroDisponibilidad('no_puedo')}
+                >
+                  No pueden
+                </button>
+                <button
+                  type="button"
+                  className={
+                    filtroDisponibilidad === 'pendientes' ? 'is-active' : ''
+                  }
+                  onClick={() => setFiltroDisponibilidad('pendientes')}
+                >
+                  Pendientes
+                </button>
+              </div>
+            </div>
+
+            {cargando && <p>Cargando disponibilidad...</p>}
+
+            {!cargando &&
+              disponibilidadSemanalEntrenador.length === 0 &&
+              !error && (
+                <article className="availability-response-empty">
+                  <strong>Sin disponibilidad creada para esta semana</strong>
+                  <span>
+                    Selecciona la semana y utiliza el sistema de respaldo hasta
+                    conectar la publicación del Sprint 2B.
+                  </span>
+                </article>
+              )}
+
+            <div className="availability-response-turns">
+              {disponibilidadPorTurno.map((turno) => {
+                const abierto =
+                  turnoResumenDisponibilidadAbierto === turno.clave;
+                const categoriaActiva =
+                  categoriaResumenDisponibilidad[turno.clave] ||
+                  'disponibles';
+                const personasCategoria =
+                  categoriaActiva === 'disponibles'
+                    ? turno.disponibles
+                    : categoriaActiva === 'no_puedo'
+                    ? turno.no_puedo
+                    : turno.pendientes;
+                const tituloCategoria =
+                  categoriaActiva === 'disponibles'
+                    ? 'Disponibles para asignar'
+                    : categoriaActiva === 'no_puedo'
+                    ? 'No pueden asistir'
+                    : 'Pendientes de contestar';
+
+                return (
+                  <article
+                    key={turno.clave}
+                    className={`availability-response-turn ${
+                      abierto ? 'is-open' : ''
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      className="availability-response-turn-header"
+                      aria-expanded={abierto}
+                      onClick={() => {
+                        setTurnoResumenDisponibilidadAbierto((actual) =>
+                          actual === turno.clave ? null : turno.clave
+                        );
+                        setCategoriaResumenDisponibilidad((actual) => ({
+                          ...actual,
+                          [turno.clave]:
+                            actual[turno.clave] || 'disponibles',
+                        }));
+                      }}
+                    >
+                      <span className="availability-response-turn-date">
+                        <strong>
+                          {capitalizarPrimera(
+                            new Date(
+                              `${turno.fecha}T00:00:00`
+                            ).toLocaleDateString('es-ES', {
+                              weekday: 'long',
+                            })
+                          )}{' '}
+                          {formatearFecha(turno.fecha)}
+                        </strong>
+                        <small>
+                          {turno.hora_inicio.slice(0, 5)}–
+                          {turno.hora_fin.slice(0, 5)}
+                        </small>
+                      </span>
+                      <span className="availability-response-counts">
+                        <b className="is-success">
+                          {turno.disponibles.length} disponibles
+                        </b>
+                        <b className="is-danger">
+                          {turno.no_puedo.length} no pueden
+                        </b>
+                        <b className="is-warning">
+                          {turno.pendientes.length} pendientes
+                        </b>
+                      </span>
+                      <span
+                        className="availability-response-chevron"
+                        aria-hidden="true"
+                      >
+                        {abierto ? '⌃' : '⌄'}
+                      </span>
+                    </button>
+
+                    {abierto && (
+                      <div className="availability-response-turn-body">
+                        <div className="availability-response-category-buttons">
+                          <button
+                            type="button"
+                            className={`is-success ${
+                              categoriaActiva === 'disponibles'
+                                ? 'is-selected'
+                                : ''
+                            }`}
+                            onClick={() =>
+                              setCategoriaResumenDisponibilidad((actual) => ({
+                                ...actual,
+                                [turno.clave]: 'disponibles',
+                              }))
+                            }
+                          >
+                            Disponibles · {turno.disponibles.length}
+                          </button>
+                          <button
+                            type="button"
+                            className={`is-danger ${
+                              categoriaActiva === 'no_puedo'
+                                ? 'is-selected'
+                                : ''
+                            }`}
+                            onClick={() =>
+                              setCategoriaResumenDisponibilidad((actual) => ({
+                                ...actual,
+                                [turno.clave]: 'no_puedo',
+                              }))
+                            }
+                          >
+                            No pueden · {turno.no_puedo.length}
+                          </button>
+                          <button
+                            type="button"
+                            className={`is-warning ${
+                              categoriaActiva === 'pendientes'
+                                ? 'is-selected'
+                                : ''
+                            }`}
+                            onClick={() =>
+                              setCategoriaResumenDisponibilidad((actual) => ({
+                                ...actual,
+                                [turno.clave]: 'pendientes',
+                              }))
+                            }
+                          >
+                            Pendientes · {turno.pendientes.length}
+                          </button>
+                        </div>
+
+                        <section className="availability-response-people">
+                          <strong>{tituloCategoria}</strong>
+                          {personasCategoria.length > 0 ? (
+                            <div>
+                              {personasCategoria.map((persona) => (
+                                <span key={`${turno.clave}-${persona}`}>
+                                  {persona}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p>No hay entrenadores en este estado.</p>
+                          )}
+                        </section>
+
+                        <button
+                          type="button"
+                          className="availability-response-ready"
+                          onClick={() =>
+                            setTurnoResumenDisponibilidadAbierto(null)
+                          }
+                        >
+                          Listo, cerrar turno
+                        </button>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
 
           <article style={agendaBloqueBlanco}>
             <h3 style={{ marginTop: 0 }}>Semana que estás pidiendo</h3>
@@ -16835,131 +17486,386 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
             </p>
           </article>
 
-          <input
-            value={busquedaDisponibilidad}
-            onChange={(e) => setBusquedaDisponibilidad(e.target.value)}
-            placeholder="Buscar entrenador..."
-            style={buscador}
-          />
-
-          <div
-            style={{
-              display: 'flex',
-              gap: 8,
-              flexWrap: 'wrap',
-              marginBottom: 4,
-            }}
-          >
-            <button
-              onClick={() => setFiltroDisponibilidad('todos')}
-              style={botonMenu(filtroDisponibilidad === 'todos')}
-            >
-              Todos
-            </button>
-            <button
-              onClick={() => setFiltroDisponibilidad('disponibles')}
-              style={botonMenu(filtroDisponibilidad === 'disponibles')}
-            >
-              Disponibles
-            </button>
-            <button
-              onClick={() => setFiltroDisponibilidad('no_puedo')}
-              style={botonMenu(filtroDisponibilidad === 'no_puedo')}
-            >
-              No puedo
-            </button>
-            <button
-              onClick={() => setFiltroDisponibilidad('pendientes')}
-              style={botonMenu(filtroDisponibilidad === 'pendientes')}
-            >
-              Pendientes
-            </button>
-          </div>
-
-          <article style={avisoNeutral}>
-            Vista rápida tipo Google Forms: por cada día y turno ves quién está
-            Disponible, quién No puede y quién falta por contestar. Esta
-            pantalla funciona antes de crear grupos.
-          </article>
-
-          {cargando && <p>Cargando disponibilidad...</p>}
-
-          {!cargando &&
-            disponibilidadSemanalEntrenador.length === 0 &&
-            !error && (
-              <article style={tarjetaMovilVacia}>
-                <h3 style={{ marginTop: 0 }}>
-                  Sin disponibilidad creada para esta semana
-                </h3>
-                <p style={{ marginBottom: 0 }}>
-                  Selecciona temporada y semana arriba. Luego pulsa “Crear
-                  turnos”.
-                </p>
-              </article>
-            )}
-
-          <section style={{ display: 'grid', gap: 16 }}>
-            {disponibilidadPorTurno.map((turno) => (
-              <article key={turno.clave} style={tarjetaEntrenadorMovil}>
-                <header style={cabeceraEntrenadorMovil}>
-                  <div>
-                    <p style={etiquetaSuperior}>DÍA / TURNO</p>
-                    <h3 style={{ margin: 0 }}>
-                      {capitalizarPrimera(
-                        new Date(`${turno.fecha}T00:00:00`).toLocaleDateString(
-                          'es-ES',
-                          { weekday: 'long' }
-                        )
-                      )}{' '}
-                      {formatearFecha(turno.fecha)} ·{' '}
-                      {turno.hora_inicio.slice(0, 5)}–
-                      {turno.hora_fin.slice(0, 5)}
-                    </h3>
-                  </div>
-                  <div style={resumenChipsMovil}>
-                    <span>{turno.disponibles.length} disponibles</span>
-                    <span>{turno.no_puedo.length} no pueden</span>
-                    <span>{turno.pendientes.length} pendientes</span>
-                  </div>
-                </header>
-
-                <div style={{ display: 'grid', gap: 10 }}>
-                  <div style={miniTarjetaBlanca}>
-                    <strong>Disponibles para asignar grupo</strong>
-                    <p style={{ margin: '6px 0 0' }}>
-                      {turno.disponibles.length > 0
-                        ? turno.disponibles.join(' · ')
-                        : 'Nadie ha marcado Disponible todavía.'}
-                    </p>
-                  </div>
-
-                  <details>
-                    <summary style={{ cursor: 'pointer', fontWeight: 800 }}>
-                      Ver No pueden / Pendientes
-                    </summary>
-                    <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
-                      <div style={miniTarjetaBlanca}>
-                        <strong>No pueden</strong>
-                        <p style={{ margin: '6px 0 0' }}>
-                          {turno.no_puedo.length > 0
-                            ? turno.no_puedo.join(' · ')
-                            : 'Nadie.'}
-                        </p>
-                      </div>
-                      <div style={miniTarjetaBlanca}>
-                        <strong>Pendientes</strong>
-                        <p style={{ margin: '6px 0 0' }}>
-                          {turno.pendientes.length > 0
-                            ? turno.pendientes.join(' · ')
-                            : 'Nadie pendiente.'}
-                        </p>
-                      </div>
-                    </div>
-                  </details>
+          {borradorDisponibilidadEditor && (
+            <section className="availability-editor-shell">
+              <header className="availability-editor-toolbar">
+                <div>
+                  <span className="availability-editor-kicker">EDITOR DE LA SEMANA</span>
+                  <h3>
+                    {rangoSemanaAgenda(
+                      borradorDisponibilidadEditor.semana_inicio
+                    )}
+                  </h3>
+                  <p>{mensajeDisponibilidadEditor}</p>
                 </div>
-              </article>
-            ))}
-          </section>
+                <div className="availability-editor-actions">
+                  <button
+                    type="button"
+                    className="availability-soft-button"
+                    onClick={restaurarPlantillaDisponibilidadEditor}
+                  >
+                    Restaurar plantilla
+                  </button>
+                  <button
+                    type="button"
+                    className="availability-soft-button"
+                    onClick={() => setVistaPreviaDisponibilidadEditor(true)}
+                  >
+                    Vista previa
+                  </button>
+                  <button
+                    type="button"
+                    className="availability-primary-button"
+                    onClick={guardarBorradorDisponibilidadEditor}
+                  >
+                    Guardar borrador
+                  </button>
+                </div>
+              </header>
+
+              <div className="availability-deadline-row">
+                <div className="availability-deadline-control">
+                  <label>
+                    Fecha y hora límite para responder
+                    <input
+                      type="datetime-local"
+                      value={borradorDisponibilidadEditor.fecha_limite}
+                      onChange={(event) =>
+                        actualizarBorradorDisponibilidadEditor((actual) => ({
+                          ...actual,
+                          fecha_limite: event.target.value,
+                          fecha_limite_manual: true,
+                        }))
+                      }
+                    />
+                  </label>
+                  <div className="availability-deadline-help">
+                    <span>
+                      {borradorDisponibilidadEditor.fecha_limite_manual
+                        ? 'Fecha modificada manualmente.'
+                        : 'Automática: lunes de esta semana a las 13:00.'}
+                    </span>
+                    {borradorDisponibilidadEditor.fecha_limite_manual && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          actualizarBorradorDisponibilidadEditor((actual) => ({
+                            ...actual,
+                            fecha_limite:
+                              fechaLimiteAutomaticaDisponibilidadEditor(
+                                actual.semana_inicio
+                              ),
+                            fecha_limite_manual: false,
+                          }))
+                        }
+                      >
+                        Usar lunes 13:00
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="availability-editor-summary">
+                  <span>
+                    <strong>{resumenBorradorDisponibilidadEditor.dias}</strong>
+                    días activos
+                  </span>
+                  <span>
+                    <strong>{resumenBorradorDisponibilidadEditor.turnos}</strong>
+                    turnos
+                  </span>
+                </div>
+              </div>
+
+              <div className="availability-days-editor">
+                {borradorDisponibilidadEditor.dias.map((dia) => {
+                  const abierto =
+                    diaDisponibilidadEditorAbierto === dia.fecha;
+                  const permiteVarios =
+                    diaPermiteVariosTurnosDisponibilidadEditor(dia.nombre);
+                  const resumenTurnosDia =
+                    dia.turnos.length > 0
+                      ? dia.turnos
+                          .map(
+                            (turno) =>
+                              `${turno.hora_inicio}–${turno.hora_fin}`
+                          )
+                          .join(' · ')
+                      : 'Sin turno configurado';
+
+                  return (
+                    <article
+                      key={dia.fecha}
+                      className={`availability-day-editor ${
+                        dia.activo ? 'is-active' : 'is-inactive'
+                      } ${abierto ? 'is-open' : ''}`}
+                    >
+                      <header className="availability-day-editor-header">
+                        <button
+                          type="button"
+                          className="availability-day-editor-open"
+                          disabled={!dia.activo}
+                          aria-expanded={abierto}
+                          onClick={() =>
+                            setDiaDisponibilidadEditorAbierto((actual) =>
+                              actual === dia.fecha ? null : dia.fecha
+                            )
+                          }
+                        >
+                          <span className="availability-day-editor-name">
+                            {capitalizarPrimera(dia.nombre)}
+                          </span>
+                          <strong>{formatearFecha(dia.fecha)}</strong>
+                          <small>
+                            {dia.activo
+                              ? `${dia.turnos.length} ${
+                                  dia.turnos.length === 1 ? 'turno' : 'turnos'
+                                } · ${resumenTurnosDia}`
+                              : 'No se publicará'}
+                          </small>
+                          <span
+                            className="availability-day-editor-chevron"
+                            aria-hidden="true"
+                          >
+                            {abierto ? '⌃' : '⌄'}
+                          </span>
+                        </button>
+
+                        <label
+                          className="availability-day-toggle"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={dia.activo}
+                            onChange={(event) =>
+                              activarDiaDisponibilidadEditor(
+                                dia.fecha,
+                                event.target.checked
+                              )
+                            }
+                          />
+                          <span>
+                            {dia.activo ? 'Se publica' : 'No se publica'}
+                          </span>
+                        </label>
+                      </header>
+
+                      {dia.activo && abierto && (
+                        <div className="availability-turns-editor">
+                          <div className="availability-day-rule">
+                            <strong>
+                              {permiteVarios
+                                ? 'Puedes añadir varios turnos'
+                                : 'Este día tiene un único turno'}
+                            </strong>
+                            <span>
+                              {permiteVarios
+                                ? 'Sábado y domingo permiten varios horarios.'
+                                : 'Miércoles, jueves y viernes no admiten turnos duplicados.'}
+                            </span>
+                          </div>
+
+                          {dia.turnos.map((turno, indice) => (
+                            <section
+                              key={turno.id}
+                              className="availability-turn-editor"
+                            >
+                              <div className="availability-turn-editor-title">
+                                <strong>
+                                  {permiteVarios
+                                    ? `Turno ${indice + 1}`
+                                    : 'Turno único'}
+                                </strong>
+                                {permiteVarios && (
+                                  <div>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        duplicarTurnoDisponibilidadEditor(
+                                          dia.fecha,
+                                          turno.id
+                                        )
+                                      }
+                                    >
+                                      Duplicar
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="is-danger"
+                                      onClick={() =>
+                                        eliminarTurnoDisponibilidadEditor(
+                                          dia.fecha,
+                                          turno.id
+                                        )
+                                      }
+                                    >
+                                      Eliminar
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="availability-time-grid">
+                                <label>
+                                  Inicio
+                                  <span className="availability-native-time">
+                                    <input
+                                      type="time"
+                                      value={turno.hora_inicio}
+                                      onChange={(event) =>
+                                        actualizarTurnoDisponibilidadEditor(
+                                          dia.fecha,
+                                          turno.id,
+                                          { hora_inicio: event.target.value }
+                                        )
+                                      }
+                                    />
+                                  </span>
+                                </label>
+                                <label>
+                                  Fin
+                                  <span className="availability-native-time">
+                                    <input
+                                      type="time"
+                                      value={turno.hora_fin}
+                                      onChange={(event) =>
+                                        actualizarTurnoDisponibilidadEditor(
+                                          dia.fecha,
+                                          turno.id,
+                                          { hora_fin: event.target.value }
+                                        )
+                                      }
+                                    />
+                                  </span>
+                                </label>
+                              </div>
+
+                              <fieldset className="availability-modalities">
+                                <legend>Modalidades previstas</legend>
+                                {(
+                                  [
+                                    'Baby',
+                                    'Ocio',
+                                    'Intensivos',
+                                  ] as ModalidadDisponibilidadEditor[]
+                                ).map((modalidad) => (
+                                  <label
+                                    key={modalidad}
+                                    className={`availability-modality-chip availability-modality-chip--${modalidad.toLowerCase()}`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={turno.modalidades.includes(
+                                        modalidad
+                                      )}
+                                      onChange={() =>
+                                        alternarModalidadDisponibilidadEditor(
+                                          dia.fecha,
+                                          turno.id,
+                                          modalidad
+                                        )
+                                      }
+                                    />
+                                    <span>{modalidad}</span>
+                                  </label>
+                                ))}
+                              </fieldset>
+
+                              <label className="availability-note-field">
+                                Nota interna opcional
+                                <input
+                                  value={turno.nota}
+                                  onChange={(event) =>
+                                    actualizarTurnoDisponibilidadEditor(
+                                      dia.fecha,
+                                      turno.id,
+                                      { nota: event.target.value }
+                                    )
+                                  }
+                                  placeholder="Ej.: solo si hay alumnos, cambio de instalación..."
+                                />
+                              </label>
+                            </section>
+                          ))}
+
+                          {permiteVarios && (
+                            <button
+                              type="button"
+                              className="availability-add-turn"
+                              onClick={() =>
+                                añadirTurnoDisponibilidadEditor(dia.fecha)
+                              }
+                            >
+                              + Añadir turno
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            className="availability-day-ready"
+                            onClick={() =>
+                              setDiaDisponibilidadEditorAbierto(null)
+                            }
+                          >
+                            Listo, cerrar día
+                          </button>
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+
+              <footer className="availability-editor-footer">
+                <div>
+                  <strong>Publicación real todavía protegida</strong>
+                  <span>
+                    En este Sprint 2A el borrador no cambia lo que ven los
+                    entrenadores. La conexión segura con Supabase se activa en
+                    el Sprint 2B.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="availability-publish-button"
+                  disabled
+                >
+                  Publicar disponibilidad · Sprint 2B
+                </button>
+              </footer>
+
+              <details className="availability-legacy-tools">
+                <summary>Sistema actual de respaldo</summary>
+                <p>
+                  Estos botones mantienen el sistema anterior mientras
+                  comprobamos el nuevo editor.
+                </p>
+                <div>
+                  <button
+                    type="button"
+                    onClick={crearDisponibilidadSemanaActual}
+                    style={botonSecundario}
+                  >
+                    Crear turnos actuales
+                  </button>
+                  <button
+                    type="button"
+                    onClick={enviarAvisoDisponibilidadSemana}
+                    style={botonPrincipal}
+                  >
+                    Enviar aviso actual
+                  </button>
+                  <button
+                    type="button"
+                    onClick={copiarMensajeDisponibilidadSemana}
+                    style={botonSecundario}
+                  >
+                    Recordatorio WhatsApp
+                  </button>
+                </div>
+              </details>
+            </section>
+          )}
 
           <details style={agendaBloqueBlanco}>
             <summary style={{ cursor: 'pointer', fontWeight: 900 }}>
@@ -17906,6 +18812,101 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           </section>
         </section>
       )}
+
+      {vistaPreviaDisponibilidadEditor &&
+        borradorDisponibilidadEditor &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="availability-preview-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Vista previa de disponibilidad semanal"
+          >
+            <section className="availability-preview-sheet">
+              <header>
+                <div>
+                  <span className="availability-editor-kicker">VISTA PREVIA</span>
+                  <h2>
+                    Semana{' '}
+                    {rangoSemanaAgenda(
+                      borradorDisponibilidadEditor.semana_inicio
+                    )}
+                  </h2>
+                  <p>
+                    Límite:{' '}
+                    {new Date(
+                      borradorDisponibilidadEditor.fecha_limite
+                    ).toLocaleString('es-ES', {
+                      weekday: 'long',
+                      day: '2-digit',
+                      month: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setVistaPreviaDisponibilidadEditor(false)}
+                >
+                  Cerrar
+                </button>
+              </header>
+
+              <div className="availability-preview-days">
+                {borradorDisponibilidadEditor.dias
+                  .filter((dia) => dia.activo && dia.turnos.length > 0)
+                  .map((dia) => (
+                    <article key={dia.fecha}>
+                      <div>
+                        <strong>{capitalizarPrimera(dia.nombre)}</strong>
+                        <span>{formatearFecha(dia.fecha)}</span>
+                      </div>
+                      <ul>
+                        {dia.turnos.map((turno) => (
+                          <li key={turno.id}>
+                            <strong>
+                              {turno.hora_inicio}–{turno.hora_fin}
+                            </strong>
+                            <span>{turno.modalidades.join(' · ')}</span>
+                            {turno.nota && <small>{turno.nota}</small>}
+                          </li>
+                        ))}
+                      </ul>
+                    </article>
+                  ))}
+              </div>
+
+              {resumenBorradorDisponibilidadEditor.turnos === 0 && (
+                <p className="availability-preview-empty">
+                  No hay ningún turno activo para publicar.
+                </p>
+              )}
+
+              <footer>
+                <button
+                  type="button"
+                  className="availability-soft-button"
+                  onClick={() => setVistaPreviaDisponibilidadEditor(false)}
+                >
+                  Volver al editor
+                </button>
+                <button
+                  type="button"
+                  className="availability-primary-button"
+                  onClick={() => {
+                    guardarBorradorDisponibilidadEditor();
+                    setVistaPreviaDisponibilidadEditor(false);
+                  }}
+                >
+                  Guardar borrador
+                </button>
+              </footer>
+            </section>
+          </div>,
+          document.body
+        )}
 
       {alumnoReporteActivo &&
         typeof document !== 'undefined' &&
