@@ -701,3 +701,566 @@
   color: #ffffff !important;
   box-shadow: 0 10px 22px rgba(22, 163, 74, 0.28) !important;
 }
+
+/* =========================================================
+   AJUSTE 5 · EXPERIENCIA MÓVIL ENTRENADOR
+   - La disponibilidad se guarda sin desmontar la pantalla ni mover el scroll.
+   - Asistencia adaptable: 2 botones + Pendiente a ancho completo en móvil.
+   - Formulario de reporte en una sola columna, sin desbordes laterales.
+   ========================================================= */
+
+.trainer-student-row,
+.trainer-student-main,
+.trainer-attendance-actions,
+.trainer-report-form,
+.trainer-report-grid {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.trainer-student-row {
+  overflow: hidden;
+}
+
+.trainer-student-main {
+  display: grid !important;
+}
+
+.trainer-student-main strong,
+.trainer-student-main p {
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.trainer-attendance-actions {
+  min-width: 0 !important;
+}
+
+.trainer-attendance-actions .trainer-soft-button {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.trainer-report-form {
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.trainer-report-grid {
+  display: grid !important;
+}
+
+.trainer-report-form label,
+.trainer-report-form select,
+.trainer-report-form textarea,
+.trainer-report-form input,
+.trainer-report-form details,
+.trainer-report-form summary {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.trainer-report-form summary {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 719px) {
+  .trainer-student-main,
+  .trainer-report-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 520px) {
+  .trainer-attendance-panel {
+    padding: 10px !important;
+  }
+
+  .trainer-student-row {
+    padding: 11px !important;
+  }
+
+  .trainer-attendance-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .trainer-attendance-actions .trainer-soft-button {
+    min-height: 44px;
+    padding: 9px 6px !important;
+    font-size: 13px !important;
+    line-height: 1.1 !important;
+    white-space: nowrap !important;
+    text-overflow: clip;
+  }
+
+  .trainer-attendance-actions .trainer-soft-button:nth-child(3) {
+    grid-column: 1 / -1;
+  }
+
+  .trainer-report-form {
+    margin-top: 10px !important;
+    padding: 10px !important;
+    border-radius: 14px !important;
+  }
+
+  .trainer-report-form h4 {
+    font-size: 16px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+  }
+
+  .trainer-report-grid {
+    gap: 9px !important;
+  }
+
+  .trainer-report-form select,
+  .trainer-report-form textarea,
+  .trainer-report-form input {
+    font-size: 16px !important;
+  }
+
+  .trainer-info-details,
+  .trainer-attendance-panel,
+  .trainer-group-card {
+    max-width: 100%;
+    overflow: hidden;
+  }
+}
+
+
+/* =========================================================
+   AJUSTE 7 · REPORTE MÓVIL EN PORTAL REAL
+   El formulario móvil se renderiza directamente en <body>,
+   fuera de acordeones y contenedores con ancho/overflow propios.
+   ========================================================= */
+
+.trainer-report-overlay {
+  display: none;
+}
+
+.trainer-report-sheet-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.trainer-report-sheet-header h3 {
+  margin: 2px 0 4px;
+  font-size: 20px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.trainer-report-sheet-header p {
+  margin: 0;
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.trainer-report-sheet-kicker {
+  display: block;
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.trainer-report-sheet-close {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 9px 13px;
+  border: 1px solid rgba(148, 163, 184, 0.48);
+  border-radius: 14px;
+  background: #ffffff;
+  color: #334155;
+  font-weight: 900;
+}
+
+@media (max-width: 719px) {
+  .trainer-report-form--inline {
+    display: none !important;
+  }
+
+  .trainer-report-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    display: flex;
+    width: 100%;
+    height: 100dvh;
+    min-width: 0;
+    background: #f8fafc;
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .trainer-report-form--sheet {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    height: 100%;
+    margin: 0;
+    padding:
+      max(12px, env(safe-area-inset-top))
+      14px
+      max(18px, env(safe-area-inset-bottom));
+    border: 0;
+    border-radius: 0;
+    background: #f8fafc;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: none;
+  }
+
+  .trainer-report-form--sheet .trainer-report-sheet-header {
+    position: sticky;
+    top: calc(-1 * max(12px, env(safe-area-inset-top)));
+    z-index: 5;
+    margin:
+      calc(-1 * max(12px, env(safe-area-inset-top)))
+      -14px
+      14px;
+    padding:
+      max(12px, env(safe-area-inset-top))
+      14px
+      12px;
+    border-bottom: 1px solid #e2e8f0;
+    background: rgba(248, 250, 252, 0.98);
+    backdrop-filter: blur(12px);
+  }
+
+  .trainer-report-form--sheet > details {
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 15px !important;
+  }
+
+  .trainer-report-form--sheet .trainer-report-grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .trainer-report-form--sheet label,
+  .trainer-report-form--sheet select,
+  .trainer-report-form--sheet textarea,
+  .trainer-report-form--sheet input,
+  .trainer-report-form--sheet summary {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .trainer-report-form--sheet select,
+  .trainer-report-form--sheet textarea,
+  .trainer-report-form--sheet input {
+    min-height: 48px;
+    font-size: 16px !important;
+  }
+
+  .trainer-report-form--sheet textarea {
+    min-height: 132px;
+  }
+
+  .trainer-report-form--sheet .trainer-report-actions {
+    position: sticky;
+    bottom: calc(-1 * max(18px, env(safe-area-inset-bottom)));
+    z-index: 5;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.72fr);
+    gap: 10px !important;
+    width: auto !important;
+    margin:
+      18px
+      -14px
+      calc(-1 * max(18px, env(safe-area-inset-bottom))) !important;
+    padding:
+      12px
+      14px
+      max(18px, env(safe-area-inset-bottom));
+    border-top: 1px solid #e2e8f0;
+    background: rgba(248, 250, 252, 0.98);
+    backdrop-filter: blur(12px);
+  }
+
+  .trainer-report-form--sheet .trainer-report-actions button {
+    width: 100% !important;
+    min-height: 48px;
+    margin: 0 !important;
+  }
+}
+
+@media (min-width: 720px) {
+  .trainer-report-form--sheet {
+    display: none !important;
+  }
+
+  .trainer-report-form--inline {
+    width: 100% !important;
+    max-width: none !important;
+  }
+
+  .trainer-report-form--inline .trainer-report-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+
+/* =========================================================
+   AJUSTE 9 · GRUPO MÓVIL EN PORTAL REAL
+   La jerarquía semana > día > turno se conserva como índice.
+   Al abrir un grupo, React lo renderiza directamente en <body>,
+   fuera de acordeones y contenedores con overflow propios.
+   Escritorio mantiene la tarjeta integrada y toda su amplitud.
+   ========================================================= */
+
+.trainer-group-sheet-header,
+.trainer-open-group-button,
+.trainer-group-quick-nav {
+  display: none;
+}
+
+@media (max-width: 719px) {
+  .trainer-group-card:not(.is-sheet-open) > .trainer-attendance-panel,
+  .trainer-group-card:not(.is-sheet-open) > .trainer-info-details {
+    display: none !important;
+  }
+
+  .trainer-group-card:not(.is-sheet-open) .trainer-open-group-button {
+    display: block;
+    width: 100%;
+    min-height: 46px;
+    padding: 10px 14px;
+    border: 1px solid rgba(37, 99, 235, 0.34);
+    border-radius: 14px;
+    background: linear-gradient(
+      135deg,
+      rgba(239, 246, 255, 0.98),
+      #ffffff
+    );
+    color: #1d4ed8;
+    font-size: 15px;
+    font-weight: 900;
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.13);
+  }
+
+  .trainer-group-card:not(.is-sheet-open) > .trainer-confirm-button {
+    display: block !important;
+    width: 100% !important;
+    min-height: 48px;
+    margin: 0 !important;
+    border: 1px solid #1d4ed8 !important;
+    background: #2563eb !important;
+    color: #ffffff !important;
+    font-size: 15px;
+    font-weight: 900;
+    box-shadow: 0 10px 22px rgba(37, 99, 235, 0.24) !important;
+  }
+
+  .trainer-group-card:not(.is-sheet-open) > .trainer-group-action-status {
+    margin: 0 !important;
+  }
+
+  .trainer-group-card.is-sheet-open {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 2147483646 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    width: 100vw !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding:
+      max(12px, env(safe-area-inset-top))
+      14px
+      max(18px, env(safe-area-inset-bottom)) !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: #f8fafc !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch;
+    box-shadow: none !important;
+    isolation: isolate;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-group-sheet-header {
+    position: sticky;
+    top: calc(-1 * max(12px, env(safe-area-inset-top)));
+    z-index: 8;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    width: auto;
+    margin:
+      calc(-1 * max(12px, env(safe-area-inset-top)))
+      -14px
+      2px;
+    padding:
+      max(12px, env(safe-area-inset-top))
+      14px
+      12px;
+    border-bottom: 1px solid #e2e8f0;
+    background: rgba(248, 250, 252, 0.98);
+    backdrop-filter: blur(12px);
+  }
+
+  .trainer-group-sheet-header h3 {
+    margin: 2px 0 4px;
+    font-size: 20px;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .trainer-group-sheet-header p {
+    margin: 0;
+    color: #64748b;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .trainer-group-sheet-kicker {
+    display: block;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .trainer-group-sheet-close {
+    flex: 0 0 auto;
+    min-height: 42px;
+    padding: 9px 13px;
+    border: 1px solid rgba(148, 163, 184, 0.48);
+    border-radius: 14px;
+    background: #ffffff;
+    color: #334155;
+    font-weight: 900;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-open-group-button {
+    display: none !important;
+  }
+
+
+  .trainer-group-card.is-sheet-open .trainer-group-quick-nav {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 7px;
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #dbeafe;
+    border-radius: 16px;
+    background: #ffffff;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-group-quick-nav button {
+    min-width: 0;
+    min-height: 42px;
+    padding: 8px 6px;
+    border: 1px solid rgba(37, 99, 235, 0.28);
+    border-radius: 12px;
+    background: linear-gradient(135deg, #eff6ff, #ffffff);
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 900;
+    line-height: 1.15;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-group-quick-nav button:active,
+  .trainer-group-card.is-sheet-open .trainer-group-quick-nav button.is-active {
+    background: #2563eb;
+    border-color: #2563eb;
+    color: #ffffff;
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.22);
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-group-section-anchor {
+    scroll-margin-top: 96px;
+  }
+
+  .trainer-group-card.is-sheet-open > *,
+  .trainer-group-card.is-sheet-open .trainer-attendance-panel,
+  .trainer-group-card.is-sheet-open .trainer-info-details,
+  .trainer-group-card.is-sheet-open .trainer-student-row {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-attendance-panel,
+  .trainer-group-card.is-sheet-open .trainer-info-details {
+    display: none !important;
+  }
+
+  .trainer-group-card.is-sheet-open[data-active-section='asistencia']
+    .trainer-attendance-panel,
+  .trainer-group-card.is-sheet-open[data-active-section='trabajo']
+    .trainer-work-details,
+  .trainer-group-card.is-sheet-open[data-active-section='observaciones']
+    .trainer-observations-details {
+    display: block !important;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-attendance-panel {
+    padding: 12px !important;
+    overflow: visible !important;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-student-row {
+    overflow: visible !important;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-info-details {
+    overflow: hidden !important;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-info-details > summary {
+    pointer-events: none;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-confirm-button {
+    display: none !important;
+  }
+}
+
+@media (min-width: 720px) {
+  .trainer-group-sheet-header,
+  .trainer-open-group-button {
+    display: none !important;
+  }
+}
+
+
+/* =========================================================
+   AJUSTE 11 · NAVEGACIÓN REAL DEL GRUPO Y CONFIRMACIÓN CLARA
+   En móvil cada pestaña muestra su contenido inmediatamente debajo.
+   La confirmación se realiza desde la tarjeta compacta y desaparece al guardarse.
+   Los estados completos no muestran una franja verde innecesaria.
+   ========================================================= */

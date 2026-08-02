@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import './App.css';
 import { LOGO_MITICO_CLUB, FOTO_MITICO_HERO } from './assets/imagenes';
 import {
@@ -1010,6 +1011,11 @@ type ReporteFormState = {
 type ReporteActivo = {
   grupo_id: string;
   alumno_id: string;
+};
+
+type GrupoActivoEntrenador = {
+  grupo_id: string;
+  entrenador_id: string;
 };
 
 type IntensivoFormState = {
@@ -2052,12 +2058,53 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     });
   };
 
+  const [grupoActivoEntrenador, setGrupoActivoEntrenador] =
+    useState<GrupoActivoEntrenador | null>(null);
+  const [seccionGrupoEntrenador, setSeccionGrupoEntrenador] = useState<
+    'asistencia' | 'trabajo' | 'observaciones'
+  >('asistencia');
   const [reporteActivo, setReporteActivo] = useState<ReporteActivo | null>(
     null
   );
   const [formReporte, setFormReporte] = useState<ReporteFormState>(
     reporteInicial()
   );
+
+  const overlayEntrenadorAbierto = Boolean(
+    grupoActivoEntrenador || reporteActivo
+  );
+
+  useEffect(() => {
+    if (!overlayEntrenadorAbierto || typeof window === 'undefined') return;
+    if (!window.matchMedia('(max-width: 719px)').matches) return;
+
+    const scrollY = window.scrollY;
+    const estilosPrevios = {
+      position: document.body.style.position,
+      top: document.body.style.top,
+      left: document.body.style.left,
+      right: document.body.style.right,
+      width: document.body.style.width,
+      overflow: document.body.style.overflow,
+    };
+
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.position = estilosPrevios.position;
+      document.body.style.top = estilosPrevios.top;
+      document.body.style.left = estilosPrevios.left;
+      document.body.style.right = estilosPrevios.right;
+      document.body.style.width = estilosPrevios.width;
+      document.body.style.overflow = estilosPrevios.overflow;
+      window.scrollTo({ top: scrollY, behavior: 'auto' });
+    };
+  }, [overlayEntrenadorAbierto]);
 
   const [alumnos, setAlumnos] = useState<AlumnoResumen[]>([]);
   const [busquedaAlumno, setBusquedaAlumno] = useState('');
@@ -2751,6 +2798,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   function cerrarFormularioReporte() {
     setReporteActivo(null);
     setFormReporte(reporteInicial());
+  }
+
+  function cerrarGrupoEntrenador() {
+    setGrupoActivoEntrenador(null);
+    setSeccionGrupoEntrenador('asistencia');
   }
 
   async function guardarReporteAlumno(alumno: AlumnoReporteEntrenador) {
@@ -5296,9 +5348,17 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     turno: DisponibilidadEntrenador,
     respuesta: 'Disponible' | 'No puedo' | 'Pendiente'
   ) {
-    const scrollActual = window.scrollY;
-    setCargando(true);
+    const respuestaAnterior = turno.respuesta;
     setError('');
+
+    // Actualización optimista: el botón cambia al instante y la pantalla no
+    // desaparece mientras Supabase guarda la respuesta. Así evitamos el salto
+    // de scroll en móvil y mantenemos abierto el día que está usando el entrenador.
+    setDisponibilidad((actual) =>
+      actual.map((registro) =>
+        registro.id === turno.id ? { ...registro, respuesta } : registro
+      )
+    );
 
     try {
       await ejecutarFuncion('responder_disponibilidad_turno_por_id_app', {
@@ -5306,18 +5366,20 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_respuesta: respuesta,
         p_comentario: turno.comentario || null,
       });
-      await cargarDisponibilidad();
-      setTimeout(
-        () => window.scrollTo({ top: scrollActual, behavior: 'auto' }),
-        0
-      );
     } catch (err) {
+      // Si Supabase falla, recuperamos el estado anterior para no mostrar un
+      // dato como guardado cuando realmente no lo está.
+      setDisponibilidad((actual) =>
+        actual.map((registro) =>
+          registro.id === turno.id
+            ? { ...registro, respuesta: respuestaAnterior }
+            : registro
+        )
+      );
       setError(
         err instanceof Error ? err.message : 'Error guardando disponibilidad'
       );
     }
-
-    setCargando(false);
   }
 
   function mensajeDisponibilidadSemana() {
@@ -8191,13 +8253,25 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     );
   }
 
+  function gruposSinConfirmarEntrenadorVista(entrenadorId: string) {
+    return gruposVistaEntrenador.filter(
+      (grupo) =>
+        grupo.entrenador_id === entrenadorId &&
+        grupo.estado_confirmacion !== 'Confirmado'
+    );
+  }
+
   const totalGruposVistaEntrenador = gruposVistaEntrenador.length;
-  const totalReportesVistaEntrenador = alumnosVistaEntrenador.filter(
-    (alumno) =>
-      alumno.estado_reporte === 'Falta reporte' ||
-      alumno.estado_reporte === 'Asistencia sin confirmar' ||
-      alumno.estado_asistencia === 'Pendiente'
-  ).length;
+  const totalReportesVistaEntrenador =
+    alumnosVistaEntrenador.filter(
+      (alumno) =>
+        alumno.estado_reporte === 'Falta reporte' ||
+        alumno.estado_reporte === 'Asistencia sin confirmar' ||
+        alumno.estado_asistencia === 'Pendiente'
+    ).length +
+    gruposVistaEntrenador.filter(
+      (grupo) => grupo.estado_confirmacion !== 'Confirmado'
+    ).length;
   const totalDisponibilidadPendienteVistaEntrenador =
     disponibilidadVistaEntrenador.filter(
       (turno) => (turno.respuesta || 'Pendiente') === 'Pendiente'
@@ -8453,6 +8527,175 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     return (
       reporteActivo?.grupo_id === alumno.grupo_id &&
       reporteActivo?.alumno_id === alumno.alumno_id
+    );
+  }
+
+  const alumnoReporteActivo = reporteActivo
+    ? alumnosReporteEntrenador.find(
+        (alumno) =>
+          alumno.grupo_id === reporteActivo.grupo_id &&
+          alumno.alumno_id === reporteActivo.alumno_id
+      ) || null
+    : null;
+
+  const grupoReporteActivo = reporteActivo
+    ? gruposEntrenador.find((grupo) => grupo.grupo_id === reporteActivo.grupo_id) || null
+    : null;
+
+  function renderFormularioReporteEntrenador(
+    alumno: AlumnoReporteEntrenador,
+    nivelGrupo: string,
+    modo: 'inline' | 'sheet'
+  ) {
+    const esSheet = modo === 'sheet';
+
+    return (
+      <div
+        className={`trainer-report-form trainer-report-form--${modo}`}
+        style={esSheet ? undefined : formularioCaja}
+      >
+        {esSheet ? (
+          <div className="trainer-report-sheet-header">
+            <div>
+              <span className="trainer-report-sheet-kicker">Reporte del alumno</span>
+              <h3>{alumno.alumno}</h3>
+              <p>
+                {alumno.nombre_grupo}
+                {alumno.nivel_alumno ? ` · Nivel ${alumno.nivel_alumno}` : ''}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="trainer-report-sheet-close"
+              onClick={cerrarFormularioReporte}
+            >
+              Cerrar
+            </button>
+          </div>
+        ) : (
+          <h4 style={{ marginTop: 0 }}>Reporte de {alumno.alumno}</h4>
+        )}
+
+        <details style={ayudaReporteEntrenadorCaja}>
+          <summary style={summaryAyudaReporteEntrenador}>
+            Ver ayuda rápida para rellenar reporte
+          </summary>
+          <AyudaReporteEntrenador
+            nivel={
+              formReporte.nivel ||
+              alumno.nivel_alumno ||
+              nivelGrupo ||
+              ''
+            }
+          />
+        </details>
+
+        <div className="trainer-report-grid" style={gridFormulario}>
+          <CampoSelect
+            label="Nivel"
+            value={formReporte.nivel}
+            opciones={opcionesNivel}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, nivel: valor })
+            }
+          />
+          <CampoSelect
+            label="Actitud"
+            value={formReporte.actitud}
+            opciones={opcionesActitud}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, actitud: valor })
+            }
+          />
+          <CampoSelect
+            label="Técnica"
+            value={formReporte.tecnica}
+            opciones={opcionesTecnica}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, tecnica: valor })
+            }
+          />
+          <CampoSelect
+            label="Pista"
+            value={formReporte.pista}
+            opciones={opcionesPista}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, pista: valor })
+            }
+          />
+          <CampoSelect
+            label="Autonomía"
+            value={formReporte.autonomia}
+            opciones={opcionesAutonomia}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, autonomia: valor })
+            }
+          />
+          <CampoSelect
+            label="Remontes"
+            value={formReporte.remontes}
+            opciones={opcionesRemontes}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, remontes: valor })
+            }
+          />
+          <CampoSelect
+            label="Incidencia"
+            value={formReporte.incidencia}
+            opciones={opcionesIncidencia}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, incidencia: valor })
+            }
+          />
+          <CampoSelect
+            label="Recomendación"
+            value={formReporte.recomendacion}
+            opciones={opcionesRecomendacion}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, recomendacion: valor })
+            }
+          />
+        </div>
+
+        <label style={labelCampo}>
+          Observaciones
+          <textarea
+            value={formReporte.observaciones}
+            onChange={(e) =>
+              setFormReporte({
+                ...formReporte,
+                observaciones: e.target.value,
+              })
+            }
+            style={textarea}
+          />
+        </label>
+
+        <div
+          className="trainer-report-actions"
+          style={{
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'wrap',
+            marginTop: 12,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => guardarReporteAlumno(alumno)}
+            style={botonPrincipal}
+          >
+            Guardar reporte
+          </button>
+          <button
+            type="button"
+            onClick={cerrarFormularioReporte}
+            style={botonSecundario}
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -13581,12 +13824,22 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                   </div>
                 </header>
 
-                {pendientesEntrenadorVista(bloqueEntrenador.entrenador_id).length >
-                  0 && (
+                {(pendientesEntrenadorVista(
+                  bloqueEntrenador.entrenador_id
+                ).length > 0 ||
+                  gruposSinConfirmarEntrenadorVista(
+                    bloqueEntrenador.entrenador_id
+                  ).length > 0) && (
                   <section style={avisoPendiente}>
                     <strong>Aviso de tareas pendientes</strong>
                     <p style={{ margin: '6px 0 0' }}>
                       Tienes{' '}
+                      {
+                        gruposSinConfirmarEntrenadorVista(
+                          bloqueEntrenador.entrenador_id
+                        ).length
+                      }{' '}
+                      grupos sin confirmar,{' '}
                       {
                         pendientesEntrenadorVista(
                           bloqueEntrenador.entrenador_id
@@ -13602,11 +13855,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                         ).filter(
                           (reporte) =>
                             reporte.estado_reporte ===
-                            'Asistencia sin confirmar'
+                              'Asistencia sin confirmar' ||
+                            reporte.estado_asistencia === 'Pendiente'
                         ).length
                       }{' '}
-                      asistencias sin confirmar. Entra en cada grupo y déjalo
-                      cerrado.
+                      asistencias pendientes. Confirma primero los grupos nuevos y
+                      completa después asistencia y reportes.
                     </p>
                   </section>
                 )}
@@ -13870,14 +14124,37 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                             const asistenciaCompleta =
                                               alumnosGrupo.length > 0 &&
                                               pendientes === 0;
-                                            const grupoCerrado =
-                                              asistenciaCompleta &&
-                                              faltaReporte === 0;
+                                            const estadoAccionGrupo =
+                                              grupo.estado_confirmacion !== 'Confirmado'
+                                                ? 'Pendiente de confirmar'
+                                                : !asistenciaCompleta
+                                                ? 'Falta asistencia'
+                                                : faltaReporte > 0
+                                                ? 'Faltan reportes'
+                                                : '';
+                                            const esGrupoActivo =
+                                              grupoActivoEntrenador?.grupo_id ===
+                                                grupo.grupo_id &&
+                                              grupoActivoEntrenador?.entrenador_id ===
+                                                grupo.entrenador_id;
+                                            const grupoDomId = `trainer-group-${grupo.entrenador_id}-${grupo.grupo_id}`.replace(
+                                              /[^a-zA-Z0-9_-]/g,
+                                              '-'
+                                            );
 
-                                            return (
+                                            const tarjetaGrupoEntrenador = (
                                               <article
                                                 key={`${grupo.entrenador_id}-${grupo.grupo_id}`}
-                                                className="trainer-group-card"
+                                                className={`trainer-group-card ${
+                                                  esGrupoActivo
+                                                    ? 'is-sheet-open'
+                                                    : ''
+                                                }`}
+                                                data-active-section={
+                                                  esGrupoActivo
+                                                    ? seccionGrupoEntrenador
+                                                    : undefined
+                                                }
                                                 style={{
                                                   ...grupoEntrenadorCardMovil,
                                                   ...estiloGrupoPorPistaApp(
@@ -13885,6 +14162,39 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                   ),
                                                 }}
                                               >
+                                                <div className="trainer-group-sheet-header">
+                                                  <div>
+                                                    <span className="trainer-group-sheet-kicker">
+                                                      Grupo de entrenamiento
+                                                    </span>
+                                                    <h3>
+                                                      {nombreGrupoVisualApp(
+                                                        grupo,
+                                                        indiceGrupoEntrenadorTurno
+                                                      )}
+                                                    </h3>
+                                                    <p>
+                                                      {capitalizarPrimera(
+                                                        new Date(
+                                                          `${grupo.fecha}T00:00:00`
+                                                        ).toLocaleDateString(
+                                                          'es-ES',
+                                                          { weekday: 'long' }
+                                                        )
+                                                      )}{' '}
+                                                      · {grupo.hora_inicio}–
+                                                      {grupo.hora_fin}
+                                                    </p>
+                                                  </div>
+                                                  <button
+                                                    type="button"
+                                                    className="trainer-group-sheet-close"
+                                                    onClick={cerrarGrupoEntrenador}
+                                                  >
+                                                    Cerrar
+                                                  </button>
+                                                </div>
+
                                                 <div
                                                   style={
                                                     grupoEntrenadorTopMovil
@@ -13928,23 +14238,73 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                   </div>
                                                 </div>
 
-                                                <div
-                                                  style={
-                                                    grupoCerrado
-                                                      ? avisoCompleto
-                                                      : avisoPendiente
-                                                  }
+                                                {estadoAccionGrupo && (
+                                                  <div
+                                                    className="trainer-group-action-status"
+                                                    style={avisoPendiente}
+                                                  >
+                                                    {estadoAccionGrupo}
+                                                  </div>
+                                                )}
+
+                                                <nav
+                                                  className="trainer-group-quick-nav"
+                                                  aria-label="Secciones del grupo"
                                                 >
-                                                  {grupoCerrado
-                                                    ? 'Grupo cerrado'
-                                                    : asistenciaCompleta
-                                                    ? 'Faltan reportes'
-                                                    : 'Falta asistencia'}
-                                                </div>
+                                                  <button
+                                                    type="button"
+                                                    className={
+                                                      seccionGrupoEntrenador ===
+                                                      'asistencia'
+                                                        ? 'is-active'
+                                                        : ''
+                                                    }
+                                                    onClick={() =>
+                                                      setSeccionGrupoEntrenador(
+                                                        'asistencia'
+                                                      )
+                                                    }
+                                                  >
+                                                    Asistencia
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    className={
+                                                      seccionGrupoEntrenador ===
+                                                      'trabajo'
+                                                        ? 'is-active'
+                                                        : ''
+                                                    }
+                                                    onClick={() =>
+                                                      setSeccionGrupoEntrenador(
+                                                        'trabajo'
+                                                      )
+                                                    }
+                                                  >
+                                                    Trabajo diario
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    className={
+                                                      seccionGrupoEntrenador ===
+                                                      'observaciones'
+                                                        ? 'is-active'
+                                                        : ''
+                                                    }
+                                                    onClick={() =>
+                                                      setSeccionGrupoEntrenador(
+                                                        'observaciones'
+                                                      )
+                                                    }
+                                                  >
+                                                    Observaciones
+                                                  </button>
+                                                </nav>
 
                                                 {grupo.estado_confirmacion !==
                                                   'Confirmado' && (
                                                   <button
+                                                    type="button"
                                                     className="trainer-confirm-button"
                                                     onClick={() =>
                                                       confirmarGrupoEntrenador(
@@ -13961,8 +14321,31 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                   </button>
                                                 )}
 
+                                                <button
+                                                  type="button"
+                                                  className="trainer-open-group-button"
+                                                  onClick={() => {
+                                                    setSeccionGrupoEntrenador(
+                                                      'asistencia'
+                                                    );
+                                                    setGrupoActivoEntrenador({
+                                                      grupo_id: grupo.grupo_id,
+                                                      entrenador_id:
+                                                        grupo.entrenador_id,
+                                                    });
+                                                  }}
+                                                >
+                                                  Abrir grupo
+                                                </button>
+
                                                 <section
-                                                  className="trainer-attendance-panel"
+                                                  id={`${grupoDomId}-asistencia`}
+                                                  className={`trainer-attendance-panel trainer-group-section-anchor ${
+                                                    seccionGrupoEntrenador ===
+                                                    'asistencia'
+                                                      ? 'is-active-section'
+                                                      : ''
+                                                  }`}
                                                   style={bloqueInfoEntrenador}
                                                 >
                                                   <div className="trainer-attendance-heading">
@@ -14123,274 +14506,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
                                                           {formularioAbierto(
                                                             alumno
-                                                          ) && (
-                                                            <div
-                                                              style={
-                                                                formularioCaja
-                                                              }
-                                                            >
-                                                              <h4
-                                                                style={{
-                                                                  marginTop: 0,
-                                                                }}
-                                                              >
-                                                                Reporte de{' '}
-                                                                {alumno.alumno}
-                                                              </h4>
-                                                              <details
-                                                                style={
-                                                                  ayudaReporteEntrenadorCaja
-                                                                }
-                                                              >
-                                                                <summary
-                                                                  style={
-                                                                    summaryAyudaReporteEntrenador
-                                                                  }
-                                                                >
-                                                                  Ver ayuda
-                                                                  rápida para
-                                                                  rellenar
-                                                                  reporte
-                                                                </summary>
-                                                                <AyudaReporteEntrenador
-                                                                  nivel={
-                                                                    formReporte.nivel ||
-                                                                    alumno.nivel_alumno ||
-                                                                    grupo.nivel_grupo ||
-                                                                    ''
-                                                                  }
-                                                                />
-                                                              </details>
-                                                              <div
-                                                                style={
-                                                                  gridFormulario
-                                                                }
-                                                              >
-                                                                <CampoSelect
-                                                                  label="Nivel"
-                                                                  value={
-                                                                    formReporte.nivel
-                                                                  }
-                                                                  opciones={
-                                                                    opcionesNivel
-                                                                  }
-                                                                  onChange={(
-                                                                    valor
-                                                                  ) =>
-                                                                    setFormReporte(
-                                                                      {
-                                                                        ...formReporte,
-                                                                        nivel:
-                                                                          valor,
-                                                                      }
-                                                                    )
-                                                                  }
-                                                                />
-                                                                <CampoSelect
-                                                                  label="Actitud"
-                                                                  value={
-                                                                    formReporte.actitud
-                                                                  }
-                                                                  opciones={
-                                                                    opcionesActitud
-                                                                  }
-                                                                  onChange={(
-                                                                    valor
-                                                                  ) =>
-                                                                    setFormReporte(
-                                                                      {
-                                                                        ...formReporte,
-                                                                        actitud:
-                                                                          valor,
-                                                                      }
-                                                                    )
-                                                                  }
-                                                                />
-                                                                <CampoSelect
-                                                                  label="Técnica"
-                                                                  value={
-                                                                    formReporte.tecnica
-                                                                  }
-                                                                  opciones={
-                                                                    opcionesTecnica
-                                                                  }
-                                                                  onChange={(
-                                                                    valor
-                                                                  ) =>
-                                                                    setFormReporte(
-                                                                      {
-                                                                        ...formReporte,
-                                                                        tecnica:
-                                                                          valor,
-                                                                      }
-                                                                    )
-                                                                  }
-                                                                />
-                                                                <CampoSelect
-                                                                  label="Pista"
-                                                                  value={
-                                                                    formReporte.pista
-                                                                  }
-                                                                  opciones={
-                                                                    opcionesPista
-                                                                  }
-                                                                  onChange={(
-                                                                    valor
-                                                                  ) =>
-                                                                    setFormReporte(
-                                                                      {
-                                                                        ...formReporte,
-                                                                        pista:
-                                                                          valor,
-                                                                      }
-                                                                    )
-                                                                  }
-                                                                />
-                                                                <CampoSelect
-                                                                  label="Autonomía"
-                                                                  value={
-                                                                    formReporte.autonomia
-                                                                  }
-                                                                  opciones={
-                                                                    opcionesAutonomia
-                                                                  }
-                                                                  onChange={(
-                                                                    valor
-                                                                  ) =>
-                                                                    setFormReporte(
-                                                                      {
-                                                                        ...formReporte,
-                                                                        autonomia:
-                                                                          valor,
-                                                                      }
-                                                                    )
-                                                                  }
-                                                                />
-                                                                <CampoSelect
-                                                                  label="Remontes"
-                                                                  value={
-                                                                    formReporte.remontes
-                                                                  }
-                                                                  opciones={
-                                                                    opcionesRemontes
-                                                                  }
-                                                                  onChange={(
-                                                                    valor
-                                                                  ) =>
-                                                                    setFormReporte(
-                                                                      {
-                                                                        ...formReporte,
-                                                                        remontes:
-                                                                          valor,
-                                                                      }
-                                                                    )
-                                                                  }
-                                                                />
-                                                                <CampoSelect
-                                                                  label="Incidencia"
-                                                                  value={
-                                                                    formReporte.incidencia
-                                                                  }
-                                                                  opciones={
-                                                                    opcionesIncidencia
-                                                                  }
-                                                                  onChange={(
-                                                                    valor
-                                                                  ) =>
-                                                                    setFormReporte(
-                                                                      {
-                                                                        ...formReporte,
-                                                                        incidencia:
-                                                                          valor,
-                                                                      }
-                                                                    )
-                                                                  }
-                                                                />
-                                                                <CampoSelect
-                                                                  label="Recomendación"
-                                                                  value={
-                                                                    formReporte.recomendacion
-                                                                  }
-                                                                  opciones={
-                                                                    opcionesRecomendacion
-                                                                  }
-                                                                  onChange={(
-                                                                    valor
-                                                                  ) =>
-                                                                    setFormReporte(
-                                                                      {
-                                                                        ...formReporte,
-                                                                        recomendacion:
-                                                                          valor,
-                                                                      }
-                                                                    )
-                                                                  }
-                                                                />
-                                                              </div>
-                                                              <label
-                                                                style={
-                                                                  labelCampo
-                                                                }
-                                                              >
-                                                                Observaciones
-                                                                <textarea
-                                                                  value={
-                                                                    formReporte.observaciones
-                                                                  }
-                                                                  onChange={(
-                                                                    e
-                                                                  ) =>
-                                                                    setFormReporte(
-                                                                      {
-                                                                        ...formReporte,
-                                                                        observaciones:
-                                                                          e
-                                                                            .target
-                                                                            .value,
-                                                                      }
-                                                                    )
-                                                                  }
-                                                                  style={
-                                                                    textarea
-                                                                  }
-                                                                />
-                                                              </label>
-                                                              <div
-                                                                style={{
-                                                                  display:
-                                                                    'flex',
-                                                                  gap: 8,
-                                                                  flexWrap:
-                                                                    'wrap',
-                                                                  marginTop: 12,
-                                                                }}
-                                                              >
-                                                                <button
-                                                                  onClick={() =>
-                                                                    guardarReporteAlumno(
-                                                                      alumno
-                                                                    )
-                                                                  }
-                                                                  style={
-                                                                    botonPrincipal
-                                                                  }
-                                                                >
-                                                                  Guardar
-                                                                  reporte
-                                                                </button>
-                                                                <button
-                                                                  onClick={
-                                                                    cerrarFormularioReporte
-                                                                  }
-                                                                  style={
-                                                                    botonSecundario
-                                                                  }
-                                                                >
-                                                                  Cancelar
-                                                                </button>
-                                                              </div>
-                                                            </div>
-                                                          )}
+                                                          ) &&
+                                                            renderFormularioReporteEntrenador(
+                                                              alumno,
+                                                              grupo.nivel_grupo,
+                                                              'inline'
+                                                            )}
                                                         </div>
                                                       )
                                                     )}
@@ -14398,33 +14519,76 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
                                                 </section>
 
                                                 <details
-                                                  className="trainer-info-details trainer-work-details"
+                                                  id={`${grupoDomId}-trabajo`}
+                                                  className={`trainer-info-details trainer-work-details trainer-group-section-anchor ${
+                                                    seccionGrupoEntrenador ===
+                                                    'trabajo'
+                                                      ? 'is-active-section'
+                                                      : ''
+                                                  }`}
+                                                  open={
+                                                    esGrupoActivo &&
+                                                    seccionGrupoEntrenador ===
+                                                      'trabajo'
+                                                      ? true
+                                                      : undefined
+                                                  }
                                                   style={bloqueInfoEntrenador}
                                                 >
                                                   <summary>Trabajo diario</summary>
                                                   <div style={bloqueTexto}>
                                                     {formatearTrabajoDiario(
-                                                      grupo.trabajo_diario
+                                                      grupo.trabajo_diario ?? null
                                                     )}
                                                   </div>
                                                 </details>
 
-                                                {grupo.observaciones_importantes && (
-                                                  <details
-                                                    className="trainer-info-details trainer-observations-details"
-                                                    style={bloqueInfoEntrenador}
-                                                  >
-                                                    <summary>Observaciones importantes</summary>
-                                                    <div style={bloqueTexto}>
-                                                      {formatearObservaciones(
-                                                        grupo.observaciones_importantes
-                                                      )}
-                                                    </div>
-                                                  </details>
-                                                )}
+                                                <details
+                                                  id={`${grupoDomId}-observaciones`}
+                                                  className={`trainer-info-details trainer-observations-details trainer-group-section-anchor ${
+                                                    seccionGrupoEntrenador ===
+                                                    'observaciones'
+                                                      ? 'is-active-section'
+                                                      : ''
+                                                  }`}
+                                                  open={
+                                                    esGrupoActivo &&
+                                                    seccionGrupoEntrenador ===
+                                                      'observaciones'
+                                                      ? true
+                                                      : undefined
+                                                  }
+                                                  style={bloqueInfoEntrenador}
+                                                >
+                                                  <summary>Observaciones importantes</summary>
+                                                  <div style={bloqueTexto}>
+                                                    {formatearObservaciones(
+                                                      grupo.observaciones_importantes ??
+                                                        null
+                                                    )}
+                                                  </div>
+                                                </details>
 
                                               </article>
                                             );
+
+                                            const mostrarGrupoEnPortal =
+                                              esGrupoActivo &&
+                                              typeof document !== 'undefined' &&
+                                              typeof window !== 'undefined' &&
+                                              window.matchMedia(
+                                                '(max-width: 719px)'
+                                              ).matches;
+
+                                            if (mostrarGrupoEnPortal) {
+                                              return createPortal(
+                                                tarjetaGrupoEntrenador,
+                                                document.body,
+                                                `grupo-entrenador-${grupo.entrenador_id}-${grupo.grupo_id}`
+                                              );
+                                            }
+
+                                            return tarjetaGrupoEntrenador;
                                           }
                                         )}
                                         </div>
@@ -17742,6 +17906,24 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           </section>
         </section>
       )}
+
+      {alumnoReporteActivo &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="trainer-report-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Reporte de ${alumnoReporteActivo.alumno}`}
+          >
+            {renderFormularioReporteEntrenador(
+              alumnoReporteActivo,
+              grupoReporteActivo?.nivel_grupo || '',
+              'sheet'
+            )}
+          </div>,
+          document.body
+        )}
     </main>
   );
 }
