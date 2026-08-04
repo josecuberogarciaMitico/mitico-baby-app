@@ -6724,7 +6724,7 @@ Por favor confirma tu disponibilidad para estos turnos:
         p_intensivo_dia_id: dia.intensivo_dia_id,
         p_nombre_grupo: nombreGrupo,
         p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
-        p_pista: primero.pista_recomendada,
+        p_pista: pistaOperativaGrupoApp(alumnosGrupo),
         p_punto_encuentro: 'Cristalera',
         p_trabajo_diario:
           trabajoDiarioPorGrupoRecomendado[clave] ||
@@ -6945,6 +6945,11 @@ Por favor confirma tu disponibilidad para estos turnos:
         )
       );
       setAgendaRecomendaciones([]);
+
+      // La disponibilidad puede haber cambiado desde que Jose abrió la Agenda.
+      // La recargamos al entrar en la sesión para mostrar las respuestas nuevas
+      // de los entrenadores sin obligar a recargar toda la aplicación.
+      await cargarDisponibilidad();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
       setAgendaAlumnosSesion([]);
@@ -7064,6 +7069,11 @@ Por favor confirma tu disponibilidad para estos turnos:
     setError('');
 
     try {
+      // Antes de crear la propuesta, recuperamos las últimas respuestas para
+      // que el selector de entrenador no trabaje con disponibilidad antigua.
+      await cargarDisponibilidad();
+      setCargando(true);
+
       const data =
         await ejecutarFuncionConRespuesta<AgendaRecomendacionSesionApp>(
           'recomendar_grupos_sesion_operativa_app',
@@ -7225,6 +7235,36 @@ Por favor confirma tu disponibilidad para estos turnos:
     return 'D+';
   }
 
+  function pistaOperativaGrupoApp(
+    alumnosGrupo: {
+      pista_recomendada?: string | null;
+      pista_alumno?: string | null;
+    }[]
+  ) {
+    const categorias = alumnosGrupo
+      .map((alumno) =>
+        `${alumno.pista_recomendada || ''} ${alumno.pista_alumno || ''}`
+          .toLowerCase()
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+      )
+      .map((pista) => {
+        const pequena = /peque/.test(pista);
+        const grande = /grande/.test(pista);
+        if (pequena && !grande) return 'PEQUENA';
+        if (grande && !pequena) return 'GRANDE';
+        return 'MIXTA';
+      });
+
+    if (categorias.length > 0 && categorias.every((pista) => pista === 'PEQUENA')) {
+      return 'Pequeña';
+    }
+    if (categorias.length > 0 && categorias.every((pista) => pista === 'GRANDE')) {
+      return 'Grande';
+    }
+    return 'Pequeña/Grande';
+  }
+
   function validacionPedagogicaGrupoApp(
     alumnosGrupo: {
       nivel_resumen?: string | null;
@@ -7273,36 +7313,49 @@ Por favor confirma tu disponibilidad para estos turnos:
     const supervision: string[] = [];
     const avisos: string[] = [];
 
+    const pistaOperativa = pistaOperativaGrupoApp(alumnosGrupo);
+    const todosPistaPequena = pistaOperativa === 'Pequeña';
+
     if (alumnosGrupo.length === 0) bloqueos.push('Grupo sin alumnos.');
     if (alumnosGrupo.length === 1)
-      bloqueos.push(
-        'No crear grupo automático de 1 alumno. Dejar para revisión manual.'
+      supervision.push(
+        'Grupo de 1 alumno: configuración excepcional. Puedes crearlo si responde a la operativa real.'
       );
     if (alumnosGrupo.length === 2)
       supervision.push(
-        'Grupo de 2 alumnos: solo si Jose lo acepta por encaje real o falta de niños.'
+        'Grupo de 2 alumnos: configuración excepcional, válida si mejora el funcionamiento.'
       );
 
     if (tieneIniciacion && tieneBoSuperior) {
-      bloqueos.push('INICIACIÓN no puede mezclarse con B, B+, C, C+, D o D+.');
+      bloqueos.push(
+        'Diferencia técnica alta entre INICIACIÓN y B o superior. Revisa atención, ritmo y seguridad; la decisión final es del coordinador.'
+      );
     }
     if (tieneIniciacion && tieneAPlus) {
-      bloqueos.push('INICIACIÓN solo puede mezclarse con A, no con A+.');
+      avisos.push(
+        todosPistaPequena
+          ? 'INICIACIÓN con A+ en pista pequeña: revisa el ritmo en la primera bajada. Puedes publicarlo si el grupo funciona.'
+          : 'INICIACIÓN con A+: revisa ritmo, autonomía y terreno. Puedes publicarlo si el encaje es correcto.'
+      );
     }
     if ((tieneIniciacion || tieneA) && tieneCoSuperior) {
-      bloqueos.push('INICIACIÓN/A no puede mezclarse con C, C+, D o D+.');
+      bloqueos.push(
+        'Diferencia técnica alta entre INICIACIÓN/A y C o superior. Revisa el encaje real antes de publicar.'
+      );
     }
     if (tieneAPlus && tieneCoSuperior) {
-      bloqueos.push('A+ no puede mezclarse con C, C+, D o D+.');
+      bloqueos.push(
+        'Diferencia técnica alta entre A+ y C o superior. Revisa ritmo y autonomía antes de publicar.'
+      );
     }
     if (tieneAPlus && (tieneB || tieneBPlus)) {
       supervision.push(
-        'A+ con B/B+ requiere Supervisión Jose: solo si el A+ está a punto de pasar y el B es bajito.'
+        'A+ con B/B+: revisar que el A+ esté cerca del cambio y aguante el ritmo del grupo.'
       );
     }
     if (tieneBPlus && tieneC) {
       avisos.push(
-        'B+ con C permitido, revisar que el B+ aguante pista grande y ritmo del grupo.'
+        'B+ con C: revisar que el B+ aguante pista grande y el ritmo del grupo.'
       );
     }
     if (
@@ -7311,15 +7364,17 @@ Por favor confirma tu disponibilidad para estos turnos:
       Math.max(...ordenes) <= 2
     ) {
       supervision.push(
-        'Grupo bajo de 5 niños: necesita 2 entrenadores. Si solo hay 1, publicar solo con aviso fuerte.'
+        'Grupo bajo de 5 niños: valorar apoyo de un segundo entrenador según autonomía y funcionamiento.'
       );
     }
     if (/peque/.test(pistas) && alumnosGrupo.length > 5) {
-      bloqueos.push('Pista pequeña con más de 5 niños: dividir grupo.');
+      supervision.push(
+        'Pista pequeña con más de 5 niños: revisar ratio, autonomía y posible apoyo antes de publicar.'
+      );
     }
     if (/grande/.test(pistas) && alumnosGrupo.length > 7) {
       supervision.push(
-        'Pista grande con más de 7 niños: intentar dividir 4/4 o publicar con 2 entrenadores si Jose lo decide.'
+        'Pista grande con más de 7 niños: valorar división o segundo entrenador.'
       );
     }
     if (/familia|declarado|estimado|sin reporte|pendiente/.test(textos)) {
@@ -7330,7 +7385,7 @@ Por favor confirma tu disponibilidad para estos turnos:
 
     const estado =
       bloqueos.length > 0
-        ? 'BLOQUEADO'
+        ? 'DECISION_COORDINADOR'
         : supervision.length > 0
         ? 'SUPERVISION_JOSE'
         : avisos.length > 0
@@ -7357,10 +7412,10 @@ Por favor confirma tu disponibilidad para estos turnos:
   ) {
     const validacion = validacionPedagogicaGrupoApp(alumnosGrupo);
     const titulo =
-      validacion.estado === 'BLOQUEADO'
-        ? 'BLOQUEADO · No publicar este grupo'
+      validacion.estado === 'DECISION_COORDINADOR'
+        ? 'REVISIÓN RECOMENDADA · La decisión final es tuya'
         : validacion.estado === 'SUPERVISION_JOSE'
-        ? 'SUPERVISIÓN JOSE'
+        ? 'REVISIÓN DEL COORDINADOR'
         : validacion.estado === 'AVISO'
         ? 'AVISO PEDAGÓGICO'
         : 'OK PEDAGÓGICO';
@@ -7368,7 +7423,7 @@ Por favor confirma tu disponibilidad para estos turnos:
   }
 
   function estiloValidacionPedagogicaApp(estado: string): React.CSSProperties {
-    if (estado === 'BLOQUEADO') return avisoPendiente;
+    if (estado === 'DECISION_COORDINADOR') return avisoPendiente;
     if (estado === 'SUPERVISION_JOSE') return avisoPendiente;
     if (estado === 'AVISO') return avisoCompleto;
     return avisoNeutral;
@@ -7685,21 +7740,13 @@ Por favor confirma tu disponibilidad para estos turnos:
     nombreGrupo: string
   ) {
     const validacion = textoValidacionPedagogicaGrupoApp(alumnosGrupo);
-    if (validacion.estado === 'BLOQUEADO') {
-      setError(`${nombreGrupo} bloqueado: ${validacion.mensajes.join(' ')}`);
-      return false;
-    }
-    if (
-      validacion.estado === 'SUPERVISION_JOSE' ||
-      validacion.estado === 'AVISO'
-    ) {
-      return window.confirm(
-        `${validacion.titulo}\n\n${validacion.mensajes.join(
-          '\n'
-        )}\n\n¿Quieres crear el grupo igualmente?`
-      );
-    }
-    return true;
+    if (validacion.estado === 'OK') return true;
+
+    return window.confirm(
+      `${validacion.titulo}\n\n${validacion.mensajes.join(
+        '\n'
+      )}\n\nEsto es una recomendación, no un bloqueo. Tu configuración manual como coordinador tiene prioridad.\n\n¿Crear el grupo tal como lo has preparado?`
+    );
   }
 
   function perfilTrabajoMSZApp(niveles: string[], pistaTexto: string) {
@@ -7812,10 +7859,7 @@ Por favor confirma tu disponibilidad para estos turnos:
     const niveles = alumnosGrupo
       .map((alumno) => alumno.nivel_resumen || '')
       .filter(Boolean);
-    const pista =
-      alumnosGrupo[0]?.pista_recomendada ||
-      alumnosGrupo[0]?.pista_alumno ||
-      'Pequeña/Grande';
+    const pista = pistaOperativaGrupoApp(alumnosGrupo);
     const observaciones = observacionesAutomaticasGrupoAgenda(alumnosGrupo);
     return trabajoDiarioMSZApp(nombreGrupo, niveles, pista, observaciones);
   }
@@ -8176,7 +8220,7 @@ Por favor confirma tu disponibilidad para estos turnos:
         p_sesion_id: agendaSesionActivaId,
         p_nombre_grupo: nombreGrupo,
         p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
-        p_pista: primero.pista_recomendada,
+        p_pista: pistaOperativaGrupoApp(alumnosGrupo),
         p_punto_encuentro: punto,
         p_trabajo_diario: trabajo,
         p_observaciones_importantes: combinarObservacionesGrupoApp(
@@ -9005,26 +9049,104 @@ Por favor confirma tu disponibilidad para estos turnos:
     return (valor || '').slice(0, 5);
   }
 
+  function normalizarFechaDisponibilidad(valor: string | null | undefined) {
+    return String(valor || '').trim().slice(0, 10);
+  }
+
+  function normalizarHoraDisponibilidad(valor: string | null | undefined) {
+    const texto = String(valor || '').trim();
+    const coincidencia = texto.match(/(\d{2}):(\d{2})/);
+    return coincidencia ? `${coincidencia[1]}:${coincidencia[2]}` : '';
+  }
+
+  function normalizarTextoDisponibilidad(valor: string | null | undefined) {
+    return String(valor || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLowerCase();
+  }
+
   function entrenadoresDisponiblesParaTurno(
     fecha?: string | null,
     horaInicio?: string | null,
     horaFin?: string | null
   ) {
-    if (!fecha || !horaInicio || !horaFin) return [];
-
-    return entrenadores
+    const activos = entrenadores
       .filter((entrenador) => entrenador.activo)
-      .filter((entrenador) =>
-        disponibilidad.some(
-          (turno) =>
-            turno.entrenador_id === entrenador.entrenador_id &&
-            turno.fecha === fecha &&
-            horaCorta(turno.hora_inicio) === horaCorta(horaInicio) &&
-            horaCorta(turno.hora_fin) === horaCorta(horaFin) &&
-            turno.respuesta === 'Disponible'
-        )
-      )
       .sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo));
+
+    const fechaObjetivo = normalizarFechaDisponibilidad(fecha);
+    const horaInicioObjetivo = normalizarHoraDisponibilidad(horaInicio);
+    const horaFinObjetivo = normalizarHoraDisponibilidad(horaFin);
+
+    // Coordinación nunca debe quedarse bloqueada por un fallo de cruce de datos.
+    // Si la sesión todavía no tiene fecha u horas válidas, mostramos los activos.
+    if (!fechaObjetivo) return activos;
+
+    const esRespuestaDisponible = (turno: DisponibilidadEntrenador) => {
+      const respuesta = normalizarTextoDisponibilidad(
+        turno.respuesta || turno.estado_disponibilidad
+      );
+      return (
+        respuesta === 'disponible' ||
+        respuesta === 'si' ||
+        respuesta === 'puedo' ||
+        respuesta === 'available'
+      );
+    };
+
+    const disponiblesRespondidos = disponibilidad.filter(esRespuestaDisponible);
+
+    const exactos = disponiblesRespondidos.filter((turno) => {
+      const mismaFecha =
+        normalizarFechaDisponibilidad(turno.fecha) === fechaObjetivo;
+      const mismaHoraInicio =
+        !horaInicioObjetivo ||
+        normalizarHoraDisponibilidad(turno.hora_inicio) === horaInicioObjetivo;
+      const mismaHoraFin =
+        !horaFinObjetivo ||
+        normalizarHoraDisponibilidad(turno.hora_fin) === horaFinObjetivo;
+      return mismaFecha && mismaHoraInicio && mismaHoraFin;
+    });
+
+    // Respaldo para publicaciones donde Supabase devuelve la fecha correcta,
+    // pero las horas con un formato distinto o sin segundos.
+    const mismoDia = disponiblesRespondidos.filter(
+      (turno) => normalizarFechaDisponibilidad(turno.fecha) === fechaObjetivo
+    );
+
+    // Último respaldo: algunas filas antiguas solo conservan el rango semanal.
+    const mismaSemana = disponiblesRespondidos.filter((turno) => {
+      const inicio = normalizarFechaDisponibilidad(turno.fecha_inicio);
+      const fin = normalizarFechaDisponibilidad(turno.fecha_fin);
+      return Boolean(inicio && fin && fechaObjetivo >= inicio && fechaObjetivo <= fin);
+    });
+
+    const turnosCoincidentes =
+      exactos.length > 0 ? exactos : mismoDia.length > 0 ? mismoDia : mismaSemana;
+
+    const idsDisponibles = new Set(
+      turnosCoincidentes
+        .map((turno) => String(turno.entrenador_id || '').trim())
+        .filter(Boolean)
+    );
+    const nombresDisponibles = new Set(
+      turnosCoincidentes
+        .map((turno) => normalizarTextoDisponibilidad(turno.entrenador))
+        .filter(Boolean)
+    );
+
+    const disponibles = activos.filter((entrenador) => {
+      const id = String(entrenador.entrenador_id || '').trim();
+      const nombre = normalizarTextoDisponibilidad(entrenador.nombre_completo);
+      return idsDisponibles.has(id) || nombresDisponibles.has(nombre);
+    });
+
+    // La disponibilidad sirve para priorizar, no para bloquear al coordinador.
+    // Si no hay coincidencia técnica, se muestran los entrenadores activos para
+    // que Jose pueda hacer una asignación manual y continuar con el grupo.
+    return disponibles.length > 0 ? disponibles : activos;
   }
 
   function entrenadoresDisponiblesSesionActiva() {
@@ -11876,6 +11998,8 @@ Por favor confirma tu disponibilidad para estos turnos:
                             );
                             const observacionesAutoGrupo =
                               observacionesAutomaticasGrupoAgenda(alumnosGrupo);
+                            const pistaOperativaGrupo =
+                              pistaOperativaGrupoApp(alumnosGrupo);
                             const validacionPedagogicaGrupo =
                               textoValidacionPedagogicaGrupoApp(alumnosGrupo);
 
@@ -11885,7 +12009,7 @@ Por favor confirma tu disponibilidad para estos turnos:
                                 style={{
                                   ...agendaGrupoPropuesta,
                                   ...estiloGrupoPorPistaApp({
-                                    pista: primero.pista_recomendada,
+                                    pista: pistaOperativaGrupo,
                                     nivel_grupo: primero.nivel_resumen,
                                   }),
                                 }}
@@ -11900,7 +12024,7 @@ Por favor confirma tu disponibilidad para estos turnos:
                                   <strong>Bloque:</strong>{' '}
                                   {primero.bloque_tecnico} ·{' '}
                                   <strong>Pista:</strong>{' '}
-                                  {primero.pista_recomendada}
+                                  {pistaOperativaGrupo}
                                 </p>
                                 <div
                                   style={{
