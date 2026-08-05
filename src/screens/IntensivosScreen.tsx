@@ -19,7 +19,7 @@ export function PantallaIntensivos(ctx: any) {
     entrenadoresApoyoPorGrupoRecomendado, entrenadoresDisponiblesDiaIntensivo,
     entrenadoresPorGrupoRecomendado, error, estiloBadgePistaApp, estiloGrupoPorPistaApp,
     estiloValidacionPedagogicaApp, etiquetaPistaVisualApp, etiquetaSuperior, filtroIntensivos,
-    formDiaIntensivo, formGrupoIntensivo, formIntensivo, formatearFecha, formatearObservaciones,
+    formDiaIntensivo, formGrupoIntensivo, formIntensivo, formatearAlumnoListadoOperativo, formatearFecha, formatearObservaciones,
     formularioCaja, generarMásDesdeAsistencias, generarRecomendacionGruposIntensivo,
     generarTrabajoDiarioAutomaticoGrupo, gestionarAlumnosIntensivoId,
     gestionarAsistenciaIntensivoId, gestionarDiplomasIntensivoId, gestionarGruposIntensivoId,
@@ -566,7 +566,7 @@ export function PantallaIntensivos(ctx: any) {
                                       <ol style={{ margin: '8px 0 0 20px', padding: 0 }}>
                                         {grupo.alumnos_lista.split(' || ').map((alumnoGrupo, indiceAlumnoGrupo) => (
                                           <li key={`${grupo.grupo_id}-mapa-${indiceAlumnoGrupo}`}>
-                                            {alumnoGrupo}
+                                            {formatearAlumnoListadoOperativo(alumnoGrupo)}
                                           </li>
                                         ))}
                                       </ol>
@@ -1343,17 +1343,22 @@ export function PantallaIntensivos(ctx: any) {
 
                             <label style={labelCampo}>
                               Punto encuentro
-                              <input
-                                value={formGrupoIntensivo.punto_encuentro}
+                              <select
+                                value={formGrupoIntensivo.punto_encuentro || '5'}
                                 onChange={(e) =>
                                   setFormGrupoIntensivo({
                                     ...formGrupoIntensivo,
                                     punto_encuentro: e.target.value,
                                   })
                                 }
-                                placeholder="1"
-                                style={inputCampo}
-                              />
+                                style={selectCampo}
+                              >
+                                {['5', '9', '10', '6', '4', '7', '3', '2', '1'].map((punto) => (
+                                  <option key={`punto-intensivo-${punto}`} value={punto}>
+                                    Punto {punto}
+                                  </option>
+                                ))}
+                              </select>
                             </label>
 
                             <div style={avisoNeutral}>{avisoDisponibilidadDiaIntensivo(diaSeleccionadoGrupo)}</div>
@@ -1371,7 +1376,12 @@ export function PantallaIntensivos(ctx: any) {
                                 style={selectCampo}
                               >
                                 <option value="">Selecciona entrenador</option>
-                                {entrenadoresDisponiblesDiaIntensivo(diaSeleccionadoGrupo).map((entrenador) => (
+                                {entrenadoresDisponiblesDiaIntensivo(diaSeleccionadoGrupo)
+                                  .filter((entrenador) => {
+                                    const usadoEnPropuesta = Object.values(entrenadoresPorGrupoRecomendado).includes(entrenador.entrenador_id) || Object.values(entrenadoresApoyoPorGrupoRecomendado).includes(entrenador.entrenador_id);
+                                    return !usadoEnPropuesta || entrenador.entrenador_id === formGrupoIntensivo.entrenador_id;
+                                  })
+                                  .map((entrenador) => (
                                   <option
                                     key={entrenador.entrenador_id}
                                     value={entrenador.entrenador_id}
@@ -1550,10 +1560,11 @@ export function PantallaIntensivos(ctx: any) {
                                               }}
                                             >
                                               <strong>
-                                                {alumno.orden_en_grupo}. {alumno.alumno}
-                                              </strong>{' '}
-                                              · Nivel {alumno.nivel_resumen} · {alumno.fuente_nivel}
-                                              {alumno.edad ? ` · ${alumno.edad} años` : ''}
+                                                - {alumno.alumno} · {alumno.nivel_resumen || 'SIN NIVEL'}
+                                              </strong>
+                                              <p style={{ margin: '3px 0 0', color: '#64748b', fontSize: 13 }}>
+                                                {alumno.fuente_nivel}{alumno.edad ? ` · ${alumno.edad} años` : ''}
+                                              </p>
 
                                               <div style={{ ...gridFormulario, marginTop: 6 }}>
                                                 <label style={labelCampo}>
@@ -1609,7 +1620,16 @@ export function PantallaIntensivos(ctx: any) {
                                             style={selectCampo}
                                           >
                                             <option value="">Selecciona entrenador</option>
-                                            {entrenadoresDisponiblesDiaIntensivo(diaSeleccionadoGrupo).map((entrenador) => (
+                                            {entrenadoresDisponiblesDiaIntensivo(diaSeleccionadoGrupo)
+                                              .filter((entrenador) => {
+                                                const usadoEnOtroGrupo = Object.entries(entrenadoresPorGrupoRecomendado).some(
+                                                  ([otraClave, id]) => otraClave !== clave && id === entrenador.entrenador_id
+                                                ) || Object.entries(entrenadoresApoyoPorGrupoRecomendado).some(
+                                                  ([otraClave, id]) => otraClave !== clave && id === entrenador.entrenador_id
+                                                );
+                                                return !usadoEnOtroGrupo || entrenador.entrenador_id === entrenadoresPorGrupoRecomendado[clave];
+                                              })
+                                              .map((entrenador) => (
                                               <option
                                                 key={`${clave}-${entrenador.entrenador_id}`}
                                                 value={entrenador.entrenador_id}
@@ -1634,6 +1654,14 @@ export function PantallaIntensivos(ctx: any) {
                                             <option value="">Sin segundo entrenador</option>
                                             {entrenadoresDisponiblesDiaIntensivo(diaSeleccionadoGrupo)
                                               .filter((entrenador) => entrenador.entrenador_id !== (entrenadoresPorGrupoRecomendado[clave] || ''))
+                                              .filter((entrenador) => {
+                                                const usadoEnOtroGrupo = Object.entries(entrenadoresPorGrupoRecomendado).some(
+                                                  ([otraClave, id]) => otraClave !== clave && id === entrenador.entrenador_id
+                                                ) || Object.entries(entrenadoresApoyoPorGrupoRecomendado).some(
+                                                  ([otraClave, id]) => otraClave !== clave && id === entrenador.entrenador_id
+                                                );
+                                                return !usadoEnOtroGrupo || entrenador.entrenador_id === entrenadoresApoyoPorGrupoRecomendado[clave];
+                                              })
                                               .map((entrenador) => (
                                                 <option
                                                   key={`${clave}-apoyo-${entrenador.entrenador_id}`}
@@ -1917,7 +1945,7 @@ export function PantallaIntensivos(ctx: any) {
                                     <ul style={{ margin: '6px 0 0 18px', padding: 0 }}>
                                       {grupo.alumnos_lista.split(' || ').map((alumnoGrupo, indiceAlumnoGrupo) => (
                                         <li key={`${grupo.grupo_id}-alumno-${indiceAlumnoGrupo}`}>
-                                          {alumnoGrupo}
+                                          {formatearAlumnoListadoOperativo(alumnoGrupo)}
                                         </li>
                                       ))}
                                     </ul>

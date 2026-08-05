@@ -517,7 +517,7 @@ type DisponibilidadEntrenador = {
   aviso_enviado_at: string | null;
   fecha_limite: string | null;
   especialidades: string[] | null;
-  fuente?: 'legacy' | 'editor';
+  fuente?: 'editor';
 };
 
 
@@ -1342,9 +1342,21 @@ function plantillaCuatroSesionesInicial(): PlantillaCuatroSesionesIntensivoState
 }
 
 function sumarDiasIso(fechaIso: string, dias: number) {
-  const fecha = new Date(`${fechaIso}T00:00:00`);
+  const [anio, mes, dia] = fechaIso.split('-').map(Number);
+  const fecha = new Date(anio, mes - 1, dia);
   fecha.setDate(fecha.getDate() + dias);
-  return fecha.toISOString().slice(0, 10);
+  const yyyy = fecha.getFullYear();
+  const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dd = String(fecha.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function formatearAlumnoListadoOperativo(valor: string | null | undefined) {
+  const partes = String(valor || '').split('·').map((parte) => parte.trim()).filter(Boolean).filter((parte) => !/^test nuevo$/i.test(parte));
+  if (partes.length === 0) return '-';
+  const nombre = partes[0].replace(/^\d+[.)-]?\s*/, '').trim();
+  const nivel = partes.find((parte, indice) => indice > 0 && /^(INICIACI[ÓO]N|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)$/i.test(parte));
+  return nivel ? `${nombre} · ${nivel.toUpperCase()}` : nombre;
 }
 
 function calcularFechasCuatroSesionesIntensivo(
@@ -1388,7 +1400,7 @@ function grupoIntensivoInicial(): GrupoIntensivoFormState {
     nombre_grupo: 'Grupo Intensivo',
     nivel_grupo: '',
     pista: 'Pequeña/Grande',
-    punto_encuentro: '1',
+    punto_encuentro: '5',
     trabajo_diario: '',
     observaciones_importantes: '',
     entrenador_id: '',
@@ -1567,6 +1579,52 @@ async function refrescarSesionAuthApp(
       email: datos.user?.email || '',
     },
   };
+}
+
+
+let refrescoSesionEnCursoApp: Promise<SesionAuthApp> | null = null;
+
+async function obtenerSesionSupabaseActivaApp(): Promise<SesionAuthApp> {
+  const sesion = leerSesionGuardadaApp();
+
+  if (!sesion?.access_token) {
+    throw new Error('La sesión ha caducado. Sal y vuelve a entrar.');
+  }
+
+  const ahora = Math.floor(Date.now() / 1000);
+  const sigueVigente =
+    !sesion.expires_at || Number(sesion.expires_at) > ahora + 60;
+
+  if (sigueVigente) {
+    return sesion;
+  }
+
+  if (!sesion.refresh_token) {
+    borrarSesionAuthApp();
+    throw new Error('La sesión ha caducado. Sal y vuelve a entrar.');
+  }
+
+  if (!refrescoSesionEnCursoApp) {
+    refrescoSesionEnCursoApp = refrescarSesionAuthApp(sesion.refresh_token)
+      .then((refrescada) => {
+        const sesionCompleta: SesionAuthApp = {
+          ...refrescada,
+          user: refrescada.user?.id ? refrescada.user : sesion.user,
+        };
+        guardarSesionAuthApp(sesionCompleta);
+        return sesionCompleta;
+      })
+      .finally(() => {
+        refrescoSesionEnCursoApp = null;
+      });
+  }
+
+  return refrescoSesionEnCursoApp;
+}
+
+async function obtenerAccessTokenSupabaseApp(): Promise<string> {
+  const sesion = await obtenerSesionSupabaseActivaApp();
+  return sesion.access_token;
 }
 
 async function obtenerUsuarioAuthApp(
@@ -2139,10 +2197,7 @@ const opcionesEstadoRecuperacionIntensivo = [
 
 const opcionesPistaGrupoIntensivo = ['', 'Pequeña', 'Grande', 'Pequeña/Grande'];
 
-const puntosEncuentroAgenda = Array.from(
-  { length: 12 },
-  (_, indice) => `${indice + 1}`
-);
+const puntosEncuentroAgenda = ['5', '9', '10', '6', '4', '7', '3', '2', '1'];
 
 const modalidadesAgendaTrabajo = [
   { codigo: 'BABY', nombre: 'Baby' },
@@ -2718,96 +2773,25 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [whatsappPreview, setWhatsappPreview] =
     useState<WhatsappPreviewState | null>(null);
 
-  async function consultarSupabase<T>(
-    tabla: string,
-    query: string
-  ): Promise<T[]> {
-    const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/${tabla}?${query}`, {
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-    });
+  async function cabecerasSupabaseAutenticadasApp(
+    incluirJson = false
+  ): Promise<Record<string, string>> {
+    const accessToken = await obtenerAccessTokenSupabaseApp();
 
-    if (!respuesta.ok) {
-      const textoError = await respuesta.text();
-      throw new Error(textoError);
-    }
-
-    return respuesta.json();
+    return {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${accessToken}`,
+      ...(incluirJson ? { 'Content-Type': 'application/json' } : {}),
+    };
   }
 
-  async function ejecutarFuncion(nombreFuncion: string, body: object) {
-    const respuesta = await fetch(
-      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
-      {
-        method: 'POST',
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
-    if (!respuesta.ok) {
-      const textoError = await respuesta.text();
-      throw new Error(textoError);
-    }
-  }
-
-  async function ejecutarFuncionConRespuesta<T>(
-    nombreFuncion: string,
-    body: object
-  ): Promise<T[]> {
-    const respuesta = await fetch(
-      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
-      {
-        method: 'POST',
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
-    if (!respuesta.ok) {
-      const textoError = await respuesta.text();
-      throw new Error(textoError);
-    }
-
-    return respuesta.json();
-  }
-
-  async function ejecutarFuncionAuthJson<T>(
-    nombreFuncion: string,
-    body: object
+  async function leerRespuestaSupabaseApp<T>(
+    respuesta: Response,
+    mensajePorDefecto: string
   ): Promise<T> {
-    const sesionActual = leerSesionGuardadaApp();
-    const accessToken = sesionActual?.access_token;
-
-    if (!accessToken) {
-      throw new Error('La sesión ha caducado. Sal y vuelve a entrar.');
-    }
-
-    const respuesta = await fetch(
-      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
-      {
-        method: 'POST',
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
     const texto = await respuesta.text();
     let datos: unknown = null;
+
     try {
       datos = texto ? JSON.parse(texto) : null;
     } catch {
@@ -2820,12 +2804,81 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           ? datos
           : (datos as any)?.message ||
             (datos as any)?.hint ||
+            (datos as any)?.details ||
             texto ||
-            'Error conectando con Supabase';
+            mensajePorDefecto;
       throw new Error(mensaje);
     }
 
     return datos as T;
+  }
+
+  async function consultarSupabase<T>(
+    tabla: string,
+    query: string
+  ): Promise<T[]> {
+    const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/${tabla}?${query}`, {
+      headers: await cabecerasSupabaseAutenticadasApp(),
+    });
+
+    return leerRespuestaSupabaseApp<T[]>(
+      respuesta,
+      `No se pudo consultar ${tabla}.`
+    );
+  }
+
+  async function ejecutarFuncion(nombreFuncion: string, body: object) {
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
+      {
+        method: 'POST',
+        headers: await cabecerasSupabaseAutenticadasApp(true),
+        body: JSON.stringify(body),
+      }
+    );
+
+    await leerRespuestaSupabaseApp<unknown>(
+      respuesta,
+      `No se pudo ejecutar ${nombreFuncion}.`
+    );
+  }
+
+  async function ejecutarFuncionConRespuesta<T>(
+    nombreFuncion: string,
+    body: object
+  ): Promise<T[]> {
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
+      {
+        method: 'POST',
+        headers: await cabecerasSupabaseAutenticadasApp(true),
+        body: JSON.stringify(body),
+      }
+    );
+
+    return leerRespuestaSupabaseApp<T[]>(
+      respuesta,
+      `No se pudo ejecutar ${nombreFuncion}.`
+    );
+  }
+
+  async function ejecutarFuncionAuthJson<T>(
+    nombreFuncion: string,
+    body: object
+  ): Promise<T> {
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
+      {
+        method: 'POST',
+        headers: await cabecerasSupabaseAutenticadasApp(true),
+        body: JSON.stringify(body),
+      }
+    );
+
+    return leerRespuestaSupabaseApp<T>(
+      respuesta,
+      `No se pudo ejecutar ${nombreFuncion}.`
+    );
   }
 
   async function cargarInicio() {
@@ -3916,7 +3969,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
             ? `Borrador local recuperado. Supabase todavía no está conectado${
                 mensaje ? `: ${mensaje}` : '.'
               }`
-            : 'Plantilla semanal preparada. Ejecuta el SQL del Sprint 2B para guardar en Supabase.'
+            : 'No se pudo conectar con Supabase. Se ha preparado una copia local sin publicar.'
         );
       }
 
@@ -4177,7 +4230,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       alert(
         `${mensaje}
 
-Comprueba que has ejecutado el SQL del Sprint 2B y que sigues con la sesión iniciada.`
+Comprueba tu conexión y que sigues con la sesión iniciada.`
       );
       return false;
     } finally {
@@ -4841,11 +4894,6 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     setDetalle(null);
 
     try {
-      const datosLegacy = await consultarSupabase<DisponibilidadEntrenador>(
-        'v_disponibilidad_entrenador',
-        'select=*&order=entrenador.asc,fecha.asc,hora_inicio.asc'
-      );
-
       const fechaReferenciaDisponibilidad = new Date();
       if (
         fechaReferenciaDisponibilidad.getDay() === 1 &&
@@ -4855,70 +4903,44 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
           fechaReferenciaDisponibilidad.getDate() - 1
         );
       }
+
       const semanaOperativaDisponibilidad = inicioSemanaAgenda(
         claveFechaAgenda(fechaReferenciaDisponibilidad)
       );
       const semanaConsulta = esCoordinadorApp
         ? semanaAgendaActiva || semanaOperativaDisponibilidad
         : semanaOperativaDisponibilidad;
-      let respuestaEditor: RespuestaDisponibilidadPublicadaEntrenadoresEditor | null = null;
 
-      if (semanaConsulta) {
-        try {
-          respuestaEditor =
-            await ejecutarFuncionAuthJson<RespuestaDisponibilidadPublicadaEntrenadoresEditor>(
-              'obtener_disponibilidad_publicada_entrenadores_editor_app',
-              { p_semana_inicio: semanaConsulta }
-            );
-        } catch (errEditor) {
-          // El sistema anterior permanece como respaldo si todavía no se ha
-          // instalado Sprint 2C o Supabase devuelve un error puntual.
-          console.warn('No se pudo cargar la disponibilidad del editor:', errEditor);
-        }
+      if (!semanaConsulta) {
+        setDisponibilidad([]);
+        setDisponibilidadEditorVista(null);
+        return;
       }
+
+      const respuestaEditor =
+        await ejecutarFuncionAuthJson<RespuestaDisponibilidadPublicadaEntrenadoresEditor>(
+          'obtener_disponibilidad_publicada_entrenadores_editor_app',
+          { p_semana_inicio: semanaConsulta }
+        );
 
       setDisponibilidadEditorVista(respuestaEditor);
-
-      if (respuestaEditor?.gestionada && semanaConsulta) {
-        // En una semana gestionada por el editor, la publicación nueva sustituye
-        // únicamente a los turnos legacy de esa semana. El histórico anterior no
-        // se toca y sigue disponible para consultas y cierres.
-        const fechaFinSemanaConsulta = claveFechaAgenda(
-          new Date(
-            crearFechaAgenda(semanaConsulta).getTime() +
-              6 * 24 * 60 * 60 * 1000
-          )
-        );
-
-        // Los turnos TEST/legacy no siempre guardan `fecha_inicio` como el lunes
-        // exacto de la semana. Por eso se sustituyen usando la fecha real del
-        // turno y el rango lunes-domingo de la semana publicada.
-        const restoHistorico = datosLegacy.filter((turno) => {
-          const fechaTurno = String(turno.fecha || '').slice(0, 10);
-          if (!fechaTurno) return true;
-
-          return (
-            fechaTurno < semanaConsulta ||
-            fechaTurno > fechaFinSemanaConsulta
-          );
-        });
-        const turnosEditor = (respuestaEditor.turnos || []).map((turno) => ({
+      setDisponibilidad(
+        (respuestaEditor.turnos || []).map((turno) => ({
           ...turno,
           fuente: 'editor' as const,
-        }));
-        setDisponibilidad([...restoHistorico, ...turnosEditor]);
-      } else {
-        setDisponibilidad(
-          datosLegacy.map((turno) => ({ ...turno, fuente: 'legacy' as const }))
-        );
-      }
+        }))
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo cargar la disponibilidad publicada.'
+      );
       setDisponibilidad([]);
       setDisponibilidadEditorVista(null);
+    } finally {
+      setCargando(false);
     }
-
-    setCargando(false);
   }
 
   async function cargarReportesPendientes() {
@@ -5731,7 +5753,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     try {
       await ejecutarFuncion('actualizar_alumno_intensivo_app', {
         p_intensivo_alumno_id: registro.intensivo_alumno_id,
-        p_estado_diploma: estadoDiploma,
+        p_estado_diploma: estadoEvaluación,
         p_recomendacion_siguiente_paso: recomendacionSiguientePaso,
       });
 
@@ -6124,66 +6146,6 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
       });
   }
 
-  async function crearDisponibilidadSemanaActual() {
-    const semana = semanaAgendaActiva || semanaActualAgenda;
-    if (!semana) {
-      setError(
-        'Selecciona una semana en Días de entrenamiento antes de pedir disponibilidad.'
-      );
-      return;
-    }
-
-    setCargando(true);
-    setError('');
-
-    try {
-      await ejecutarFuncion('crear_disponibilidad_semana_app', {
-        p_semana_inicio: semana,
-      });
-      await cargarDisponibilidad();
-      alert('Turnos de disponibilidad creados para la semana.');
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Error creando disponibilidad semanal'
-      );
-    }
-
-    setCargando(false);
-  }
-
-  async function enviarAvisoDisponibilidadSemana() {
-    const semana = semanaAgendaActiva || semanaActualAgenda;
-    if (!semana) {
-      setError(
-        'Selecciona una semana en Días de entrenamiento antes de enviar el aviso.'
-      );
-      return;
-    }
-
-    setCargando(true);
-    setError('');
-
-    try {
-      await ejecutarFuncion('enviar_aviso_disponibilidad_semana_app', {
-        p_semana_inicio: semana,
-      });
-      await cargarDisponibilidad();
-      alert(
-        'Aviso enviado dentro de la app. Los entrenadores lo verán como disponibilidad pendiente.'
-      );
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Error enviando aviso interno de disponibilidad'
-      );
-    }
-
-    setCargando(false);
-  }
-
   async function responderDisponibilidadRapida(
     turno: DisponibilidadEntrenador,
     respuesta: 'Disponible' | 'No puedo' | 'Pendiente'
@@ -6191,9 +6153,6 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     const respuestaAnterior = turno.respuesta;
     setError('');
 
-    // Actualización optimista: el botón cambia al instante y la pantalla no
-    // desaparece mientras Supabase guarda la respuesta. Así evitamos el salto
-    // de scroll en móvil y mantenemos abierto el día que está usando el entrenador.
     setDisponibilidad((actual) =>
       actual.map((registro) =>
         registro.id === turno.id ? { ...registro, respuesta } : registro
@@ -6201,25 +6160,12 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     );
 
     try {
-      if (turno.fuente === 'editor') {
-        await ejecutarFuncionAuthJson(
-          'responder_disponibilidad_editor_app',
-          {
-            p_respuesta_id: turno.id,
-            p_respuesta: respuesta,
-            p_comentario: turno.comentario || null,
-          }
-        );
-      } else {
-        await ejecutarFuncion('responder_disponibilidad_turno_por_id_app', {
-          p_disponibilidad_id: turno.id,
-          p_respuesta: respuesta,
-          p_comentario: turno.comentario || null,
-        });
-      }
+      await ejecutarFuncionAuthJson('responder_disponibilidad_editor_app', {
+        p_respuesta_id: turno.id,
+        p_respuesta: respuesta,
+        p_comentario: turno.comentario || null,
+      });
     } catch (err) {
-      // Si Supabase falla, recuperamos el estado anterior para no mostrar un
-      // dato como guardado cuando realmente no lo está.
       setDisponibilidad((actual) =>
         actual.map((registro) =>
           registro.id === turno.id
@@ -6231,95 +6177,6 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
         err instanceof Error ? err.message : 'Error guardando disponibilidad'
       );
     }
-  }
-
-  function mensajeDisponibilidadSemana() {
-    const semana = semanaAgendaActiva || semanaActualAgenda;
-    if (!semana)
-      return 'Selecciona una semana antes de copiar el recordatorio.';
-
-    const turnosPublicadosUnicos = Array.from(
-      new Map(
-        disponibilidad
-          .filter(
-            (turno) =>
-              turno.fecha_inicio === semana &&
-              turno.aviso_enviado &&
-              turno.fuente === 'editor'
-          )
-          .map(
-            (turno) =>
-              [
-                `${turno.fecha}__${horaCorta(
-                  turno.hora_inicio
-                )}__${horaCorta(turno.hora_fin)}`,
-                turno,
-              ] as [string, DisponibilidadEntrenador]
-          )
-      ).values()
-    ).sort((a, b) =>
-      `${a.fecha} ${a.hora_inicio}`.localeCompare(
-        `${b.fecha} ${b.hora_inicio}`
-      )
-    );
-
-    let mensaje = `*Disponibilidad Mítico Baby / Ocio*
-Semana ${rangoSemanaAgenda(
-      semana
-    )}
-
-Por favor confirma tu disponibilidad para estos turnos:
-
-`;
-
-    if (turnosPublicadosUnicos.length > 0) {
-      const porDia = new Map<string, DisponibilidadEntrenador[]>();
-      turnosPublicadosUnicos.forEach((turno) => {
-        const actuales = porDia.get(turno.fecha) || [];
-        actuales.push(turno);
-        porDia.set(turno.fecha, actuales);
-      });
-
-      Array.from(porDia.entries())
-        .sort(([fechaA], [fechaB]) => fechaA.localeCompare(fechaB))
-        .forEach(([fecha, turnosDia]) => {
-          mensaje += `*${capitalizarPrimera(
-            new Date(`${fecha}T00:00:00`).toLocaleDateString('es-ES', {
-              weekday: 'long',
-            })
-          )} ${formatearFecha(fecha)}*\n`;
-          turnosDia.forEach((turno) => {
-            mensaje += `- ${horaCorta(turno.hora_inicio)}–${horaCorta(
-              turno.hora_fin
-            )}${turno.nombre_turno ? ` · ${turno.nombre_turno}` : ''}\n`;
-          });
-          mensaje += '\n';
-        });
-    } else {
-      diasTrabajoSemanaAgenda(semana).forEach((dia) => {
-        mensaje += `*${capitalizarPrimera(dia.nombre)} ${formatearFecha(
-          dia.fecha
-        )}*\n`;
-        turnosTrabajoDiaAgenda(dia.fecha).forEach((turno) => {
-          mensaje += `- ${turno.inicio}–${turno.fin}\n`;
-        });
-        mensaje += '\n';
-      });
-    }
-
-    mensaje +=
-      'No hace falta responder por WhatsApp: rellenadlo en la app. Gracias equipo.';
-    return mensaje;
-  }
-
-  function copiarMensajeDisponibilidadSemana() {
-    const mensaje = mensajeDisponibilidadSemana();
-    abrirPrevisualizacionWhatsapp(
-      `WhatsApp entrenadores · disponibilidad ${rangoSemanaAgenda(
-        semanaAgendaActiva || semanaActualAgenda
-      )}`,
-      mensaje
-    );
   }
 
   function mensajeWhatsappPendientesReportes(items: ReportePendiente[]) {
@@ -6843,7 +6700,7 @@ Por favor confirma tu disponibilidad para estos turnos:
         p_nivel_final_propuesto_id: nivelPropuestoId || null,
         p_nivel_final_confirmado_id: nivelConfirmadoId || null,
         p_recomendacion_siguiente_paso: recomendacionSiguientePaso || null,
-        p_estado_diploma: estadoDiploma || 'Pendiente',
+        p_estado_diploma: estadoEvaluación || 'Pendiente',
       });
 
       await cargarIntensivos();
@@ -7197,15 +7054,16 @@ Por favor confirma tu disponibilidad para estos turnos:
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .trim();
-    if (limpio.includes('D+')) return 8;
-    if (limpio === 'D' || limpio.includes(' D')) return 7;
-    if (limpio.includes('C+')) return 6;
-    if (limpio === 'C' || limpio.includes(' C')) return 5;
-    if (limpio.includes('B+')) return 4;
-    if (limpio === 'B' || limpio.includes(' B')) return 3;
-    if (limpio.includes('A+')) return 2;
-    if (limpio === 'A' || limpio.includes(' A')) return 1;
-    if (limpio.includes('INICIACION') || limpio.includes('DEBUT')) return 0;
+    const nivelDetectado = limpio.match(/(?:^|[^A-Z])(INICIACION|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)(?:$|[^A-Z+])/i)?.[1] || limpio;
+    if (nivelDetectado === 'D+') return 8;
+    if (nivelDetectado === 'D') return 7;
+    if (nivelDetectado === 'C+') return 6;
+    if (nivelDetectado === 'C') return 5;
+    if (nivelDetectado === 'B+' || nivelDetectado === 'B++') return 4;
+    if (nivelDetectado === 'B') return 3;
+    if (nivelDetectado === 'A+') return 2;
+    if (nivelDetectado === 'A') return 1;
+    if (nivelDetectado === 'INICIACION' || nivelDetectado === 'DEBUT') return 0;
     return 2;
   }
 
@@ -7275,8 +7133,8 @@ Por favor confirma tu disponibilidad para estos turnos:
 
     if (alumnosGrupo.length === 0) bloqueos.push('Grupo sin alumnos.');
     if (alumnosGrupo.length === 1)
-      bloqueos.push(
-        'No crear grupo automático de 1 alumno. Dejar para revisión manual.'
+      supervision.push(
+        'Grupo de 1 alumno: excepción de ratio. Publicar solo tras revisión de Jose.'
       );
     if (alumnosGrupo.length === 2)
       supervision.push(
@@ -7284,20 +7142,20 @@ Por favor confirma tu disponibilidad para estos turnos:
       );
 
     if (tieneIniciacion && tieneBoSuperior) {
-      bloqueos.push('INICIACIÓN no puede mezclarse con B, B+, C, C+, D o D+.');
+      supervision.push('INICIACIÓN no puede mezclarse con B, B+, C, C+, D o D+. Ajuste manual: requiere confirmación de Jose.');
     }
     if (tieneIniciacion && tieneAPlus) {
-      bloqueos.push('INICIACIÓN solo puede mezclarse con A, no con A+.');
+      supervision.push('INICIACIÓN solo puede mezclarse con A, no con A+. Ajuste manual: requiere confirmación de Jose.');
     }
     if ((tieneIniciacion || tieneA) && tieneCoSuperior) {
-      bloqueos.push('INICIACIÓN/A no puede mezclarse con C, C+, D o D+.');
+      supervision.push('INICIACIÓN/A no puede mezclarse con C, C+, D o D+. Ajuste manual: requiere confirmación de Jose.');
     }
     if (tieneAPlus && tieneCoSuperior) {
-      bloqueos.push('A+ no puede mezclarse con C, C+, D o D+.');
+      supervision.push('A+ no puede mezclarse con C, C+, D o D+. Ajuste manual: requiere confirmación de Jose.');
     }
-    if (tieneAPlus && (tieneB || tieneBPlus)) {
+    if (tieneAPlus && tieneB) {
       supervision.push(
-        'A+ con B/B+ requiere Supervisión Jose: solo si el A+ está a punto de pasar y el B es bajito.'
+        'A+ con B nunca se propone automáticamente. Si Jose lo ha movido manualmente, requiere confirmación antes de publicar.'
       );
     }
     if (tieneBPlus && tieneC) {
@@ -7315,7 +7173,7 @@ Por favor confirma tu disponibilidad para estos turnos:
       );
     }
     if (/peque/.test(pistas) && alumnosGrupo.length > 5) {
-      bloqueos.push('Pista pequeña con más de 5 niños: dividir grupo.');
+      supervision.push('Pista pequeña con más de 5 niños: dividir grupo o confirmar excepción manual.');
     }
     if (/grande/.test(pistas) && alumnosGrupo.length > 7) {
       supervision.push(
@@ -7358,7 +7216,7 @@ Por favor confirma tu disponibilidad para estos turnos:
     const validacion = validacionPedagogicaGrupoApp(alumnosGrupo);
     const titulo =
       validacion.estado === 'BLOQUEADO'
-        ? 'BLOQUEADO · No publicar este grupo'
+        ? 'ADVERTENCIA · Revisión obligatoria'
         : validacion.estado === 'SUPERVISION_JOSE'
         ? 'SUPERVISIÓN JOSE'
         : validacion.estado === 'AVISO'
@@ -7685,18 +7543,13 @@ Por favor confirma tu disponibilidad para estos turnos:
     nombreGrupo: string
   ) {
     const validacion = textoValidacionPedagogicaGrupoApp(alumnosGrupo);
-    if (validacion.estado === 'BLOQUEADO') {
-      setError(`${nombreGrupo} bloqueado: ${validacion.mensajes.join(' ')}`);
+    if (validacion.estado === 'BLOQUEADO' && alumnosGrupo.length === 0) {
+      setError(`${nombreGrupo}: el grupo no tiene alumnos.`);
       return false;
     }
-    if (
-      validacion.estado === 'SUPERVISION_JOSE' ||
-      validacion.estado === 'AVISO'
-    ) {
+    if (validacion.estado !== 'OK') {
       return window.confirm(
-        `${validacion.titulo}\n\n${validacion.mensajes.join(
-          '\n'
-        )}\n\n¿Quieres crear el grupo igualmente?`
+        `${validacion.titulo}\n\n${validacion.mensajes.join('\n')}\n\nHay una excepción de nivel o ratio. ¿Publicar igualmente?`
       );
     }
     return true;
@@ -7724,8 +7577,6 @@ Por favor confirma tu disponibilidad para estos turnos:
   ) {
     const perfil = perfilTrabajoMSZApp(niveles, pistaTexto);
     const pista = pistaTexto || 'Pequeña/Grande';
-    const nivelesTexto =
-      Array.from(new Set(niveles.filter(Boolean))).join(' / ') || '-';
     const obs = textoSinAcentosGrupoApp(observacionesTexto || '');
     const ajustes: string[] = [];
 
@@ -7749,8 +7600,6 @@ Por favor confirma tu disponibilidad para estos turnos:
         'Ajuste remonte: revisar entrada y salida; no forzar percha/silla si aparece bloqueo.'
       );
     }
-
-    const cabecera = `Grupo ${nombreGrupo}. Nivel: ${nivelesTexto} · Pista: ${pista} · Madrid SnowZone.`;
 
     const planes: Record<string, string[]> = {
       INICIACION_A: [
@@ -7800,7 +7649,7 @@ Por favor confirma tu disponibilidad para estos turnos:
       ],
     };
 
-    return [cabecera, ...(planes[perfil] || planes.APLUS), ...ajustes].join(
+    return [...(planes[perfil] || planes.APLUS), ...ajustes].join(
       '\n'
     );
   }
@@ -9036,14 +8885,18 @@ Por favor confirma tu disponibilidad para estos turnos:
   }
 
   function entrenadoresDisponiblesDiaIntensivo(dia?: IntensivoDiaApp | null) {
-    const disponibles = entrenadoresDisponiblesParaTurno(
-      dia?.fecha,
-      dia?.hora_inicio,
-      dia?.hora_fin
-    );
-    return disponibles.length > 0
-      ? disponibles
-      : entrenadoresActivosParaIntensivo();
+    if (!dia) return [];
+    const solapa = (inicioA: string, finA: string, inicioB: string, finB: string) =>
+      horaCorta(inicioA) < horaCorta(finB) && horaCorta(inicioB) < horaCorta(finA);
+    const ocupados = new Set<string>();
+    gruposIntensivoDia.forEach((grupo) => {
+      if (grupo.fecha === dia.fecha && solapa(grupo.hora_inicio || '', grupo.hora_fin || '', dia.hora_inicio, dia.hora_fin)) {
+        if (grupo.entrenador_id) ocupados.add(grupo.entrenador_id);
+        if (grupo.entrenador_apoyo_id) ocupados.add(grupo.entrenador_apoyo_id);
+      }
+    });
+    return entrenadoresDisponiblesParaTurno(dia.fecha, dia.hora_inicio, dia.hora_fin)
+      .filter((entrenador) => !ocupados.has(entrenador.entrenador_id));
   }
 
   function avisoDisponibilidadDiaIntensivo(dia?: IntensivoDiaApp | null) {
@@ -9055,7 +8908,7 @@ Por favor confirma tu disponibilidad para estos turnos:
     );
     if (disponibles.length > 0)
       return `${disponibles.length} entrenador(es) disponibles para este día/turno.`;
-    return 'No hay disponibilidad registrada para este día/turno. Se muestran entrenadores activos para emergencia manual.';
+    return 'No hay entrenadores disponibles declarados para este día/turno.';
   }
   const reportesPorEntrenador = agruparReportesPorEntrenador(reportesFiltrados);
   const gruposEntrenadorAgrupados = agruparGruposPorEntrenador(
@@ -10725,7 +10578,7 @@ Por favor confirma tu disponibilidad para estos turnos:
               <div>
                 <p style={etiquetaSuperior}>PREVISUALIZACIÓN PDF</p>
                 <h2 style={{ margin: 0 }}>{cobroPdfPreview.titulo}</h2>
-                <p style={{ margin: '6px 0 0', color: '#555' }}>
+                <p style={{ margin: '6px 0 0', color: '#dbeafe' }}>
                   Revisa el resumen. Luego pulsa imprimir y en Mac guarda como
                   PDF.
                 </p>
@@ -10779,8 +10632,7 @@ Por favor confirma tu disponibilidad para estos turnos:
               <details style={ayudaDesplegableCompacta}>
                 <summary>Chuleta</summary>
                 <p style={{ margin: '8px 0 0' }}>
-                  Control de pista: sesiones, grupos, entrenadores, pendientes y
-                  reportes del día.
+                  Control operativo para colocar a las familias y revisar el trabajo de todos los grupos publicados.
                 </p>
               </details>
             </div>
@@ -10835,10 +10687,10 @@ Por favor confirma tu disponibilidad para estos turnos:
                   : tarjetaInicioRojo
               }
             >
-              <strong>Pendientes reportes</strong>
+              <strong>Grupos sin entrenador</strong>
               <br />
               <span style={{ fontSize: 26, fontWeight: 900 }}>
-                {reportesResumenDia.length}
+                {gruposPendientesEntrenadorResumenDia.length}
               </span>
             </div>
           </div>
@@ -10857,8 +10709,8 @@ Por favor confirma tu disponibilidad para estos turnos:
               </article>
             ) : (
               sesionesResumenDia.map((sesion) => (
-                <article key={sesion.id} style={tarjetaEntrenadorMovil}>
-                  <div style={agendaCabeceraLinea}>
+                <article key={sesion.id} style={{ ...tarjetaEntrenadorMovil, border: '2px solid #0f172a', borderRadius: 22, overflow: 'hidden', padding: 0, background: '#ffffff', boxShadow: '0 14px 34px rgba(15,23,42,.10)' }}>
+                  <div style={{ ...agendaCabeceraLinea, padding: '16px 18px', background: 'linear-gradient(135deg,#0f172a,#1e3a8a)', color: '#ffffff' }}>
                     <div>
                       <p style={etiquetaSuperior}>{sesion.modalidad}</p>
                       <h3 style={{ margin: 0 }}>
@@ -10874,25 +10726,40 @@ Por favor confirma tu disponibilidad para estos turnos:
                     </span>
                   </div>
 
-                  <div style={gridResumenInicio}>
-                    <div style={miniTarjetaBlanca}>
-                      <strong>Publicados</strong>
-                      <br />
-                      {sesion.publicados}/{sesion.totalGrupos}
-                    </div>
-                    <div style={miniTarjetaBlanca}>
-                      <strong>Origen</strong>
-                      <br />
-                      {sesion.origen}
-                    </div>
-                    <div style={miniTarjetaBlanca}>
-                      <strong>Detalle</strong>
-                      <br />
-                      {gruposTextoResumenSesion(sesion) || 'Sin grupos creados'}
-                    </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(135px,1fr))', gap: 8, padding: '12px 16px 4px' }}>
+                    <div style={{ ...miniTarjetaBlanca, textAlign: 'center' }}><strong>{sesion.totalAlumnos}</strong><br /><span>niños</span></div>
+                    <div style={{ ...miniTarjetaBlanca, textAlign: 'center' }}><strong>{sesion.totalGrupos}</strong><br /><span>grupos</span></div>
+                    <div style={{ ...miniTarjetaBlanca, textAlign: 'center' }}><strong>{sesion.publicados}</strong><br /><span>publicados</span></div>
+                    <div style={{ ...miniTarjetaBlanca, textAlign: 'center' }}><strong>{(sesion.origen === 'intensivo' ? sesion.grupos : sesion.planningGrupos).filter((grupo: any) => grupo.publicado && !(grupo.entrenador || grupo.entrenadores)).length}</strong><br /><span>sin entrenador</span></div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 12, padding: '12px 16px 16px' }}>
+                    {(sesion.origen === 'intensivo' ? sesion.grupos.filter((grupo) => grupo.grupo_id && grupo.publicado) : sesion.planningGrupos.filter((grupo) => grupo.publicado)).map((grupo: any, indice: number) => (
+                      <div key={grupo.grupo_id || `${sesion.id}-${indice}`} style={{ ...miniTarjetaBlanca, border: grupo.entrenador || grupo.entrenadores ? '2px solid #bfdbfe' : '3px solid #f59e0b', borderRadius: 18, padding: 14, background: grupo.entrenador || grupo.entrenadores ? 'linear-gradient(180deg,#eff6ff,#ffffff)' : 'linear-gradient(180deg,#fffbeb,#ffffff)', boxShadow: '0 8px 20px rgba(15,23,42,.06)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                          <div>
+                            <strong>{nombreGrupoVisualApp(grupo, indice)}</strong>
+                            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 8 }}><span style={{ ...miniBadge, background: '#0f172a', color: '#fff' }}>PUNTO {grupo.punto_encuentro || '-'}</span><span style={{ ...miniBadge, background: '#dbeafe', color: '#1e3a8a' }}>{grupo.pista || 'SIN PISTA'}</span></div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ display: 'block', fontSize: 11, fontWeight: 900, color: '#64748b', textTransform: 'uppercase' }}>Entrenador</span><strong style={{ color: grupo.entrenador || grupo.entrenadores ? '#0f172a' : '#b45309' }}>{grupo.entrenador || grupo.entrenadores || 'SIN ENTRENADOR'}</strong>
+                            {grupo.entrenador_apoyo && <p style={{ margin: '4px 0 0' }}>Apoyo: {grupo.entrenador_apoyo}</p>}
+                          </div>
+                        </div>
+                        {grupo.alumnos_lista ? (
+                          <ul style={{ margin: '10px 0 0', paddingLeft: 18 }}>
+                            {String(grupo.alumnos_lista).split(' || ').map((alumno: string, alumnoIndice: number) => (
+                              <li key={`${grupo.grupo_id || indice}-${alumnoIndice}`}>{formatearAlumnoListadoOperativo(alumno)}</li>
+                            ))}
+                          </ul>
+                        ) : <p style={{ margin: '10px 0 0', color: '#64748b' }}>Sin listado cargado.</p>}
+                        {grupo.trabajo_diario && <div style={{ ...avisoNeutral, marginTop: 10 }}><strong>Trabajo diario</strong><div style={{ whiteSpace: 'pre-wrap', marginTop: 5 }}>{grupo.trabajo_diario}</div></div>}
+                        {grupo.observaciones_importantes && <div style={{ ...avisoCompleto, marginTop: 8 }}><strong>Observaciones</strong><div style={{ marginTop: 5 }}>{formatearObservaciones(grupo.observaciones_importantes)}</div></div>}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '0 16px 16px' }}>
                     <button
                       onClick={() =>
                         abrirSesionAgenda(
@@ -10910,7 +10777,7 @@ Por favor confirma tu disponibilidad para estos turnos:
             )}
           </div>
 
-          {reportesResumenDia.length > 0 && (
+          {false && reportesResumenDia.length > 0 && (
             <article style={{ ...tarjeta, marginTop: 16 }}>
               <h3 style={{ marginTop: 0 }}>Pendientes del día</h3>
               <div style={{ display: 'grid', gap: 8 }}>
@@ -11175,7 +11042,7 @@ Por favor confirma tu disponibilidad para estos turnos:
                     </button>
                     <button
                       onClick={() =>
-                        moverAlumnoGrupoOcio(
+                        asignarAlumnoGrupoOcio(
                           alumno.alumno_id,
                           destinoRevisionOcio[alumno.alumno_id]
                         )
@@ -12005,16 +11872,28 @@ Por favor confirma tu disponibilidad para estos turnos:
                                       <option value="">
                                         Selecciona entrenador
                                       </option>
-                                      {entrenadoresDisponiblesSesionActiva().map(
-                                        (entrenador) => (
+                                      {entrenadoresDisponiblesSesionActiva()
+                                        .filter((entrenador) => {
+                                          const actual = entrenadoresAgendaGrupo[nombreGrupo] || '';
+                                          const usadosEnOtros = new Set([
+                                            ...Object.entries(entrenadoresAgendaGrupo)
+                                              .filter(([grupo]) => grupo !== nombreGrupo)
+                                              .map(([, id]) => id),
+                                            ...Object.entries(entrenadoresApoyoAgendaGrupo)
+                                              .filter(([grupo]) => grupo !== nombreGrupo)
+                                              .map(([, id]) => id),
+                                            entrenadoresApoyoAgendaGrupo[nombreGrupo] || '',
+                                          ].filter(Boolean));
+                                          return entrenador.entrenador_id === actual || !usadosEnOtros.has(entrenador.entrenador_id);
+                                        })
+                                        .map((entrenador) => (
                                           <option
                                             key={entrenador.entrenador_id}
                                             value={entrenador.entrenador_id}
                                           >
                                             {entrenador.nombre_completo}
                                           </option>
-                                        )
-                                      )}
+                                        ))}
                                     </select>
                                   </label>
                                   <label style={labelCampo}>
@@ -12060,13 +11939,19 @@ Por favor confirma tu disponibilidad para estos turnos:
                                         Sin segundo entrenador
                                       </option>
                                       {entrenadoresDisponiblesSesionActiva()
-                                        .filter(
-                                          (entrenador) =>
-                                            entrenador.entrenador_id !==
-                                            (entrenadoresAgendaGrupo[
-                                              nombreGrupo
-                                            ] || '')
-                                        )
+                                        .filter((entrenador) => {
+                                          const actual = entrenadoresApoyoAgendaGrupo[nombreGrupo] || '';
+                                          const usadosEnOtros = new Set([
+                                            ...Object.entries(entrenadoresAgendaGrupo)
+                                              .filter(([grupo]) => grupo !== nombreGrupo)
+                                              .map(([, id]) => id),
+                                            ...Object.entries(entrenadoresApoyoAgendaGrupo)
+                                              .filter(([grupo]) => grupo !== nombreGrupo)
+                                              .map(([, id]) => id),
+                                            entrenadoresAgendaGrupo[nombreGrupo] || '',
+                                          ].filter(Boolean));
+                                          return entrenador.entrenador_id === actual || !usadosEnOtros.has(entrenador.entrenador_id);
+                                        })
                                         .map((entrenador) => (
                                           <option
                                             key={`${nombreGrupo}-apoyo-${entrenador.entrenador_id}`}
@@ -12276,15 +12161,15 @@ Por favor confirma tu disponibilidad para estos turnos:
                               · Punto {grupo.punto_encuentro || '-'}
                             </p>
                             {grupo.alumnos_lista && (
-                              <div style={listaAlumnosGrupoCompacta}>
+                              <ul style={{ margin: '8px 0 0', paddingLeft: 22, display: 'grid', gap: 4 }}>
                                 {grupo.alumnos_lista
                                   .split(' || ')
                                   .map((alumnoGrupo, indice) => (
-                                    <span key={`${grupo.grupo_id}-${indice}`}>
-                                      {alumnoGrupo}
-                                    </span>
+                                    <li key={`${grupo.grupo_id}-${indice}`}>
+                                      {formatearAlumnoListadoOperativo(alumnoGrupo)}
+                                    </li>
                                   ))}
-                              </div>
+                              </ul>
                             )}
                             <details style={panelTrabajoGrupo}>
                               <summary style={summaryTrabajoGrupo}>
@@ -16087,7 +15972,7 @@ Por favor confirma tu disponibilidad para estos turnos:
                         <section
                           style={{ display: 'grid', gap: 12, marginTop: 12 }}
                         >
-                          {Object.entries(reportesPorFecha)
+                          {(Object.entries(reportesPorFecha) as [string, ReportePendiente[]][])
                             .sort(([a], [b]) => a.localeCompare(b))
                             .map(([fecha, reportesFecha]) => (
                               <article
@@ -19195,6 +19080,7 @@ Por favor confirma tu disponibilidad para estos turnos:
           formDiaIntensivo,
           formGrupoIntensivo,
           formIntensivo,
+          formatearAlumnoListadoOperativo,
           formatearFecha,
           formatearObservaciones,
           formularioCaja,
