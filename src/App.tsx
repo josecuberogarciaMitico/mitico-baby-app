@@ -1342,9 +1342,21 @@ function plantillaCuatroSesionesInicial(): PlantillaCuatroSesionesIntensivoState
 }
 
 function sumarDiasIso(fechaIso: string, dias: number) {
-  const fecha = new Date(`${fechaIso}T00:00:00`);
+  const [anio, mes, dia] = fechaIso.split('-').map(Number);
+  const fecha = new Date(anio, mes - 1, dia);
   fecha.setDate(fecha.getDate() + dias);
-  return fecha.toISOString().slice(0, 10);
+  const yyyy = fecha.getFullYear();
+  const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dd = String(fecha.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function formatearAlumnoListadoOperativo(valor: string | null | undefined) {
+  const partes = String(valor || '').split('·').map((parte) => parte.trim()).filter(Boolean).filter((parte) => !/^test nuevo$/i.test(parte));
+  if (partes.length === 0) return '-';
+  const nombre = partes[0].replace(/^\d+[.)-]?\s*/, '').trim();
+  const nivel = partes.find((parte, indice) => indice > 0 && /^(INICIACI[ÓO]N|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)$/i.test(parte));
+  return nivel ? `${nombre} · ${nivel.toUpperCase()}` : nombre;
 }
 
 function calcularFechasCuatroSesionesIntensivo(
@@ -1388,7 +1400,7 @@ function grupoIntensivoInicial(): GrupoIntensivoFormState {
     nombre_grupo: 'Grupo Intensivo',
     nivel_grupo: '',
     pista: 'Pequeña/Grande',
-    punto_encuentro: '1',
+    punto_encuentro: '5',
     trabajo_diario: '',
     observaciones_importantes: '',
     entrenador_id: '',
@@ -2185,10 +2197,7 @@ const opcionesEstadoRecuperacionIntensivo = [
 
 const opcionesPistaGrupoIntensivo = ['', 'Pequeña', 'Grande', 'Pequeña/Grande'];
 
-const puntosEncuentroAgenda = Array.from(
-  { length: 12 },
-  (_, indice) => `${indice + 1}`
-);
+const puntosEncuentroAgenda = ['5', '9', '10', '6', '4', '7', '3', '2', '1'];
 
 const modalidadesAgendaTrabajo = [
   { codigo: 'BABY', nombre: 'Baby' },
@@ -7045,15 +7054,16 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
       .trim();
-    if (limpio.includes('D+')) return 8;
-    if (limpio === 'D' || limpio.includes(' D')) return 7;
-    if (limpio.includes('C+')) return 6;
-    if (limpio === 'C' || limpio.includes(' C')) return 5;
-    if (limpio.includes('B+')) return 4;
-    if (limpio === 'B' || limpio.includes(' B')) return 3;
-    if (limpio.includes('A+')) return 2;
-    if (limpio === 'A' || limpio.includes(' A')) return 1;
-    if (limpio.includes('INICIACION') || limpio.includes('DEBUT')) return 0;
+    const nivelDetectado = limpio.match(/(?:^|[^A-Z])(INICIACION|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)(?:$|[^A-Z+])/i)?.[1] || limpio;
+    if (nivelDetectado === 'D+') return 8;
+    if (nivelDetectado === 'D') return 7;
+    if (nivelDetectado === 'C+') return 6;
+    if (nivelDetectado === 'C') return 5;
+    if (nivelDetectado === 'B+' || nivelDetectado === 'B++') return 4;
+    if (nivelDetectado === 'B') return 3;
+    if (nivelDetectado === 'A+') return 2;
+    if (nivelDetectado === 'A') return 1;
+    if (nivelDetectado === 'INICIACION' || nivelDetectado === 'DEBUT') return 0;
     return 2;
   }
 
@@ -7123,8 +7133,8 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
 
     if (alumnosGrupo.length === 0) bloqueos.push('Grupo sin alumnos.');
     if (alumnosGrupo.length === 1)
-      bloqueos.push(
-        'No crear grupo automático de 1 alumno. Dejar para revisión manual.'
+      supervision.push(
+        'Grupo de 1 alumno: excepción de ratio. Publicar solo tras revisión de Jose.'
       );
     if (alumnosGrupo.length === 2)
       supervision.push(
@@ -7132,20 +7142,20 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
       );
 
     if (tieneIniciacion && tieneBoSuperior) {
-      bloqueos.push('INICIACIÓN no puede mezclarse con B, B+, C, C+, D o D+.');
+      supervision.push('INICIACIÓN no puede mezclarse con B, B+, C, C+, D o D+. Ajuste manual: requiere confirmación de Jose.');
     }
     if (tieneIniciacion && tieneAPlus) {
-      bloqueos.push('INICIACIÓN solo puede mezclarse con A, no con A+.');
+      supervision.push('INICIACIÓN solo puede mezclarse con A, no con A+. Ajuste manual: requiere confirmación de Jose.');
     }
     if ((tieneIniciacion || tieneA) && tieneCoSuperior) {
-      bloqueos.push('INICIACIÓN/A no puede mezclarse con C, C+, D o D+.');
+      supervision.push('INICIACIÓN/A no puede mezclarse con C, C+, D o D+. Ajuste manual: requiere confirmación de Jose.');
     }
     if (tieneAPlus && tieneCoSuperior) {
-      bloqueos.push('A+ no puede mezclarse con C, C+, D o D+.');
+      supervision.push('A+ no puede mezclarse con C, C+, D o D+. Ajuste manual: requiere confirmación de Jose.');
     }
-    if (tieneAPlus && (tieneB || tieneBPlus)) {
+    if (tieneAPlus && tieneB) {
       supervision.push(
-        'A+ con B/B+ requiere Supervisión Jose: solo si el A+ está a punto de pasar y el B es bajito.'
+        'A+ con B nunca se propone automáticamente. Si Jose lo ha movido manualmente, requiere confirmación antes de publicar.'
       );
     }
     if (tieneBPlus && tieneC) {
@@ -7163,7 +7173,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
       );
     }
     if (/peque/.test(pistas) && alumnosGrupo.length > 5) {
-      bloqueos.push('Pista pequeña con más de 5 niños: dividir grupo.');
+      supervision.push('Pista pequeña con más de 5 niños: dividir grupo o confirmar excepción manual.');
     }
     if (/grande/.test(pistas) && alumnosGrupo.length > 7) {
       supervision.push(
@@ -7206,7 +7216,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     const validacion = validacionPedagogicaGrupoApp(alumnosGrupo);
     const titulo =
       validacion.estado === 'BLOQUEADO'
-        ? 'BLOQUEADO · No publicar este grupo'
+        ? 'ADVERTENCIA · Revisión obligatoria'
         : validacion.estado === 'SUPERVISION_JOSE'
         ? 'SUPERVISIÓN JOSE'
         : validacion.estado === 'AVISO'
@@ -7533,18 +7543,13 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     nombreGrupo: string
   ) {
     const validacion = textoValidacionPedagogicaGrupoApp(alumnosGrupo);
-    if (validacion.estado === 'BLOQUEADO') {
-      setError(`${nombreGrupo} bloqueado: ${validacion.mensajes.join(' ')}`);
+    if (validacion.estado === 'BLOQUEADO' && alumnosGrupo.length === 0) {
+      setError(`${nombreGrupo}: el grupo no tiene alumnos.`);
       return false;
     }
-    if (
-      validacion.estado === 'SUPERVISION_JOSE' ||
-      validacion.estado === 'AVISO'
-    ) {
+    if (validacion.estado !== 'OK') {
       return window.confirm(
-        `${validacion.titulo}\n\n${validacion.mensajes.join(
-          '\n'
-        )}\n\n¿Quieres crear el grupo igualmente?`
+        `${validacion.titulo}\n\n${validacion.mensajes.join('\n')}\n\nHay una excepción de nivel o ratio. ¿Publicar igualmente?`
       );
     }
     return true;
@@ -7572,8 +7577,6 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
   ) {
     const perfil = perfilTrabajoMSZApp(niveles, pistaTexto);
     const pista = pistaTexto || 'Pequeña/Grande';
-    const nivelesTexto =
-      Array.from(new Set(niveles.filter(Boolean))).join(' / ') || '-';
     const obs = textoSinAcentosGrupoApp(observacionesTexto || '');
     const ajustes: string[] = [];
 
@@ -7597,8 +7600,6 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
         'Ajuste remonte: revisar entrada y salida; no forzar percha/silla si aparece bloqueo.'
       );
     }
-
-    const cabecera = `Grupo ${nombreGrupo}. Nivel: ${nivelesTexto} · Pista: ${pista} · Madrid SnowZone.`;
 
     const planes: Record<string, string[]> = {
       INICIACION_A: [
@@ -7648,7 +7649,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
       ],
     };
 
-    return [cabecera, ...(planes[perfil] || planes.APLUS), ...ajustes].join(
+    return [...(planes[perfil] || planes.APLUS), ...ajustes].join(
       '\n'
     );
   }
@@ -8884,14 +8885,18 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
   }
 
   function entrenadoresDisponiblesDiaIntensivo(dia?: IntensivoDiaApp | null) {
-    const disponibles = entrenadoresDisponiblesParaTurno(
-      dia?.fecha,
-      dia?.hora_inicio,
-      dia?.hora_fin
-    );
-    return disponibles.length > 0
-      ? disponibles
-      : entrenadoresActivosParaIntensivo();
+    if (!dia) return [];
+    const solapa = (inicioA: string, finA: string, inicioB: string, finB: string) =>
+      horaCorta(inicioA) < horaCorta(finB) && horaCorta(inicioB) < horaCorta(finA);
+    const ocupados = new Set<string>();
+    gruposIntensivoDia.forEach((grupo) => {
+      if (grupo.fecha === dia.fecha && solapa(grupo.hora_inicio || '', grupo.hora_fin || '', dia.hora_inicio, dia.hora_fin)) {
+        if (grupo.entrenador_id) ocupados.add(grupo.entrenador_id);
+        if (grupo.entrenador_apoyo_id) ocupados.add(grupo.entrenador_apoyo_id);
+      }
+    });
+    return entrenadoresDisponiblesParaTurno(dia.fecha, dia.hora_inicio, dia.hora_fin)
+      .filter((entrenador) => !ocupados.has(entrenador.entrenador_id));
   }
 
   function avisoDisponibilidadDiaIntensivo(dia?: IntensivoDiaApp | null) {
@@ -8903,7 +8908,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     );
     if (disponibles.length > 0)
       return `${disponibles.length} entrenador(es) disponibles para este día/turno.`;
-    return 'No hay disponibilidad registrada para este día/turno. Se muestran entrenadores activos para emergencia manual.';
+    return 'No hay entrenadores disponibles declarados para este día/turno.';
   }
   const reportesPorEntrenador = agruparReportesPorEntrenador(reportesFiltrados);
   const gruposEntrenadorAgrupados = agruparGruposPorEntrenador(
@@ -10573,7 +10578,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
               <div>
                 <p style={etiquetaSuperior}>PREVISUALIZACIÓN PDF</p>
                 <h2 style={{ margin: 0 }}>{cobroPdfPreview.titulo}</h2>
-                <p style={{ margin: '6px 0 0', color: '#555' }}>
+                <p style={{ margin: '6px 0 0', color: '#dbeafe' }}>
                   Revisa el resumen. Luego pulsa imprimir y en Mac guarda como
                   PDF.
                 </p>
@@ -10627,8 +10632,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
               <details style={ayudaDesplegableCompacta}>
                 <summary>Chuleta</summary>
                 <p style={{ margin: '8px 0 0' }}>
-                  Control de pista: sesiones, grupos, entrenadores, pendientes y
-                  reportes del día.
+                  Control operativo para colocar a las familias y revisar el trabajo de todos los grupos publicados.
                 </p>
               </details>
             </div>
@@ -10683,10 +10687,10 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                   : tarjetaInicioRojo
               }
             >
-              <strong>Pendientes reportes</strong>
+              <strong>Grupos sin entrenador</strong>
               <br />
               <span style={{ fontSize: 26, fontWeight: 900 }}>
-                {reportesResumenDia.length}
+                {gruposPendientesEntrenadorResumenDia.length}
               </span>
             </div>
           </div>
@@ -10705,8 +10709,8 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
               </article>
             ) : (
               sesionesResumenDia.map((sesion) => (
-                <article key={sesion.id} style={tarjetaEntrenadorMovil}>
-                  <div style={agendaCabeceraLinea}>
+                <article key={sesion.id} style={{ ...tarjetaEntrenadorMovil, border: '2px solid #0f172a', borderRadius: 22, overflow: 'hidden', padding: 0, background: '#ffffff', boxShadow: '0 14px 34px rgba(15,23,42,.10)' }}>
+                  <div style={{ ...agendaCabeceraLinea, padding: '16px 18px', background: 'linear-gradient(135deg,#0f172a,#1e3a8a)', color: '#ffffff' }}>
                     <div>
                       <p style={etiquetaSuperior}>{sesion.modalidad}</p>
                       <h3 style={{ margin: 0 }}>
@@ -10722,25 +10726,40 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                     </span>
                   </div>
 
-                  <div style={gridResumenInicio}>
-                    <div style={miniTarjetaBlanca}>
-                      <strong>Publicados</strong>
-                      <br />
-                      {sesion.publicados}/{sesion.totalGrupos}
-                    </div>
-                    <div style={miniTarjetaBlanca}>
-                      <strong>Origen</strong>
-                      <br />
-                      {sesion.origen}
-                    </div>
-                    <div style={miniTarjetaBlanca}>
-                      <strong>Detalle</strong>
-                      <br />
-                      {gruposTextoResumenSesion(sesion) || 'Sin grupos creados'}
-                    </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(135px,1fr))', gap: 8, padding: '12px 16px 4px' }}>
+                    <div style={{ ...miniTarjetaBlanca, textAlign: 'center' }}><strong>{sesion.totalAlumnos}</strong><br /><span>niños</span></div>
+                    <div style={{ ...miniTarjetaBlanca, textAlign: 'center' }}><strong>{sesion.totalGrupos}</strong><br /><span>grupos</span></div>
+                    <div style={{ ...miniTarjetaBlanca, textAlign: 'center' }}><strong>{sesion.publicados}</strong><br /><span>publicados</span></div>
+                    <div style={{ ...miniTarjetaBlanca, textAlign: 'center' }}><strong>{(sesion.origen === 'intensivo' ? sesion.grupos : sesion.planningGrupos).filter((grupo: any) => grupo.publicado && !(grupo.entrenador || grupo.entrenadores)).length}</strong><br /><span>sin entrenador</span></div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(300px,1fr))', gap: 12, padding: '12px 16px 16px' }}>
+                    {(sesion.origen === 'intensivo' ? sesion.grupos.filter((grupo) => grupo.grupo_id && grupo.publicado) : sesion.planningGrupos.filter((grupo) => grupo.publicado)).map((grupo: any, indice: number) => (
+                      <div key={grupo.grupo_id || `${sesion.id}-${indice}`} style={{ ...miniTarjetaBlanca, border: grupo.entrenador || grupo.entrenadores ? '2px solid #bfdbfe' : '3px solid #f59e0b', borderRadius: 18, padding: 14, background: grupo.entrenador || grupo.entrenadores ? 'linear-gradient(180deg,#eff6ff,#ffffff)' : 'linear-gradient(180deg,#fffbeb,#ffffff)', boxShadow: '0 8px 20px rgba(15,23,42,.06)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                          <div>
+                            <strong>{nombreGrupoVisualApp(grupo, indice)}</strong>
+                            <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 8 }}><span style={{ ...miniBadge, background: '#0f172a', color: '#fff' }}>PUNTO {grupo.punto_encuentro || '-'}</span><span style={{ ...miniBadge, background: '#dbeafe', color: '#1e3a8a' }}>{grupo.pista || 'SIN PISTA'}</span></div>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <span style={{ display: 'block', fontSize: 11, fontWeight: 900, color: '#64748b', textTransform: 'uppercase' }}>Entrenador</span><strong style={{ color: grupo.entrenador || grupo.entrenadores ? '#0f172a' : '#b45309' }}>{grupo.entrenador || grupo.entrenadores || 'SIN ENTRENADOR'}</strong>
+                            {grupo.entrenador_apoyo && <p style={{ margin: '4px 0 0' }}>Apoyo: {grupo.entrenador_apoyo}</p>}
+                          </div>
+                        </div>
+                        {grupo.alumnos_lista ? (
+                          <ul style={{ margin: '10px 0 0', paddingLeft: 18 }}>
+                            {String(grupo.alumnos_lista).split(' || ').map((alumno: string, alumnoIndice: number) => (
+                              <li key={`${grupo.grupo_id || indice}-${alumnoIndice}`}>{formatearAlumnoListadoOperativo(alumno)}</li>
+                            ))}
+                          </ul>
+                        ) : <p style={{ margin: '10px 0 0', color: '#64748b' }}>Sin listado cargado.</p>}
+                        {grupo.trabajo_diario && <div style={{ ...avisoNeutral, marginTop: 10 }}><strong>Trabajo diario</strong><div style={{ whiteSpace: 'pre-wrap', marginTop: 5 }}>{grupo.trabajo_diario}</div></div>}
+                        {grupo.observaciones_importantes && <div style={{ ...avisoCompleto, marginTop: 8 }}><strong>Observaciones</strong><div style={{ marginTop: 5 }}>{formatearObservaciones(grupo.observaciones_importantes)}</div></div>}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '0 16px 16px' }}>
                     <button
                       onClick={() =>
                         abrirSesionAgenda(
@@ -10758,7 +10777,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
             )}
           </div>
 
-          {reportesResumenDia.length > 0 && (
+          {false && reportesResumenDia.length > 0 && (
             <article style={{ ...tarjeta, marginTop: 16 }}>
               <h3 style={{ marginTop: 0 }}>Pendientes del día</h3>
               <div style={{ display: 'grid', gap: 8 }}>
@@ -11853,16 +11872,28 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                                       <option value="">
                                         Selecciona entrenador
                                       </option>
-                                      {entrenadoresDisponiblesSesionActiva().map(
-                                        (entrenador) => (
+                                      {entrenadoresDisponiblesSesionActiva()
+                                        .filter((entrenador) => {
+                                          const actual = entrenadoresAgendaGrupo[nombreGrupo] || '';
+                                          const usadosEnOtros = new Set([
+                                            ...Object.entries(entrenadoresAgendaGrupo)
+                                              .filter(([grupo]) => grupo !== nombreGrupo)
+                                              .map(([, id]) => id),
+                                            ...Object.entries(entrenadoresApoyoAgendaGrupo)
+                                              .filter(([grupo]) => grupo !== nombreGrupo)
+                                              .map(([, id]) => id),
+                                            entrenadoresApoyoAgendaGrupo[nombreGrupo] || '',
+                                          ].filter(Boolean));
+                                          return entrenador.entrenador_id === actual || !usadosEnOtros.has(entrenador.entrenador_id);
+                                        })
+                                        .map((entrenador) => (
                                           <option
                                             key={entrenador.entrenador_id}
                                             value={entrenador.entrenador_id}
                                           >
                                             {entrenador.nombre_completo}
                                           </option>
-                                        )
-                                      )}
+                                        ))}
                                     </select>
                                   </label>
                                   <label style={labelCampo}>
@@ -11908,13 +11939,19 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                                         Sin segundo entrenador
                                       </option>
                                       {entrenadoresDisponiblesSesionActiva()
-                                        .filter(
-                                          (entrenador) =>
-                                            entrenador.entrenador_id !==
-                                            (entrenadoresAgendaGrupo[
-                                              nombreGrupo
-                                            ] || '')
-                                        )
+                                        .filter((entrenador) => {
+                                          const actual = entrenadoresApoyoAgendaGrupo[nombreGrupo] || '';
+                                          const usadosEnOtros = new Set([
+                                            ...Object.entries(entrenadoresAgendaGrupo)
+                                              .filter(([grupo]) => grupo !== nombreGrupo)
+                                              .map(([, id]) => id),
+                                            ...Object.entries(entrenadoresApoyoAgendaGrupo)
+                                              .filter(([grupo]) => grupo !== nombreGrupo)
+                                              .map(([, id]) => id),
+                                            entrenadoresAgendaGrupo[nombreGrupo] || '',
+                                          ].filter(Boolean));
+                                          return entrenador.entrenador_id === actual || !usadosEnOtros.has(entrenador.entrenador_id);
+                                        })
                                         .map((entrenador) => (
                                           <option
                                             key={`${nombreGrupo}-apoyo-${entrenador.entrenador_id}`}
@@ -12124,15 +12161,15 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                               · Punto {grupo.punto_encuentro || '-'}
                             </p>
                             {grupo.alumnos_lista && (
-                              <div style={listaAlumnosGrupoCompacta}>
+                              <ul style={{ margin: '8px 0 0', paddingLeft: 22, display: 'grid', gap: 4 }}>
                                 {grupo.alumnos_lista
                                   .split(' || ')
                                   .map((alumnoGrupo, indice) => (
-                                    <span key={`${grupo.grupo_id}-${indice}`}>
-                                      {alumnoGrupo}
-                                    </span>
+                                    <li key={`${grupo.grupo_id}-${indice}`}>
+                                      {formatearAlumnoListadoOperativo(alumnoGrupo)}
+                                    </li>
                                   ))}
-                              </div>
+                              </ul>
                             )}
                             <details style={panelTrabajoGrupo}>
                               <summary style={summaryTrabajoGrupo}>
@@ -19043,6 +19080,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
           formDiaIntensivo,
           formGrupoIntensivo,
           formIntensivo,
+          formatearAlumnoListadoOperativo,
           formatearFecha,
           formatearObservaciones,
           formularioCaja,
