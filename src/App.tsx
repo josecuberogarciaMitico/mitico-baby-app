@@ -517,7 +517,7 @@ type DisponibilidadEntrenador = {
   aviso_enviado_at: string | null;
   fecha_limite: string | null;
   especialidades: string[] | null;
-  fuente?: 'legacy' | 'editor';
+  fuente?: 'editor';
 };
 
 
@@ -1567,6 +1567,52 @@ async function refrescarSesionAuthApp(
       email: datos.user?.email || '',
     },
   };
+}
+
+
+let refrescoSesionEnCursoApp: Promise<SesionAuthApp> | null = null;
+
+async function obtenerSesionSupabaseActivaApp(): Promise<SesionAuthApp> {
+  const sesion = leerSesionGuardadaApp();
+
+  if (!sesion?.access_token) {
+    throw new Error('La sesión ha caducado. Sal y vuelve a entrar.');
+  }
+
+  const ahora = Math.floor(Date.now() / 1000);
+  const sigueVigente =
+    !sesion.expires_at || Number(sesion.expires_at) > ahora + 60;
+
+  if (sigueVigente) {
+    return sesion;
+  }
+
+  if (!sesion.refresh_token) {
+    borrarSesionAuthApp();
+    throw new Error('La sesión ha caducado. Sal y vuelve a entrar.');
+  }
+
+  if (!refrescoSesionEnCursoApp) {
+    refrescoSesionEnCursoApp = refrescarSesionAuthApp(sesion.refresh_token)
+      .then((refrescada) => {
+        const sesionCompleta: SesionAuthApp = {
+          ...refrescada,
+          user: refrescada.user?.id ? refrescada.user : sesion.user,
+        };
+        guardarSesionAuthApp(sesionCompleta);
+        return sesionCompleta;
+      })
+      .finally(() => {
+        refrescoSesionEnCursoApp = null;
+      });
+  }
+
+  return refrescoSesionEnCursoApp;
+}
+
+async function obtenerAccessTokenSupabaseApp(): Promise<string> {
+  const sesion = await obtenerSesionSupabaseActivaApp();
+  return sesion.access_token;
 }
 
 async function obtenerUsuarioAuthApp(
@@ -2718,96 +2764,25 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [whatsappPreview, setWhatsappPreview] =
     useState<WhatsappPreviewState | null>(null);
 
-  async function consultarSupabase<T>(
-    tabla: string,
-    query: string
-  ): Promise<T[]> {
-    const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/${tabla}?${query}`, {
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-    });
+  async function cabecerasSupabaseAutenticadasApp(
+    incluirJson = false
+  ): Promise<Record<string, string>> {
+    const accessToken = await obtenerAccessTokenSupabaseApp();
 
-    if (!respuesta.ok) {
-      const textoError = await respuesta.text();
-      throw new Error(textoError);
-    }
-
-    return respuesta.json();
+    return {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${accessToken}`,
+      ...(incluirJson ? { 'Content-Type': 'application/json' } : {}),
+    };
   }
 
-  async function ejecutarFuncion(nombreFuncion: string, body: object) {
-    const respuesta = await fetch(
-      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
-      {
-        method: 'POST',
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
-    if (!respuesta.ok) {
-      const textoError = await respuesta.text();
-      throw new Error(textoError);
-    }
-  }
-
-  async function ejecutarFuncionConRespuesta<T>(
-    nombreFuncion: string,
-    body: object
-  ): Promise<T[]> {
-    const respuesta = await fetch(
-      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
-      {
-        method: 'POST',
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
-    if (!respuesta.ok) {
-      const textoError = await respuesta.text();
-      throw new Error(textoError);
-    }
-
-    return respuesta.json();
-  }
-
-  async function ejecutarFuncionAuthJson<T>(
-    nombreFuncion: string,
-    body: object
+  async function leerRespuestaSupabaseApp<T>(
+    respuesta: Response,
+    mensajePorDefecto: string
   ): Promise<T> {
-    const sesionActual = leerSesionGuardadaApp();
-    const accessToken = sesionActual?.access_token;
-
-    if (!accessToken) {
-      throw new Error('La sesión ha caducado. Sal y vuelve a entrar.');
-    }
-
-    const respuesta = await fetch(
-      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
-      {
-        method: 'POST',
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
     const texto = await respuesta.text();
     let datos: unknown = null;
+
     try {
       datos = texto ? JSON.parse(texto) : null;
     } catch {
@@ -2820,12 +2795,81 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           ? datos
           : (datos as any)?.message ||
             (datos as any)?.hint ||
+            (datos as any)?.details ||
             texto ||
-            'Error conectando con Supabase';
+            mensajePorDefecto;
       throw new Error(mensaje);
     }
 
     return datos as T;
+  }
+
+  async function consultarSupabase<T>(
+    tabla: string,
+    query: string
+  ): Promise<T[]> {
+    const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/${tabla}?${query}`, {
+      headers: await cabecerasSupabaseAutenticadasApp(),
+    });
+
+    return leerRespuestaSupabaseApp<T[]>(
+      respuesta,
+      `No se pudo consultar ${tabla}.`
+    );
+  }
+
+  async function ejecutarFuncion(nombreFuncion: string, body: object) {
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
+      {
+        method: 'POST',
+        headers: await cabecerasSupabaseAutenticadasApp(true),
+        body: JSON.stringify(body),
+      }
+    );
+
+    await leerRespuestaSupabaseApp<unknown>(
+      respuesta,
+      `No se pudo ejecutar ${nombreFuncion}.`
+    );
+  }
+
+  async function ejecutarFuncionConRespuesta<T>(
+    nombreFuncion: string,
+    body: object
+  ): Promise<T[]> {
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
+      {
+        method: 'POST',
+        headers: await cabecerasSupabaseAutenticadasApp(true),
+        body: JSON.stringify(body),
+      }
+    );
+
+    return leerRespuestaSupabaseApp<T[]>(
+      respuesta,
+      `No se pudo ejecutar ${nombreFuncion}.`
+    );
+  }
+
+  async function ejecutarFuncionAuthJson<T>(
+    nombreFuncion: string,
+    body: object
+  ): Promise<T> {
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
+      {
+        method: 'POST',
+        headers: await cabecerasSupabaseAutenticadasApp(true),
+        body: JSON.stringify(body),
+      }
+    );
+
+    return leerRespuestaSupabaseApp<T>(
+      respuesta,
+      `No se pudo ejecutar ${nombreFuncion}.`
+    );
   }
 
   async function cargarInicio() {
@@ -3916,7 +3960,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
             ? `Borrador local recuperado. Supabase todavía no está conectado${
                 mensaje ? `: ${mensaje}` : '.'
               }`
-            : 'Plantilla semanal preparada. Ejecuta el SQL del Sprint 2B para guardar en Supabase.'
+            : 'No se pudo conectar con Supabase. Se ha preparado una copia local sin publicar.'
         );
       }
 
@@ -4177,7 +4221,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       alert(
         `${mensaje}
 
-Comprueba que has ejecutado el SQL del Sprint 2B y que sigues con la sesión iniciada.`
+Comprueba tu conexión y que sigues con la sesión iniciada.`
       );
       return false;
     } finally {
@@ -4841,11 +4885,6 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     setDetalle(null);
 
     try {
-      const datosLegacy = await consultarSupabase<DisponibilidadEntrenador>(
-        'v_disponibilidad_entrenador',
-        'select=*&order=entrenador.asc,fecha.asc,hora_inicio.asc'
-      );
-
       const fechaReferenciaDisponibilidad = new Date();
       if (
         fechaReferenciaDisponibilidad.getDay() === 1 &&
@@ -4855,70 +4894,44 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
           fechaReferenciaDisponibilidad.getDate() - 1
         );
       }
+
       const semanaOperativaDisponibilidad = inicioSemanaAgenda(
         claveFechaAgenda(fechaReferenciaDisponibilidad)
       );
       const semanaConsulta = esCoordinadorApp
         ? semanaAgendaActiva || semanaOperativaDisponibilidad
         : semanaOperativaDisponibilidad;
-      let respuestaEditor: RespuestaDisponibilidadPublicadaEntrenadoresEditor | null = null;
 
-      if (semanaConsulta) {
-        try {
-          respuestaEditor =
-            await ejecutarFuncionAuthJson<RespuestaDisponibilidadPublicadaEntrenadoresEditor>(
-              'obtener_disponibilidad_publicada_entrenadores_editor_app',
-              { p_semana_inicio: semanaConsulta }
-            );
-        } catch (errEditor) {
-          // El sistema anterior permanece como respaldo si todavía no se ha
-          // instalado Sprint 2C o Supabase devuelve un error puntual.
-          console.warn('No se pudo cargar la disponibilidad del editor:', errEditor);
-        }
+      if (!semanaConsulta) {
+        setDisponibilidad([]);
+        setDisponibilidadEditorVista(null);
+        return;
       }
+
+      const respuestaEditor =
+        await ejecutarFuncionAuthJson<RespuestaDisponibilidadPublicadaEntrenadoresEditor>(
+          'obtener_disponibilidad_publicada_entrenadores_editor_app',
+          { p_semana_inicio: semanaConsulta }
+        );
 
       setDisponibilidadEditorVista(respuestaEditor);
-
-      if (respuestaEditor?.gestionada && semanaConsulta) {
-        // En una semana gestionada por el editor, la publicación nueva sustituye
-        // únicamente a los turnos legacy de esa semana. El histórico anterior no
-        // se toca y sigue disponible para consultas y cierres.
-        const fechaFinSemanaConsulta = claveFechaAgenda(
-          new Date(
-            crearFechaAgenda(semanaConsulta).getTime() +
-              6 * 24 * 60 * 60 * 1000
-          )
-        );
-
-        // Los turnos TEST/legacy no siempre guardan `fecha_inicio` como el lunes
-        // exacto de la semana. Por eso se sustituyen usando la fecha real del
-        // turno y el rango lunes-domingo de la semana publicada.
-        const restoHistorico = datosLegacy.filter((turno) => {
-          const fechaTurno = String(turno.fecha || '').slice(0, 10);
-          if (!fechaTurno) return true;
-
-          return (
-            fechaTurno < semanaConsulta ||
-            fechaTurno > fechaFinSemanaConsulta
-          );
-        });
-        const turnosEditor = (respuestaEditor.turnos || []).map((turno) => ({
+      setDisponibilidad(
+        (respuestaEditor.turnos || []).map((turno) => ({
           ...turno,
           fuente: 'editor' as const,
-        }));
-        setDisponibilidad([...restoHistorico, ...turnosEditor]);
-      } else {
-        setDisponibilidad(
-          datosLegacy.map((turno) => ({ ...turno, fuente: 'legacy' as const }))
-        );
-      }
+        }))
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo cargar la disponibilidad publicada.'
+      );
       setDisponibilidad([]);
       setDisponibilidadEditorVista(null);
+    } finally {
+      setCargando(false);
     }
-
-    setCargando(false);
   }
 
   async function cargarReportesPendientes() {
@@ -5731,7 +5744,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     try {
       await ejecutarFuncion('actualizar_alumno_intensivo_app', {
         p_intensivo_alumno_id: registro.intensivo_alumno_id,
-        p_estado_diploma: estadoDiploma,
+        p_estado_diploma: estadoEvaluación,
         p_recomendacion_siguiente_paso: recomendacionSiguientePaso,
       });
 
@@ -6124,66 +6137,6 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
       });
   }
 
-  async function crearDisponibilidadSemanaActual() {
-    const semana = semanaAgendaActiva || semanaActualAgenda;
-    if (!semana) {
-      setError(
-        'Selecciona una semana en Días de entrenamiento antes de pedir disponibilidad.'
-      );
-      return;
-    }
-
-    setCargando(true);
-    setError('');
-
-    try {
-      await ejecutarFuncion('crear_disponibilidad_semana_app', {
-        p_semana_inicio: semana,
-      });
-      await cargarDisponibilidad();
-      alert('Turnos de disponibilidad creados para la semana.');
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Error creando disponibilidad semanal'
-      );
-    }
-
-    setCargando(false);
-  }
-
-  async function enviarAvisoDisponibilidadSemana() {
-    const semana = semanaAgendaActiva || semanaActualAgenda;
-    if (!semana) {
-      setError(
-        'Selecciona una semana en Días de entrenamiento antes de enviar el aviso.'
-      );
-      return;
-    }
-
-    setCargando(true);
-    setError('');
-
-    try {
-      await ejecutarFuncion('enviar_aviso_disponibilidad_semana_app', {
-        p_semana_inicio: semana,
-      });
-      await cargarDisponibilidad();
-      alert(
-        'Aviso enviado dentro de la app. Los entrenadores lo verán como disponibilidad pendiente.'
-      );
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Error enviando aviso interno de disponibilidad'
-      );
-    }
-
-    setCargando(false);
-  }
-
   async function responderDisponibilidadRapida(
     turno: DisponibilidadEntrenador,
     respuesta: 'Disponible' | 'No puedo' | 'Pendiente'
@@ -6191,9 +6144,6 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     const respuestaAnterior = turno.respuesta;
     setError('');
 
-    // Actualización optimista: el botón cambia al instante y la pantalla no
-    // desaparece mientras Supabase guarda la respuesta. Así evitamos el salto
-    // de scroll en móvil y mantenemos abierto el día que está usando el entrenador.
     setDisponibilidad((actual) =>
       actual.map((registro) =>
         registro.id === turno.id ? { ...registro, respuesta } : registro
@@ -6201,25 +6151,12 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     );
 
     try {
-      if (turno.fuente === 'editor') {
-        await ejecutarFuncionAuthJson(
-          'responder_disponibilidad_editor_app',
-          {
-            p_respuesta_id: turno.id,
-            p_respuesta: respuesta,
-            p_comentario: turno.comentario || null,
-          }
-        );
-      } else {
-        await ejecutarFuncion('responder_disponibilidad_turno_por_id_app', {
-          p_disponibilidad_id: turno.id,
-          p_respuesta: respuesta,
-          p_comentario: turno.comentario || null,
-        });
-      }
+      await ejecutarFuncionAuthJson('responder_disponibilidad_editor_app', {
+        p_respuesta_id: turno.id,
+        p_respuesta: respuesta,
+        p_comentario: turno.comentario || null,
+      });
     } catch (err) {
-      // Si Supabase falla, recuperamos el estado anterior para no mostrar un
-      // dato como guardado cuando realmente no lo está.
       setDisponibilidad((actual) =>
         actual.map((registro) =>
           registro.id === turno.id
@@ -6231,95 +6168,6 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
         err instanceof Error ? err.message : 'Error guardando disponibilidad'
       );
     }
-  }
-
-  function mensajeDisponibilidadSemana() {
-    const semana = semanaAgendaActiva || semanaActualAgenda;
-    if (!semana)
-      return 'Selecciona una semana antes de copiar el recordatorio.';
-
-    const turnosPublicadosUnicos = Array.from(
-      new Map(
-        disponibilidad
-          .filter(
-            (turno) =>
-              turno.fecha_inicio === semana &&
-              turno.aviso_enviado &&
-              turno.fuente === 'editor'
-          )
-          .map(
-            (turno) =>
-              [
-                `${turno.fecha}__${horaCorta(
-                  turno.hora_inicio
-                )}__${horaCorta(turno.hora_fin)}`,
-                turno,
-              ] as [string, DisponibilidadEntrenador]
-          )
-      ).values()
-    ).sort((a, b) =>
-      `${a.fecha} ${a.hora_inicio}`.localeCompare(
-        `${b.fecha} ${b.hora_inicio}`
-      )
-    );
-
-    let mensaje = `*Disponibilidad Mítico Baby / Ocio*
-Semana ${rangoSemanaAgenda(
-      semana
-    )}
-
-Por favor confirma tu disponibilidad para estos turnos:
-
-`;
-
-    if (turnosPublicadosUnicos.length > 0) {
-      const porDia = new Map<string, DisponibilidadEntrenador[]>();
-      turnosPublicadosUnicos.forEach((turno) => {
-        const actuales = porDia.get(turno.fecha) || [];
-        actuales.push(turno);
-        porDia.set(turno.fecha, actuales);
-      });
-
-      Array.from(porDia.entries())
-        .sort(([fechaA], [fechaB]) => fechaA.localeCompare(fechaB))
-        .forEach(([fecha, turnosDia]) => {
-          mensaje += `*${capitalizarPrimera(
-            new Date(`${fecha}T00:00:00`).toLocaleDateString('es-ES', {
-              weekday: 'long',
-            })
-          )} ${formatearFecha(fecha)}*\n`;
-          turnosDia.forEach((turno) => {
-            mensaje += `- ${horaCorta(turno.hora_inicio)}–${horaCorta(
-              turno.hora_fin
-            )}${turno.nombre_turno ? ` · ${turno.nombre_turno}` : ''}\n`;
-          });
-          mensaje += '\n';
-        });
-    } else {
-      diasTrabajoSemanaAgenda(semana).forEach((dia) => {
-        mensaje += `*${capitalizarPrimera(dia.nombre)} ${formatearFecha(
-          dia.fecha
-        )}*\n`;
-        turnosTrabajoDiaAgenda(dia.fecha).forEach((turno) => {
-          mensaje += `- ${turno.inicio}–${turno.fin}\n`;
-        });
-        mensaje += '\n';
-      });
-    }
-
-    mensaje +=
-      'No hace falta responder por WhatsApp: rellenadlo en la app. Gracias equipo.';
-    return mensaje;
-  }
-
-  function copiarMensajeDisponibilidadSemana() {
-    const mensaje = mensajeDisponibilidadSemana();
-    abrirPrevisualizacionWhatsapp(
-      `WhatsApp entrenadores · disponibilidad ${rangoSemanaAgenda(
-        semanaAgendaActiva || semanaActualAgenda
-      )}`,
-      mensaje
-    );
   }
 
   function mensajeWhatsappPendientesReportes(items: ReportePendiente[]) {
@@ -6843,7 +6691,7 @@ Por favor confirma tu disponibilidad para estos turnos:
         p_nivel_final_propuesto_id: nivelPropuestoId || null,
         p_nivel_final_confirmado_id: nivelConfirmadoId || null,
         p_recomendacion_siguiente_paso: recomendacionSiguientePaso || null,
-        p_estado_diploma: estadoDiploma || 'Pendiente',
+        p_estado_diploma: estadoEvaluación || 'Pendiente',
       });
 
       await cargarIntensivos();
@@ -11175,7 +11023,7 @@ Por favor confirma tu disponibilidad para estos turnos:
                     </button>
                     <button
                       onClick={() =>
-                        moverAlumnoGrupoOcio(
+                        asignarAlumnoGrupoOcio(
                           alumno.alumno_id,
                           destinoRevisionOcio[alumno.alumno_id]
                         )
@@ -16087,7 +15935,7 @@ Por favor confirma tu disponibilidad para estos turnos:
                         <section
                           style={{ display: 'grid', gap: 12, marginTop: 12 }}
                         >
-                          {Object.entries(reportesPorFecha)
+                          {(Object.entries(reportesPorFecha) as [string, ReportePendiente[]][])
                             .sort(([a], [b]) => a.localeCompare(b))
                             .map(([fecha, reportesFecha]) => (
                               <article
