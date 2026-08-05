@@ -517,7 +517,7 @@ type DisponibilidadEntrenador = {
   aviso_enviado_at: string | null;
   fecha_limite: string | null;
   especialidades: string[] | null;
-  fuente?: 'legacy' | 'editor';
+  fuente?: 'editor';
 };
 
 
@@ -1567,6 +1567,52 @@ async function refrescarSesionAuthApp(
       email: datos.user?.email || '',
     },
   };
+}
+
+
+let refrescoSesionEnCursoApp: Promise<SesionAuthApp> | null = null;
+
+async function obtenerSesionSupabaseActivaApp(): Promise<SesionAuthApp> {
+  const sesion = leerSesionGuardadaApp();
+
+  if (!sesion?.access_token) {
+    throw new Error('La sesión ha caducado. Sal y vuelve a entrar.');
+  }
+
+  const ahora = Math.floor(Date.now() / 1000);
+  const sigueVigente =
+    !sesion.expires_at || Number(sesion.expires_at) > ahora + 60;
+
+  if (sigueVigente) {
+    return sesion;
+  }
+
+  if (!sesion.refresh_token) {
+    borrarSesionAuthApp();
+    throw new Error('La sesión ha caducado. Sal y vuelve a entrar.');
+  }
+
+  if (!refrescoSesionEnCursoApp) {
+    refrescoSesionEnCursoApp = refrescarSesionAuthApp(sesion.refresh_token)
+      .then((refrescada) => {
+        const sesionCompleta: SesionAuthApp = {
+          ...refrescada,
+          user: refrescada.user?.id ? refrescada.user : sesion.user,
+        };
+        guardarSesionAuthApp(sesionCompleta);
+        return sesionCompleta;
+      })
+      .finally(() => {
+        refrescoSesionEnCursoApp = null;
+      });
+  }
+
+  return refrescoSesionEnCursoApp;
+}
+
+async function obtenerAccessTokenSupabaseApp(): Promise<string> {
+  const sesion = await obtenerSesionSupabaseActivaApp();
+  return sesion.access_token;
 }
 
 async function obtenerUsuarioAuthApp(
@@ -2718,96 +2764,25 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [whatsappPreview, setWhatsappPreview] =
     useState<WhatsappPreviewState | null>(null);
 
-  async function consultarSupabase<T>(
-    tabla: string,
-    query: string
-  ): Promise<T[]> {
-    const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/${tabla}?${query}`, {
-      headers: {
-        apikey: SUPABASE_ANON_KEY,
-        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      },
-    });
+  async function cabecerasSupabaseAutenticadasApp(
+    incluirJson = false
+  ): Promise<Record<string, string>> {
+    const accessToken = await obtenerAccessTokenSupabaseApp();
 
-    if (!respuesta.ok) {
-      const textoError = await respuesta.text();
-      throw new Error(textoError);
-    }
-
-    return respuesta.json();
+    return {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${accessToken}`,
+      ...(incluirJson ? { 'Content-Type': 'application/json' } : {}),
+    };
   }
 
-  async function ejecutarFuncion(nombreFuncion: string, body: object) {
-    const respuesta = await fetch(
-      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
-      {
-        method: 'POST',
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
-    if (!respuesta.ok) {
-      const textoError = await respuesta.text();
-      throw new Error(textoError);
-    }
-  }
-
-  async function ejecutarFuncionConRespuesta<T>(
-    nombreFuncion: string,
-    body: object
-  ): Promise<T[]> {
-    const respuesta = await fetch(
-      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
-      {
-        method: 'POST',
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
-    if (!respuesta.ok) {
-      const textoError = await respuesta.text();
-      throw new Error(textoError);
-    }
-
-    return respuesta.json();
-  }
-
-  async function ejecutarFuncionAuthJson<T>(
-    nombreFuncion: string,
-    body: object
+  async function leerRespuestaSupabaseApp<T>(
+    respuesta: Response,
+    mensajePorDefecto: string
   ): Promise<T> {
-    const sesionActual = leerSesionGuardadaApp();
-    const accessToken = sesionActual?.access_token;
-
-    if (!accessToken) {
-      throw new Error('La sesión ha caducado. Sal y vuelve a entrar.');
-    }
-
-    const respuesta = await fetch(
-      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
-      {
-        method: 'POST',
-        headers: {
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
     const texto = await respuesta.text();
     let datos: unknown = null;
+
     try {
       datos = texto ? JSON.parse(texto) : null;
     } catch {
@@ -2820,12 +2795,81 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           ? datos
           : (datos as any)?.message ||
             (datos as any)?.hint ||
+            (datos as any)?.details ||
             texto ||
-            'Error conectando con Supabase';
+            mensajePorDefecto;
       throw new Error(mensaje);
     }
 
     return datos as T;
+  }
+
+  async function consultarSupabase<T>(
+    tabla: string,
+    query: string
+  ): Promise<T[]> {
+    const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/${tabla}?${query}`, {
+      headers: await cabecerasSupabaseAutenticadasApp(),
+    });
+
+    return leerRespuestaSupabaseApp<T[]>(
+      respuesta,
+      `No se pudo consultar ${tabla}.`
+    );
+  }
+
+  async function ejecutarFuncion(nombreFuncion: string, body: object) {
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
+      {
+        method: 'POST',
+        headers: await cabecerasSupabaseAutenticadasApp(true),
+        body: JSON.stringify(body),
+      }
+    );
+
+    await leerRespuestaSupabaseApp<unknown>(
+      respuesta,
+      `No se pudo ejecutar ${nombreFuncion}.`
+    );
+  }
+
+  async function ejecutarFuncionConRespuesta<T>(
+    nombreFuncion: string,
+    body: object
+  ): Promise<T[]> {
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
+      {
+        method: 'POST',
+        headers: await cabecerasSupabaseAutenticadasApp(true),
+        body: JSON.stringify(body),
+      }
+    );
+
+    return leerRespuestaSupabaseApp<T[]>(
+      respuesta,
+      `No se pudo ejecutar ${nombreFuncion}.`
+    );
+  }
+
+  async function ejecutarFuncionAuthJson<T>(
+    nombreFuncion: string,
+    body: object
+  ): Promise<T> {
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
+      {
+        method: 'POST',
+        headers: await cabecerasSupabaseAutenticadasApp(true),
+        body: JSON.stringify(body),
+      }
+    );
+
+    return leerRespuestaSupabaseApp<T>(
+      respuesta,
+      `No se pudo ejecutar ${nombreFuncion}.`
+    );
   }
 
   async function cargarInicio() {
@@ -3916,7 +3960,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
             ? `Borrador local recuperado. Supabase todavía no está conectado${
                 mensaje ? `: ${mensaje}` : '.'
               }`
-            : 'Plantilla semanal preparada. Ejecuta el SQL del Sprint 2B para guardar en Supabase.'
+            : 'No se pudo conectar con Supabase. Se ha preparado una copia local sin publicar.'
         );
       }
 
@@ -4177,7 +4221,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       alert(
         `${mensaje}
 
-Comprueba que has ejecutado el SQL del Sprint 2B y que sigues con la sesión iniciada.`
+Comprueba tu conexión y que sigues con la sesión iniciada.`
       );
       return false;
     } finally {
@@ -4841,11 +4885,6 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     setDetalle(null);
 
     try {
-      const datosLegacy = await consultarSupabase<DisponibilidadEntrenador>(
-        'v_disponibilidad_entrenador',
-        'select=*&order=entrenador.asc,fecha.asc,hora_inicio.asc'
-      );
-
       const fechaReferenciaDisponibilidad = new Date();
       if (
         fechaReferenciaDisponibilidad.getDay() === 1 &&
@@ -4855,70 +4894,44 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
           fechaReferenciaDisponibilidad.getDate() - 1
         );
       }
+
       const semanaOperativaDisponibilidad = inicioSemanaAgenda(
         claveFechaAgenda(fechaReferenciaDisponibilidad)
       );
       const semanaConsulta = esCoordinadorApp
         ? semanaAgendaActiva || semanaOperativaDisponibilidad
         : semanaOperativaDisponibilidad;
-      let respuestaEditor: RespuestaDisponibilidadPublicadaEntrenadoresEditor | null = null;
 
-      if (semanaConsulta) {
-        try {
-          respuestaEditor =
-            await ejecutarFuncionAuthJson<RespuestaDisponibilidadPublicadaEntrenadoresEditor>(
-              'obtener_disponibilidad_publicada_entrenadores_editor_app',
-              { p_semana_inicio: semanaConsulta }
-            );
-        } catch (errEditor) {
-          // El sistema anterior permanece como respaldo si todavía no se ha
-          // instalado Sprint 2C o Supabase devuelve un error puntual.
-          console.warn('No se pudo cargar la disponibilidad del editor:', errEditor);
-        }
+      if (!semanaConsulta) {
+        setDisponibilidad([]);
+        setDisponibilidadEditorVista(null);
+        return;
       }
+
+      const respuestaEditor =
+        await ejecutarFuncionAuthJson<RespuestaDisponibilidadPublicadaEntrenadoresEditor>(
+          'obtener_disponibilidad_publicada_entrenadores_editor_app',
+          { p_semana_inicio: semanaConsulta }
+        );
 
       setDisponibilidadEditorVista(respuestaEditor);
-
-      if (respuestaEditor?.gestionada && semanaConsulta) {
-        // En una semana gestionada por el editor, la publicación nueva sustituye
-        // únicamente a los turnos legacy de esa semana. El histórico anterior no
-        // se toca y sigue disponible para consultas y cierres.
-        const fechaFinSemanaConsulta = claveFechaAgenda(
-          new Date(
-            crearFechaAgenda(semanaConsulta).getTime() +
-              6 * 24 * 60 * 60 * 1000
-          )
-        );
-
-        // Los turnos TEST/legacy no siempre guardan `fecha_inicio` como el lunes
-        // exacto de la semana. Por eso se sustituyen usando la fecha real del
-        // turno y el rango lunes-domingo de la semana publicada.
-        const restoHistorico = datosLegacy.filter((turno) => {
-          const fechaTurno = String(turno.fecha || '').slice(0, 10);
-          if (!fechaTurno) return true;
-
-          return (
-            fechaTurno < semanaConsulta ||
-            fechaTurno > fechaFinSemanaConsulta
-          );
-        });
-        const turnosEditor = (respuestaEditor.turnos || []).map((turno) => ({
+      setDisponibilidad(
+        (respuestaEditor.turnos || []).map((turno) => ({
           ...turno,
           fuente: 'editor' as const,
-        }));
-        setDisponibilidad([...restoHistorico, ...turnosEditor]);
-      } else {
-        setDisponibilidad(
-          datosLegacy.map((turno) => ({ ...turno, fuente: 'legacy' as const }))
-        );
-      }
+        }))
+      );
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo cargar la disponibilidad publicada.'
+      );
       setDisponibilidad([]);
       setDisponibilidadEditorVista(null);
+    } finally {
+      setCargando(false);
     }
-
-    setCargando(false);
   }
 
   async function cargarReportesPendientes() {
@@ -5731,7 +5744,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     try {
       await ejecutarFuncion('actualizar_alumno_intensivo_app', {
         p_intensivo_alumno_id: registro.intensivo_alumno_id,
-        p_estado_diploma: estadoDiploma,
+        p_estado_diploma: estadoEvaluación,
         p_recomendacion_siguiente_paso: recomendacionSiguientePaso,
       });
 
@@ -6124,66 +6137,6 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
       });
   }
 
-  async function crearDisponibilidadSemanaActual() {
-    const semana = semanaAgendaActiva || semanaActualAgenda;
-    if (!semana) {
-      setError(
-        'Selecciona una semana en Días de entrenamiento antes de pedir disponibilidad.'
-      );
-      return;
-    }
-
-    setCargando(true);
-    setError('');
-
-    try {
-      await ejecutarFuncion('crear_disponibilidad_semana_app', {
-        p_semana_inicio: semana,
-      });
-      await cargarDisponibilidad();
-      alert('Turnos de disponibilidad creados para la semana.');
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Error creando disponibilidad semanal'
-      );
-    }
-
-    setCargando(false);
-  }
-
-  async function enviarAvisoDisponibilidadSemana() {
-    const semana = semanaAgendaActiva || semanaActualAgenda;
-    if (!semana) {
-      setError(
-        'Selecciona una semana en Días de entrenamiento antes de enviar el aviso.'
-      );
-      return;
-    }
-
-    setCargando(true);
-    setError('');
-
-    try {
-      await ejecutarFuncion('enviar_aviso_disponibilidad_semana_app', {
-        p_semana_inicio: semana,
-      });
-      await cargarDisponibilidad();
-      alert(
-        'Aviso enviado dentro de la app. Los entrenadores lo verán como disponibilidad pendiente.'
-      );
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Error enviando aviso interno de disponibilidad'
-      );
-    }
-
-    setCargando(false);
-  }
-
   async function responderDisponibilidadRapida(
     turno: DisponibilidadEntrenador,
     respuesta: 'Disponible' | 'No puedo' | 'Pendiente'
@@ -6191,9 +6144,6 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     const respuestaAnterior = turno.respuesta;
     setError('');
 
-    // Actualización optimista: el botón cambia al instante y la pantalla no
-    // desaparece mientras Supabase guarda la respuesta. Así evitamos el salto
-    // de scroll en móvil y mantenemos abierto el día que está usando el entrenador.
     setDisponibilidad((actual) =>
       actual.map((registro) =>
         registro.id === turno.id ? { ...registro, respuesta } : registro
@@ -6201,25 +6151,12 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     );
 
     try {
-      if (turno.fuente === 'editor') {
-        await ejecutarFuncionAuthJson(
-          'responder_disponibilidad_editor_app',
-          {
-            p_respuesta_id: turno.id,
-            p_respuesta: respuesta,
-            p_comentario: turno.comentario || null,
-          }
-        );
-      } else {
-        await ejecutarFuncion('responder_disponibilidad_turno_por_id_app', {
-          p_disponibilidad_id: turno.id,
-          p_respuesta: respuesta,
-          p_comentario: turno.comentario || null,
-        });
-      }
+      await ejecutarFuncionAuthJson('responder_disponibilidad_editor_app', {
+        p_respuesta_id: turno.id,
+        p_respuesta: respuesta,
+        p_comentario: turno.comentario || null,
+      });
     } catch (err) {
-      // Si Supabase falla, recuperamos el estado anterior para no mostrar un
-      // dato como guardado cuando realmente no lo está.
       setDisponibilidad((actual) =>
         actual.map((registro) =>
           registro.id === turno.id
@@ -6231,95 +6168,6 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
         err instanceof Error ? err.message : 'Error guardando disponibilidad'
       );
     }
-  }
-
-  function mensajeDisponibilidadSemana() {
-    const semana = semanaAgendaActiva || semanaActualAgenda;
-    if (!semana)
-      return 'Selecciona una semana antes de copiar el recordatorio.';
-
-    const turnosPublicadosUnicos = Array.from(
-      new Map(
-        disponibilidad
-          .filter(
-            (turno) =>
-              turno.fecha_inicio === semana &&
-              turno.aviso_enviado &&
-              turno.fuente === 'editor'
-          )
-          .map(
-            (turno) =>
-              [
-                `${turno.fecha}__${horaCorta(
-                  turno.hora_inicio
-                )}__${horaCorta(turno.hora_fin)}`,
-                turno,
-              ] as [string, DisponibilidadEntrenador]
-          )
-      ).values()
-    ).sort((a, b) =>
-      `${a.fecha} ${a.hora_inicio}`.localeCompare(
-        `${b.fecha} ${b.hora_inicio}`
-      )
-    );
-
-    let mensaje = `*Disponibilidad Mítico Baby / Ocio*
-Semana ${rangoSemanaAgenda(
-      semana
-    )}
-
-Por favor confirma tu disponibilidad para estos turnos:
-
-`;
-
-    if (turnosPublicadosUnicos.length > 0) {
-      const porDia = new Map<string, DisponibilidadEntrenador[]>();
-      turnosPublicadosUnicos.forEach((turno) => {
-        const actuales = porDia.get(turno.fecha) || [];
-        actuales.push(turno);
-        porDia.set(turno.fecha, actuales);
-      });
-
-      Array.from(porDia.entries())
-        .sort(([fechaA], [fechaB]) => fechaA.localeCompare(fechaB))
-        .forEach(([fecha, turnosDia]) => {
-          mensaje += `*${capitalizarPrimera(
-            new Date(`${fecha}T00:00:00`).toLocaleDateString('es-ES', {
-              weekday: 'long',
-            })
-          )} ${formatearFecha(fecha)}*\n`;
-          turnosDia.forEach((turno) => {
-            mensaje += `- ${horaCorta(turno.hora_inicio)}–${horaCorta(
-              turno.hora_fin
-            )}${turno.nombre_turno ? ` · ${turno.nombre_turno}` : ''}\n`;
-          });
-          mensaje += '\n';
-        });
-    } else {
-      diasTrabajoSemanaAgenda(semana).forEach((dia) => {
-        mensaje += `*${capitalizarPrimera(dia.nombre)} ${formatearFecha(
-          dia.fecha
-        )}*\n`;
-        turnosTrabajoDiaAgenda(dia.fecha).forEach((turno) => {
-          mensaje += `- ${turno.inicio}–${turno.fin}\n`;
-        });
-        mensaje += '\n';
-      });
-    }
-
-    mensaje +=
-      'No hace falta responder por WhatsApp: rellenadlo en la app. Gracias equipo.';
-    return mensaje;
-  }
-
-  function copiarMensajeDisponibilidadSemana() {
-    const mensaje = mensajeDisponibilidadSemana();
-    abrirPrevisualizacionWhatsapp(
-      `WhatsApp entrenadores · disponibilidad ${rangoSemanaAgenda(
-        semanaAgendaActiva || semanaActualAgenda
-      )}`,
-      mensaje
-    );
   }
 
   function mensajeWhatsappPendientesReportes(items: ReportePendiente[]) {
@@ -6724,7 +6572,7 @@ Por favor confirma tu disponibilidad para estos turnos:
         p_intensivo_dia_id: dia.intensivo_dia_id,
         p_nombre_grupo: nombreGrupo,
         p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
-        p_pista: pistaOperativaGrupoApp(alumnosGrupo),
+        p_pista: primero.pista_recomendada,
         p_punto_encuentro: 'Cristalera',
         p_trabajo_diario:
           trabajoDiarioPorGrupoRecomendado[clave] ||
@@ -6843,7 +6691,7 @@ Por favor confirma tu disponibilidad para estos turnos:
         p_nivel_final_propuesto_id: nivelPropuestoId || null,
         p_nivel_final_confirmado_id: nivelConfirmadoId || null,
         p_recomendacion_siguiente_paso: recomendacionSiguientePaso || null,
-        p_estado_diploma: estadoDiploma || 'Pendiente',
+        p_estado_diploma: estadoEvaluación || 'Pendiente',
       });
 
       await cargarIntensivos();
@@ -6945,11 +6793,6 @@ Por favor confirma tu disponibilidad para estos turnos:
         )
       );
       setAgendaRecomendaciones([]);
-
-      // La disponibilidad puede haber cambiado desde que Jose abrió la Agenda.
-      // La recargamos al entrar en la sesión para mostrar las respuestas nuevas
-      // de los entrenadores sin obligar a recargar toda la aplicación.
-      await cargarDisponibilidad();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
       setAgendaAlumnosSesion([]);
@@ -7069,11 +6912,6 @@ Por favor confirma tu disponibilidad para estos turnos:
     setError('');
 
     try {
-      // Antes de crear la propuesta, recuperamos las últimas respuestas para
-      // que el selector de entrenador no trabaje con disponibilidad antigua.
-      await cargarDisponibilidad();
-      setCargando(true);
-
       const data =
         await ejecutarFuncionConRespuesta<AgendaRecomendacionSesionApp>(
           'recomendar_grupos_sesion_operativa_app',
@@ -7235,36 +7073,6 @@ Por favor confirma tu disponibilidad para estos turnos:
     return 'D+';
   }
 
-  function pistaOperativaGrupoApp(
-    alumnosGrupo: {
-      pista_recomendada?: string | null;
-      pista_alumno?: string | null;
-    }[]
-  ) {
-    const categorias = alumnosGrupo
-      .map((alumno) =>
-        `${alumno.pista_recomendada || ''} ${alumno.pista_alumno || ''}`
-          .toLowerCase()
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-      )
-      .map((pista) => {
-        const pequena = /peque/.test(pista);
-        const grande = /grande/.test(pista);
-        if (pequena && !grande) return 'PEQUENA';
-        if (grande && !pequena) return 'GRANDE';
-        return 'MIXTA';
-      });
-
-    if (categorias.length > 0 && categorias.every((pista) => pista === 'PEQUENA')) {
-      return 'Pequeña';
-    }
-    if (categorias.length > 0 && categorias.every((pista) => pista === 'GRANDE')) {
-      return 'Grande';
-    }
-    return 'Pequeña/Grande';
-  }
-
   function validacionPedagogicaGrupoApp(
     alumnosGrupo: {
       nivel_resumen?: string | null;
@@ -7313,49 +7121,36 @@ Por favor confirma tu disponibilidad para estos turnos:
     const supervision: string[] = [];
     const avisos: string[] = [];
 
-    const pistaOperativa = pistaOperativaGrupoApp(alumnosGrupo);
-    const todosPistaPequena = pistaOperativa === 'Pequeña';
-
     if (alumnosGrupo.length === 0) bloqueos.push('Grupo sin alumnos.');
     if (alumnosGrupo.length === 1)
-      supervision.push(
-        'Grupo de 1 alumno: configuración excepcional. Puedes crearlo si responde a la operativa real.'
+      bloqueos.push(
+        'No crear grupo automático de 1 alumno. Dejar para revisión manual.'
       );
     if (alumnosGrupo.length === 2)
       supervision.push(
-        'Grupo de 2 alumnos: configuración excepcional, válida si mejora el funcionamiento.'
+        'Grupo de 2 alumnos: solo si Jose lo acepta por encaje real o falta de niños.'
       );
 
     if (tieneIniciacion && tieneBoSuperior) {
-      bloqueos.push(
-        'Diferencia técnica alta entre INICIACIÓN y B o superior. Revisa atención, ritmo y seguridad; la decisión final es del coordinador.'
-      );
+      bloqueos.push('INICIACIÓN no puede mezclarse con B, B+, C, C+, D o D+.');
     }
     if (tieneIniciacion && tieneAPlus) {
-      avisos.push(
-        todosPistaPequena
-          ? 'INICIACIÓN con A+ en pista pequeña: revisa el ritmo en la primera bajada. Puedes publicarlo si el grupo funciona.'
-          : 'INICIACIÓN con A+: revisa ritmo, autonomía y terreno. Puedes publicarlo si el encaje es correcto.'
-      );
+      bloqueos.push('INICIACIÓN solo puede mezclarse con A, no con A+.');
     }
     if ((tieneIniciacion || tieneA) && tieneCoSuperior) {
-      bloqueos.push(
-        'Diferencia técnica alta entre INICIACIÓN/A y C o superior. Revisa el encaje real antes de publicar.'
-      );
+      bloqueos.push('INICIACIÓN/A no puede mezclarse con C, C+, D o D+.');
     }
     if (tieneAPlus && tieneCoSuperior) {
-      bloqueos.push(
-        'Diferencia técnica alta entre A+ y C o superior. Revisa ritmo y autonomía antes de publicar.'
-      );
+      bloqueos.push('A+ no puede mezclarse con C, C+, D o D+.');
     }
     if (tieneAPlus && (tieneB || tieneBPlus)) {
       supervision.push(
-        'A+ con B/B+: revisar que el A+ esté cerca del cambio y aguante el ritmo del grupo.'
+        'A+ con B/B+ requiere Supervisión Jose: solo si el A+ está a punto de pasar y el B es bajito.'
       );
     }
     if (tieneBPlus && tieneC) {
       avisos.push(
-        'B+ con C: revisar que el B+ aguante pista grande y el ritmo del grupo.'
+        'B+ con C permitido, revisar que el B+ aguante pista grande y ritmo del grupo.'
       );
     }
     if (
@@ -7364,17 +7159,15 @@ Por favor confirma tu disponibilidad para estos turnos:
       Math.max(...ordenes) <= 2
     ) {
       supervision.push(
-        'Grupo bajo de 5 niños: valorar apoyo de un segundo entrenador según autonomía y funcionamiento.'
+        'Grupo bajo de 5 niños: necesita 2 entrenadores. Si solo hay 1, publicar solo con aviso fuerte.'
       );
     }
     if (/peque/.test(pistas) && alumnosGrupo.length > 5) {
-      supervision.push(
-        'Pista pequeña con más de 5 niños: revisar ratio, autonomía y posible apoyo antes de publicar.'
-      );
+      bloqueos.push('Pista pequeña con más de 5 niños: dividir grupo.');
     }
     if (/grande/.test(pistas) && alumnosGrupo.length > 7) {
       supervision.push(
-        'Pista grande con más de 7 niños: valorar división o segundo entrenador.'
+        'Pista grande con más de 7 niños: intentar dividir 4/4 o publicar con 2 entrenadores si Jose lo decide.'
       );
     }
     if (/familia|declarado|estimado|sin reporte|pendiente/.test(textos)) {
@@ -7385,7 +7178,7 @@ Por favor confirma tu disponibilidad para estos turnos:
 
     const estado =
       bloqueos.length > 0
-        ? 'DECISION_COORDINADOR'
+        ? 'BLOQUEADO'
         : supervision.length > 0
         ? 'SUPERVISION_JOSE'
         : avisos.length > 0
@@ -7412,10 +7205,10 @@ Por favor confirma tu disponibilidad para estos turnos:
   ) {
     const validacion = validacionPedagogicaGrupoApp(alumnosGrupo);
     const titulo =
-      validacion.estado === 'DECISION_COORDINADOR'
-        ? 'REVISIÓN RECOMENDADA · La decisión final es tuya'
+      validacion.estado === 'BLOQUEADO'
+        ? 'BLOQUEADO · No publicar este grupo'
         : validacion.estado === 'SUPERVISION_JOSE'
-        ? 'REVISIÓN DEL COORDINADOR'
+        ? 'SUPERVISIÓN JOSE'
         : validacion.estado === 'AVISO'
         ? 'AVISO PEDAGÓGICO'
         : 'OK PEDAGÓGICO';
@@ -7423,7 +7216,7 @@ Por favor confirma tu disponibilidad para estos turnos:
   }
 
   function estiloValidacionPedagogicaApp(estado: string): React.CSSProperties {
-    if (estado === 'DECISION_COORDINADOR') return avisoPendiente;
+    if (estado === 'BLOQUEADO') return avisoPendiente;
     if (estado === 'SUPERVISION_JOSE') return avisoPendiente;
     if (estado === 'AVISO') return avisoCompleto;
     return avisoNeutral;
@@ -7740,13 +7533,21 @@ Por favor confirma tu disponibilidad para estos turnos:
     nombreGrupo: string
   ) {
     const validacion = textoValidacionPedagogicaGrupoApp(alumnosGrupo);
-    if (validacion.estado === 'OK') return true;
-
-    return window.confirm(
-      `${validacion.titulo}\n\n${validacion.mensajes.join(
-        '\n'
-      )}\n\nEsto es una recomendación, no un bloqueo. Tu configuración manual como coordinador tiene prioridad.\n\n¿Crear el grupo tal como lo has preparado?`
-    );
+    if (validacion.estado === 'BLOQUEADO') {
+      setError(`${nombreGrupo} bloqueado: ${validacion.mensajes.join(' ')}`);
+      return false;
+    }
+    if (
+      validacion.estado === 'SUPERVISION_JOSE' ||
+      validacion.estado === 'AVISO'
+    ) {
+      return window.confirm(
+        `${validacion.titulo}\n\n${validacion.mensajes.join(
+          '\n'
+        )}\n\n¿Quieres crear el grupo igualmente?`
+      );
+    }
+    return true;
   }
 
   function perfilTrabajoMSZApp(niveles: string[], pistaTexto: string) {
@@ -7859,7 +7660,10 @@ Por favor confirma tu disponibilidad para estos turnos:
     const niveles = alumnosGrupo
       .map((alumno) => alumno.nivel_resumen || '')
       .filter(Boolean);
-    const pista = pistaOperativaGrupoApp(alumnosGrupo);
+    const pista =
+      alumnosGrupo[0]?.pista_recomendada ||
+      alumnosGrupo[0]?.pista_alumno ||
+      'Pequeña/Grande';
     const observaciones = observacionesAutomaticasGrupoAgenda(alumnosGrupo);
     return trabajoDiarioMSZApp(nombreGrupo, niveles, pista, observaciones);
   }
@@ -8220,7 +8024,7 @@ Por favor confirma tu disponibilidad para estos turnos:
         p_sesion_id: agendaSesionActivaId,
         p_nombre_grupo: nombreGrupo,
         p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
-        p_pista: pistaOperativaGrupoApp(alumnosGrupo),
+        p_pista: primero.pista_recomendada,
         p_punto_encuentro: punto,
         p_trabajo_diario: trabajo,
         p_observaciones_importantes: combinarObservacionesGrupoApp(
@@ -9049,104 +8853,26 @@ Por favor confirma tu disponibilidad para estos turnos:
     return (valor || '').slice(0, 5);
   }
 
-  function normalizarFechaDisponibilidad(valor: string | null | undefined) {
-    return String(valor || '').trim().slice(0, 10);
-  }
-
-  function normalizarHoraDisponibilidad(valor: string | null | undefined) {
-    const texto = String(valor || '').trim();
-    const coincidencia = texto.match(/(\d{2}):(\d{2})/);
-    return coincidencia ? `${coincidencia[1]}:${coincidencia[2]}` : '';
-  }
-
-  function normalizarTextoDisponibilidad(valor: string | null | undefined) {
-    return String(valor || '')
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .trim()
-      .toLowerCase();
-  }
-
   function entrenadoresDisponiblesParaTurno(
     fecha?: string | null,
     horaInicio?: string | null,
     horaFin?: string | null
   ) {
-    const activos = entrenadores
+    if (!fecha || !horaInicio || !horaFin) return [];
+
+    return entrenadores
       .filter((entrenador) => entrenador.activo)
+      .filter((entrenador) =>
+        disponibilidad.some(
+          (turno) =>
+            turno.entrenador_id === entrenador.entrenador_id &&
+            turno.fecha === fecha &&
+            horaCorta(turno.hora_inicio) === horaCorta(horaInicio) &&
+            horaCorta(turno.hora_fin) === horaCorta(horaFin) &&
+            turno.respuesta === 'Disponible'
+        )
+      )
       .sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo));
-
-    const fechaObjetivo = normalizarFechaDisponibilidad(fecha);
-    const horaInicioObjetivo = normalizarHoraDisponibilidad(horaInicio);
-    const horaFinObjetivo = normalizarHoraDisponibilidad(horaFin);
-
-    // Coordinación nunca debe quedarse bloqueada por un fallo de cruce de datos.
-    // Si la sesión todavía no tiene fecha u horas válidas, mostramos los activos.
-    if (!fechaObjetivo) return activos;
-
-    const esRespuestaDisponible = (turno: DisponibilidadEntrenador) => {
-      const respuesta = normalizarTextoDisponibilidad(
-        turno.respuesta || turno.estado_disponibilidad
-      );
-      return (
-        respuesta === 'disponible' ||
-        respuesta === 'si' ||
-        respuesta === 'puedo' ||
-        respuesta === 'available'
-      );
-    };
-
-    const disponiblesRespondidos = disponibilidad.filter(esRespuestaDisponible);
-
-    const exactos = disponiblesRespondidos.filter((turno) => {
-      const mismaFecha =
-        normalizarFechaDisponibilidad(turno.fecha) === fechaObjetivo;
-      const mismaHoraInicio =
-        !horaInicioObjetivo ||
-        normalizarHoraDisponibilidad(turno.hora_inicio) === horaInicioObjetivo;
-      const mismaHoraFin =
-        !horaFinObjetivo ||
-        normalizarHoraDisponibilidad(turno.hora_fin) === horaFinObjetivo;
-      return mismaFecha && mismaHoraInicio && mismaHoraFin;
-    });
-
-    // Respaldo para publicaciones donde Supabase devuelve la fecha correcta,
-    // pero las horas con un formato distinto o sin segundos.
-    const mismoDia = disponiblesRespondidos.filter(
-      (turno) => normalizarFechaDisponibilidad(turno.fecha) === fechaObjetivo
-    );
-
-    // Último respaldo: algunas filas antiguas solo conservan el rango semanal.
-    const mismaSemana = disponiblesRespondidos.filter((turno) => {
-      const inicio = normalizarFechaDisponibilidad(turno.fecha_inicio);
-      const fin = normalizarFechaDisponibilidad(turno.fecha_fin);
-      return Boolean(inicio && fin && fechaObjetivo >= inicio && fechaObjetivo <= fin);
-    });
-
-    const turnosCoincidentes =
-      exactos.length > 0 ? exactos : mismoDia.length > 0 ? mismoDia : mismaSemana;
-
-    const idsDisponibles = new Set(
-      turnosCoincidentes
-        .map((turno) => String(turno.entrenador_id || '').trim())
-        .filter(Boolean)
-    );
-    const nombresDisponibles = new Set(
-      turnosCoincidentes
-        .map((turno) => normalizarTextoDisponibilidad(turno.entrenador))
-        .filter(Boolean)
-    );
-
-    const disponibles = activos.filter((entrenador) => {
-      const id = String(entrenador.entrenador_id || '').trim();
-      const nombre = normalizarTextoDisponibilidad(entrenador.nombre_completo);
-      return idsDisponibles.has(id) || nombresDisponibles.has(nombre);
-    });
-
-    // La disponibilidad sirve para priorizar, no para bloquear al coordinador.
-    // Si no hay coincidencia técnica, se muestran los entrenadores activos para
-    // que Jose pueda hacer una asignación manual y continuar con el grupo.
-    return disponibles.length > 0 ? disponibles : activos;
   }
 
   function entrenadoresDisponiblesSesionActiva() {
@@ -11297,7 +11023,7 @@ Por favor confirma tu disponibilidad para estos turnos:
                     </button>
                     <button
                       onClick={() =>
-                        moverAlumnoGrupoOcio(
+                        asignarAlumnoGrupoOcio(
                           alumno.alumno_id,
                           destinoRevisionOcio[alumno.alumno_id]
                         )
@@ -11998,8 +11724,6 @@ Por favor confirma tu disponibilidad para estos turnos:
                             );
                             const observacionesAutoGrupo =
                               observacionesAutomaticasGrupoAgenda(alumnosGrupo);
-                            const pistaOperativaGrupo =
-                              pistaOperativaGrupoApp(alumnosGrupo);
                             const validacionPedagogicaGrupo =
                               textoValidacionPedagogicaGrupoApp(alumnosGrupo);
 
@@ -12009,7 +11733,7 @@ Por favor confirma tu disponibilidad para estos turnos:
                                 style={{
                                   ...agendaGrupoPropuesta,
                                   ...estiloGrupoPorPistaApp({
-                                    pista: pistaOperativaGrupo,
+                                    pista: primero.pista_recomendada,
                                     nivel_grupo: primero.nivel_resumen,
                                   }),
                                 }}
@@ -12024,7 +11748,7 @@ Por favor confirma tu disponibilidad para estos turnos:
                                   <strong>Bloque:</strong>{' '}
                                   {primero.bloque_tecnico} ·{' '}
                                   <strong>Pista:</strong>{' '}
-                                  {pistaOperativaGrupo}
+                                  {primero.pista_recomendada}
                                 </p>
                                 <div
                                   style={{
@@ -16211,7 +15935,7 @@ Por favor confirma tu disponibilidad para estos turnos:
                         <section
                           style={{ display: 'grid', gap: 12, marginTop: 12 }}
                         >
-                          {Object.entries(reportesPorFecha)
+                          {(Object.entries(reportesPorFecha) as [string, ReportePendiente[]][])
                             .sort(([a], [b]) => a.localeCompare(b))
                             .map(([fecha, reportesFecha]) => (
                               <article
