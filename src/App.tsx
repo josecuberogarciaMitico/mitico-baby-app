@@ -98,8 +98,6 @@ import {
   chipDiaIntensivoVacio,
   chipResumenCursoIntensivo,
   chuletaEntrenadorMini,
-  chuletaGeneralApp,
-  chuletaGridApp,
   cierreJoseCaja,
   cierreJoseGrid,
   cierreJoseItem,
@@ -177,7 +175,6 @@ import {
   resumenCursoIntensivoGrid,
   selectCampo,
   selectCampoAgenda,
-  semanaTrabajoActivaApp,
   summaryAyudaReporteEntrenador,
   summaryChuletaApp,
   summaryTrabajoGrupo,
@@ -2264,6 +2261,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     !perfilUsuario || esRolCoordinacionApp(perfilUsuario.rol);
   const esEntrenadorApp = Boolean(perfilUsuario && !esCoordinadorApp);
   const entrenadorIdSesionApp = perfilUsuario?.entrenador_id || '';
+  const [salirActivoCabecera, setSalirActivoCabecera] = useState(false);
   const [pantalla, setPantalla] = useState<
     | 'agenda'
     | 'resumenDia'
@@ -10197,81 +10195,161 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     <main style={layout}>
       <header style={cabeceraAppLimpia}>
         <div style={cabeceraMarcaApp}>
-          <div style={marcaLogoTituloApp}>
-            <img
-              src={LOGO_MITICO_CLUB}
-              alt="Mítico Club"
-              style={logoMarcaApp}
-            />
-            <div>
-              <p style={marcaKickerApp}>Mítico Club · coordinación deportiva</p>
-              <h1 style={tituloMarcaApp}>MITICO BABY / OCIO LOGISTICA</h1>
-            </div>
-          </div>
-
-          <details style={chuletaGeneralApp}>
-            <summary style={summaryChuletaApp}>
-              Chuleta rápida del flujo
-            </summary>
-            <div style={chuletaGridApp}>
-              <div>
-                <strong>Trabajo semanal</strong>
-                <br />
-                Disponibilidad → sesiones → grupos → publicación → reportes.
-              </div>
-              <div>
-                <strong>Intensivos</strong>
-                <br />
-                Aimharder → 4 sesiones → grupos por día/turno → reportes →
-                cobros.
-              </div>
-              <div>
-                <strong>Ocio</strong>
-                <br />
-                Grupos estables → cambios puntuales → preparar semana →
-                entrenador.
-              </div>
-              <div>
-                <strong>Dirección</strong>
-                <br />
-                Cobros mensuales + backup Excel para no perder datos.
-              </div>
-            </div>
-          </details>
-
-          <div style={semanaTrabajoActivaApp}>
-            <span>Semana de trabajo</span>
-            <strong>
-              {semanaAgendaActiva ? rangoSemanaAgenda(semanaAgendaActiva) : '-'}
-            </strong>
-          </div>
-
-          {perfilUsuario && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
+              gap: 18,
+              flexWrap: 'wrap',
+              width: '100%',
+            }}
+          >
             <div
               style={{
                 display: 'flex',
-                alignItems: 'center',
-                gap: 10,
-                flexWrap: 'wrap',
-                justifyContent: 'flex-end',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                gap: 12,
+                minWidth: 0,
               }}
             >
-              <span
+              <div style={marcaLogoTituloApp}>
+                <img
+                  src={LOGO_MITICO_CLUB}
+                  alt="Mítico Club"
+                  style={logoMarcaApp}
+                />
+                <div>
+                  <p style={marcaKickerApp}>Mítico Club · coordinación deportiva</p>
+                  <h1 style={tituloMarcaApp}>MITICO BABY / OCIO LOGISTICA</h1>
+                </div>
+              </div>
+
+              <div
                 style={{
-                  border: '1px solid #cbd5e1',
-                  background: '#fff',
-                  borderRadius: 999,
-                  padding: '8px 12px',
-                  fontWeight: 900,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 10,
+                  border: '1px solid rgba(15, 118, 110, 0.22)',
+                  background: 'rgba(240, 253, 250, 0.92)',
+                  borderRadius: 14,
+                  padding: '9px 13px',
+                  boxShadow: '0 8px 22px rgba(15, 23, 42, 0.06)',
                 }}
               >
-                {perfilUsuario.nombre} · {rolUsuarioTextoApp(perfilUsuario.rol)}
-              </span>
-              <button type="button" onClick={onLogout} style={botonSecundario}>
-                Salir
-              </button>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 900,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    color: '#0f766e',
+                  }}
+                >
+                  Semana de trabajo
+                </span>
+                <strong style={{ color: '#134e4a', fontSize: 14 }}>
+                  {semanaAgendaActiva ? rangoSemanaAgenda(semanaAgendaActiva) : '-'}
+                </strong>
+              </div>
+
+              {perfilUsuario && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    width: 'fit-content',
+                    maxWidth: '100%',
+                    border: '1px solid #dbe3ee',
+                    background: 'rgba(255, 255, 255, 0.94)',
+                    borderRadius: 16,
+                    padding: '9px 10px 9px 9px',
+                    boxShadow: '0 10px 28px rgba(15, 23, 42, 0.08)',
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 12,
+                      display: 'grid',
+                      placeItems: 'center',
+                      flex: '0 0 auto',
+                      background: 'linear-gradient(145deg, #172033, #334155)',
+                      color: '#fff',
+                      fontSize: 13,
+                      fontWeight: 950,
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    {perfilUsuario.nombre
+                      .trim()
+                      .split(/\s+/)
+                      .slice(0, 2)
+                      .map((parte) => parte.charAt(0).toUpperCase())
+                      .join('')}
+                  </span>
+
+                  <span style={{ display: 'grid', gap: 1, minWidth: 0 }}>
+                    <strong
+                      style={{
+                        color: '#172033',
+                        fontSize: 14,
+                        lineHeight: 1.2,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {perfilUsuario.nombre}
+                    </strong>
+                    <span
+                      style={{
+                        color: '#64748b',
+                        fontSize: 12,
+                        fontWeight: 750,
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {rolUsuarioTextoApp(perfilUsuario.rol)}
+                    </span>
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={onLogout}
+                    onMouseEnter={() => setSalirActivoCabecera(true)}
+                    onMouseLeave={() => setSalirActivoCabecera(false)}
+                    onMouseDown={() => setSalirActivoCabecera(true)}
+                    onMouseUp={() => setSalirActivoCabecera(false)}
+                    onFocus={() => setSalirActivoCabecera(true)}
+                    onBlur={() => setSalirActivoCabecera(false)}
+                    aria-label="Cerrar sesión"
+                    title="Cerrar sesión"
+                    style={{
+                      border: salirActivoCabecera
+                        ? '1px solid #dc2626'
+                        : '1px solid rgba(220, 38, 38, 0.28)',
+                      background: salirActivoCabecera
+                        ? '#dc2626'
+                        : 'rgba(254, 226, 226, 0.72)',
+                      color: salirActivoCabecera ? '#ffffff' : '#b91c1c',
+                      borderRadius: 12,
+                      padding: '9px 12px',
+                      fontWeight: 900,
+                      lineHeight: 1,
+                      transition:
+                        'background 160ms ease, color 160ms ease, border-color 160ms ease, transform 120ms ease',
+                      transform: salirActivoCabecera ? 'translateY(-1px)' : 'none',
+                    }}
+                  >
+                    Salir
+                  </button>
+                </div>
+              )}
             </div>
-          )}
+          </div>
         </div>
 
         {esCoordinadorApp ? (
