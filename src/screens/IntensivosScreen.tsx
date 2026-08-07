@@ -2373,7 +2373,8 @@ export function PantallaIntensivos(ctx: any) {
                             </div>
                           </div>
                         ))}
-                      </div>
+            
+                     </div>
                     </div>
                   )}
                     </>
