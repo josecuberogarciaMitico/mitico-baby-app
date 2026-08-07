@@ -1375,6 +1375,32 @@ function formatearAlumnoListadoOperativo(valor: string | null | undefined) {
   return nivel ? `${nombre} · ${nivel.toUpperCase()}` : nombre;
 }
 
+function nombreAlumnoWhatsappPapis(valor: string | null | undefined) {
+  const operativo = formatearAlumnoListadoOperativo(valor);
+  return operativo
+    .replace(
+      /\s*·\s*(INICIACI[ÓO]N|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)\s*$/i,
+      ''
+    )
+    .trim();
+}
+
+function nombreEntrenadorWhatsappPapis(valor: string | null | undefined) {
+  return String(valor || '')
+    .replace(/^\[TEST[^\]]*\]\s*/i, '')
+    .replace(/^TEST\s+NUEVO\s*[·:\-]\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function entrenadoresWhatsappPapis(valor: string | null | undefined) {
+  return String(valor || '')
+    .split('+')
+    .map((nombre) => nombreEntrenadorWhatsappPapis(nombre))
+    .filter(Boolean)
+    .join(' + ');
+}
+
 function calcularFechasCuatroSesionesIntensivo(
   fechaInicio: string,
   tipo: PlantillaCuatroSesionesIntensivoState['tipo']
@@ -3850,12 +3876,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const horaFin = (grupo.hora_fin || '').slice(0, 5);
     const alumnosGrupo = (grupo.alumnos_lista || '')
       .split(' || ')
-      .map((linea) =>
-        linea
-          .replace(/\s*·\s*Nivel\s.*$/i, '')
-          .replace(/\s+NIVEL\s*.*$/i, '')
-          .trim()
-      )
+      .map((linea) => nombreAlumnoWhatsappPapis(linea))
       .filter(Boolean);
 
     let mensaje = `*${(grupo.dia_semana || '').toUpperCase()} · OCIO* ⛷️💨\n`;
@@ -4567,7 +4588,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
       mensaje += `📍${grupo.punto_encuentro || '-'}\n`;
       mensaje += `👶\n`;
       alumnosPresentes.forEach((alumno) => {
-        mensaje += `${alumno.alumno}\n`;
+        mensaje += `${nombreAlumnoWhatsappPapis(alumno.alumno)}\n`;
       });
       mensaje += '\n';
     });
@@ -6340,14 +6361,25 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     )} a ${sesion.hora_fin.slice(0, 5)} MSZ\n\n`;
 
     grupos.forEach((grupo) => {
+      const entrenadores = nombresEntrenadoresDelGrupo(
+        grupo.grupo_id,
+        grupo.entrenador
+      );
+
       mensaje += `⛷️ ${(
-        grupo.entrenador || 'ENTRENADOR PENDIENTE'
+        entrenadoresWhatsappPapis(entrenadores) || 'ENTRENADOR PENDIENTE'
       ).toUpperCase()}\n`;
       mensaje += `📍${emojiPuntoEncuentro(grupo.punto_encuentro)}\n`;
       mensaje += '👶\n';
-      alumnosLimpiosWhatsapp(grupo.alumnos_lista).forEach((alumno) => {
-        mensaje += `${alumno}\n`;
-      });
+
+      String(grupo.alumnos_lista || '')
+        .split(' || ')
+        .map((alumno) => nombreAlumnoWhatsappPapis(alumno))
+        .filter((alumno) => alumno && alumno !== '-')
+        .forEach((alumno) => {
+          mensaje += `${alumno}\n`;
+        });
+
       mensaje += '\n';
     });
 
@@ -8157,14 +8189,102 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     return base;
   }
 
+  function nombreLimpioObservacionesGrupoApp(nombre: string) {
+    const original = `${nombre || ''}`.replace(/\s+/g, ' ').trim();
+
+    const limpio = original
+      // Etiquetas usadas en datos de prueba: no deben convertirse en
+      // encabezados ni formar parte del nombre mostrado en Observaciones.
+      .replace(/^\[TEST[^\]]*\]\s*/i, '')
+      .replace(/^TEST\s+NUEVO\s*[·:\-]\s*/i, '')
+      .replace(/^NIVEL\s+APP\s+[A-D](?:\+{1,2})?\s*[·:\-]\s*/i, '')
+      .replace(/^SIN\s+REPORTES\s*[·:\-]\s*/i, '')
+      .replace(/^ULTIMO\s+REPORTE\s*[·:\-]\s*/i, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return limpio || original || 'Alumno';
+  }
+
   function fraseImportanteAlumnoGrupoApp(
     nombre: string,
     observacionBase?: string | null,
     extra?: string | null
   ) {
     const detalle = resumenCualidadDebilidadFichaApp(observacionBase, extra);
-    if (!detalle) return '';
-    return `${nombre}: ${detalle}`;
+    const nombreVisible = nombreLimpioObservacionesGrupoApp(nombre);
+    return `${nombreVisible}: ${detalle || 'Nada relevante'}`;
+  }
+
+  function observacionEstandarAlumnoAgendaApp(
+    alumno: AgendaRecomendacionSesionApp
+  ) {
+    const fichaSesion = agendaAlumnosSesion.find(
+      (registro) => registro.alumno_id === alumno.alumno_id
+    );
+    const resumen = alumnos.find(
+      (registro) => registro.alumno_id === alumno.alumno_id
+    );
+
+    const nombre = nombreLimpioObservacionesGrupoApp(alumno.alumno);
+    const nivel = (alumno.nivel_resumen || fichaSesion?.nivel_usado || '')
+      .trim()
+      .toUpperCase();
+    const origen = `${fichaSesion?.origen_nivel || alumno.fuente_nivel || ''}`
+      .trim()
+      .toUpperCase();
+    const esNuevo = `${fichaSesion?.estado_en_listado || ''}`
+      .trim()
+      .toUpperCase() === 'NUEVO';
+
+    const revisarNivel =
+      /PENDIENTE|REVISAR|DUD|DESCONOC/.test(origen) ||
+      /REVISAR|PENDIENTE/.test(`${alumno.alertas || ''}`.toUpperCase());
+
+    if (esNuevo) {
+      if (/FAMILIA|DECLARAD/.test(origen) && nivel) {
+        return `${nombre}: Nivel ${nivel} declarado por familia · validar en pista`;
+      }
+      return `${nombre}: NUEVO · Sin historial. Revisar nivel y adaptación en primera bajada.`;
+    }
+
+    if (revisarNivel) {
+      return `${nombre}: REVISAR NIVEL · validar en primera bajada`;
+    }
+
+    // Una sola observación operativa vigente, con prioridad:
+    // seguridad/remontes/autonomía -> actitud -> técnica/recomendación.
+    const partes: string[] = [];
+
+    const incidencia = `${resumen?.ultima_incidencia || ''}`.trim();
+    if (
+      incidencia &&
+      !/^(NO|NINGUNA|SIN INCIDENCIA|NADA)$/i.test(incidencia)
+    ) {
+      partes.push(incidencia);
+    }
+
+    const remontes = Array.isArray(resumen?.ultimos_remontes)
+      ? resumen?.ultimos_remontes.filter(Boolean).join(', ')
+      : '';
+    const autonomia = `${resumen?.ultima_autonomia || ''}`.trim();
+    const seguridad = [remontes, autonomia].filter(Boolean).join(' · ');
+    if (seguridad) partes.push(seguridad);
+
+    const actitud = `${resumen?.ultima_actitud || ''}`.trim();
+    if (actitud) partes.push(actitud);
+
+    const tecnica = `${resumen?.ultima_tecnica || ''}`.trim();
+    const recomendacion = `${resumen?.ultima_recomendacion || ''}`.trim();
+    const tecnico = [tecnica, recomendacion].filter(Boolean).join(' · ');
+    if (tecnico) partes.push(tecnico);
+
+    const detalle = limpiarObservacionCortaGrupoApp(
+      partes.filter(Boolean).slice(0, 3).join(' · '),
+      220
+    );
+
+    return `${nombre}: ${detalle || 'Nada relevante'}`;
   }
 
   function limpiarTextoObservacionesGrupoApp(texto: string | null | undefined) {
@@ -8179,7 +8299,8 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
       .replace(/Observaciones\s+de\s+Jose/gi, '')
       .replace(/Observaciones\s+de\s+Jos[ée]/gi, '')
       .replace(/[•]/g, '\n')
-      .replace(/\s*·\s*(?=\[|[A-ZÁÉÍÓÚÑ][a-záéíóúñ])/g, '\n')
+      // No separar por "·": puede formar parte del nombre del alumno
+      // (ej. "TEST NUEVO · Ana Gil"). Las observaciones ya vienen una por línea.
       .replace(/[ \t]+/g, ' ')
       .split('\n')
       .map((linea) => linea.trim())
@@ -8300,20 +8421,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
   function observacionesAutomaticasGrupoAgenda(
     alumnosGrupo: AgendaRecomendacionSesionApp[]
   ) {
-    const lineas = alumnosGrupo
-      .map((alumno) => {
-        const ficha = agendaAlumnosSesion.find(
-          (registro) => registro.alumno_id === alumno.alumno_id
-        );
-        return fraseImportanteAlumnoGrupoApp(
-          alumno.alumno,
-          ficha?.observacion,
-          alumno.alertas
-        );
-      })
-      .filter(Boolean);
-
-    if (lineas.length === 0) return '';
+    const lineas = alumnosGrupo.map(observacionEstandarAlumnoAgendaApp);
     return normalizarLineasObservacionesGrupoApp(lineas.join('\n'));
   }
 
@@ -13392,15 +13500,19 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                                 {observacionesAutoGrupo && (
                                   <div
                                     style={{
-                                      ...avisoCompleto,
+                                      ...avisoNeutral,
                                       marginBottom: 10,
                                     }}
                                   >
                                     <strong>Observaciones</strong>
-                                    <div style={{ marginTop: 6 }}>
-                                      {formatearObservaciones(
-                                        observacionesAutoGrupo
-                                      )}
+                                    <div
+                                      style={{
+                                        marginTop: 8,
+                                        whiteSpace: 'pre-wrap',
+                                        lineHeight: 1.45,
+                                      }}
+                                    >
+                                      {observacionesAutoGrupo}
                                     </div>
                                   </div>
                                 )}
