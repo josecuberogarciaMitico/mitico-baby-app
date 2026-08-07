@@ -2749,6 +2749,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [mostrarAlumnoFueraPlazo, setMostrarAlumnoFueraPlazo] = useState(false);
   const [alumnoFueraPlazoNombre, setAlumnoFueraPlazoNombre] = useState('');
   const [alumnoFueraPlazoNivel, setAlumnoFueraPlazoNivel] = useState('');
+  const [alumnoFueraPlazoAlumnoId, setAlumnoFueraPlazoAlumnoId] = useState('');
+  const [incorporandoFueraPlazo, setIncorporandoFueraPlazo] = useState(false);
+  const [mensajeIncorporacionFueraPlazo, setMensajeIncorporacionFueraPlazo] = useState('');
+  const [errorIncorporacionFueraPlazo, setErrorIncorporacionFueraPlazo] = useState('');
   const [analizandoFueraPlazo, setAnalizandoFueraPlazo] = useState(false);
   const [recomendacionesFueraPlazo, setRecomendacionesFueraPlazo] = useState<
     RecomendacionFueraPlazoAgendaApp[]
@@ -7124,8 +7128,13 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
         fichaExistente?.nivel_estimado ||
         'INICIACION';
 
-      if (fichaExistente && fichaExistente.alumno !== nombre) {
-        setAlumnoFueraPlazoNombre(fichaExistente.alumno);
+      if (fichaExistente) {
+        setAlumnoFueraPlazoAlumnoId(fichaExistente.alumno_id);
+        if (fichaExistente.alumno !== nombre) {
+          setAlumnoFueraPlazoNombre(fichaExistente.alumno);
+        }
+      } else {
+        setAlumnoFueraPlazoAlumnoId('');
       }
       if (!alumnoFueraPlazoNivel) setAlumnoFueraPlazoNivel(nivelDetectado);
 
@@ -7211,6 +7220,83 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     }
 
     setAnalizandoFueraPlazo(false);
+  }
+
+  async function incorporarAlumnoFueraPlazoEnGrupo(
+    opcion: RecomendacionFueraPlazoAgendaApp
+  ) {
+    const nombre = alumnoFueraPlazoNombre.trim();
+    if (!nombre) {
+      setErrorIncorporacionFueraPlazo('Escribe o selecciona el nombre del niño.');
+      return;
+    }
+
+    const nivel = (alumnoFueraPlazoNivel || 'INICIACION').trim().toUpperCase();
+    const requiereRevision = opcion.estado === 'REVISAR';
+    const esOtroTurno = !opcion.es_sesion_actual;
+    const fechaHora = `${formatearFecha(opcion.fecha)} · ${opcion.hora_inicio?.slice(0, 5)}–${opcion.hora_fin?.slice(0, 5)}`;
+    const mensaje = esOtroTurno
+      ? `Vas a añadir a ${nombre} · ${nivel} en OTRO TURNO:\n\n${fechaHora}\n${opcion.grupo} · ${opcion.total_actual} → ${opcion.total_final} niños\n${opcion.entrenador || 'Sin entrenador'} · Punto ${opcion.punto}\n\nHazlo solo cuando los padres hayan confirmado el cambio de horario. ¿Continuar?`
+      : requiereRevision
+      ? `Este encaje requiere revisión manual.\n\n${nombre} · ${nivel}\n${opcion.grupo} · ${opcion.total_actual} → ${opcion.total_final} niños\n\n¿Quieres añadirlo igualmente a este grupo?`
+      : `${nombre} · ${nivel}\n${opcion.grupo} · ${opcion.total_actual} → ${opcion.total_final} niños\n${opcion.entrenador || 'Sin entrenador'} · Punto ${opcion.punto}\n\n¿Confirmas que quieres añadirlo a este grupo?`;
+
+    if (!window.confirm(mensaje)) return;
+
+    setIncorporandoFueraPlazo(true);
+    setError('');
+    setErrorIncorporacionFueraPlazo('');
+    setMensajeIncorporacionFueraPlazo('');
+
+    try {
+      const resultado = await ejecutarFuncionConRespuesta<{
+        alumno_id: string;
+        alumno: string;
+        sesion_id: string;
+        grupo_id: string;
+        grupo: string;
+        nivel_usado: string;
+        resultado: string;
+      }>('incorporar_alumno_fuera_plazo_grupo_app', {
+        p_sesion_id: opcion.sesion_id,
+        p_grupo_id: opcion.grupo_id,
+        p_alumno_id: alumnoFueraPlazoAlumnoId || null,
+        p_nombre_completo: nombre,
+        p_nivel_codigo: nivel,
+      });
+
+      const incorporado = resultado[0];
+      if (!incorporado) {
+        throw new Error('Supabase no devolvió confirmación de la incorporación.');
+      }
+
+      await cargarAgendaOperativaDirecta();
+      if (opcion.es_sesion_actual) {
+        await cargarDetalleSesionAgenda(opcion.sesion_id);
+      }
+
+      setMensajeIncorporacionFueraPlazo(
+        `${incorporado.alumno} añadido a ${incorporado.grupo} · ${fechaHora}. Listado y Vista entrenador actualizados.`
+      );
+      setRecomendacionesFueraPlazo([]);
+
+      if (opcion.es_sesion_actual) {
+        window.setTimeout(() => {
+          document
+            .getElementById('agenda-grupos-creados')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 180);
+      }
+    } catch (err) {
+      const mensajeError =
+        err instanceof Error
+          ? err.message
+          : 'No se pudo incorporar el alumno al grupo.';
+      setErrorIncorporacionFueraPlazo(mensajeError);
+      setError(mensajeError);
+    } finally {
+      setIncorporandoFueraPlazo(false);
+    }
   }
 
   async function generarRecomendacionAgendaSesion(sesionId: string) {
@@ -12486,6 +12572,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                               onChange={(e) => {
                                 setAlumnoFueraPlazoNombre(e.target.value);
                                 setAlumnoFueraPlazoNivel('');
+                                setAlumnoFueraPlazoAlumnoId('');
                                 setRecomendacionesFueraPlazo([]);
                               }}
                               placeholder="Ej. Mario Costa Fernández"
@@ -12543,6 +12630,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                                           'INICIACION';
                                         setAlumnoFueraPlazoNombre(alumno.alumno);
                                         setAlumnoFueraPlazoNivel(nivelFicha);
+                                        setAlumnoFueraPlazoAlumnoId(alumno.alumno_id);
                                         setRecomendacionesFueraPlazo([]);
                                       }}
                                     >
@@ -12585,6 +12673,29 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                       >
                         {analizandoFueraPlazo ? 'Analizando…' : 'Analizar encaje'}
                       </button>
+
+                      {errorIncorporacionFueraPlazo && (
+                        <div style={{ marginTop: 10, padding: '10px 12px', border: '1px solid #fecaca', background: '#fff7f7', color: '#991b1b', borderRadius: 12, fontWeight: 700 }}>
+                          <strong>No se ha podido añadir.</strong>
+                          <div style={{ marginTop: 4 }}>{errorIncorporacionFueraPlazo}</div>
+                        </div>
+                      )}
+
+                      {mensajeIncorporacionFueraPlazo && (
+                        <div
+                          style={{
+                            marginTop: 10,
+                            padding: '10px 12px',
+                            border: '1px solid #bbf7d0',
+                            background: '#f0fdf4',
+                            color: '#166534',
+                            borderRadius: 12,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {mensajeIncorporacionFueraPlazo}
+                        </div>
+                      )}
 
                       {recomendacionesFueraPlazo.length > 0 && (() => {
                         const opcionesTurnoActual = recomendacionesFueraPlazo.filter(
@@ -12654,6 +12765,36 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                               {opcion.total_actual} → {opcion.total_final} niños
                             </p>
                             <p style={{ margin: '6px 0 0', color: '#475569' }}>{opcion.motivo}</p>
+
+                            {opcion.estado !== 'NO_ENCAJA' && (
+                              <button
+                                type="button"
+                                style={{
+                                  ...botonPrincipal,
+                                  marginTop: 10,
+                                  width: '100%',
+                                  ...(opcion.estado === 'REVISAR'
+                                    ? {
+                                        background: '#fff7ed',
+                                        color: '#9a3412',
+                                        border: '1px solid #fdba74',
+                                      }
+                                    : {}),
+                                }}
+                                disabled={incorporandoFueraPlazo}
+                                onClick={() =>
+                                  incorporarAlumnoFueraPlazoEnGrupo(opcion)
+                                }
+                              >
+                                {incorporandoFueraPlazo
+                                  ? 'Añadiendo…'
+                                  : !opcion.es_sesion_actual
+                                  ? 'Añadir a este turno'
+                                  : opcion.estado === 'REVISAR'
+                                  ? 'Añadir con revisión manual'
+                                  : 'Añadir a este grupo'}
+                              </button>
+                            )}
                           </article>
                         );
 
@@ -12709,7 +12850,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                             )}
 
                             <div style={{ ...avisoNeutral, marginTop: 2 }}>
-                              En esta fase la app solo recomienda. No modifica grupos publicados ni cambia al niño de horario.
+                              
                             </div>
                           </div>
                         );
