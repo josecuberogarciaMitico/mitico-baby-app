@@ -1226,6 +1226,25 @@ type AgendaGrupoSesionApp = {
   alumnos_lista: string | null;
 };
 
+type RecomendacionFueraPlazoAgendaApp = {
+  sesion_id: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  grupo_id: string;
+  grupo: string;
+  nivel_grupo: string;
+  pista: string;
+  punto: string;
+  entrenador: string;
+  total_actual: number;
+  total_final: number;
+  estado: 'RECOMENDADO' | 'REVISAR' | 'NO_ENCAJA';
+  motivo: string;
+  score: number;
+  es_sesion_actual: boolean;
+};
+
 type AgendaRecomendacionSesionApp = {
   sesion_id: string;
   grupo_recomendado: string;
@@ -2724,6 +2743,16 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     AgendaSesionDirectaApp[]
   >([]);
   const [agendaSesionActivaId, setAgendaSesionActivaId] = useState('');
+  const [agendaFiltroAlumnos, setAgendaFiltroAlumnos] = useState<
+    'TODOS' | 'NUEVO' | 'CONOCIDO'
+  >('TODOS');
+  const [mostrarAlumnoFueraPlazo, setMostrarAlumnoFueraPlazo] = useState(false);
+  const [alumnoFueraPlazoNombre, setAlumnoFueraPlazoNombre] = useState('');
+  const [alumnoFueraPlazoNivel, setAlumnoFueraPlazoNivel] = useState('');
+  const [analizandoFueraPlazo, setAnalizandoFueraPlazo] = useState(false);
+  const [recomendacionesFueraPlazo, setRecomendacionesFueraPlazo] = useState<
+    RecomendacionFueraPlazoAgendaApp[]
+  >([]);
   const [agendaFormularioAbierto, setAgendaFormularioAbierto] = useState(false);
   const [agendaDiaCompactoActivo, setAgendaDiaCompactoActivo] = useState('');
   const [gruposAgendaManuales, setGruposAgendaManuales] = useState<string[]>(
@@ -6928,6 +6957,260 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     }
 
     setCargando(false);
+  }
+
+  function normalizarNombreFueraPlazoAgenda(valor: string) {
+    return (valor || '')
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function nivelesGrupoFueraPlazoAgenda(grupo: AgendaGrupoSesionApp) {
+    const niveles: string[] = [];
+    if (grupo.nivel_grupo) {
+      const coincidencias = grupo.nivel_grupo
+        .toUpperCase()
+        .match(/INICIACION|A\+|A|B\+\+|B\+|B|C\+|C|D\+|D/g);
+      if (coincidencias) niveles.push(...coincidencias);
+    }
+    if (grupo.alumnos_lista) {
+      grupo.alumnos_lista.split(' || ').forEach((linea) => {
+        const partes = linea.split('·');
+        const nivel = partes.length > 1 ? partes[partes.length - 1].trim() : '';
+        if (nivel) niveles.push(nivel);
+      });
+    }
+    return Array.from(new Set(niveles.filter(Boolean)));
+  }
+
+  function compatibilidadFueraPlazoAgenda(
+    nivelAlumno: string,
+    nivelesGrupo: string[]
+  ): { estado: 'RECOMENDADO' | 'REVISAR' | 'NO_ENCAJA'; motivo: string; score: number } {
+    const ordenAlumno = ordenNivelTrabajoMSZApp(nivelAlumno);
+    const ordenes = nivelesGrupo.length
+      ? nivelesGrupo.map(ordenNivelTrabajoMSZApp)
+      : [ordenAlumno];
+    const conjunto = Array.from(new Set([...ordenes, ordenAlumno])).sort((a, b) => a - b);
+    const min = Math.min(...conjunto);
+    const max = Math.max(...conjunto);
+
+    if (min === 0 && max >= 2) {
+      return { estado: 'NO_ENCAJA', motivo: 'Iniciación no debe mezclarse automáticamente con A+ o superior.', score: 10 };
+    }
+    if (conjunto.includes(2) && conjunto.includes(3)) {
+      return { estado: 'REVISAR', motivo: 'A+ con B requiere revisión manual.', score: 68 };
+    }
+    if (max - min > 1) {
+      return { estado: 'NO_ENCAJA', motivo: 'Diferencia técnica demasiado grande para recomendarlo.', score: 15 };
+    }
+
+    const pareja = `${min}-${max}`;
+    const parejasAutomaticas = new Set(['0-0','0-1','1-1','1-2','2-2','3-3','3-4','4-4','4-5','5-5','5-6','6-6','6-7','7-7','7-8','8-8']);
+    if (parejasAutomaticas.has(pareja)) {
+      return {
+        estado: 'RECOMENDADO',
+        motivo: min === max ? 'Mismo nivel técnico.' : 'Niveles compatibles según las reglas Baby.',
+        score: min === max ? 100 : 90,
+      };
+    }
+    return { estado: 'REVISAR', motivo: 'Encaje posible, pero conviene validarlo manualmente.', score: 60 };
+  }
+
+  function evaluarGrupoFueraPlazoAgenda(
+    grupo: AgendaGrupoSesionApp,
+    sesion: AgendaSesionDirectaApp,
+    nivelAlumno: string,
+    esSesionActual: boolean
+  ): RecomendacionFueraPlazoAgendaApp {
+    const niveles = nivelesGrupoFueraPlazoAgenda(grupo);
+    const compatibilidad = compatibilidadFueraPlazoAgenda(nivelAlumno, niveles);
+    const pistaTexto = `${grupo.pista || ''}`.toUpperCase();
+    const numeroEntrenadores = Math.max(
+      1,
+      entrenadoresDelGrupo(grupo.grupo_id).length
+    );
+    const maxRatioUnEntrenador = pistaTexto.includes('GRANDE') ? 7 : 4;
+    // Regla operativa Baby:
+    // - 1 entrenador: ratio normal según pista.
+    // - 2 o más entrenadores trabajando juntos: máximo 7 niños en el grupo.
+    // - Con 8 niños conviene dividir en 2 grupos de 4.
+    const maxRatio =
+      numeroEntrenadores >= 2 ? 7 : maxRatioUnEntrenador;
+    const totalActual = Number(grupo.total_alumnos || 0);
+    const totalFinal = totalActual + 1;
+    let estado = compatibilidad.estado;
+    let score = compatibilidad.score;
+    let motivo = compatibilidad.motivo;
+
+    if (totalFinal > maxRatio) {
+      estado = 'NO_ENCAJA';
+      score = 0;
+      motivo =
+        numeroEntrenadores >= 2 && totalFinal >= 8
+          ? `${numeroEntrenadores} entrenadores con ${totalFinal} niños: conviene reorganizar en 2 grupos de 4.`
+          : `Superaría el ratio del grupo (${totalFinal}/${maxRatio}).`;
+    } else if (totalFinal === maxRatio && estado === 'RECOMENDADO') {
+      score -= 8;
+      motivo +=
+        numeroEntrenadores >= 2
+          ? ` Quedaría completo con ${numeroEntrenadores} entrenadores (${totalFinal}/7).`
+          : ` Quedaría completo (${totalFinal}/${maxRatio}).`;
+    } else if (estado !== 'NO_ENCAJA') {
+      motivo +=
+        numeroEntrenadores >= 2
+          ? ` Grupo con ${numeroEntrenadores} entrenadores. Ratio resultante: ${totalFinal}/7.`
+          : ` Ratio resultante: ${totalFinal}/${maxRatio}.`;
+    }
+
+    if (grupo.publicado && estado !== 'NO_ENCAJA') score += 4;
+    if (esSesionActual && estado !== 'NO_ENCAJA') score += 8;
+
+    return {
+      sesion_id: sesion.sesion_id,
+      fecha: sesion.fecha,
+      hora_inicio: sesion.hora_inicio,
+      hora_fin: sesion.hora_fin,
+      grupo_id: grupo.grupo_id,
+      grupo: grupo.nombre_grupo,
+      nivel_grupo: grupo.nivel_grupo || niveles.join('/') || '-',
+      pista: grupo.pista || '-',
+      punto: grupo.punto_encuentro || '-',
+      entrenador: nombresEntrenadoresDelGrupo(grupo.grupo_id, grupo.entrenador),
+      total_actual: totalActual,
+      total_final: totalFinal,
+      estado,
+      motivo,
+      score,
+      es_sesion_actual: esSesionActual,
+    };
+  }
+
+  async function analizarEncajeAlumnoFueraPlazoAgenda() {
+    if (!agendaSesionActivaId) {
+      setError('Abre primero la sesión donde se ha apuntado el niño.');
+      return;
+    }
+    const nombre = alumnoFueraPlazoNombre.trim();
+    if (!nombre) {
+      setError('Escribe el nombre y apellidos del niño.');
+      return;
+    }
+
+    setAnalizandoFueraPlazo(true);
+    setError('');
+    setRecomendacionesFueraPlazo([]);
+
+    try {
+      const nombreNormalizado = normalizarNombreFueraPlazoAgenda(nombre);
+      const coincidenciasFicha = alumnos.filter((alumno) => {
+        const nombreFicha = normalizarNombreFueraPlazoAgenda(alumno.alumno);
+        return (
+          nombreFicha === nombreNormalizado ||
+          (nombreNormalizado.length >= 2 && nombreFicha.startsWith(nombreNormalizado))
+        );
+      });
+      const fichaExistente =
+        coincidenciasFicha.find(
+          (alumno) => normalizarNombreFueraPlazoAgenda(alumno.alumno) === nombreNormalizado
+        ) || (coincidenciasFicha.length === 1 ? coincidenciasFicha[0] : undefined);
+      const nivelDetectado =
+        alumnoFueraPlazoNivel ||
+        fichaExistente?.nivel_actual ||
+        fichaExistente?.ultimo_nivel_reportado ||
+        fichaExistente?.nivel_estimado ||
+        'INICIACION';
+
+      if (fichaExistente && fichaExistente.alumno !== nombre) {
+        setAlumnoFueraPlazoNombre(fichaExistente.alumno);
+      }
+      if (!alumnoFueraPlazoNivel) setAlumnoFueraPlazoNivel(nivelDetectado);
+
+      // Refrescamos la agenda completa al analizar. Así las alternativas de la
+      // semana no dependen de una copia antigua cargada al abrir la pantalla.
+      const agendaActualizada = await consultarSupabase<AgendaSesionDirectaApp>(
+        'v_agenda_sesiones_operativa_app',
+        'select=*&order=fecha.asc,hora_inicio.asc'
+      );
+      setAgendaSesionesDirectas(agendaActualizada);
+
+      const sesionActual =
+        agendaActualizada.find(
+          (sesion) => sesion.sesion_id === agendaSesionActivaId
+        ) ||
+        agendaSesionesDirectas.find(
+          (sesion) => sesion.sesion_id === agendaSesionActivaId
+        );
+      if (!sesionActual) throw new Error('No encuentro la sesión activa en la agenda.');
+
+      const resultados: RecomendacionFueraPlazoAgendaApp[] = agendaGruposSesion
+        .filter((grupo) => Boolean(grupo.grupo_id))
+        .map((grupo) =>
+          evaluarGrupoFueraPlazoAgenda(
+            grupo,
+            sesionActual,
+            nivelDetectado,
+            true
+          )
+        );
+
+      // La semana se calcula siempre por FECHA (lunes-domingo), no por
+      // semana_inicio almacenada. Esto evita perder turnos reales del sábado/
+      // domingo si ese campo viene vacío o desfasado.
+      const inicioSemanaActual = inicioSemanaAgenda(sesionActual.fecha);
+      const modalidadActual = `${sesionActual.modalidad_codigo || sesionActual.modalidad || ''}`
+        .trim()
+        .toUpperCase();
+
+      const sesionesSemana = agendaActualizada.filter((sesion) => {
+        const modalidadSesion = `${sesion.modalidad_codigo || sesion.modalidad || ''}`
+          .trim()
+          .toUpperCase();
+
+        return (
+          sesion.sesion_id !== agendaSesionActivaId &&
+          inicioSemanaAgenda(sesion.fecha) === inicioSemanaActual &&
+          modalidadSesion === modalidadActual
+        );
+      });
+
+      for (const sesion of sesionesSemana) {
+        try {
+          const filtroSesion = encodeURIComponent(`eq.${sesion.sesion_id}`);
+          const grupos = await consultarSupabase<AgendaGrupoSesionApp>(
+            'v_grupos_sesion_operativa_app',
+            `select=*&sesion_id=${filtroSesion}&order=nombre_grupo.asc`
+          );
+          grupos
+            .filter((grupo) => Boolean(grupo.grupo_id))
+            .forEach((grupo) =>
+              resultados.push(
+                evaluarGrupoFueraPlazoAgenda(grupo, sesion, nivelDetectado, false)
+              )
+            );
+        } catch {
+          // Una sesión alternativa que falle no debe bloquear el análisis del turno actual.
+        }
+      }
+
+      resultados.sort((a, b) => {
+        const prioridadEstado = { RECOMENDADO: 0, REVISAR: 1, NO_ENCAJA: 2 } as const;
+        return (
+          prioridadEstado[a.estado] - prioridadEstado[b.estado] ||
+          b.score - a.score ||
+          a.fecha.localeCompare(b.fecha) ||
+          a.hora_inicio.localeCompare(b.hora_inicio)
+        );
+      });
+      setRecomendacionesFueraPlazo(resultados);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo analizar el encaje.');
+    }
+
+    setAnalizandoFueraPlazo(false);
   }
 
   async function generarRecomendacionAgendaSesion(sesionId: string) {
@@ -11889,19 +12172,6 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                                 >
                                   Abrir sesión
                                 </button>
-                                <button
-                                  onClick={() =>
-                                    abrirFormularioAgendaDia(
-                                      sesion.fecha,
-                                      sesion.hora_inicio?.slice(0, 5),
-                                      sesion.hora_fin?.slice(0, 5),
-                                      sesion.modalidad
-                                    )
-                                  }
-                                  style={botonSecundario}
-                                >
-                                  Nuevo listado mismo turno
-                                </button>
                               </div>
                             </article>
                           ))}
@@ -12057,15 +12327,45 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                   <h3 style={{ marginTop: 0 }}>Sesión seleccionada</h3>
 
                   <div style={gridMiniMetricas}>
-                    <div style={miniMetrica}>
+                    <button
+                      type="button"
+                      style={{ ...miniMetrica, cursor: 'pointer', textAlign: 'left' }}
+                      onClick={() => {
+                        setAgendaFiltroAlumnos('TODOS');
+                        requestAnimationFrame(() => {
+                          const detalle = document.getElementById('agenda-alumnos-detectados') as HTMLDetailsElement | null;
+                          if (detalle) detalle.open = true;
+                          detalle?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        });
+                      }}
+                    >
                       <strong>{agendaAlumnosSesion.length}</strong>
                       <span>alumnos</span>
-                    </div>
-                    <div style={miniMetrica}>
+                    </button>
+                    <button
+                      type="button"
+                      style={{ ...miniMetrica, cursor: 'pointer', textAlign: 'left' }}
+                      onClick={() => {
+                        document
+                          .getElementById('agenda-grupos-creados')
+                          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                    >
                       <strong>{agendaGruposSesion.length}</strong>
                       <span>grupos creados</span>
-                    </div>
-                    <div style={miniMetrica}>
+                    </button>
+                    <button
+                      type="button"
+                      style={{ ...miniMetrica, cursor: 'pointer', textAlign: 'left' }}
+                      onClick={() => {
+                        setAgendaFiltroAlumnos('NUEVO');
+                        requestAnimationFrame(() => {
+                          const detalle = document.getElementById('agenda-alumnos-detectados') as HTMLDetailsElement | null;
+                          if (detalle) detalle.open = true;
+                          detalle?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        });
+                      }}
+                    >
                       <strong>
                         {
                           agendaAlumnosSesion.filter(
@@ -12074,8 +12374,19 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                         }
                       </strong>
                       <span>nuevos</span>
-                    </div>
-                    <div style={miniMetrica}>
+                    </button>
+                    <button
+                      type="button"
+                      style={{ ...miniMetrica, cursor: 'pointer', textAlign: 'left' }}
+                      onClick={() => {
+                        setAgendaFiltroAlumnos('CONOCIDO');
+                        requestAnimationFrame(() => {
+                          const detalle = document.getElementById('agenda-alumnos-detectados') as HTMLDetailsElement | null;
+                          if (detalle) detalle.open = true;
+                          detalle?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        });
+                      }}
+                    >
                       <strong>
                         {
                           agendaAlumnosSesion.filter(
@@ -12084,10 +12395,329 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                         }
                       </strong>
                       <span>conocidos</span>
-                    </div>
+                    </button>
                   </div>
 
-                  <details style={{ marginTop: 12 }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 10,
+                      flexWrap: 'wrap',
+                      marginTop: 12,
+                    }}
+                  >
+                    <strong>Alumnos de esta sesión</strong>
+                    <button
+                      type="button"
+                      style={botonSecundario}
+                      onClick={async () => {
+                        const abrir = !mostrarAlumnoFueraPlazo;
+                        setMostrarAlumnoFueraPlazo(abrir);
+                        setRecomendacionesFueraPlazo([]);
+
+                        if (abrir) {
+                          try {
+                            // Refrescar aquí el maestro real de alumnos.
+                            // Antes este panel dependía de que "Fichas" se hubiera cargado
+                            // previamente, por eso Bautista no aparecía como sugerencia.
+                            const data = await consultarSupabase<AlumnoResumen>(
+                              'v_resumen_alumno',
+                              'select=*&order=alumno.asc'
+                            );
+                            setAlumnos(data);
+                          } catch (err) {
+                            setError(
+                              err instanceof Error
+                                ? err.message
+                                : 'No se pudo cargar el maestro de alumnos.'
+                            );
+                          }
+
+                          requestAnimationFrame(() =>
+                            document
+                              .getElementById('agenda-alumno-fuera-plazo')
+                              ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                          );
+                        }
+                      }}
+                    >
+                      + Alumno fuera de plazo
+                    </button>
+                  </div>
+
+                  {mostrarAlumnoFueraPlazo && (
+                    <section
+                      id="agenda-alumno-fuera-plazo"
+                      style={{
+                        ...avisoNeutral,
+                        marginTop: 10,
+                        border: '1px solid #bfdbfe',
+                        background: '#f8fbff',
+                        scrollMarginTop: 16,
+                      }}
+                    >
+                      <div style={agendaCabeceraLinea}>
+                        <div>
+                          <strong>Analizar alumno fuera de plazo</strong>
+                          <p style={{ margin: '4px 0 0', color: '#64748b' }}>
+                            Primero recomienda. No añade ni mueve al niño todavía.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          style={botonMini}
+                          onClick={() => {
+                            setMostrarAlumnoFueraPlazo(false);
+                            setRecomendacionesFueraPlazo([]);
+                          }}
+                        >
+                          Cerrar
+                        </button>
+                      </div>
+
+                      <div style={{ ...gridFormulario, marginTop: 12 }}>
+                        <label style={labelCampo}>
+                          Nombre y apellidos
+                          <div style={{ position: 'relative' }}>
+                            <input
+                              value={alumnoFueraPlazoNombre}
+                              onChange={(e) => {
+                                setAlumnoFueraPlazoNombre(e.target.value);
+                                setAlumnoFueraPlazoNivel('');
+                                setRecomendacionesFueraPlazo([]);
+                              }}
+                              placeholder="Ej. Mario Costa Fernández"
+                              autoComplete="off"
+                              style={{ width: '100%' }}
+                            />
+                            {alumnoFueraPlazoNombre.trim().length >= 1 && (() => {
+                              const busqueda = normalizarNombreFueraPlazoAgenda(alumnoFueraPlazoNombre);
+                              const sugerencias = alumnos
+                                .filter((alumno) =>
+                                  normalizarNombreFueraPlazoAgenda(alumno.alumno).startsWith(busqueda)
+                                )
+                                .slice(0, 6);
+                              const nombreExacto = sugerencias.some(
+                                (alumno) =>
+                                  normalizarNombreFueraPlazoAgenda(alumno.alumno) === busqueda
+                              );
+                              if (!sugerencias.length || nombreExacto) return null;
+                              return (
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    zIndex: 30,
+                                    top: 'calc(100% + 4px)',
+                                    left: 0,
+                                    right: 0,
+                                    maxHeight: 210,
+                                    overflowY: 'auto',
+                                    border: '1px solid #cbd5e1',
+                                    borderRadius: 10,
+                                    background: '#fff',
+                                    boxShadow: '0 10px 25px rgba(15, 23, 42, 0.12)',
+                                    padding: 4,
+                                  }}
+                                >
+                                  {sugerencias.map((alumno) => (
+                                    <button
+                                      key={`sugerencia-fuera-plazo-${alumno.alumno_id}`}
+                                      type="button"
+                                      style={{
+                                        width: '100%',
+                                        border: 0,
+                                        background: 'transparent',
+                                        padding: '9px 10px',
+                                        borderRadius: 8,
+                                        textAlign: 'left',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                      }}
+                                      onClick={() => {
+                                        const nivelFicha =
+                                          alumno.nivel_actual ||
+                                          alumno.ultimo_nivel_reportado ||
+                                          alumno.nivel_estimado ||
+                                          'INICIACION';
+                                        setAlumnoFueraPlazoNombre(alumno.alumno);
+                                        setAlumnoFueraPlazoNivel(nivelFicha);
+                                        setRecomendacionesFueraPlazo([]);
+                                      }}
+                                    >
+                                      {alumno.alumno}
+                                    </button>
+                                  ))}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </label>
+                        <label style={labelCampo}>
+                          Nivel
+                          <select
+                            value={alumnoFueraPlazoNivel}
+                            onChange={(e) => {
+                              setAlumnoFueraPlazoNivel(e.target.value);
+                              setRecomendacionesFueraPlazo([]);
+                            }}
+                          >
+                            <option value="">Automático / INICIACIÓN si es nuevo</option>
+                            <option value="INICIACION">INICIACIÓN</option>
+                            <option value="A">A</option>
+                            <option value="A+">A+</option>
+                            <option value="B">B</option>
+                            <option value="B+">B+</option>
+                            <option value="C">C</option>
+                            <option value="C+">C+</option>
+                            <option value="D">D</option>
+                            <option value="D+">D+</option>
+                          </select>
+                        </label>
+                      </div>
+
+                      <button
+                        type="button"
+                        style={{ ...botonPrincipal, marginTop: 10 }}
+                        disabled={analizandoFueraPlazo}
+                        onClick={analizarEncajeAlumnoFueraPlazoAgenda}
+                      >
+                        {analizandoFueraPlazo ? 'Analizando…' : 'Analizar encaje'}
+                      </button>
+
+                      {recomendacionesFueraPlazo.length > 0 && (() => {
+                        const opcionesTurnoActual = recomendacionesFueraPlazo.filter(
+                          (opcion) => opcion.es_sesion_actual
+                        );
+                        const opcionesRecomendadasTurnoActual = opcionesTurnoActual.filter(
+                          (opcion) => opcion.estado === 'RECOMENDADO'
+                        );
+                        const opcionesRevisionTurnoActual = opcionesTurnoActual.filter(
+                          (opcion) => opcion.estado === 'REVISAR'
+                        );
+
+                        // Fuera del turno actual solo enseñamos alternativas que
+                        // realmente ENCAJAN. Los NO_ENCAJA y REVISAR no aportan
+                        // valor como propuesta de cambio de horario.
+                        const alternativasValidas = recomendacionesFueraPlazo
+                          .filter(
+                            (opcion) =>
+                              !opcion.es_sesion_actual &&
+                              opcion.estado === 'RECOMENDADO'
+                          )
+                          .slice(0, 5);
+
+                        const encajaEnTurnoActual =
+                          opcionesRecomendadasTurnoActual.length > 0;
+                        const requiereRevisionTurnoActual =
+                          !encajaEnTurnoActual &&
+                          opcionesRevisionTurnoActual.length > 0;
+
+                        const renderOpcionFueraPlazo = (
+                          opcion: RecomendacionFueraPlazoAgendaApp,
+                          etiqueta?: string
+                        ) => (
+                          <article
+                            key={`${opcion.sesion_id}-${opcion.grupo_id}`}
+                            style={{
+                              ...miniTarjetaBlanca,
+                              border:
+                                opcion.estado === 'RECOMENDADO'
+                                  ? '1px solid #86efac'
+                                  : '1px solid #fdba74',
+                              background:
+                                opcion.estado === 'RECOMENDADO' ? '#f0fdf4' : '#fff7ed',
+                            }}
+                          >
+                            <div style={agendaGrupoLinea}>
+                              <div>
+                                <strong>
+                                  {etiqueta ||
+                                    `${formatearFecha(opcion.fecha)} · ${opcion.hora_inicio?.slice(0, 5)}–${opcion.hora_fin?.slice(0, 5)}`}
+                                </strong>
+                                <p style={{ margin: '4px 0 0' }}>
+                                  {opcion.grupo} · Nivel {opcion.nivel_grupo} · {opcion.pista}
+                                </p>
+                              </div>
+                              <span
+                                style={{
+                                  ...agendaBadgeModalidad,
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {opcion.estado === 'RECOMENDADO' ? 'ENCAJA' : 'REVISAR'}
+                              </span>
+                            </div>
+                            <p style={{ margin: '8px 0 0' }}>
+                              <strong>{opcion.entrenador || 'Sin entrenador'}</strong> · Punto {opcion.punto} ·{' '}
+                              {opcion.total_actual} → {opcion.total_final} niños
+                            </p>
+                            <p style={{ margin: '6px 0 0', color: '#475569' }}>{opcion.motivo}</p>
+                          </article>
+                        );
+
+                        return (
+                          <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
+                            <article
+                              style={{
+                                ...miniTarjetaBlanca,
+                                border: encajaEnTurnoActual
+                                  ? '2px solid #22c55e'
+                                  : '2px solid #ef4444',
+                                background: encajaEnTurnoActual ? '#f0fdf4' : '#fff7f7',
+                              }}
+                            >
+                              <strong>
+                                Este turno ·{' '}
+                                {encajaEnTurnoActual
+                                  ? 'SÍ HAY ENCAJE'
+                                  : requiereRevisionTurnoActual
+                                  ? 'REQUIERE REVISIÓN'
+                                  : 'NO HAY ENCAJE'}
+                              </strong>
+                              <p style={{ margin: '5px 0 0', color: '#475569' }}>
+                                {encajaEnTurnoActual
+                                  ? 'Hay una opción compatible por nivel y ratio en el turno donde se ha apuntado.'
+                                  : requiereRevisionTurnoActual
+                                  ? 'En este turno solo hay una opción que requiere revisión manual. Debajo se buscan alternativas de la semana que sí encajen.'
+                                  : 'No hay ningún grupo compatible por nivel y ratio en este turno. Debajo se buscan alternativas de la semana que sí encajen.'}
+                              </p>
+                            </article>
+
+                            {opcionesRecomendadasTurnoActual.map((opcion) =>
+                              renderOpcionFueraPlazo(opcion, 'Este turno')
+                            )}
+
+                            {opcionesRevisionTurnoActual.map((opcion) =>
+                              renderOpcionFueraPlazo(opcion, 'Este turno · revisar')
+                            )}
+
+                            {alternativasValidas.length > 0 && (
+                              <>
+                                <strong style={{ marginTop: 4 }}>Otros turnos donde sí puede encajar</strong>
+                                {alternativasValidas.map((opcion) =>
+                                  renderOpcionFueraPlazo(opcion)
+                                )}
+                              </>
+                            )}
+
+                            {!encajaEnTurnoActual && alternativasValidas.length === 0 && (
+                              <div style={avisoNeutral}>
+                                No encuentro ningún grupo compatible en los turnos creados de esta semana.
+                              </div>
+                            )}
+
+                            <div style={{ ...avisoNeutral, marginTop: 2 }}>
+                              En esta fase la app solo recomienda. No modifica grupos publicados ni cambia al niño de horario.
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </section>
+                  )}
+
+                  <details id="agenda-alumnos-detectados" style={{ marginTop: 12, scrollMarginTop: 16 }}>
                     <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>
                       Alumnos detectados · editar niveles y fichas
                     </summary>
@@ -12095,8 +12725,37 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                       Si cambias un nivel aquí, se guarda como nivel real de la
                       ficha y se usa en toda la app.
                     </div>
+                    {agendaFiltroAlumnos !== 'TODOS' && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 8,
+                          margin: '0 0 10px',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <strong>
+                          Mostrando: {agendaFiltroAlumnos === 'NUEVO' ? 'alumnos nuevos' : 'alumnos conocidos'}
+                        </strong>
+                        <button
+                          type="button"
+                          style={botonMini}
+                          onClick={() => setAgendaFiltroAlumnos('TODOS')}
+                        >
+                          Ver todos
+                        </button>
+                      </div>
+                    )}
                     <div style={{ display: 'grid', gap: 8 }}>
-                      {agendaAlumnosSesion.map((alumno) => (
+                      {agendaAlumnosSesion
+                        .filter(
+                          (alumno) =>
+                            agendaFiltroAlumnos === 'TODOS' ||
+                            alumno.estado_en_listado === agendaFiltroAlumnos
+                        )
+                        .map((alumno) => (
                         <div
                           key={alumno.sesion_alumno_id}
                           style={agendaAlumnoLinea}
@@ -12641,7 +13300,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                   )}
 
                   {agendaGruposSesion.length > 0 && (
-                    <section style={{ marginTop: 16 }}>
+                    <section id="agenda-grupos-creados" style={{ marginTop: 16, scrollMarginTop: 16 }}>
                       <h4>Grupos creados en este día</h4>
                       <div style={{ display: 'grid', gap: 10 }}>
                         {agendaGruposSesion.map((grupo, indiceGrupoCreado) => (
