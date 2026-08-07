@@ -2790,3 +2790,39 @@
     width: 100%;
   }
 }
+
+
+/* =========================================================
+   AJUSTE FINAL · VISTA ENTRENADOR MÓVIL
+   - La confirmación pertenece a cada entrenador, no bloquea al compañero.
+   - Al abrir un grupo, se desplaza la ficha completa de forma natural.
+   ========================================================= */
+@media (max-width: 719px) {
+  .trainer-group-card.is-sheet-open {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    overscroll-behavior-y: contain !important;
+    touch-action: pan-y !important;
+  }
+
+  .trainer-group-card.is-sheet-open[data-active-section='asistencia']
+    .trainer-attendance-panel,
+  .trainer-group-card.is-sheet-open[data-active-section='trabajo']
+    .trainer-work-details,
+  .trainer-group-card.is-sheet-open[data-active-section='observaciones']
+    .trainer-observations-details {
+    flex: 0 0 auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    touch-action: auto !important;
+    padding-bottom: calc(26px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-attendance-panel,
+  .trainer-group-card.is-sheet-open .trainer-student-row,
+  .trainer-group-card.is-sheet-open .trainer-info-details {
+    overflow: visible !important;
+  }
+}

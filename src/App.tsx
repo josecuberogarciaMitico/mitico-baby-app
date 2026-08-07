@@ -9281,6 +9281,59 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     );
   }
 
+  function alumnosCompletosDelGrupo(grupoId: string) {
+    const unicos = new Map<string, AlumnoReporteEntrenador>();
+    alumnosReporteEntrenador
+      .filter((alumno) => alumno.grupo_id === grupoId)
+      .forEach((alumno) => {
+        if (!unicos.has(alumno.alumno_id)) unicos.set(alumno.alumno_id, alumno);
+      });
+    return Array.from(unicos.values()).sort((a, b) =>
+      a.alumno.localeCompare(b.alumno, 'es')
+    );
+  }
+
+  function entrenadoresDelGrupo(grupoId: string) {
+    const unicos = new Map<string, string>();
+    gruposEntrenador
+      .filter((grupo) => grupo.grupo_id === grupoId)
+      .forEach((grupo) => {
+        if (grupo.entrenador_id && grupo.entrenador) {
+          unicos.set(grupo.entrenador_id, grupo.entrenador);
+        }
+      });
+    alumnosReporteEntrenador
+      .filter((alumno) => alumno.grupo_id === grupoId)
+      .forEach((alumno) => {
+        if (alumno.entrenador_id && alumno.entrenador) {
+          unicos.set(alumno.entrenador_id, alumno.entrenador);
+        }
+      });
+    return Array.from(unicos.entries()).map(([entrenador_id, entrenador]) => ({
+      entrenador_id,
+      entrenador,
+    }));
+  }
+
+  function nombresEntrenadoresDelGrupo(grupoId: string, fallback?: string | null) {
+    const nombres = entrenadoresDelGrupo(grupoId).map((item) => item.entrenador);
+    if (nombres.length > 0) return nombres.join(' + ');
+    return fallback || 'Sin entrenador';
+  }
+
+  function repartoEntrenadoresDelGrupo(grupoId: string) {
+    return entrenadoresDelGrupo(grupoId).map((entrenador) => ({
+      ...entrenador,
+      alumnos: alumnosReporteEntrenador
+        .filter(
+          (alumno) =>
+            alumno.grupo_id === grupoId &&
+            alumno.entrenador_id === entrenador.entrenador_id
+        )
+        .sort((a, b) => a.alumno.localeCompare(b.alumno, 'es')),
+    }));
+  }
+
   function alumnosDelIntensivo(intensivoId: string) {
     return intensivoAlumnos.filter(
       (registro) => registro.intensivo_id === intensivoId
@@ -12601,7 +12654,10 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                                 {nombreGrupoVisualApp(grupo, indiceGrupoCreado)}
                               </strong>
                               <span>
-                                {grupo.entrenador || 'Sin entrenador'} ·{' '}
+                                {nombresEntrenadoresDelGrupo(
+                                  grupo.grupo_id,
+                                  grupo.entrenador
+                                )} ·{' '}
                                 {grupo.total_alumnos} niños ·{' '}
                                 {grupo.publicado ? 'Publicado' : 'Borrador'}
                               </span>
@@ -15360,9 +15416,17 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                                             indiceGrupoEntrenadorTurno
                                           ) => {
                                             const alumnosGrupo =
+                                              alumnosCompletosDelGrupo(
+                                                grupo.grupo_id
+                                              );
+                                            const alumnosPropios =
                                               alumnosDelGrupo(
                                                 grupo.grupo_id,
                                                 grupo.entrenador_id
+                                              );
+                                            const repartoGrupo =
+                                              repartoEntrenadoresDelGrupo(
+                                                grupo.grupo_id
                                               );
                                             const presentes =
                                               alumnosGrupo.filter(
@@ -15383,13 +15447,13 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                                                   'Pendiente'
                                               ).length;
                                             const faltaReporte =
-                                              alumnosGrupo.filter(
+                                              alumnosPropios.filter(
                                                 (a) =>
                                                   a.estado_reporte ===
                                                   'Falta reporte'
                                               ).length;
                                             const reportesEnviados =
-                                              alumnosGrupo.filter(
+                                              alumnosPropios.filter(
                                                 (a) =>
                                                   a.estado_reporte ===
                                                   'Reporte enviado'
@@ -15397,9 +15461,11 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                                             const asistenciaCompleta =
                                               alumnosGrupo.length > 0 &&
                                               pendientes === 0;
+                                            const confirmacionPropiaPendiente =
+                                              grupo.estado_confirmacion !== 'Confirmado';
                                             const estadoAccionGrupo =
-                                              grupo.estado_confirmacion !== 'Confirmado'
-                                                ? 'Pendiente de confirmar'
+                                              confirmacionPropiaPendiente
+                                                ? 'Pendiente de confirmar por ti'
                                                 : !asistenciaCompleta
                                                 ? 'Falta asistencia'
                                                 : faltaReporte > 0
@@ -15511,6 +15577,43 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                                                   </div>
                                                 </div>
 
+                                                {repartoGrupo.length > 1 && (
+                                                  <section
+                                                    style={{
+                                                      ...miniTarjetaBlanca,
+                                                      marginTop: 10,
+                                                      display: 'grid',
+                                                      gap: 8,
+                                                    }}
+                                                  >
+                                                    <strong>Equipo y reparto del grupo</strong>
+                                                    {repartoGrupo.map((responsable) => (
+                                                      <div
+                                                        key={`${grupo.grupo_id}-reparto-${responsable.entrenador_id}`}
+                                                        style={{
+                                                          padding: '8px 10px',
+                                                          borderRadius: 12,
+                                                          background:
+                                                            responsable.entrenador_id === grupo.entrenador_id
+                                                              ? '#eff6ff'
+                                                              : '#f8fafc',
+                                                          border: '1px solid #e2e8f0',
+                                                        }}
+                                                      >
+                                                        <strong>{responsable.entrenador}</strong>
+                                                        <span style={{ marginLeft: 6, color: '#64748b' }}>
+                                                          · {responsable.alumnos.length} niño{responsable.alumnos.length === 1 ? '' : 's'}
+                                                        </span>
+                                                        <div style={{ marginTop: 4, fontSize: 13, lineHeight: 1.45 }}>
+                                                          {responsable.alumnos.length > 0
+                                                            ? responsable.alumnos.map((alumno) => alumno.alumno).join(' · ')
+                                                            : 'Sin alumnos asignados'}
+                                                        </div>
+                                                      </div>
+                                                    ))}
+                                                  </section>
+                                                )}
+
                                                 {estadoAccionGrupo && (
                                                   <div
                                                     className="trainer-group-action-status"
@@ -15574,8 +15677,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                                                   </button>
                                                 </nav>
 
-                                                {grupo.estado_confirmacion !==
-                                                  'Confirmado' && (
+                                                {confirmacionPropiaPendiente && (
                                                   <button
                                                     type="button"
                                                     className="trainer-confirm-button"
@@ -15590,7 +15692,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                                                       width: '100%',
                                                     }}
                                                   >
-                                                    Confirmar grupo
+                                                    Confirmar mi participación
                                                   </button>
                                                 )}
 
@@ -15640,7 +15742,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                                                     <span>
                                                       Reportes{' '}
                                                       {reportesEnviados}/
-                                                      {alumnosGrupo.length}
+                                                      {alumnosPropios.length}
                                                     </span>
                                                   </div>
 
@@ -15669,6 +15771,21 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                                                                 {alumno.nivel_alumno ||
                                                                   'SIN NIVEL'}
                                                               </strong>
+                                                              <p
+                                                                style={{
+                                                                  margin: '4px 0 0',
+                                                                  fontSize: 12,
+                                                                  fontWeight: 800,
+                                                                  color:
+                                                                    alumno.entrenador_id === grupo.entrenador_id
+                                                                      ? '#1d4ed8'
+                                                                      : '#64748b',
+                                                                }}
+                                                              >
+                                                                {alumno.entrenador_id === grupo.entrenador_id
+                                                                  ? 'Asignado a ti'
+                                                                  : `Asignado a ${alumno.entrenador || 'otro entrenador'}`}
+                                                              </p>
                                                               <p
                                                                 style={{
                                                                   margin:
@@ -15756,8 +15873,10 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                                                             </div>
                                                           </div>
 
-                                                          {alumno.estado_reporte ===
-                                                            'Falta reporte' &&
+                                                          {alumno.entrenador_id ===
+                                                            grupo.entrenador_id &&
+                                                            alumno.estado_reporte ===
+                                                              'Falta reporte' &&
                                                             !formularioAbierto(
                                                               alumno
                                                             ) && (
@@ -15777,9 +15896,11 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                                                               </button>
                                                             )}
 
-                                                          {formularioAbierto(
-                                                            alumno
-                                                          ) &&
+                                                          {alumno.entrenador_id ===
+                                                            grupo.entrenador_id &&
+                                                            formularioAbierto(
+                                                              alumno
+                                                            ) &&
                                                             renderFormularioReporteEntrenador(
                                                               alumno,
                                                               grupo.nivel_grupo,
