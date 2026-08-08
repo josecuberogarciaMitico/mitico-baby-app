@@ -2652,6 +2652,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [disponibilidadEditorVista, setDisponibilidadEditorVista] = useState<
     RespuestaDisponibilidadPublicadaEntrenadoresEditor | null
   >(null);
+  const [
+    semanaPublicadaObjetivoEntrenador,
+    setSemanaPublicadaObjetivoEntrenador,
+  ] = useState('');
   const [busquedaDisponibilidad, setBusquedaDisponibilidad] = useState('');
   const [filtroDisponibilidad, setFiltroDisponibilidad] = useState<
     'todos' | 'disponibles' | 'no_puedo' | 'pendientes'
@@ -5713,9 +5717,21 @@ Gracias!`;
       const semanaOperativaDisponibilidad = inicioSemanaAgenda(
         claveFechaAgenda(fechaReferenciaDisponibilidad)
       );
-      const semanaConsulta = esCoordinadorApp
+
+      let semanaConsulta = esCoordinadorApp
         ? semanaAgendaActiva || semanaOperativaDisponibilidad
         : semanaOperativaDisponibilidad;
+
+      if (!esCoordinadorApp) {
+        const objetivo =
+          await ejecutarFuncionAuthJson<{
+            semana_inicio: string | null;
+          }>('obtener_semana_disponibilidad_objetivo_entrenador_app', {});
+
+        semanaConsulta =
+          objetivo?.semana_inicio || semanaOperativaDisponibilidad;
+        setSemanaPublicadaObjetivoEntrenador(semanaConsulta || '');
+      }
 
       if (!semanaConsulta) {
         setDisponibilidad([]);
@@ -10454,7 +10470,7 @@ Gracias!`;
   );
   const semanaVistaEntrenadorInicio = esCoordinadorApp
     ? semanaAgendaActiva || semanaActualVistaEntrenador
-    : semanaActualVistaEntrenador;
+    : semanaPublicadaObjetivoEntrenador || semanaActualVistaEntrenador;
   const semanaVistaEntrenadorFin = semanaVistaEntrenadorInicio
     ? claveFechaAgenda(
         new Date(
@@ -21744,7 +21760,16 @@ Gracias!`;
                         </span>
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fit, minmax(150px, 1fr))',
+                        gap: 8,
+                        width: '100%',
+                        minWidth: 0,
+                      }}
+                    >
                       {puedeGestionarAccesosUsuarioApp && (
                         <button
                           type="button"
@@ -21754,6 +21779,13 @@ Gracias!`;
                           onClick={() => crearAccesoAppEntrenador(entrenador)}
                           style={{
                             ...botonMini,
+                            width: '100%',
+                            minWidth: 0,
+                            minHeight: 42,
+                            whiteSpace: 'normal',
+                            lineHeight: 1.15,
+                            overflowWrap: 'break-word',
+                            textAlign: 'center',
                             background: '#f5f3ff',
                             color: '#6d28d9',
                             border: '1px solid #ddd6fe',
@@ -21775,19 +21807,33 @@ Gracias!`;
                         onClick={() => pedirDatosAltaEntrenadorWhatsapp(entrenador)}
                         style={{
                           ...botonMini,
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 42,
+                          whiteSpace: 'normal',
+                          lineHeight: 1.15,
+                          overflowWrap: 'break-word',
+                          textAlign: 'center',
                           background: '#ecfdf5',
                           color: '#047857',
                           border: '1px solid #a7f3d0',
                           fontWeight: 900,
                         }}
                       >
-                        Pedir datos · WhatsApp
+                        Pedir datos
                       </button>
                       <button
                         type="button"
                         onClick={() => abrirEditarEntrenador(entrenador)}
                         style={{
                           ...botonMini,
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 42,
+                          whiteSpace: 'normal',
+                          lineHeight: 1.15,
+                          overflowWrap: 'break-word',
+                          textAlign: 'center',
                           background: '#eff6ff',
                           color: '#1d4ed8',
                           border: '1px solid #bfdbfe',
@@ -21801,6 +21847,13 @@ Gracias!`;
                         onClick={() => eliminarEntrenadorGestion(entrenador)}
                         style={{
                           ...botonPeligro,
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 42,
+                          whiteSpace: 'normal',
+                          lineHeight: 1.15,
+                          overflowWrap: 'break-word',
+                          textAlign: 'center',
                           background: '#fff1f2',
                           color: '#be123c',
                           borderColor: '#fecdd3',
