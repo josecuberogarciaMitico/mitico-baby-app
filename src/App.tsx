@@ -3754,18 +3754,21 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   function nivelesGrupoEstableOcio(grupo: OcioGrupoApp) {
-    const niveles: string[] = [];
+    // En Ocio el grupo estable tiene un nivel objetivo propio.
+    // Ese nivel es el que debe mandar en el recomendador de incorporaciones.
+    // Los niveles individuales sirven para avisar de evolución/revisión,
+    // pero no deben bloquear que un niño compatible entre en un grupo cuyo
+    // nivel objetivo sí le corresponde.
+    if (grupo.nivel_grupo) {
+      return [grupo.nivel_grupo];
+    }
 
-    if (grupo.nivel_grupo) niveles.push(grupo.nivel_grupo);
-
-    ocioAlumnos
+    const nivelesMiembros = ocioAlumnos
       .filter((alumno) => alumno.grupo_id === grupo.grupo_id)
-      .forEach((alumno) => {
-        const nivel = alumno.nivel_usado || alumno.nivel;
-        if (nivel) niveles.push(nivel);
-      });
+      .map((alumno) => alumno.nivel_usado || alumno.nivel || '')
+      .filter(Boolean);
 
-    return Array.from(new Set(niveles.filter(Boolean)));
+    return Array.from(new Set(nivelesMiembros));
   }
 
   function evaluarEncajeGrupoEstableOcio(
@@ -5015,14 +5018,13 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
   }
 
   function trabajoDiarioOcioSemana(grupo: OcioGrupoApp) {
-    const categoria = categoriaOcioGrupo(grupo);
-    if (categoria === 'Mayores') {
-      return 'OCIO MAYORES. Objetivo: continuidad anual, autonomía, control de velocidad y dinámica de grupo. Trabajo: calentamiento, bajadas en fila, autonomía en remontes, giros encadenados, ejercicios técnicos adaptados al nivel real y revisión individual para posibles cambios de grupo.';
+    const pista = `${grupo.pista || ''}`.toLowerCase();
+
+    if (pista.includes('grande')) {
+      return 'Objetivo: consolidar autonomía, control de velocidad y ritmo de grupo. Trabajo: bajadas en fila, giros amplios, autonomía en remontes, ejercicios técnicos adaptados al nivel real y revisión individual.';
     }
-    if ((grupo.pista || '').toLowerCase().includes('grande')) {
-      return 'OCIO PEQUEÑOS EN PISTA GRANDE. Objetivo: seguridad, ritmo de grupo y consolidar autonomía. Trabajo: fila detrás del entrenador, control de velocidad, giros amplios, autonomía en remonte y revisión de confianza.';
-    }
-    return 'OCIO PEQUEÑOS. Objetivo: seguridad, confianza, rutina anual y autonomía básica. Trabajo: entrada tranquila, revisión de material, calentamiento, bajadas controladas, giros adaptados, juegos técnicos y gestión emocional del grupo.';
+
+    return 'Objetivo: seguridad, confianza, control de velocidad y autonomía. Trabajo: adaptación al ritmo del grupo, giros básicos, seguimiento de fila, ejercicios técnicos y gestión de la autonomía.';
   }
 
   function entrenadorSeleccionadoOcioSemana(grupoId: string) {
@@ -5144,6 +5146,12 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
             item.grupo_estable !== grupo.nombre_grupo || item.fecha !== fecha
         ),
       ]);
+
+      window.setTimeout(() => {
+        document
+          .getElementById('ocio-grupos-preparados-semana')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 120);
 
       await cargarAgendaOperativaDirecta();
       await cargarPlanning();
@@ -9038,15 +9046,94 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     return normalizarLineasObservacionesGrupoApp(lineas.join('\n'));
   }
 
+  function observacionEstandarAlumnoOcioApp(alumno: OcioAlumnoApp) {
+    const resumen = alumnos.find(
+      (registro) => registro.alumno_id === alumno.alumno_id
+    );
+
+    const nombre = nombreLimpioObservacionesGrupoApp(alumno.alumno);
+    const nivel = (
+      resumen?.nivel_actual ||
+      resumen?.ultimo_nivel_reportado ||
+      alumno.nivel_usado ||
+      alumno.nivel ||
+      resumen?.nivel_estimado ||
+      ''
+    )
+      .trim()
+      .toUpperCase();
+
+    const origen = `${
+      alumno.fuente_nivel ||
+      alumno.origen_nivel_estimado ||
+      resumen?.origen_nivel_estimado ||
+      ''
+    }`
+      .trim()
+      .toUpperCase();
+
+    const totalReportes = Number(
+      alumno.total_reportes ?? resumen?.total_reportes ?? 0
+    );
+
+    const revisarNivel =
+      /PENDIENTE|REVISAR|DUD|DESCONOC/.test(origen) ||
+      /REVISAR|PENDIENTE/.test(
+        `${resumen?.estado_ficha || alumno.estado_ficha || ''}`.toUpperCase()
+      );
+
+    if (totalReportes === 0) {
+      if (/FAMILIA|DECLARAD/.test(origen) && nivel) {
+        return `${nombre}: Nivel ${nivel} declarado por familia · validar en pista`;
+      }
+
+      if (revisarNivel && nivel) {
+        return `${nombre}: REVISAR NIVEL · validar en primera bajada`;
+      }
+
+      return `${nombre}: NUEVO · Sin historial. Revisar nivel y adaptación en primera bajada.`;
+    }
+
+    if (revisarNivel) {
+      return `${nombre}: REVISAR NIVEL · validar en primera bajada`;
+    }
+
+    const partes: string[] = [];
+
+    const incidencia = `${resumen?.ultima_incidencia || ''}`.trim();
+    if (
+      incidencia &&
+      !/^(NO|NINGUNA|SIN INCIDENCIA|NADA)$/i.test(incidencia)
+    ) {
+      partes.push(incidencia);
+    }
+
+    const remontes = Array.isArray(resumen?.ultimos_remontes)
+      ? resumen.ultimos_remontes.filter(Boolean).join(', ')
+      : '';
+    const autonomia = `${resumen?.ultima_autonomia || ''}`.trim();
+    const seguridad = [remontes, autonomia].filter(Boolean).join(' · ');
+    if (seguridad) partes.push(seguridad);
+
+    const actitud = `${resumen?.ultima_actitud || ''}`.trim();
+    if (actitud) partes.push(actitud);
+
+    const tecnica = `${resumen?.ultima_tecnica || ''}`.trim();
+    const recomendacion = `${resumen?.ultima_recomendacion || ''}`.trim();
+    const tecnico = [tecnica, recomendacion].filter(Boolean).join(' · ');
+    if (tecnico) partes.push(tecnico);
+
+    const detalle = limpiarObservacionCortaGrupoApp(
+      partes.filter(Boolean).slice(0, 3).join(' · '),
+      220
+    );
+
+    return `${nombre}: ${detalle || 'Nada relevante'}`;
+  }
+
   function observacionesAutomaticasGrupoOcio(alumnosGrupo: OcioAlumnoApp[]) {
     const lineas = alumnosGrupo
-      .map((alumno) =>
-        fraseImportanteAlumnoGrupoApp(
-          alumno.alumno,
-          alumno.observaciones,
-          alumno.grupo_pista
-        )
-      )
+      .map((alumno) => observacionEstandarAlumnoOcioApp(alumno))
       .filter(Boolean);
 
     if (lineas.length === 0) return '';
@@ -11497,17 +11584,57 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
   }
 
   return (
-    <main style={layout}>
-      <header style={cabeceraAppLimpia}>
-        <div style={cabeceraMarcaApp}>
+    <main
+      style={{
+        ...layout,
+        ...(esEntrenadorApp
+          ? {
+              width: '100%',
+              maxWidth: '100vw',
+              minWidth: 0,
+              overflowX: 'hidden',
+              boxSizing: 'border-box',
+            }
+          : {}),
+      }}
+    >
+      <header
+        style={{
+          ...cabeceraAppLimpia,
+          ...(esEntrenadorApp
+            ? {
+                width: '100%',
+                maxWidth: '100%',
+                minWidth: 0,
+                boxSizing: 'border-box',
+                overflow: 'hidden',
+              }
+            : {}),
+        }}
+      >
+        <div
+          style={{
+            ...cabeceraMarcaApp,
+            ...(esEntrenadorApp
+              ? {
+                  width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
+                  boxSizing: 'border-box',
+                }
+              : {}),
+          }}
+        >
           <div
             style={{
               display: 'flex',
               alignItems: 'flex-start',
               justifyContent: 'flex-start',
-              gap: 18,
+              gap: esEntrenadorApp ? 12 : 18,
               flexWrap: 'wrap',
               width: '100%',
+              minWidth: 0,
+              boxSizing: 'border-box',
             }}
           >
             <div
@@ -11517,25 +11644,90 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                 alignItems: 'flex-start',
                 gap: 12,
                 minWidth: 0,
+                ...(esEntrenadorApp
+                  ? {
+                      width: '100%',
+                      maxWidth: '100%',
+                    }
+                  : {}),
               }}
             >
-              <div style={marcaLogoTituloApp}>
+              <div
+                style={{
+                  ...marcaLogoTituloApp,
+                  ...(esEntrenadorApp
+                    ? {
+                        width: '100%',
+                        maxWidth: '100%',
+                        minWidth: 0,
+                        display: 'grid',
+                        gridTemplateColumns: '64px minmax(0, 1fr)',
+                        alignItems: 'center',
+                        gap: 12,
+                        boxSizing: 'border-box',
+                      }
+                    : {}),
+                }}
+              >
                 <img
                   src={LOGO_MITICO_CLUB}
                   alt="Mítico Club"
-                  style={logoMarcaApp}
+                  style={{
+                    ...logoMarcaApp,
+                    ...(esEntrenadorApp
+                      ? {
+                          width: 64,
+                          height: 64,
+                          maxWidth: '100%',
+                        }
+                      : {}),
+                  }}
                 />
-                <div>
-                  <p style={marcaKickerApp}>Mítico Club · coordinación deportiva</p>
-                  <h1 style={tituloMarcaApp}>MITICO BABY / OCIO LOGISTICA</h1>
+                <div style={{ minWidth: 0 }}>
+                  <p
+                    style={{
+                      ...marcaKickerApp,
+                      ...(esEntrenadorApp
+                        ? {
+                            whiteSpace: 'normal',
+                            overflowWrap: 'anywhere',
+                          }
+                        : {}),
+                    }}
+                  >
+                    Mítico Club · coordinación deportiva
+                  </p>
+                  <h1
+                    style={{
+                      ...tituloMarcaApp,
+                      ...(esEntrenadorApp
+                        ? {
+                            fontSize: 'clamp(28px, 8vw, 42px)',
+                            lineHeight: 0.98,
+                            whiteSpace: 'normal',
+                            overflowWrap: 'break-word',
+                            maxWidth: '100%',
+                          }
+                        : {}),
+                    }}
+                  >
+                    MITICO BABY / OCIO LOGISTICA
+                  </h1>
                 </div>
               </div>
 
               <div
                 style={{
-                  display: 'inline-flex',
+                  display: esEntrenadorApp ? 'grid' : 'inline-flex',
+                  gridTemplateColumns: esEntrenadorApp
+                    ? 'minmax(0, 1fr) minmax(0, 1.35fr)'
+                    : undefined,
                   alignItems: 'center',
                   gap: 10,
+                  width: esEntrenadorApp ? '100%' : undefined,
+                  maxWidth: '100%',
+                  minWidth: 0,
+                  boxSizing: 'border-box',
                   border: '1px solid rgba(15, 118, 110, 0.22)',
                   background: 'rgba(240, 253, 250, 0.92)',
                   borderRadius: 14,
@@ -11565,8 +11757,10 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                     display: 'flex',
                     alignItems: 'center',
                     gap: 12,
-                    width: 'fit-content',
+                    width: esEntrenadorApp ? '100%' : 'fit-content',
                     maxWidth: '100%',
+                    minWidth: 0,
+                    boxSizing: 'border-box',
                     border: '1px solid #dbe3ee',
                     background: 'rgba(255, 255, 255, 0.94)',
                     borderRadius: 16,
@@ -11604,7 +11798,8 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                         color: '#172033',
                         fontSize: 14,
                         lineHeight: 1.2,
-                        whiteSpace: 'nowrap',
+                        whiteSpace: esEntrenadorApp ? 'normal' : 'nowrap',
+                        overflowWrap: esEntrenadorApp ? 'anywhere' : undefined,
                       }}
                     >
                       {perfilUsuario.nombre}
@@ -11647,6 +11842,8 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                       transition:
                         'background 160ms ease, color 160ms ease, border-color 160ms ease, transform 120ms ease',
                       transform: salirActivoCabecera ? 'translateY(-1px)' : 'none',
+                      flex: '0 0 auto',
+                      marginLeft: 'auto',
                     }}
                   >
                     Salir
@@ -11752,19 +11949,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
               </button>
             </div>
           </nav>
-        ) : (
-          <nav style={menuPrincipalApp}>
-            <div style={menuBloqueColor('#0f766e', '#ecfdf5')}>
-              <span style={menuTituloColor('#0f766e')}>Entrenador</span>
-              <button
-                onClick={() => abrirPantallaConScroll('entrenador')}
-                style={botonMenuColor(true, '#0f766e')}
-              >
-                Mi panel
-              </button>
-            </div>
-          </nav>
-        )}
+        ) : null}
       </header>
 
       {whatsappPreview && (
@@ -15010,10 +15195,6 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                   Ocio · temporada
                 </span>
                 <h2 style={{ margin: '5px 0 0' }}>Grupos estables</h2>
-                <p style={{ margin: '7px 0 0', color: '#475569' }}>
-                  Misma operativa que Baby, con grupos que se mantienen durante
-                  la temporada.
-                </p>
               </div>
 
               <div
@@ -15924,10 +16105,16 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                     .filter(
                       (opcion) =>
                         !opcion.esTurnoActual &&
-                        opcion.estado === 'RECOMENDADO'
+                        opcion.estado !== 'NO_ENCAJA' &&
+                        esTurnoOficialOcio(opcion.grupo)
                     )
-                    .sort((a, b) => b.score - a.score)
-                    .slice(0, 5);
+                    .sort((a, b) => {
+                      if (a.estado !== b.estado) {
+                        return a.estado === 'RECOMENDADO' ? -1 : 1;
+                      }
+                      return b.score - a.score;
+                    })
+                    .slice(0, 6);
 
                   return (
                     <article style={agendaBloqueBlanco}>
@@ -16197,62 +16384,115 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                                   marginBottom: 8,
                                 }}
                               >
-                                Otros turnos donde sí encaja
+                                Opciones en otros días de Ocio
                               </strong>
                               <div style={{ display: 'grid', gap: 8 }}>
-                                {alternativas.map((opcion) => (
-                                  <article
-                                    key={`ocio-rec-alt-${opcion.grupo.grupo_id}`}
-                                    style={{
-                                      ...avisoCompleto,
-                                      background: '#ffffff',
-                                      borderColor: '#bbf7d0',
-                                    }}
-                                  >
-                                    <strong>
-                                      {opcion.grupo.dia_semana} ·{' '}
-                                      {horaCorta(opcion.grupo.hora_inicio)}–
-                                      {horaCorta(opcion.grupo.hora_fin)}
-                                    </strong>
-                                    <div style={{ marginTop: 4 }}>
-                                      {opcion.grupo.nombre_grupo} · Nivel{' '}
-                                      {opcion.grupo.nivel_grupo || '-'} ·{' '}
-                                      {opcion.totalActual} → {opcion.totalFinal}{' '}
-                                      niños
-                                    </div>
-                                    <div
+                                {alternativas.map((opcion) => {
+                                  const recomendado =
+                                    opcion.estado === 'RECOMENDADO';
+
+                                  return (
+                                    <article
+                                      key={`ocio-rec-alt-${opcion.grupo.grupo_id}`}
                                       style={{
-                                        color: '#475569',
-                                        marginTop: 4,
+                                        ...(recomendado
+                                          ? avisoCompleto
+                                          : avisoNeutral),
+                                        background: recomendado
+                                          ? '#f0fdf4'
+                                          : '#fff7ed',
+                                        borderColor: recomendado
+                                          ? '#86efac'
+                                          : '#fdba74',
                                       }}
                                     >
-                                      {opcion.motivo}
-                                    </div>
-                                    <button
-                                      type="button"
-                                      disabled={
-                                        ocioNuevoGuardandoGrupoId ===
+                                      <div style={agendaCabeceraLinea}>
+                                        <div>
+                                          <strong>
+                                            {opcion.grupo.dia_semana} ·{' '}
+                                            {horaCorta(
+                                              opcion.grupo.hora_inicio
+                                            )}–
+                                            {horaCorta(
+                                              opcion.grupo.hora_fin
+                                            )}
+                                          </strong>
+                                          <div style={{ marginTop: 4 }}>
+                                            {opcion.grupo.nombre_grupo} · Nivel{' '}
+                                            {opcion.grupo.nivel_grupo || '-'} ·{' '}
+                                            {opcion.totalActual} →{' '}
+                                            {opcion.totalFinal} niños
+                                          </div>
+                                          <div
+                                            style={{
+                                              color: '#475569',
+                                              marginTop: 4,
+                                            }}
+                                          >
+                                            {opcion.motivo}
+                                          </div>
+                                        </div>
+
+                                        <strong
+                                          style={{
+                                            color: recomendado
+                                              ? '#166534'
+                                              : '#9a3412',
+                                            fontSize: 12,
+                                          }}
+                                        >
+                                          {recomendado
+                                            ? 'RECOMENDADO'
+                                            : 'REVISAR'}
+                                        </strong>
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        disabled={
+                                          ocioNuevoGuardandoGrupoId ===
+                                          opcion.grupo.grupo_id
+                                        }
+                                        onClick={() =>
+                                          incorporarNuevoAlumnoOcio(opcion)
+                                        }
+                                        style={{
+                                          ...(recomendado
+                                            ? botonPrincipal
+                                            : botonSecundario),
+                                          width: '100%',
+                                          marginTop: 9,
+                                        }}
+                                      >
+                                        {ocioNuevoGuardandoGrupoId ===
                                         opcion.grupo.grupo_id
-                                      }
-                                      onClick={() =>
-                                        incorporarNuevoAlumnoOcio(opcion)
-                                      }
-                                      style={{
-                                        ...botonPrincipal,
-                                        width: '100%',
-                                        marginTop: 9,
-                                      }}
-                                    >
-                                      {ocioNuevoGuardandoGrupoId ===
-                                      opcion.grupo.grupo_id
-                                        ? 'Añadiendo…'
-                                        : 'Padres OK · añadir a este turno'}
-                                    </button>
-                                  </article>
-                                ))}
+                                          ? 'Añadiendo…'
+                                          : recomendado
+                                          ? 'Padres OK · añadir a este turno'
+                                          : 'Padres OK · añadir con revisión'}
+                                      </button>
+                                    </article>
+                                  );
+                                })}
                               </div>
                             </div>
                           )}
+
+                          {alternativas.length === 0 &&
+                            recomendadoActual.length === 0 &&
+                            revisarActual.length === 0 && (
+                              <div
+                                style={{
+                                  ...avisoNeutral,
+                                  borderColor: '#fecaca',
+                                  background: '#fff7f7',
+                                  color: '#991b1b',
+                                }}
+                              >
+                                Tampoco hay un grupo compatible en los otros
+                                turnos de Ocio.
+                              </div>
+                            )}
                         </div>
                       )}
                     </article>
@@ -16636,20 +16876,6 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
 
                             <div
                               style={{
-                                ...avisoNeutral,
-                                marginTop: 8,
-                                padding: 9,
-                                fontSize: 13,
-                              }}
-                            >
-                              Si este grupo necesita dos entrenadores, prepara
-                              primero el grupo y usa <strong>Abrir grupo</strong>{' '}
-                              para añadir el segundo entrenador con el mismo
-                              selector que Baby antes de publicarlo.
-                            </div>
-
-                            <div
-                              style={{
                                 display: 'grid',
                                 gap: 7,
                                 marginTop: 12,
@@ -16715,7 +16941,10 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                     </div>
 
                     {ocioSemanaResultados.length > 0 && (
-                      <article style={agendaBloqueBlanco}>
+                      <article
+                        id="ocio-grupos-preparados-semana"
+                        style={{ ...agendaBloqueBlanco, scrollMarginTop: 18 }}
+                      >
                         <h3 style={{ marginTop: 0 }}>
                           Grupos preparados esta semana
                         </h3>
@@ -16815,17 +17044,6 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                           })}
                         </div>
 
-                        <div
-                          style={{
-                            ...avisoNeutral,
-                            marginTop: 12,
-                            padding: 10,
-                          }}
-                        >
-                          Los grupos publicados ya usan el flujo común de la
-                          app: Vista entrenador, confirmación individual,
-                          asistencia, reportes y cobros.
-                        </div>
                       </article>
                     )}
                   </>
@@ -18044,7 +18262,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
         <section className="trainer-view" style={vistaEntrenadorShell}>
           <div className="trainer-hero" style={entrenadorHeroApp}>
             <div>
-              <p style={etiquetaSuperior}>VISTA ENTRENADOR · RESPONSIVE</p>
+              <p style={etiquetaSuperior}>VISTA ENTRENADOR</p>
               <h2 style={{ margin: 0 }}>Panel del entrenador</h2>
               <div style={entrenadorHeroChips}>
                 <span>
@@ -18121,12 +18339,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
           {cargando && <p>Cargando vista entrenador...</p>}
 
           {!cargando &&
-            tabVistaEntrenador === 'disponibilidad' &&
-            disponibilidadSemanalVistaEntrenador.filter((grupo) =>
-              grupo.entrenador
-                .toLowerCase()
-                .includes(busquedaGrupoEntrenador.toLowerCase())
-            ).length > 0 && (
+            tabVistaEntrenador === 'disponibilidad' && (
               <section style={{ display: 'grid', gap: 12 }}>
                 <section className="trainer-availability-reminder">
                   <strong>Recordatorio semanal</strong>
@@ -18136,6 +18349,16 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                     la semana.
                   </p>
                 </section>
+
+                {disponibilidadSemanalVistaEntrenador.filter((grupo) =>
+                  grupo.entrenador
+                    .toLowerCase()
+                    .includes(busquedaGrupoEntrenador.toLowerCase())
+                ).length === 0 && (
+                  <div style={agendaVacio}>
+                    Todavía no hay disponibilidad publicada para esta semana.
+                  </div>
+                )}
 
                 {disponibilidadSemanalVistaEntrenador
                   .filter((grupo) =>
