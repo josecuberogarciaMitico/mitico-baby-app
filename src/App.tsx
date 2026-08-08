@@ -19022,8 +19022,8 @@ Gracias!`;
               <p style={etiquetaSuperior}>VISTA ENTRENADOR</p>
               <h2 style={{ margin: 0 }}>Panel del entrenador</h2>
               <div style={entrenadorHeroChips}>
-                <span>
-                  Semana{' '}
+                <span className="trainer-current-week-chip">
+                  <strong>Semana actual:</strong>{' '}
                   {semanaVistaEntrenadorInicio
                     ? rangoSemanaAgenda(semanaVistaEntrenadorInicio)
                     : '-'}
@@ -19035,9 +19035,11 @@ Gracias!`;
                   pendientes
                 </span>
                 {disponibilidadEditorVista?.existe && (
-                  <span>
-                    Disponibilidad publicada · v
-                    {disponibilidadEditorVista.version_publicada}
+                  <span className="trainer-published-week-chip">
+                    <strong>Disponibilidad publicada:</strong>{' '}
+                    {disponibilidadEditorVista.semana_inicio
+                      ? rangoSemanaAgenda(disponibilidadEditorVista.semana_inicio)
+                      : '-'}
                   </span>
                 )}
               </div>
@@ -23077,15 +23079,18 @@ Gracias!`;
               <div className="availability-editor-hero-status">
                 <strong>
                   {estadoServidorDisponibilidadEditor === 'publicado'
-                    ? `Publicado${
-                        versionPublicadaDisponibilidadEditor > 0
-                          ? ` · v${versionPublicadaDisponibilidadEditor}`
-                          : ''
-                      }`
+                    ? 'Semana publicada'
                     : estadoServidorDisponibilidadEditor === 'borrador'
                     ? 'Borrador'
                     : 'Sin preparar'}
                 </strong>
+                {estadoServidorDisponibilidadEditor === 'publicado' && (
+                  <span className="availability-editor-published-week">
+                    {borradorDisponibilidadEditor?.semana_inicio
+                      ? rangoSemanaAgenda(borradorDisponibilidadEditor.semana_inicio)
+                      : '-'}
+                  </span>
+                )}
                 <span>
                   {resumenBorradorDisponibilidadEditor.dias} días ·{' '}
                   {resumenBorradorDisponibilidadEditor.turnos} turnos
@@ -23414,11 +23419,7 @@ Gracias!`;
                       className={`availability-server-status availability-server-status--${estadoServidorDisponibilidadEditor}`}
                     >
                       {estadoServidorDisponibilidadEditor === 'publicado'
-                        ? `Publicado${
-                            versionPublicadaDisponibilidadEditor > 0
-                              ? ` · v${versionPublicadaDisponibilidadEditor}`
-                              : ''
-                          }`
+                        ? 'Publicado'
                         : estadoServidorDisponibilidadEditor === 'borrador'
                         ? 'Borrador en Supabase'
                         : 'Sin preparar'}
