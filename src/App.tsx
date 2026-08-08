@@ -1496,6 +1496,22 @@ type PerfilUsuarioApp = {
   activo: boolean;
 };
 
+type UsuarioOperativoGestionApp = {
+  id: string;
+  auth_user_id: string | null;
+  email: string;
+  nombre: string;
+  rol: 'coordinador_jefe' | 'sub_coordinador' | 'administracion' | 'coordinador';
+  activo: boolean;
+  estado_acceso:
+    | 'activo'
+    | 'invitacion_pendiente'
+    | 'desactivado'
+    | 'revisar';
+  confirmado_at: string | null;
+  ultimo_acceso_at: string | null;
+};
+
 type SesionAuthApp = {
   access_token: string;
   refresh_token?: string;
@@ -2473,6 +2489,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     | 'ocioCambios'
     | 'revisionOcio'
     | 'entrenadores'
+    | 'usuarios'
     | 'disponibilidad'
     | 'reportes'
     | 'cobros'
@@ -2504,7 +2521,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     if (
       esCoordinadorApp &&
       !esCoordinadorJefeApp &&
-      (pantalla === 'cobros' || pantalla === 'exportaciones')
+      (pantalla === 'cobros' ||
+        pantalla === 'exportaciones' ||
+        pantalla === 'usuarios')
     ) {
       setPantalla('agenda');
     }
@@ -2514,6 +2533,21 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     esCoordinadorJefeApp,
     pantalla,
   ]);
+
+  const [usuariosOperativos, setUsuariosOperativos] = useState<
+    UsuarioOperativoGestionApp[]
+  >([]);
+  const [cargandoUsuariosOperativos, setCargandoUsuariosOperativos] =
+    useState(false);
+  const [gestionandoUsuarioOperativoId, setGestionandoUsuarioOperativoId] =
+    useState('');
+  const [mostrarAltaUsuarioOperativo, setMostrarAltaUsuarioOperativo] =
+    useState(false);
+  const [formUsuarioOperativo, setFormUsuarioOperativo] = useState({
+    nombre: '',
+    email: '',
+    rol: 'sub_coordinador' as 'sub_coordinador' | 'administracion',
+  });
 
   const [avisos, setAvisos] = useState<AvisoJose[]>([]);
   const [resumenInicio, setResumenInicio] = useState<ResumenInicio>({
@@ -5663,6 +5697,178 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     }
 
     setCargando(false);
+  }
+
+  async function llamarGestionUsuariosOperativos(
+    accion: string,
+    payload: Record<string, unknown> = {}
+  ) {
+    const accessToken = await obtenerAccessTokenSupabaseApp();
+
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/functions/v1/gestionar-usuarios-operativos-app`,
+      {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accion,
+          ...payload,
+        }),
+      }
+    );
+
+    const datos = await respuesta.json().catch(() => ({}));
+
+    if (!respuesta.ok) {
+      throw new Error(
+        datos?.message ||
+          datos?.error ||
+          `No se pudo gestionar el usuario (${respuesta.status}).`
+      );
+    }
+
+    return datos;
+  }
+
+  async function cargarUsuariosOperativos() {
+    if (!puedeGestionarAccesosUsuarioApp) {
+      setUsuariosOperativos([]);
+      return;
+    }
+
+    setCargandoUsuariosOperativos(true);
+    setError('');
+
+    try {
+      const datos = await llamarGestionUsuariosOperativos('listar');
+      setUsuariosOperativos(datos?.usuarios || []);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudieron cargar los usuarios de coordinación.'
+      );
+    } finally {
+      setCargandoUsuariosOperativos(false);
+    }
+  }
+
+  async function crearUsuarioOperativo() {
+    if (!puedeGestionarAccesosUsuarioApp) return;
+
+    const nombre = formUsuarioOperativo.nombre.trim();
+    const email = formUsuarioOperativo.email.trim().toLowerCase();
+    const rol = formUsuarioOperativo.rol;
+
+    if (!nombre || !email) {
+      setError('Completa nombre y email.');
+      return;
+    }
+
+    if (!email.includes('@')) {
+      setError('El email no parece válido.');
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `¿Crear acceso de ${rolUsuarioTextoApp(rol)} para ${nombre}?\n\nSe enviará una invitación a ${email}.`
+      )
+    ) {
+      return;
+    }
+
+    setGestionandoUsuarioOperativoId('nuevo');
+    setError('');
+
+    try {
+      const redirectTo =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}${window.location.pathname}`
+          : '';
+
+      await llamarGestionUsuariosOperativos('crear', {
+        nombre,
+        email,
+        rol,
+        redirect_to: redirectTo,
+      });
+
+      setFormUsuarioOperativo({
+        nombre: '',
+        email: '',
+        rol: 'sub_coordinador',
+      });
+      setMostrarAltaUsuarioOperativo(false);
+      await cargarUsuariosOperativos();
+
+      window.alert(`Invitación enviada a ${email}.`);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo crear el acceso.'
+      );
+    } finally {
+      setGestionandoUsuarioOperativoId('');
+    }
+  }
+
+  async function gestionarUsuarioOperativo(
+    usuario: UsuarioOperativoGestionApp,
+    accion:
+      | 'desactivar'
+      | 'activar'
+      | 'reenviar_invitacion'
+      | 'enviar_recuperacion'
+  ) {
+    if (!puedeGestionarAccesosUsuarioApp) return;
+
+    const textos = {
+      desactivar: `¿Desactivar el acceso de ${usuario.nombre}?`,
+      activar: `¿Volver a activar el acceso de ${usuario.nombre}?`,
+      reenviar_invitacion: `¿Reenviar la invitación a ${usuario.email}?`,
+      enviar_recuperacion: `¿Enviar recuperación de contraseña a ${usuario.email}?`,
+    };
+
+    if (!window.confirm(textos[accion])) return;
+
+    setGestionandoUsuarioOperativoId(usuario.id);
+    setError('');
+
+    try {
+      const redirectTo =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}${window.location.pathname}`
+          : '';
+
+      await llamarGestionUsuariosOperativos(accion, {
+        usuario_id: usuario.id,
+        redirect_to: redirectTo,
+      });
+
+      await cargarUsuariosOperativos();
+
+      if (accion === 'reenviar_invitacion') {
+        window.alert(`Invitación reenviada a ${usuario.email}.`);
+      }
+
+      if (accion === 'enviar_recuperacion') {
+        window.alert(`Recuperación enviada a ${usuario.email}.`);
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo gestionar el usuario.'
+      );
+    } finally {
+      setGestionandoUsuarioOperativoId('');
+    }
   }
 
   async function llamarGestionAccesoEntrenador(
@@ -10084,6 +10290,9 @@ Gracias!`;
       cargarAgendaOperativaDirecta();
     }
     if (pantalla === 'entrenadores') cargarEntrenadores();
+    if (pantalla === 'usuarios' && esCoordinadorJefeApp) {
+      cargarUsuariosOperativos();
+    }
     if (pantalla === 'disponibilidad') cargarDisponibilidad();
     if (pantalla === 'reportes') cargarReportesPendientes();
     if (pantalla === 'cobros' && esCoordinadorJefeApp) {
@@ -12475,6 +12684,12 @@ Gracias!`;
                   )}
                 >
                   Exportaciones
+                </button>
+                <button
+                  onClick={() => abrirPantallaConScroll('usuarios')}
+                  style={botonMenuColor(pantalla === 'usuarios', '#e11d48')}
+                >
+                  Accesos equipo
                 </button>
               </div>
             )}
@@ -21686,6 +21901,358 @@ Gracias!`;
             </section>
           );
         })()}
+
+      {pantalla === 'usuarios' && esCoordinadorJefeApp && (
+        <section>
+          <div style={cabeceraPantalla}>
+            <div>
+              <h2>Accesos equipo</h2>
+              <p style={{ margin: '6px 0 0', color: '#555' }}>
+                Cuentas de coordinación y administración. Los entrenadores se
+                gestionan desde su propia ficha.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setMostrarAltaUsuarioOperativo(true)}
+                style={botonPrincipal}
+              >
+                + Crear acceso
+              </button>
+              <button
+                type="button"
+                onClick={cargarUsuariosOperativos}
+                style={botonSecundario}
+              >
+                Actualizar
+              </button>
+            </div>
+          </div>
+
+          {mostrarAltaUsuarioOperativo && (
+            <article
+              style={{
+                ...agendaBloqueBlanco,
+                border: '1px solid #fecdd3',
+                background:
+                  'linear-gradient(135deg, rgba(255,241,242,0.95), rgba(255,255,255,0.98))',
+              }}
+            >
+              <h3 style={{ marginTop: 0 }}>Nuevo acceso de equipo</h3>
+
+              <div style={gridFormulario}>
+                <label style={labelCampo}>
+                  Nombre completo
+                  <input
+                    value={formUsuarioOperativo.nombre}
+                    onChange={(e) =>
+                      setFormUsuarioOperativo({
+                        ...formUsuarioOperativo,
+                        nombre: e.target.value,
+                      })
+                    }
+                    placeholder="Nombre y apellidos"
+                    style={inputCampo}
+                  />
+                </label>
+
+                <label style={labelCampo}>
+                  Email
+                  <input
+                    value={formUsuarioOperativo.email}
+                    onChange={(e) =>
+                      setFormUsuarioOperativo({
+                        ...formUsuarioOperativo,
+                        email: e.target.value,
+                      })
+                    }
+                    placeholder="correo@ejemplo.com"
+                    style={inputCampo}
+                  />
+                </label>
+
+                <label style={labelCampo}>
+                  Rol
+                  <select
+                    value={formUsuarioOperativo.rol}
+                    onChange={(e) =>
+                      setFormUsuarioOperativo({
+                        ...formUsuarioOperativo,
+                        rol: e.target.value as
+                          | 'sub_coordinador'
+                          | 'administracion',
+                      })
+                    }
+                    style={selectCampo}
+                  >
+                    <option value="sub_coordinador">Sub-coordinador</option>
+                    <option value="administracion">Administración</option>
+                  </select>
+                </label>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  marginTop: 14,
+                }}
+              >
+                <button
+                  type="button"
+                  disabled={gestionandoUsuarioOperativoId === 'nuevo'}
+                  onClick={crearUsuarioOperativo}
+                  style={botonPrincipal}
+                >
+                  {gestionandoUsuarioOperativoId === 'nuevo'
+                    ? 'Enviando invitación…'
+                    : 'Crear acceso y enviar invitación'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMostrarAltaUsuarioOperativo(false)}
+                  style={botonSecundario}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </article>
+          )}
+
+          {cargandoUsuariosOperativos && <p>Cargando accesos…</p>}
+
+          {!cargandoUsuariosOperativos &&
+            usuariosOperativos.length === 0 &&
+            !error && (
+              <article style={tarjetaMovilVacia}>
+                <h3 style={{ marginTop: 0 }}>Sin usuarios operativos</h3>
+                <p style={{ marginBottom: 0 }}>
+                  Aquí aparecerán los accesos de coordinación y administración.
+                </p>
+              </article>
+            )}
+
+          <div style={{ display: 'grid', gap: 12 }}>
+            {usuariosOperativos.map((usuario) => {
+              const esJefe = usuario.rol === 'coordinador_jefe';
+              const gestionando =
+                gestionandoUsuarioOperativoId === usuario.id;
+
+              const textoEstado =
+                usuario.estado_acceso === 'activo'
+                  ? 'Acceso activo'
+                  : usuario.estado_acceso === 'invitacion_pendiente'
+                  ? 'Invitación pendiente'
+                  : usuario.estado_acceso === 'desactivado'
+                  ? 'Acceso desactivado'
+                  : 'Revisar acceso';
+
+              const colorEstado =
+                usuario.estado_acceso === 'activo'
+                  ? {
+                      background: '#ecfdf5',
+                      color: '#047857',
+                      borderColor: '#a7f3d0',
+                    }
+                  : usuario.estado_acceso === 'invitacion_pendiente'
+                  ? {
+                      background: '#fff7ed',
+                      color: '#9a3412',
+                      borderColor: '#fed7aa',
+                    }
+                  : usuario.estado_acceso === 'desactivado'
+                  ? {
+                      background: '#fef2f2',
+                      color: '#b91c1c',
+                      borderColor: '#fecaca',
+                    }
+                  : {
+                      background: '#f8fafc',
+                      color: '#64748b',
+                      borderColor: '#cbd5e1',
+                    };
+
+              return (
+                <article
+                  key={usuario.id}
+                  style={{
+                    ...agendaBloqueBlanco,
+                    border: '1px solid #e2e8f0',
+                    marginBottom: 0,
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      flexWrap: 'wrap',
+                      alignItems: 'flex-start',
+                    }}
+                  >
+                    <div>
+                      <h3 style={{ margin: 0 }}>{usuario.nombre}</h3>
+                      <p
+                        style={{
+                          margin: '5px 0 0',
+                          color: '#475569',
+                          overflowWrap: 'anywhere',
+                        }}
+                      >
+                        {usuario.email}
+                      </p>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 6,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span
+                        style={{
+                          ...agendaBadgeModalidad,
+                          background: esJefe ? '#fff1f2' : '#eff6ff',
+                          color: esJefe ? '#be123c' : '#1d4ed8',
+                          borderColor: esJefe ? '#fecdd3' : '#bfdbfe',
+                        }}
+                      >
+                        {rolUsuarioTextoApp(usuario.rol)}
+                      </span>
+                      <span
+                        style={{
+                          ...agendaBadgeModalidad,
+                          ...colorEstado,
+                        }}
+                      >
+                        {textoEstado}
+                      </span>
+                    </div>
+                  </div>
+
+                  {esJefe ? (
+                    <p
+                      style={{
+                        marginBottom: 0,
+                        color: '#64748b',
+                        fontWeight: 700,
+                      }}
+                    >
+                      Cuenta principal protegida. No se puede modificar desde
+                      esta pantalla.
+                    </p>
+                  ) : (
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fit, minmax(160px, 1fr))',
+                        gap: 8,
+                        marginTop: 14,
+                      }}
+                    >
+                      {usuario.estado_acceso === 'activo' && (
+                        <>
+                          <button
+                            type="button"
+                            disabled={gestionando}
+                            onClick={() =>
+                              gestionarUsuarioOperativo(
+                                usuario,
+                                'enviar_recuperacion'
+                              )
+                            }
+                            style={{
+                              ...botonMini,
+                              width: '100%',
+                              minHeight: 42,
+                              background: '#eff6ff',
+                              color: '#1d4ed8',
+                              border: '1px solid #bfdbfe',
+                              fontWeight: 900,
+                            }}
+                          >
+                            Recuperar contraseña
+                          </button>
+                          <button
+                            type="button"
+                            disabled={gestionando}
+                            onClick={() =>
+                              gestionarUsuarioOperativo(
+                                usuario,
+                                'desactivar'
+                              )
+                            }
+                            style={{
+                              ...botonMini,
+                              width: '100%',
+                              minHeight: 42,
+                              background: '#fff1f2',
+                              color: '#be123c',
+                              border: '1px solid #fecdd3',
+                              fontWeight: 900,
+                            }}
+                          >
+                            Desactivar acceso
+                          </button>
+                        </>
+                      )}
+
+                      {usuario.estado_acceso === 'invitacion_pendiente' && (
+                        <button
+                          type="button"
+                          disabled={gestionando}
+                          onClick={() =>
+                            gestionarUsuarioOperativo(
+                              usuario,
+                              'reenviar_invitacion'
+                            )
+                          }
+                          style={{
+                            ...botonMini,
+                            width: '100%',
+                            minHeight: 42,
+                            background: '#fff7ed',
+                            color: '#9a3412',
+                            border: '1px solid #fed7aa',
+                            fontWeight: 900,
+                          }}
+                        >
+                          Reenviar invitación
+                        </button>
+                      )}
+
+                      {usuario.estado_acceso === 'desactivado' && (
+                        <button
+                          type="button"
+                          disabled={gestionando}
+                          onClick={() =>
+                            gestionarUsuarioOperativo(usuario, 'activar')
+                          }
+                          style={{
+                            ...botonMini,
+                            width: '100%',
+                            minHeight: 42,
+                            background: '#ecfdf5',
+                            color: '#047857',
+                            border: '1px solid #a7f3d0',
+                            fontWeight: 900,
+                          }}
+                        >
+                          Activar acceso
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {pantalla === 'entrenadores' && (
         <section>
