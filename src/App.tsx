@@ -479,6 +479,22 @@ type EntrenadorResumen = {
   created_at: string;
 };
 
+type EstadoAccesoEntrenadorCodigoApp =
+  | 'sin_acceso'
+  | 'invitacion_pendiente'
+  | 'activo'
+  | 'desactivado'
+  | 'revisar';
+
+type EstadoAccesoEntrenadorApp = {
+  entrenador_id: string;
+  estado: EstadoAccesoEntrenadorCodigoApp;
+  email: string | null;
+  auth_user_id: string | null;
+  confirmado_at: string | null;
+  ultimo_acceso_at: string | null;
+};
+
 type EntrenadorFormState = {
   id: string | null;
   nombre: string;
@@ -1549,6 +1565,20 @@ function borrarSesionAuthApp() {
   window.localStorage.removeItem(MITICO_AUTH_STORAGE_KEY);
 }
 
+function tipoFlujoPasswordDesdeUrlApp(): 'invite' | 'recovery' {
+  if (typeof window === 'undefined') return 'invite';
+
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const search = new URLSearchParams(window.location.search.replace(/^\?/, ''));
+  const tipo = (
+    hash.get('type') ||
+    search.get('type') ||
+    ''
+  ).toLowerCase();
+
+  return tipo === 'recovery' ? 'recovery' : 'invite';
+}
+
 function extraerSesionInvitacionDesdeUrlApp(): SesionAuthApp | null {
   if (typeof window === 'undefined') return null;
   const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
@@ -1706,6 +1736,21 @@ async function obtenerUsuarioAuthApp(
   };
 }
 
+async function solicitarRecuperacionPasswordApp(email: string) {
+  const redirectTo =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}${window.location.pathname}`
+      : '';
+
+  await authRequestApp('recover', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: email.trim().toLowerCase(),
+      redirect_to: redirectTo || undefined,
+    }),
+  });
+}
+
 async function actualizarPasswordInvitacionApp(
   accessToken: string,
   password: string
@@ -1787,13 +1832,42 @@ const authBotonApp: React.CSSProperties = {
 
 function PantallaLoginApp({
   onLogin,
+  onRecuperarPassword,
 }: {
   onLogin: (email: string, password: string) => Promise<void>;
+  onRecuperarPassword: (email: string) => Promise<void>;
 }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [cargandoAuth, setCargandoAuth] = useState(false);
+  const [recuperandoAuth, setRecuperandoAuth] = useState(false);
   const [errorAuth, setErrorAuth] = useState('');
+  const [mensajeAuth, setMensajeAuth] = useState('');
+
+  async function recuperarPassword() {
+    setErrorAuth('');
+    setMensajeAuth('');
+
+    if (!email.trim()) {
+      setErrorAuth('Escribe primero el email de tu cuenta.');
+      return;
+    }
+
+    try {
+      setRecuperandoAuth(true);
+      await onRecuperarPassword(email.trim());
+      setMensajeAuth(
+        'Te hemos enviado un email para crear una contraseña nueva. Revisa también spam o correo no deseado.'
+      );
+    } catch (error: any) {
+      setErrorAuth(
+        error?.message ||
+          'No se ha podido enviar el email de recuperación.'
+      );
+    } finally {
+      setRecuperandoAuth(false);
+    }
+  }
 
   async function enviarLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -1903,12 +1977,55 @@ function PantallaLoginApp({
           </div>
         )}
 
+        {mensajeAuth && (
+          <div
+            style={{
+              background: '#ecfdf5',
+              color: '#047857',
+              border: '1px solid #a7f3d0',
+              borderRadius: 16,
+              padding: 12,
+              marginBottom: 12,
+              fontWeight: 800,
+              lineHeight: 1.4,
+            }}
+          >
+            {mensajeAuth}
+          </div>
+        )}
+
         <button
           type="submit"
-          disabled={cargandoAuth}
-          style={{ ...authBotonApp, opacity: cargandoAuth ? 0.7 : 1 }}
+          disabled={cargandoAuth || recuperandoAuth}
+          style={{
+            ...authBotonApp,
+            opacity: cargandoAuth || recuperandoAuth ? 0.7 : 1,
+          }}
         >
           {cargandoAuth ? 'Entrando...' : 'Entrar'}
+        </button>
+
+        <button
+          type="button"
+          disabled={cargandoAuth || recuperandoAuth}
+          onClick={recuperarPassword}
+          style={{
+            width: '100%',
+            marginTop: 10,
+            border: '1px solid #bfdbfe',
+            borderRadius: 16,
+            padding: '13px 16px',
+            background: '#eff6ff',
+            color: '#1d4ed8',
+            fontWeight: 900,
+            fontSize: 15,
+            cursor: 'pointer',
+            opacity: cargandoAuth || recuperandoAuth ? 0.7 : 1,
+          }}
+        >
+          {recuperandoAuth
+            ? 'Enviando recuperación...'
+            : '¿Has olvidado tu contraseña?'}
         </button>
       </form>
     </main>
@@ -1917,9 +2034,11 @@ function PantallaLoginApp({
 
 function PantallaCrearPasswordApp({
   sesionInvitacion,
+  modo = 'invite',
   onCompletado,
 }: {
   sesionInvitacion: SesionAuthApp;
+  modo?: 'invite' | 'recovery';
   onCompletado: (sesion: SesionAuthApp) => Promise<void>;
 }) {
   const [password, setPassword] = useState('');
@@ -1991,17 +2110,22 @@ function PantallaCrearPasswordApp({
                 fontSize: 12,
               }}
             >
-              Invitación aceptada
+              {modo === 'recovery'
+                ? 'Recuperación de acceso'
+                : 'Invitación aceptada'}
             </p>
             <h1 style={{ margin: '4px 0 0', fontSize: 26 }}>
-              Crea tu contraseña
+              {modo === 'recovery'
+                ? 'Crea una contraseña nueva'
+                : 'Crea tu contraseña'}
             </h1>
           </div>
         </div>
 
         <p style={{ marginTop: 0, color: '#475569', lineHeight: 1.45 }}>
-          Pon tu contraseña para entrar después con email y contraseña desde el
-          móvil.
+          {modo === 'recovery'
+            ? 'Escribe una contraseña nueva. Después entrarás directamente en tu cuenta.'
+            : 'Pon tu contraseña para entrar después con email y contraseña desde el móvil.'}
         </p>
 
         <label
@@ -2053,7 +2177,11 @@ function PantallaCrearPasswordApp({
           disabled={cargandoAuth}
           style={{ ...authBotonApp, opacity: cargandoAuth ? 0.7 : 1 }}
         >
-          {cargandoAuth ? 'Guardando...' : 'Guardar contraseña y entrar'}
+          {cargandoAuth
+            ? 'Guardando...'
+            : modo === 'recovery'
+            ? 'Guardar contraseña nueva y entrar'
+            : 'Guardar contraseña y entrar'}
         </button>
       </form>
     </main>
@@ -2646,6 +2774,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   );
   const [creandoAccesoEntrenadorId, setCreandoAccesoEntrenadorId] =
     useState('');
+  const [gestionandoAccesoEntrenadorId, setGestionandoAccesoEntrenadorId] =
+    useState('');
+  const [estadosAccesoEntrenadores, setEstadosAccesoEntrenadores] = useState<
+    Record<string, EstadoAccesoEntrenadorApp>
+  >({});
+  const [
+    cargandoEstadosAccesoEntrenadores,
+    setCargandoEstadosAccesoEntrenadores,
+  ] = useState(false);
 
   const [disponibilidad, setDisponibilidad] = useState<
     DisponibilidadEntrenador[]
@@ -5516,12 +5653,149 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
         'select=*&order=nombre_completo.asc'
       );
       setEntrenadores(data);
+
+      if (puedeGestionarAccesosUsuarioApp) {
+        void cargarEstadosAccesoEntrenadores(data);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
       setEntrenadores([]);
     }
 
     setCargando(false);
+  }
+
+  async function llamarGestionAccesoEntrenador(
+    accion: string,
+    payload: Record<string, unknown> = {}
+  ) {
+    const accessToken = await obtenerAccessTokenSupabaseApp();
+
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/functions/v1/gestionar-acceso-usuario-app`,
+      {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accion,
+          ...payload,
+        }),
+      }
+    );
+
+    const datos = await respuesta.json().catch(() => ({}));
+
+    if (!respuesta.ok) {
+      throw new Error(
+        datos?.message ||
+          datos?.error ||
+          `No se pudo gestionar el acceso (${respuesta.status}).`
+      );
+    }
+
+    return datos;
+  }
+
+  async function cargarEstadosAccesoEntrenadores(
+    entrenadoresBase: EntrenadorResumen[] = entrenadores
+  ) {
+    if (!puedeGestionarAccesosUsuarioApp) {
+      setEstadosAccesoEntrenadores({});
+      return;
+    }
+
+    const ids = entrenadoresBase
+      .map((entrenador) => entrenador.entrenador_id)
+      .filter(Boolean);
+
+    if (ids.length === 0) {
+      setEstadosAccesoEntrenadores({});
+      return;
+    }
+
+    setCargandoEstadosAccesoEntrenadores(true);
+
+    try {
+      const datos = await llamarGestionAccesoEntrenador('listar_estados', {
+        entrenador_ids: ids,
+      });
+
+      const mapa: Record<string, EstadoAccesoEntrenadorApp> = {};
+      (datos?.estados || []).forEach((item: EstadoAccesoEntrenadorApp) => {
+        mapa[item.entrenador_id] = item;
+      });
+      setEstadosAccesoEntrenadores(mapa);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudieron cargar los estados de acceso.'
+      );
+    } finally {
+      setCargandoEstadosAccesoEntrenadores(false);
+    }
+  }
+
+  async function gestionarAccesoEntrenador(
+    entrenador: EntrenadorResumen,
+    accion:
+      | 'reenviar_invitacion'
+      | 'desactivar'
+      | 'activar'
+      | 'enviar_recuperacion'
+  ) {
+    if (!puedeGestionarAccesosUsuarioApp) {
+      setError('Solo el coordinador jefe puede gestionar accesos.');
+      return;
+    }
+
+    const textos = {
+      reenviar_invitacion: `¿Reenviar la invitación a ${entrenador.email}?`,
+      desactivar: `¿Desactivar el acceso de ${entrenador.nombre_completo}?\n\nLa ficha, grupos, reportes y cobros históricos NO se borran.`,
+      activar: `¿Volver a activar el acceso de ${entrenador.nombre_completo}?`,
+      enviar_recuperacion: `¿Enviar un email de recuperación de contraseña a ${entrenador.email}?`,
+    };
+
+    if (!window.confirm(textos[accion])) return;
+
+    setGestionandoAccesoEntrenadorId(entrenador.entrenador_id);
+    setError('');
+
+    try {
+      const redirectTo =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}${window.location.pathname}`
+          : '';
+
+      await llamarGestionAccesoEntrenador(accion, {
+        entrenador_id: entrenador.entrenador_id,
+        redirect_to: redirectTo,
+      });
+
+      await cargarEstadosAccesoEntrenadores();
+
+      if (accion === 'reenviar_invitacion') {
+        window.alert(`Invitación reenviada a ${entrenador.email}.`);
+      }
+
+      if (accion === 'enviar_recuperacion') {
+        window.alert(
+          `Email de recuperación enviado a ${entrenador.email}.`
+        );
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo gestionar el acceso.'
+      );
+    } finally {
+      setGestionandoAccesoEntrenadorId('');
+    }
   }
 
   async function crearAccesoAppEntrenador(entrenador: EntrenadorResumen) {
@@ -5580,6 +5854,8 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
           `No se pudo crear el acceso (${respuesta.status}).`;
         throw new Error(mensaje);
       }
+
+      await cargarEstadosAccesoEntrenadores();
 
       window.alert(
         `Invitación enviada a ${email}.\n\nCuando abra el correo podrá configurar su contraseña y la cuenta quedará vinculada a la ficha de ${entrenador.nombre_completo}.`
@@ -21758,6 +22034,48 @@ Gracias!`;
                 (entrenador.titulacion_estado || 'Pendiente') === 'Validado' &&
                 (entrenador.antecedentes_estado || 'Pendiente') === 'Validado';
 
+              const acceso =
+                estadosAccesoEntrenadores[entrenador.entrenador_id] || null;
+              const gestionandoAcceso =
+                creandoAccesoEntrenadorId === entrenador.entrenador_id ||
+                gestionandoAccesoEntrenadorId === entrenador.entrenador_id;
+
+              const textoEstadoAcceso =
+                acceso?.estado === 'activo'
+                  ? 'Acceso activo'
+                  : acceso?.estado === 'invitacion_pendiente'
+                  ? 'Invitación pendiente'
+                  : acceso?.estado === 'desactivado'
+                  ? 'Acceso desactivado'
+                  : acceso?.estado === 'revisar'
+                  ? 'Revisar acceso'
+                  : 'Sin acceso';
+
+              const estiloEstadoAcceso =
+                acceso?.estado === 'activo'
+                  ? {
+                      background: '#ecfdf5',
+                      color: '#047857',
+                      borderColor: '#a7f3d0',
+                    }
+                  : acceso?.estado === 'invitacion_pendiente'
+                  ? {
+                      background: '#fff7ed',
+                      color: '#9a3412',
+                      borderColor: '#fed7aa',
+                    }
+                  : acceso?.estado === 'desactivado'
+                  ? {
+                      background: '#fef2f2',
+                      color: '#b91c1c',
+                      borderColor: '#fecaca',
+                    }
+                  : {
+                      background: '#f8fafc',
+                      color: '#64748b',
+                      borderColor: '#cbd5e1',
+                    };
+
               return (
                 <article
                   id={`entrenador-${entrenador.entrenador_id}`}
@@ -21822,6 +22140,19 @@ Gracias!`;
                         >
                           Chaqueta {entrenador.chaqueta_entregada ? 'OK' : 'pendiente'}
                         </span>
+
+                        {puedeGestionarAccesosUsuarioApp && (
+                          <span
+                            style={{
+                              ...agendaBadgeModalidad,
+                              ...estiloEstadoAcceso,
+                            }}
+                          >
+                            {cargandoEstadosAccesoEntrenadores && !acceso
+                              ? 'Comprobando acceso…'
+                              : textoEstadoAcceso}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div
@@ -21834,38 +22165,176 @@ Gracias!`;
                         minWidth: 0,
                       }}
                     >
-                      {puedeGestionarAccesosUsuarioApp && (
-                        <button
-                          type="button"
-                          disabled={
-                            creandoAccesoEntrenadorId === entrenador.entrenador_id
-                          }
-                          onClick={() => crearAccesoAppEntrenador(entrenador)}
-                          style={{
-                            ...botonMini,
-                            width: '100%',
-                            minWidth: 0,
-                            minHeight: 42,
-                            whiteSpace: 'normal',
-                            lineHeight: 1.15,
-                            overflowWrap: 'break-word',
-                            textAlign: 'center',
-                            background: '#f5f3ff',
-                            color: '#6d28d9',
-                            border: '1px solid #ddd6fe',
-                            fontWeight: 900,
-                            opacity:
-                              creandoAccesoEntrenadorId ===
-                              entrenador.entrenador_id
-                                ? 0.65
-                                : 1,
-                          }}
-                        >
-                          {creandoAccesoEntrenadorId === entrenador.entrenador_id
-                            ? 'Creando acceso…'
-                            : 'Crear acceso app'}
-                        </button>
-                      )}
+                      {puedeGestionarAccesosUsuarioApp &&
+                        (cargandoEstadosAccesoEntrenadores && !acceso ? (
+                          <button
+                            type="button"
+                            disabled
+                            style={{
+                              ...botonMini,
+                              width: '100%',
+                              minHeight: 42,
+                              background: '#f8fafc',
+                              color: '#64748b',
+                              border: '1px solid #cbd5e1',
+                              opacity: 0.7,
+                            }}
+                          >
+                            Comprobando acceso…
+                          </button>
+                        ) : acceso?.estado === 'activo' ? (
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns:
+                                'repeat(auto-fit, minmax(140px, 1fr))',
+                              gap: 8,
+                              width: '100%',
+                            }}
+                          >
+                            <button
+                              type="button"
+                              disabled={gestionandoAcceso}
+                              onClick={() =>
+                                gestionarAccesoEntrenador(
+                                  entrenador,
+                                  'desactivar'
+                                )
+                              }
+                              style={{
+                                ...botonMini,
+                                width: '100%',
+                                minHeight: 42,
+                                whiteSpace: 'normal',
+                                background: '#fff1f2',
+                                color: '#be123c',
+                                border: '1px solid #fecdd3',
+                                fontWeight: 900,
+                                opacity: gestionandoAcceso ? 0.65 : 1,
+                              }}
+                            >
+                              {gestionandoAcceso
+                                ? 'Gestionando…'
+                                : 'Desactivar acceso'}
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={gestionandoAcceso}
+                              onClick={() =>
+                                gestionarAccesoEntrenador(
+                                  entrenador,
+                                  'enviar_recuperacion'
+                                )
+                              }
+                              style={{
+                                ...botonMini,
+                                width: '100%',
+                                minHeight: 42,
+                                whiteSpace: 'normal',
+                                background: '#eff6ff',
+                                color: '#1d4ed8',
+                                border: '1px solid #bfdbfe',
+                                fontWeight: 900,
+                                opacity: gestionandoAcceso ? 0.65 : 1,
+                              }}
+                            >
+                              {gestionandoAcceso
+                                ? 'Enviando…'
+                                : 'Recuperar contraseña'}
+                            </button>
+                          </div>
+                        ) : acceso?.estado === 'invitacion_pendiente' ? (
+                          <button
+                            type="button"
+                            disabled={gestionandoAcceso}
+                            onClick={() =>
+                              gestionarAccesoEntrenador(
+                                entrenador,
+                                'reenviar_invitacion'
+                              )
+                            }
+                            style={{
+                              ...botonMini,
+                              width: '100%',
+                              minHeight: 42,
+                              whiteSpace: 'normal',
+                              background: '#fff7ed',
+                              color: '#9a3412',
+                              border: '1px solid #fed7aa',
+                              fontWeight: 900,
+                              opacity: gestionandoAcceso ? 0.65 : 1,
+                            }}
+                          >
+                            {gestionandoAcceso
+                              ? 'Reenviando…'
+                              : 'Reenviar invitación'}
+                          </button>
+                        ) : acceso?.estado === 'desactivado' ? (
+                          <button
+                            type="button"
+                            disabled={gestionandoAcceso}
+                            onClick={() =>
+                              gestionarAccesoEntrenador(entrenador, 'activar')
+                            }
+                            style={{
+                              ...botonMini,
+                              width: '100%',
+                              minHeight: 42,
+                              whiteSpace: 'normal',
+                              background: '#ecfdf5',
+                              color: '#047857',
+                              border: '1px solid #a7f3d0',
+                              fontWeight: 900,
+                              opacity: gestionandoAcceso ? 0.65 : 1,
+                            }}
+                          >
+                            {gestionandoAcceso
+                              ? 'Activando…'
+                              : 'Activar acceso'}
+                          </button>
+                        ) : acceso?.estado === 'revisar' ? (
+                          <button
+                            type="button"
+                            onClick={() => cargarEstadosAccesoEntrenadores()}
+                            style={{
+                              ...botonMini,
+                              width: '100%',
+                              minHeight: 42,
+                              background: '#f8fafc',
+                              color: '#475569',
+                              border: '1px solid #cbd5e1',
+                              fontWeight: 900,
+                            }}
+                          >
+                            Revisar acceso
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={gestionandoAcceso}
+                            onClick={() => crearAccesoAppEntrenador(entrenador)}
+                            style={{
+                              ...botonMini,
+                              width: '100%',
+                              minWidth: 0,
+                              minHeight: 42,
+                              whiteSpace: 'normal',
+                              lineHeight: 1.15,
+                              overflowWrap: 'break-word',
+                              textAlign: 'center',
+                              background: '#f5f3ff',
+                              color: '#6d28d9',
+                              border: '1px solid #ddd6fe',
+                              fontWeight: 900,
+                              opacity: gestionandoAcceso ? 0.65 : 1,
+                            }}
+                          >
+                            {gestionandoAcceso
+                              ? 'Creando acceso…'
+                              : 'Crear acceso app'}
+                          </button>
+                        ))}
                       <button
                         type="button"
                         onClick={() => pedirDatosAltaEntrenadorWhatsapp(entrenador)}
@@ -23879,6 +24348,9 @@ function AppConAuth() {
   const [perfil, setPerfil] = useState<PerfilUsuarioApp | null>(null);
   const [sesionInvitacion, setSesionInvitacion] =
     useState<SesionAuthApp | null>(null);
+  const [modoPasswordUrl, setModoPasswordUrl] = useState<
+    'invite' | 'recovery'
+  >('invite');
   const [cargandoAuth, setCargandoAuth] = useState(true);
   const [errorAuth, setErrorAuth] = useState('');
 
@@ -23915,6 +24387,7 @@ function AppConAuth() {
       try {
         const sesionUrl = extraerSesionInvitacionDesdeUrlApp();
         if (sesionUrl) {
+          setModoPasswordUrl(tipoFlujoPasswordDesdeUrlApp());
           setSesionInvitacion(sesionUrl);
           setCargandoAuth(false);
           return;
@@ -23955,6 +24428,10 @@ function AppConAuth() {
     await activarSesion(nuevaSesion);
   }
 
+  async function recuperarPassword(email: string) {
+    await solicitarRecuperacionPasswordApp(email);
+  }
+
   async function completarInvitacion(sesionNueva: SesionAuthApp) {
     await activarSesion(sesionNueva);
     setSesionInvitacion(null);
@@ -23984,6 +24461,7 @@ function AppConAuth() {
     return (
       <PantallaCrearPasswordApp
         sesionInvitacion={sesionInvitacion}
+        modo={modoPasswordUrl}
         onCompletado={completarInvitacion}
       />
     );
@@ -23994,7 +24472,12 @@ function AppConAuth() {
   }
 
   if (!sesion || !perfil) {
-    return <PantallaLoginApp onLogin={login} />;
+    return (
+      <PantallaLoginApp
+        onLogin={login}
+        onRecuperarPassword={recuperarPassword}
+      />
+    );
   }
 
   return <AppContenido perfilUsuario={perfil} onLogout={salir} />;
