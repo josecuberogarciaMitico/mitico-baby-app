@@ -202,6 +202,7 @@ import { PantallaIntensivos } from './screens/IntensivosScreen';
 type WhatsappPreviewState = {
   titulo: string;
   texto: string;
+  telefonoDestino?: string;
 };
 
 type AvisoJose = {
@@ -1462,7 +1463,12 @@ type ResumenInicio = {
 const SUPABASE_URL = 'https://natxwawulodkoauqkwqz.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_xeLKsuImDbVd9tnoBzSxXw_KAqod1bu';
 
-type RolUsuarioApp = 'coordinador_jefe' | 'coordinador' | 'entrenador';
+type RolUsuarioApp =
+  | 'coordinador_jefe'
+  | 'sub_coordinador'
+  | 'administracion'
+  | 'coordinador'
+  | 'entrenador';
 
 type PerfilUsuarioApp = {
   id: string;
@@ -1493,12 +1499,27 @@ const MITICO_AUTH_STORAGE_KEY = 'mitico_auth_session_v1';
 
 function rolUsuarioTextoApp(rol?: string) {
   if (rol === 'coordinador_jefe') return 'Coordinador jefe';
-  if (rol === 'coordinador') return 'Coordinador';
+  if (rol === 'sub_coordinador' || rol === 'coordinador')
+    return 'Sub-coordinador';
+  if (rol === 'administracion') return 'Administración';
   return 'Entrenador';
 }
 
 function esRolCoordinacionApp(rol?: string) {
-  return rol === 'coordinador_jefe' || rol === 'coordinador';
+  return (
+    rol === 'coordinador_jefe' ||
+    rol === 'sub_coordinador' ||
+    rol === 'administracion' ||
+    rol === 'coordinador'
+  );
+}
+
+function puedeVerDireccionApp(rol?: string) {
+  return rol === 'coordinador_jefe';
+}
+
+function puedeGestionarAccesosApp(rol?: string) {
+  return rol === 'coordinador_jefe';
 }
 
 function limpiarUrlAuthApp() {
@@ -2305,6 +2326,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const esCoordinadorApp =
     !perfilUsuario || esRolCoordinacionApp(perfilUsuario.rol);
   const esEntrenadorApp = Boolean(perfilUsuario && !esCoordinadorApp);
+  const esCoordinadorJefeApp =
+    !perfilUsuario || puedeVerDireccionApp(perfilUsuario.rol);
+  const puedeGestionarAccesosUsuarioApp =
+    !perfilUsuario || puedeGestionarAccesosApp(perfilUsuario.rol);
   const entrenadorIdSesionApp = perfilUsuario?.entrenador_id || '';
   const [salirActivoCabecera, setSalirActivoCabecera] = useState(false);
   const [pantalla, setPantalla] = useState<
@@ -2345,8 +2370,22 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   useEffect(() => {
     if (esEntrenadorApp && pantalla !== 'entrenador') {
       setPantalla('entrenador');
+      return;
     }
-  }, [esEntrenadorApp, pantalla]);
+
+    if (
+      esCoordinadorApp &&
+      !esCoordinadorJefeApp &&
+      (pantalla === 'cobros' || pantalla === 'exportaciones')
+    ) {
+      setPantalla('agenda');
+    }
+  }, [
+    esEntrenadorApp,
+    esCoordinadorApp,
+    esCoordinadorJefeApp,
+    pantalla,
+  ]);
 
   const [avisos, setAvisos] = useState<AvisoJose[]>([]);
   const [resumenInicio, setResumenInicio] = useState<ResumenInicio>({
@@ -2605,6 +2644,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [formEntrenador, setFormEntrenador] = useState<EntrenadorFormState>(
     entrenadorFormInicial()
   );
+  const [creandoAccesoEntrenadorId, setCreandoAccesoEntrenadorId] =
+    useState('');
 
   const [disponibilidad, setDisponibilidad] = useState<
     DisponibilidadEntrenador[]
@@ -2612,6 +2653,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [disponibilidadEditorVista, setDisponibilidadEditorVista] = useState<
     RespuestaDisponibilidadPublicadaEntrenadoresEditor | null
   >(null);
+  const [
+    semanaPublicadaObjetivoEntrenador,
+    setSemanaPublicadaObjetivoEntrenador,
+  ] = useState('');
   const [busquedaDisponibilidad, setBusquedaDisponibilidad] = useState('');
   const [filtroDisponibilidad, setFiltroDisponibilidad] = useState<
     'todos' | 'disponibles' | 'no_puedo' | 'pendientes'
@@ -4209,13 +4254,44 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     }
   }
 
-  function abrirPrevisualizacionWhatsapp(titulo: string, texto: string) {
+  function abrirPrevisualizacionWhatsapp(
+    titulo: string,
+    texto: string,
+    telefonoDestino?: string
+  ) {
     if (!texto.trim()) {
       setError('No hay mensaje de WhatsApp para revisar todavía.');
       return;
     }
 
-    setWhatsappPreview({ titulo, texto });
+    setWhatsappPreview({
+      titulo,
+      texto,
+      telefonoDestino: telefonoDestino || undefined,
+    });
+  }
+
+  function abrirWhatsappDesdePrevisualizacion() {
+    if (!whatsappPreview?.texto.trim()) return;
+
+    const telefono = normalizarTelefonoWhatsappApp(
+      whatsappPreview.telefonoDestino
+    );
+
+    if (!telefono) {
+      setError(
+        'Este mensaje no tiene un teléfono de destino válido. Puedes copiarlo manualmente.'
+      );
+      return;
+    }
+
+    window.open(
+      `https://wa.me/${telefono}?text=${encodeURIComponent(
+        whatsappPreview.texto
+      )}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
   }
 
   async function copiarWhatsappPrevisualizado() {
@@ -5448,9 +5524,111 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     setCargando(false);
   }
 
+  async function crearAccesoAppEntrenador(entrenador: EntrenadorResumen) {
+    if (!puedeGestionarAccesosUsuarioApp) {
+      setError('Solo el coordinador jefe puede crear accesos a la app.');
+      return;
+    }
+
+    const email = String(entrenador.email || '').trim().toLowerCase();
+    if (!email) {
+      setError(
+        `La ficha de ${entrenador.nombre_completo} no tiene email de acceso. Edita la ficha antes de crear la cuenta.`
+      );
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Crear acceso app para ${entrenador.nombre_completo}?\n\n${email}\n\nSupabase enviará un email para que configure su contraseña.`
+    );
+    if (!confirmar) return;
+
+    setCreandoAccesoEntrenadorId(entrenador.entrenador_id);
+    setError('');
+
+    try {
+      const accessToken = await obtenerAccessTokenSupabaseApp();
+      const redirectTo =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}${window.location.pathname}`
+          : '';
+
+      const respuesta = await fetch(
+        `${SUPABASE_URL}/functions/v1/invitar-usuario-app`,
+        {
+          method: 'POST',
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            entrenador_id: entrenador.entrenador_id,
+            nombre: entrenador.nombre_completo,
+            email,
+            redirect_to: redirectTo,
+          }),
+        }
+      );
+
+      const datos = await respuesta.json().catch(() => ({}));
+
+      if (!respuesta.ok) {
+        const mensaje =
+          datos?.message ||
+          datos?.error ||
+          `No se pudo crear el acceso (${respuesta.status}).`;
+        throw new Error(mensaje);
+      }
+
+      window.alert(
+        `Invitación enviada a ${email}.\n\nCuando abra el correo podrá configurar su contraseña y la cuenta quedará vinculada a la ficha de ${entrenador.nombre_completo}.`
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo crear el acceso del entrenador.'
+      );
+    }
+
+    setCreandoAccesoEntrenadorId('');
+  }
+
+  function pedirDatosAltaEntrenadorWhatsapp(entrenador: EntrenadorResumen) {
+    const nombre = nombreEntrenadorWhatsappPapis(
+      entrenador.nombre_completo || 'entrenador'
+    );
+
+    const mensaje = `Hola ${nombre} 👋
+
+Para darte de alta necesito que me pases:
+
+• Nombre completo
+• Email
+• Teléfono / WhatsApp
+• Titulación
+• Certificado de antecedentes sexuales
+
+Puedes enviarme la titulación y los antecedentes en PDF, foto o enlace.
+
+Gracias!`;
+
+    abrirPrevisualizacionWhatsapp(
+      `Alta entrenador · ${nombre}`,
+      mensaje
+    );
+  }
+
   function abrirNuevoEntrenador() {
     setFormEntrenador(entrenadorFormInicial());
     setMostrarFormularioEntrenador(true);
+
+    window.setTimeout(() => {
+      document
+        .getElementById('formulario-gestion-entrenador')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
   }
 
   function abrirEditarEntrenador(entrenador: EntrenadorResumen) {
@@ -5472,6 +5650,12 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
       observaciones: entrenador.observaciones_internas || '',
     });
     setMostrarFormularioEntrenador(true);
+
+    window.setTimeout(() => {
+      document
+        .getElementById('formulario-gestion-entrenador')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
   }
 
   function alternarEspecialidadEntrenador(especialidad: string) {
@@ -5565,9 +5749,21 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
       const semanaOperativaDisponibilidad = inicioSemanaAgenda(
         claveFechaAgenda(fechaReferenciaDisponibilidad)
       );
-      const semanaConsulta = esCoordinadorApp
+
+      let semanaConsulta = esCoordinadorApp
         ? semanaAgendaActiva || semanaOperativaDisponibilidad
         : semanaOperativaDisponibilidad;
+
+      if (!esCoordinadorApp) {
+        const objetivo =
+          await ejecutarFuncionAuthJson<{
+            semana_inicio: string | null;
+          }>('obtener_semana_disponibilidad_objetivo_entrenador_app', {});
+
+        semanaConsulta =
+          objetivo?.semana_inicio || semanaOperativaDisponibilidad;
+        setSemanaPublicadaObjetivoEntrenador(semanaConsulta || '');
+      }
 
       if (!semanaConsulta) {
         setDisponibilidad([]);
@@ -6837,6 +7033,57 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     }
   }
 
+  function normalizarTelefonoWhatsappApp(valor: string | null | undefined) {
+    let telefono = String(valor || '').replace(/\D/g, '');
+
+    if (!telefono) return '';
+
+    // España: si la ficha guarda un móvil nacional de 9 cifras,
+    // wa.me necesita el prefijo internacional 34.
+    if (telefono.length === 9 && /^[6789]/.test(telefono)) {
+      telefono = `34${telefono}`;
+    }
+
+    return telefono;
+  }
+
+  function abrirWhatsappDirectoEntrenador(
+    entrenadorId: string,
+    nombreEntrenador: string,
+    mensaje: string
+  ) {
+    const nombreNormalizado = normalizarNombreFueraPlazoAgenda(
+      nombreEntrenador
+    );
+
+    // Primero por ID. Si el entrenador se borró/recreó durante pruebas,
+    // el ID histórico de reportes puede ser antiguo; en ese caso buscamos
+    // la ficha actual por nombre para no perder el WhatsApp.
+    const ficha =
+      entrenadores.find(
+        (entrenador) => entrenador.entrenador_id === entrenadorId
+      ) ||
+      entrenadores.find(
+        (entrenador) =>
+          normalizarNombreFueraPlazoAgenda(entrenador.nombre_completo) ===
+          nombreNormalizado
+      );
+
+    const telefono = normalizarTelefonoWhatsappApp(ficha?.telefono);
+
+    abrirPrevisualizacionWhatsapp(
+      `WhatsApp personal · ${nombreEntrenador}`,
+      mensaje,
+      telefono || undefined
+    );
+
+    if (!telefono) {
+      setError(
+        `No encuentro un teléfono válido en la ficha actual de ${nombreEntrenador}. Puedes editar y copiar el mensaje manualmente.`
+      );
+    }
+  }
+
   function mensajeWhatsappPendientesReportes(items: ReportePendiente[]) {
     const pendientes = items.filter(
       (reporte) =>
@@ -6901,12 +7148,14 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
   }
 
   function copiarWhatsappPendientesEntrenador(
+    entrenadorId: string,
     nombreEntrenador: string,
     items: ReportePendiente[]
   ) {
     const mensaje = mensajeWhatsappPendientesReportes(items);
-    abrirPrevisualizacionWhatsapp(
-      `WhatsApp personal · ${nombreEntrenador}`,
+    abrirWhatsappDirectoEntrenador(
+      entrenadorId,
+      nombreEntrenador,
       mensaje
     );
   }
@@ -9561,11 +9810,11 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
     if (pantalla === 'entrenadores') cargarEntrenadores();
     if (pantalla === 'disponibilidad') cargarDisponibilidad();
     if (pantalla === 'reportes') cargarReportesPendientes();
-    if (pantalla === 'cobros') {
+    if (pantalla === 'cobros' && esCoordinadorJefeApp) {
       cargarCobros();
       cargarEntrenadores();
     }
-    if (pantalla === 'exportaciones') {
+    if (pantalla === 'exportaciones' && esCoordinadorJefeApp) {
       cargarAgendaOperativaDirecta();
       cargarIntensivos();
       cargarPlanning();
@@ -10273,7 +10522,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
   );
   const semanaVistaEntrenadorInicio = esCoordinadorApp
     ? semanaAgendaActiva || semanaActualVistaEntrenador
-    : semanaActualVistaEntrenador;
+    : semanaPublicadaObjetivoEntrenador || semanaActualVistaEntrenador;
   const semanaVistaEntrenadorFin = semanaVistaEntrenadorInicio
     ? claveFechaAgenda(
         new Date(
@@ -11933,21 +12182,26 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
               </button>
             </div>
 
-            <div style={menuBloqueColor('#e11d48', '#fff1f2')}>
-              <span style={menuTituloColor('#e11d48')}>Dirección</span>
-              <button
-                onClick={() => abrirPantallaConScroll('cobros')}
-                style={botonMenuColor(pantalla === 'cobros', '#e11d48')}
-              >
-                Cobros
-              </button>
-              <button
-                onClick={() => abrirPantallaConScroll('exportaciones')}
-                style={botonMenuColor(pantalla === 'exportaciones', '#e11d48')}
-              >
-                Exportaciones
-              </button>
-            </div>
+            {esCoordinadorJefeApp && (
+              <div style={menuBloqueColor('#e11d48', '#fff1f2')}>
+                <span style={menuTituloColor('#e11d48')}>Dirección</span>
+                <button
+                  onClick={() => abrirPantallaConScroll('cobros')}
+                  style={botonMenuColor(pantalla === 'cobros', '#e11d48')}
+                >
+                  Cobros
+                </button>
+                <button
+                  onClick={() => abrirPantallaConScroll('exportaciones')}
+                  style={botonMenuColor(
+                    pantalla === 'exportaciones',
+                    '#e11d48'
+                  )}
+                >
+                  Exportaciones
+                </button>
+              </div>
+            )}
           </nav>
         ) : null}
       </header>
@@ -11999,9 +12253,9 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
             </div>
 
             <div style={{ ...avisoNeutral, marginBottom: 12 }}>
-              Revisa y modifica aquí el texto antes de copiarlo. La hora del
-              turno se rellena automáticamente y también aparece en el bloque
-              final de papis importante.
+              {whatsappPreview.titulo.startsWith('Alta entrenador')
+                ? 'Edita el mensaje si necesitas cambiar algo y después copia el texto para enviarlo por WhatsApp.'
+                : 'Revisa y modifica aquí el texto antes de copiarlo.'}
             </div>
 
             <textarea
@@ -12035,17 +12289,29 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                 marginTop: 12,
               }}
             >
+              {whatsappPreview.telefonoDestino && (
+                <button
+                  onClick={abrirWhatsappDesdePrevisualizacion}
+                  style={botonPrincipal}
+                >
+                  Abrir WhatsApp
+                </button>
+              )}
               <button
                 onClick={copiarWhatsappPrevisualizado}
-                style={botonPrincipal}
+                style={
+                  whatsappPreview.telefonoDestino
+                    ? botonSecundario
+                    : botonPrincipal
+                }
               >
-                Copiar WhatsApp revisado
+                Copiar texto
               </button>
               <button
                 onClick={() => setWhatsappPreview(null)}
                 style={botonSecundario}
               >
-                Cerrar sin copiar
+                Cerrar
               </button>
             </div>
           </article>
@@ -12548,7 +12814,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
         </section>
       )}
 
-      {pantalla === 'exportaciones' && (
+      {pantalla === 'exportaciones' && esCoordinadorJefeApp && (
         <section>
           <div style={cabeceraPantallaMovil}>
             <div>
@@ -19925,13 +20191,14 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                         <button
                           onClick={() =>
                             copiarWhatsappPendientesEntrenador(
+                              grupo.entrenador_id,
                               grupo.entrenador,
                               grupo.reportes
                             )
                           }
                           style={botonPrincipal}
                         >
-                          Ver WhatsApp personal
+                          WhatsApp entrenador
                         </button>
                         <span style={{ color: '#64748b', fontWeight: 800 }}>
                           {grupo.reportes.length} tareas pendientes
@@ -21169,7 +21436,17 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
           </div>
 
           {mostrarFormularioEntrenador && (
-            <article style={agendaBloqueBlanco}>
+            <article
+              id="formulario-gestion-entrenador"
+              style={{
+                ...agendaBloqueBlanco,
+                scrollMarginTop: 18,
+                border: '1px solid #bfdbfe',
+                background:
+                  'linear-gradient(135deg, rgba(239,246,255,0.96), rgba(255,255,255,0.98))',
+                boxShadow: '0 14px 34px rgba(37,99,235,0.08)',
+              }}
+            >
               <h3 style={{ marginTop: 0 }}>
                 {formEntrenador.id ? 'Editar entrenador' : 'Alta de entrenador'}
               </h3>
@@ -21482,7 +21759,17 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                 (entrenador.antecedentes_estado || 'Pendiente') === 'Validado';
 
               return (
-                <article key={entrenador.entrenador_id} style={tarjeta}>
+                <article
+                  id={`entrenador-${entrenador.entrenador_id}`}
+                  key={entrenador.entrenador_id}
+                  style={{
+                    ...tarjeta,
+                    border: '1px solid #dbeafe',
+                    background:
+                      'linear-gradient(135deg, rgba(255,255,255,0.99), rgba(248,250,252,0.98))',
+                    boxShadow: '0 10px 28px rgba(15,23,42,0.06)',
+                  }}
+                >
                   <div
                     style={{
                       display: 'flex',
@@ -21497,36 +21784,169 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                       <h3 style={{ margin: 0 }}>
                         {entrenador.nombre_completo}
                       </h3>
-                      <p style={{ margin: '6px 0 0', color: '#555' }}>
-                        {entrenador.activo ? 'Activo' : 'Inactivo'} · Chaqueta:{' '}
-                        {entrenador.chaqueta_entregada ? 'Sí' : 'No'}
-                      </p>
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 7,
+                          flexWrap: 'wrap',
+                          marginTop: 8,
+                        }}
+                      >
+                        <span
+                          style={{
+                            ...agendaBadgeModalidad,
+                            background: entrenador.activo
+                              ? '#ecfdf5'
+                              : '#f8fafc',
+                            color: entrenador.activo ? '#047857' : '#64748b',
+                            borderColor: entrenador.activo
+                              ? '#a7f3d0'
+                              : '#cbd5e1',
+                          }}
+                        >
+                          {entrenador.activo ? 'Activo' : 'Inactivo'}
+                        </span>
+                        <span
+                          style={{
+                            ...agendaBadgeModalidad,
+                            background: entrenador.chaqueta_entregada
+                              ? '#eff6ff'
+                              : '#fff7ed',
+                            color: entrenador.chaqueta_entregada
+                              ? '#1d4ed8'
+                              : '#9a3412',
+                            borderColor: entrenador.chaqueta_entregada
+                              ? '#bfdbfe'
+                              : '#fed7aa',
+                          }}
+                        >
+                          Chaqueta {entrenador.chaqueta_entregada ? 'OK' : 'pendiente'}
+                        </span>
+                      </div>
                     </div>
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fit, minmax(150px, 1fr))',
+                        gap: 8,
+                        width: '100%',
+                        minWidth: 0,
+                      }}
+                    >
+                      {puedeGestionarAccesosUsuarioApp && (
+                        <button
+                          type="button"
+                          disabled={
+                            creandoAccesoEntrenadorId === entrenador.entrenador_id
+                          }
+                          onClick={() => crearAccesoAppEntrenador(entrenador)}
+                          style={{
+                            ...botonMini,
+                            width: '100%',
+                            minWidth: 0,
+                            minHeight: 42,
+                            whiteSpace: 'normal',
+                            lineHeight: 1.15,
+                            overflowWrap: 'break-word',
+                            textAlign: 'center',
+                            background: '#f5f3ff',
+                            color: '#6d28d9',
+                            border: '1px solid #ddd6fe',
+                            fontWeight: 900,
+                            opacity:
+                              creandoAccesoEntrenadorId ===
+                              entrenador.entrenador_id
+                                ? 0.65
+                                : 1,
+                          }}
+                        >
+                          {creandoAccesoEntrenadorId === entrenador.entrenador_id
+                            ? 'Creando acceso…'
+                            : 'Crear acceso app'}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => pedirDatosAltaEntrenadorWhatsapp(entrenador)}
+                        style={{
+                          ...botonMini,
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 42,
+                          whiteSpace: 'normal',
+                          lineHeight: 1.15,
+                          overflowWrap: 'break-word',
+                          textAlign: 'center',
+                          background: '#ecfdf5',
+                          color: '#047857',
+                          border: '1px solid #a7f3d0',
+                          fontWeight: 900,
+                        }}
+                      >
+                        Pedir datos
+                      </button>
                       <button
                         type="button"
                         onClick={() => abrirEditarEntrenador(entrenador)}
-                        style={botonMini}
+                        style={{
+                          ...botonMini,
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 42,
+                          whiteSpace: 'normal',
+                          lineHeight: 1.15,
+                          overflowWrap: 'break-word',
+                          textAlign: 'center',
+                          background: '#eff6ff',
+                          color: '#1d4ed8',
+                          border: '1px solid #bfdbfe',
+                          fontWeight: 900,
+                        }}
                       >
                         Editar ficha
                       </button>
                       <button
                         type="button"
                         onClick={() => eliminarEntrenadorGestion(entrenador)}
-                        style={botonPeligro}
+                        style={{
+                          ...botonPeligro,
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 42,
+                          whiteSpace: 'normal',
+                          lineHeight: 1.15,
+                          overflowWrap: 'break-word',
+                          textAlign: 'center',
+                          background: '#fff1f2',
+                          color: '#be123c',
+                          borderColor: '#fecdd3',
+                        }}
                       >
                         Eliminar
                       </button>
                     </div>
                   </div>
 
-                  <div style={gridMiniMetricas}>
-                    <div style={miniMetrica}>
+                  <div style={{ ...gridMiniMetricas, marginTop: 14 }}>
+                    <div
+                      style={{
+                        ...miniMetrica,
+                        background: '#f8fafc',
+                        borderColor: '#e2e8f0',
+                      }}
+                    >
                       <strong>Contacto</strong>
                       <span>Email: {entrenador.email || '-'}</span>
                       <span>WhatsApp: {entrenador.telefono || '-'}</span>
                     </div>
-                    <div style={miniMetrica}>
+                    <div
+                      style={{
+                        ...miniMetrica,
+                        background: '#f0fdf4',
+                        borderColor: '#bbf7d0',
+                      }}
+                    >
                       <strong>Especialidades</strong>
                       <span>
                         {(entrenador.especialidades || []).length > 0
@@ -21534,7 +21954,13 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                           : 'Sin marcar'}
                       </span>
                     </div>
-                    <div style={miniMetrica}>
+                    <div
+                      style={{
+                        ...miniMetrica,
+                        background: '#fff7ed',
+                        borderColor: '#fed7aa',
+                      }}
+                    >
                       <strong>Documentación</strong>
                       <span>
                         Titulación:{' '}
@@ -21545,7 +21971,13 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
                         {entrenador.antecedentes_estado || 'Pendiente'}
                       </span>
                     </div>
-                    <div style={miniMetrica}>
+                    <div
+                      style={{
+                        ...miniMetrica,
+                        background: documentacionOk ? '#ecfdf5' : '#fef2f2',
+                        borderColor: documentacionOk ? '#a7f3d0' : '#fecaca',
+                      }}
+                    >
                       <strong>Estado operativo</strong>
                       <span>
                         {documentacionOk
@@ -22486,7 +22918,7 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
         </section>
       )}
 
-      {pantalla === 'cobros' && (
+      {pantalla === 'cobros' && esCoordinadorJefeApp && (
         <section style={{ display: 'grid', gap: 16 }}>
           <article style={agendaHero}>
             <div>
