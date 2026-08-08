@@ -202,6 +202,7 @@ import { PantallaIntensivos } from './screens/IntensivosScreen';
 type WhatsappPreviewState = {
   titulo: string;
   texto: string;
+  telefonoDestino?: string;
 };
 
 type AvisoJose = {
@@ -4253,13 +4254,44 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     }
   }
 
-  function abrirPrevisualizacionWhatsapp(titulo: string, texto: string) {
+  function abrirPrevisualizacionWhatsapp(
+    titulo: string,
+    texto: string,
+    telefonoDestino?: string
+  ) {
     if (!texto.trim()) {
       setError('No hay mensaje de WhatsApp para revisar todavía.');
       return;
     }
 
-    setWhatsappPreview({ titulo, texto });
+    setWhatsappPreview({
+      titulo,
+      texto,
+      telefonoDestino: telefonoDestino || undefined,
+    });
+  }
+
+  function abrirWhatsappDesdePrevisualizacion() {
+    if (!whatsappPreview?.texto.trim()) return;
+
+    const telefono = normalizarTelefonoWhatsappApp(
+      whatsappPreview.telefonoDestino
+    );
+
+    if (!telefono) {
+      setError(
+        'Este mensaje no tiene un teléfono de destino válido. Puedes copiarlo manualmente.'
+      );
+      return;
+    }
+
+    window.open(
+      `https://wa.me/${telefono}?text=${encodeURIComponent(
+        whatsappPreview.texto
+      )}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
   }
 
   async function copiarWhatsappPrevisualizado() {
@@ -7001,35 +7033,55 @@ Gracias!`;
     }
   }
 
+  function normalizarTelefonoWhatsappApp(valor: string | null | undefined) {
+    let telefono = String(valor || '').replace(/\D/g, '');
+
+    if (!telefono) return '';
+
+    // España: si la ficha guarda un móvil nacional de 9 cifras,
+    // wa.me necesita el prefijo internacional 34.
+    if (telefono.length === 9 && /^[6789]/.test(telefono)) {
+      telefono = `34${telefono}`;
+    }
+
+    return telefono;
+  }
+
   function abrirWhatsappDirectoEntrenador(
     entrenadorId: string,
     nombreEntrenador: string,
     mensaje: string
   ) {
-    const ficha = entrenadores.find(
-      (entrenador) => entrenador.entrenador_id === entrenadorId
+    const nombreNormalizado = normalizarNombreFueraPlazoAgenda(
+      nombreEntrenador
     );
 
-    const telefono = String(ficha?.telefono || '')
-      .replace(/[^\d+]/g, '')
-      .replace(/^\+/, '');
+    // Primero por ID. Si el entrenador se borró/recreó durante pruebas,
+    // el ID histórico de reportes puede ser antiguo; en ese caso buscamos
+    // la ficha actual por nombre para no perder el WhatsApp.
+    const ficha =
+      entrenadores.find(
+        (entrenador) => entrenador.entrenador_id === entrenadorId
+      ) ||
+      entrenadores.find(
+        (entrenador) =>
+          normalizarNombreFueraPlazoAgenda(entrenador.nombre_completo) ===
+          nombreNormalizado
+      );
+
+    const telefono = normalizarTelefonoWhatsappApp(ficha?.telefono);
+
+    abrirPrevisualizacionWhatsapp(
+      `WhatsApp personal · ${nombreEntrenador}`,
+      mensaje,
+      telefono || undefined
+    );
 
     if (!telefono) {
-      abrirPrevisualizacionWhatsapp(
-        `WhatsApp personal · ${nombreEntrenador}`,
-        mensaje
-      );
       setError(
-        `La ficha de ${nombreEntrenador} no tiene teléfono. Te dejo el mensaje abierto para copiarlo.`
+        `No encuentro un teléfono válido en la ficha actual de ${nombreEntrenador}. Puedes editar y copiar el mensaje manualmente.`
       );
-      return;
     }
-
-    window.open(
-      `https://wa.me/${telefono}?text=${encodeURIComponent(mensaje)}`,
-      '_blank',
-      'noopener,noreferrer'
-    );
   }
 
   function mensajeWhatsappPendientesReportes(items: ReportePendiente[]) {
@@ -12237,17 +12289,29 @@ Gracias!`;
                 marginTop: 12,
               }}
             >
+              {whatsappPreview.telefonoDestino && (
+                <button
+                  onClick={abrirWhatsappDesdePrevisualizacion}
+                  style={botonPrincipal}
+                >
+                  Abrir WhatsApp
+                </button>
+              )}
               <button
                 onClick={copiarWhatsappPrevisualizado}
-                style={botonPrincipal}
+                style={
+                  whatsappPreview.telefonoDestino
+                    ? botonSecundario
+                    : botonPrincipal
+                }
               >
-                Copiar WhatsApp revisado
+                Copiar texto
               </button>
               <button
                 onClick={() => setWhatsappPreview(null)}
                 style={botonSecundario}
               >
-                Cerrar sin copiar
+                Cerrar
               </button>
             </div>
           </article>
