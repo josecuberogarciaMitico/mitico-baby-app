@@ -1188,6 +1188,15 @@ type ListadoApp = {
   duplicados: number;
 };
 
+type SnowZoneDiaApp = {
+  fecha: string;
+  pista_pequena: number;
+  pista_grande: number;
+  total: number;
+};
+
+type SnowZoneModoApp = 'mensual' | 'semanal';
+
 type AgendaSesionDirectaApp = {
   sesion_id: string;
   fecha: string;
@@ -2631,6 +2640,58 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     });
   };
 
+  const enfocarAcordeonEntrenadorAlAbrir = (
+    event: React.MouseEvent<HTMLElement>
+  ) => {
+    const detalle = event.currentTarget.closest('details');
+    if (!(detalle instanceof HTMLDetailsElement) || detalle.open) return;
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        detalle.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      });
+    });
+  };
+
+  const irASeccionGrupoEntrenador = (
+    seccion: 'asistencia' | 'trabajo' | 'observaciones',
+    grupoDomId: string
+  ) => {
+    setSeccionGrupoEntrenador(seccion);
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const objetivo = document.getElementById(
+          `${grupoDomId}-${seccion}`
+        );
+        if (!objetivo) return;
+
+        const ficha = objetivo.closest(
+          '.trainer-group-card.is-sheet-open'
+        ) as HTMLElement | null;
+
+        if (
+          ficha &&
+          window.matchMedia('(max-width: 719px)').matches
+        ) {
+          ficha.scrollTo({
+            top: Math.max(0, objetivo.offsetTop - 150),
+            behavior: 'smooth',
+          });
+          return;
+        }
+
+        objetivo.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      });
+    });
+  };
+
   const [grupoActivoEntrenador, setGrupoActivoEntrenador] =
     useState<GrupoActivoEntrenador | null>(null);
   const [seccionGrupoEntrenador, setSeccionGrupoEntrenador] = useState<
@@ -3011,6 +3072,22 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [filtroListados, setFiltroListados] = useState<
     'todos' | 'pendientes' | 'altas' | 'no_encontrados' | 'fuera_plazo'
   >('todos');
+
+  const [snowZoneModo, setSnowZoneModo] =
+    useState<SnowZoneModoApp>('mensual');
+  const [snowZoneMes, setSnowZoneMes] = useState(() =>
+    fechaIsoHoyApp().slice(0, 7)
+  );
+  const [snowZoneSemanaInicio, setSnowZoneSemanaInicio] = useState(() => {
+    const hoy = new Date(`${fechaIsoHoyApp()}T12:00:00`);
+    const diaSemana = hoy.getDay();
+    const desplazamiento = diaSemana === 0 ? -6 : 1 - diaSemana;
+    hoy.setDate(hoy.getDate() + desplazamiento);
+    return fechaIsoEditor(hoy);
+  });
+  const [snowZoneDias, setSnowZoneDias] = useState<SnowZoneDiaApp[]>([]);
+  const [snowZoneCargando, setSnowZoneCargando] = useState(false);
+  const [snowZoneError, setSnowZoneError] = useState('');
 
   const [agendaSesionesDirectas, setAgendaSesionesDirectas] = useState<
     AgendaSesionDirectaApp[]
@@ -10319,6 +10396,17 @@ Gracias!`;
   }, [pantalla]);
 
   useEffect(() => {
+    if (pantalla !== 'exportaciones' || !esCoordinadorJefeApp) return;
+    cargarInformeSnowZone();
+  }, [
+    pantalla,
+    esCoordinadorJefeApp,
+    snowZoneModo,
+    snowZoneMes,
+    snowZoneSemanaInicio,
+  ]);
+
+  useEffect(() => {
     if (
       pantalla === 'disponibilidad' ||
       pantalla === 'agenda' ||
@@ -12023,6 +12111,134 @@ Gracias!`;
     return '';
   }
 
+  function limitesSnowZoneSeleccionados() {
+    if (snowZoneModo === 'semanal') {
+      const inicio = snowZoneSemanaInicio || fechaIsoHoyApp();
+      return {
+        desde: inicio,
+        hasta: sumarDiasEditor(inicio, 6),
+      };
+    }
+
+    const mes = snowZoneMes || fechaIsoHoyApp().slice(0, 7);
+    const [anio, numeroMes] = mes.split('-').map(Number);
+    const primerDia = `${anio}-${String(numeroMes).padStart(2, '0')}-01`;
+    const ultimo = new Date(anio, numeroMes, 0);
+    return {
+      desde: primerDia,
+      hasta: fechaIsoEditor(ultimo),
+    };
+  }
+
+  function tituloPeriodoSnowZone() {
+    const { desde, hasta } = limitesSnowZoneSeleccionados();
+
+    if (snowZoneModo === 'mensual') {
+      const [anio, mes] = snowZoneMes.split('-').map(Number);
+      const nombre = new Intl.DateTimeFormat('es-ES', {
+        month: 'long',
+      }).format(new Date(anio, mes - 1, 1));
+
+      return {
+        titulo: `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${anio}`,
+        periodo: `${formatearFecha(desde)} al ${formatearFecha(hasta)}`,
+      };
+    }
+
+    return {
+      titulo: 'Informe semanal SnowZone',
+      periodo: `${formatearFecha(desde)} al ${formatearFecha(hasta)}`,
+    };
+  }
+
+  async function cargarInformeSnowZone() {
+    if (!esCoordinadorJefeApp) return;
+
+    const { desde, hasta } = limitesSnowZoneSeleccionados();
+    setSnowZoneCargando(true);
+    setSnowZoneError('');
+
+    try {
+      const data = await ejecutarFuncionConRespuesta<SnowZoneDiaApp>(
+        'obtener_informe_snowzone_app',
+        {
+          p_desde: desde,
+          p_hasta: hasta,
+        }
+      );
+      setSnowZoneDias(
+        data.map((fila) => ({
+          ...fila,
+          pista_pequena: Number(fila.pista_pequena || 0),
+          pista_grande: Number(fila.pista_grande || 0),
+          total: Number(fila.total || 0),
+        }))
+      );
+    } catch (err) {
+      setSnowZoneDias([]);
+      setSnowZoneError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo cargar el informe SnowZone.'
+      );
+    } finally {
+      setSnowZoneCargando(false);
+    }
+  }
+
+  function descargarInformeSnowZoneExcel() {
+    const { desde, hasta } = limitesSnowZoneSeleccionados();
+
+    if (snowZoneDias.length === 0) {
+      setSnowZoneError('No hay datos SnowZone para descargar en este periodo.');
+      return;
+    }
+
+    const totalPequena = snowZoneDias.reduce(
+      (total, fila) => total + Number(fila.pista_pequena || 0),
+      0
+    );
+    const totalGrande = snowZoneDias.reduce(
+      (total, fila) => total + Number(fila.pista_grande || 0),
+      0
+    );
+    const totalGeneral = totalPequena + totalGrande;
+
+    const escaparCsv = (valor: unknown) => {
+      const texto = String(valor ?? '');
+      return `"${texto.replace(/"/g, '""')}"`;
+    };
+
+    const cabeceraPeriodo = tituloPeriodoSnowZone();
+
+    const filasCsv: Array<Array<string | number>> = [
+      [`SNOWZONE · ${cabeceraPeriodo.titulo}`],
+      [`Periodo: ${cabeceraPeriodo.periodo}`],
+      [],
+      ['Fecha', 'Pista pequeña', 'Pista grande', 'Total'],
+      ...snowZoneDias.map((fila) => [
+        formatearFecha(fila.fecha),
+        fila.pista_pequena,
+        fila.pista_grande,
+        fila.total,
+      ]),
+      ['TOTAL', totalPequena, totalGrande, totalGeneral],
+    ];
+
+    const csv =
+      '\uFEFF' +
+      filasCsv
+        .map((fila) => fila.map(escaparCsv).join(';'))
+        .join('\r\n');
+
+    descargarTextoComoArchivo(
+      `snowzone_${snowZoneModo}_${desde}_${hasta}.csv`,
+      csv,
+      'text/csv;charset=utf-8'
+    );
+  }
+
+
   function htmlEscapeBackup(valor: unknown) {
     return String(valor ?? '')
       .replace(/&/g, '&amp;')
@@ -12683,7 +12899,7 @@ Gracias!`;
                     '#e11d48'
                   )}
                 >
-                  Exportaciones
+                  Informes y listados
                 </button>
                 <button
                   onClick={() => abrirPantallaConScroll('usuarios')}
@@ -13309,37 +13525,460 @@ Gracias!`;
         <section>
           <div style={cabeceraPantallaMovil}>
             <div>
-              <p style={etiquetaSuperior}>SEGURIDAD</p>
-              <h2 style={{ margin: 0 }}>Exportaciones y backup Excel</h2>
-              <details style={ayudaDesplegableCompacta}>
-                <summary>Chuleta</summary>
-                <p style={{ margin: '8px 0 0' }}>
-                  Descarga semanal compatible con Excel: sesiones, alumnos,
-                  Ocio, Intensivos, reportes y cobros.
-                </p>
-              </details>
+              <p style={etiquetaSuperior}>INFORMES Y LISTADOS</p>
+              <h2 style={{ margin: 0 }}>Informes y listados</h2>
+              <p style={{ margin: '8px 0 0', color: '#475569' }}>
+                Informes útiles calculados con los datos actuales. No se guardan
+                copias adicionales en Supabase.
+              </p>
             </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={actualizarTodo} style={botonSecundario}>
-                Actualizar datos
-              </button>
-              <button
-                onClick={descargarBackupSemanalExcel}
-                style={botonPrincipal}
-              >
-                Descargar backup semanal Excel
-              </button>
-            </div>
+            <button onClick={actualizarTodo} style={botonSecundario}>
+              Actualizar datos
+            </button>
           </div>
 
+          <details
+            open
+            style={{
+              ...tarjeta,
+              marginTop: 16,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid rgba(37,99,235,.22)',
+              background:
+                'linear-gradient(135deg, rgba(239,246,255,.95), #fff 55%, rgba(240,253,244,.75))',
+            }}
+          >
+            <summary
+              style={{
+                listStyle: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '16px 18px',
+                borderBottom: '1px solid rgba(37,99,235,.12)',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p style={{ ...etiquetaSuperior, color: '#1d4ed8', margin: '0 0 3px' }}>
+                  SNOWZONE
+                </p>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: 20,
+                    lineHeight: 1.2,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  Pista pequeña / Pista grande
+                </h3>
+              </div>
+              <span
+                style={{
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  border: '1px solid #cbd5e1',
+                  background: '#fff',
+                  color: '#334155',
+                  fontWeight: 900,
+                  fontSize: 20,
+                }}
+              >
+                ↕
+              </span>
+            </summary>
+
+            <div style={{ padding: '16px 18px 18px' }}>
+              <p style={{ margin: '0 0 14px', color: '#475569', lineHeight: 1.4 }}>
+                Cuenta asistencia real por día. Un grupo marcado como
+                Pequeña/Grande computa como Pista grande.
+              </p>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns:
+                    'repeat(auto-fit, minmax(min(100%, 190px), 1fr))',
+                  gap: 10,
+                  alignItems: 'end',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setSnowZoneModo('mensual')}
+                  style={{
+                    ...botonMenu(snowZoneModo === 'mensual'),
+                    width: '100%',
+                    minWidth: 0,
+                    minHeight: 46,
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  Mensual
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSnowZoneModo('semanal')}
+                  style={{
+                    ...botonMenu(snowZoneModo === 'semanal'),
+                    width: '100%',
+                    minWidth: 0,
+                    minHeight: 46,
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  Semanal
+                </button>
+
+                {snowZoneModo === 'mensual' ? (
+                  <label style={{ ...labelCampo, minWidth: 0, width: '100%' }}>
+                    Mes
+                    <input
+                      type="month"
+                      value={snowZoneMes}
+                      onChange={(e) => setSnowZoneMes(e.target.value)}
+                      style={{
+                        ...inputCampo,
+                        width: '100%',
+                        minWidth: 0,
+                        maxWidth: '100%',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </label>
+                ) : (
+                  <label style={{ ...labelCampo, minWidth: 0, width: '100%' }}>
+                    Semana desde
+                    <input
+                      type="date"
+                      value={snowZoneSemanaInicio}
+                      onChange={(e) => {
+                        const valor = e.target.value;
+                        if (!valor) return;
+                        const fecha = new Date(`${valor}T12:00:00`);
+                        const diaSemana = fecha.getDay();
+                        const desplazamiento =
+                          diaSemana === 0 ? -6 : 1 - diaSemana;
+                        fecha.setDate(fecha.getDate() + desplazamiento);
+                        setSnowZoneSemanaInicio(fechaIsoEditor(fecha));
+                      }}
+                      style={{
+                        ...inputCampo,
+                        width: '100%',
+                        minWidth: 0,
+                        maxWidth: '100%',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </label>
+                )}
+
+                <button
+                  type="button"
+                  onClick={cargarInformeSnowZone}
+                  disabled={snowZoneCargando}
+                  style={{
+                    ...botonSecundario,
+                    width: '100%',
+                    minWidth: 0,
+                    minHeight: 46,
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  {snowZoneCargando ? 'Calculando...' : 'Actualizar informe'}
+                </button>
+              </div>
+
+              {snowZoneError && (
+                <div style={{ ...errorCaja, marginTop: 12 }}>{snowZoneError}</div>
+              )}
+
+              {!snowZoneCargando && !snowZoneError && snowZoneDias.length === 0 && (
+                <div style={{ ...avisoNeutral, marginTop: 12 }}>
+                  No hay asistencias contabilizadas en este periodo.
+                </div>
+              )}
+
+              {snowZoneDias.length > 0 && (() => {
+                const totalPequena = snowZoneDias.reduce(
+                  (total, fila) => total + Number(fila.pista_pequena || 0),
+                  0
+                );
+                const totalGrande = snowZoneDias.reduce(
+                  (total, fila) => total + Number(fila.pista_grande || 0),
+                  0
+                );
+                const totalGeneral = totalPequena + totalGrande;
+                const periodo = limitesSnowZoneSeleccionados();
+                const cabeceraPeriodo = tituloPeriodoSnowZone();
+
+                return (
+                  <>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        flexWrap: 'wrap',
+                        marginTop: 16,
+                        padding: '14px 15px',
+                        border: '1px solid #dbeafe',
+                        borderRadius: 16,
+                        background: 'rgba(255,255,255,.82)',
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <strong
+                          style={{
+                            display: 'block',
+                            color: '#172033',
+                            fontSize: 18,
+                            lineHeight: 1.2,
+                          }}
+                        >
+                          {cabeceraPeriodo.titulo}
+                        </strong>
+                        <span
+                          style={{
+                            display: 'block',
+                            marginTop: 4,
+                            color: '#64748b',
+                            fontSize: 13,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {cabeceraPeriodo.periodo}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={descargarInformeSnowZoneExcel}
+                        disabled={snowZoneCargando || snowZoneDias.length === 0}
+                        style={{
+                          ...botonPrincipal,
+                          flex: '0 1 190px',
+                          minWidth: 0,
+                          minHeight: 44,
+                          whiteSpace: 'normal',
+                          overflowWrap: 'anywhere',
+                          opacity:
+                            snowZoneCargando || snowZoneDias.length === 0 ? 0.55 : 1,
+                        }}
+                      >
+                        Descargar Excel
+                      </button>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',
+                        gap: 10,
+                        marginTop: 12,
+                      }}
+                    >
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Pista pequeña</strong>
+                        <br />
+                        <span style={{ fontSize: 26, fontWeight: 900 }}>
+                          {totalPequena}
+                        </span>
+                      </div>
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Pista grande</strong>
+                        <br />
+                        <span style={{ fontSize: 26, fontWeight: 900 }}>
+                          {totalGrande}
+                        </span>
+                      </div>
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Total periodo</strong>
+                        <br />
+                        <span style={{ fontSize: 26, fontWeight: 900 }}>
+                          {totalGeneral}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        overflowX: 'auto',
+                        marginTop: 12,
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 16,
+                        background: '#fff',
+                        WebkitOverflowScrolling: 'touch',
+                      }}
+                    >
+                      <table
+                        style={{
+                          width: '100%',
+                          borderCollapse: 'collapse',
+                          minWidth: 520,
+                        }}
+                      >
+                        <thead>
+                          <tr style={{ background: '#f8fafc' }}>
+                            {['Fecha', 'Pista pequeña', 'Pista grande', 'Total'].map(
+                              (titulo) => (
+                                <th
+                                  key={titulo}
+                                  style={{
+                                    padding: '11px 12px',
+                                    textAlign:
+                                      titulo === 'Fecha' ? 'left' : 'center',
+                                    borderBottom: '1px solid #e2e8f0',
+                                    color: '#334155',
+                                  }}
+                                >
+                                  {titulo}
+                                </th>
+                              )
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {snowZoneDias.map((fila) => (
+                            <tr key={fila.fecha}>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  fontWeight: 800,
+                                }}
+                              >
+                                {formatearFecha(fila.fecha)}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                {fila.pista_pequena}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                {fila.pista_grande}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  textAlign: 'center',
+                                  fontWeight: 900,
+                                }}
+                              >
+                                {fila.total}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr style={{ background: '#f8fafc' }}>
+                            <td style={{ padding: '11px 12px', fontWeight: 900 }}>
+                              TOTAL
+                            </td>
+                            <td
+                              style={{
+                                padding: '11px 12px',
+                                textAlign: 'center',
+                                fontWeight: 900,
+                              }}
+                            >
+                              {totalPequena}
+                            </td>
+                            <td
+                              style={{
+                                padding: '11px 12px',
+                                textAlign: 'center',
+                                fontWeight: 900,
+                              }}
+                            >
+                              {totalGrande}
+                            </td>
+                            <td
+                              style={{
+                                padding: '11px 12px',
+                                textAlign: 'center',
+                                fontWeight: 900,
+                              }}
+                            >
+                              {totalGeneral}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    <p
+                      style={{
+                        margin: '10px 0 0',
+                        color: '#64748b',
+                        fontSize: 13,
+                      }}
+                    >
+                      Periodo: {formatearFecha(periodo.desde)} –{' '}
+                      {formatearFecha(periodo.hasta)}
+                    </p>
+                  </>
+                );
+              })()}
+            </div>
+          </details>
+
           <article style={{ ...tarjeta, marginTop: 16 }}>
-            <h3 style={{ marginTop: 0 }}>Backup semanal automático</h3>
             <div
-              style={
-                backupSemanaRealizado || ultimaDescargaBackupSemana
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 12,
+                alignItems: 'center',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div>
+                <h3 style={{ margin: 0 }}>Copia de seguridad semanal</h3>
+                <p style={{ margin: '6px 0 0', color: '#64748b' }}>
+                  Se mantiene el backup que ya tenías, separado de los informes.
+                </p>
+              </div>
+              <button
+                onClick={descargarBackupSemanalExcel}
+                style={botonSecundario}
+              >
+                Descargar backup semanal
+              </button>
+            </div>
+
+            <div
+              style={{
+                ...(backupSemanaRealizado || ultimaDescargaBackupSemana
                   ? avisoCompleto
-                  : avisoPendiente
-              }
+                  : avisoPendiente),
+                marginTop: 12,
+              }}
             >
               Semana {rangoSemanaAgenda(claveSemanaBackupActiva)} ·{' '}
               {backupSemanaRealizado || ultimaDescargaBackupSemana
@@ -13348,60 +13987,7 @@ Gracias!`;
                   }`
                 : 'Pendiente de descargar esta semana'}
             </div>
-            <details style={ayudaDesplegableCompacta}>
-              <summary>Cómo funciona</summary>
-              <p style={{ margin: '8px 0 0' }}>
-                El navegador no permite descargar archivos solo sin tocar nada.
-                La app te marca cada semana si falta la copia y la descarga con
-                un clic.
-              </p>
-            </details>
           </article>
-
-          <div style={gridResumenInicio}>
-            <div style={miniTarjetaBlanca}>
-              <strong>Sesiones semana</strong>
-              <br />
-              {
-                sesionesAgenda.filter(
-                  (sesion) =>
-                    sesion.fecha >= claveSemanaBackupActiva &&
-                    sesion.fecha <= domingoSemanaOcioActiva()
-                ).length
-              }
-            </div>
-            <div style={miniTarjetaBlanca}>
-              <strong>Alumnos base</strong>
-              <br />
-              {alumnos.length}
-            </div>
-            <div style={miniTarjetaBlanca}>
-              <strong>Alumnos Ocio</strong>
-              <br />
-              {ocioAlumnos.length}
-            </div>
-            <div style={miniTarjetaBlanca}>
-              <strong>Intensivos</strong>
-              <br />
-              {intensivos.length}
-            </div>
-            <div style={miniTarjetaBlanca}>
-              <strong>Reportes pendientes semana</strong>
-              <br />
-              {
-                reportesPendientes.filter(
-                  (reporte) =>
-                    reporte.fecha >= claveSemanaBackupActiva &&
-                    reporte.fecha <= domingoSemanaOcioActiva()
-                ).length
-              }
-            </div>
-            <div style={miniTarjetaBlanca}>
-              <strong>Cobros mes visible</strong>
-              <br />
-              {cobros.length} entrenadores
-            </div>
-          </div>
         </section>
       )}
 
@@ -19201,7 +19787,10 @@ Gracias!`;
                                       )
                                     }
                                   >
-                                    <summary className="trainer-accordion-summary">
+                                    <summary
+                                      className="trainer-accordion-summary"
+                                      onClick={enfocarAcordeonEntrenadorAlAbrir}
+                                    >
                                       <div style={{ display: 'grid' }}>
                                         <strong>{nombreDia}</strong>
                                         <span>{formatearFecha(dia.fecha)}</span>
@@ -19480,6 +20069,7 @@ Gracias!`;
                       <summary
                         className="trainer-week-summary"
                         style={cabeceraSemanaMovil}
+                        onClick={enfocarAcordeonEntrenadorAlAbrir}
                       >
                         <div>
                           <p style={etiquetaSuperior}>
@@ -19528,7 +20118,10 @@ Gracias!`;
                                       semanaVistaEntrenadorInicio)
                                 }
                               >
-                                <summary className="trainer-accordion-summary">
+                                <summary
+                                  className="trainer-accordion-summary"
+                                  onClick={enfocarAcordeonEntrenadorAlAbrir}
+                                >
                                   <div style={{ display: 'grid' }}>
                                     <strong>{nombreDia}</strong>
                                     <span>{formatearFecha(dia.fecha)}</span>
@@ -19564,7 +20157,10 @@ Gracias!`;
                                             indiceTurno === 0)
                                         }
                                       >
-                                        <summary className="trainer-shift-summary">
+                                        <summary
+                                          className="trainer-shift-summary"
+                                          onClick={enfocarAcordeonEntrenadorAlAbrir}
+                                        >
                                           <strong>
                                             {turno.hora_inicio}–
                                             {turno.hora_fin}
@@ -19806,8 +20402,9 @@ Gracias!`;
                                                         : ''
                                                     }
                                                     onClick={() =>
-                                                      setSeccionGrupoEntrenador(
-                                                        'asistencia'
+                                                      irASeccionGrupoEntrenador(
+                                                        'asistencia',
+                                                        grupoDomId
                                                       )
                                                     }
                                                   >
@@ -19822,8 +20419,9 @@ Gracias!`;
                                                         : ''
                                                     }
                                                     onClick={() =>
-                                                      setSeccionGrupoEntrenador(
-                                                        'trabajo'
+                                                      irASeccionGrupoEntrenador(
+                                                        'trabajo',
+                                                        grupoDomId
                                                       )
                                                     }
                                                   >
@@ -19838,8 +20436,9 @@ Gracias!`;
                                                         : ''
                                                     }
                                                     onClick={() =>
-                                                      setSeccionGrupoEntrenador(
-                                                        'observaciones'
+                                                      irASeccionGrupoEntrenador(
+                                                        'observaciones',
+                                                        grupoDomId
                                                       )
                                                     }
                                                   >
