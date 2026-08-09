@@ -1229,6 +1229,72 @@ type ListadoAlumnoTemporadaApp = {
   ultimo_intensivo: string | null;
 };
 
+type EvaluacionAnualOcioApp = {
+  alumno_id: string;
+  alumno: string;
+  temporada: string;
+  entrenamientos_ocio: number;
+  reportes_ocio: number;
+  primer_reporte_fecha: string | null;
+  ultimo_reporte_fecha: string | null;
+  nivel_inicial: string | null;
+  nivel_final: string | null;
+  niveles_reportados: string | null;
+  tecnica_inicial: string | null;
+  tecnica_final: string | null;
+  autonomia_inicial: string | null;
+  autonomia_final: string | null;
+  remontes_iniciales: string[] | null;
+  remontes_finales: string[] | null;
+  actitud_final: string | null;
+  pista_final: string | null;
+  recomendacion_final: string | null;
+  comentario_tecnica_final: string | null;
+  comentario_autonomia_final: string | null;
+};
+
+type CierreTemporadaAlumnoApp = {
+  alumno_id: string;
+  alumno: string;
+  temporada: string;
+  fecha_nacimiento: string | null;
+  ultimo_nivel_real: string | null;
+  ultima_pista: string | null;
+  ultimo_entreno: string | null;
+  ultima_modalidad: string | null;
+  entrenamientos_temporada: number;
+  ultima_recomendacion: string | null;
+  tuvo_asistencia: boolean;
+  tuvo_reporte: boolean;
+  activo_temporada: boolean;
+  conservar_siguiente: boolean;
+  motivo_estado: string;
+};
+
+type ResumenCierreTemporadaApp = {
+  temporada: string;
+  total_alumnos_base: number;
+  activos_temporada: number;
+  conservar_siguiente: number;
+  eliminar_por_inactividad: number;
+  con_asistencia: number;
+  con_reporte: number;
+};
+
+type FilaCopiaMaestraImportApp = {
+  alumno_id: string;
+  alumno: string;
+  fecha_nacimiento: string;
+  ultimo_nivel_real: string;
+  pista: string;
+  ultimo_entreno: string;
+  ultima_modalidad: string;
+  entrenamientos_temporada: number;
+  ultima_recomendacion: string;
+  valido: boolean;
+  error: string;
+};
+
 type AgendaSesionDirectaApp = {
   sesion_id: string;
   fecha: string;
@@ -3135,6 +3201,40 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [listadoAlumnosError, setListadoAlumnosError] = useState('');
   const [listadoAlumnosGenerado, setListadoAlumnosGenerado] = useState(false);
   const [busquedaListadoAlumnos, setBusquedaListadoAlumnos] = useState('');
+
+  const [evaluacionesAnualesOcio, setEvaluacionesAnualesOcio] = useState<
+    EvaluacionAnualOcioApp[]
+  >([]);
+  const [evaluacionesAnualesOcioCargando, setEvaluacionesAnualesOcioCargando] =
+    useState(false);
+  const [evaluacionesAnualesOcioError, setEvaluacionesAnualesOcioError] =
+    useState('');
+  const [evaluacionesAnualesOcioGeneradas, setEvaluacionesAnualesOcioGeneradas] =
+    useState(false);
+  const [busquedaEvaluacionAnualOcio, setBusquedaEvaluacionAnualOcio] =
+    useState('');
+
+  const [cierreTemporadaAlumnos, setCierreTemporadaAlumnos] = useState<
+    CierreTemporadaAlumnoApp[]
+  >([]);
+  const [resumenCierreTemporada, setResumenCierreTemporada] =
+    useState<ResumenCierreTemporadaApp | null>(null);
+  const [cierreTemporadaCargando, setCierreTemporadaCargando] = useState(false);
+  const [cierreTemporadaError, setCierreTemporadaError] = useState('');
+  const [cierreTemporadaAnalizado, setCierreTemporadaAnalizado] = useState(false);
+  const [filtroCierreTemporada, setFiltroCierreTemporada] = useState<
+    'todos' | 'conservar' | 'eliminar'
+  >('todos');
+  const [busquedaCierreTemporada, setBusquedaCierreTemporada] = useState('');
+
+  const [archivoCopiaMaestraNombre, setArchivoCopiaMaestraNombre] = useState('');
+  const [filasCopiaMaestraImport, setFilasCopiaMaestraImport] = useState<
+    FilaCopiaMaestraImportApp[]
+  >([]);
+  const [errorCopiaMaestraImport, setErrorCopiaMaestraImport] = useState('');
+  const [importandoCopiaMaestra, setImportandoCopiaMaestra] = useState(false);
+  const [resultadoImportacionCopiaMaestra, setResultadoImportacionCopiaMaestra] =
+    useState('');
 
   const [agendaSesionesDirectas, setAgendaSesionesDirectas] = useState<
     AgendaSesionDirectaApp[]
@@ -12467,6 +12567,404 @@ Gracias!`;
     );
   }
 
+  async function cargarEvaluacionesAnualesOcio() {
+    if (!esCoordinadorJefeApp) return;
+
+    setEvaluacionesAnualesOcioCargando(true);
+    setEvaluacionesAnualesOcioError('');
+
+    try {
+      const data = await ejecutarFuncionConRespuesta<EvaluacionAnualOcioApp>(
+        'obtener_evaluacion_anual_ocio_app'
+      );
+
+      setEvaluacionesAnualesOcio(
+        data.map((fila) => ({
+          ...fila,
+          entrenamientos_ocio: Number(fila.entrenamientos_ocio || 0),
+          reportes_ocio: Number(fila.reportes_ocio || 0),
+          remontes_iniciales: Array.isArray(fila.remontes_iniciales)
+            ? fila.remontes_iniciales
+            : [],
+          remontes_finales: Array.isArray(fila.remontes_finales)
+            ? fila.remontes_finales
+            : [],
+        }))
+      );
+      setEvaluacionesAnualesOcioGeneradas(true);
+    } catch (err) {
+      setEvaluacionesAnualesOcio([]);
+      setEvaluacionesAnualesOcioGeneradas(false);
+      setEvaluacionesAnualesOcioError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo generar la evaluación anual de Ocio.'
+      );
+    } finally {
+      setEvaluacionesAnualesOcioCargando(false);
+    }
+  }
+
+  function descargarEvaluacionesAnualesOcio() {
+    if (evaluacionesAnualesOcio.length === 0) {
+      setEvaluacionesAnualesOcioError(
+        'No hay evaluaciones de Ocio para descargar.'
+      );
+      return;
+    }
+
+    const escaparCsv = (valor: unknown) => {
+      const texto = String(valor ?? '');
+      return `"${texto.replace(/"/g, '""')}"`;
+    };
+
+    const temporada = evaluacionesAnualesOcio[0]?.temporada || 'temporada';
+    const filas: Array<Array<string | number>> = [
+      [`EVALUACIÓN ANUAL OCIO · ${temporada}`],
+      [
+        'Base técnica para preparar después el informe para familias. No es el texto final para padres.',
+      ],
+      [],
+      [
+        'Alumno',
+        'Entrenamientos Ocio',
+        'Reportes Ocio',
+        'Primer reporte',
+        'Último reporte',
+        'Nivel inicial',
+        'Nivel final',
+        'Progresión niveles',
+        'Técnica inicial',
+        'Técnica final',
+        'Autonomía inicial',
+        'Autonomía final',
+        'Remontes iniciales',
+        'Remontes finales',
+        'Actitud final',
+        'Pista final',
+        'Recomendación final',
+        'Comentario técnico final',
+        'Comentario autonomía final',
+      ],
+      ...evaluacionesAnualesOcio.map((fila) => [
+        fila.alumno,
+        fila.entrenamientos_ocio,
+        fila.reportes_ocio,
+        fila.primer_reporte_fecha ? formatearFecha(fila.primer_reporte_fecha) : '',
+        fila.ultimo_reporte_fecha ? formatearFecha(fila.ultimo_reporte_fecha) : '',
+        fila.nivel_inicial || '',
+        fila.nivel_final || '',
+        fila.niveles_reportados || '',
+        fila.tecnica_inicial || '',
+        fila.tecnica_final || '',
+        fila.autonomia_inicial || '',
+        fila.autonomia_final || '',
+        (fila.remontes_iniciales || []).join(', '),
+        (fila.remontes_finales || []).join(', '),
+        fila.actitud_final || '',
+        fila.pista_final || '',
+        fila.recomendacion_final || '',
+        fila.comentario_tecnica_final || '',
+        fila.comentario_autonomia_final || '',
+      ]),
+    ];
+
+    const csv =
+      '\uFEFF' +
+      filas.map((fila) => fila.map(escaparCsv).join(';')).join('\r\n');
+
+    descargarTextoComoArchivo(
+      `evaluacion_anual_ocio_${temporada.replace(/[^0-9A-Za-z_-]/g, '-')}.csv`,
+      csv,
+      'text/csv;charset=utf-8'
+    );
+  }
+
+  async function analizarCierreTemporada() {
+    if (!esCoordinadorJefeApp) return;
+
+    setCierreTemporadaCargando(true);
+    setCierreTemporadaError('');
+
+    try {
+      const [alumnos, resumen] = await Promise.all([
+        ejecutarFuncionConRespuesta<CierreTemporadaAlumnoApp>(
+          'obtener_cierre_temporada_alumnos_app'
+        ),
+        ejecutarFuncionConRespuesta<ResumenCierreTemporadaApp>(
+          'obtener_resumen_cierre_temporada_app'
+        ),
+      ]);
+
+      setCierreTemporadaAlumnos(
+        alumnos.map((fila) => ({
+          ...fila,
+          entrenamientos_temporada: Number(fila.entrenamientos_temporada || 0),
+          tuvo_asistencia: Boolean(fila.tuvo_asistencia),
+          tuvo_reporte: Boolean(fila.tuvo_reporte),
+          activo_temporada: Boolean(fila.activo_temporada),
+          conservar_siguiente: Boolean(fila.conservar_siguiente),
+        }))
+      );
+
+      const r = resumen[0] || null;
+      setResumenCierreTemporada(
+        r
+          ? {
+              ...r,
+              total_alumnos_base: Number(r.total_alumnos_base || 0),
+              activos_temporada: Number(r.activos_temporada || 0),
+              conservar_siguiente: Number(r.conservar_siguiente || 0),
+              eliminar_por_inactividad: Number(r.eliminar_por_inactividad || 0),
+              con_asistencia: Number(r.con_asistencia || 0),
+              con_reporte: Number(r.con_reporte || 0),
+            }
+          : null
+      );
+      setCierreTemporadaAnalizado(true);
+    } catch (err) {
+      setCierreTemporadaAlumnos([]);
+      setResumenCierreTemporada(null);
+      setCierreTemporadaAnalizado(false);
+      setCierreTemporadaError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo analizar el cierre de temporada.'
+      );
+    } finally {
+      setCierreTemporadaCargando(false);
+    }
+  }
+
+  function descargarCopiaMaestraTemporada() {
+    const filasConservar = cierreTemporadaAlumnos.filter(
+      (fila) => fila.conservar_siguiente
+    );
+
+    if (filasConservar.length === 0) {
+      setCierreTemporadaError(
+        'No hay alumnos preparados para la copia maestra de la siguiente temporada.'
+      );
+      return;
+    }
+
+    const escaparCsv = (valor: unknown) => {
+      const texto = String(valor ?? '');
+      return `"${texto.replace(/"/g, '""')}"`;
+    };
+
+    const temporada = filasConservar[0]?.temporada || 'temporada';
+    const filas: Array<Array<string | number>> = [
+      [`COPIA MAESTRA FIN DE TEMPORADA · ${temporada}`],
+      ['Base ligera para preparar la siguiente temporada'],
+      [],
+      [
+        'Alumno ID',
+        'Alumno',
+        'Fecha nacimiento',
+        'Último nivel real',
+        'Pista',
+        'Último entrenamiento',
+        'Última modalidad',
+        'Entrenamientos temporada',
+        'Última recomendación técnica',
+      ],
+      ...filasConservar.map((fila) => [
+        fila.alumno_id,
+        fila.alumno,
+        fila.fecha_nacimiento ? formatearFecha(fila.fecha_nacimiento) : '',
+        fila.ultimo_nivel_real || '',
+        fila.ultima_pista || '',
+        fila.ultimo_entreno ? formatearFecha(fila.ultimo_entreno) : '',
+        fila.ultima_modalidad || '',
+        fila.entrenamientos_temporada,
+        fila.ultima_recomendacion || '',
+      ]),
+    ];
+
+    const csv =
+      '\uFEFF' + filas.map((fila) => fila.map(escaparCsv).join(';')).join('\r\n');
+
+    descargarTextoComoArchivo(
+      `copia_maestra_${temporada.replace(/[^0-9A-Za-z_-]/g, '-')}.csv`,
+      csv,
+      'text/csv;charset=utf-8'
+    );
+  }
+
+  function parsearLineaCsvCopiaMaestra(linea: string) {
+    const celdas: string[] = [];
+    let actual = '';
+    let entreComillas = false;
+
+    for (let i = 0; i < linea.length; i += 1) {
+      const caracter = linea[i];
+
+      if (caracter === '"') {
+        if (entreComillas && linea[i + 1] === '"') {
+          actual += '"';
+          i += 1;
+        } else {
+          entreComillas = !entreComillas;
+        }
+      } else if (caracter === ';' && !entreComillas) {
+        celdas.push(actual);
+        actual = '';
+      } else {
+        actual += caracter;
+      }
+    }
+
+    celdas.push(actual);
+    return celdas.map((valor) => valor.trim());
+  }
+
+  async function cargarCopiaMaestraParaRevisar(archivo: File | null) {
+    setErrorCopiaMaestraImport('');
+    setFilasCopiaMaestraImport([]);
+    setArchivoCopiaMaestraNombre('');
+
+    if (!archivo) return;
+
+    if (!archivo.name.toLowerCase().endsWith('.csv')) {
+      setErrorCopiaMaestraImport(
+        'Selecciona el CSV oficial descargado desde Preparar próxima temporada.'
+      );
+      return;
+    }
+
+    try {
+      const texto = (await archivo.text()).replace(/^\uFEFF/, '');
+      const lineas = texto.split(/\r?\n/).filter((linea) => linea.trim());
+      const indiceCabecera = lineas.findIndex((linea) =>
+        linea.includes('"Alumno ID";"Alumno";"Fecha nacimiento";"Último nivel real"')
+      );
+
+      if (indiceCabecera < 0) {
+        throw new Error(
+          'El archivo no tiene la estructura de la copia maestra generada por la app.'
+        );
+      }
+
+      const filas = lineas.slice(indiceCabecera + 1).map((linea) => {
+        const columnas = parsearLineaCsvCopiaMaestra(linea);
+        const [
+          alumnoId = '',
+          alumno = '',
+          fechaNacimiento = '',
+          ultimoNivel = '',
+          pista = '',
+          ultimoEntreno = '',
+          ultimaModalidad = '',
+          entrenamientos = '0',
+          recomendacion = '',
+        ] = columnas;
+
+        const errores: string[] = [];
+        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(alumnoId.trim())) {
+          errores.push('ID de alumno no válido');
+        }
+        if (!alumno.trim()) errores.push('Falta nombre');
+        if (ultimoNivel && !/^(A\+?|B\+?|C\+?|D\+?)$/i.test(ultimoNivel.trim())) {
+          errores.push('Nivel no reconocido');
+        }
+
+        const numeroEntrenos = Number(String(entrenamientos).replace(',', '.'));
+        if (!Number.isFinite(numeroEntrenos) || numeroEntrenos < 0) {
+          errores.push('Entrenamientos no válidos');
+        }
+
+        return {
+          alumno_id: alumnoId.trim(),
+          alumno: alumno.trim(),
+          fecha_nacimiento: fechaNacimiento.trim(),
+          ultimo_nivel_real: ultimoNivel.trim(),
+          pista: pista.trim(),
+          ultimo_entreno: ultimoEntreno.trim(),
+          ultima_modalidad: ultimaModalidad.trim(),
+          entrenamientos_temporada: Number.isFinite(numeroEntrenos)
+            ? numeroEntrenos
+            : 0,
+          ultima_recomendacion: recomendacion.trim(),
+          valido: errores.length === 0,
+          error: errores.join(' · '),
+        } as FilaCopiaMaestraImportApp;
+      });
+
+      if (filas.length === 0) {
+        throw new Error('La copia maestra no contiene alumnos.');
+      }
+
+      setArchivoCopiaMaestraNombre(archivo.name);
+      setFilasCopiaMaestraImport(filas);
+    } catch (err) {
+      setErrorCopiaMaestraImport(
+        err instanceof Error ? err.message : 'No se pudo leer la copia maestra.'
+      );
+    }
+  }
+
+  async function importarCopiaMaestraEnAlumnos() {
+    if (!esCoordinadorJefeApp) return;
+
+    const filasInvalidas = filasCopiaMaestraImport.filter((fila) => !fila.valido);
+    if (filasCopiaMaestraImport.length === 0) {
+      setErrorCopiaMaestraImport('Primero selecciona una copia maestra válida.');
+      return;
+    }
+
+    if (filasInvalidas.length > 0) {
+      setErrorCopiaMaestraImport(
+        'Corrige el CSV: no se puede importar mientras haya filas con errores.'
+      );
+      return;
+    }
+
+    setImportandoCopiaMaestra(true);
+    setErrorCopiaMaestraImport('');
+    setResultadoImportacionCopiaMaestra('');
+
+    try {
+      const temporadaOrigenMatch = archivoCopiaMaestraNombre.match(
+        /copia_maestra_(.+)\.csv$/i
+      );
+      const temporadaOrigen =
+        temporadaOrigenMatch?.[1]?.replace(/-/g, ' ') || 'temporada anterior';
+
+      const data = await ejecutarFuncionConRespuesta<{
+        actualizados: number;
+        omitidos: number;
+      }>('importar_semilla_copia_maestra_app', {
+        p_temporada_origen: temporadaOrigen,
+        p_filas: filasCopiaMaestraImport.map((fila) => ({
+          alumno_id: fila.alumno_id,
+          fecha_nacimiento: fila.fecha_nacimiento || null,
+          ultimo_nivel_real: fila.ultimo_nivel_real || null,
+          pista: fila.pista || null,
+          ultimo_entreno: fila.ultimo_entreno || null,
+          ultima_modalidad: fila.ultima_modalidad || null,
+          entrenamientos_temporada: fila.entrenamientos_temporada,
+          ultima_recomendacion: fila.ultima_recomendacion || null,
+        })),
+      });
+
+      const resumen = data[0];
+      setResultadoImportacionCopiaMaestra(
+        `Semilla cargada: ${Number(resumen?.actualizados || 0)} alumnos actualizados · ${Number(
+          resumen?.omitidos || 0
+        )} omitidos.`
+      );
+    } catch (err) {
+      setErrorCopiaMaestraImport(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo cargar la copia maestra en la base de alumnos.'
+      );
+    } finally {
+      setImportandoCopiaMaestra(false);
+    }
+  }
+
   function htmlEscapeBackup(valor: unknown) {
     return String(valor ?? '')
       .replace(/&/g, '&amp;')
@@ -14866,6 +15364,1115 @@ Gracias!`;
                         </tbody>
                       </table>
                     </div>
+                  </>
+                );
+              })()}
+            </div>
+          </details>
+
+          <details
+            style={{
+              ...tarjeta,
+              marginTop: 16,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid rgba(168,85,247,.2)',
+              background:
+                'linear-gradient(135deg, rgba(250,245,255,.94), #fff 58%, rgba(239,246,255,.72))',
+            }}
+          >
+            <summary
+              style={{
+                listStyle: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '16px 18px',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p
+                  style={{
+                    ...etiquetaSuperior,
+                    color: '#7e22ce',
+                    margin: '0 0 3px',
+                  }}
+                >
+                  FINAL DE TEMPORADA · OCIO
+                </p>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: 20,
+                    lineHeight: 1.2,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  Evaluación anual Ocio
+                </h3>
+                <p
+                  style={{
+                    margin: '5px 0 0',
+                    color: '#64748b',
+                    fontSize: 13,
+                  }}
+                >
+                  Resumen técnico de progresión para preparar los informes de familias
+                </p>
+              </div>
+
+              <span
+                style={{
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  border: '1px solid #cbd5e1',
+                  background: '#fff',
+                  color: '#334155',
+                  fontWeight: 900,
+                  fontSize: 20,
+                }}
+              >
+                ↕
+              </span>
+            </summary>
+
+            <div
+              style={{
+                padding: '16px 18px 18px',
+                borderTop: '1px solid rgba(168,85,247,.12)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <p
+                  style={{
+                    margin: 0,
+                    color: '#475569',
+                    lineHeight: 1.45,
+                    flex: '1 1 430px',
+                  }}
+                >
+                  Resume cómo empezó y cómo termina cada alumno de Ocio según sus
+                  reportes reales de esta temporada. Sirve como base para pasármelo
+                  después por ChatGPT y redactar un informe bonito para los padres.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={cargarEvaluacionesAnualesOcio}
+                  disabled={evaluacionesAnualesOcioCargando}
+                  style={{
+                    ...botonPrincipal,
+                    flex: '0 1 220px',
+                    minWidth: 0,
+                    minHeight: 46,
+                    whiteSpace: 'normal',
+                    opacity: evaluacionesAnualesOcioCargando ? 0.65 : 1,
+                  }}
+                >
+                  {evaluacionesAnualesOcioCargando
+                    ? 'Generando...'
+                    : evaluacionesAnualesOcioGeneradas
+                    ? 'Actualizar evaluación'
+                    : 'Generar evaluación anual'}
+                </button>
+              </div>
+
+              {evaluacionesAnualesOcioError && (
+                <div style={{ ...errorCaja, marginTop: 12 }}>
+                  {evaluacionesAnualesOcioError}
+                </div>
+              )}
+
+              {evaluacionesAnualesOcioGeneradas &&
+                !evaluacionesAnualesOcioCargando &&
+                !evaluacionesAnualesOcioError &&
+                evaluacionesAnualesOcio.length === 0 && (
+                  <div style={{ ...avisoNeutral, marginTop: 12 }}>
+                    No hay alumnos con reportes de Ocio en la temporada activa.
+                  </div>
+                )}
+
+              {evaluacionesAnualesOcio.length > 0 && (() => {
+                const termino = busquedaEvaluacionAnualOcio.trim().toLowerCase();
+                const filasVisibles = termino
+                  ? evaluacionesAnualesOcio.filter((fila) =>
+                      `${fila.alumno} ${fila.nivel_inicial || ''} ${
+                        fila.nivel_final || ''
+                      } ${fila.autonomia_final || ''}`
+                        .toLowerCase()
+                        .includes(termino)
+                    )
+                  : evaluacionesAnualesOcio;
+                const temporada = evaluacionesAnualesOcio[0]?.temporada || '-';
+
+                return (
+                  <>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'minmax(0, 1fr) minmax(180px, auto)',
+                        gap: 10,
+                        alignItems: 'end',
+                        marginTop: 14,
+                      }}
+                    >
+                      <label style={{ ...labelCampo, minWidth: 0, width: '100%' }}>
+                        Buscar alumno
+                        <input
+                          value={busquedaEvaluacionAnualOcio}
+                          onChange={(e) => setBusquedaEvaluacionAnualOcio(e.target.value)}
+                          placeholder="Nombre, nivel, autonomía..."
+                          style={{
+                            ...inputCampo,
+                            width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={descargarEvaluacionesAnualesOcio}
+                        style={{
+                          ...botonPrincipal,
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 46,
+                          whiteSpace: 'normal',
+                        }}
+                      >
+                        Descargar Excel
+                      </button>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                        marginTop: 12,
+                        padding: '11px 12px',
+                        border: '1px solid #e9d5ff',
+                        borderRadius: 14,
+                        background: '#fff',
+                      }}
+                    >
+                      <strong>Temporada {temporada}</strong>
+                      <span style={{ color: '#64748b' }}>
+                        {filasVisibles.length} alumnos visibles ·{' '}
+                        {evaluacionesAnualesOcio.length} total
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+                      {filasVisibles.map((fila) => (
+                        <details
+                          key={`evaluacion-anual-ocio-${fila.alumno_id}`}
+                          style={{
+                            overflow: 'hidden',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: 16,
+                            background: '#fff',
+                          }}
+                        >
+                          <summary
+                            style={{
+                              listStyle: 'none',
+                              cursor: 'pointer',
+                              display: 'grid',
+                              gridTemplateColumns: 'minmax(0, 1fr) auto',
+                              gap: 10,
+                              alignItems: 'center',
+                              padding: '12px 14px',
+                              background: '#fafafa',
+                            }}
+                          >
+                            <div style={{ minWidth: 0 }}>
+                              <strong style={{ overflowWrap: 'anywhere' }}>
+                                {fila.alumno}
+                              </strong>
+                              <span
+                                style={{
+                                  display: 'block',
+                                  marginTop: 3,
+                                  color: '#64748b',
+                                  fontSize: 13,
+                                }}
+                              >
+                                Nivel {fila.nivel_inicial || '-'} →{' '}
+                                {fila.nivel_final || '-'} · {fila.entrenamientos_ocio}{' '}
+                                entrenos · {fila.reportes_ocio} reportes
+                              </span>
+                            </div>
+                            <span style={{ color: '#7e22ce', fontWeight: 900 }}>
+                              Ver progreso
+                            </span>
+                          </summary>
+
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns:
+                                'repeat(auto-fit, minmax(min(100%, 210px), 1fr))',
+                              gap: 10,
+                              padding: 14,
+                            }}
+                          >
+                            <div style={miniTarjetaBlanca}>
+                              <strong>Progresión de nivel</strong>
+                              <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                {fila.niveles_reportados ||
+                                  `${fila.nivel_inicial || '-'} → ${
+                                    fila.nivel_final || '-'
+                                  }`}
+                              </p>
+                            </div>
+
+                            <div style={miniTarjetaBlanca}>
+                              <strong>Técnica</strong>
+                              <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                {fila.tecnica_inicial || '-'} → {fila.tecnica_final || '-'}
+                              </p>
+                            </div>
+
+                            <div style={miniTarjetaBlanca}>
+                              <strong>Autonomía</strong>
+                              <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                {fila.autonomia_inicial || '-'} →{' '}
+                                {fila.autonomia_final || '-'}
+                              </p>
+                            </div>
+
+                            <div style={miniTarjetaBlanca}>
+                              <strong>Remontes finales</strong>
+                              <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                {(fila.remontes_finales || []).join(', ') || '-'}
+                              </p>
+                            </div>
+
+                            <div style={miniTarjetaBlanca}>
+                              <strong>Actitud final</strong>
+                              <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                {fila.actitud_final || '-'}
+                              </p>
+                            </div>
+
+                            <div style={miniTarjetaBlanca}>
+                              <strong>Último entrenamiento</strong>
+                              <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                {fila.ultimo_reporte_fecha
+                                  ? formatearFecha(fila.ultimo_reporte_fecha)
+                                  : '-'}
+                              </p>
+                            </div>
+
+                            {(fila.comentario_tecnica_final ||
+                              fila.comentario_autonomia_final ||
+                              fila.recomendacion_final) && (
+                              <div
+                                style={{
+                                  ...miniTarjetaBlanca,
+                                  gridColumn: '1 / -1',
+                                }}
+                              >
+                                <strong>Últimas observaciones útiles</strong>
+                                {fila.comentario_tecnica_final && (
+                                  <p style={{ margin: '7px 0 0', color: '#475569' }}>
+                                    Técnica: {fila.comentario_tecnica_final}
+                                  </p>
+                                )}
+                                {fila.comentario_autonomia_final && (
+                                  <p style={{ margin: '7px 0 0', color: '#475569' }}>
+                                    Autonomía: {fila.comentario_autonomia_final}
+                                  </p>
+                                )}
+                                {fila.recomendacion_final && (
+                                  <p style={{ margin: '7px 0 0', color: '#475569' }}>
+                                    Recomendación: {fila.recomendacion_final}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </details>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </details>
+
+          <details
+            style={{
+              ...tarjeta,
+              marginTop: 16,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid rgba(234,88,12,.22)',
+              background:
+                'linear-gradient(135deg, rgba(255,247,237,.95), #fff 58%, rgba(248,250,252,.9))',
+            }}
+          >
+            <summary
+              style={{
+                listStyle: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '16px 18px',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p
+                  style={{
+                    ...etiquetaSuperior,
+                    color: '#c2410c',
+                    margin: '0 0 3px',
+                  }}
+                >
+                  CIERRE DE TEMPORADA · FASE SEGURA
+                </p>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: 20,
+                    lineHeight: 1.2,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  Preparar próxima temporada
+                </h3>
+                <p
+                  style={{
+                    margin: '5px 0 0',
+                    color: '#64748b',
+                    fontSize: 13,
+                  }}
+                >
+                  Analiza y descarga la copia maestra. Aquí todavía no se borra nada.
+                </p>
+              </div>
+
+              <span
+                style={{
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  border: '1px solid #cbd5e1',
+                  background: '#fff',
+                  color: '#334155',
+                  fontWeight: 900,
+                  fontSize: 20,
+                }}
+              >
+                ↕
+              </span>
+            </summary>
+
+            <div
+              style={{
+                padding: '16px 18px 18px',
+                borderTop: '1px solid rgba(234,88,12,.12)',
+              }}
+            >
+              <div
+                style={{
+                  padding: 13,
+                  border: '1px solid #fed7aa',
+                  borderRadius: 14,
+                  background: '#fff7ed',
+                  color: '#9a3412',
+                  fontWeight: 800,
+                  lineHeight: 1.4,
+                }}
+              >
+                Este paso es únicamente de lectura. No elimina alumnos, reportes,
+                grupos, cobros ni ninguna otra información.
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                  marginTop: 14,
+                }}
+              >
+                <p
+                  style={{
+                    margin: 0,
+                    color: '#475569',
+                    lineHeight: 1.45,
+                    flex: '1 1 430px',
+                  }}
+                >
+                  Consideramos activo a un alumno si ha tenido al menos una
+                  asistencia real o un reporte durante la temporada. Si lleva la
+                  temporada completa sin ninguna de las dos cosas, aparece como
+                  candidato a eliminar en el futuro cierre definitivo.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={analizarCierreTemporada}
+                  disabled={cierreTemporadaCargando}
+                  style={{
+                    ...botonPrincipal,
+                    flex: '0 1 220px',
+                    minWidth: 0,
+                    minHeight: 46,
+                    whiteSpace: 'normal',
+                    opacity: cierreTemporadaCargando ? 0.65 : 1,
+                  }}
+                >
+                  {cierreTemporadaCargando
+                    ? 'Analizando...'
+                    : cierreTemporadaAnalizado
+                    ? 'Actualizar análisis'
+                    : 'Analizar temporada'}
+                </button>
+              </div>
+
+              {cierreTemporadaError && (
+                <div style={{ ...errorCaja, marginTop: 12 }}>
+                  {cierreTemporadaError}
+                </div>
+              )}
+
+              {resumenCierreTemporada && (
+                <>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns:
+                        'repeat(auto-fit, minmax(min(100%, 145px), 1fr))',
+                      gap: 10,
+                      marginTop: 14,
+                    }}
+                  >
+                    <div style={miniTarjetaBlanca}>
+                      <strong>Total base</strong>
+                      <div style={{ fontSize: 26, fontWeight: 900, marginTop: 5 }}>
+                        {resumenCierreTemporada.total_alumnos_base}
+                      </div>
+                    </div>
+                    <div style={miniTarjetaBlanca}>
+                      <strong>Activos temporada</strong>
+                      <div style={{ fontSize: 26, fontWeight: 900, marginTop: 5 }}>
+                        {resumenCierreTemporada.activos_temporada}
+                      </div>
+                    </div>
+                    <div style={miniTarjetaBlanca}>
+                      <strong>Conservar</strong>
+                      <div
+                        style={{
+                          fontSize: 26,
+                          fontWeight: 900,
+                          marginTop: 5,
+                          color: '#15803d',
+                        }}
+                      >
+                        {resumenCierreTemporada.conservar_siguiente}
+                      </div>
+                    </div>
+                    <div style={miniTarjetaBlanca}>
+                      <strong>Eliminar por inactividad</strong>
+                      <div
+                        style={{
+                          fontSize: 26,
+                          fontWeight: 900,
+                          marginTop: 5,
+                          color: '#b91c1c',
+                        }}
+                      >
+                        {resumenCierreTemporada.eliminar_por_inactividad}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns:
+                        'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',
+                      gap: 9,
+                      marginTop: 12,
+                    }}
+                  >
+                    {([
+                      ['todos', 'Todos'],
+                      ['conservar', 'Conservar'],
+                      ['eliminar', 'Eliminar'],
+                    ] as const).map(([valor, etiqueta]) => (
+                      <button
+                        key={`cierre-${valor}`}
+                        type="button"
+                        onClick={() => setFiltroCierreTemporada(valor)}
+                        style={{
+                          ...botonMenu(filtroCierreTemporada === valor),
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 44,
+                          whiteSpace: 'normal',
+                        }}
+                      >
+                        {etiqueta}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr) minmax(190px, auto)',
+                      gap: 10,
+                      alignItems: 'end',
+                      marginTop: 12,
+                    }}
+                  >
+                    <label style={{ ...labelCampo, minWidth: 0, width: '100%' }}>
+                      Buscar alumno
+                      <input
+                        value={busquedaCierreTemporada}
+                        onChange={(e) => setBusquedaCierreTemporada(e.target.value)}
+                        placeholder="Nombre, nivel, modalidad..."
+                        style={{
+                          ...inputCampo,
+                          width: '100%',
+                          minWidth: 0,
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={descargarCopiaMaestraTemporada}
+                      style={{
+                        ...botonPrincipal,
+                        width: '100%',
+                        minWidth: 0,
+                        minHeight: 46,
+                        whiteSpace: 'normal',
+                      }}
+                    >
+                      Descargar copia maestra
+                    </button>
+                  </div>
+
+                  {(() => {
+                    const termino = busquedaCierreTemporada.trim().toLowerCase();
+                    const filas = cierreTemporadaAlumnos.filter((fila) => {
+                      if (
+                        filtroCierreTemporada === 'conservar' &&
+                        !fila.conservar_siguiente
+                      )
+                        return false;
+                      if (
+                        filtroCierreTemporada === 'eliminar' &&
+                        fila.conservar_siguiente
+                      )
+                        return false;
+                      if (!termino) return true;
+                      return `${fila.alumno} ${fila.ultimo_nivel_real || ''} ${
+                        fila.ultima_modalidad || ''
+                      } ${fila.motivo_estado || ''}`
+                        .toLowerCase()
+                        .includes(termino);
+                    });
+
+                    return (
+                      <div
+                        style={{
+                          overflowX: 'auto',
+                          marginTop: 12,
+                          border: '1px solid #e2e8f0',
+                          borderRadius: 16,
+                          background: '#fff',
+                          WebkitOverflowScrolling: 'touch',
+                        }}
+                      >
+                        <table
+                          style={{
+                            width: '100%',
+                            minWidth: 860,
+                            borderCollapse: 'collapse',
+                          }}
+                        >
+                          <thead>
+                            <tr style={{ background: '#f8fafc' }}>
+                              {[
+                                'Alumno',
+                                'Nivel',
+                                'Último entreno',
+                                'Modalidad',
+                                'Entrenos',
+                                'Estado',
+                              ].map((titulo) => (
+                                <th
+                                  key={`cierre-${titulo}`}
+                                  style={{
+                                    padding: '10px 12px',
+                                    textAlign: titulo === 'Alumno' ? 'left' : 'center',
+                                    borderBottom: '1px solid #e2e8f0',
+                                    color: '#334155',
+                                    fontSize: 13,
+                                  }}
+                                >
+                                  {titulo}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filas.map((fila) => (
+                              <tr key={`cierre-${fila.alumno_id}`}>
+                                <td
+                                  style={{
+                                    padding: '10px 12px',
+                                    borderBottom: '1px solid #f1f5f9',
+                                    fontWeight: 800,
+                                  }}
+                                >
+                                  {fila.alumno}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: '10px 12px',
+                                    borderBottom: '1px solid #f1f5f9',
+                                    textAlign: 'center',
+                                    fontWeight: 900,
+                                  }}
+                                >
+                                  {fila.ultimo_nivel_real || '-'}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: '10px 12px',
+                                    borderBottom: '1px solid #f1f5f9',
+                                    textAlign: 'center',
+                                  }}
+                                >
+                                  {fila.ultimo_entreno
+                                    ? formatearFecha(fila.ultimo_entreno)
+                                    : '-'}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: '10px 12px',
+                                    borderBottom: '1px solid #f1f5f9',
+                                    textAlign: 'center',
+                                  }}
+                                >
+                                  {fila.ultima_modalidad || '-'}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: '10px 12px',
+                                    borderBottom: '1px solid #f1f5f9',
+                                    textAlign: 'center',
+                                    fontWeight: 900,
+                                  }}
+                                >
+                                  {fila.entrenamientos_temporada}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: '10px 12px',
+                                    borderBottom: '1px solid #f1f5f9',
+                                    textAlign: 'center',
+                                    color: fila.conservar_siguiente
+                                      ? '#15803d'
+                                      : '#b91c1c',
+                                    fontWeight: 900,
+                                  }}
+                                >
+                                  {fila.conservar_siguiente ? 'Conservar' : 'Eliminar'}
+                                  <span
+                                    style={{
+                                      display: 'block',
+                                      marginTop: 3,
+                                      color: '#64748b',
+                                      fontSize: 11,
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    {fila.motivo_estado}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
+            </div>
+          </details>
+
+          <details
+            style={{
+              ...tarjeta,
+              marginTop: 16,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid rgba(14,116,144,.22)',
+              background:
+                'linear-gradient(135deg, rgba(236,254,255,.94), #fff 58%, rgba(248,250,252,.9))',
+            }}
+          >
+            <summary
+              style={{
+                listStyle: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '16px 18px',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p
+                  style={{
+                    ...etiquetaSuperior,
+                    color: '#0e7490',
+                    margin: '0 0 3px',
+                  }}
+                >
+                  SIGUIENTE TEMPORADA · FASE SEGURA
+                </p>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: 20,
+                    lineHeight: 1.2,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  Revisar copia maestra para importar
+                </h3>
+                <p
+                  style={{
+                    margin: '5px 0 0',
+                    color: '#64748b',
+                    fontSize: 13,
+                  }}
+                >
+                  Comprueba el CSV antes de permitir cualquier carga en la base de datos
+                </p>
+              </div>
+
+              <span
+                style={{
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  border: '1px solid #cbd5e1',
+                  background: '#fff',
+                  color: '#334155',
+                  fontWeight: 900,
+                  fontSize: 20,
+                }}
+              >
+                ↕
+              </span>
+            </summary>
+
+            <div
+              style={{
+                padding: '16px 18px 18px',
+                borderTop: '1px solid rgba(14,116,144,.12)',
+              }}
+            >
+              <div
+                style={{
+                  padding: 13,
+                  border: '1px solid #a5f3fc',
+                  borderRadius: 14,
+                  background: '#ecfeff',
+                  color: '#155e75',
+                  fontWeight: 800,
+                  lineHeight: 1.4,
+                }}
+              >
+                Este paso tampoco escribe ni modifica datos. Solo abre y valida la
+                copia maestra que acabas de descargar.
+              </div>
+
+              <label
+                style={{
+                  ...labelCampo,
+                  display: 'block',
+                  width: '100%',
+                  marginTop: 14,
+                }}
+              >
+                Seleccionar copia maestra CSV
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(e) =>
+                    cargarCopiaMaestraParaRevisar(e.target.files?.[0] || null)
+                  }
+                  style={{
+                    ...inputCampo,
+                    display: 'block',
+                    width: '100%',
+                    minWidth: 0,
+                    boxSizing: 'border-box',
+                    marginTop: 6,
+                  }}
+                />
+              </label>
+
+              {errorCopiaMaestraImport && (
+                <div style={{ ...errorCaja, marginTop: 12 }}>
+                  {errorCopiaMaestraImport}
+                </div>
+              )}
+
+              {filasCopiaMaestraImport.length > 0 && (() => {
+                const validas = filasCopiaMaestraImport.filter((fila) => fila.valido);
+                const errores = filasCopiaMaestraImport.length - validas.length;
+
+                return (
+                  <>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',
+                        gap: 10,
+                        marginTop: 14,
+                      }}
+                    >
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Archivo</strong>
+                        <p
+                          style={{
+                            margin: '6px 0 0',
+                            color: '#475569',
+                            overflowWrap: 'anywhere',
+                          }}
+                        >
+                          {archivoCopiaMaestraNombre}
+                        </p>
+                      </div>
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Alumnos</strong>
+                        <div style={{ fontSize: 26, fontWeight: 900, marginTop: 5 }}>
+                          {filasCopiaMaestraImport.length}
+                        </div>
+                      </div>
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Correctos</strong>
+                        <div
+                          style={{
+                            fontSize: 26,
+                            fontWeight: 900,
+                            marginTop: 5,
+                            color: '#15803d',
+                          }}
+                        >
+                          {validas.length}
+                        </div>
+                      </div>
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Con errores</strong>
+                        <div
+                          style={{
+                            fontSize: 26,
+                            fontWeight: 900,
+                            marginTop: 5,
+                            color: errores > 0 ? '#b91c1c' : '#15803d',
+                          }}
+                        >
+                          {errores}
+                        </div>
+                      </div>
+                    </div>
+
+                    {resultadoImportacionCopiaMaestra && (
+                      <div
+                        style={{
+                          marginTop: 12,
+                          padding: 12,
+                          borderRadius: 14,
+                          border: '1px solid #bbf7d0',
+                          background: '#f0fdf4',
+                          color: '#166534',
+                          fontWeight: 800,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {resultadoImportacionCopiaMaestra}
+                      </div>
+                    )}
+
+                    <div
+                      style={{
+                        marginTop: 12,
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
+                        gap: 10,
+                        alignItems: 'center',
+                        padding: 12,
+                        borderRadius: 14,
+                        border: '1px solid #dbeafe',
+                        background: '#f8fafc',
+                      }}
+                    >
+                      <div
+                        style={{
+                          color: '#475569',
+                          lineHeight: 1.4,
+                          minWidth: 0,
+                        }}
+                      >
+                        Esta carga solo actualiza la semilla ligera del alumno:
+                        nivel actual, fecha de nacimiento y los campos semilla_*.
+                        No crea grupos, sesiones, reportes ni histórico.
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={importarCopiaMaestraEnAlumnos}
+                        disabled={errores > 0 || importandoCopiaMaestra}
+                        style={{
+                          ...botonPrincipal,
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 48,
+                          whiteSpace: 'normal',
+                          opacity:
+                            errores > 0 || importandoCopiaMaestra ? 0.55 : 1,
+                        }}
+                      >
+                        {importandoCopiaMaestra
+                          ? 'Cargando semilla...'
+                          : 'Cargar semilla en alumnos'}
+                      </button>
+                    </div>
+
+                    <div
+                      style={{
+                        overflowX: 'auto',
+                        marginTop: 12,
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 16,
+                        background: '#fff',
+                        WebkitOverflowScrolling: 'touch',
+                      }}
+                    >
+                      <table
+                        style={{
+                          width: '100%',
+                          minWidth: 900,
+                          borderCollapse: 'collapse',
+                        }}
+                      >
+                        <thead>
+                          <tr style={{ background: '#f8fafc' }}>
+                            {[
+                              'Alumno',
+                              'Nivel',
+                              'Pista',
+                              'Último entreno',
+                              'Modalidad',
+                              'Entrenos',
+                              'Validación',
+                            ].map((titulo) => (
+                              <th
+                                key={`import-${titulo}`}
+                                style={{
+                                  padding: '10px 12px',
+                                  textAlign: titulo === 'Alumno' ? 'left' : 'center',
+                                  borderBottom: '1px solid #e2e8f0',
+                                  color: '#334155',
+                                  fontSize: 13,
+                                }}
+                              >
+                                {titulo}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filasCopiaMaestraImport.map((fila, index) => (
+                            <tr key={`import-${fila.alumno}-${index}`}>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  fontWeight: 800,
+                                }}
+                              >
+                                {fila.alumno || '-'}
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                {fila.ultimo_nivel_real || '-'}
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                {fila.pista || '-'}
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                {fila.ultimo_entreno || '-'}
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                {fila.ultima_modalidad || '-'}
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                {fila.entrenamientos_temporada}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  textAlign: 'center',
+                                  color: fila.valido ? '#15803d' : '#b91c1c',
+                                  fontWeight: 900,
+                                }}
+                              >
+                                {fila.valido ? 'Correcto' : fila.error}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
                   </>
                 );
               })()}
