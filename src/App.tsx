@@ -3245,6 +3245,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [temporadaActivaCierre, setTemporadaActivaCierre] = useState('');
   const [cargandoTemporadaActivaCierre, setCargandoTemporadaActivaCierre] =
     useState(false);
+  const [mostrarFlujoCierre, setMostrarFlujoCierre] = useState(false);
 
   const [agendaSesionesDirectas, setAgendaSesionesDirectas] = useState<
     AgendaSesionDirectaApp[]
@@ -15896,153 +15897,80 @@ Gracias!`;
                 >
                   Preparar próxima temporada
                 </h3>
-                <details
-                  style={{
-                    marginTop: 12,
-                    border: '1px solid #cbd5e1',
-                    borderRadius: 12,
-                    background: '#f8fafc',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <summary
-                    style={{
-                      cursor: 'pointer',
-                      listStyle: 'none',
-                      padding: '12px 14px',
-                      fontSize: 14,
-                      fontWeight: 900,
-                      color: '#172033',
-                      userSelect: 'none',
-                    }}
-                  >
-                    Ver flujo de cierre y nueva temporada
-                  </summary>
-
-                  <div
-                    style={{
-                      padding: '0 14px 14px',
-                      color: '#475569',
-                      fontSize: 13,
-                      lineHeight: 1.5,
-                    }}
-                  >
-                    <ol
-                      style={{
-                        margin: 0,
-                        paddingLeft: 20,
-                        display: 'grid',
-                        gap: 7,
-                      }}
-                    >
-                      <li>
-                        <strong>Paso 1:</strong> analizar la temporada, revisar
-                        “Conservar / Eliminar” y descargar la copia maestra.
-                      </li>
-                      <li>
-                        <strong>Paso 2:</strong> comprobar el CSV y cargar la semilla.
-                      </li>
-                      <li>
-                        <strong>Antes del Paso 3:</strong> guardar el backup completo
-                        de Supabase en el Mac.
-                      </li>
-                      <li>
-                        <strong>Paso 3:</strong> cerrar la temporada definitivamente.
-                      </li>
-                      <li>
-                        <strong>Paso 4:</strong> iniciar la nueva temporada.
-                      </li>
-</ol>
-                  </div>
-                </details>
-
-            <div
-              style={{
-                display: 'none',
-                margin: '16px 18px 0',
-                padding: 16,
-                borderRadius: 16,
-                border: '1px solid #bfdbfe',
-                background: '#eff6ff',
-              }}
-            >
-              <p
-                style={{
-                  ...etiquetaSuperior,
-                  color: '#1d4ed8',
-                  margin: '0 0 4px',
-                }}
-              >
-                ARRANQUE DE TEMPORADA
-              </p>
-              <h4 style={{ margin: 0, color: '#1e3a8a', fontSize: 18 }}>
-                Iniciar {nombreTemporadaAgenda(anioInicioTemporadaAgenda)}
-              </h4>
-              {temporadaActivaCierre ===
-              nombreTemporadaAgenda(anioInicioTemporadaAgenda) ? (
-                <div
-                  style={{
-                    marginTop: 14,
-                    padding: '12px 14px',
-                    borderRadius: 12,
-                    border: '1px solid #bbf7d0',
-                    background: '#f0fdf4',
-                    color: '#166534',
-                    fontWeight: 900,
-                  }}
-                >
-                  Temporada activa · {temporadaActivaCierre}
-                </div>
-              ) : (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0, 1fr) auto',
-                    gap: 10,
-                    alignItems: 'end',
-                    marginTop: 14,
-                  }}
-                >
-                  <label style={{ ...labelCampo, minWidth: 0 }}>
-                    Temporada a iniciar
-                    <select
-                      value={anioInicioTemporadaAgenda}
-                      style={{ ...selectCampoAgenda, width: '100%' }}
-                      onChange={(e) => {
-                        const nuevoAnio = Number(e.target.value);
-                        setAnioInicioTemporadaAgenda(nuevoAnio);
-                        setMesAgenda(`${nuevoAnio}-09`);
-                        setSemanaAgendaInicio('');
-                        setResultadoNuevaTemporada('');
-                      }}
-                    >
-                      {opcionesTemporadaAgenda.map((anio) => (
-                        <option key={anio} value={anio}>
-                          {nombreTemporadaAgenda(anio)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
+                <div style={{ marginTop: 12 }}>
                   <button
                     type="button"
-                    onClick={iniciarNuevaTemporadaOperativa}
-                    disabled={
-                      iniciandoNuevaTemporada || cargandoTemporadaActivaCierre
-                    }
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setMostrarFlujoCierre((actual) => !actual);
+                    }}
                     style={{
-                      ...botonPrincipal,
-                      minHeight: 44,
-                      whiteSpace: 'nowrap',
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      padding: '12px 14px',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: 12,
+                      background: '#f8fafc',
+                      color: '#172033',
+                      fontSize: 14,
+                      fontWeight: 900,
+                      cursor: 'pointer',
+                      textAlign: 'left',
                     }}
                   >
-                    {iniciandoNuevaTemporada
-                      ? 'Iniciando...'
-                      : 'Iniciar temporada'}
+                    <span>Ver flujo de cierre y nueva temporada</span>
+                    <span aria-hidden="true">{mostrarFlujoCierre ? '−' : '+'}</span>
                   </button>
+
+                  {mostrarFlujoCierre && (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        padding: '12px 14px',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: 12,
+                        background: '#f8fafc',
+                        color: '#475569',
+                        fontSize: 13,
+                        lineHeight: 1.5,
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ol
+                        style={{
+                          margin: 0,
+                          paddingLeft: 20,
+                          display: 'grid',
+                          gap: 7,
+                        }}
+                      >
+                        <li>
+                          <strong>Paso 1:</strong> analizar la temporada, revisar
+                          “Conservar / Eliminar” y descargar la copia maestra.
+                        </li>
+                        <li>
+                          <strong>Paso 2:</strong> comprobar el CSV y cargar la semilla.
+                        </li>
+                        <li>
+                          <strong>Antes del Paso 3:</strong> guardar el backup completo
+                          de Supabase en el Mac.
+                        </li>
+                        <li>
+                          <strong>Paso 3:</strong> cerrar la temporada definitivamente.
+                        </li>
+                        <li>
+                          <strong>Paso 4:</strong> iniciar la nueva temporada.
+                        </li>
+                      </ol>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+
+
 
               </div>
 
@@ -16410,156 +16338,6 @@ Gracias!`;
               )}
             </div>
 
-            {resumenCierreTemporada && (
-              <div
-                style={{
-                  display: 'none',
-                  margin: '16px 18px 18px',
-                  padding: 16,
-                  borderRadius: 16,
-                  border: '1px solid #fecaca',
-                  background: '#fff7f7',
-                }}
-              >
-                <p
-                  style={{
-                    ...etiquetaSuperior,
-                    color: '#b91c1c',
-                    margin: '0 0 4px',
-                  }}
-                >
-                  CIERRE DEFINITIVO
-                </p>
-                <h4 style={{ margin: 0, color: '#7f1d1d', fontSize: 18 }}>
-                  Borrar operación de {resumenCierreTemporada.temporada}
-                </h4>
-
-                <label
-                  style={{
-                    display: 'flex',
-                    gap: 9,
-                    alignItems: 'flex-start',
-                    marginTop: 14,
-                    color: '#475569',
-                    fontWeight: 800,
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={confirmacionBackupCierre}
-                    onChange={(e) => setConfirmacionBackupCierre(e.target.checked)}
-                    style={{ marginTop: 3 }}
-                  />
-                  <span>
-                    He guardado el backup completo de Supabase en mi Mac y la copia
-                    maestra CSV.
-                  </span>
-                </label>
-
-                <label
-                  style={{
-                    display: 'flex',
-                    gap: 9,
-                    alignItems: 'flex-start',
-                    marginTop: 10,
-                    color: '#475569',
-                    fontWeight: 800,
-                  }}
-                >
-                  <input
-                    type="checkbox"
-                    checked={confirmacionListadoCierre}
-                    onChange={(e) => setConfirmacionListadoCierre(e.target.checked)}
-                    style={{ marginTop: 3 }}
-                  />
-                  <span>
-                    He revisado el listado “Eliminar” y acepto los alumnos que se
-                    eliminarán por inactividad.
-                  </span>
-                </label>
-
-                <label
-                  style={{
-                    ...labelCampo,
-                    display: 'block',
-                    marginTop: 14,
-                    width: '100%',
-                  }}
-                >
-                  Para confirmar, escribe exactamente
-                  <strong
-                    style={{
-                      display: 'block',
-                      marginTop: 4,
-                      color: '#991b1b',
-                    }}
-                  >
-                    CERRAR {resumenCierreTemporada.temporada}
-                  </strong>
-                  <input
-                    value={confirmacionCierreTexto}
-                    onChange={(e) => setConfirmacionCierreTexto(e.target.value)}
-                    placeholder={`CERRAR ${resumenCierreTemporada.temporada}`}
-                    style={{
-                      ...inputCampo,
-                      width: '100%',
-                      minWidth: 0,
-                      boxSizing: 'border-box',
-                      marginTop: 7,
-                    }}
-                  />
-                </label>
-
-                <button
-                  type="button"
-                  onClick={ejecutarCierreDefinitivoTemporada}
-                  disabled={
-                    cerrandoTemporada ||
-                    !confirmacionBackupCierre ||
-                    !confirmacionListadoCierre ||
-                    confirmacionCierreTexto.trim() !==
-                      `CERRAR ${resumenCierreTemporada.temporada}`
-                  }
-                  style={{
-                    ...botonPrincipal,
-                    width: '100%',
-                    minHeight: 50,
-                    marginTop: 14,
-                    background: '#b91c1c',
-                    borderColor: '#b91c1c',
-                    opacity:
-                      cerrandoTemporada ||
-                      !confirmacionBackupCierre ||
-                      !confirmacionListadoCierre ||
-                      confirmacionCierreTexto.trim() !==
-                        `CERRAR ${resumenCierreTemporada.temporada}`
-                        ? 0.5
-                        : 1,
-                  }}
-                >
-                  {cerrandoTemporada
-                    ? 'Cerrando temporada...'
-                    : 'Cerrar temporada definitivamente'}
-                </button>
-              </div>
-            )}
-
-            {resultadoCierreTemporada && (
-              <div
-                style={{
-                  margin: '0 18px 18px',
-                  padding: 14,
-                  borderRadius: 16,
-                  border: '1px solid #bbf7d0',
-                  background: '#f0fdf4',
-                  color: '#166534',
-                  fontWeight: 900,
-                  lineHeight: 1.45,
-                }}
-              >
-                {resultadoCierreTemporada}
-              </div>
-            )}
 
           </details>
 
@@ -16885,7 +16663,7 @@ Gracias!`;
           </details>
 
 
-          <article
+          <details
             style={{
               ...tarjeta,
               marginTop: 16,
@@ -16895,18 +16673,56 @@ Gracias!`;
               background: '#fff',
             }}
           >
-            <div style={{ padding: '16px 18px' }}>
-              <p
+            <summary
+              style={{
+                listStyle: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '16px 18px',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p
+                  style={{
+                    ...etiquetaSuperior,
+                    color: '#b91c1c',
+                    margin: '0 0 4px',
+                  }}
+                >
+                  PASO 3 · CIERRE DEFINITIVO
+                </p>
+                <h3 style={{ margin: 0, fontSize: 20 }}>Cerrar temporada</h3>
+              </div>
+
+              <span
                 style={{
-                  ...etiquetaSuperior,
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  border: '1px solid #fecaca',
+                  background: '#fff',
                   color: '#b91c1c',
-                  margin: '0 0 4px',
+                  fontWeight: 900,
+                  fontSize: 20,
                 }}
               >
-                PASO 3 · CIERRE DEFINITIVO
-              </p>
-              <h3 style={{ margin: 0, fontSize: 20 }}>Cerrar temporada</h3>
+                ↕
+              </span>
+            </summary>
 
+            <div
+              style={{
+                padding: '0 18px 18px',
+                borderTop: '1px solid #fee2e2',
+              }}
+            >
               {!resumenCierreTemporada ? (
                 <div
                   style={{
@@ -17049,8 +16865,9 @@ Gracias!`;
                   {resultadoCierreTemporada}
                 </div>
               )}
+
             </div>
-          </article>
+          </details>
 
           <article
             style={{
