@@ -1197,6 +1197,24 @@ type SnowZoneDiaApp = {
 
 type SnowZoneModoApp = 'mensual' | 'semanal';
 
+type CandidatoEquipoApp = {
+  alumno_id: string;
+  alumno: string;
+  temporada: string;
+  nivel: string;
+  orden_nivel: number;
+  entrenamientos_baby: number;
+  meses_activos_baby: number;
+  ultimo_entreno_baby: string | null;
+  ultimo_reporte_fecha: string | null;
+  autonomia: string | null;
+  remontes: string[] | null;
+  actitud: string | null;
+  tecnica: string | null;
+  pista: string | null;
+  recomendacion: string | null;
+};
+
 type AgendaSesionDirectaApp = {
   sesion_id: string;
   fecha: string;
@@ -3088,6 +3106,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [snowZoneDias, setSnowZoneDias] = useState<SnowZoneDiaApp[]>([]);
   const [snowZoneCargando, setSnowZoneCargando] = useState(false);
   const [snowZoneError, setSnowZoneError] = useState('');
+
+  const [candidatosEquipo, setCandidatosEquipo] = useState<CandidatoEquipoApp[]>([]);
+  const [candidatosEquipoCargando, setCandidatosEquipoCargando] = useState(false);
+  const [candidatosEquipoError, setCandidatosEquipoError] = useState('');
+  const [candidatosEquipoGenerado, setCandidatosEquipoGenerado] = useState(false);
 
   const [agendaSesionesDirectas, setAgendaSesionesDirectas] = useState<
     AgendaSesionDirectaApp[]
@@ -12239,6 +12262,97 @@ Gracias!`;
   }
 
 
+  async function cargarCandidatosEquipo() {
+    if (!esCoordinadorJefeApp) return;
+
+    setCandidatosEquipoCargando(true);
+    setCandidatosEquipoError('');
+
+    try {
+      const data = await ejecutarFuncionConRespuesta<CandidatoEquipoApp>(
+        'obtener_candidatos_equipo_baby_app'
+      );
+
+      setCandidatosEquipo(
+        data.map((fila) => ({
+          ...fila,
+          orden_nivel: Number(fila.orden_nivel || 0),
+          entrenamientos_baby: Number(fila.entrenamientos_baby || 0),
+          meses_activos_baby: Number(fila.meses_activos_baby || 0),
+          remontes: Array.isArray(fila.remontes) ? fila.remontes : [],
+        }))
+      );
+      setCandidatosEquipoGenerado(true);
+    } catch (err) {
+      setCandidatosEquipo([]);
+      setCandidatosEquipoGenerado(false);
+      setCandidatosEquipoError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo generar el informe de candidatos a equipo.'
+      );
+    } finally {
+      setCandidatosEquipoCargando(false);
+    }
+  }
+
+  function descargarCandidatosEquipoExcel() {
+    if (candidatosEquipo.length === 0) {
+      setCandidatosEquipoError('No hay candidatos para descargar.');
+      return;
+    }
+
+    const escaparCsv = (valor: unknown) => {
+      const texto = String(valor ?? '');
+      return `"${texto.replace(/"/g, '""')}"`;
+    };
+
+    const temporada = candidatosEquipo[0]?.temporada || 'temporada';
+    const filas: Array<Array<string | number>> = [
+      [`CANDIDATOS EQUIPO · BABY · ${temporada}`],
+      ['Solo alumnos Baby con nivel real B o superior'],
+      [],
+      [
+        'Nivel',
+        'Alumno',
+        'Entrenamientos Baby',
+        'Meses activos',
+        'Último entreno Baby',
+        'Último reporte técnico',
+        'Autonomía',
+        'Remontes',
+        'Actitud',
+        'Técnica',
+        'Pista',
+        'Recomendación',
+      ],
+      ...candidatosEquipo.map((fila) => [
+        fila.nivel,
+        fila.alumno,
+        fila.entrenamientos_baby,
+        fila.meses_activos_baby,
+        fila.ultimo_entreno_baby ? formatearFecha(fila.ultimo_entreno_baby) : '',
+        fila.ultimo_reporte_fecha ? formatearFecha(fila.ultimo_reporte_fecha) : '',
+        fila.autonomia || '',
+        (fila.remontes || []).join(', '),
+        fila.actitud || '',
+        fila.tecnica || '',
+        fila.pista || '',
+        fila.recomendacion || '',
+      ]),
+    ];
+
+    const csv =
+      '\uFEFF' +
+      filas.map((fila) => fila.map(escaparCsv).join(';')).join('\r\n');
+
+    descargarTextoComoArchivo(
+      `candidatos_equipo_baby_${temporada.replace(/[^0-9A-Za-z_-]/g, '-')}.csv`,
+      csv,
+      'text/csv;charset=utf-8'
+    );
+  }
+
   function htmlEscapeBackup(valor: unknown) {
     return String(valor ?? '')
       .replace(/&/g, '&amp;')
@@ -13942,6 +14056,346 @@ Gracias!`;
                       Periodo: {formatearFecha(periodo.desde)} –{' '}
                       {formatearFecha(periodo.hasta)}
                     </p>
+                  </>
+                );
+              })()}
+            </div>
+          </details>
+
+          <details
+            style={{
+              ...tarjeta,
+              marginTop: 16,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid rgba(22,163,74,.22)',
+              background:
+                'linear-gradient(135deg, rgba(240,253,244,.94), #fff 56%, rgba(239,246,255,.72))',
+            }}
+          >
+            <summary
+              style={{
+                listStyle: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '16px 18px',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p
+                  style={{
+                    ...etiquetaSuperior,
+                    color: '#15803d',
+                    margin: '0 0 3px',
+                  }}
+                >
+                  FINAL DE TEMPORADA
+                </p>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: 20,
+                    lineHeight: 1.2,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  Candidatos a equipo
+                </h3>
+                <p
+                  style={{
+                    margin: '5px 0 0',
+                    color: '#64748b',
+                    fontSize: 13,
+                  }}
+                >
+                  Solo Baby · nivel B o superior · informe bajo demanda
+                </p>
+              </div>
+
+              <span
+                style={{
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  border: '1px solid #cbd5e1',
+                  background: '#fff',
+                  color: '#334155',
+                  fontWeight: 900,
+                  fontSize: 20,
+                }}
+              >
+                ↕
+              </span>
+            </summary>
+
+            <div
+              style={{
+                padding: '16px 18px 18px',
+                borderTop: '1px solid rgba(22,163,74,.12)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div style={{ flex: '1 1 420px', minWidth: 0 }}>
+                  <p style={{ margin: 0, color: '#475569', lineHeight: 1.45 }}>
+                    Genera el listado final con los alumnos que han entrenado en
+                    Baby esta temporada y cuyo último nivel técnico real es B o
+                    superior. Se ordenan primero por nivel y después por
+                    asistencia, continuidad y autonomía.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={cargarCandidatosEquipo}
+                  disabled={candidatosEquipoCargando}
+                  style={{
+                    ...botonPrincipal,
+                    flex: '0 1 210px',
+                    minWidth: 0,
+                    minHeight: 46,
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere',
+                    opacity: candidatosEquipoCargando ? 0.65 : 1,
+                  }}
+                >
+                  {candidatosEquipoCargando
+                    ? 'Generando...'
+                    : candidatosEquipoGenerado
+                    ? 'Actualizar candidatos'
+                    : 'Generar candidatos'}
+                </button>
+              </div>
+
+              {candidatosEquipoError && (
+                <div style={{ ...errorCaja, marginTop: 12 }}>
+                  {candidatosEquipoError}
+                </div>
+              )}
+
+              {candidatosEquipoGenerado &&
+                !candidatosEquipoCargando &&
+                !candidatosEquipoError &&
+                candidatosEquipo.length === 0 && (
+                  <div style={{ ...avisoNeutral, marginTop: 12 }}>
+                    No hay alumnos Baby con nivel B o superior en la temporada
+                    activa.
+                  </div>
+                )}
+
+              {candidatosEquipo.length > 0 && (() => {
+                const temporada = candidatosEquipo[0]?.temporada || '-';
+                const nivelesAgrupados = Array.from(
+                  new Set(candidatosEquipo.map((fila) => fila.nivel))
+                );
+
+                return (
+                  <>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        flexWrap: 'wrap',
+                        marginTop: 14,
+                        padding: '13px 14px',
+                        border: '1px solid #bbf7d0',
+                        borderRadius: 16,
+                        background: 'rgba(255,255,255,.82)',
+                      }}
+                    >
+                      <div>
+                        <strong
+                          style={{
+                            display: 'block',
+                            color: '#166534',
+                            fontSize: 17,
+                          }}
+                        >
+                          Temporada {temporada}
+                        </strong>
+                        <span
+                          style={{
+                            display: 'block',
+                            marginTop: 3,
+                            color: '#64748b',
+                            fontSize: 13,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {candidatosEquipo.length} candidatos ·{' '}
+                          {nivelesAgrupados.length} niveles
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={descargarCandidatosEquipoExcel}
+                        style={{
+                          ...botonPrincipal,
+                          flex: '0 1 200px',
+                          minWidth: 0,
+                          minHeight: 44,
+                          whiteSpace: 'normal',
+                        }}
+                      >
+                        Descargar Excel
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
+                      {nivelesAgrupados.map((nivel) => {
+                        const alumnosNivel = candidatosEquipo.filter(
+                          (fila) => fila.nivel === nivel
+                        );
+
+                        return (
+                          <details
+                            key={`candidatos-${nivel}`}
+                            open
+                            style={{
+                              overflow: 'hidden',
+                              border: '1px solid #dbeafe',
+                              borderRadius: 16,
+                              background: '#fff',
+                            }}
+                          >
+                            <summary
+                              style={{
+                                cursor: 'pointer',
+                                listStyle: 'none',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                gap: 10,
+                                padding: '12px 14px',
+                                background: '#f8fafc',
+                                fontWeight: 900,
+                              }}
+                            >
+                              <span>Nivel {nivel}</span>
+                              <span>{alumnosNivel.length} alumnos</span>
+                            </summary>
+
+                            <div style={{ overflowX: 'auto' }}>
+                              <table
+                                style={{
+                                  width: '100%',
+                                  minWidth: 760,
+                                  borderCollapse: 'collapse',
+                                }}
+                              >
+                                <thead>
+                                  <tr>
+                                    {[
+                                      'Alumno',
+                                      'Entrenos',
+                                      'Meses',
+                                      'Último entreno',
+                                      'Autonomía',
+                                      'Remontes',
+                                    ].map((titulo) => (
+                                      <th
+                                        key={`${nivel}-${titulo}`}
+                                        style={{
+                                          padding: '10px 12px',
+                                          textAlign:
+                                            titulo === 'Alumno'
+                                              ? 'left'
+                                              : 'center',
+                                          borderBottom: '1px solid #e2e8f0',
+                                          color: '#334155',
+                                          fontSize: 13,
+                                        }}
+                                      >
+                                        {titulo}
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {alumnosNivel.map((fila) => (
+                                    <tr key={fila.alumno_id}>
+                                      <td
+                                        style={{
+                                          padding: '10px 12px',
+                                          borderBottom: '1px solid #f1f5f9',
+                                          fontWeight: 800,
+                                        }}
+                                      >
+                                        {fila.alumno}
+                                      </td>
+                                      <td
+                                        style={{
+                                          padding: '10px 12px',
+                                          borderBottom: '1px solid #f1f5f9',
+                                          textAlign: 'center',
+                                          fontWeight: 900,
+                                        }}
+                                      >
+                                        {fila.entrenamientos_baby}
+                                      </td>
+                                      <td
+                                        style={{
+                                          padding: '10px 12px',
+                                          borderBottom: '1px solid #f1f5f9',
+                                          textAlign: 'center',
+                                        }}
+                                      >
+                                        {fila.meses_activos_baby}
+                                      </td>
+                                      <td
+                                        style={{
+                                          padding: '10px 12px',
+                                          borderBottom: '1px solid #f1f5f9',
+                                          textAlign: 'center',
+                                        }}
+                                      >
+                                        {fila.ultimo_entreno_baby
+                                          ? formatearFecha(fila.ultimo_entreno_baby)
+                                          : '-'}
+                                      </td>
+                                      <td
+                                        style={{
+                                          padding: '10px 12px',
+                                          borderBottom: '1px solid #f1f5f9',
+                                          textAlign: 'center',
+                                        }}
+                                      >
+                                        {fila.autonomia || '-'}
+                                      </td>
+                                      <td
+                                        style={{
+                                          padding: '10px 12px',
+                                          borderBottom: '1px solid #f1f5f9',
+                                          textAlign: 'center',
+                                        }}
+                                      >
+                                        {(fila.remontes || []).join(', ') || '-'}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </details>
+                        );
+                      })}
+                    </div>
                   </>
                 );
               })()}
