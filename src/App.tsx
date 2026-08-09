@@ -3235,6 +3235,16 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [importandoCopiaMaestra, setImportandoCopiaMaestra] = useState(false);
   const [resultadoImportacionCopiaMaestra, setResultadoImportacionCopiaMaestra] =
     useState('');
+  const [confirmacionCierreTexto, setConfirmacionCierreTexto] = useState('');
+  const [confirmacionBackupCierre, setConfirmacionBackupCierre] = useState(false);
+  const [confirmacionListadoCierre, setConfirmacionListadoCierre] = useState(false);
+  const [cerrandoTemporada, setCerrandoTemporada] = useState(false);
+  const [resultadoCierreTemporada, setResultadoCierreTemporada] = useState('');
+  const [iniciandoNuevaTemporada, setIniciandoNuevaTemporada] = useState(false);
+  const [resultadoNuevaTemporada, setResultadoNuevaTemporada] = useState('');
+  const [temporadaActivaCierre, setTemporadaActivaCierre] = useState('');
+  const [cargandoTemporadaActivaCierre, setCargandoTemporadaActivaCierre] =
+    useState(false);
 
   const [agendaSesionesDirectas, setAgendaSesionesDirectas] = useState<
     AgendaSesionDirectaApp[]
@@ -12828,7 +12838,7 @@ Gracias!`;
 
     if (!archivo.name.toLowerCase().endsWith('.csv')) {
       setErrorCopiaMaestraImport(
-        'Selecciona el CSV oficial descargado desde Preparar próxima temporada.'
+        'Selecciona el CSV oficial descargado desde Revisar y preparar cierre.'
       );
       return;
     }
@@ -12962,6 +12972,131 @@ Gracias!`;
       );
     } finally {
       setImportandoCopiaMaestra(false);
+    }
+  }
+
+  async function cargarTemporadaActivaCierre() {
+    if (!esCoordinadorJefeApp) return;
+
+    setCargandoTemporadaActivaCierre(true);
+
+    try {
+      const data = await ejecutarFuncionConRespuesta<{
+        nombre: string;
+      }>('obtener_temporada_activa_app');
+
+      setTemporadaActivaCierre(data[0]?.nombre || '');
+    } catch {
+      setTemporadaActivaCierre('');
+    } finally {
+      setCargandoTemporadaActivaCierre(false);
+    }
+  }
+
+  async function iniciarNuevaTemporadaOperativa() {
+    if (!esCoordinadorJefeApp) return;
+
+    setIniciandoNuevaTemporada(true);
+    setCierreTemporadaError('');
+    setResultadoNuevaTemporada('');
+
+    try {
+      await ejecutarFuncion('activar_temporada_operativa_app', {
+        p_anio_inicio: anioInicioTemporadaAgenda,
+      });
+
+      const temporadaIniciada = nombreTemporadaAgenda(
+        anioInicioTemporadaAgenda
+      );
+
+      setTemporadaActivaCierre(temporadaIniciada);
+      setResultadoNuevaTemporada('');
+
+      setCierreTemporadaAnalizado(false);
+      setResumenCierreTemporada(null);
+      setCierreTemporadaAlumnos([]);
+      setFiltroCierreTemporada('todos');
+      setBusquedaCierreTemporada('');
+
+      await Promise.all([
+        cargarAgendaOperativaDirecta(),
+        cargarAlumnos(),
+        cargarPlanning(),
+        cargarListados(),
+      ]);
+    } catch (err) {
+      setCierreTemporadaError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo iniciar la nueva temporada.'
+      );
+    } finally {
+      setIniciandoNuevaTemporada(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!esCoordinadorJefeApp) return;
+    cargarTemporadaActivaCierre();
+  }, [esCoordinadorJefeApp]);
+
+  async function ejecutarCierreDefinitivoTemporada() {
+    if (!esCoordinadorJefeApp || !resumenCierreTemporada) return;
+
+    const temporada = resumenCierreTemporada.temporada;
+    const textoEsperado = `CERRAR ${temporada}`;
+
+    if (!confirmacionBackupCierre || !confirmacionListadoCierre) {
+      setCierreTemporadaError(
+        'Confirma que has guardado el backup y revisado la lista de eliminación.'
+      );
+      return;
+    }
+
+    if (confirmacionCierreTexto.trim() !== textoEsperado) {
+      setCierreTemporadaError(
+        `Escribe exactamente: ${textoEsperado}`
+      );
+      return;
+    }
+
+    setCerrandoTemporada(true);
+    setCierreTemporadaError('');
+    setResultadoCierreTemporada('');
+
+    try {
+      const data = await ejecutarFuncionConRespuesta<{
+        temporada_cerrada: string;
+        alumnos_conservados: number;
+        alumnos_eliminados: number;
+        filas_operativas_eliminadas: number;
+      }>('cerrar_temporada_definitivo_app', {
+        p_confirmacion: textoEsperado,
+      });
+
+      const r = data[0];
+
+      setResultadoCierreTemporada(
+        `Temporada cerrada: ${r?.temporada_cerrada || temporada} · ` +
+          `${Number(r?.alumnos_conservados || 0)} alumnos conservados · ` +
+          `${Number(r?.alumnos_eliminados || 0)} alumnos eliminados · ` +
+          `${Number(r?.filas_operativas_eliminadas || 0)} filas operativas limpiadas.`
+      );
+
+      setConfirmacionCierreTexto('');
+      setConfirmacionBackupCierre(false);
+      setConfirmacionListadoCierre(false);
+      setCierreTemporadaAnalizado(false);
+      setResumenCierreTemporada(null);
+      setCierreTemporadaAlumnos([]);
+    } catch (err) {
+      setCierreTemporadaError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo cerrar la temporada.'
+      );
+    } finally {
+      setCerrandoTemporada(false);
     }
   }
 
@@ -15749,7 +15884,7 @@ Gracias!`;
                     margin: '0 0 3px',
                   }}
                 >
-                  CIERRE DE TEMPORADA · FASE SEGURA
+                  PASO 1 · REVISAR TEMPORADA
                 </p>
                 <h3
                   style={{
@@ -15761,15 +15896,154 @@ Gracias!`;
                 >
                   Preparar próxima temporada
                 </h3>
-                <p
+                <details
                   style={{
-                    margin: '5px 0 0',
-                    color: '#64748b',
-                    fontSize: 13,
+                    marginTop: 12,
+                    border: '1px solid #cbd5e1',
+                    borderRadius: 12,
+                    background: '#f8fafc',
+                    overflow: 'hidden',
                   }}
                 >
-                  Analiza y descarga la copia maestra. Aquí todavía no se borra nada.
-                </p>
+                  <summary
+                    style={{
+                      cursor: 'pointer',
+                      listStyle: 'none',
+                      padding: '12px 14px',
+                      fontSize: 14,
+                      fontWeight: 900,
+                      color: '#172033',
+                      userSelect: 'none',
+                    }}
+                  >
+                    Ver flujo de cierre y nueva temporada
+                  </summary>
+
+                  <div
+                    style={{
+                      padding: '0 14px 14px',
+                      color: '#475569',
+                      fontSize: 13,
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    <ol
+                      style={{
+                        margin: 0,
+                        paddingLeft: 20,
+                        display: 'grid',
+                        gap: 7,
+                      }}
+                    >
+                      <li>
+                        <strong>Paso 1:</strong> analizar la temporada, revisar
+                        “Conservar / Eliminar” y descargar la copia maestra.
+                      </li>
+                      <li>
+                        <strong>Paso 2:</strong> comprobar el CSV y cargar la semilla.
+                      </li>
+                      <li>
+                        <strong>Antes del Paso 3:</strong> guardar el backup completo
+                        de Supabase en el Mac.
+                      </li>
+                      <li>
+                        <strong>Paso 3:</strong> cerrar la temporada definitivamente.
+                      </li>
+                      <li>
+                        <strong>Paso 4:</strong> iniciar la nueva temporada.
+                      </li>
+</ol>
+                  </div>
+                </details>
+
+            <div
+              style={{
+                display: 'none',
+                margin: '16px 18px 0',
+                padding: 16,
+                borderRadius: 16,
+                border: '1px solid #bfdbfe',
+                background: '#eff6ff',
+              }}
+            >
+              <p
+                style={{
+                  ...etiquetaSuperior,
+                  color: '#1d4ed8',
+                  margin: '0 0 4px',
+                }}
+              >
+                ARRANQUE DE TEMPORADA
+              </p>
+              <h4 style={{ margin: 0, color: '#1e3a8a', fontSize: 18 }}>
+                Iniciar {nombreTemporadaAgenda(anioInicioTemporadaAgenda)}
+              </h4>
+              {temporadaActivaCierre ===
+              nombreTemporadaAgenda(anioInicioTemporadaAgenda) ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    border: '1px solid #bbf7d0',
+                    background: '#f0fdf4',
+                    color: '#166534',
+                    fontWeight: 900,
+                  }}
+                >
+                  Temporada activa · {temporadaActivaCierre}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(0, 1fr) auto',
+                    gap: 10,
+                    alignItems: 'end',
+                    marginTop: 14,
+                  }}
+                >
+                  <label style={{ ...labelCampo, minWidth: 0 }}>
+                    Temporada a iniciar
+                    <select
+                      value={anioInicioTemporadaAgenda}
+                      style={{ ...selectCampoAgenda, width: '100%' }}
+                      onChange={(e) => {
+                        const nuevoAnio = Number(e.target.value);
+                        setAnioInicioTemporadaAgenda(nuevoAnio);
+                        setMesAgenda(`${nuevoAnio}-09`);
+                        setSemanaAgendaInicio('');
+                        setResultadoNuevaTemporada('');
+                      }}
+                    >
+                      {opcionesTemporadaAgenda.map((anio) => (
+                        <option key={anio} value={anio}>
+                          {nombreTemporadaAgenda(anio)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={iniciarNuevaTemporadaOperativa}
+                    disabled={
+                      iniciandoNuevaTemporada || cargandoTemporadaActivaCierre
+                    }
+                    style={{
+                      ...botonPrincipal,
+                      minHeight: 44,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {iniciandoNuevaTemporada
+                      ? 'Iniciando...'
+                      : 'Iniciar temporada'}
+                  </button>
+                </div>
+              )}
+            </div>
+
               </div>
 
               <span
@@ -16135,6 +16409,158 @@ Gracias!`;
                 </>
               )}
             </div>
+
+            {resumenCierreTemporada && (
+              <div
+                style={{
+                  display: 'none',
+                  margin: '16px 18px 18px',
+                  padding: 16,
+                  borderRadius: 16,
+                  border: '1px solid #fecaca',
+                  background: '#fff7f7',
+                }}
+              >
+                <p
+                  style={{
+                    ...etiquetaSuperior,
+                    color: '#b91c1c',
+                    margin: '0 0 4px',
+                  }}
+                >
+                  CIERRE DEFINITIVO
+                </p>
+                <h4 style={{ margin: 0, color: '#7f1d1d', fontSize: 18 }}>
+                  Borrar operación de {resumenCierreTemporada.temporada}
+                </h4>
+
+                <label
+                  style={{
+                    display: 'flex',
+                    gap: 9,
+                    alignItems: 'flex-start',
+                    marginTop: 14,
+                    color: '#475569',
+                    fontWeight: 800,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={confirmacionBackupCierre}
+                    onChange={(e) => setConfirmacionBackupCierre(e.target.checked)}
+                    style={{ marginTop: 3 }}
+                  />
+                  <span>
+                    He guardado el backup completo de Supabase en mi Mac y la copia
+                    maestra CSV.
+                  </span>
+                </label>
+
+                <label
+                  style={{
+                    display: 'flex',
+                    gap: 9,
+                    alignItems: 'flex-start',
+                    marginTop: 10,
+                    color: '#475569',
+                    fontWeight: 800,
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={confirmacionListadoCierre}
+                    onChange={(e) => setConfirmacionListadoCierre(e.target.checked)}
+                    style={{ marginTop: 3 }}
+                  />
+                  <span>
+                    He revisado el listado “Eliminar” y acepto los alumnos que se
+                    eliminarán por inactividad.
+                  </span>
+                </label>
+
+                <label
+                  style={{
+                    ...labelCampo,
+                    display: 'block',
+                    marginTop: 14,
+                    width: '100%',
+                  }}
+                >
+                  Para confirmar, escribe exactamente
+                  <strong
+                    style={{
+                      display: 'block',
+                      marginTop: 4,
+                      color: '#991b1b',
+                    }}
+                  >
+                    CERRAR {resumenCierreTemporada.temporada}
+                  </strong>
+                  <input
+                    value={confirmacionCierreTexto}
+                    onChange={(e) => setConfirmacionCierreTexto(e.target.value)}
+                    placeholder={`CERRAR ${resumenCierreTemporada.temporada}`}
+                    style={{
+                      ...inputCampo,
+                      width: '100%',
+                      minWidth: 0,
+                      boxSizing: 'border-box',
+                      marginTop: 7,
+                    }}
+                  />
+                </label>
+
+                <button
+                  type="button"
+                  onClick={ejecutarCierreDefinitivoTemporada}
+                  disabled={
+                    cerrandoTemporada ||
+                    !confirmacionBackupCierre ||
+                    !confirmacionListadoCierre ||
+                    confirmacionCierreTexto.trim() !==
+                      `CERRAR ${resumenCierreTemporada.temporada}`
+                  }
+                  style={{
+                    ...botonPrincipal,
+                    width: '100%',
+                    minHeight: 50,
+                    marginTop: 14,
+                    background: '#b91c1c',
+                    borderColor: '#b91c1c',
+                    opacity:
+                      cerrandoTemporada ||
+                      !confirmacionBackupCierre ||
+                      !confirmacionListadoCierre ||
+                      confirmacionCierreTexto.trim() !==
+                        `CERRAR ${resumenCierreTemporada.temporada}`
+                        ? 0.5
+                        : 1,
+                  }}
+                >
+                  {cerrandoTemporada
+                    ? 'Cerrando temporada...'
+                    : 'Cerrar temporada definitivamente'}
+                </button>
+              </div>
+            )}
+
+            {resultadoCierreTemporada && (
+              <div
+                style={{
+                  margin: '0 18px 18px',
+                  padding: 14,
+                  borderRadius: 16,
+                  border: '1px solid #bbf7d0',
+                  background: '#f0fdf4',
+                  color: '#166534',
+                  fontWeight: 900,
+                  lineHeight: 1.45,
+                }}
+              >
+                {resultadoCierreTemporada}
+              </div>
+            )}
+
           </details>
 
           <details
@@ -16167,7 +16593,7 @@ Gracias!`;
                     margin: '0 0 3px',
                   }}
                 >
-                  SIGUIENTE TEMPORADA · FASE SEGURA
+                  PASO 2 · COPIA MAESTRA Y SEMILLA
                 </p>
                 <h3
                   style={{
@@ -16177,17 +16603,8 @@ Gracias!`;
                     overflowWrap: 'anywhere',
                   }}
                 >
-                  Revisar copia maestra para importar
+                  Comprobar CSV y cargar semilla
                 </h3>
-                <p
-                  style={{
-                    margin: '5px 0 0',
-                    color: '#64748b',
-                    fontSize: 13,
-                  }}
-                >
-                  Comprueba el CSV antes de permitir cualquier carga en la base de datos
-                </p>
               </div>
 
               <span
@@ -16355,18 +16772,6 @@ Gracias!`;
                         background: '#f8fafc',
                       }}
                     >
-                      <div
-                        style={{
-                          color: '#475569',
-                          lineHeight: 1.4,
-                          minWidth: 0,
-                        }}
-                      >
-                        Esta carga solo actualiza la semilla ligera del alumno:
-                        nivel actual, fecha de nacimiento y los campos semilla_*.
-                        No crea grupos, sesiones, reportes ni histórico.
-                      </div>
-
                       <button
                         type="button"
                         onClick={importarCopiaMaestraEnAlumnos}
@@ -16479,6 +16884,263 @@ Gracias!`;
             </div>
           </details>
 
+
+          <article
+            style={{
+              ...tarjeta,
+              marginTop: 16,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid #fecaca',
+              background: '#fff',
+            }}
+          >
+            <div style={{ padding: '16px 18px' }}>
+              <p
+                style={{
+                  ...etiquetaSuperior,
+                  color: '#b91c1c',
+                  margin: '0 0 4px',
+                }}
+              >
+                PASO 3 · CIERRE DEFINITIVO
+              </p>
+              <h3 style={{ margin: 0, fontSize: 20 }}>Cerrar temporada</h3>
+
+              {!resumenCierreTemporada ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: 12,
+                    borderRadius: 12,
+                    border: '1px solid #e2e8f0',
+                    background: '#f8fafc',
+                    color: '#64748b',
+                    fontWeight: 800,
+                  }}
+                >
+                  Completa primero el Paso 1 para poder cerrar la temporada.
+                </div>
+              ) : (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: 14,
+                    borderRadius: 14,
+                    border: '1px solid #fecaca',
+                    background: '#fff7f7',
+                  }}
+                >
+                  <label
+                    style={{
+                      display: 'flex',
+                      gap: 9,
+                      alignItems: 'flex-start',
+                      color: '#475569',
+                      fontWeight: 800,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={confirmacionBackupCierre}
+                      onChange={(e) => setConfirmacionBackupCierre(e.target.checked)}
+                      style={{ marginTop: 3 }}
+                    />
+                    <span>Backup Supabase y copia maestra guardados.</span>
+                  </label>
+
+                  <label
+                    style={{
+                      display: 'flex',
+                      gap: 9,
+                      alignItems: 'flex-start',
+                      marginTop: 10,
+                      color: '#475569',
+                      fontWeight: 800,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={confirmacionListadoCierre}
+                      onChange={(e) => setConfirmacionListadoCierre(e.target.checked)}
+                      style={{ marginTop: 3 }}
+                    />
+                    <span>Listado “Eliminar” revisado.</span>
+                  </label>
+
+                  <label
+                    style={{
+                      ...labelCampo,
+                      display: 'block',
+                      marginTop: 14,
+                      width: '100%',
+                    }}
+                  >
+                    Escribe exactamente
+                    <strong
+                      style={{
+                        display: 'block',
+                        marginTop: 4,
+                        color: '#991b1b',
+                      }}
+                    >
+                      CERRAR {resumenCierreTemporada.temporada}
+                    </strong>
+                    <input
+                      value={confirmacionCierreTexto}
+                      onChange={(e) => setConfirmacionCierreTexto(e.target.value)}
+                      placeholder={`CERRAR ${resumenCierreTemporada.temporada}`}
+                      style={{
+                        ...inputCampo,
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
+                        marginTop: 7,
+                      }}
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={ejecutarCierreDefinitivoTemporada}
+                    disabled={
+                      cerrandoTemporada ||
+                      !confirmacionBackupCierre ||
+                      !confirmacionListadoCierre ||
+                      confirmacionCierreTexto.trim() !==
+                        `CERRAR ${resumenCierreTemporada.temporada}`
+                    }
+                    style={{
+                      ...botonPrincipal,
+                      width: '100%',
+                      minHeight: 48,
+                      marginTop: 14,
+                      background: '#b91c1c',
+                      borderColor: '#b91c1c',
+                      opacity:
+                        cerrandoTemporada ||
+                        !confirmacionBackupCierre ||
+                        !confirmacionListadoCierre ||
+                        confirmacionCierreTexto.trim() !==
+                          `CERRAR ${resumenCierreTemporada.temporada}`
+                          ? 0.5
+                          : 1,
+                    }}
+                  >
+                    {cerrandoTemporada
+                      ? 'Cerrando temporada...'
+                      : 'Cerrar temporada definitivamente'}
+                  </button>
+                </div>
+              )}
+
+              {resultadoCierreTemporada && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: 12,
+                    borderRadius: 12,
+                    border: '1px solid #bbf7d0',
+                    background: '#f0fdf4',
+                    color: '#166534',
+                    fontWeight: 900,
+                  }}
+                >
+                  {resultadoCierreTemporada}
+                </div>
+              )}
+            </div>
+          </article>
+
+          <article
+            style={{
+              ...tarjeta,
+              marginTop: 16,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid #bfdbfe',
+              background: '#fff',
+            }}
+          >
+            <div style={{ padding: '16px 18px' }}>
+              <p
+                style={{
+                  ...etiquetaSuperior,
+                  color: '#1d4ed8',
+                  margin: '0 0 4px',
+                }}
+              >
+                PASO 4 · ARRANQUE DE TEMPORADA
+              </p>
+              <h3 style={{ margin: 0, fontSize: 20 }}>Iniciar nueva temporada</h3>
+
+              {temporadaActivaCierre ===
+              nombreTemporadaAgenda(anioInicioTemporadaAgenda) ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    border: '1px solid #bbf7d0',
+                    background: '#f0fdf4',
+                    color: '#166534',
+                    fontWeight: 900,
+                  }}
+                >
+                  Temporada activa · {temporadaActivaCierre}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(0, 1fr) auto',
+                    gap: 10,
+                    alignItems: 'end',
+                    marginTop: 14,
+                  }}
+                >
+                  <label style={{ ...labelCampo, minWidth: 0 }}>
+                    Temporada a iniciar
+                    <select
+                      value={anioInicioTemporadaAgenda}
+                      style={{ ...selectCampoAgenda, width: '100%' }}
+                      onChange={(e) => {
+                        const nuevoAnio = Number(e.target.value);
+                        setAnioInicioTemporadaAgenda(nuevoAnio);
+                        setMesAgenda(`${nuevoAnio}-09`);
+                        setSemanaAgendaInicio('');
+                        setResultadoNuevaTemporada('');
+                      }}
+                    >
+                      {opcionesTemporadaAgenda.map((anio) => (
+                        <option key={anio} value={anio}>
+                          {nombreTemporadaAgenda(anio)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={iniciarNuevaTemporadaOperativa}
+                    disabled={
+                      iniciandoNuevaTemporada || cargandoTemporadaActivaCierre
+                    }
+                    style={{
+                      ...botonPrincipal,
+                      minHeight: 44,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {iniciandoNuevaTemporada
+                      ? 'Iniciando...'
+                      : 'Iniciar temporada'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </article>
+
           <article style={{ ...tarjeta, marginTop: 16 }}>
             <div
               style={{
@@ -16491,9 +17153,6 @@ Gracias!`;
             >
               <div>
                 <h3 style={{ margin: 0 }}>Copia de seguridad semanal</h3>
-                <p style={{ margin: '6px 0 0', color: '#64748b' }}>
-                  Se mantiene el backup que ya tenías, separado de los informes.
-                </p>
               </div>
               <button
                 onClick={descargarBackupSemanalExcel}
