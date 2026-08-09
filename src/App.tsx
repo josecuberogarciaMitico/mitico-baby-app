@@ -3301,6 +3301,16 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   >({});
   const [ultimaDescargaBackupSemana, setUltimaDescargaBackupSemana] =
     useState('');
+  const [semanaBackupSeleccionada, setSemanaBackupSeleccionada] =
+    useState('');
+  const [backupRestauracion, setBackupRestauracion] = useState<any | null>(null);
+  const [archivoBackupRestauracion, setArchivoBackupRestauracion] = useState('');
+  const [errorBackupRestauracion, setErrorBackupRestauracion] = useState('');
+  const [confirmacionBackupRestauracion, setConfirmacionBackupRestauracion] =
+    useState('');
+  const [restaurandoBackupSemanal, setRestaurandoBackupSemanal] = useState(false);
+  const [resultadoRestauracionBackup, setResultadoRestauracionBackup] =
+    useState('');
   const [destinoAlumnoAgendaGrupo, setDestinoAlumnoAgendaGrupo] = useState<
     Record<string, string>
   >({});
@@ -10790,9 +10800,16 @@ Gracias!`;
 
   const claveSemanaBackupActiva =
     semanaAgendaActiva || semanaActualAgenda || '';
-  const backupSemanaStorageKey = claveSemanaBackupActiva
-    ? `mitico_backup_excel_${claveSemanaBackupActiva}`
-    : '';
+  const semanaBackupObjetivo =
+    semanaBackupSeleccionada || claveSemanaBackupActiva;
+
+  function claveStorageBackupSemana(semana: string) {
+    return semana ? `mitico_backup_json_${semana}` : '';
+  }
+
+  const backupSemanaStorageKey = claveStorageBackupSemana(
+    semanaBackupObjetivo
+  );
   const backupSemanaRealizado =
     backupSemanaStorageKey && typeof window !== 'undefined'
       ? window.localStorage.getItem(backupSemanaStorageKey) || ''
@@ -13151,210 +13168,180 @@ Gracias!`;
     URL.revokeObjectURL(url);
   }
 
-  function descargarBackupSemanalExcel() {
-    const semana = claveSemanaBackupActiva;
+  function sumarDiasBackup(fechaIso: string, dias: number) {
+    const fecha = new Date(`${fechaIso}T12:00:00`);
+    fecha.setDate(fecha.getDate() + dias);
+    return [
+      fecha.getFullYear(),
+      String(fecha.getMonth() + 1).padStart(2, '0'),
+      String(fecha.getDate()).padStart(2, '0'),
+    ].join('-');
+  }
+
+  function nombreArchivoBackupSemanal(
+    temporada: string,
+    semanaInicio: string,
+    semanaFin: string
+  ) {
+    const temporadaLimpia = (temporada || 'TEMPORADA')
+      .replace(/\//g, '-')
+      .replace(/[^0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ_-]+/g, '_');
+
+    return `MITICO_BACKUP_${temporadaLimpia}_SEMANA_${semanaInicio}_A_${semanaFin}.json`;
+  }
+
+  async function descargarBackupSemanalJson() {
+    const semana = semanaBackupObjetivo;
     if (!semana) {
       setError(
         'Selecciona una semana antes de descargar la copia de seguridad.'
       );
       return;
     }
-    const fin = domingoSemanaOcioActiva();
-    const sesionesSemana = sesionesAgenda.filter(
-      (sesion) => sesion.fecha >= semana && sesion.fecha <= fin
-    );
-    const reportesSemana = reportesPendientes.filter(
-      (reporte) => reporte.fecha >= semana && reporte.fecha <= fin
-    );
-    const gruposSemana = gruposEntrenador.filter(
-      (grupo) => grupo.fecha >= semana && grupo.fecha <= fin
-    );
 
-    const html = `<!doctype html><html><head><meta charset="utf-8" />
-      <style>
-        body{font-family:Arial,sans-serif;color:#111;}
-        h1{font-size:22px;margin:0 0 8px;} h2{font-size:18px;margin:18px 0 8px;}
-        table{border-collapse:collapse;width:100%;margin-bottom:16px;}
-        th{background:#111827;color:#fff;text-align:left;} th,td{border:1px solid #d1d5db;padding:6px;font-size:12px;vertical-align:top;}
-      </style></head><body>
-      <h1>Backup semanal Mítico · ${htmlEscapeBackup(
-        rangoSemanaAgenda(semana)
-      )}</h1>
-      <p>Generado: ${htmlEscapeBackup(new Date().toLocaleString('es-ES'))}</p>
-      ${tablaBackupExcel(
-        'Resumen sesiones semana',
-        [
-          'Fecha',
-          'Hora',
-          'Modalidad',
-          'Título',
-          'Estado',
-          'Alumnos',
-          'Grupos',
-          'Publicados',
-          'Detalle grupos',
-        ],
-        sesionesSemana.map((sesion) => [
-          sesion.fecha,
-          `${sesion.hora_inicio}-${sesion.hora_fin}`,
-          sesion.modalidad,
-          sesion.titulo,
-          sesion.estado,
-          sesion.totalAlumnos,
-          sesion.totalGrupos,
-          sesion.publicados,
-          gruposTextoResumenSesion(sesion),
-        ])
-      )}
-      ${tablaBackupExcel(
-        'Alumnos base Baby/Intensivos',
-        [
-          'Alumno',
-          'Nivel actual',
-          'Nivel estimado',
-          'Estado ficha',
-          'Reportes',
-          'Última fecha',
-          'Última recomendación',
-        ],
-        alumnos.map((alumno) => [
-          alumno.alumno,
-          alumno.nivel_actual || '',
-          alumno.nivel_estimado || '',
-          alumno.estado_ficha,
-          alumno.total_reportes,
-          alumno.ultima_fecha_reporte || '',
-          alumno.ultima_recomendacion || '',
-        ])
-      )}
-      ${tablaBackupExcel(
-        'Ocio alumnos',
-        [
-          'Alumno',
-          'Nivel',
-          'Grupo estable',
-          'Día fijo',
-          'Hora fija',
-          'Reportes',
-          'Observaciones',
-        ],
-        ocioAlumnos.map((alumno) => [
-          alumno.alumno,
-          alumno.nivel_usado || alumno.nivel || '',
-          alumno.grupo_estable || '',
-          alumno.dia_fijo || '',
-          `${horaCorta(alumno.hora_inicio_fija)}-${horaCorta(
-            alumno.hora_fin_fija
-          )}`,
-          alumno.total_reportes,
-          alumno.observaciones || '',
-        ])
-      )}
-      ${tablaBackupExcel(
-        'Ocio grupos estables',
-        ['Grupo', 'Día', 'Hora', 'Nivel', 'Pista', 'Punto', 'Alumnos'],
-        ocioGrupos.map((grupo) => [
-          grupo.nombre_grupo,
-          grupo.dia_semana,
-          `${horaCorta(grupo.hora_inicio)}-${horaCorta(grupo.hora_fin)}`,
-          grupo.nivel_grupo || '',
-          grupo.pista || '',
-          grupo.punto_encuentro || '',
-          grupo.alumnos_lista || '',
-        ])
-      )}
-      ${tablaBackupExcel(
-        'Intensivos',
-        ['Intensivo', 'Estado', 'Sesiones', 'Alumnos', 'Inicio', 'Fin'],
-        intensivos.map((intensivo) => [
-          intensivo.intensivo,
-          intensivo.estado,
-          intensivo.total_dias,
-          intensivo.total_alumnos,
-          intensivo.fecha_inicio || '',
-          intensivo.fecha_fin || '',
-        ])
-      )}
-      ${tablaBackupExcel(
-        'Grupos entrenador semana',
-        [
-          'Fecha',
-          'Hora',
-          'Modalidad',
-          'Grupo',
-          'Entrenador',
-          'Publicado',
-          'Alumnos',
-          'Trabajo',
-        ],
-        gruposSemana.map((grupo) => [
-          grupo.fecha,
-          `${horaCorta(grupo.hora_inicio)}-${horaCorta(grupo.hora_fin)}`,
-          grupo.modalidad,
-          grupo.nombre_grupo,
-          grupo.entrenador,
-          grupo.publicado ? 'Sí' : 'No',
-          grupo.total_alumnos,
-          grupo.trabajo_diario || '',
-        ])
-      )}
-      ${tablaBackupExcel(
-        'Pendientes reportes semana',
-        [
-          'Fecha',
-          'Hora',
-          'Entrenador',
-          'Modalidad',
-          'Grupo',
-          'Alumno',
-          'Estado asistencia',
-          'Estado reporte',
-        ],
-        reportesSemana.map((reporte) => [
-          reporte.fecha,
-          `${horaCorta(reporte.hora_inicio)}-${horaCorta(reporte.hora_fin)}`,
-          reporte.entrenador,
-          reporte.modalidad,
-          reporte.nombre_grupo,
-          reporte.alumno,
-          reporte.estado_asistencia,
-          reporte.estado_reporte,
-        ])
-      )}
-      ${tablaBackupExcel(
-        'Cobros mes visible',
-        [
-          'Entrenador',
-          'Baby',
-          'Intensivos',
-          'Ocio',
-          'Turnos',
-          'Tarifa',
-          'Total',
-          'Estado',
-        ],
-        cobros.map((cobro) => [
-          cobro.entrenador,
-          cobro.total_turnos_baby,
-          cobro.total_turnos_intensivos,
-          cobro.total_turnos_ocio,
-          cobro.total_turnos_computables,
-          cobro.tarifa_por_turno,
-          cobro.total_mes,
-          cobro.estado_mes,
-        ])
-      )}
-      </body></html>`;
+    setError('');
 
-    descargarTextoComoArchivo(
-      `backup_mitico_${semana}.xls`,
-      html,
-      'application/vnd.ms-excel;charset=utf-8'
-    );
-    if (backupSemanaStorageKey && typeof window !== 'undefined') {
+    try {
+      const backup = await ejecutarFuncionAuthJson<any>(
+        'obtener_backup_semanal_app',
+        { p_semana_inicio: semana }
+      );
+
+      const fin = String(
+        backup?.semana_fin || sumarDiasBackup(semana, 6)
+      );
+
+      descargarTextoComoArchivo(
+        nombreArchivoBackupSemanal(
+          String(backup?.temporada || temporadaActivaCierre || ''),
+          semana,
+          fin
+        ),
+        JSON.stringify(backup, null, 2),
+        'application/json;charset=utf-8'
+      );
+
       const marca = new Date().toLocaleString('es-ES');
-      window.localStorage.setItem(backupSemanaStorageKey, marca);
+      const storageKey = claveStorageBackupSemana(semana);
+
+      if (storageKey && typeof window !== 'undefined') {
+        window.localStorage.setItem(storageKey, marca);
+      }
+
       setUltimaDescargaBackupSemana(marca);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo generar el backup semanal.'
+      );
+    }
+  }
+
+  async function cargarBackupSemanalParaRestaurar(archivo: File | null) {
+    setBackupRestauracion(null);
+    setArchivoBackupRestauracion('');
+    setErrorBackupRestauracion('');
+    setConfirmacionBackupRestauracion('');
+    setResultadoRestauracionBackup('');
+
+    if (!archivo) return;
+
+    if (!archivo.name.toLowerCase().endsWith('.json')) {
+      setErrorBackupRestauracion(
+        'Selecciona un backup semanal .json generado por la app.'
+      );
+      return;
+    }
+
+    try {
+      const contenido = await archivo.text();
+      const backup = JSON.parse(contenido);
+
+      if (
+        backup?.formato !== 'MITICO_BACKUP_SEMANAL_V1' ||
+        Number(backup?.version) !== 1 ||
+        !backup?.semana_inicio ||
+        !backup?.semana_fin ||
+        !backup?.datos ||
+        typeof backup.datos !== 'object'
+      ) {
+        throw new Error(
+          'El archivo no tiene el formato de backup semanal Mítico V1.'
+        );
+      }
+
+      if (!Array.isArray(backup.datos.alumnos)) {
+        throw new Error(
+          'El backup no contiene el bloque obligatorio de alumnos.'
+        );
+      }
+
+      setArchivoBackupRestauracion(archivo.name);
+      setBackupRestauracion(backup);
+    } catch (err) {
+      setErrorBackupRestauracion(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo leer el backup.'
+      );
+    }
+  }
+
+  function totalFilasBackupRestauracion(backup: any) {
+    if (!backup?.datos || typeof backup.datos !== 'object') return 0;
+
+    return Object.values(backup.datos).reduce(
+      (total: number, valor: any) =>
+        total + (Array.isArray(valor) ? valor.length : 0),
+      0
+    );
+  }
+
+  async function restaurarBackupSemanal() {
+    if (!backupRestauracion || !esCoordinadorJefeApp) return;
+
+    const textoEsperado = `RESTAURAR ${backupRestauracion.semana_inicio}`;
+
+    if (confirmacionBackupRestauracion.trim() !== textoEsperado) {
+      setErrorBackupRestauracion(
+        `Escribe exactamente: ${textoEsperado}`
+      );
+      return;
+    }
+
+    setRestaurandoBackupSemanal(true);
+    setErrorBackupRestauracion('');
+    setResultadoRestauracionBackup('');
+
+    try {
+      const data = await ejecutarFuncionConRespuesta<{
+        semana_restaurada: string;
+        tablas_restauradas: number;
+        filas_restauradas: number;
+      }>('restaurar_backup_semanal_app', {
+        p_backup: backupRestauracion,
+        p_confirmacion: textoEsperado,
+      });
+
+      const r = data[0];
+
+      setResultadoRestauracionBackup(
+        `Backup restaurado · Semana ${r?.semana_restaurada || backupRestauracion.semana_inicio} · ` +
+          `${Number(r?.filas_restauradas || 0)} filas recuperadas.`
+      );
+
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 1200);
+    } catch (err) {
+      setErrorBackupRestauracion(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo restaurar el backup.'
+      );
+    } finally {
+      setRestaurandoBackupSemanal(false);
     }
   }
 
@@ -16964,18 +16951,52 @@ Gracias!`;
                 display: 'flex',
                 justifyContent: 'space-between',
                 gap: 12,
-                alignItems: 'center',
+                alignItems: 'flex-start',
                 flexWrap: 'wrap',
               }}
             >
               <div>
                 <h3 style={{ margin: 0 }}>Copia de seguridad semanal</h3>
+                <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: 13 }}>
+                  Backup JSON restaurable de la operativa.
+                </p>
               </div>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns:
+                  'repeat(auto-fit, minmax(min(100%, 230px), 1fr))',
+                gap: 10,
+                marginTop: 14,
+                alignItems: 'end',
+              }}
+            >
+              <label style={{ ...labelCampo, minWidth: 0 }}>
+                Semana a guardar
+                <select
+                  value={semanaBackupObjetivo}
+                  onChange={(e) => {
+                    setSemanaBackupSeleccionada(e.target.value);
+                    setUltimaDescargaBackupSemana('');
+                  }}
+                  style={{ ...selectCampoAgenda, width: '100%' }}
+                >
+                  {semanasAgenda.map((semana) => (
+                    <option key={`backup-${semana}`} value={semana}>
+                      {rangoSemanaAgenda(semana)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
               <button
-                onClick={descargarBackupSemanalExcel}
-                style={botonSecundario}
+                type="button"
+                onClick={descargarBackupSemanalJson}
+                style={{ ...botonSecundario, minHeight: 44 }}
               >
-                Descargar backup semanal
+                Descargar backup de esta semana
               </button>
             </div>
 
@@ -16987,13 +17008,228 @@ Gracias!`;
                 marginTop: 12,
               }}
             >
-              Semana {rangoSemanaAgenda(claveSemanaBackupActiva)} ·{' '}
+              Semana {rangoSemanaAgenda(semanaBackupObjetivo)} ·{' '}
               {backupSemanaRealizado || ultimaDescargaBackupSemana
-                ? `Última copia: ${
+                ? `Copia guardada: ${
                     backupSemanaRealizado || ultimaDescargaBackupSemana
                   }`
-                : 'Pendiente de descargar esta semana'}
+                : '⚠️ Falta guardar la copia de esta semana'}
             </div>
+
+            <p
+              style={{
+                margin: '8px 0 0',
+                color: '#64748b',
+                fontSize: 12,
+                overflowWrap: 'anywhere',
+              }}
+            >
+              Nombre: MITICO_BACKUP_{(temporadaActivaCierre || 'TEMPORADA').replace(
+                /\//g,
+                '-'
+              )}_SEMANA_{semanaBackupObjetivo}_A_
+              {semanaBackupObjetivo
+                ? sumarDiasBackup(semanaBackupObjetivo, 6)
+                : '---- -- --'}
+              .json
+            </p>
+
+            <details
+              style={{
+                marginTop: 14,
+                border: '1px solid #e2e8f0',
+                borderRadius: 14,
+                overflow: 'hidden',
+                background: '#fff',
+              }}
+            >
+              <summary
+                style={{
+                  cursor: 'pointer',
+                  listStyle: 'none',
+                  padding: '13px 14px',
+                  fontWeight: 900,
+                  color: '#334155',
+                }}
+              >
+                Restaurar una copia semanal
+              </summary>
+
+              <div
+                style={{
+                  padding: '14px',
+                  borderTop: '1px solid #e2e8f0',
+                }}
+              >
+                <label style={{ ...labelCampo, display: 'block', width: '100%' }}>
+                  Seleccionar backup JSON
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={(e) =>
+                      cargarBackupSemanalParaRestaurar(
+                        e.target.files?.[0] || null
+                      )
+                    }
+                    style={{
+                      ...inputCampo,
+                      width: '100%',
+                      minWidth: 0,
+                      boxSizing: 'border-box',
+                      marginTop: 6,
+                    }}
+                  />
+                </label>
+
+                {errorBackupRestauracion && (
+                  <div style={{ ...errorCaja, marginTop: 12 }}>
+                    {errorBackupRestauracion}
+                  </div>
+                )}
+
+                {backupRestauracion && (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      display: 'grid',
+                      gap: 12,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',
+                        gap: 10,
+                      }}
+                    >
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Archivo</strong>
+                        <p
+                          style={{
+                            margin: '5px 0 0',
+                            overflowWrap: 'anywhere',
+                            color: '#475569',
+                          }}
+                        >
+                          {archivoBackupRestauracion}
+                        </p>
+                      </div>
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Temporada</strong>
+                        <div style={{ marginTop: 5, fontWeight: 900 }}>
+                          {backupRestauracion.temporada || '-'}
+                        </div>
+                      </div>
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Semana</strong>
+                        <div style={{ marginTop: 5, fontWeight: 900 }}>
+                          {backupRestauracion.semana_inicio} →{' '}
+                          {backupRestauracion.semana_fin}
+                        </div>
+                      </div>
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Filas</strong>
+                        <div
+                          style={{
+                            marginTop: 5,
+                            fontSize: 24,
+                            fontWeight: 900,
+                          }}
+                        >
+                          {totalFilasBackupRestauracion(backupRestauracion)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        padding: 14,
+                        borderRadius: 14,
+                        border: '1px solid #fecaca',
+                        background: '#fff7f7',
+                      }}
+                    >
+                      <label
+                        style={{
+                          ...labelCampo,
+                          display: 'block',
+                          width: '100%',
+                        }}
+                      >
+                        Para restaurar escribe exactamente
+                        <strong
+                          style={{
+                            display: 'block',
+                            marginTop: 4,
+                            color: '#991b1b',
+                          }}
+                        >
+                          RESTAURAR {backupRestauracion.semana_inicio}
+                        </strong>
+                        <input
+                          value={confirmacionBackupRestauracion}
+                          onChange={(e) =>
+                            setConfirmacionBackupRestauracion(e.target.value)
+                          }
+                          style={{
+                            ...inputCampo,
+                            width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
+                            marginTop: 7,
+                          }}
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={restaurarBackupSemanal}
+                        disabled={
+                          restaurandoBackupSemanal ||
+                          confirmacionBackupRestauracion.trim() !==
+                            `RESTAURAR ${backupRestauracion.semana_inicio}`
+                        }
+                        style={{
+                          ...botonPrincipal,
+                          width: '100%',
+                          minHeight: 48,
+                          marginTop: 12,
+                          background: '#b91c1c',
+                          borderColor: '#b91c1c',
+                          opacity:
+                            restaurandoBackupSemanal ||
+                            confirmacionBackupRestauracion.trim() !==
+                              `RESTAURAR ${backupRestauracion.semana_inicio}`
+                              ? 0.5
+                              : 1,
+                        }}
+                      >
+                        {restaurandoBackupSemanal
+                          ? 'Restaurando...'
+                          : 'Restaurar esta copia'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {resultadoRestauracionBackup && (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      padding: 12,
+                      borderRadius: 12,
+                      border: '1px solid #bbf7d0',
+                      background: '#f0fdf4',
+                      color: '#166534',
+                      fontWeight: 900,
+                    }}
+                  >
+                    {resultadoRestauracionBackup}
+                  </div>
+                )}
+              </div>
+            </details>
           </article>
         </section>
       )}
