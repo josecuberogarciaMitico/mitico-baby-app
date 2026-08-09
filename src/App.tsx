@@ -1215,6 +1215,20 @@ type CandidatoEquipoApp = {
   recomendacion: string | null;
 };
 
+type TipoListadoAlumnosApp = 'BABY' | 'OCIO' | 'INTENSIVOS' | 'TODOS';
+
+type ListadoAlumnoTemporadaApp = {
+  alumno_id: string;
+  alumno: string;
+  temporada: string;
+  modalidad: string;
+  nivel: string | null;
+  pista: string | null;
+  ultimo_entreno: string | null;
+  total_entrenamientos: number;
+  ultimo_intensivo: string | null;
+};
+
 type AgendaSesionDirectaApp = {
   sesion_id: string;
   fecha: string;
@@ -3111,6 +3125,16 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [candidatosEquipoCargando, setCandidatosEquipoCargando] = useState(false);
   const [candidatosEquipoError, setCandidatosEquipoError] = useState('');
   const [candidatosEquipoGenerado, setCandidatosEquipoGenerado] = useState(false);
+
+  const [tipoListadoAlumnos, setTipoListadoAlumnos] =
+    useState<TipoListadoAlumnosApp>('BABY');
+  const [listadoAlumnosTemporada, setListadoAlumnosTemporada] = useState<
+    ListadoAlumnoTemporadaApp[]
+  >([]);
+  const [listadoAlumnosCargando, setListadoAlumnosCargando] = useState(false);
+  const [listadoAlumnosError, setListadoAlumnosError] = useState('');
+  const [listadoAlumnosGenerado, setListadoAlumnosGenerado] = useState(false);
+  const [busquedaListadoAlumnos, setBusquedaListadoAlumnos] = useState('');
 
   const [agendaSesionesDirectas, setAgendaSesionesDirectas] = useState<
     AgendaSesionDirectaApp[]
@@ -12353,6 +12377,96 @@ Gracias!`;
     );
   }
 
+  async function cargarListadoAlumnosTemporada(
+    tipo: TipoListadoAlumnosApp = tipoListadoAlumnos
+  ) {
+    if (!esCoordinadorJefeApp) return;
+
+    setListadoAlumnosCargando(true);
+    setListadoAlumnosError('');
+    setTipoListadoAlumnos(tipo);
+
+    try {
+      const data = await ejecutarFuncionConRespuesta<ListadoAlumnoTemporadaApp>(
+        'obtener_listado_alumnos_temporada_app',
+        { p_tipo: tipo }
+      );
+
+      setListadoAlumnosTemporada(
+        data.map((fila) => ({
+          ...fila,
+          total_entrenamientos: Number(fila.total_entrenamientos || 0),
+        }))
+      );
+      setListadoAlumnosGenerado(true);
+    } catch (err) {
+      setListadoAlumnosTemporada([]);
+      setListadoAlumnosGenerado(false);
+      setListadoAlumnosError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo generar el listado de alumnos.'
+      );
+    } finally {
+      setListadoAlumnosCargando(false);
+    }
+  }
+
+  function descargarListadoAlumnosTemporada() {
+    if (listadoAlumnosTemporada.length === 0) {
+      setListadoAlumnosError('No hay alumnos para descargar en este listado.');
+      return;
+    }
+
+    const escaparCsv = (valor: unknown) => {
+      const texto = String(valor ?? '');
+      return `"${texto.replace(/"/g, '""')}"`;
+    };
+
+    const temporada = listadoAlumnosTemporada[0]?.temporada || 'temporada';
+    const tituloTipo =
+      tipoListadoAlumnos === 'TODOS'
+        ? 'TODOS LOS ALUMNOS'
+        : tipoListadoAlumnos;
+
+    const filas: Array<Array<string | number>> = [
+      [`LISTADO ${tituloTipo} · ${temporada}`],
+      ['Solo actividad real de la temporada activa'],
+      [],
+      [
+        'Alumno',
+        'Último nivel real',
+        'Pista',
+        'Último entrenamiento',
+        'Entrenamientos temporada',
+        'Última modalidad',
+        'Último intensivo',
+      ],
+      ...listadoAlumnosTemporada.map((fila) => [
+        fila.alumno,
+        fila.nivel || '',
+        fila.pista || '',
+        fila.ultimo_entreno ? formatearFecha(fila.ultimo_entreno) : '',
+        fila.total_entrenamientos,
+        fila.modalidad || '',
+        fila.ultimo_intensivo || '',
+      ]),
+    ];
+
+    const csv =
+      '\uFEFF' +
+      filas.map((fila) => fila.map(escaparCsv).join(';')).join('\r\n');
+
+    descargarTextoComoArchivo(
+      `listado_${tipoListadoAlumnos.toLowerCase()}_${temporada.replace(
+        /[^0-9A-Za-z_-]/g,
+        '-'
+      )}.csv`,
+      csv,
+      'text/csv;charset=utf-8'
+    );
+  }
+
   function htmlEscapeBackup(valor: unknown) {
     return String(valor ?? '')
       .replace(/&/g, '&amp;')
@@ -14395,6 +14509,362 @@ Gracias!`;
                           </details>
                         );
                       })}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </details>
+
+          <details
+            style={{
+              ...tarjeta,
+              marginTop: 16,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid rgba(99,102,241,.2)',
+              background:
+                'linear-gradient(135deg, rgba(238,242,255,.92), #fff 58%, rgba(248,250,252,.9))',
+            }}
+          >
+            <summary
+              style={{
+                listStyle: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '16px 18px',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p
+                  style={{
+                    ...etiquetaSuperior,
+                    color: '#4f46e5',
+                    margin: '0 0 3px',
+                  }}
+                >
+                  LISTADOS RÁPIDOS
+                </p>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: 20,
+                    lineHeight: 1.2,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  Alumnos de la temporada
+                </h3>
+                <p
+                  style={{
+                    margin: '5px 0 0',
+                    color: '#64748b',
+                    fontSize: 13,
+                  }}
+                >
+                  Baby · Ocio · Intensivos · Todos
+                </p>
+              </div>
+
+              <span
+                style={{
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  border: '1px solid #cbd5e1',
+                  background: '#fff',
+                  color: '#334155',
+                  fontWeight: 900,
+                  fontSize: 20,
+                }}
+              >
+                ↕
+              </span>
+            </summary>
+
+            <div
+              style={{
+                padding: '16px 18px 18px',
+                borderTop: '1px solid rgba(99,102,241,.12)',
+              }}
+            >
+              <p style={{ margin: 0, color: '#475569', lineHeight: 1.45 }}>
+                Genera un listado limpio con los niños que realmente han tenido
+                actividad esta temporada. No guarda copias adicionales en
+                Supabase.
+              </p>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns:
+                    'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',
+                  gap: 9,
+                  marginTop: 14,
+                }}
+              >
+                {(
+                  [
+                    ['BABY', 'Baby'],
+                    ['OCIO', 'Ocio'],
+                    ['INTENSIVOS', 'Intensivos'],
+                    ['TODOS', 'Todos'],
+                  ] as Array<[TipoListadoAlumnosApp, string]>
+                ).map(([tipo, etiqueta]) => (
+                  <button
+                    key={`listado-${tipo}`}
+                    type="button"
+                    onClick={() => cargarListadoAlumnosTemporada(tipo)}
+                    disabled={listadoAlumnosCargando}
+                    style={{
+                      ...botonMenu(tipoListadoAlumnos === tipo),
+                      width: '100%',
+                      minWidth: 0,
+                      minHeight: 44,
+                      whiteSpace: 'normal',
+                      overflowWrap: 'anywhere',
+                      opacity: listadoAlumnosCargando ? 0.7 : 1,
+                    }}
+                  >
+                    {etiqueta}
+                  </button>
+                ))}
+              </div>
+
+              {listadoAlumnosError && (
+                <div style={{ ...errorCaja, marginTop: 12 }}>
+                  {listadoAlumnosError}
+                </div>
+              )}
+
+              {listadoAlumnosCargando && (
+                <div style={{ ...avisoNeutral, marginTop: 12 }}>
+                  Generando listado...
+                </div>
+              )}
+
+              {listadoAlumnosGenerado &&
+                !listadoAlumnosCargando &&
+                !listadoAlumnosError &&
+                listadoAlumnosTemporada.length === 0 && (
+                  <div style={{ ...avisoNeutral, marginTop: 12 }}>
+                    No hay actividad real en este listado durante la temporada
+                    activa.
+                  </div>
+                )}
+
+              {listadoAlumnosTemporada.length > 0 && (() => {
+                const termino = busquedaListadoAlumnos.trim().toLowerCase();
+                const filasVisibles = termino
+                  ? listadoAlumnosTemporada.filter((fila) =>
+                      `${fila.alumno} ${fila.nivel || ''} ${fila.pista || ''} ${
+                        fila.modalidad || ''
+                      } ${fila.ultimo_intensivo || ''}`
+                        .toLowerCase()
+                        .includes(termino)
+                    )
+                  : listadoAlumnosTemporada;
+
+                const temporada =
+                  listadoAlumnosTemporada[0]?.temporada || '-';
+
+                return (
+                  <>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'minmax(0, 1fr) minmax(160px, auto)',
+                        gap: 10,
+                        alignItems: 'end',
+                        marginTop: 14,
+                      }}
+                    >
+                      <label
+                        style={{
+                          ...labelCampo,
+                          minWidth: 0,
+                          width: '100%',
+                        }}
+                      >
+                        Buscar alumno
+                        <input
+                          value={busquedaListadoAlumnos}
+                          onChange={(e) =>
+                            setBusquedaListadoAlumnos(e.target.value)
+                          }
+                          placeholder="Nombre, nivel, pista..."
+                          style={{
+                            ...inputCampo,
+                            width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={descargarListadoAlumnosTemporada}
+                        style={{
+                          ...botonPrincipal,
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 46,
+                          whiteSpace: 'normal',
+                        }}
+                      >
+                        Descargar Excel
+                      </button>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                        marginTop: 12,
+                        padding: '11px 12px',
+                        border: '1px solid #e0e7ff',
+                        borderRadius: 14,
+                        background: '#fff',
+                      }}
+                    >
+                      <strong>Temporada {temporada}</strong>
+                      <span style={{ color: '#64748b' }}>
+                        {filasVisibles.length} alumnos visibles ·{' '}
+                        {listadoAlumnosTemporada.length} total
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        overflowX: 'auto',
+                        marginTop: 12,
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 16,
+                        background: '#fff',
+                        WebkitOverflowScrolling: 'touch',
+                      }}
+                    >
+                      <table
+                        style={{
+                          width: '100%',
+                          minWidth: 760,
+                          borderCollapse: 'collapse',
+                        }}
+                      >
+                        <thead>
+                          <tr style={{ background: '#f8fafc' }}>
+                            {[
+                              'Alumno',
+                              'Nivel',
+                              'Pista',
+                              'Último entreno',
+                              'Entrenos',
+                              'Modalidad',
+                            ].map((titulo) => (
+                              <th
+                                key={`listado-alumnos-${titulo}`}
+                                style={{
+                                  padding: '10px 12px',
+                                  textAlign:
+                                    titulo === 'Alumno' ? 'left' : 'center',
+                                  borderBottom: '1px solid #e2e8f0',
+                                  color: '#334155',
+                                  fontSize: 13,
+                                }}
+                              >
+                                {titulo}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filasVisibles.map((fila) => (
+                            <tr key={`${tipoListadoAlumnos}-${fila.alumno_id}`}>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  fontWeight: 800,
+                                }}
+                              >
+                                {fila.alumno}
+                                {fila.ultimo_intensivo && (
+                                  <span
+                                    style={{
+                                      display: 'block',
+                                      marginTop: 2,
+                                      color: '#64748b',
+                                      fontSize: 12,
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    {fila.ultimo_intensivo}
+                                  </span>
+                                )}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  textAlign: 'center',
+                                  fontWeight: 900,
+                                }}
+                              >
+                                {fila.nivel || '-'}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                {fila.pista || '-'}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                {fila.ultimo_entreno
+                                  ? formatearFecha(fila.ultimo_entreno)
+                                  : '-'}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  textAlign: 'center',
+                                  fontWeight: 900,
+                                }}
+                              >
+                                {fila.total_entrenamientos}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                {fila.modalidad || '-'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </>
                 );
