@@ -2583,6 +2583,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     !perfilUsuario || puedeGestionarAccesosApp(perfilUsuario.rol);
   const entrenadorIdSesionApp = perfilUsuario?.entrenador_id || '';
   const [salirActivoCabecera, setSalirActivoCabecera] = useState(false);
+  const [pwaInstalada, setPwaInstalada] = useState(false);
+  const [pwaInstallPrompt, setPwaInstallPrompt] = useState<any | null>(null);
+  const [mostrarAyudaInstalacionPwa, setMostrarAyudaInstalacionPwa] =
+    useState(false);
   const [pantalla, setPantalla] = useState<
     | 'agenda'
     | 'resumenDia'
@@ -2640,6 +2644,69 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     esCoordinadorJefeApp,
     pantalla,
   ]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const estaInstalada = () =>
+      window.matchMedia('(display-mode: standalone)').matches ||
+      Boolean((navigator as any).standalone);
+
+    setPwaInstalada(estaInstalada());
+
+    const alPrepararInstalacion = (evento: Event) => {
+      evento.preventDefault();
+      setPwaInstallPrompt(evento as any);
+    };
+
+    const alInstalar = () => {
+      setPwaInstalada(true);
+      setPwaInstallPrompt(null);
+      setMostrarAyudaInstalacionPwa(false);
+    };
+
+    window.addEventListener(
+      'beforeinstallprompt',
+      alPrepararInstalacion as EventListener
+    );
+    window.addEventListener('appinstalled', alInstalar);
+
+    return () => {
+      window.removeEventListener(
+        'beforeinstallprompt',
+        alPrepararInstalacion as EventListener
+      );
+      window.removeEventListener('appinstalled', alInstalar);
+    };
+  }, []);
+
+  async function instalarPwaEntrenador() {
+    if (pwaInstalada) return;
+
+    if (pwaInstallPrompt) {
+      try {
+        await pwaInstallPrompt.prompt();
+        const eleccion = await pwaInstallPrompt.userChoice;
+
+        if (eleccion?.outcome === 'accepted') {
+          setMostrarAyudaInstalacionPwa(false);
+        }
+
+        setPwaInstallPrompt(null);
+        return;
+      } catch {
+        // Si el navegador no permite abrir el diálogo nativo,
+        // mostramos la guía manual de instalación.
+      }
+    }
+
+    setMostrarAyudaInstalacionPwa((actual) => !actual);
+  }
+
+  const esDispositivoIosPwa =
+    typeof navigator !== 'undefined' &&
+    /iphone|ipad|ipod/i.test(navigator.userAgent);
+
 
   const [usuariosOperativos, setUsuariosOperativos] = useState<
     UsuarioOperativoGestionApp[]
@@ -13186,8 +13253,9 @@ Gracias!`;
     const temporadaLimpia = (temporada || 'TEMPORADA')
       .replace(/\//g, '-')
       .replace(/[^0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ_-]+/g, '_');
+    const generado = fechaIsoEditor(new Date());
 
-    return `MITICO_BACKUP_${temporadaLimpia}_SEMANA_${semanaInicio}_A_${semanaFin}.json`;
+    return `MITICO_BACKUP_${temporadaLimpia}_SEMANA_${semanaInicio}_A_${semanaFin}_GENERADO_${generado}.json`;
   }
 
   async function descargarBackupSemanalJson() {
@@ -13549,6 +13617,117 @@ Gracias!`;
                   {semanaAgendaActiva ? rangoSemanaAgenda(semanaAgendaActiva) : '-'}
                 </strong>
               </div>
+
+              {esEntrenadorApp && !pwaInstalada && (
+                <div
+                  style={{
+                    width: '100%',
+                    maxWidth: '100%',
+                    minWidth: 0,
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={instalarPwaEntrenador}
+                    style={{
+                      width: '100%',
+                      minWidth: 0,
+                      minHeight: 48,
+                      border: '1px solid rgba(101, 163, 13, 0.32)',
+                      borderRadius: 14,
+                      padding: '8px 11px',
+                      display: 'grid',
+                      gridTemplateColumns: '38px minmax(0, 1fr) auto',
+                      alignItems: 'center',
+                      gap: 10,
+                      background:
+                        'linear-gradient(135deg, rgba(247, 254, 231, 0.98), rgba(236, 252, 203, 0.92))',
+                      color: '#365314',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      boxShadow: '0 8px 20px rgba(77, 124, 15, 0.08)',
+                    }}
+                    aria-expanded={mostrarAyudaInstalacionPwa}
+                  >
+                    <img
+                      src="/icon-192.png"
+                      alt=""
+                      aria-hidden="true"
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 10,
+                        objectFit: 'cover',
+                        display: 'block',
+                      }}
+                    />
+                    <span style={{ minWidth: 0, display: 'grid', gap: 1 }}>
+                      <strong
+                        style={{
+                          fontSize: 13,
+                          lineHeight: 1.2,
+                          color: '#365314',
+                        }}
+                      >
+                        Instalar Mítico Baby
+                      </strong>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          lineHeight: 1.25,
+                          color: '#4d7c0f',
+                          fontWeight: 700,
+                        }}
+                      >
+                        Acceso directo desde tu móvil
+                      </span>
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        fontSize: 18,
+                        fontWeight: 900,
+                        lineHeight: 1,
+                        color: '#4d7c0f',
+                      }}
+                    >
+                      {mostrarAyudaInstalacionPwa ? '−' : '＋'}
+                    </span>
+                  </button>
+
+                  {mostrarAyudaInstalacionPwa && (
+                    <div
+                      style={{
+                        marginTop: 7,
+                        padding: '10px 12px',
+                        borderRadius: 12,
+                        border: '1px solid #d9f99d',
+                        background: '#fbfff5',
+                        color: '#3f6212',
+                        fontSize: 12,
+                        lineHeight: 1.45,
+                        boxSizing: 'border-box',
+                      }}
+                    >
+                      {esDispositivoIosPwa ? (
+                        <>
+                          En iPhone/iPad: abre esta página en Safari, pulsa
+                          <strong> Compartir </strong> y después
+                          <strong> Añadir a pantalla de inicio</strong>.
+                        </>
+                      ) : (
+                        <>
+                          Si no aparece el instalador automático, abre el menú
+                          del navegador y elige
+                          <strong> Instalar aplicación </strong> o
+                          <strong> Añadir a pantalla de inicio</strong>.
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {perfilUsuario && (
                 <div
@@ -17031,7 +17210,7 @@ Gracias!`;
               {semanaBackupObjetivo
                 ? sumarDiasBackup(semanaBackupObjetivo, 6)
                 : '---- -- --'}
-              .json
+              _GENERADO_{fechaIsoEditor(new Date())}.json
             </p>
 
             <details
