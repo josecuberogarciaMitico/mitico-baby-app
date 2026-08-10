@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './App.css';
-import { LOGO_MITICO_CLUB, FOTO_MITICO_HERO } from './assets/imagenes';
+import { FOTO_MITICO_HERO } from './assets/imagenes';
 import {
   AyudaReporteEntrenador,
   CampoSelect,
@@ -2021,7 +2021,7 @@ function PantallaLoginApp({
           }}
         >
           <img
-            src={LOGO_MITICO_CLUB}
+            src="/logo-cabecera-mitico.png"
             alt="Mítico Club"
             style={{
               width: 64,
@@ -2211,7 +2211,7 @@ function PantallaCrearPasswordApp({
           }}
         >
           <img
-            src={LOGO_MITICO_CLUB}
+            src="/logo-cabecera-mitico.png"
             alt="Mítico Club"
             style={{
               width: 64,
@@ -13537,7 +13537,7 @@ Gracias!`;
                 }}
               >
                 <img
-                  src={LOGO_MITICO_CLUB}
+                  src="/logo-cabecera-mitico.png"
                   alt="Mítico Club"
                   style={{
                     ...logoMarcaApp,
@@ -13618,7 +13618,7 @@ Gracias!`;
                 </strong>
               </div>
 
-              {esEntrenadorApp && !pwaInstalada && (
+              {(esEntrenadorApp || esCoordinadorJefeApp) && !pwaInstalada && (
                 <div
                   style={{
                     width: '100%',
