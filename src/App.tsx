@@ -5001,6 +5001,13 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     ? diasTrabajoSemanaAgenda(semanaAgendaActiva)
     : [];
 
+  function cambiarSemanaTrabajoApp(nuevaSemana: string) {
+    setSemanaAgendaInicio(nuevaSemana);
+    setAgendaDiaCompactoActivo('');
+    setAgendaSesionActivaId('');
+    setAgendaFormularioAbierto(false);
+  }
+
   useEffect(() => {
     let cancelado = false;
 
@@ -13602,20 +13609,45 @@ Gracias!`;
                   boxShadow: '0 8px 22px rgba(15, 23, 42, 0.06)',
                 }}
               >
-                <span
+                <label
                   style={{
                     fontSize: 11,
                     fontWeight: 900,
                     letterSpacing: '0.08em',
                     textTransform: 'uppercase',
                     color: '#0f766e',
+                    whiteSpace: 'nowrap',
                   }}
+                  htmlFor="semana-trabajo-cabecera"
                 >
                   Semana de trabajo
-                </span>
-                <strong style={{ color: '#134e4a', fontSize: 14 }}>
-                  {semanaAgendaActiva ? rangoSemanaAgenda(semanaAgendaActiva) : '-'}
-                </strong>
+                </label>
+                <select
+                  id="semana-trabajo-cabecera"
+                  value={semanaAgendaActiva}
+                  onChange={(e) => cambiarSemanaTrabajoApp(e.target.value)}
+                  aria-label="Cambiar semana de trabajo"
+                  style={{
+                    minWidth: 0,
+                    maxWidth: '100%',
+                    border: 0,
+                    outline: 0,
+                    padding: '2px 24px 2px 0',
+                    margin: 0,
+                    background: 'transparent',
+                    color: '#134e4a',
+                    fontSize: 14,
+                    fontWeight: 900,
+                    lineHeight: 1.2,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {semanasAgenda.map((semana) => (
+                    <option key={semana} value={semana}>
+                      {rangoSemanaAgenda(semana)}
+                    </option>
+                  ))}
+                </select>
               </div>
 
               {(esEntrenadorApp || esCoordinadorJefeApp) && !pwaInstalada && (
@@ -17657,12 +17689,7 @@ Gracias!`;
                 <select
                   value={semanaAgendaActiva}
                   style={selectCampoAgenda}
-                  onChange={(e) => {
-                    setSemanaAgendaInicio(e.target.value);
-                    setAgendaDiaCompactoActivo('');
-                    setAgendaSesionActivaId('');
-                    setAgendaFormularioAbierto(false);
-                  }}
+                  onChange={(e) => cambiarSemanaTrabajoApp(e.target.value)}
                 >
                   {semanasAgenda.map((semana) => (
                     <option key={semana} value={semana}>
@@ -27977,14 +28004,48 @@ Gracias!`;
       )}
 
       {pantalla === 'cobros' && esCoordinadorJefeApp && (
-        <section style={{ display: 'grid', gap: 16 }}>
-          <article style={agendaHero}>
-            <div>
-              <h2 style={{ margin: 0 }}>Cobros entrenadores</h2>
-              <p style={{ margin: '8px 0 0' }}>
-                Resumen mensual unificado: Baby, Intensivos y Ocio. Se calcula
-                por turnos trabajados x tarifa por sesión, con ajustes manuales
-                si hace falta.
+        <section
+          style={{
+            display: 'grid',
+            gap: 16,
+            minWidth: 0,
+          }}
+        >
+          <article
+            style={{
+              ...agendaHero,
+              border: '1px solid rgba(37, 99, 235, 0.16)',
+              background:
+                'linear-gradient(135deg, rgba(239, 246, 255, 0.98), rgba(255, 255, 255, 0.98) 48%, rgba(240, 253, 250, 0.94))',
+              boxShadow: '0 16px 38px rgba(15, 23, 42, 0.07)',
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <p
+                style={{
+                  margin: '0 0 5px',
+                  color: '#2563eb',
+                  fontWeight: 950,
+                  fontSize: 11,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Dirección · control mensual
+              </p>
+              <h2 style={{ margin: 0, color: '#172033' }}>
+                Cobros entrenadores
+              </h2>
+              <p
+                style={{
+                  margin: '8px 0 0',
+                  color: '#475569',
+                  lineHeight: 1.45,
+                  maxWidth: 760,
+                }}
+              >
+                Resumen mensual unificado de Baby, Intensivos y Ocio. Turnos,
+                tarifas, ajustes y cierre del mes en una sola vista.
               </p>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -27997,8 +28058,55 @@ Gracias!`;
             </div>
           </article>
 
-          <article style={agendaBloqueBlanco}>
-            <h3 style={{ marginTop: 0 }}>Mes a revisar</h3>
+          <article
+            style={{
+              ...agendaBloqueBlanco,
+              border: '1px solid #dbeafe',
+              background:
+                'linear-gradient(180deg, rgba(255,255,255,0.99), rgba(248,250,252,0.98))',
+              boxShadow: '0 10px 28px rgba(15, 23, 42, 0.05)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                flexWrap: 'wrap',
+                marginBottom: 12,
+              }}
+            >
+              <div>
+                <p
+                  style={{
+                    margin: '0 0 3px',
+                    color: '#64748b',
+                    fontSize: 11,
+                    fontWeight: 900,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Periodo
+                </p>
+                <h3 style={{ margin: 0, color: '#172033' }}>Mes a revisar</h3>
+              </div>
+              <span
+                style={{
+                  padding: '7px 11px',
+                  borderRadius: 999,
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  color: '#1d4ed8',
+                  fontSize: 12,
+                  fontWeight: 900,
+                }}
+              >
+                {nombreMes(mesCobros)} {anioCobros}
+              </span>
+            </div>
+
             <div style={gridFormulario}>
               <label style={labelCampo}>
                 Año
@@ -28038,288 +28146,543 @@ Gracias!`;
             </div>
           </article>
 
-          <article style={agendaBloqueBlanco}>
-            <h3 style={{ marginTop: 0 }}>Añadir entreno manual</h3>
-            <p style={{ marginTop: 0, color: '#555' }}>
-              Para entrenos que no estén registrados en Baby, Intensivos u Ocio.
-              Cuenta como un turno más en el mes del entrenador.
-            </p>
-            <div style={gridFormulario}>
-              <label style={labelCampo}>
-                Entrenador
-                <select
-                  value={formCobroManual.entrenadorId}
-                  onChange={(e) =>
-                    setFormCobroManual({
-                      ...formCobroManual,
-                      entrenadorId: e.target.value,
-                    })
-                  }
-                  style={selectCampo}
-                >
-                  <option value="">Elegir entrenador</option>
-                  {entrenadores
-                    .filter((entrenador) => entrenador.activo !== false)
-                    .map((entrenador) => (
-                      <option
-                        key={entrenador.entrenador_id}
-                        value={entrenador.entrenador_id}
-                      >
-                        {entrenador.nombre_completo}
-                      </option>
-                    ))}
-                </select>
-              </label>
-              <label style={labelCampo}>
-                Fecha
-                <input
-                  type="date"
-                  value={formCobroManual.fecha}
-                  onChange={(e) =>
-                    setFormCobroManual({
-                      ...formCobroManual,
-                      fecha: e.target.value,
-                    })
-                  }
-                  style={inputCampo}
-                />
-              </label>
-              <label style={labelCampo}>
-                Inicio
-                <input
-                  type="time"
-                  value={formCobroManual.horaInicio}
-                  onChange={(e) =>
-                    setFormCobroManual({
-                      ...formCobroManual,
-                      horaInicio: e.target.value,
-                    })
-                  }
-                  style={inputCampo}
-                />
-              </label>
-              <label style={labelCampo}>
-                Fin
-                <input
-                  type="time"
-                  value={formCobroManual.horaFin}
-                  onChange={(e) =>
-                    setFormCobroManual({
-                      ...formCobroManual,
-                      horaFin: e.target.value,
-                    })
-                  }
-                  style={inputCampo}
-                />
-              </label>
-              <label style={labelCampo}>
-                Modalidad
-                <select
-                  value={formCobroManual.modalidad}
-                  onChange={(e) =>
-                    setFormCobroManual({
-                      ...formCobroManual,
-                      modalidad: e.target.value,
-                    })
-                  }
-                  style={selectCampo}
-                >
-                  <option value="BABY">Baby</option>
-                  <option value="INTENSIVOS">Intensivos</option>
-                  <option value="OCIO">Ocio</option>
-                </select>
-              </label>
-              <label style={labelCampo}>
-                Nombre / motivo
-                <input
-                  value={formCobroManual.nombreGrupo}
-                  onChange={(e) =>
-                    setFormCobroManual({
-                      ...formCobroManual,
-                      nombreGrupo: e.target.value,
-                    })
-                  }
-                  placeholder="Apoyo pista / entreno manual / sustitución..."
-                  style={inputCampo}
-                />
-              </label>
-              <label style={labelCampo}>
-                Niños
-                <input
-                  type="number"
-                  value={formCobroManual.totalAlumnos}
-                  onChange={(e) =>
-                    setFormCobroManual({
-                      ...formCobroManual,
-                      totalAlumnos: e.target.value,
-                    })
-                  }
-                  style={inputCampo}
-                />
-              </label>
-              <label style={labelCampo}>
-                Importe especial opcional
-                <input
-                  value={formCobroManual.importeOverride}
-                  onChange={(e) =>
-                    setFormCobroManual({
-                      ...formCobroManual,
-                      importeOverride: e.target.value,
-                    })
-                  }
-                  placeholder="Vacío = tarifa del entrenador"
-                  style={inputCampo}
-                />
-              </label>
-              <label style={{ ...labelCampo, gridColumn: '1 / -1' }}>
-                Observaciones
-                <textarea
-                  value={formCobroManual.observaciones}
-                  onChange={(e) =>
-                    setFormCobroManual({
-                      ...formCobroManual,
-                      observaciones: e.target.value,
-                    })
-                  }
-                  rows={2}
-                  placeholder="Nota para dirección si hace falta..."
-                  style={textareaCampo}
-                />
-              </label>
-            </div>
-            <div
+          <details
+            style={{
+              ...agendaBloqueBlanco,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid #fed7aa',
+              background:
+                'linear-gradient(135deg, rgba(255,247,237,0.96), rgba(255,255,255,0.99))',
+              boxShadow: '0 10px 28px rgba(15, 23, 42, 0.05)',
+            }}
+          >
+            <summary
               style={{
+                listStyle: 'none',
+                cursor: 'pointer',
+                padding: '15px 16px',
                 display: 'flex',
-                gap: 8,
-                flexWrap: 'wrap',
-                marginTop: 12,
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
               }}
             >
-              <button onClick={crearEntrenoManualCobro} style={botonPrincipal}>
-                Añadir entreno manual
-              </button>
-              <button
-                onClick={() => setFormCobroManual(cobroManualInicial())}
-                style={botonSecundario}
+              <span style={{ display: 'grid', gap: 3, minWidth: 0 }}>
+                <strong style={{ color: '#9a3412', fontSize: 15 }}>
+                  + Añadir entreno manual
+                </strong>
+                <span
+                  style={{
+                    color: '#78716c',
+                    fontSize: 12,
+                    lineHeight: 1.35,
+                  }}
+                >
+                  Solo para sesiones que no estén registradas en Baby,
+                  Intensivos u Ocio.
+                </span>
+              </span>
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 10,
+                  display: 'grid',
+                  placeItems: 'center',
+                  flex: '0 0 auto',
+                  background: '#fff7ed',
+                  border: '1px solid #fdba74',
+                  color: '#c2410c',
+                  fontSize: 18,
+                  fontWeight: 950,
+                }}
               >
-                Limpiar formulario
-              </button>
+                +
+              </span>
+            </summary>
+
+            <div
+              style={{
+                padding: '0 16px 16px',
+                borderTop: '1px solid rgba(251, 146, 60, 0.18)',
+              }}
+            >
+              <p
+                style={{
+                  margin: '12px 0',
+                  color: '#78716c',
+                  fontSize: 13,
+                  lineHeight: 1.45,
+                }}
+              >
+                Cuenta como un turno más en el mes del entrenador.
+              </p>
+
+              <div style={gridFormulario}>
+                <label style={labelCampo}>
+                  Entrenador
+                  <select
+                    value={formCobroManual.entrenadorId}
+                    onChange={(e) =>
+                      setFormCobroManual({
+                        ...formCobroManual,
+                        entrenadorId: e.target.value,
+                      })
+                    }
+                    style={selectCampo}
+                  >
+                    <option value="">Elegir entrenador</option>
+                    {entrenadores
+                      .filter((entrenador) => entrenador.activo !== false)
+                      .map((entrenador) => (
+                        <option
+                          key={entrenador.entrenador_id}
+                          value={entrenador.entrenador_id}
+                        >
+                          {entrenador.nombre_completo}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <label style={labelCampo}>
+                  Fecha
+                  <input
+                    type="date"
+                    value={formCobroManual.fecha}
+                    onChange={(e) =>
+                      setFormCobroManual({
+                        ...formCobroManual,
+                        fecha: e.target.value,
+                      })
+                    }
+                    style={inputCampo}
+                  />
+                </label>
+                <label style={labelCampo}>
+                  Inicio
+                  <input
+                    type="time"
+                    value={formCobroManual.horaInicio}
+                    onChange={(e) =>
+                      setFormCobroManual({
+                        ...formCobroManual,
+                        horaInicio: e.target.value,
+                      })
+                    }
+                    style={inputCampo}
+                  />
+                </label>
+                <label style={labelCampo}>
+                  Fin
+                  <input
+                    type="time"
+                    value={formCobroManual.horaFin}
+                    onChange={(e) =>
+                      setFormCobroManual({
+                        ...formCobroManual,
+                        horaFin: e.target.value,
+                      })
+                    }
+                    style={inputCampo}
+                  />
+                </label>
+                <label style={labelCampo}>
+                  Modalidad
+                  <select
+                    value={formCobroManual.modalidad}
+                    onChange={(e) =>
+                      setFormCobroManual({
+                        ...formCobroManual,
+                        modalidad: e.target.value,
+                      })
+                    }
+                    style={selectCampo}
+                  >
+                    <option value="BABY">Baby</option>
+                    <option value="INTENSIVOS">Intensivos</option>
+                    <option value="OCIO">Ocio</option>
+                  </select>
+                </label>
+                <label style={labelCampo}>
+                  Nombre / motivo
+                  <input
+                    value={formCobroManual.nombreGrupo}
+                    onChange={(e) =>
+                      setFormCobroManual({
+                        ...formCobroManual,
+                        nombreGrupo: e.target.value,
+                      })
+                    }
+                    placeholder="Apoyo pista / entreno manual / sustitución..."
+                    style={inputCampo}
+                  />
+                </label>
+                <label style={labelCampo}>
+                  Niños
+                  <input
+                    type="number"
+                    value={formCobroManual.totalAlumnos}
+                    onChange={(e) =>
+                      setFormCobroManual({
+                        ...formCobroManual,
+                        totalAlumnos: e.target.value,
+                      })
+                    }
+                    style={inputCampo}
+                  />
+                </label>
+                <label style={labelCampo}>
+                  Importe especial opcional
+                  <input
+                    value={formCobroManual.importeOverride}
+                    onChange={(e) =>
+                      setFormCobroManual({
+                        ...formCobroManual,
+                        importeOverride: e.target.value,
+                      })
+                    }
+                    placeholder="Vacío = tarifa del entrenador"
+                    style={inputCampo}
+                  />
+                </label>
+                <label style={{ ...labelCampo, gridColumn: '1 / -1' }}>
+                  Observaciones
+                  <textarea
+                    value={formCobroManual.observaciones}
+                    onChange={(e) =>
+                      setFormCobroManual({
+                        ...formCobroManual,
+                        observaciones: e.target.value,
+                      })
+                    }
+                    rows={2}
+                    placeholder="Nota para dirección si hace falta..."
+                    style={textareaCampo}
+                  />
+                </label>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  marginTop: 12,
+                }}
+              >
+                <button
+                  onClick={crearEntrenoManualCobro}
+                  style={botonPrincipal}
+                >
+                  Añadir entreno manual
+                </button>
+                <button
+                  onClick={() => setFormCobroManual(cobroManualInicial())}
+                  style={botonSecundario}
+                >
+                  Limpiar formulario
+                </button>
+              </div>
             </div>
-          </article>
+          </details>
 
           <section
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
               gap: 10,
             }}
           >
-            <article style={miniTarjetaBlanca}>
-              <strong>Total mes</strong>
-              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>
+            <article
+              style={{
+                ...miniTarjetaBlanca,
+                border: '1px solid #bfdbfe',
+                background:
+                  'linear-gradient(135deg, #eff6ff, rgba(255,255,255,0.98))',
+              }}
+            >
+              <strong style={{ color: '#1d4ed8' }}>Total mes</strong>
+              <p
+                style={{
+                  fontSize: 26,
+                  fontWeight: 950,
+                  margin: '8px 0 0',
+                  color: '#172033',
+                }}
+              >
                 {formatearEuros(totalGeneralCobrosMes)}
               </p>
             </article>
-            <article style={miniTarjetaBlanca}>
-              <strong>Turnos</strong>
-              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>
+            <article
+              style={{
+                ...miniTarjetaBlanca,
+                border: '1px solid #cbd5e1',
+                background:
+                  'linear-gradient(135deg, #f8fafc, rgba(255,255,255,0.98))',
+              }}
+            >
+              <strong style={{ color: '#475569' }}>Turnos</strong>
+              <p
+                style={{
+                  fontSize: 26,
+                  fontWeight: 950,
+                  margin: '8px 0 0',
+                  color: '#172033',
+                }}
+              >
                 {totalTurnosCobrosMes}
               </p>
             </article>
-            <article style={miniTarjetaBlanca}>
-              <strong>Baby</strong>
-              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>
+            <article
+              style={{
+                ...miniTarjetaBlanca,
+                border: '1px solid #bfdbfe',
+                background:
+                  'linear-gradient(135deg, #eff6ff, rgba(255,255,255,0.98))',
+              }}
+            >
+              <strong style={{ color: '#2563eb' }}>Baby</strong>
+              <p
+                style={{
+                  fontSize: 26,
+                  fontWeight: 950,
+                  margin: '8px 0 0',
+                  color: '#172033',
+                }}
+              >
                 {totalBabyCobrosMes}
               </p>
             </article>
-            <article style={miniTarjetaBlanca}>
-              <strong>Intensivos</strong>
-              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>
+            <article
+              style={{
+                ...miniTarjetaBlanca,
+                border: '1px solid #fed7aa',
+                background:
+                  'linear-gradient(135deg, #fff7ed, rgba(255,255,255,0.98))',
+              }}
+            >
+              <strong style={{ color: '#ea580c' }}>Intensivos</strong>
+              <p
+                style={{
+                  fontSize: 26,
+                  fontWeight: 950,
+                  margin: '8px 0 0',
+                  color: '#172033',
+                }}
+              >
                 {totalIntensivosCobrosMes}
               </p>
             </article>
-            <article style={miniTarjetaBlanca}>
-              <strong>Ocio</strong>
-              <p style={{ fontSize: 26, fontWeight: 900, margin: '8px 0 0' }}>
+            <article
+              style={{
+                ...miniTarjetaBlanca,
+                border: '1px solid #bbf7d0',
+                background:
+                  'linear-gradient(135deg, #f0fdf4, rgba(255,255,255,0.98))',
+              }}
+            >
+              <strong style={{ color: '#16a34a' }}>Ocio</strong>
+              <p
+                style={{
+                  fontSize: 26,
+                  fontWeight: 950,
+                  margin: '8px 0 0',
+                  color: '#172033',
+                }}
+              >
                 {totalOcioCobrosMes}
               </p>
             </article>
           </section>
 
-          <input
-            value={busquedaCobros}
-            onChange={(e) => setBusquedaCobros(e.target.value)}
-            placeholder="Buscar entrenador, temporada, mes, modalidad o estado..."
-            style={buscador}
-          />
+          <article
+            style={{
+              ...agendaBloqueBlanco,
+              padding: 12,
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
+            }}
+          >
+            <input
+              value={busquedaCobros}
+              onChange={(e) => setBusquedaCobros(e.target.value)}
+              placeholder="Buscar entrenador, temporada, mes, modalidad o estado..."
+              style={{ ...buscador, marginBottom: 10 }}
+            />
 
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button
-              onClick={() => setFiltroCobros('todos')}
-              style={botonMenu(filtroCobros === 'todos')}
+            <div
+              style={{
+                display: 'flex',
+                gap: 8,
+                flexWrap: 'wrap',
+                overflowX: 'auto',
+                overscrollBehaviorX: 'contain',
+                paddingBottom: 2,
+              }}
             >
-              Todos
-            </button>
-            <button
-              onClick={() => setFiltroCobros('pendiente')}
-              style={botonMenu(filtroCobros === 'pendiente')}
-            >
-              Pendiente
-            </button>
-            <button
-              onClick={() => setFiltroCobros('cerrado')}
-              style={botonMenu(filtroCobros === 'cerrado')}
-            >
-              Cerrado / pagado
-            </button>
-            <button
-              onClick={() => setFiltroCobros('incidencias')}
-              style={botonMenu(filtroCobros === 'incidencias')}
-            >
-              Con incidencias
-            </button>
-            <button
-              onClick={() => setFiltroCobros('este_mes')}
-              style={botonMenu(filtroCobros === 'este_mes')}
-            >
-              Este mes
-            </button>
-          </div>
+              <button
+                onClick={() => setFiltroCobros('todos')}
+                style={botonMenu(filtroCobros === 'todos')}
+              >
+                Todos
+              </button>
+              <button
+                onClick={() => setFiltroCobros('pendiente')}
+                style={botonMenu(filtroCobros === 'pendiente')}
+              >
+                Pendiente
+              </button>
+              <button
+                onClick={() => setFiltroCobros('cerrado')}
+                style={botonMenu(filtroCobros === 'cerrado')}
+              >
+                Cerrado / pagado
+              </button>
+              <button
+                onClick={() => setFiltroCobros('incidencias')}
+                style={botonMenu(filtroCobros === 'incidencias')}
+              >
+                Con incidencias
+              </button>
+              <button
+                onClick={() => setFiltroCobros('este_mes')}
+                style={botonMenu(filtroCobros === 'este_mes')}
+              >
+                Este mes
+              </button>
+            </div>
+          </article>
 
-          {cargando && <p>Cargando cobros...</p>}
+          {cargando && (
+            <article
+              style={{
+                ...agendaBloqueBlanco,
+                border: '1px solid #dbeafe',
+                color: '#1d4ed8',
+                fontWeight: 800,
+              }}
+            >
+              Cargando cobros...
+            </article>
+          )}
 
           {!cargando && cobrosFiltrados.length === 0 && !error && (
-            <article style={tarjeta}>
-              <h3 style={{ marginTop: 0 }}>Sin cobros</h3>
-              <p style={{ marginBottom: 0 }}>
+            <article
+              style={{
+                ...tarjeta,
+                border: '1px solid #cbd5e1',
+                background:
+                  'linear-gradient(135deg, #f8fafc, rgba(255,255,255,0.98))',
+              }}
+            >
+              <p
+                style={{
+                  margin: '0 0 4px',
+                  fontSize: 11,
+                  fontWeight: 900,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  color: '#64748b',
+                }}
+              >
+                Resultado del mes
+              </p>
+              <h3 style={{ margin: 0 }}>Sin cobros</h3>
+              <p style={{ margin: '7px 0 0', color: '#64748b' }}>
                 No hay turnos con entrenador asignado para este mes. Cuando
-                prepares/publices grupos de Baby, Intensivos u Ocio, aparecerán
-                aquí.
+                prepares o publiques grupos de Baby, Intensivos u Ocio,
+                aparecerán aquí.
               </p>
             </article>
           )}
 
-          <section style={{ display: 'grid', gap: 14 }}>
+          <section style={{ display: 'grid', gap: 14, minWidth: 0 }}>
             {cobrosFiltrados.map((cobro) => {
               const detalles = detallesDeCobro(cobro.entrenador_id);
+              const estadoCobro = String(cobro.estado_mes || 'abierto').toLowerCase();
+              const colorEstado =
+                estadoCobro === 'pagado'
+                  ? '#16a34a'
+                  : estadoCobro === 'cerrado'
+                  ? '#2563eb'
+                  : estadoCobro === 'revisado'
+                  ? '#7c3aed'
+                  : '#f59e0b';
+              const fondoEstado =
+                estadoCobro === 'pagado'
+                  ? '#f0fdf4'
+                  : estadoCobro === 'cerrado'
+                  ? '#eff6ff'
+                  : estadoCobro === 'revisado'
+                  ? '#f5f3ff'
+                  : '#fffbeb';
+
               return (
                 <article
                   key={`${cobro.entrenador_id}-${cobro.anio}-${cobro.mes}`}
-                  style={tarjeta}
+                  style={{
+                    ...tarjeta,
+                    minWidth: 0,
+                    border: '1px solid #e2e8f0',
+                    borderLeft: `5px solid ${colorEstado}`,
+                    boxShadow: '0 12px 30px rgba(15, 23, 42, 0.06)',
+                    background:
+                      'linear-gradient(180deg, rgba(255,255,255,0.99), rgba(248,250,252,0.96))',
+                  }}
                 >
-                  <div style={agendaCabeceraLinea}>
-                    <div>
-                      <h3 style={{ margin: 0 }}>{cobro.entrenador}</h3>
-                      <p style={{ margin: '6px 0 0', color: '#555' }}>
-                        {nombreMes(cobro.mes)} {cobro.anio} · {cobro.temporada}{' '}
-                        · Estado: <strong>{cobro.estado_mes}</strong>
+                  <div
+                    style={{
+                      ...agendaCabeceraLinea,
+                      gap: 14,
+                      alignItems: 'flex-start',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 8,
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <h3 style={{ margin: 0, color: '#172033' }}>
+                          {cobro.entrenador}
+                        </h3>
+                        <span
+                          style={{
+                            padding: '5px 9px',
+                            borderRadius: 999,
+                            background: fondoEstado,
+                            border: `1px solid ${colorEstado}33`,
+                            color: colorEstado,
+                            fontSize: 11,
+                            fontWeight: 950,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
+                          }}
+                        >
+                          {cobro.estado_mes}
+                        </span>
+                      </div>
+                      <p style={{ margin: '6px 0 0', color: '#64748b' }}>
+                        {nombreMes(cobro.mes)} {cobro.anio} · {cobro.temporada}
                       </p>
                     </div>
-                    <div style={{ textAlign: 'right' }}>
-                      <p style={{ fontSize: 28, fontWeight: 900, margin: 0 }}>
+                    <div style={{ textAlign: 'right', flex: '0 0 auto' }}>
+                      <p
+                        style={{
+                          fontSize: 28,
+                          fontWeight: 950,
+                          margin: 0,
+                          color: '#172033',
+                        }}
+                      >
                         {formatearEuros(cobro.total_mes)}
                       </p>
-                      <p style={{ margin: '4px 0 0', color: '#555' }}>
+                      <p style={{ margin: '4px 0 0', color: '#64748b' }}>
                         {cobro.total_turnos_computables} turnos
                       </p>
                     </div>
@@ -28329,39 +28692,84 @@ Gracias!`;
                     style={{
                       display: 'grid',
                       gridTemplateColumns:
-                        'repeat(auto-fit, minmax(130px, 1fr))',
+                        'repeat(auto-fit, minmax(125px, 1fr))',
                       gap: 8,
                       marginTop: 12,
                     }}
                   >
-                    <div style={miniTarjetaBlanca}>
-                      <strong>Baby</strong>
+                    <div
+                      style={{
+                        ...miniTarjetaBlanca,
+                        background: '#eff6ff',
+                        border: '1px solid #dbeafe',
+                      }}
+                    >
+                      <strong style={{ color: '#2563eb' }}>Baby</strong>
                       <br />
                       {cobro.total_turnos_baby || 0} turnos
                     </div>
-                    <div style={miniTarjetaBlanca}>
-                      <strong>Intensivos</strong>
+                    <div
+                      style={{
+                        ...miniTarjetaBlanca,
+                        background: '#fff7ed',
+                        border: '1px solid #ffedd5',
+                      }}
+                    >
+                      <strong style={{ color: '#ea580c' }}>Intensivos</strong>
                       <br />
                       {cobro.total_turnos_intensivos || 0} turnos
                     </div>
-                    <div style={miniTarjetaBlanca}>
-                      <strong>Ocio</strong>
+                    <div
+                      style={{
+                        ...miniTarjetaBlanca,
+                        background: '#f0fdf4',
+                        border: '1px solid #dcfce7',
+                      }}
+                    >
+                      <strong style={{ color: '#16a34a' }}>Ocio</strong>
                       <br />
                       {cobro.total_turnos_ocio || 0} turnos
                     </div>
-                    <div style={miniTarjetaBlanca}>
+                    <div
+                      style={{
+                        ...miniTarjetaBlanca,
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                      }}
+                    >
                       <strong>Subtotal</strong>
                       <br />
                       {formatearEuros(cobro.subtotal_sesiones)}
                     </div>
-                    <div style={miniTarjetaBlanca}>
+                    <div
+                      style={{
+                        ...miniTarjetaBlanca,
+                        background:
+                          Number(cobro.ajustes_total || 0) !== 0
+                            ? '#fefce8'
+                            : '#f8fafc',
+                        border:
+                          Number(cobro.ajustes_total || 0) !== 0
+                            ? '1px solid #fde68a'
+                            : '1px solid #e2e8f0',
+                      }}
+                    >
                       <strong>Ajustes</strong>
                       <br />
                       {formatearEuros(cobro.ajustes_total)}
                     </div>
                   </section>
 
-                  <div style={{ ...gridFormulario, marginTop: 12 }}>
+                  <div
+                    style={{
+                      ...gridFormulario,
+                      marginTop: 12,
+                      padding: 12,
+                      borderRadius: 14,
+                      background: 'rgba(248, 250, 252, 0.92)',
+                      border: '1px solid #e2e8f0',
+                    }}
+                  >
                     <label style={labelCampo}>
                       Tarifa por sesión
                       <input
@@ -28411,6 +28819,8 @@ Gracias!`;
                       gap: 8,
                       flexWrap: 'wrap',
                       marginTop: 10,
+                      paddingTop: 10,
+                      borderTop: '1px solid #e2e8f0',
                     }}
                   >
                     <button
@@ -28460,15 +28870,52 @@ Gracias!`;
                     </div>
                   )}
 
-                  <details style={{ marginTop: 12 }}>
-                    <summary style={{ cursor: 'pointer', fontWeight: 800 }}>
+                  <details
+                    style={{
+                      marginTop: 12,
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 14,
+                      background: '#fff',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <summary
+                      style={{
+                        cursor: 'pointer',
+                        fontWeight: 900,
+                        padding: '11px 13px',
+                        color: '#334155',
+                        background: '#f8fafc',
+                      }}
+                    >
                       Ver detalle de turnos ({detalles.length})
                     </summary>
-                    <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gap: 8,
+                        padding: 10,
+                        maxHeight: 360,
+                        overflowY: 'auto',
+                        overscrollBehavior: 'contain',
+                        WebkitOverflowScrolling: 'touch',
+                        scrollbarGutter: 'stable',
+                      }}
+                    >
                       {detalles.map((detalleCobro) => (
                         <div
                           key={`${detalleCobro.entrenador_id}-${detalleCobro.grupo_id}-${detalleCobro.fecha}-${detalleCobro.hora_inicio}`}
-                          style={miniTarjetaBlanca}
+                          style={{
+                            ...miniTarjetaBlanca,
+                            border:
+                              detalleCobro.origen_cobro === 'MANUAL'
+                                ? '1px solid #fed7aa'
+                                : '1px solid #e2e8f0',
+                            background:
+                              detalleCobro.origen_cobro === 'MANUAL'
+                                ? '#fff7ed'
+                                : '#fff',
+                          }}
                         >
                           <div
                             style={{
@@ -28478,7 +28925,7 @@ Gracias!`;
                               alignItems: 'flex-start',
                             }}
                           >
-                            <div>
+                            <div style={{ minWidth: 0 }}>
                               <strong>
                                 {formatearFecha(detalleCobro.fecha)} ·{' '}
                                 {horaCorta(detalleCobro.hora_inicio)}-
@@ -28487,7 +28934,15 @@ Gracias!`;
                               </strong>
                               {detalleCobro.origen_cobro === 'MANUAL' && (
                                 <span
-                                  style={{ marginLeft: 8, fontWeight: 900 }}
+                                  style={{
+                                    marginLeft: 8,
+                                    padding: '3px 6px',
+                                    borderRadius: 999,
+                                    background: '#ffedd5',
+                                    color: '#c2410c',
+                                    fontSize: 10,
+                                    fontWeight: 950,
+                                  }}
                                 >
                                   MANUAL
                                 </span>
@@ -28498,7 +28953,12 @@ Gracias!`;
                                 {formatearEuros(detalleCobro.importe_turno)}
                               </p>
                               {detalleCobro.observaciones && (
-                                <p style={{ margin: '5px 0 0', color: '#555' }}>
+                                <p
+                                  style={{
+                                    margin: '5px 0 0',
+                                    color: '#64748b',
+                                  }}
+                                >
                                   {detalleCobro.observaciones}
                                 </p>
                               )}
@@ -28520,11 +28980,40 @@ Gracias!`;
                   </details>
 
                   {cobro.detalle_ajustes && (
-                    <details style={{ marginTop: 12 }}>
-                      <summary style={{ cursor: 'pointer', fontWeight: 800 }}>
+                    <details
+                      style={{
+                        marginTop: 10,
+                        border: '1px solid #fde68a',
+                        borderRadius: 14,
+                        background: '#fff',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <summary
+                        style={{
+                          cursor: 'pointer',
+                          fontWeight: 900,
+                          padding: '11px 13px',
+                          color: '#854d0e',
+                          background: '#fefce8',
+                        }}
+                      >
                         Ver ajustes manuales
                       </summary>
-                      <pre style={bloqueTexto}>{cobro.detalle_ajustes}</pre>
+                      <div
+                        style={{
+                          maxHeight: 280,
+                          overflowY: 'auto',
+                          overscrollBehavior: 'contain',
+                          WebkitOverflowScrolling: 'touch',
+                          scrollbarGutter: 'stable',
+                          padding: 10,
+                        }}
+                      >
+                        <pre style={{ ...bloqueTexto, margin: 0 }}>
+                          {cobro.detalle_ajustes}
+                        </pre>
+                      </div>
                     </details>
                   )}
                 </article>
