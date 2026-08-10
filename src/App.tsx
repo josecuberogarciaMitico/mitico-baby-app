@@ -3079,6 +3079,23 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [pwaInstallPrompt, setPwaInstallPrompt] = useState<any | null>(null);
   const [mostrarAyudaInstalacionPwa, setMostrarAyudaInstalacionPwa] =
     useState(false);
+  const [esVistaMovilApp, setEsVistaMovilApp] = useState(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(max-width: 719px)').matches
+      : false
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(max-width: 719px)');
+    const actualizar = () => setEsVistaMovilApp(media.matches);
+    actualizar();
+    media.addEventListener?.('change', actualizar);
+    return () => media.removeEventListener?.('change', actualizar);
+  }, []);
+
+  const usarCabeceraCompactaApp = esEntrenadorApp || esVistaMovilApp;
+
   const [pantalla, setPantalla] = useState<
     | 'agenda'
     | 'resumenDia'
@@ -14285,7 +14302,7 @@ Gracias!`;
     <main
       style={{
         ...layout,
-        ...(esEntrenadorApp
+        ...(usarCabeceraCompactaApp
           ? {
               width: '100%',
               maxWidth: '100vw',
@@ -14299,7 +14316,7 @@ Gracias!`;
       <header
         style={{
           ...cabeceraAppLimpia,
-          ...(esEntrenadorApp
+          ...(usarCabeceraCompactaApp
             ? {
                 width: '100%',
                 maxWidth: '100%',
@@ -14313,7 +14330,7 @@ Gracias!`;
         <div
           style={{
             ...cabeceraMarcaApp,
-            ...(esEntrenadorApp
+            ...(usarCabeceraCompactaApp
               ? {
                   width: '100%',
                   maxWidth: '100%',
@@ -14328,7 +14345,7 @@ Gracias!`;
               display: 'flex',
               alignItems: 'flex-start',
               justifyContent: 'flex-start',
-              gap: esEntrenadorApp ? 12 : 18,
+              gap: usarCabeceraCompactaApp ? 12 : 18,
               flexWrap: 'wrap',
               width: '100%',
               minWidth: 0,
@@ -14342,7 +14359,7 @@ Gracias!`;
                 alignItems: 'flex-start',
                 gap: 12,
                 minWidth: 0,
-                ...(esEntrenadorApp
+                ...(usarCabeceraCompactaApp
                   ? {
                       width: '100%',
                       maxWidth: '100%',
@@ -14353,7 +14370,7 @@ Gracias!`;
               <div
                 style={{
                   ...marcaLogoTituloApp,
-                  ...(esEntrenadorApp
+                  ...(usarCabeceraCompactaApp
                     ? {
                         width: '100%',
                         maxWidth: '100%',
@@ -14372,7 +14389,7 @@ Gracias!`;
                   alt="Mítico Club"
                   style={{
                     ...logoMarcaApp,
-                    ...(esEntrenadorApp
+                    ...(usarCabeceraCompactaApp
                       ? {
                           width: 64,
                           height: 64,
@@ -14385,7 +14402,7 @@ Gracias!`;
                   <p
                     style={{
                       ...marcaKickerApp,
-                      ...(esEntrenadorApp
+                      ...(usarCabeceraCompactaApp
                         ? {
                             whiteSpace: 'normal',
                             overflowWrap: 'anywhere',
@@ -14398,9 +14415,9 @@ Gracias!`;
                   <h1
                     style={{
                       ...tituloMarcaApp,
-                      ...(esEntrenadorApp
+                      ...(usarCabeceraCompactaApp
                         ? {
-                            fontSize: 'clamp(28px, 8vw, 42px)',
+                            fontSize: 'clamp(24px, 7.2vw, 34px)',
                             lineHeight: 0.98,
                             whiteSpace: 'normal',
                             overflowWrap: 'break-word',
@@ -14416,13 +14433,13 @@ Gracias!`;
 
               <div
                 style={{
-                  display: esEntrenadorApp ? 'grid' : 'inline-flex',
-                  gridTemplateColumns: esEntrenadorApp
-                    ? 'minmax(0, 1fr) minmax(0, 1.35fr)'
+                  display: usarCabeceraCompactaApp ? 'grid' : 'inline-flex',
+                  gridTemplateColumns: usarCabeceraCompactaApp
+                    ? (esVistaMovilApp ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 1.35fr)')
                     : undefined,
                   alignItems: 'center',
                   gap: 10,
-                  width: esEntrenadorApp ? '100%' : undefined,
+                  width: usarCabeceraCompactaApp ? '100%' : undefined,
                   maxWidth: '100%',
                   minWidth: 0,
                   boxSizing: 'border-box',
@@ -14591,7 +14608,7 @@ Gracias!`;
                     display: 'flex',
                     alignItems: 'center',
                     gap: 12,
-                    width: esEntrenadorApp ? '100%' : 'fit-content',
+                    width: usarCabeceraCompactaApp ? '100%' : 'fit-content',
                     maxWidth: '100%',
                     minWidth: 0,
                     boxSizing: 'border-box',
@@ -14632,8 +14649,8 @@ Gracias!`;
                         color: '#172033',
                         fontSize: 14,
                         lineHeight: 1.2,
-                        whiteSpace: esEntrenadorApp ? 'normal' : 'nowrap',
-                        overflowWrap: esEntrenadorApp ? 'anywhere' : undefined,
+                        whiteSpace: usarCabeceraCompactaApp ? 'normal' : 'nowrap',
+                        overflowWrap: usarCabeceraCompactaApp ? 'anywhere' : undefined,
                       }}
                     >
                       {perfilUsuario.nombre}
@@ -14689,90 +14706,252 @@ Gracias!`;
         </div>
 
         {esCoordinadorApp ? (
-          <nav style={menuPrincipalApp}>
-            <div style={menuBloqueColor('#2563eb', '#eff6ff')}>
+          <nav
+            style={{
+              ...menuPrincipalApp,
+              ...(esVistaMovilApp
+                ? {
+                    width: '100%',
+                    maxWidth: '100%',
+                    minWidth: 0,
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(0, 1fr)',
+                    gap: 10,
+                    overflowX: 'hidden',
+                    boxSizing: 'border-box',
+                  }
+                : {}),
+            }}
+          >
+            <div
+              style={{
+                ...menuBloqueColor('#2563eb', '#eff6ff'),
+                ...(esVistaMovilApp
+                  ? {
+                      width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr)',
+                      alignItems: 'stretch',
+                      gap: 8,
+                      boxSizing: 'border-box',
+                    }
+                  : {}),
+              }}
+            >
               <span style={menuTituloColor('#2563eb')}>Trabajo semanal</span>
               <button
                 onClick={() => abrirPantallaConScroll('resumenDia')}
-                style={botonMenuColor(pantalla === 'resumenDia', '#2563eb')}
+                style={{
+                  ...botonMenuColor(pantalla === 'resumenDia', '#2563eb'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
               >
                 Resumen del día
               </button>
               <button
                 onClick={() => abrirPantallaConScroll('agenda')}
-                style={botonMenuColor(pantalla === 'agenda', '#2563eb')}
+                style={{
+                  ...botonMenuColor(pantalla === 'agenda', '#2563eb'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
               >
                 Días de entrenamiento
               </button>
               <button
                 onClick={() => abrirPantallaConScroll('reportes')}
-                style={botonMenuColor(pantalla === 'reportes', '#2563eb')}
+                style={{
+                  ...botonMenuColor(pantalla === 'reportes', '#2563eb'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
               >
                 Cierre semanal
               </button>
             </div>
 
-            <div style={menuBloqueColor('#7c3aed', '#f5f3ff')}>
+            <div
+              style={{
+                ...menuBloqueColor('#7c3aed', '#f5f3ff'),
+                ...(esVistaMovilApp
+                  ? {
+                      width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr)',
+                      alignItems: 'stretch',
+                      gap: 8,
+                      boxSizing: 'border-box',
+                    }
+                  : {}),
+              }}
+            >
               <span style={menuTituloColor('#7c3aed')}>Fichas</span>
               <button
                 onClick={() => abrirPantallaConScroll('alumnos')}
-                style={botonMenuColor(pantalla === 'alumnos', '#7c3aed')}
+                style={{
+                  ...botonMenuColor(pantalla === 'alumnos', '#7c3aed'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
               >
                 Alumnos
               </button>
             </div>
 
-            <div style={menuBloqueColor('#f97316', '#fff7ed')}>
+            <div
+              style={{
+                ...menuBloqueColor('#f97316', '#fff7ed'),
+                ...(esVistaMovilApp
+                  ? {
+                      width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr)',
+                      alignItems: 'stretch',
+                      gap: 8,
+                      boxSizing: 'border-box',
+                    }
+                  : {}),
+              }}
+            >
               <span style={menuTituloColor('#f97316')}>Intensivos</span>
               <button
                 onClick={() => abrirPantallaConScroll('intensivos')}
-                style={botonMenuColor(pantalla === 'intensivos', '#f97316')}
+                style={{
+                  ...botonMenuColor(pantalla === 'intensivos', '#f97316'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
               >
                 Intensivos
               </button>
             </div>
 
-            <div style={menuBloqueColor('#16a34a', '#f0fdf4')}>
+            <div
+              style={{
+                ...menuBloqueColor('#16a34a', '#f0fdf4'),
+                ...(esVistaMovilApp
+                  ? {
+                      width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr)',
+                      alignItems: 'stretch',
+                      gap: 8,
+                      boxSizing: 'border-box',
+                    }
+                  : {}),
+              }}
+            >
               <span style={menuTituloColor('#16a34a')}>Ocio</span>
               <button
                 onClick={() => abrirPantallaConScroll('ocioGrupos')}
-                style={botonMenuColor(
+                style={{
+                  ...botonMenuColor(
                   ['ocioGrupos', 'ocioCambios', 'ocioSemana'].includes(pantalla),
                   '#16a34a'
-                )}
+                ),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
               >
                 Grupos estables
               </button>
             </div>
 
-            <div style={menuBloqueColor('#0f766e', '#ecfdf5')}>
+            <div
+              style={{
+                ...menuBloqueColor('#0f766e', '#ecfdf5'),
+                ...(esVistaMovilApp
+                  ? {
+                      width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr)',
+                      alignItems: 'stretch',
+                      gap: 8,
+                      boxSizing: 'border-box',
+                    }
+                  : {}),
+              }}
+            >
               <span style={menuTituloColor('#0f766e')}>Entrenadores</span>
               <button
                 onClick={() => abrirPantallaConScroll('entrenadores')}
-                style={botonMenuColor(pantalla === 'entrenadores', '#0f766e')}
+                style={{
+                  ...botonMenuColor(pantalla === 'entrenadores', '#0f766e'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
               >
                 Gestión entrenadores
               </button>
               <button
                 onClick={() => abrirPantallaConScroll('disponibilidad')}
-                style={botonMenuColor(pantalla === 'disponibilidad', '#0f766e')}
+                style={{
+                  ...botonMenuColor(pantalla === 'disponibilidad', '#0f766e'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
               >
                 Disponibilidad
               </button>
               <button
                 onClick={() => abrirPantallaConScroll('entrenador')}
-                style={botonMenuColor(pantalla === 'entrenador', '#0f766e')}
+                style={{
+                  ...botonMenuColor(pantalla === 'entrenador', '#0f766e'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
               >
                 Vista entrenador
               </button>
             </div>
 
             {puedeVerAdministracionAltasApp(perfilUsuario?.rol) && (
-              <div style={menuBloqueColor('#0891b2', '#ecfeff')}>
+              <div
+              style={{
+                ...menuBloqueColor('#0891b2', '#ecfeff'),
+                ...(esVistaMovilApp
+                  ? {
+                      width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr)',
+                      alignItems: 'stretch',
+                      gap: 8,
+                      boxSizing: 'border-box',
+                    }
+                  : {}),
+              }}
+            >
                 <span style={menuTituloColor('#0891b2')}>Administración</span>
                 <button
                   onClick={() => abrirPantallaConScroll('administracion')}
-                  style={botonMenuColor(pantalla === 'administracion', '#0891b2')}
+                  style={{
+                  ...botonMenuColor(pantalla === 'administracion', '#0891b2'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
                 >
                   Altas y test de nivel
                 </button>
@@ -14780,26 +14959,57 @@ Gracias!`;
             )}
 
             {esCoordinadorJefeApp && (
-              <div style={menuBloqueColor('#e11d48', '#fff1f2')}>
+              <div
+              style={{
+                ...menuBloqueColor('#e11d48', '#fff1f2'),
+                ...(esVistaMovilApp
+                  ? {
+                      width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr)',
+                      alignItems: 'stretch',
+                      gap: 8,
+                      boxSizing: 'border-box',
+                    }
+                  : {}),
+              }}
+            >
                 <span style={menuTituloColor('#e11d48')}>Dirección</span>
                 <button
                   onClick={() => abrirPantallaConScroll('cobros')}
-                  style={botonMenuColor(pantalla === 'cobros', '#e11d48')}
+                  style={{
+                  ...botonMenuColor(pantalla === 'cobros', '#e11d48'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
                 >
                   Cobros
                 </button>
                 <button
                   onClick={() => abrirPantallaConScroll('exportaciones')}
-                  style={botonMenuColor(
+                  style={{
+                  ...botonMenuColor(
                     pantalla === 'exportaciones',
                     '#e11d48'
-                  )}
+                  ),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
                 >
                   Informes y listados
                 </button>
                 <button
                   onClick={() => abrirPantallaConScroll('usuarios')}
-                  style={botonMenuColor(pantalla === 'usuarios', '#e11d48')}
+                  style={{
+                  ...botonMenuColor(pantalla === 'usuarios', '#e11d48'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
                 >
                   Accesos equipo
                 </button>
@@ -23888,11 +24098,114 @@ Gracias!`;
 
       {pantalla === 'entrenador' && (
         <section className="trainer-view" style={vistaEntrenadorShell}>
+          <style>{`
+            @media (max-width: 600px) {
+              .trainer-view {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                overflow-x: hidden !important;
+                box-sizing: border-box !important;
+              }
+
+              .trainer-hero {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: stretch !important;
+                gap: 12px !important;
+                box-sizing: border-box !important;
+              }
+
+              .trainer-hero > div:first-child {
+                width: 100% !important;
+                min-width: 0 !important;
+              }
+
+              .trainer-hero h2 {
+                font-size: 22px !important;
+                line-height: 1.08 !important;
+              }
+
+              .trainer-hero-chips {
+                width: 100% !important;
+                min-width: 0 !important;
+                display: grid !important;
+                grid-template-columns: minmax(0, 1fr) !important;
+                gap: 6px !important;
+                margin-top: 10px !important;
+              }
+
+              .trainer-hero-chips > span {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                display: block !important;
+                white-space: normal !important;
+                overflow-wrap: anywhere !important;
+                box-sizing: border-box !important;
+              }
+
+              .trainer-current-week-chip,
+              .trainer-published-week-chip {
+                line-height: 1.3 !important;
+              }
+
+              .trainer-current-week-chip strong,
+              .trainer-published-week-chip strong {
+                display: block !important;
+                margin-bottom: 2px !important;
+              }
+
+              .trainer-hero > button {
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                box-sizing: border-box !important;
+              }
+
+              .trainer-toolbar {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                box-sizing: border-box !important;
+              }
+
+              .trainer-toolbar > input {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                box-sizing: border-box !important;
+              }
+
+              .trainer-tabs {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                display: grid !important;
+                grid-template-columns: minmax(0, 1fr) !important;
+                gap: 8px !important;
+                box-sizing: border-box !important;
+              }
+
+              .trainer-tab {
+                width: 100% !important;
+                max-width: 100% !important;
+                min-width: 0 !important;
+                white-space: normal !important;
+                line-height: 1.2 !important;
+                box-sizing: border-box !important;
+              }
+            }
+          `}</style>
+
           <div className="trainer-hero" style={entrenadorHeroApp}>
             <div>
               <p style={etiquetaSuperior}>VISTA ENTRENADOR</p>
               <h2 style={{ margin: 0 }}>Panel del entrenador</h2>
-              <div style={entrenadorHeroChips}>
+              <div className="trainer-hero-chips" style={entrenadorHeroChips}>
                 <span className="trainer-current-week-chip">
                   <strong>Semana actual:</strong>{' '}
                   {semanaVistaEntrenadorInicio
