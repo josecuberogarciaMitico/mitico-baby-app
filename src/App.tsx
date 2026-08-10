@@ -1634,6 +1634,81 @@ type AppContenidoProps = {
   onLogout?: () => void;
 };
 
+type AltaNivelInicialApp = {
+  id: string;
+  nombre_completo: string;
+  fecha_nacimiento: string;
+  modalidad: 'BABY' | 'INTENSIVOS' | 'OCIO';
+  telefono: string;
+  token_publico: string;
+  respuesta_experiencia: string | null;
+  respuesta_desplazamiento: string | null;
+  respuesta_frenado: string | null;
+  respuesta_giros: string | null;
+  respuesta_remonte: string | null;
+  respuesta_pista: string | null;
+  observaciones_familia: string | null;
+  nivel_propuesto_id: string | null;
+  nivel_propuesto: string | null;
+  nivel_propuesto_confianza: string | null;
+  nivel_propuesto_motivo: string | null;
+  requiere_revision_jefe: boolean;
+  nivel_validado_id: string | null;
+  nivel_validado: string | null;
+  estado:
+    | 'PENDIENTE_ENVIO'
+    | 'ENVIADO'
+    | 'RESPONDIDO'
+    | 'VALIDADO'
+    | 'ANADIDO'
+    | 'DESCARTADO';
+  creado_at: string;
+  enviado_at: string | null;
+  respondido_at: string | null;
+  validado_at: string | null;
+  eliminar_despues_de: string | null;
+};
+
+type AltaNivelInicialFormApp = {
+  nombre: string;
+  fechaNacimiento: string;
+  modalidad: 'BABY' | 'INTENSIVOS' | 'OCIO';
+  telefono: string;
+};
+
+type TestNivelPublicoInfoApp = {
+  nombre_completo: string;
+  modalidad: string;
+  estado: string;
+  puede_responder: boolean;
+};
+
+type TestNivelPublicoRespuestasApp = {
+  experiencia: string;
+  desplazamiento: string;
+  frenado: string;
+  giros: string;
+  remonte: string;
+  pista: string;
+  observaciones: string;
+};
+
+function altaNivelInicialFormVacioApp(): AltaNivelInicialFormApp {
+  return { nombre: '', fechaNacimiento: '', modalidad: 'BABY', telefono: '' };
+}
+
+function testNivelPublicoRespuestasVaciasApp(): TestNivelPublicoRespuestasApp {
+  return {
+    experiencia: '',
+    desplazamiento: '',
+    frenado: '',
+    giros: '',
+    remonte: '',
+    pista: '',
+    observaciones: '',
+  };
+}
+
 const MITICO_AUTH_STORAGE_KEY = 'mitico_auth_session_v1';
 
 function rolUsuarioTextoApp(rol?: string) {
@@ -1659,6 +1734,14 @@ function puedeVerDireccionApp(rol?: string) {
 
 function puedeGestionarAccesosApp(rol?: string) {
   return rol === 'coordinador_jefe';
+}
+
+function puedeVerAdministracionAltasApp(rol?: string) {
+  return (
+    rol === 'coordinador_jefe' ||
+    rol === 'sub_coordinador' ||
+    rol === 'administracion'
+  );
 }
 
 function limpiarUrlAuthApp() {
@@ -2331,6 +2414,415 @@ function PantallaAuthErrorApp({
   );
 }
 
+async function ejecutarFuncionPublicaConRespuestaApp<T>(
+  nombreFuncion: string,
+  body: object
+): Promise<T> {
+  const respuesta = await fetch(
+    `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
+    {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    }
+  );
+
+  const texto = await respuesta.text();
+  let datos: any = null;
+  try {
+    datos = texto ? JSON.parse(texto) : null;
+  } catch {
+    datos = texto;
+  }
+
+  if (!respuesta.ok) {
+    const mensaje =
+      typeof datos === 'string'
+        ? datos
+        : datos?.message || datos?.hint || texto || 'No se pudo completar la operación.';
+    throw new Error(mensaje);
+  }
+
+  return datos as T;
+}
+
+function tokenTestNivelDesdeUrlApp() {
+  if (typeof window === 'undefined') return '';
+  return new URLSearchParams(window.location.search).get('test_nivel') || '';
+}
+
+function PantallaTestNivelPublicoApp({ token }: { token: string }) {
+  const [info, setInfo] = useState<TestNivelPublicoInfoApp | null>(null);
+  const [respuestas, setRespuestas] =
+    useState<TestNivelPublicoRespuestasApp>(testNivelPublicoRespuestasVaciasApp());
+  const [cargando, setCargando] = useState(true);
+  const [enviando, setEnviando] = useState(false);
+  const [enviado, setEnviado] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let activo = true;
+    async function cargar() {
+      setCargando(true);
+      setError('');
+      try {
+        const datos = await ejecutarFuncionPublicaConRespuestaApp<TestNivelPublicoInfoApp[]>(
+          'obtener_test_nivel_publico_app',
+          { p_token: token }
+        );
+        if (!activo) return;
+        const registro = Array.isArray(datos) ? datos[0] : null;
+        if (!registro) throw new Error('Este test no está disponible.');
+        setInfo(registro);
+      } catch (err: any) {
+        if (activo) setError(err?.message || 'Este test no está disponible.');
+      } finally {
+        if (activo) setCargando(false);
+      }
+    }
+    void cargar();
+    return () => {
+      activo = false;
+    };
+  }, [token]);
+
+  const preguntas: Array<{
+    clave: keyof Omit<TestNivelPublicoRespuestasApp, 'observaciones'>;
+    titulo: string;
+    ayuda: string;
+    opciones: Array<[string, string]>;
+  }> = [
+    {
+      clave: 'experiencia',
+      titulo: '1. ¿Cuántos días aproximadamente ha esquiado?',
+      ayuda: 'No hace falta recordar el número exacto.',
+      opciones: [
+        ['A', 'Nunca / será su primer día'],
+        ['B', '1–3 días'],
+        ['C', '4–10 días'],
+        ['D', 'Más de 10 días'],
+      ],
+    },
+    {
+      clave: 'desplazamiento',
+      titulo: '2. ¿Se desplaza solo con los esquís puestos?',
+      ayuda: 'Piensa en terreno sencillo y sin que un adulto lo lleve.',
+      opciones: [
+        ['A', 'No, necesita ayuda'],
+        ['B', 'Algo, pero necesita ayuda con frecuencia'],
+        ['C', 'Sí, se desplaza solo'],
+      ],
+    },
+    {
+      clave: 'frenado',
+      titulo: '3. ¿Puede frenar haciendo cuña?',
+      ayuda: 'Nos interesa si puede controlar la velocidad por sí mismo.',
+      opciones: [
+        ['A', 'No'],
+        ['B', 'A veces / necesita indicaciones'],
+        ['C', 'Sí, controla la velocidad solo'],
+      ],
+    },
+    {
+      clave: 'giros',
+      titulo: '4. ¿Hace giros para cambiar de dirección?',
+      ayuda: 'Marca lo que haga de forma habitual, no algo que haya hecho una vez.',
+      opciones: [
+        ['A', 'No'],
+        ['B', 'Está empezando a girar'],
+        ['C', 'Hace giros en cuña de forma autónoma'],
+        ['D', 'Hace algunos giros con los esquís en paralelo'],
+      ],
+    },
+    {
+      clave: 'remonte',
+      titulo: '5. ¿Qué remonte utiliza sin ayuda?',
+      ayuda: 'Marca el remonte más avanzado que utilice con autonomía.',
+      opciones: [
+        ['A', 'Ninguno'],
+        ['B', 'Cinta transportadora'],
+        ['C', 'Percha / telesquí'],
+        ['D', 'Silla'],
+      ],
+    },
+    {
+      clave: 'pista',
+      titulo: '6. ¿Por qué terreno baja con seguridad?',
+      ayuda: 'Marca dónde puede esquiar sin que un adulto tenga que sujetarlo.',
+      opciones: [
+        ['A', 'Zona de debutantes'],
+        ['B', 'Pista pequeña / sencilla'],
+        ['C', 'Pista grande / completa'],
+      ],
+    },
+  ];
+
+  const completo = preguntas.every(({ clave }) => Boolean(respuestas[clave]));
+
+  async function enviarTest() {
+    if (!completo || enviando) return;
+    setEnviando(true);
+    setError('');
+    try {
+      await ejecutarFuncionPublicaConRespuestaApp<unknown>(
+        'responder_test_nivel_publico_app',
+        {
+          p_token: token,
+          p_experiencia: respuestas.experiencia,
+          p_desplazamiento: respuestas.desplazamiento,
+          p_frenado: respuestas.frenado,
+          p_giros: respuestas.giros,
+          p_remonte: respuestas.remonte,
+          p_pista: respuestas.pista,
+          p_observaciones: respuestas.observaciones || null,
+        }
+      );
+      setEnviado(true);
+    } catch (err: any) {
+      setError(err?.message || 'No se ha podido enviar el test.');
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  if (cargando) {
+    return (
+      <main style={authShellApp}>
+        <section style={authCardApp}>
+          <h1 style={{ marginTop: 0 }}>Preparando valoración...</h1>
+          <p style={{ color: '#64748b' }}>Un momento, por favor.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (error && !info) {
+    return (
+      <main style={authShellApp}>
+        <section style={authCardApp}>
+          <h1 style={{ marginTop: 0 }}>Test no disponible</h1>
+          <p style={{ color: '#64748b', lineHeight: 1.5 }}>{error}</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (enviado) {
+    return (
+      <main style={authShellApp}>
+        <section
+          style={{
+            ...authCardApp,
+            border: '1px solid #bbf7d0',
+            background: 'linear-gradient(135deg, #f0fdf4, #ffffff)',
+          }}
+        >
+          <p style={{ margin: '0 0 5px', color: '#15803d', fontWeight: 900 }}>
+            VALORACIÓN ENVIADA
+          </p>
+          <h1 style={{ margin: 0 }}>¡Gracias!</h1>
+          <p style={{ color: '#475569', lineHeight: 1.55 }}>
+            Hemos recibido las respuestas de {info?.nombre_completo}. El equipo
+            de coordinación las revisará antes de asignar un nivel inicial.
+          </p>
+          <p style={{ marginBottom: 0, color: '#64748b', fontSize: 13 }}>
+            Ya puedes cerrar esta página.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main
+      style={{
+        ...authShellApp,
+        alignItems: 'flex-start',
+        padding: 'max(18px, env(safe-area-inset-top)) 14px max(28px, env(safe-area-inset-bottom))',
+      }}
+    >
+      <section
+        style={{
+          width: 'min(720px, 100%)',
+          margin: '0 auto',
+          display: 'grid',
+          gap: 14,
+        }}
+      >
+        <article
+          style={{
+            ...authCardApp,
+            width: '100%',
+            maxWidth: 'none',
+            background: 'linear-gradient(135deg, #eff6ff, #ffffff 52%, #f0fdf4)',
+          }}
+        >
+          <p
+            style={{
+              margin: '0 0 5px',
+              color: '#2563eb',
+              fontSize: 11,
+              fontWeight: 950,
+              letterSpacing: '0.08em',
+            }}
+          >
+            MÍTICO BABY · NIVEL INICIAL
+          </p>
+          <h1 style={{ margin: 0, fontSize: 25 }}>{info?.nombre_completo}</h1>
+          <p style={{ margin: '7px 0 0', color: '#475569' }}>
+            Modalidad: <strong>{info?.modalidad}</strong>
+          </p>
+          <div
+            style={{
+              marginTop: 12,
+              padding: 12,
+              borderRadius: 14,
+              background: '#fff',
+              border: '1px solid #dbeafe',
+              color: '#475569',
+              lineHeight: 1.45,
+            }}
+          >
+            No necesitamos que conozcas su “nivel”. Marca únicamente lo que has
+            visto hacer al niño/a. Son 6 preguntas y se tarda aproximadamente un minuto.
+          </div>
+        </article>
+
+        {preguntas.map((pregunta) => (
+          <article
+            key={pregunta.clave}
+            style={{
+              ...authCardApp,
+              width: '100%',
+              maxWidth: 'none',
+              padding: 16,
+            }}
+          >
+            <h2 style={{ margin: 0, fontSize: 18, lineHeight: 1.3 }}>
+              {pregunta.titulo}
+            </h2>
+            <p style={{ margin: '5px 0 12px', color: '#64748b', fontSize: 13 }}>
+              {pregunta.ayuda}
+            </p>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {pregunta.opciones.map(([codigo, texto]) => {
+                const activo = respuestas[pregunta.clave] === codigo;
+                return (
+                  <button
+                    key={codigo}
+                    type="button"
+                    onClick={() =>
+                      setRespuestas({
+                        ...respuestas,
+                        [pregunta.clave]: codigo,
+                      })
+                    }
+                    style={{
+                      minHeight: 48,
+                      padding: '10px 12px',
+                      borderRadius: 14,
+                      border: activo
+                        ? '2px solid #2563eb'
+                        : '1px solid #cbd5e1',
+                      background: activo ? '#2563eb' : '#ffffff',
+                      color: activo ? '#ffffff' : '#334155',
+                      textAlign: 'left',
+                      fontWeight: 850,
+                      boxShadow: activo
+                        ? '0 8px 18px rgba(37,99,235,.18)'
+                        : 'none',
+                    }}
+                  >
+                    <strong style={{ marginRight: 8 }}>{codigo}.</strong>
+                    {texto}
+                  </button>
+                );
+              })}
+            </div>
+          </article>
+        ))}
+
+        <article
+          style={{
+            ...authCardApp,
+            width: '100%',
+            maxWidth: 'none',
+            padding: 16,
+          }}
+        >
+          <label style={{ display: 'grid', gap: 7, fontWeight: 900 }}>
+            Observaciones importantes (opcional)
+            <textarea
+              value={respuestas.observaciones}
+              maxLength={500}
+              onChange={(e) =>
+                setRespuestas({
+                  ...respuestas,
+                  observaciones: e.target.value,
+                })
+              }
+              rows={4}
+              placeholder="Miedo, ayuda en remontes, lesión, algo que debamos saber..."
+              style={{
+                width: '100%',
+                border: '1px solid #cbd5e1',
+                borderRadius: 14,
+                padding: 12,
+                resize: 'vertical',
+                fontSize: 16,
+              }}
+            />
+          </label>
+        </article>
+
+        {error && (
+          <div
+            style={{
+              padding: 12,
+              borderRadius: 14,
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              color: '#b91c1c',
+              fontWeight: 800,
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        <button
+          type="button"
+          disabled={!completo || enviando || !info?.puede_responder}
+          onClick={enviarTest}
+          style={{
+            minHeight: 54,
+            border: 0,
+            borderRadius: 16,
+            padding: '12px 16px',
+            background:
+              completo && !enviando && info?.puede_responder
+                ? '#16a34a'
+                : '#cbd5e1',
+            color: '#ffffff',
+            fontSize: 16,
+            fontWeight: 950,
+            cursor:
+              completo && !enviando && info?.puede_responder
+                ? 'pointer'
+                : 'not-allowed',
+          }}
+        >
+          {enviando ? 'Enviando...' : 'Enviar valoración'}
+        </button>
+      </section>
+    </main>
+  );
+}
+
 const opcionesNivel = [
   'INICIACION',
   'A',
@@ -2601,6 +3093,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     | 'revisionOcio'
     | 'entrenadores'
     | 'usuarios'
+    | 'administracion'
     | 'disponibilidad'
     | 'reportes'
     | 'cobros'
@@ -2644,6 +3137,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     esCoordinadorJefeApp,
     pantalla,
   ]);
+
+  useEffect(() => {
+    if (
+      pantalla === 'administracion' &&
+      !puedeVerAdministracionAltasApp(perfilUsuario?.rol)
+    ) {
+      setPantalla(esEntrenadorApp ? 'entrenador' : 'agenda');
+    }
+  }, [pantalla, perfilUsuario?.rol, esEntrenadorApp]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -3410,6 +3912,26 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [whatsappPreview, setWhatsappPreview] =
     useState<WhatsappPreviewState | null>(null);
 
+  const [altasNivelInicial, setAltasNivelInicial] = useState<AltaNivelInicialApp[]>([]);
+  const [formAltaNivelInicial, setFormAltaNivelInicial] =
+    useState<AltaNivelInicialFormApp>(altaNivelInicialFormVacioApp());
+  const [mostrarFormularioAltaNivel, setMostrarFormularioAltaNivel] = useState(false);
+  const [cargandoAltasNivel, setCargandoAltasNivel] = useState(false);
+  const [guardandoAltaNivel, setGuardandoAltaNivel] = useState(false);
+  const [nivelesValidacionAlta, setNivelesValidacionAlta] =
+    useState<Record<string, string>>({});
+
+  const [filtroAltasNivel, setFiltroAltasNivel] = useState<
+    'TODOS' | 'PENDIENTE_ENVIO' | 'ENVIADO' | 'RESPONDIDO' | 'VALIDADO' | 'ANADIDO' | 'DESCARTADO'
+  >('TODOS');
+  const [altaNivelAbiertaId, setAltaNivelAbiertaId] = useState('');
+  const [intensivosAltaNivel, setIntensivosAltaNivel] = useState<IntensivoApp[]>([]);
+  const [intensivoAltaSeleccionado, setIntensivoAltaSeleccionado] =
+    useState<Record<string, string>>({});
+  const [anadiendoAltaNivelId, setAnadiendoAltaNivelId] = useState('');
+
+  const [detalleRespuestaAlta, setDetalleRespuestaAlta] = useState('');
+
   async function cabecerasSupabaseAutenticadasApp(
     incluirJson = false
   ): Promise<Record<string, string>> {
@@ -3516,6 +4038,304 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       respuesta,
       `No se pudo ejecutar ${nombreFuncion}.`
     );
+  }
+
+  function detallePreguntaTestNivelApp(
+    clave: string,
+    respuesta: string | null
+  ) {
+    const preguntas: Record<
+      string,
+      { pregunta: string; opciones: Record<string, string> }
+    > = {
+      Experiencia: {
+        pregunta: '¿Cuántos días aproximadamente ha esquiado?',
+        opciones: {
+          A: 'Nunca / será su primer día',
+          B: '1–3 días',
+          C: '4–10 días',
+          D: 'Más de 10 días',
+        },
+      },
+      Desplazamiento: {
+        pregunta: '¿Se desplaza solo con los esquís puestos?',
+        opciones: {
+          A: 'No, necesita ayuda',
+          B: 'Algo, pero necesita ayuda con frecuencia',
+          C: 'Sí, se desplaza solo',
+        },
+      },
+      Frenado: {
+        pregunta: '¿Puede frenar haciendo cuña?',
+        opciones: {
+          A: 'No',
+          B: 'A veces / necesita indicaciones',
+          C: 'Sí, controla la velocidad solo',
+        },
+      },
+      Giros: {
+        pregunta: '¿Hace giros para cambiar de dirección?',
+        opciones: {
+          A: 'No',
+          B: 'Está empezando a girar',
+          C: 'Hace giros en cuña de forma autónoma',
+          D: 'Hace algunos giros con los esquís en paralelo',
+        },
+      },
+      Remonte: {
+        pregunta: '¿Qué remonte utiliza sin ayuda?',
+        opciones: {
+          A: 'Ninguno',
+          B: 'Cinta transportadora',
+          C: 'Percha / telesquí',
+          D: 'Silla',
+        },
+      },
+      Pista: {
+        pregunta: '¿Por qué terreno baja con seguridad?',
+        opciones: {
+          A: 'Zona de debutantes',
+          B: 'Pista pequeña / sencilla',
+          C: 'Pista grande / completa',
+        },
+      },
+    };
+
+    const dato = preguntas[clave];
+    return {
+      pregunta: dato?.pregunta || clave,
+      respuestaTexto:
+        (respuesta && dato?.opciones?.[respuesta]) || respuesta || 'Sin respuesta',
+    };
+  }
+
+  async function cargarIntensivosAltaNivel() {
+    if (!puedeVerAdministracionAltasApp(perfilUsuario?.rol)) return;
+    try {
+      const datos = await consultarSupabase<IntensivoApp>(
+        'v_intensivos_app',
+        'select=*&order=fecha_inicio.desc,intensivo.asc'
+      );
+      setIntensivosAltaNivel(
+        (Array.isArray(datos) ? datos : []).filter(
+          (item) => String(item.estado || '').toLowerCase() !== 'cerrado'
+        )
+      );
+    } catch (err: any) {
+      setError(
+        err?.message ||
+          'No se pudieron cargar los Intensivos disponibles para las altas.'
+      );
+    }
+  }
+
+  async function anadirAltaNivelAListados(alta: AltaNivelInicialApp) {
+    if (!esCoordinadorJefeApp || alta.estado !== 'VALIDADO') return;
+
+    const intensivoId =
+      alta.modalidad === 'INTENSIVOS'
+        ? intensivoAltaSeleccionado[alta.id] || ''
+        : '';
+
+    if (alta.modalidad === 'INTENSIVOS' && !intensivoId) {
+      setError('Selecciona el Intensivo al que quieres añadir al alumno.');
+      return;
+    }
+
+    const intensivoElegido =
+      alta.modalidad === 'INTENSIVOS'
+        ? intensivosAltaNivel.find((item) => item.intensivo_id === intensivoId)
+        : null;
+
+    const destino =
+      alta.modalidad === 'INTENSIVOS'
+        ? `Intensivos · ${intensivoElegido?.intensivo || 'seleccionado'}`
+        : alta.modalidad === 'OCIO'
+        ? 'Ocio'
+        : 'Baby';
+
+    if (
+      !window.confirm(
+        `¿Añadir a ${alta.nombre_completo} a ${destino} con nivel ${
+          alta.nivel_validado || '-'
+        }?`
+      )
+    ) {
+      return;
+    }
+
+    setAnadiendoAltaNivelId(alta.id);
+    setError('');
+
+    try {
+      await ejecutarFuncionAuthJson<string>(
+        'anadir_alta_nivel_inicial_a_listados_app',
+        {
+          p_id: alta.id,
+          p_intensivo_id: intensivoId || null,
+        }
+      );
+
+      setAltaNivelAbiertaId('');
+      setIntensivoAltaSeleccionado((actual) => {
+        const siguiente = { ...actual };
+        delete siguiente[alta.id];
+        return siguiente;
+      });
+
+      await cargarAltasNivelInicial();
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo añadir el alumno a los listados.');
+    } finally {
+      setAnadiendoAltaNivelId('');
+    }
+  }
+
+  async function eliminarAltaNivelInicial(alta: AltaNivelInicialApp) {
+    if (alta.estado === 'ANADIDO') return;
+
+    const puedeEliminar =
+      alta.estado === 'PENDIENTE_ENVIO' ||
+      alta.estado === 'ENVIADO' ||
+      alta.estado === 'RESPONDIDO' ||
+      (esCoordinadorJefeApp &&
+        (alta.estado === 'VALIDADO' || alta.estado === 'DESCARTADO'));
+
+    if (!puedeEliminar) return;
+
+    const mensaje =
+      `¿Eliminar definitivamente el alta de ${alta.nombre_completo}?\n\n` +
+      `Se borrarán el test, teléfono, respuestas y enlace público.\n` +
+      `Esta acción no se puede deshacer.`;
+
+    if (!window.confirm(mensaje)) return;
+
+    setError('');
+
+    try {
+      await ejecutarFuncion('eliminar_alta_nivel_inicial_app', {
+        p_id: alta.id,
+      });
+
+      if (altaNivelAbiertaId === alta.id) {
+        setAltaNivelAbiertaId('');
+      }
+
+      await cargarAltasNivelInicial();
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo eliminar el alta.');
+    }
+  }
+
+  async function cargarAltasNivelInicial() {
+    if (!puedeVerAdministracionAltasApp(perfilUsuario?.rol)) return;
+    setCargandoAltasNivel(true);
+    setError('');
+    try {
+      const datos = await ejecutarFuncionConRespuesta<AltaNivelInicialApp>(
+        'obtener_altas_nivel_inicial_app',
+        {}
+      );
+      setAltasNivelInicial(Array.isArray(datos) ? datos : []);
+    } catch (err: any) {
+      setError(err?.message || 'No se pudieron cargar las altas de Administración.');
+    } finally {
+      setCargandoAltasNivel(false);
+    }
+  }
+
+  function enlacePublicoAltaNivel(alta: AltaNivelInicialApp) {
+    if (typeof window === 'undefined') return '';
+    return `${window.location.origin}${window.location.pathname}?test_nivel=${alta.token_publico}`;
+  }
+
+  async function crearAltaNivelInicial() {
+    const nombre = formAltaNivelInicial.nombre.trim();
+    const telefono = formAltaNivelInicial.telefono.trim();
+    if (!nombre || !formAltaNivelInicial.fechaNacimiento || !telefono) {
+      setError('Completa nombre, fecha de nacimiento, modalidad y teléfono.');
+      return;
+    }
+    setGuardandoAltaNivel(true);
+    setError('');
+    try {
+      await ejecutarFuncionAuthJson<string>('crear_alta_nivel_inicial_app', {
+        p_nombre_completo: nombre,
+        p_fecha_nacimiento: formAltaNivelInicial.fechaNacimiento,
+        p_modalidad: formAltaNivelInicial.modalidad,
+        p_telefono: telefono,
+      });
+      setFormAltaNivelInicial(altaNivelInicialFormVacioApp());
+      setMostrarFormularioAltaNivel(false);
+      await cargarAltasNivelInicial();
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo crear el test de nivel.');
+    } finally {
+      setGuardandoAltaNivel(false);
+    }
+  }
+
+  async function copiarEnlaceAltaNivel(alta: AltaNivelInicialApp) {
+    const enlace = enlacePublicoAltaNivel(alta);
+    try {
+      await navigator.clipboard.writeText(enlace);
+      alert('Enlace del test copiado.');
+    } catch {
+      window.prompt('Copia este enlace:', enlace);
+    }
+  }
+
+  async function enviarAltaNivelWhatsapp(alta: AltaNivelInicialApp) {
+    const telefono = normalizarTelefonoWhatsappApp(alta.telefono);
+    if (!telefono) {
+      setError('El teléfono de esta alta no es válido para WhatsApp.');
+      return;
+    }
+
+    const enlace = enlacePublicoAltaNivel(alta);
+    const nombrePila = alta.nombre_completo.trim().split(/\\s+/)[0] || alta.nombre_completo;
+    const texto =
+      `Hola familia, para preparar correctamente el grupo de ${nombrePila} necesitamos una pequeña valoración de su experiencia esquiando.\n\n` +
+      `No tenéis que conocer su nivel: son 6 preguntas de respuesta cerrada sobre lo que le habéis visto hacer y se tarda aproximadamente 1 minuto.\n\n` +
+      `${enlace}\n\nMuchas gracias.`;
+
+    try {
+      await ejecutarFuncion('marcar_alta_nivel_enviada_app', { p_id: alta.id });
+      await cargarAltasNivelInicial();
+      window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(texto)}`, '_blank');
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo preparar el envío por WhatsApp.');
+    }
+  }
+
+  async function validarAltaNivelInicial(alta: AltaNivelInicialApp) {
+    if (!esCoordinadorJefeApp) return;
+    const nivel = nivelesValidacionAlta[alta.id] || alta.nivel_propuesto || 'INICIACION';
+    if (!window.confirm(`¿Validar a ${alta.nombre_completo} con nivel ${nivel}?`)) return;
+
+    setError('');
+    try {
+      await ejecutarFuncion('validar_alta_nivel_inicial_app', {
+        p_id: alta.id,
+        p_nivel_codigo: nivel,
+      });
+      await cargarAltasNivelInicial();
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo validar el nivel.');
+    }
+  }
+
+  async function descartarAltaNivelInicial(alta: AltaNivelInicialApp) {
+    if (!esCoordinadorJefeApp) return;
+    if (!window.confirm(`¿Descartar la solicitud de ${alta.nombre_completo}?`)) return;
+
+    setError('');
+    try {
+      await ejecutarFuncion('descartar_alta_nivel_inicial_app', { p_id: alta.id });
+      await cargarAltasNivelInicial();
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo descartar la solicitud.');
+    }
   }
 
   async function cargarInicio() {
@@ -10609,6 +11429,10 @@ Gracias!`;
       cargarAgendaOperativaDirecta();
     }
     if (pantalla === 'entrenadores') cargarEntrenadores();
+    if (pantalla === 'administracion') {
+      cargarAltasNivelInicial();
+      cargarIntensivosAltaNivel();
+    }
     if (pantalla === 'usuarios' && esCoordinadorJefeApp) {
       cargarUsuariosOperativos();
     }
@@ -13942,6 +14766,18 @@ Gracias!`;
                 Vista entrenador
               </button>
             </div>
+
+            {puedeVerAdministracionAltasApp(perfilUsuario?.rol) && (
+              <div style={menuBloqueColor('#0891b2', '#ecfeff')}>
+                <span style={menuTituloColor('#0891b2')}>Administración</span>
+                <button
+                  onClick={() => abrirPantallaConScroll('administracion')}
+                  style={botonMenuColor(pantalla === 'administracion', '#0891b2')}
+                >
+                  Altas y test de nivel
+                </button>
+              </div>
+            )}
 
             {esCoordinadorJefeApp && (
               <div style={menuBloqueColor('#e11d48', '#fff1f2')}>
@@ -24898,6 +25734,843 @@ Gracias!`;
           );
         })()}
 
+      {pantalla === 'administracion' &&
+        puedeVerAdministracionAltasApp(perfilUsuario?.rol) && (
+          <section style={{ display: 'grid', gap: 16, minWidth: 0 }}>
+            <div style={cabeceraPantalla}>
+              <div>
+                <p style={{ ...etiquetaSuperior, color: '#0891b2' }}>ADMINISTRACIÓN</p>
+                <h2 style={{ margin: '4px 0 6px' }}>Altas y test de nivel</h2>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button type="button" onClick={cargarAltasNivelInicial} style={botonSecundario}>
+                  Actualizar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMostrarFormularioAltaNivel(!mostrarFormularioAltaNivel)}
+                  style={botonPrincipal}
+                >
+                  {mostrarFormularioAltaNivel ? 'Cerrar alta' : '+ Nueva alta'}
+                </button>
+              </div>
+            </div>
+
+            <details
+              style={{
+                ...tarjeta,
+                padding: 0,
+                overflow: 'hidden',
+                border: '1px solid #bae6fd',
+                background: '#ffffff',
+              }}
+            >
+              <summary
+                style={{
+                  listStyle: 'none',
+                  padding: '13px 15px',
+                  fontWeight: 950,
+                  color: '#0f172a',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                <span style={{ color: '#0891b2' }}>›</span>
+                Instrucciones de uso
+              </summary>
+
+              <div
+                style={{
+                  borderTop: '1px solid #e2e8f0',
+                  padding: '14px 16px 16px',
+                  display: 'grid',
+                  gap: 12,
+                  color: '#475569',
+                  lineHeight: 1.5,
+                }}
+              >
+                <div>
+                  <strong style={{ color: '#172033' }}>1. Crear una nueva alta</strong>
+                  <div>
+                    Pulsa <strong>+ Nueva alta</strong> y completa nombre y apellidos,
+                    fecha de nacimiento, modalidad y teléfono de la familia.
+                  </div>
+                </div>
+
+                <div>
+                  <strong style={{ color: '#172033' }}>2. Enviar el test</strong>
+                  <div>
+                    Abre la ficha del alumno y pulsa <strong>Enviar test por WhatsApp</strong>.
+                    También puedes usar <strong>Copiar enlace</strong> si lo necesitas.
+                  </div>
+                </div>
+
+                <div>
+                  <strong style={{ color: '#172033' }}>3. Esperar la respuesta</strong>
+                  <div>
+                    Cuando la familia complete el test, la solicitud pasará automáticamente
+                    a <strong>Respondido · revisar</strong>.
+                  </div>
+                </div>
+
+                <div>
+                  <strong style={{ color: '#172033' }}>4. Revisión del nivel</strong>
+                  <div>
+                    El sistema propone un nivel inicial. El <strong>Coordinador jefe</strong>
+                    es quien revisa las respuestas y valida o corrige ese nivel.
+                  </div>
+                </div>
+
+                <div>
+                  <strong style={{ color: '#172033' }}>5. Seguimiento</strong>
+                  <div>
+                    Usa los filtros de esta pantalla para ver rápidamente qué altas están
+                    pendientes de enviar, esperando respuesta, respondidas o pendientes de
+                    añadir a listados.
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: 11,
+                    borderRadius: 12,
+                    background: '#f0f9ff',
+                    border: '1px solid #bae6fd',
+                    color: '#0c4a6e',
+                    fontSize: 13,
+                    fontWeight: 750,
+                  }}
+                >
+                  Importante: la familia no elige el nivel. Solo responde preguntas sobre
+                  lo que ha visto hacer al niño/a esquiando.
+                </div>
+              </div>
+            </details>
+
+            {mostrarFormularioAltaNivel && (
+              <article
+                style={{
+                  ...tarjeta,
+                  border: '1px solid #a5f3fc',
+                  background: 'linear-gradient(135deg, #ecfeff, #ffffff 60%)',
+                }}
+              >
+                <h3 style={{ marginTop: 0 }}>Nueva solicitud</h3>
+                <div style={gridFormulario}>
+                  <label style={labelCampo}>
+                    Nombre y apellidos
+                    <input
+                      value={formAltaNivelInicial.nombre}
+                      onChange={(e) =>
+                        setFormAltaNivelInicial({ ...formAltaNivelInicial, nombre: e.target.value })
+                      }
+                      placeholder="Lucía García López"
+                      style={inputCampo}
+                    />
+                    <small style={{ color: '#64748b' }}>
+                      No hace falta escribirlo en mayúsculas; al guardarlo se normaliza.
+                    </small>
+                  </label>
+
+                  <label style={labelCampo}>
+                    Fecha de nacimiento
+                    <input
+                      type="date"
+                      value={formAltaNivelInicial.fechaNacimiento}
+                      onChange={(e) =>
+                        setFormAltaNivelInicial({
+                          ...formAltaNivelInicial,
+                          fechaNacimiento: e.target.value,
+                        })
+                      }
+                      style={inputCampo}
+                    />
+                  </label>
+
+                  <label style={labelCampo}>
+                    Modalidad
+                    <select
+                      value={formAltaNivelInicial.modalidad}
+                      onChange={(e) =>
+                        setFormAltaNivelInicial({
+                          ...formAltaNivelInicial,
+                          modalidad: e.target.value as 'BABY' | 'INTENSIVOS' | 'OCIO',
+                        })
+                      }
+                      style={selectCampo}
+                    >
+                      <option value="BABY">Baby</option>
+                      <option value="INTENSIVOS">Intensivos</option>
+                      <option value="OCIO">Ocio</option>
+                    </select>
+                  </label>
+
+                  <label style={labelCampo}>
+                    Teléfono familia
+                    <input
+                      inputMode="tel"
+                      value={formAltaNivelInicial.telefono}
+                      onChange={(e) =>
+                        setFormAltaNivelInicial({ ...formAltaNivelInicial, telefono: e.target.value })
+                      }
+                      placeholder="612345678"
+                      style={inputCampo}
+                    />
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                  <button
+                    type="button"
+                    disabled={guardandoAltaNivel}
+                    onClick={crearAltaNivelInicial}
+                    style={botonPrincipal}
+                  >
+                    {guardandoAltaNivel ? 'Creando...' : 'Crear test para familia'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormAltaNivelInicial(altaNivelInicialFormVacioApp());
+                      setMostrarFormularioAltaNivel(false);
+                    }}
+                    style={botonSecundario}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </article>
+            )}
+
+            <section
+              style={{
+                ...tarjeta,
+                padding: 14,
+                display: 'grid',
+                gap: 12,
+              }}
+            >
+              <div>
+                <strong style={{ fontSize: 16 }}>Filtrar altas</strong>
+                <p style={{ margin: '3px 0 0', color: '#64748b', fontSize: 13 }}>
+                  Ve directamente a lo que tienes pendiente.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {[
+                  ['TODOS', 'Todos', altasNivelInicial.length, '#4f46e5', '#eef2ff'],
+                  ['PENDIENTE_ENVIO', 'Pendiente de enviar', altasNivelInicial.filter((a) => a.estado === 'PENDIENTE_ENVIO').length, '#64748b', '#f8fafc'],
+                  ['ENVIADO', 'Esperando respuesta', altasNivelInicial.filter((a) => a.estado === 'ENVIADO').length, '#d97706', '#fffbeb'],
+                  ['RESPONDIDO', 'Respondido · revisar', altasNivelInicial.filter((a) => a.estado === 'RESPONDIDO').length, '#2563eb', '#eff6ff'],
+                  ['VALIDADO', 'Pendiente de añadir a listados', altasNivelInicial.filter((a) => a.estado === 'VALIDADO').length, '#16a34a', '#f0fdf4'],
+                  ['ANADIDO', 'Añadidos', altasNivelInicial.filter((a) => a.estado === 'ANADIDO').length, '#0f766e', '#f0fdfa'],
+                  ['DESCARTADO', 'Descartado', altasNivelInicial.filter((a) => a.estado === 'DESCARTADO').length, '#dc2626', '#fef2f2'],
+                ].map(([valor, etiqueta, cantidad, color, fondo]) => {
+                  const activo = filtroAltasNivel === valor;
+                  return (
+                    <button
+                      key={String(valor)}
+                      type="button"
+                      onClick={() => {
+                        setFiltroAltasNivel(valor as typeof filtroAltasNivel);
+                        setAltaNivelAbiertaId('');
+                        setDetalleRespuestaAlta('');
+                      }}
+                      style={{
+                        ...botonSecundario,
+                        background: activo ? String(color) : String(fondo),
+                        color: activo ? '#ffffff' : String(color),
+                        borderColor: String(color),
+                        fontWeight: 900,
+                        boxShadow: activo
+                          ? `0 8px 18px ${String(color)}28`
+                          : 'none',
+                      }}
+                    >
+                      {String(etiqueta)} ({String(cantidad)})
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            {cargandoAltasNivel && <article style={tarjeta}>Cargando altas...</article>}
+
+            {!cargandoAltasNivel && altasNivelInicial.length === 0 && (
+              <article style={tarjeta}>
+                <h3 style={{ marginTop: 0 }}>Sin solicitudes</h3>
+                <p style={{ marginBottom: 0, color: '#64748b' }}>
+                  Cuando Administración cree un test aparecerá aquí.
+                </p>
+              </article>
+            )}
+
+            {!cargandoAltasNivel &&
+              altasNivelInicial.length > 0 &&
+              altasNivelInicial.filter((alta) =>
+                filtroAltasNivel === 'TODOS' ? true : alta.estado === filtroAltasNivel
+              ).length === 0 && (
+                <article style={tarjeta}>
+                  <h3 style={{ marginTop: 0 }}>No hay altas en este estado</h3>
+                  <p style={{ marginBottom: 0, color: '#64748b' }}>
+                    Cambia de filtro para ver otras solicitudes.
+                  </p>
+                </article>
+              )}
+
+            <section style={{ display: 'grid', gap: 10 }}>
+              {altasNivelInicial
+                .filter((alta) =>
+                  filtroAltasNivel === 'TODOS' ? true : alta.estado === filtroAltasNivel
+                )
+                .map((alta) => {
+                  const respondido = alta.estado === 'RESPONDIDO';
+                  const validado = alta.estado === 'VALIDADO';
+                  const anadido = alta.estado === 'ANADIDO';
+                  const descartado = alta.estado === 'DESCARTADO';
+                  const abierta = altaNivelAbiertaId === alta.id;
+                  const colorEstado =
+                    respondido ? '#2563eb'
+                    : validado ? '#16a34a'
+                    : anadido ? '#0f766e'
+                    : descartado ? '#dc2626'
+                    : alta.estado === 'ENVIADO' ? '#d97706'
+                    : '#64748b';
+
+                  const textoEstado =
+                    alta.estado === 'PENDIENTE_ENVIO' ? 'PENDIENTE DE ENVIAR'
+                    : alta.estado === 'ENVIADO' ? 'ESPERANDO RESPUESTA'
+                    : alta.estado === 'RESPONDIDO' ? 'RESPONDIDO · REVISAR'
+                    : alta.estado === 'VALIDADO' ? 'PENDIENTE DE AÑADIR A LISTADOS'
+                    : alta.estado === 'ANADIDO' ? 'AÑADIDO'
+                    : 'DESCARTADO';
+
+                  const puedeEliminarAlta =
+                    alta.estado === 'PENDIENTE_ENVIO' ||
+                    alta.estado === 'ENVIADO' ||
+                    alta.estado === 'RESPONDIDO' ||
+                    (esCoordinadorJefeApp &&
+                      (alta.estado === 'VALIDADO' ||
+                        alta.estado === 'DESCARTADO'));
+
+                  return (
+                    <article
+                      id={`alta-nivel-${alta.id}`}
+                      key={alta.id}
+                      style={{
+                        ...tarjeta,
+                        scrollMarginTop: 18,
+                        padding: 0,
+                        minWidth: 0,
+                        overflow: 'hidden',
+                        border: `1px solid ${colorEstado}33`,
+                        borderLeft: `5px solid ${colorEstado}`,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const seVaAAbrir = altaNivelAbiertaId !== alta.id;
+                          setDetalleRespuestaAlta('');
+                          setAltaNivelAbiertaId(seVaAAbrir ? alta.id : '');
+
+                          if (seVaAAbrir) {
+                            window.setTimeout(() => {
+                              document
+                                .getElementById(`alta-nivel-${alta.id}`)
+                                ?.scrollIntoView({
+                                  behavior: 'smooth',
+                                  block: 'start',
+                                });
+                            }, 80);
+                          }
+                        }}
+                        aria-expanded={abierta}
+                        style={{
+                          width: '100%',
+                          border: 0,
+                          background: abierta ? '#f8fafc' : '#ffffff',
+                          padding: '14px 16px',
+                          display: 'grid',
+                          gridTemplateColumns: '1fr auto',
+                          gap: 12,
+                          alignItems: 'center',
+                          textAlign: 'left',
+                        }}
+                      >
+                        <div style={{ minWidth: 0 }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 8,
+                              alignItems: 'center',
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <strong style={{ fontSize: 17, color: '#172033' }}>
+                              {alta.nombre_completo}
+                            </strong>
+                            <span
+                              style={{
+                                padding: '4px 7px',
+                                borderRadius: 999,
+                                background: `${colorEstado}12`,
+                                color: colorEstado,
+                                border: `1px solid ${colorEstado}33`,
+                                fontSize: 10,
+                                fontWeight: 950,
+                              }}
+                            >
+                              {textoEstado}
+                            </span>
+                          </div>
+
+                          <div
+                            style={{
+                              marginTop: 5,
+                              display: 'flex',
+                              gap: 8,
+                              flexWrap: 'wrap',
+                              color: '#64748b',
+                              fontSize: 13,
+                            }}
+                          >
+                            <span>{alta.modalidad}</span>
+                            <span>·</span>
+                            <span>{formatearFecha(alta.fecha_nacimiento)}</span>
+                            {alta.nivel_propuesto && (
+                              <>
+                                <span>·</span>
+                                <span>
+                                  Nivel propuesto: <strong>{alta.nivel_propuesto}</strong>
+                                </span>
+                              </>
+                            )}
+                            {alta.nivel_validado && (
+                              <>
+                                <span>·</span>
+                                <span>
+                                  Nivel validado: <strong>{alta.nivel_validado}</strong>
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            fontSize: 22,
+                            fontWeight: 950,
+                            color: '#64748b',
+                            transform: abierta ? 'rotate(90deg)' : 'rotate(0deg)',
+                            transition: 'transform .16s ease',
+                          }}
+                        >
+                          ›
+                        </span>
+                      </button>
+
+                      {abierta && (
+                        <div
+                          style={{
+                            padding: '12px 16px 16px',
+                            borderTop: '1px solid #e2e8f0',
+                            display: 'grid',
+                            gap: 10,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              gap: 10,
+                              flexWrap: 'wrap',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <div style={{ color: '#64748b', fontSize: 13 }}>
+                              Teléfono:{' '}
+                              <strong style={{ color: '#334155' }}>{alta.telefono}</strong>
+                            </div>
+
+                            {!validado && !descartado && (
+                              <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => enviarAltaNivelWhatsapp(alta)}
+                                  style={botonPrincipal}
+                                >
+                                  {alta.estado === 'PENDIENTE_ENVIO'
+                                    ? 'Enviar test por WhatsApp'
+                                    : 'Reenviar WhatsApp'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => copiarEnlaceAltaNivel(alta)}
+                                  style={botonSecundario}
+                                >
+                                  Copiar enlace
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {respondido && (
+                            <>
+                              <div
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))',
+                                  gap: 8,
+                                }}
+                              >
+                                {[
+                                  ['Experiencia', alta.respuesta_experiencia],
+                                  ['Desplazamiento', alta.respuesta_desplazamiento],
+                                  ['Frenado', alta.respuesta_frenado],
+                                  ['Giros', alta.respuesta_giros],
+                                  ['Remonte', alta.respuesta_remonte],
+                                  ['Pista', alta.respuesta_pista],
+                                ].map(([titulo, respuesta]) => {
+                                  const claveDetalle = `${alta.id}-${String(titulo)}`;
+                                  const detalleAbierto = detalleRespuestaAlta === claveDetalle;
+                                  const detalle = detallePreguntaTestNivelApp(
+                                    String(titulo),
+                                    respuesta
+                                  );
+
+                                  return (
+                                    <button
+                                      key={String(titulo)}
+                                      type="button"
+                                      onClick={() =>
+                                        setDetalleRespuestaAlta((actual) =>
+                                          actual === claveDetalle ? '' : claveDetalle
+                                        )
+                                      }
+                                      style={{
+                                        ...miniTarjetaBlanca,
+                                        padding: 10,
+                                        border: detalleAbierto
+                                          ? '1px solid #93c5fd'
+                                          : '1px solid #e2e8f0',
+                                        background: detalleAbierto
+                                          ? '#eff6ff'
+                                          : '#ffffff',
+                                        textAlign: 'left',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          gap: 8,
+                                          alignItems: 'center',
+                                        }}
+                                      >
+                                        <small
+                                          style={{
+                                            color: '#64748b',
+                                            fontWeight: 800,
+                                          }}
+                                        >
+                                          {String(titulo)}
+                                        </small>
+                                      </div>
+
+                                      <div
+                                        style={{
+                                          marginTop: 3,
+                                          fontSize: 18,
+                                          fontWeight: 950,
+                                          color: '#172033',
+                                        }}
+                                      >
+                                        {String(respuesta || '-')}
+                                      </div>
+
+                                      {detalleAbierto && (
+                                        <div
+                                          style={{
+                                            marginTop: 9,
+                                            paddingTop: 9,
+                                            borderTop: '1px solid #bfdbfe',
+                                            display: 'grid',
+                                            gap: 5,
+                                          }}
+                                        >
+                                          <div
+                                            style={{
+                                              fontSize: 13,
+                                              fontWeight: 900,
+                                              color: '#1e3a8a',
+                                              lineHeight: 1.35,
+                                            }}
+                                          >
+                                            {detalle.pregunta}
+                                          </div>
+                                          <div
+                                            style={{
+                                              fontSize: 13,
+                                              color: '#475569',
+                                              lineHeight: 1.4,
+                                            }}
+                                          >
+                                            <strong>Respuesta:</strong>{' '}
+                                            {detalle.respuestaTexto}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              {alta.observaciones_familia && (
+                                <div style={avisoNeutral}>
+                                  <strong>Familia:</strong> {alta.observaciones_familia}
+                                </div>
+                              )}
+
+                              <div
+                                style={{
+                                  padding: 14,
+                                  borderRadius: 16,
+                                  border: alta.requiere_revision_jefe
+                                    ? '1px solid #fdba74'
+                                    : '1px solid #bfdbfe',
+                                  background: alta.requiere_revision_jefe
+                                    ? '#fff7ed'
+                                    : '#eff6ff',
+                                }}
+                              >
+                                <strong style={{ fontSize: 18 }}>
+                                  Nivel propuesto: {alta.nivel_propuesto || 'Pendiente'}
+                                </strong>
+                                <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                  Fiabilidad del nivel propuesto: {alta.nivel_propuesto_confianza || '-'}
+                                </p>
+                                <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                  {alta.nivel_propuesto_motivo || 'Pendiente de valoración.'}
+                                </p>
+                              </div>
+
+                              {esCoordinadorJefeApp ? (
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns:
+                                      'repeat(auto-fit, minmax(180px, 1fr))',
+                                    gap: 8,
+                                    alignItems: 'end',
+                                  }}
+                                >
+                                  <label style={labelCampo}>
+                                    Nivel que validas
+                                    <select
+                                      value={
+                                        nivelesValidacionAlta[alta.id] ||
+                                        alta.nivel_propuesto ||
+                                        'INICIACION'
+                                      }
+                                      onChange={(e) =>
+                                        setNivelesValidacionAlta({
+                                          ...nivelesValidacionAlta,
+                                          [alta.id]: e.target.value,
+                                        })
+                                      }
+                                      style={selectCampo}
+                                    >
+                                      {opcionesNivel.map((nivel) => (
+                                        <option key={nivel} value={nivel}>
+                                          {nivel}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => validarAltaNivelInicial(alta)}
+                                    style={botonPrincipal}
+                                  >
+                                    Validar nivel
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => descartarAltaNivelInicial(alta)}
+                                    style={botonPeligro}
+                                  >
+                                    Descartar
+                                  </button>
+                                </div>
+                              ) : (
+                                <div style={avisoNeutral}>
+                                  Test recibido. Pendiente de revisión del Coordinador jefe.
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                          {validado && (
+                            <div
+                              style={{
+                                marginTop: 2,
+                                padding: 14,
+                                borderRadius: 16,
+                                border: '1px solid #bbf7d0',
+                                background: '#f0fdf4',
+                                display: 'grid',
+                                gap: 10,
+                              }}
+                            >
+                              <div>
+                                <strong style={{ color: '#166534' }}>
+                                  Nivel validado: {alta.nivel_validado}
+                                </strong>
+                                <div
+                                  style={{
+                                    marginTop: 4,
+                                    color: '#475569',
+                                    fontSize: 13,
+                                  }}
+                                >
+                                  Pendiente de incorporación a {alta.modalidad}.
+                                </div>
+                              </div>
+
+                              {alta.modalidad === 'INTENSIVOS' && (
+                                <label style={labelCampo}>
+                                  Intensivo de destino
+                                  <select
+                                    value={intensivoAltaSeleccionado[alta.id] || ''}
+                                    onChange={(e) =>
+                                      setIntensivoAltaSeleccionado({
+                                        ...intensivoAltaSeleccionado,
+                                        [alta.id]: e.target.value,
+                                      })
+                                    }
+                                    style={selectCampo}
+                                  >
+                                    <option value="">Selecciona Intensivo...</option>
+                                    {intensivosAltaNivel.map((intensivo) => (
+                                      <option
+                                        key={intensivo.intensivo_id}
+                                        value={intensivo.intensivo_id}
+                                      >
+                                        {intensivo.intensivo}
+                                        {intensivo.fecha_inicio
+                                          ? ` · ${formatearFecha(intensivo.fecha_inicio)}`
+                                          : ''}
+                                        {intensivo.lugar
+                                          ? ` · ${intensivo.lugar}`
+                                          : ''}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              )}
+
+                              {esCoordinadorJefeApp && (
+                                <button
+                                  type="button"
+                                  disabled={
+                                    anadiendoAltaNivelId === alta.id ||
+                                    (alta.modalidad === 'INTENSIVOS' &&
+                                      !intensivoAltaSeleccionado[alta.id])
+                                  }
+                                  onClick={() => anadirAltaNivelAListados(alta)}
+                                  style={{
+                                    ...botonPrincipal,
+                                    opacity:
+                                      anadiendoAltaNivelId === alta.id ||
+                                      (alta.modalidad === 'INTENSIVOS' &&
+                                        !intensivoAltaSeleccionado[alta.id])
+                                        ? 0.55
+                                        : 1,
+                                  }}
+                                >
+                                  {anadiendoAltaNivelId === alta.id
+                                    ? 'Añadiendo...'
+                                    : 'Añadir a listados'}
+                                </button>
+                              )}
+                            </div>
+                          )}
+
+                          {anadido && (
+                            <div
+                              style={{
+                                ...avisoCompleto,
+                                marginTop: 2,
+                                background: '#f0fdfa',
+                                border: '1px solid #99f6e4',
+                                color: '#115e59',
+                              }}
+                            >
+                              <strong>
+                                Añadido correctamente a {alta.modalidad}.
+                              </strong>
+                              <br />
+                              Este registro temporal podrá limpiarse 7 días
+                              después de la incorporación.
+                            </div>
+                          )}
+
+                          {descartado && (
+                            <div style={{ ...avisoNeutral, marginTop: 2 }}>
+                              Solicitud descartada. La limpieza automática de 7 días se
+                              activará cuando cerremos el flujo de incorporación.
+                            </div>
+                          )}
+
+                          {!respondido && !validado && !anadido && !descartado && (
+                            <div style={{ ...avisoNeutral, marginTop: 2 }}>
+                              {alta.estado === 'ENVIADO'
+                                ? 'Esperando respuesta de la familia.'
+                                : 'Test preparado. Falta enviarlo a la familia.'}
+                            </div>
+                          )}
+
+                          {puedeEliminarAlta && (
+                            <div
+                              style={{
+                                marginTop: 4,
+                                paddingTop: 10,
+                                borderTop: '1px solid #e2e8f0',
+                                display: 'flex',
+                                justifyContent: 'flex-end',
+                              }}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => eliminarAltaNivelInicial(alta)}
+                                style={{
+                                  ...botonPeligro,
+                                  background: '#ffffff',
+                                  color: '#b91c1c',
+                                  border: '1px solid #fecaca',
+                                  boxShadow: 'none',
+                                }}
+                              >
+                                Eliminar alta
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+            </section>
+          </section>
+        )}
+
       {pantalla === 'alumnos' &&
         (() => {
           const totalFichas = alumnosBabyIntensivos.length;
@@ -29562,9 +31235,15 @@ function AppConAuth() {
 }
 
 export default function App() {
+  const tokenTestNivel = tokenTestNivelDesdeUrlApp();
+
   return (
     <PantallaSegura>
-      <AppConAuth />
+      {tokenTestNivel ? (
+        <PantallaTestNivelPublicoApp token={tokenTestNivel} />
+      ) : (
+        <AppConAuth />
+      )}
     </PantallaSegura>
   );
 }
