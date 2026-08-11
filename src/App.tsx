@@ -3605,6 +3605,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     useState(false);
   const [publicandoDisponibilidadEditor, setPublicandoDisponibilidadEditor] =
     useState(false);
+  const [retirandoDisponibilidadEditor, setRetirandoDisponibilidadEditor] =
+    useState(false);
 
   const [reportesPendientes, setReportesPendientes] = useState<
     ReportePendiente[]
@@ -6298,6 +6300,78 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
       alert(mensaje);
     } finally {
       setPublicandoDisponibilidadEditor(false);
+    }
+  }
+
+  async function retirarDisponibilidadEditor() {
+    if (
+      !borradorDisponibilidadEditor ||
+      retirandoDisponibilidadEditor ||
+      estadoServidorDisponibilidadEditor !== 'publicado'
+    ) {
+      return;
+    }
+
+    const semanaInicio = borradorDisponibilidadEditor.semana_inicio;
+    const confirmar = window.confirm(
+      `¿Retirar completamente la disponibilidad de la semana ${rangoSemanaAgenda(
+        semanaInicio
+      )}?
+
+Los entrenadores dejarán de verla inmediatamente y se borrarán sus respuestas de disponibilidad de esa semana.
+
+NO se borrarán grupos, reportes, asistencia ni cobros.`
+    );
+
+    if (!confirmar) return;
+
+    const confirmarFinal = window.confirm(
+      'Confirmación final: esta acción elimina la publicación, sus turnos y las respuestas recibidas. ¿Continuar?'
+    );
+
+    if (!confirmarFinal) return;
+
+    setRetirandoDisponibilidadEditor(true);
+    setMensajeDisponibilidadEditor('Retirando disponibilidad publicada...');
+
+    try {
+      await ejecutarFuncionAuthJson<{ eliminado: boolean }>(
+        'retirar_disponibilidad_semana_editor_app',
+        { p_semana_inicio: semanaInicio }
+      );
+
+      window.localStorage.removeItem(
+        claveStorageDisponibilidadEditor(semanaInicio)
+      );
+
+      const plantillaLimpia =
+        crearBorradorDisponibilidadEditor(semanaInicio);
+
+      setBorradorDisponibilidadEditor(plantillaLimpia);
+      setEstadoServidorDisponibilidadEditor('sin_preparar');
+      setPublicadaAtDisponibilidadEditor(null);
+      setVersionPublicadaDisponibilidadEditor(0);
+      setDiaDisponibilidadEditorAbierto(null);
+      setTurnoResumenDisponibilidadAbierto(null);
+      setVistaPreviaDisponibilidadEditor(false);
+      setMensajeDisponibilidadEditor(
+        'Disponibilidad retirada. La semana vuelve a estar sin publicar.'
+      );
+
+      await cargarDisponibilidad(semanaInicio);
+
+      alert(
+        'Disponibilidad retirada. Los entrenadores ya no verán esa publicación.'
+      );
+    } catch (err) {
+      const mensaje =
+        err instanceof Error
+          ? err.message
+          : 'No se pudo retirar la disponibilidad.';
+      setMensajeDisponibilidadEditor(`Error retirando: ${mensaje}`);
+      alert(mensaje);
+    } finally {
+      setRetirandoDisponibilidadEditor(false);
     }
   }
 
@@ -30431,22 +30505,60 @@ Gracias!`;
                     actual hasta conectar Sprint 2C.
                   </span>
                 </div>
-                <button
-                  type="button"
-                  className="availability-publish-button"
-                  onClick={() => void publicarDisponibilidadEditor()}
-                  disabled={
-                    guardandoDisponibilidadEditor ||
-                    publicandoDisponibilidadEditor ||
-                    resumenBorradorDisponibilidadEditor.turnos === 0
-                  }
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                  }}
                 >
-                  {publicandoDisponibilidadEditor
-                    ? 'Publicando...'
-                    : estadoServidorDisponibilidadEditor === 'publicado'
-                    ? 'Volver a publicar cambios'
-                    : 'Publicar disponibilidad'}
-                </button>
+                  {estadoServidorDisponibilidadEditor === 'publicado' && (
+                    <button
+                      type="button"
+                      onClick={() => void retirarDisponibilidadEditor()}
+                      disabled={
+                        guardandoDisponibilidadEditor ||
+                        publicandoDisponibilidadEditor ||
+                        retirandoDisponibilidadEditor
+                      }
+                      style={{
+                        border: '1px solid #fecaca',
+                        background: '#fff7f7',
+                        color: '#b42318',
+                        borderRadius: 12,
+                        padding: '10px 12px',
+                        fontWeight: 900,
+                        cursor: retirandoDisponibilidadEditor
+                          ? 'wait'
+                          : 'pointer',
+                      }}
+                    >
+                      {retirandoDisponibilidadEditor
+                        ? 'Retirando...'
+                        : 'Retirar disponibilidad'}
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    className="availability-publish-button"
+                    onClick={() => void publicarDisponibilidadEditor()}
+                    disabled={
+                      guardandoDisponibilidadEditor ||
+                      publicandoDisponibilidadEditor ||
+                      retirandoDisponibilidadEditor ||
+                      resumenBorradorDisponibilidadEditor.turnos === 0
+                    }
+                  >
+                    {publicandoDisponibilidadEditor
+                      ? 'Publicando...'
+                      : estadoServidorDisponibilidadEditor === 'publicado'
+                      ? 'Volver a publicar cambios'
+                      : 'Publicar disponibilidad'}
+                  </button>
+                </div>
               </footer>
 
 
