@@ -27814,9 +27814,23 @@ Gracias!`;
                 </div>
               </article>
 
-              <details style={{ ...agendaBloqueBlanco, padding: 14 }}>
+              <details style={{
+                              width: '100%',
+                              maxWidth: '100%',
+                              minWidth: 0,
+                              boxSizing: 'border-box', ...agendaBloqueBlanco, padding: 14 }}>
                 <summary
                   style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: 6,
+                                  flexWrap: 'wrap',
+                                  width: '100%',
+                                  maxWidth: '100%',
+                                  minWidth: 0,
+                                  whiteSpace: 'normal',
+                                  overflowWrap: 'anywhere',
+                                  lineHeight: 1.25,
                     cursor: 'pointer',
                     fontWeight: 900,
                     color: '#475569',
