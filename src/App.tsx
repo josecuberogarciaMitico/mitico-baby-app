@@ -3814,6 +3814,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [busquedaCierreTemporada, setBusquedaCierreTemporada] = useState('');
 
   const [archivoCopiaMaestraNombre, setArchivoCopiaMaestraNombre] = useState('');
+  const [temporadaOrigenCopiaMaestra, setTemporadaOrigenCopiaMaestra] = useState('');
   const [filasCopiaMaestraImport, setFilasCopiaMaestraImport] = useState<
     FilaCopiaMaestraImportApp[]
   >([]);
@@ -9829,6 +9830,12 @@ Gracias!`;
       setPuntosAgendaGrupo({});
       setTrabajoAgendaGrupo({});
       setObservacionesAgendaGrupo({});
+
+      window.setTimeout(() => {
+        document
+          .getElementById('agenda-propuesta-grupos')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 140);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
       setAgendaRecomendaciones([]);
@@ -11052,7 +11059,14 @@ Gracias!`;
     const nivelesGrupo = Array.from(
       new Set(alumnosGrupo.map((alumno) => alumno.nivel_resumen))
     ).join(' / ');
-    const punto = puntosAgendaGrupo[nombreGrupo] || '1';
+    const indiceGrupoActual = gruposRecomendadosAgenda().findIndex(
+      ([grupo]) => grupo === nombreGrupo
+    );
+    const puntoDefectoActual =
+      puntosEncuentroAgenda[
+        Math.max(0, indiceGrupoActual) % puntosEncuentroAgenda.length
+      ] || '1';
+    const punto = puntosAgendaGrupo[nombreGrupo] || puntoDefectoActual;
     const trabajo =
       trabajoAgendaGrupo[nombreGrupo] ||
       trabajoDiarioAutomaticoAgenda(nombreGrupo, alumnosGrupo);
@@ -11186,6 +11200,13 @@ Gracias!`;
       await cargarAgendaOperativaDirecta();
       await cargarGruposEntrenador();
       await cargarPlanning();
+
+      window.requestAnimationFrame(() => {
+        const detalle = document.getElementById(
+          `agenda-trabajo-grupo-${grupo.grupo_id}`
+        ) as HTMLDetailsElement | null;
+        if (detalle) detalle.open = false;
+      });
     } catch (err) {
       setError(
         err instanceof Error
@@ -12130,6 +12151,24 @@ Gracias!`;
       sesionAgendaActiva?.fecha,
       sesionAgendaActiva?.hora_inicio,
       sesionAgendaActiva?.hora_fin
+    );
+  }
+
+  function entrenadoresDisponiblesCambioGrupoAgenda(
+    grupoId: string,
+    entrenadorActualId?: string | null
+  ) {
+    const ocupadosOtrosGrupos = new Set(
+      agendaGruposSesion
+        .filter((grupo) => grupo.grupo_id !== grupoId)
+        .map((grupo) => grupo.entrenador_id || '')
+        .filter(Boolean)
+    );
+
+    return entrenadoresDisponiblesSesionActiva().filter(
+      (entrenador) =>
+        entrenador.entrenador_id === entrenadorActualId ||
+        !ocupadosOtrosGrupos.has(entrenador.entrenador_id)
     );
   }
 
@@ -13766,12 +13805,13 @@ Gracias!`;
     setErrorCopiaMaestraImport('');
     setFilasCopiaMaestraImport([]);
     setArchivoCopiaMaestraNombre('');
+    setTemporadaOrigenCopiaMaestra('');
 
     if (!archivo) return;
 
     if (!archivo.name.toLowerCase().endsWith('.csv')) {
       setErrorCopiaMaestraImport(
-        'Selecciona el CSV oficial descargado desde Revisar y preparar cierre.'
+        'Selecciona un archivo CSV compatible con la copia maestra.'
       );
       return;
     }
@@ -13779,15 +13819,40 @@ Gracias!`;
     try {
       const texto = (await archivo.text()).replace(/^\uFEFF/, '');
       const lineas = texto.split(/\r?\n/).filter((linea) => linea.trim());
-      const indiceCabecera = lineas.findIndex((linea) =>
-        linea.includes('"Alumno ID";"Alumno";"Fecha nacimiento";"Último nivel real"')
-      );
+      const indiceCabecera = lineas.findIndex((linea) => {
+        const columnas = parsearLineaCsvCopiaMaestra(linea).map((valor) =>
+          valor.toLocaleLowerCase('es-ES')
+        );
+        return (
+          columnas[0] === 'alumno id' &&
+          columnas[1] === 'alumno' &&
+          columnas[2] === 'fecha nacimiento' &&
+          columnas[3] === 'último nivel real'
+        );
+      });
 
       if (indiceCabecera < 0) {
         throw new Error(
-          'El archivo no tiene la estructura de la copia maestra generada por la app.'
+          'El CSV no tiene las columnas mínimas de una copia maestra compatible.'
         );
       }
+
+      const textoPrevioCabecera = lineas.slice(0, indiceCabecera).join(' ');
+      const temporadaEnContenido = textoPrevioCabecera.match(
+        /COPIA\s+MAESTRA\s+FIN\s+DE\s+TEMPORADA\s*[·:-]?\s*([0-9]{4}\s*[\/-]\s*[0-9]{2,4})/i
+      )?.[1];
+      const temporadaEnNombreMatch = archivo.name.match(
+        /([0-9]{4})[-_\s]?([0-9]{2,4})/
+      );
+      const temporadaEnNombre = temporadaEnNombreMatch
+        ? `${temporadaEnNombreMatch[1]}/${temporadaEnNombreMatch[2]}`
+        : '';
+
+      setTemporadaOrigenCopiaMaestra(
+        (temporadaEnContenido || temporadaEnNombre || 'importación externa')
+          .replace(/\s+/g, '')
+          .replace('-', '/')
+      );
 
       const filas = lineas.slice(indiceCabecera + 1).map((linea) => {
         const columnas = parsearLineaCsvCopiaMaestra(linea);
@@ -13804,11 +13869,19 @@ Gracias!`;
         ] = columnas;
 
         const errores: string[] = [];
-        if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(alumnoId.trim())) {
+        if (
+          alumnoId.trim() &&
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+            alumnoId.trim()
+          )
+        ) {
           errores.push('ID de alumno no válido');
         }
         if (!alumno.trim()) errores.push('Falta nombre');
-        if (ultimoNivel && !/^(A\+?|B\+?|C\+?|D\+?)$/i.test(ultimoNivel.trim())) {
+        if (
+          ultimoNivel &&
+          !/^(INICIACION|A\+?|B\+?|C\+?|D\+?)$/i.test(ultimoNivel.trim())
+        ) {
           errores.push('Nivel no reconocido');
         }
 
@@ -13868,19 +13941,17 @@ Gracias!`;
     setResultadoImportacionCopiaMaestra('');
 
     try {
-      const temporadaOrigenMatch = archivoCopiaMaestraNombre.match(
-        /copia_maestra_(.+)\.csv$/i
-      );
-      const temporadaOrigen =
-        temporadaOrigenMatch?.[1]?.replace(/-/g, ' ') || 'temporada anterior';
-
       const data = await ejecutarFuncionConRespuesta<{
+        creados: number;
         actualizados: number;
+        reconciliados: number;
         omitidos: number;
-      }>('importar_semilla_copia_maestra_app', {
-        p_temporada_origen: temporadaOrigen,
+      }>('importar_semilla_copia_maestra_v2_app', {
+        p_temporada_origen:
+          temporadaOrigenCopiaMaestra || archivoCopiaMaestraNombre || 'importación externa',
         p_filas: filasCopiaMaestraImport.map((fila) => ({
-          alumno_id: fila.alumno_id,
+          alumno_id: fila.alumno_id || null,
+          alumno: fila.alumno,
           fecha_nacimiento: fila.fecha_nacimiento || null,
           ultimo_nivel_real: fila.ultimo_nivel_real || null,
           pista: fila.pista || null,
@@ -13893,10 +13964,14 @@ Gracias!`;
 
       const resumen = data[0];
       setResultadoImportacionCopiaMaestra(
-        `Semilla cargada: ${Number(resumen?.actualizados || 0)} alumnos actualizados · ${Number(
-          resumen?.omitidos || 0
-        )} omitidos.`
+        `Semilla cargada: ${Number(resumen?.creados || 0)} creados · ${Number(
+          resumen?.actualizados || 0
+        )} actualizados · ${Number(
+          resumen?.reconciliados || 0
+        )} reconciliados por nombre/fecha · ${Number(resumen?.omitidos || 0)} omitidos.`
       );
+
+      await cargarAlumnos();
     } catch (err) {
       setErrorCopiaMaestraImport(
         err instanceof Error
@@ -18794,6 +18869,14 @@ Gracias!`;
                               setAgendaDiaCompactoActivo(dia.fecha);
                               setAgendaSesionActivaId('');
                               setAgendaFormularioAbierto(false);
+                              window.setTimeout(() => {
+                                document
+                                  .getElementById('agenda-dia-seleccionado')
+                                  ?.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'start',
+                                  });
+                              }, 120);
                             }}
                             style={agendaBotonDiaCompacto(
                               activo,
@@ -18840,7 +18923,7 @@ Gracias!`;
                       })}
                     </div>
 
-                    <article style={agendaDiaCard}>
+                    <article id="agenda-dia-seleccionado" style={agendaDiaCard}>
                       <header style={agendaDiaHeader}>
                         <div>
                           <p style={agendaMiniLabel}>Día seleccionado</p>
@@ -19738,7 +19821,10 @@ Gracias!`;
                   )}
 
                   {gruposRecomendadosAgenda().length > 0 && (
-                    <section style={{ marginTop: 16 }}>
+                    <section
+                      id="agenda-propuesta-grupos"
+                      style={{ marginTop: 16 }}
+                    >
                       <h4>Propuesta editable antes de publicar</h4>
                       <div style={{ ...avisoCompleto, marginBottom: 12 }}>
                         Puedes crear un grupo manual vacío y mover niños.
@@ -19904,6 +19990,9 @@ Gracias!`;
                                               .filter(([grupo]) => grupo !== nombreGrupo)
                                               .map(([, id]) => id),
                                             entrenadoresApoyoAgendaGrupo[nombreGrupo] || '',
+                                            ...agendaGruposSesion
+                                              .map((grupo) => grupo.entrenador_id || '')
+                                              .filter(Boolean),
                                           ].filter(Boolean));
                                           return entrenador.entrenador_id === actual || !usadosEnOtros.has(entrenador.entrenador_id);
                                         })
@@ -19970,6 +20059,9 @@ Gracias!`;
                                               .filter(([grupo]) => grupo !== nombreGrupo)
                                               .map(([, id]) => id),
                                             entrenadoresAgendaGrupo[nombreGrupo] || '',
+                                            ...agendaGruposSesion
+                                              .map((grupo) => grupo.entrenador_id || '')
+                                              .filter(Boolean),
                                           ].filter(Boolean));
                                           return entrenador.entrenador_id === actual || !usadosEnOtros.has(entrenador.entrenador_id);
                                         })
@@ -20199,7 +20291,10 @@ Gracias!`;
                                   ))}
                               </ul>
                             )}
-                            <details style={panelTrabajoGrupo}>
+                            <details
+                              id={`agenda-trabajo-grupo-${grupo.grupo_id}`}
+                              style={panelTrabajoGrupo}
+                            >
                               <summary style={summaryTrabajoGrupo}>
                                 Trabajo diario y observaciones
                               </summary>
@@ -20299,7 +20394,18 @@ Gracias!`;
                                     : []
                                   )
                                     .concat(
-                                      entrenadoresDisponiblesSesionActiva()
+                                      entrenadoresDisponiblesCambioGrupoAgenda(
+                                        grupo.grupo_id,
+                                        grupo.entrenador_id
+                                      )
+                                    )
+                                    .filter(
+                                      (entrenador, indice, lista) =>
+                                        lista.findIndex(
+                                          (item) =>
+                                            item.entrenador_id ===
+                                            entrenador.entrenador_id
+                                        ) === indice
                                     )
                                     .map((entrenador) => (
                                       <option
