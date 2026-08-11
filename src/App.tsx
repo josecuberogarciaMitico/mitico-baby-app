@@ -3281,6 +3281,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [tabVistaEntrenador, setTabVistaEntrenador] = useState<
     'disponibilidad' | 'grupos'
   >('disponibilidad');
+  const [semanaEntrenadorSeleccionada, setSemanaEntrenadorSeleccionada] =
+    useState('');
   const [diaDisponibilidadAbierto, setDiaDisponibilidadAbierto] =
     useState('');
 
@@ -7407,7 +7409,7 @@ Gracias!`;
     setCargando(false);
   }
 
-  async function cargarDisponibilidad() {
+  async function cargarDisponibilidad(semanaForzada?: string) {
     setCargando(true);
     setError('');
     setDetalle(null);
@@ -7427,11 +7429,12 @@ Gracias!`;
         claveFechaAgenda(fechaReferenciaDisponibilidad)
       );
 
-      let semanaConsulta = esCoordinadorApp
-        ? semanaAgendaActiva || semanaOperativaDisponibilidad
-        : semanaOperativaDisponibilidad;
+      let semanaConsulta = semanaForzada ||
+        (esCoordinadorApp
+          ? semanaAgendaActiva || semanaOperativaDisponibilidad
+          : semanaEntrenadorSeleccionada || semanaOperativaDisponibilidad);
 
-      if (!esCoordinadorApp) {
+      if (!esCoordinadorApp && !semanaForzada && !semanaEntrenadorSeleccionada) {
         const objetivo =
           await ejecutarFuncionAuthJson<{
             semana_inicio: string | null;
@@ -7440,6 +7443,11 @@ Gracias!`;
         semanaConsulta =
           objetivo?.semana_inicio || semanaOperativaDisponibilidad;
         setSemanaPublicadaObjetivoEntrenador(semanaConsulta || '');
+        setSemanaEntrenadorSeleccionada(semanaConsulta || '');
+      }
+
+      if (!esCoordinadorApp && semanaForzada) {
+        setSemanaEntrenadorSeleccionada(semanaForzada);
       }
 
       if (!semanaConsulta) {
@@ -12322,6 +12330,13 @@ Gracias!`;
       grupo.fecha <= semanaVistaEntrenadorFin;
     const esAnterior = grupo.fecha < semanaVistaEntrenadorInicio;
 
+    if (!esCoordinadorApp) {
+      return (
+        perteneceSemanaVigente ||
+        (esAnterior && grupoTienePendientesVistaEntrenador(grupo))
+      );
+    }
+
     return (
       perteneceSemanaVigente ||
       (esAnterior && grupoTienePendientesVistaEntrenador(grupo))
@@ -12362,15 +12377,87 @@ Gracias!`;
     );
   }
 
-  const totalGruposVistaEntrenador = gruposVistaEntrenador.length;
+  function abrirTurnoPendienteReporteEntrenador(
+    entrenadorId: string,
+    fecha: string,
+    horaInicio: string,
+    horaFin: string
+  ) {
+    const alumnoPendiente = alumnosVistaEntrenador.find(
+      (alumno) =>
+        alumno.entrenador_id === entrenadorId &&
+        alumno.fecha === fecha &&
+        alumno.hora_inicio === horaInicio &&
+        alumno.hora_fin === horaFin &&
+        alumno.estado_reporte === 'Falta reporte'
+    );
+
+    if (!alumnoPendiente) return;
+
+    const grupoPendiente = gruposVistaEntrenador.find(
+      (grupo) =>
+        grupo.entrenador_id === entrenadorId &&
+        grupo.grupo_id === alumnoPendiente.grupo_id
+    );
+
+    if (!grupoPendiente) return;
+
+    setTabVistaEntrenador('grupos');
+    setGrupoActivoEntrenador({
+      grupo_id: grupoPendiente.grupo_id,
+      entrenador_id: grupoPendiente.entrenador_id,
+    });
+    setSeccionGrupoEntrenador('asistencia');
+
+    window.setTimeout(() => {
+      const grupoDomId = `trainer-group-${grupoPendiente.entrenador_id}-${grupoPendiente.grupo_id}`.replace(
+        /[^a-zA-Z0-9_-]/g,
+        '-'
+      );
+      const objetivo = document.getElementById(grupoDomId);
+
+      if (objetivo) {
+        let padre = objetivo.parentElement;
+        while (padre) {
+          if (padre instanceof HTMLDetailsElement) {
+            padre.open = true;
+          }
+          padre = padre.parentElement;
+        }
+
+        objetivo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 120);
+  }
+
+  const gruposSemanaTrabajoVistaEntrenador = gruposVistaEntrenador.filter(
+    (grupo) =>
+      grupo.fecha >= semanaVistaEntrenadorInicio &&
+      grupo.fecha <= semanaVistaEntrenadorFin
+  );
+
+  const clavesGruposSemanaTrabajoVistaEntrenador = new Set(
+    gruposSemanaTrabajoVistaEntrenador.map(
+      (grupo) => `${grupo.entrenador_id}__${grupo.grupo_id}`
+    )
+  );
+
+  const alumnosSemanaTrabajoVistaEntrenador = alumnosReporteEntrenador.filter(
+    (alumno) =>
+      clavesGruposSemanaTrabajoVistaEntrenador.has(
+        `${alumno.entrenador_id}__${alumno.grupo_id}`
+      )
+  );
+
+  const totalGruposVistaEntrenador = gruposSemanaTrabajoVistaEntrenador.length;
   const totalReportesVistaEntrenador =
-    alumnosVistaEntrenador.filter(
+    alumnosSemanaTrabajoVistaEntrenador.filter(
       (alumno) =>
         alumno.estado_reporte === 'Falta reporte' ||
         alumno.estado_reporte === 'Asistencia sin confirmar' ||
         alumno.estado_asistencia === 'Pendiente'
     ).length +
-    gruposVistaEntrenador.filter(
+    gruposSemanaTrabajoVistaEntrenador.filter(
       (grupo) => grupo.estado_confirmacion !== 'Confirmado'
     ).length;
   const totalDisponibilidadPendienteVistaEntrenador =
@@ -14609,32 +14696,51 @@ Gracias!`;
                 >
                   Semana de trabajo
                 </label>
-                <select
-                  id="semana-trabajo-cabecera"
-                  value={semanaAgendaActiva}
-                  onChange={(e) => cambiarSemanaTrabajoApp(e.target.value)}
-                  aria-label="Cambiar semana de trabajo"
-                  style={{
-                    minWidth: 0,
-                    maxWidth: '100%',
-                    border: 0,
-                    outline: 0,
-                    padding: '2px 24px 2px 0',
-                    margin: 0,
-                    background: 'transparent',
-                    color: '#134e4a',
-                    fontSize: 14,
-                    fontWeight: 900,
-                    lineHeight: 1.2,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {semanasAgenda.map((semana) => (
-                    <option key={semana} value={semana}>
-                      {rangoSemanaAgenda(semana)}
-                    </option>
-                  ))}
-                </select>
+                {esEntrenadorApp ? (
+                  <div
+                    id="semana-trabajo-cabecera"
+                    aria-label="Semana de trabajo actual"
+                    style={{
+                      minWidth: 0,
+                      maxWidth: '100%',
+                      color: '#134e4a',
+                      fontSize: 14,
+                      fontWeight: 900,
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {semanaVistaEntrenadorInicio
+                      ? rangoSemanaAgenda(semanaVistaEntrenadorInicio)
+                      : '-'}
+                  </div>
+                ) : (
+                  <select
+                    id="semana-trabajo-cabecera"
+                    value={semanaAgendaActiva}
+                    onChange={(e) => cambiarSemanaTrabajoApp(e.target.value)}
+                    aria-label="Cambiar semana de trabajo"
+                    style={{
+                      minWidth: 0,
+                      maxWidth: '100%',
+                      border: 0,
+                      outline: 0,
+                      padding: '2px 24px 2px 0',
+                      margin: 0,
+                      background: 'transparent',
+                      color: '#134e4a',
+                      fontSize: 14,
+                      fontWeight: 900,
+                      lineHeight: 1.2,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {semanasAgenda.map((semana) => (
+                      <option key={semana} value={semana}>
+                        {rangoSemanaAgenda(semana)}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               {(esEntrenadorApp || esCoordinadorJefeApp) && !pwaInstalada && (
@@ -24388,6 +24494,13 @@ Gracias!`;
                 line-height: 1.2 !important;
                 box-sizing: border-box !important;
               }
+
+              .trainer-hero button {
+                max-width: 100% !important;
+                white-space: normal !important;
+                line-height: 1.25 !important;
+                box-sizing: border-box !important;
+              }
             }
           `}</style>
 
@@ -24395,9 +24508,55 @@ Gracias!`;
             <div>
               <p style={etiquetaSuperior}>VISTA ENTRENADOR</p>
               <h2 style={{ margin: 0 }}>Panel del entrenador</h2>
+              {disponibilidadEditorVista?.existe ? (
+
+                <button
+                  type="button"
+                  onClick={() => setTabVistaEntrenador('disponibilidad')}
+                  style={{
+                    width: '100%',
+                    marginTop: 12,
+                    padding: '11px 13px',
+                    borderRadius: 13,
+                    border: '1px solid #15803d',
+                    background:
+                      'linear-gradient(180deg, #22c55e 0%, #16a34a 100%)',
+                    color: '#ffffff',
+                    fontSize: 13,
+                    fontWeight: 900,
+                    textAlign: 'center',
+                    boxShadow: '0 8px 18px rgba(22, 163, 74, 0.20)',
+                    cursor: 'pointer',
+                  }}
+                >
+                  Disponibilidad publicada ·{' '}
+                  {disponibilidadEditorVista.semana_inicio
+                    ? rangoSemanaAgenda(disponibilidadEditorVista.semana_inicio)
+                    : '-'}
+                </button>
+                            ) : (
+                <div
+                  role="status"
+                  style={{
+                    width: '100%',
+                    marginTop: 12,
+                    padding: '10px 12px',
+                    borderRadius: 13,
+                    border: '1px solid #d7e0eb',
+                    background: '#f8fafc',
+                    color: '#64748b',
+                    fontSize: 12,
+                    fontWeight: 800,
+                    textAlign: 'center',
+                  }}
+                >
+                  Sin disponibilidad publicada para esta semana
+                </div>
+              )}
+
               <div className="trainer-hero-chips" style={entrenadorHeroChips}>
                 <span className="trainer-current-week-chip">
-                  <strong>Semana actual:</strong>{' '}
+                  <strong>Semana de trabajo:</strong>{' '}
                   {semanaVistaEntrenadorInicio
                     ? rangoSemanaAgenda(semanaVistaEntrenadorInicio)
                     : '-'}
@@ -24408,14 +24567,6 @@ Gracias!`;
                   {totalDisponibilidadPendienteVistaEntrenador} disponibilidades
                   pendientes
                 </span>
-                {disponibilidadEditorVista?.existe && (
-                  <span className="trainer-published-week-chip">
-                    <strong>Disponibilidad publicada:</strong>{' '}
-                    {disponibilidadEditorVista.semana_inicio
-                      ? rangoSemanaAgenda(disponibilidadEditorVista.semana_inicio)
-                      : '-'}
-                  </span>
-                )}
               </div>
             </div>
             <button
@@ -24706,38 +24857,310 @@ Gracias!`;
                   gruposSinConfirmarEntrenadorVista(
                     bloqueEntrenador.entrenador_id
                   ).length > 0) && (
-                  <section style={avisoPendiente}>
-                    <strong>Aviso de tareas pendientes</strong>
-                    <p style={{ margin: '6px 0 0' }}>
-                      Tienes{' '}
-                      {
-                        gruposSinConfirmarEntrenadorVista(
-                          bloqueEntrenador.entrenador_id
-                        ).length
-                      }{' '}
-                      grupos sin confirmar,{' '}
-                      {
-                        pendientesEntrenadorVista(
-                          bloqueEntrenador.entrenador_id
-                        ).filter(
-                          (reporte) =>
-                            reporte.estado_reporte === 'Falta reporte'
-                        ).length
-                      }{' '}
-                      reportes pendientes y{' '}
-                      {
-                        pendientesEntrenadorVista(
-                          bloqueEntrenador.entrenador_id
-                        ).filter(
-                          (reporte) =>
-                            reporte.estado_reporte ===
-                              'Asistencia sin confirmar' ||
-                            reporte.estado_asistencia === 'Pendiente'
-                        ).length
-                      }{' '}
-                      asistencias pendientes. Confirma primero los grupos nuevos y
-                      completa después asistencia y reportes.
-                    </p>
+                  <section
+                    style={{
+                      ...avisoPendiente,
+                      padding: 12,
+                      display: 'grid',
+                      gap: 8,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 10,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <div>
+                        <strong
+                          style={{
+                            display: 'block',
+                            fontSize: 14,
+                            color: '#8a3d08',
+                          }}
+                        >
+                          Tareas por cerrar
+                        </strong>
+                      </div>
+
+                      <span
+                        style={{
+                          padding: '4px 8px',
+                          borderRadius: 999,
+                          background: '#fff7ed',
+                          border: '1px solid #fed7aa',
+                          color: '#9a4b0d',
+                          fontSize: 11,
+                          fontWeight: 900,
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        {
+                          gruposSinConfirmarEntrenadorVista(
+                            bloqueEntrenador.entrenador_id
+                          ).length +
+                          pendientesEntrenadorVista(
+                            bloqueEntrenador.entrenador_id
+                          ).filter(
+                            (reporte) =>
+                              reporte.estado_reporte === 'Falta reporte'
+                          ).length +
+                          pendientesEntrenadorVista(
+                            bloqueEntrenador.entrenador_id
+                          ).filter(
+                            (reporte) =>
+                              reporte.estado_reporte ===
+                                'Asistencia sin confirmar' ||
+                              reporte.estado_asistencia === 'Pendiente'
+                          ).length
+                        }{' '}
+                        pendientes
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'grid',
+                        gap: 6,
+                      }}
+                    >
+                      {[
+                        {
+                          paso: '1',
+                          titulo: 'Confirmar grupos',
+                          detalle: 'Abre los grupos nuevos y confírmalos.',
+                          cantidad: gruposSinConfirmarEntrenadorVista(
+                            bloqueEntrenador.entrenador_id
+                          ).length,
+                          fondo: '#eff6ff',
+                          borde: '#bfdbfe',
+                          texto: '#1d4ed8',
+                        },
+                        {
+                          paso: '2',
+                          titulo: 'Pasar asistencia',
+                          detalle: 'Marca presente o ausente en cada alumno.',
+                          cantidad: pendientesEntrenadorVista(
+                            bloqueEntrenador.entrenador_id
+                          ).filter(
+                            (reporte) =>
+                              reporte.estado_reporte ===
+                                'Asistencia sin confirmar' ||
+                              reporte.estado_asistencia === 'Pendiente'
+                          ).length,
+                          fondo: '#f0fdf4',
+                          borde: '#bbf7d0',
+                          texto: '#15803d',
+                        },
+                        {
+                          paso: '3',
+                          titulo: 'Completar reportes',
+                          detalle: 'Cierra los reportes que falten.',
+                          cantidad: pendientesEntrenadorVista(
+                            bloqueEntrenador.entrenador_id
+                          ).filter(
+                            (reporte) =>
+                              reporte.estado_reporte === 'Falta reporte'
+                          ).length,
+                          fondo: '#faf5ff',
+                          borde: '#e9d5ff',
+                          texto: '#7e22ce',
+                        },
+                      ]
+                        .filter((tarea) => tarea.cantidad > 0)
+                        .map((tarea) => {
+                          const completada = false;
+
+                          return (
+                          <div
+                            key={`${bloqueEntrenador.entrenador_id}-${tarea.paso}`}
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns: 'minmax(0, 1fr) auto',
+                              alignItems: 'center',
+                              gap: 9,
+                              minWidth: 0,
+                              padding: '8px 9px',
+                              borderRadius: 12,
+                              border: `1px solid ${
+                                completada ? '#dbe5df' : tarea.borde
+                              }`,
+                              background: completada
+                                ? '#f8faf9'
+                                : tarea.fondo,
+                            }}
+                          >
+                            <div style={{ minWidth: 0 }}>
+                              <strong
+                                style={{
+                                  display: 'block',
+                                  fontSize: 12,
+                                  lineHeight: 1.2,
+                                  color: completada
+                                    ? '#5f6f64'
+                                    : '#24324a',
+                                }}
+                              >
+                                {tarea.titulo}
+                              </strong>
+
+                              {!completada && (
+                                <span
+                                  style={{
+                                    display: 'block',
+                                    marginTop: 2,
+                                    fontSize: 11,
+                                    lineHeight: 1.25,
+                                    color: '#667085',
+                                  }}
+                                >
+                                  {tarea.detalle}
+                                </span>
+                              )}
+                            </div>
+
+                            <span
+                              style={{
+                                justifySelf: 'end',
+                                minWidth: 30,
+                                padding: '4px 7px',
+                                borderRadius: 999,
+                                textAlign: 'center',
+                                fontSize: 11,
+                                fontWeight: 900,
+                                whiteSpace: 'nowrap',
+                                color: completada
+                                  ? '#52705d'
+                                  : tarea.texto,
+                                background: completada
+                                  ? '#edf4ef'
+                                  : '#ffffff',
+                                border: `1px solid ${
+                                  completada ? '#d7e4da' : tarea.borde
+                                }`,
+                              }}
+                            >
+                              {completada ? 'Hecho' : tarea.cantidad}
+                            </span>
+                          </div>
+                          );
+                        })}
+
+                      {pendientesEntrenadorVista(
+                        bloqueEntrenador.entrenador_id
+                      ).filter(
+                        (reporte) => reporte.estado_reporte === 'Falta reporte'
+                      ).length > 0 && (
+                        <details
+                          style={{
+                            border: '1px solid #e9d5ff',
+                            borderRadius: 12,
+                            background: '#faf5ff',
+                            overflow: 'hidden',
+                          }}
+                        >
+                          <summary
+                            style={{
+                              cursor: 'pointer',
+                              padding: '9px 11px',
+                              fontSize: 12,
+                              fontWeight: 900,
+                              color: '#7e22ce',
+                              listStyle: 'none',
+                            }}
+                          >
+                            Ver turnos con reportes pendientes
+                          </summary>
+
+                          <div
+                            style={{
+                              display: 'grid',
+                              gap: 6,
+                              padding: '0 10px 10px',
+                            }}
+                          >
+                            {Array.from(
+                              new Map(
+                                pendientesEntrenadorVista(
+                                  bloqueEntrenador.entrenador_id
+                                )
+                                  .filter(
+                                    (reporte) =>
+                                      reporte.estado_reporte === 'Falta reporte'
+                                  )
+                                  .map((reporte) => [
+                                    `${reporte.fecha}-${reporte.hora_inicio}-${reporte.hora_fin}`,
+                                    {
+                                      fecha: reporte.fecha,
+                                      hora_inicio: reporte.hora_inicio,
+                                      hora_fin: reporte.hora_fin,
+                                      modalidad: reporte.modalidad,
+                                    },
+                                  ])
+                              ).values()
+                            ).map((turno) => (
+                              <button
+                                type="button"
+                                key={`${bloqueEntrenador.entrenador_id}-${turno.fecha}-${turno.hora_inicio}`}
+                                onClick={() =>
+                                  abrirTurnoPendienteReporteEntrenador(
+                                    bloqueEntrenador.entrenador_id,
+                                    turno.fecha,
+                                    turno.hora_inicio,
+                                    turno.hora_fin
+                                  )
+                                }
+                                style={{
+                                  display: 'grid',
+                                  gap: 2,
+                                  width: '100%',
+                                  padding: '8px 9px',
+                                  borderRadius: 10,
+                                  border: '1px solid #eadcff',
+                                  background: '#ffffff',
+                                  minWidth: 0,
+                                  textAlign: 'left',
+                                  cursor: 'pointer',
+                                }}
+                              >
+                                <strong
+                                  style={{
+                                    fontSize: 11,
+                                    color: '#4b3b63',
+                                  }}
+                                >
+                                  {turno.fecha}
+                                </strong>
+                                <span
+                                  style={{
+                                    fontSize: 11,
+                                    color: '#6b5a7d',
+                                  }}
+                                >
+                                  {turno.hora_inicio}–{turno.hora_fin}
+                                  {turno.modalidad
+                                    ? ` · ${turno.modalidad}`
+                                    : ''}
+                                </span>
+                                <span
+                                  style={{
+                                    marginTop: 3,
+                                    fontSize: 10,
+                                    fontWeight: 900,
+                                    color: '#7e22ce',
+                                  }}
+                                >
+                                  Abrir turno y rellenar reporte →
+                                </span>
+                              </button>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+                    </div>
                   </section>
                 )}
 
@@ -24862,8 +25285,8 @@ Gracias!`;
                         <div>
                           <p style={etiquetaSuperior}>
                             {esSemanaVigente
-                              ? 'SEMANA ACTUAL'
-                              : 'PENDIENTES ANTERIORES'}
+                              ? 'SEMANA DE TRABAJO'
+                              : 'PENDIENTES DE SEMANAS ANTERIORES'}
                           </p>
                           <h4 style={{ margin: 0 }}>
                             {rangoSemanaAgenda(semana.inicio)}
@@ -25037,6 +25460,7 @@ Gracias!`;
 
                                             const tarjetaGrupoEntrenador = (
                                               <article
+                                                id={grupoDomId}
                                                 key={`${grupo.entrenador_id}-${grupo.grupo_id}`}
                                                 className={`trainer-group-card ${
                                                   esGrupoActivo
