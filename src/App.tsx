@@ -2895,7 +2895,6 @@ const opcionesRemontes = [
   'Silla',
   'Cinta y percha',
   'Percha y silla',
-  'Sin remontes',
 ];
 
 const opcionesIncidencia = [
@@ -2913,7 +2912,7 @@ const opcionesIncidencia = [
 ];
 
 const opcionesRecomendacion = [
-  'Mantener en el mismo grupo',
+  'Mantener el mismo nivel',
   'Subir de nivel',
   'Bajar de nivel',
   'Revisar por coordinador',
@@ -3031,7 +3030,7 @@ function reporteInicial(): ReporteFormState {
     autonomia: 'Necesita ayuda puntual',
     remontes: 'Cinta',
     incidencia: 'Sin incidencia',
-    recomendacion: 'Mantener en el mismo grupo',
+    recomendacion: 'Mantener el mismo nivel',
     observaciones: '',
   };
 }
@@ -3387,6 +3386,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [formReporte, setFormReporte] = useState<ReporteFormState>(
     reporteInicial()
   );
+  const [nivelPartidaReporte, setNivelPartidaReporte] = useState('');
 
   const overlayEntrenadorAbierto = Boolean(
     grupoActivoEntrenador || reporteActivo
@@ -4642,24 +4642,62 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setCargando(false);
   }
 
-  function abrirFormularioReporte(alumno: AlumnoReporteEntrenador) {
+  async function abrirFormularioReporte(alumno: AlumnoReporteEntrenador) {
     setReporteActivo({
       grupo_id: alumno.grupo_id,
       alumno_id: alumno.alumno_id,
     });
 
+    const nivelFallback =
+      alumno.nivel_alumno ||
+      grupoNivelAFormulario(alumno.nombre_grupo) ||
+      '';
+
+    const pistaFallback =
+      alumno.pista_alumno && alumno.pista_alumno !== '-'
+        ? alumno.pista_alumno
+        : alumno.nombre_grupo.toLowerCase().includes('grande')
+          ? 'Grande'
+          : 'Pequeña';
+
+    setNivelPartidaReporte(nivelFallback);
+
     setFormReporte({
       ...reporteInicial(),
-      nivel: grupoNivelAFormulario(alumno.nombre_grupo),
-      pista: alumno.nombre_grupo.toLowerCase().includes('grande')
-        ? 'Grande'
-        : 'Pequeña',
+      nivel: nivelFallback,
+      pista: pistaFallback,
       observaciones: '',
     });
+
+    try {
+      const datos = await ejecutarFuncionConRespuesta<{
+        nivel_partida: string | null;
+        pista_partida: string | null;
+      }>('obtener_nivel_partida_reporte_app', {
+        p_grupo_id: alumno.grupo_id,
+        p_alumno_id: alumno.alumno_id,
+      });
+
+      const partida = Array.isArray(datos) ? datos[0] : null;
+      const nivelPartida = partida?.nivel_partida || nivelFallback;
+      const pistaPartida = partida?.pista_partida || pistaFallback;
+
+      setNivelPartidaReporte(nivelPartida);
+      setFormReporte((actual) => ({
+        ...actual,
+        nivel: nivelPartida,
+        pista: pistaPartida,
+      }));
+    } catch (err) {
+      // Fallback seguro: si por cualquier motivo no responde la RPC,
+      // mantenemos el nivel ya mostrado por la ficha/grupo y no bloqueamos el reporte.
+      console.warn('No se pudo cargar el nivel de partida del reporte.', err);
+    }
   }
 
   function cerrarFormularioReporte() {
     setReporteActivo(null);
+    setNivelPartidaReporte('');
     setFormReporte(reporteInicial());
   }
 
@@ -12668,7 +12706,15 @@ Gracias!`;
     return (
       <div
         className={`trainer-report-form trainer-report-form--${modo}`}
-        style={esSheet ? undefined : formularioCaja}
+        style={{
+          ...(esSheet ? {} : formularioCaja),
+          border: '1px solid #d5e5ff',
+          borderRadius: 18,
+          padding: esSheet ? 14 : undefined,
+          background:
+            'linear-gradient(180deg, rgba(249,252,255,0.98) 0%, rgba(241,247,255,0.96) 100%)',
+          boxShadow: '0 12px 28px rgba(45, 82, 150, 0.08)',
+        }}
       >
         {esSheet ? (
           <div className="trainer-report-sheet-header">
@@ -12692,7 +12738,14 @@ Gracias!`;
           <h4 style={{ marginTop: 0 }}>Reporte de {alumno.alumno}</h4>
         )}
 
-        <details style={ayudaReporteEntrenadorCaja}>
+        <details
+          style={{
+            ...ayudaReporteEntrenadorCaja,
+            border: '1px solid #d7e4ff',
+            background: '#f7faff',
+            borderRadius: 14,
+          }}
+        >
           <summary style={summaryAyudaReporteEntrenador}>
             Ver ayuda rápida para rellenar reporte
           </summary>
@@ -12707,14 +12760,32 @@ Gracias!`;
         </details>
 
         <div className="trainer-report-grid" style={gridFormulario}>
-          <CampoSelect
-            label="Nivel"
-            value={formReporte.nivel}
-            opciones={opcionesNivel}
-            onChange={(valor) =>
-              setFormReporte({ ...formReporte, nivel: valor })
-            }
-          />
+          <div>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                marginBottom: 8,
+                padding: '5px 9px',
+                borderRadius: 999,
+                background: '#eaf2ff',
+                border: '1px solid #c9dcff',
+                color: '#2453b3',
+                fontSize: 12,
+                fontWeight: 900,
+              }}
+            >
+              Nivel de partida · {nivelPartidaReporte || alumno.nivel_alumno || 'Sin nivel'}
+            </div>
+            <CampoSelect
+              label="Nivel observado"
+              value={formReporte.nivel}
+              opciones={opcionesNivel}
+              onChange={(valor) =>
+                setFormReporte({ ...formReporte, nivel: valor })
+              }
+            />
+          </div>
           <CampoSelect
             label="Actitud"
             value={formReporte.actitud}
@@ -20259,7 +20330,11 @@ Gracias!`;
                         {agendaGruposSesion.map((grupo, indiceGrupoCreado) => (
                           <article
                             key={grupo.grupo_id}
-                            style={estiloGrupoPorPistaApp(grupo)}
+                            style={{
+                              ...estiloGrupoPorPistaApp(grupo),
+                              boxShadow: '0 10px 24px rgba(52, 81, 135, 0.08)',
+                              borderRadius: 16,
+                            }}
                           >
                             <div style={agendaGrupoLinea}>
                               <strong>
@@ -20295,7 +20370,16 @@ Gracias!`;
                               id={`agenda-trabajo-grupo-${grupo.grupo_id}`}
                               style={panelTrabajoGrupo}
                             >
-                              <summary style={summaryTrabajoGrupo}>
+                              <summary
+                                style={{
+                                  ...summaryTrabajoGrupo,
+                                  border: '1px solid #d8e5f7',
+                                  background:
+                                    'linear-gradient(90deg, #f9fbff 0%, #f1f6ff 100%)',
+                                  borderRadius: 13,
+                                  padding: '10px 12px',
+                                }}
+                              >
                                 Trabajo diario y observaciones
                               </summary>
                               <div
@@ -24969,6 +25053,9 @@ Gracias!`;
                                                   ...estiloGrupoPorPistaApp(
                                                     grupo
                                                   ),
+                                                  boxShadow:
+                                                    '0 12px 28px rgba(52, 81, 135, 0.09)',
+                                                  borderRadius: 18,
                                                 }}
                                               >
                                                 <div className="trainer-group-sheet-header">
