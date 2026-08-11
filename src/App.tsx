@@ -20791,8 +20791,14 @@ Gracias!`;
               <section
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                  gridTemplateColumns: esVistaMovilApp
+                    ? 'repeat(2, minmax(0, 1fr))'
+                    : 'repeat(auto-fit, minmax(150px, 1fr))',
                   gap: 10,
+                  width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
+                  boxSizing: 'border-box',
                 }}
               >
                 <div style={tarjetaMetricaOcio('#16a34a', '#f0fdf4')}>
@@ -27601,6 +27607,18 @@ Gracias!`;
               'linear-gradient(135deg, #f5f3ff 0%, #eef2ff 48%, #f8fafc 100%)',
             border: '1px solid #ddd6fe',
             boxShadow: '0 18px 45px rgba(79, 70, 229, 0.10)',
+            width: '100%',
+            maxWidth: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box' as const,
+            ...(esVistaMovilApp
+              ? {
+                  gridTemplateColumns: 'minmax(0, 1fr)',
+                  gap: 14,
+                  padding: 16,
+                  overflow: 'visible',
+                }
+              : {}),
           };
 
           const tarjetaMetricaFicha = (color: string, fondo: string) => ({
@@ -27680,11 +27698,25 @@ Gracias!`;
               border: `1px solid ${borde}`,
               background: fondo,
               boxShadow: '0 14px 30px rgba(15, 23, 42, 0.07)',
+              width: '100%',
+              maxWidth: '100%',
+              minWidth: 0,
+              boxSizing: 'border-box' as const,
+              overflowWrap: 'anywhere' as const,
             };
           };
 
           return (
-            <section style={{ display: 'grid', gap: 16 }}>
+            <section
+              style={{
+                display: 'grid',
+                gap: 16,
+                width: '100%',
+                maxWidth: '100%',
+                minWidth: 0,
+                boxSizing: 'border-box',
+              }}
+            >
               <article style={estiloFichaHero}>
                 <div>
                   <span
@@ -27703,6 +27735,11 @@ Gracias!`;
                       margin: '8px 0 0',
                       color: '#475569',
                       fontWeight: 650,
+                      minWidth: 0,
+                      maxWidth: '100%',
+                      whiteSpace: 'normal',
+                      overflowWrap: 'anywhere',
+                      lineHeight: 1.35,
                     }}
                   >
                     Baby e Intensivos juntos. Aquí queda el nivel real que usa
@@ -27715,7 +27752,10 @@ Gracias!`;
                     display: 'flex',
                     gap: 10,
                     flexWrap: 'wrap',
-                    justifyContent: 'flex-end',
+                    justifyContent: esVistaMovilApp ? 'stretch' : 'flex-end',
+                    width: esVistaMovilApp ? '100%' : undefined,
+                    maxWidth: '100%',
+                    minWidth: 0,
                   }}
                 >
                   <button
@@ -27726,6 +27766,13 @@ Gracias!`;
                       borderColor: '#bbf7d0',
                       color: '#166534',
                       background: '#f0fdf4',
+                      ...(esVistaMovilApp
+                        ? {
+                            flex: '1 1 150px',
+                            minWidth: 0,
+                            whiteSpace: 'normal',
+                          }
+                        : {}),
                     }}
                   >
                     Ver alumnos Ocio ({ocioAlumnos.length})
@@ -27735,12 +27782,33 @@ Gracias!`;
                     onClick={() =>
                       setMostrarNuevoAlumnoManual((valor) => !valor)
                     }
-                    style={botonPrincipal}
+                    style={{
+                      ...botonPrincipal,
+                      ...(esVistaMovilApp
+                        ? {
+                            flex: '1 1 150px',
+                            minWidth: 0,
+                            whiteSpace: 'normal',
+                          }
+                        : {}),
+                    }}
                     title="Crear ficha manual para un niño que no viene de listado."
                   >
                     + Añadir alumno
                   </button>
-                  <button onClick={cargarAlumnos} style={botonSecundario}>
+                  <button
+                    onClick={cargarAlumnos}
+                    style={{
+                      ...botonSecundario,
+                      ...(esVistaMovilApp
+                        ? {
+                            flex: '1 1 120px',
+                            minWidth: 0,
+                            whiteSpace: 'normal',
+                          }
+                        : {}),
+                    }}
+                  >
                     Refrescar
                   </button>
                 </div>
@@ -27979,7 +28047,12 @@ Gracias!`;
 
               <article
                 id="fichas-listado-alumnos"
-                style={{ ...agendaBloqueBlanco, scrollMarginTop: 18 }}
+                style={{
+                  ...agendaBloqueBlanco,
+                  width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
+                  boxSizing: 'border-box', scrollMarginTop: 18 }}
               >
                 <div style={{ display: 'grid', gap: 12 }}>
                   <input
