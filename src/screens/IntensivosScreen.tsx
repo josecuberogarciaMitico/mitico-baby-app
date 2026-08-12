@@ -3,6 +3,7 @@ import { CampoSelect } from '../lib/appHelpers';
 export function PantallaIntensivos(ctx: any) {
   const { abrirPanelIntensivo, actualizarDiaIntensivoDesdeApp, actualizarDiplomaIntensivo,
     actualizarNivelAlumnoIntensivo, actualizarRecuperacionIntensivo, agendaBadgeModalidad,
+    agendaAlumnoLinea, agendaGrupoLinea, agendaGrupoPropuesta,
     agruparRecomendacionesDia, alumnoSeleccionadoIntensivoId, alumnosDelIntensivo,
     alumnosDisponiblesParaIntensivo, asistenciasDelIntensivoDia, autoproponerNivelesDiploma,
     avisoCompleto, avisoDisponibilidadDiaIntensivo, avisoNeutral, avisoPendiente,
@@ -12,7 +13,11 @@ export function PantallaIntensivos(ctx: any) {
     busquedaAlumnoIntensivo, busquedaIntensivos, cabeceraPantalla,
     calcularFechasCuatroSesionesIntensivo, cargando, cargarIntensivos, cerrarPanelesIntensivo,
     chipResumenCursoIntensivo, claveAlumnoRecomendado, claveGrupoRecomendado, codigoNivelPorId,
-    crearCuatroSesionesIntensivo, crearGrupoDesdeRecomendacion, crearGrupoNormalIntensivo,
+    crearCuatroSesionesIntensivo, crearGrupoDesdeRecomendacion,
+    crearTodosGruposDesdeRecomendacionIntensivo, crearGrupoNormalIntensivo,
+    crearGrupoVacioPropuestaIntensivo, generarPlantillaCuatroDiasIntensivo,
+    crearPlantillaCuatroDiasIntensivo, cargarEdicionGruposIntensivoDia,
+    guardarComposicionDiaIntensivo,
     crearIntensivoDesdeApp, destinoAlumnoRecomendado, diaActivoIntensivoId,
     diaAsistenciaSeleccionadoId, diaEditandoIntensivoId, diaGrupoSeleccionadoId,
     diaIntensivoInicial, diasDelIntensivo, eliminarRecuperacionIntensivo, entrenadores,
@@ -61,7 +66,7 @@ export function PantallaIntensivos(ctx: any) {
               <details style={{ ...ayudaDesplegableCompacta, marginTop: 8 }}>
                 <summary>Ayuda rápida</summary>
                 <p style={{ margin: '8px 0 0', color: '#475569' }}>
-                  Crea el curso, pega Aimharder, trabaja cada día y cierra evaluación final por alumno.
+                  Crea el curso, recibe alumnos desde Administración, prepara grupos por día y termina la evaluación final con los reportes reales.
                 </p>
               </details>
             </div>
@@ -402,7 +407,7 @@ export function PantallaIntensivos(ctx: any) {
                       onClick={() => abrirPanelIntensivo(intensivo, 'alumnos')}
                       style={botonPasoIntensivo(gestorAlumnosAbierto)}
                     >
-                      2 · Listado y alumnos
+                      2 · Alumnos inscritos
                     </button>
 
                     <button
@@ -632,7 +637,7 @@ export function PantallaIntensivos(ctx: any) {
                                   value={plantillaCuatroSesionesIntensivo.tipo}
                                   onChange={(e) => setPlantillaCuatroSesionesIntensivo({
                                     ...plantillaCuatroSesionesIntensivo,
-                                    tipo: e.target.value as PlantillaCuatroSesionesIntensivoState['tipo'],
+                                    tipo: e.target.value as 'cuatro_dias' | 'dos_fines_semana' | 'cuatro_sabados' | 'cuatro_domingos',
                                   })}
                                   style={selectCampo}
                                 >
@@ -844,163 +849,31 @@ export function PantallaIntensivos(ctx: any) {
 
                   {gestorAlumnosAbierto && (
                     <div style={formularioCaja}>
-                      <h4 style={{ marginTop: 0 }}>
-                        Listado y alumnos · {intensivo.intensivo}
-                      </h4>
-
-                      <details style={ayudaDesplegableCompacta}>
-                        <summary>Ayuda rápida</summary>
-                        <div style={{ marginTop: 8, color: '#475569' }}>
-                          Día 1 es el listado principal de Aimharder. Puedes volver a pegar listado cualquier día si hay cambios.
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: 10,
+                          flexWrap: 'wrap',
+                          alignItems: 'center',
+                          marginBottom: 12,
+                        }}
+                      >
+                        <div>
+                          <h4 style={{ margin: 0 }}>
+                            Fichas · {intensivo.intensivo}
+                          </h4>
+                          <p style={{ margin: '4px 0 0', color: '#64748b' }}>
+                            {alumnosInscritosIntensivo.length} alumnos inscritos
+                          </p>
                         </div>
-                      </details>
-
-                      <div style={{ display: 'flex', gap: 8, marginTop: 12, marginBottom: 12, flexWrap: 'wrap' }}>
-                        <button
-                          onClick={() => {
-                            setMostrarVolcadoIntensivoId(
-                              volcadoAbierto ? null : intensivo.intensivo_id
-                            );
-                            setResultadoVolcadoIntensivo([]);
-                          }}
-                          style={botonPrincipal}
-                        >
-                          {volcadoAbierto ? 'Cerrar Aimharder' : 'Pegar listado Aimharder'}
-                        </button>
                       </div>
 
-                      {volcadoAbierto && (
-                        <div style={miniTarjetaBlanca}>
-                          <h4 style={{ marginTop: 0 }}>Listado Aimharder</h4>
 
-                          <label style={labelCampo}>
-                            Pega aquí el listado completo
-                            <textarea
-                              value={textoVolcadoIntensivo}
-                              onChange={(e) => setTextoVolcadoIntensivo(e.target.value)}
-                              placeholder={
-                                'PABLO SINDE ANDRES\nReserva el 11/05/2026 a las 10:04\nTermina tarifa el 17/05/2026\n\nSOFIA XENOFONTOS GONZALEZ\nReserva el 11/05/2026 a las 10:05'
-                              }
-                              style={{
-                                ...inputCampo,
-                                minHeight: 170,
-                                resize: 'vertical',
-                                lineHeight: 1.4,
-                              }}
-                            />
-                          </label>
-
-                          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                            <button
-                              onClick={() => volcarListadoAlumnosIntensivo(intensivo)}
-                              style={botonPrincipal}
-                            >
-                              Volcar y actualizar alumnos
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setTextoVolcadoIntensivo('');
-                                setResultadoVolcadoIntensivo([]);
-                              }}
-                              style={botonSecundario}
-                            >
-                              Limpiar
-                            </button>
-                          </div>
-
-                          {resultadoVolcadoIntensivo.length > 0 && (
-                            <div style={{ marginTop: 12 }}>
-                              <div style={avisoCompleto}>
-                                Volcado completado: {resultadoVolcadoIntensivo.length} alumnos · {totalVolcadoExistentes} existentes · {totalVolcadoNuevos} nuevos
-                              </div>
-
-                              <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-                                {resultadoVolcadoIntensivo.map((registro) => (
-                                  <div key={registro.alumno_id} style={miniTarjetaBlanca}>
-                                    <p style={{ margin: 0, fontWeight: 'bold' }}>
-                                      {registro.alumno}
-                                    </p>
-                                    <p style={{ margin: '6px 0' }}>
-                                      {registro.resultado} · Nivel: {registro.nivel_resumen || 'SIN NIVEL'} · Pista: {registro.pista_resumen || 'Pendiente'}
-                                    </p>
-                                    <p style={{ margin: 0 }}>
-                                      Ficha: {registro.estado_ficha}
-                                    </p>
-                                    {registro.observacion_visible_entrenador && (
-                                      <p style={{ margin: '6px 0 0' }}>
-                                        Obs. entrenador: {registro.observacion_visible_entrenador}
-                                      </p>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      <div style={gridFormulario}>
-                        <label style={labelCampo}>
-                          Buscar alumno
-                          <input
-                            value={busquedaAlumnoIntensivo}
-                            onChange={(e) => {
-                              setBusquedaAlumnoIntensivo(e.target.value);
-                              setAlumnoSeleccionadoIntensivoId('');
-                            }}
-                            placeholder="Escribe nombre o apellido..."
-                            style={inputCampo}
-                          />
-                        </label>
-
-                        <label style={labelCampo}>
-                          Alumno disponible
-                          <select
-                            value={alumnoSeleccionadoIntensivoId}
-                            onChange={(e) =>
-                              setAlumnoSeleccionadoIntensivoId(e.target.value)
-                            }
-                            style={selectCampo}
-                          >
-                            <option value="">Selecciona alumno</option>
-                            {alumnosDisponiblesIntensivo.map((alumno) => (
-                              <option key={alumno.alumno_id} value={alumno.alumno_id}>
-                                {alumno.alumno}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
-                      </div>
-
-                      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                        <button
-                          onClick={() => añadirAlumnoAIntensivo(intensivo)}
-                          style={botonPrincipal}
-                        >
-                          Añadir alumno
-                        </button>
-
-                        <button
-                          onClick={() => {
-                            setGestionarAlumnosIntensivoId(null);
-                            setAlumnoSeleccionadoIntensivoId('');
-                            setBusquedaAlumnoIntensivo('');
-                            setMostrarVolcadoIntensivoId(null);
-                            setTextoVolcadoIntensivo('');
-                            setResultadoVolcadoIntensivo([]);
-                          }}
-                          style={botonSecundario}
-                        >
-                          Cerrar gestión
-                        </button>
-                      </div>
-
-                      <h4>Alumnos inscritos · {alumnosInscritosIntensivo.length}</h4>
 
                       {alumnosInscritosIntensivo.length === 0 && (
                         <p style={{ marginBottom: 0 }}>
-                          Todavía no hay alumnos inscritos en este intensivo.
+                          Todavía no hay alumnos inscritos. Valida sus tests en Administración y añádelos a este intensivo.
                         </p>
                       )}
 
@@ -1021,28 +894,26 @@ export function PantallaIntensivos(ctx: any) {
                               key={registro.intensivo_alumno_id}
                               style={{
                                 ...miniTarjetaBlanca,
-                                background: resumenAlumno?.estado_ficha === 'completa' ? 'rgba(240,253,244,.62)' : 'rgba(255,247,237,.8)',
-                                border: resumenAlumno?.estado_ficha === 'completa' ? '1px solid rgba(22,163,74,.22)' : '1px solid rgba(249,115,22,.28)',
+                                background: '#ffffff',
+                                border: '1px solid #e2e8f0',
+                                boxShadow: '0 4px 14px rgba(15, 23, 42, 0.04)',
                               }}
                             >
                               <summary style={{ cursor: 'pointer', listStyle: 'none' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                                  <strong>{registro.alumno}</strong>
-                                  <span style={agendaBadgeModalidad}>Nivel {nivelUsado}</span>
+                                  <div>
+                                    <strong>{registro.alumno}</strong>
+                                    <p style={{ margin: '5px 0 0', color: '#475569' }}>
+                                      Nivel {nivelUsado} · {pistaUsada}
+                                    </p>
+                                  </div>
+                                  <span style={{ color: '#475569', fontSize: 13, fontWeight: 850 }}>
+                                    Ver ficha ▾
+                                  </span>
                                 </div>
-                                <p style={{ margin: '6px 0 0', color: '#475569' }}>
-                                  {fuenteNivel} · {origenNivel} · {pistaUsada}
-                                </p>
                               </summary>
 
                               <div style={{ marginTop: 12 }}>
-                                <div style={avisoNeutral}>
-                                  <strong>Nivel ficha:</strong> {nivelUsado} ·{' '}
-                                  <strong>Fuente:</strong> {fuenteNivel} ·{' '}
-                                  <strong>Origen:</strong> {origenNivel} ·{' '}
-                                  <strong>Pista:</strong> {pistaUsada}
-                                </div>
-
                                 <p>
                                   <strong>Ficha:</strong>{' '}
                                   {resumenAlumno?.estado_ficha || registro.estado_diploma || '-'}
@@ -1053,6 +924,27 @@ export function PantallaIntensivos(ctx: any) {
                                     <strong>Obs. entrenador:</strong>{' '}
                                     {resumenAlumno.observacion_visible_entrenador}
                                   </p>
+                                )}
+
+                                {Number(resumenAlumno?.total_reportes || 0) > 0 && (
+                                  <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
+                                    <p style={{ margin: 0 }}>
+                                      <strong>Última autonomía:</strong>{' '}
+                                      {resumenAlumno?.ultima_autonomia || '-'}
+                                    </p>
+                                    <p style={{ margin: 0 }}>
+                                      <strong>Última actitud:</strong>{' '}
+                                      {resumenAlumno?.ultima_actitud || '-'}
+                                    </p>
+                                    <p style={{ margin: 0 }}>
+                                      <strong>Última técnica:</strong>{' '}
+                                      {resumenAlumno?.ultima_tecnica || '-'}
+                                    </p>
+                                    <p style={{ margin: 0 }}>
+                                      <strong>Recomendación:</strong>{' '}
+                                      {resumenAlumno?.ultima_recomendacion || '-'}
+                                    </p>
+                                  </div>
                                 )}
 
                                 <div style={gridFormulario}>
@@ -1106,7 +998,7 @@ export function PantallaIntensivos(ctx: any) {
                         <details style={ayudaDesplegableCompacta}>
                           <summary>Ayuda rápida</summary>
                           <div style={{ marginTop: 8, color: '#475569' }}>
-                            Por defecto cuenta como asistido. Marca solo el día que faltó; la recuperación se prepara automáticamente.
+                            La asistencia se marca una sola vez en Vista entrenador / Días de entrenamiento. Aquí solo la consultas y gestionas recuperaciones.
                           </div>
                         </details>
                       </div>
@@ -1166,15 +1058,8 @@ export function PantallaIntensivos(ctx: any) {
                                         <p style={{ margin: '0 0 8px', fontWeight: 800, color: ausente ? '#c2410c' : '#15803d' }}>
                                           {ausente ? 'Faltó' : 'Asistió'}
                                         </p>
-                                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                                          <button
-                                            type="button"
-                                            disabled={!asistencia}
-                                            onClick={() => asistencia && marcarAsistenciaIntensivo(asistencia, ausente ? 'PRESENTE' : 'NO_PRESENTADO', !ausente)}
-                                            style={ausente ? botonSecundario : botonPeligroMini}
-                                          >
-                                            {ausente ? 'Quitar falta' : 'Marcar falta'}
-                                          </button>
+                                        <div style={avisoNeutral}>
+                                          Estado registrado en el entrenamiento real. Para cambiarlo, hazlo desde Vista entrenador.
                                         </div>
                                       </div>
                                     );
@@ -1254,14 +1139,78 @@ export function PantallaIntensivos(ctx: any) {
                           </details>
                         );
                       })()}
+                      <div style={{ marginTop: 14 }}>
+                      <details style={{ ...ayudaDesplegableCompacta, marginBottom: 12 }}>
+                        <summary>Añadir alumno existente, solo para una excepción</summary>
+                        <div style={{ marginTop: 10 }}>
+                      <div style={gridFormulario}>
+                        <label style={labelCampo}>
+                          Buscar alumno
+                          <input
+                            value={busquedaAlumnoIntensivo}
+                            onChange={(e) => {
+                              setBusquedaAlumnoIntensivo(e.target.value);
+                              setAlumnoSeleccionadoIntensivoId('');
+                            }}
+                            placeholder="Escribe nombre o apellido..."
+                            style={inputCampo}
+                          />
+                        </label>
+
+                        <label style={labelCampo}>
+                          Alumno disponible
+                          <select
+                            value={alumnoSeleccionadoIntensivoId}
+                            onChange={(e) =>
+                              setAlumnoSeleccionadoIntensivoId(e.target.value)
+                            }
+                            style={selectCampo}
+                          >
+                            <option value="">Selecciona alumno</option>
+                            {alumnosDisponiblesIntensivo.map((alumno) => (
+                              <option key={alumno.alumno_id} value={alumno.alumno_id}>
+                                {alumno.alumno}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+
+                      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => añadirAlumnoAIntensivo(intensivo)}
+                          style={botonPrincipal}
+                        >
+                          Añadir alumno
+                        </button>
+
+                        <button
+                          onClick={() => {
+                            setGestionarAlumnosIntensivoId(null);
+                            setAlumnoSeleccionadoIntensivoId('');
+                            setBusquedaAlumnoIntensivo('');
+                            setMostrarVolcadoIntensivoId(null);
+                            setTextoVolcadoIntensivo('');
+                            setResultadoVolcadoIntensivo([]);
+                          }}
+                          style={botonSecundario}
+                        >
+                          Cerrar gestión
+                        </button>
+                      </div>
+
+                        </div>
+                      </details>
+                      </div>
                     </div>
                   )}
 
                   {gestorGruposAbierto && (
                     <div style={formularioCaja}>
                       <h4 style={{ marginTop: 0 }}>
-                        Grupos por día · {intensivo.intensivo}
+                        Preparar grupos por día · {intensivo.intensivo}
                       </h4>
+
 
 
                       {diasIntensivo.length === 0 && (
@@ -1272,215 +1221,196 @@ export function PantallaIntensivos(ctx: any) {
 
                       {diasIntensivo.length > 0 && (
                         <>
-                          <details style={{ ...miniTarjetaBlanca, marginBottom: 12 }}>
-                            <summary style={{ fontWeight: 'bold', cursor: 'pointer' }}>
-                              Crear grupo manual
-                            </summary>
-                            <div style={gridFormulario}>
-                            <label style={labelCampo}>
-                              Día del intensivo
-                              <select
-                                value={
-                                  diaSeleccionadoGrupo?.intensivo_dia_id ||
-                                  diaGrupoSeleccionadoId
-                                }
-                                onChange={(e) => setDiaGrupoSeleccionadoId(e.target.value)}
-                                style={selectCampo}
-                              >
-                                {diasIntensivo.map((dia) => (
-                                  <option
-                                    key={dia.intensivo_dia_id}
-                                    value={dia.intensivo_dia_id}
-                                  >
-                                    Día {dia.numero_dia} · {formatearFecha(dia.fecha)} ·{' '}
-                                    {dia.hora_inicio.slice(0, 5)}–{dia.hora_fin.slice(0, 5)}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
+                                                    <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns:
+                                'repeat(auto-fit, minmax(185px, 1fr))',
+                              gap: 8,
+                              marginBottom: 12,
+                            }}
+                          >
+                            {diasIntensivo.map((dia) => {
+                              const seleccionado =
+                                diaSeleccionadoGrupo?.intensivo_dia_id ===
+                                dia.intensivo_dia_id;
+                              const totalGrupos =
+                                gruposNormalesDelDiaIntensivo(
+                                  dia.intensivo_dia_id
+                                ).length;
 
-                            <label style={labelCampo}>
-                              Nombre grupo
-                              <input
-                                value={formGrupoIntensivo.nombre_grupo}
-                                onChange={(e) =>
-                                  setFormGrupoIntensivo({
-                                    ...formGrupoIntensivo,
-                                    nombre_grupo: e.target.value,
-                                  })
-                                }
-                                placeholder="Grupo Intensivo 1"
-                                style={inputCampo}
-                              />
-                            </label>
-
-                            <label style={labelCampo}>
-                              Nivel grupo
-                              <input
-                                value={formGrupoIntensivo.nivel_grupo}
-                                onChange={(e) =>
-                                  setFormGrupoIntensivo({
-                                    ...formGrupoIntensivo,
-                                    nivel_grupo: e.target.value,
-                                  })
-                                }
-                                placeholder="B / B+ / Pista pequeña..."
-                                style={inputCampo}
-                              />
-                            </label>
-
-                            <CampoSelect
-                              label="Pista"
-                              value={formGrupoIntensivo.pista}
-                              opciones={opcionesPistaGrupoIntensivo}
-                              onChange={(valor) =>
-                                setFormGrupoIntensivo({
-                                  ...formGrupoIntensivo,
-                                  pista: valor,
-                                })
-                              }
-                            />
-
-                            <label style={labelCampo}>
-                              Punto encuentro
-                              <select
-                                value={formGrupoIntensivo.punto_encuentro || '5'}
-                                onChange={(e) =>
-                                  setFormGrupoIntensivo({
-                                    ...formGrupoIntensivo,
-                                    punto_encuentro: e.target.value,
-                                  })
-                                }
-                                style={selectCampo}
-                              >
-                                {['5', '9', '10', '6', '4', '7', '3', '2', '1'].map((punto) => (
-                                  <option key={`punto-intensivo-${punto}`} value={punto}>
-                                    Punto {punto}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-
-                            <div style={avisoNeutral}>{avisoDisponibilidadDiaIntensivo(diaSeleccionadoGrupo)}</div>
-
-                            <label style={labelCampo}>
-                              Entrenador
-                              <select
-                                value={formGrupoIntensivo.entrenador_id}
-                                onChange={(e) =>
-                                  setFormGrupoIntensivo({
-                                    ...formGrupoIntensivo,
-                                    entrenador_id: e.target.value,
-                                  })
-                                }
-                                style={selectCampo}
-                              >
-                                <option value="">Selecciona entrenador</option>
-                                {entrenadoresDisponiblesDiaIntensivo(diaSeleccionadoGrupo)
-                                  .filter((entrenador) => {
-                                    const usadoEnPropuesta = Object.values(entrenadoresPorGrupoRecomendado).includes(entrenador.entrenador_id) || Object.values(entrenadoresApoyoPorGrupoRecomendado).includes(entrenador.entrenador_id);
-                                    return !usadoEnPropuesta || entrenador.entrenador_id === formGrupoIntensivo.entrenador_id;
-                                  })
-                                  .map((entrenador) => (
-                                  <option
-                                    key={entrenador.entrenador_id}
-                                    value={entrenador.entrenador_id}
-                                  >
-                                    {entrenador.nombre_completo}
-                                  </option>
-                                ))}
-                              </select>
-                            </label>
-
-                            <label style={labelCampo}>
-                              Segundo entrenador, si hace falta
-                              <select
-                                value={formGrupoIntensivo.entrenador_apoyo_id}
-                                onChange={(e) =>
-                                  setFormGrupoIntensivo({
-                                    ...formGrupoIntensivo,
-                                    entrenador_apoyo_id: e.target.value,
-                                  })
-                                }
-                                style={selectCampo}
-                              >
-                                <option value="">Sin segundo entrenador</option>
-                                {entrenadoresDisponiblesDiaIntensivo(diaSeleccionadoGrupo)
-                                  .filter((entrenador) => entrenador.entrenador_id !== formGrupoIntensivo.entrenador_id)
-                                  .map((entrenador) => (
-                                    <option key={`manual-apoyo-${entrenador.entrenador_id}`} value={entrenador.entrenador_id}>
-                                      {entrenador.nombre_completo}
-                                    </option>
-                                  ))}
-                              </select>
-                            </label>
-
-                            <label style={labelCampo}>
-                              Publicación
-                              <select
-                                value={formGrupoIntensivo.publicado ? 'si' : 'no'}
-                                onChange={(e) =>
-                                  setFormGrupoIntensivo({
-                                    ...formGrupoIntensivo,
-                                    publicado: e.target.value === 'si',
-                                  })
-                                }
-                                style={selectCampo}
-                              >
-                                <option value="si">Publicado para entrenador</option>
-                                <option value="no">Borrador</option>
-                              </select>
-                            </label>
+                              return (
+                                <button
+                                  key={`int-dia-${dia.intensivo_dia_id}`}
+                                  type="button"
+                                  onClick={() =>
+                                    setDiaGrupoSeleccionadoId(
+                                      dia.intensivo_dia_id
+                                    )
+                                  }
+                                  style={
+                                    seleccionado
+                                      ? botonPrincipal
+                                      : botonSecundario
+                                  }
+                                >
+                                  Día {dia.numero_dia} · {formatearFecha(dia.fecha)}
+                                  {totalGrupos > 0
+                                    ? ` · ${totalGrupos} grupos`
+                                    : ' · pendiente'}
+                                </button>
+                              );
+                            })}
                           </div>
-                          </details>
 
-                          <div style={{ ...miniTarjetaBlanca, marginTop: 12 }}>
+<div
+                            id="intensivo-recomendador-activo"
+                            style={{ ...miniTarjetaBlanca, marginTop: 12 }}
+                          >
                             <h4 style={{ marginTop: 0 }}>Recomendador</h4>
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                              <button
-                                onClick={() =>
-                                  generarRecomendacionGruposIntensivo(
-                                    diaSeleccionadoGrupo || undefined
-                                  )
-                                }
-                                style={botonPrincipal}
-                              >
-                                Generar propuesta automática
-                              </button>
-
-                              <button
-                                onClick={() => {
-                                  if (!diaSeleccionadoGrupo) return;
-                                  setRecomendacionesGrupoIntensivo((anteriores) =>
-                                    anteriores.filter(
-                                      (registro) =>
-                                        registro.intensivo_dia_id !==
-                                        diaSeleccionadoGrupo.intensivo_dia_id
+                              {diasIntensivo.every(
+                                (dia) =>
+                                  gruposNormalesDelDiaIntensivo(
+                                    dia.intensivo_dia_id
+                                  ).length === 0
+                              ) && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    generarPlantillaCuatroDiasIntensivo(
+                                      intensivo
                                     )
-                                  );
-                                  setEntrenadoresPorGrupoRecomendado({});
-                                  setDestinoAlumnoRecomendado({});
-                                  setTrabajoDiarioPorGrupoRecomendado({});
-                                  setObservacionesPorGrupoRecomendado({});
-                                }}
-                                style={botonSecundario}
-                              >
-                                Limpiar propuesta
-                              </button>
+                                  }
+                                  style={botonPrincipal}
+                                >
+                                  Generar plantilla 4 días
+                                </button>
+                              )}
+
+                              {gruposRecomendadosDia.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    crearGrupoVacioPropuestaIntensivo(
+                                      diaSeleccionadoGrupo.intensivo_dia_id
+                                    )
+                                  }
+                                  style={botonSecundario}
+                                >
+                                  + Crear grupo nuevo
+                                </button>
+                              )}
+
+                              {diasIntensivo.length === 4 &&
+                                diasIntensivo.every(
+                                  (dia) =>
+                                    gruposNormalesDelDiaIntensivo(
+                                      dia.intensivo_dia_id
+                                    ).length === 0
+                                ) &&
+                                gruposRecomendadosDia.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      crearPlantillaCuatroDiasIntensivo(
+                                        intensivo
+                                      )
+                                    }
+                                    style={botonPrincipal}
+                                  >
+                                    Crear esta plantilla en los 4 días
+                                  </button>
+                                )}
+
+                              {gruposDiaSeleccionado.length > 0 &&
+                                gruposRecomendadosDia.length === 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      cargarEdicionGruposIntensivoDia(
+                                        diaSeleccionadoGrupo || undefined
+                                      )
+                                    }
+                                    style={botonPrincipal}
+                                  >
+                                    Editar composición del día
+                                  </button>
+                                )}
+
+                              {gruposDiaSeleccionado.length > 0 &&
+                                gruposRecomendadosDia.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      guardarComposicionDiaIntensivo(
+                                        intensivo,
+                                        diaSeleccionadoGrupo || undefined
+                                      )
+                                    }
+                                    style={botonPrincipal}
+                                  >
+                                    Guardar cambios de este día
+                                  </button>
+                                )}
+
+                              {gruposRecomendadosDia.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!diaSeleccionadoGrupo) return;
+                                    setRecomendacionesGrupoIntensivo(
+                                      (anteriores) =>
+                                        anteriores.filter(
+                                          (registro) =>
+                                            registro.intensivo_dia_id !==
+                                            diaSeleccionadoGrupo.intensivo_dia_id
+                                        )
+                                    );
+                                    setDestinoAlumnoRecomendado({});
+                                    setTrabajoDiarioPorGrupoRecomendado({});
+                                    setObservacionesPorGrupoRecomendado({});
+                                  }}
+                                  style={botonSecundario}
+                                >
+                                  Limpiar cambios de este día
+                                </button>
+                              )}
                             </div>
 
                             {alumnosPendientesRecomendacion > 0 && (
-                              <div style={{ ...avisoCompleto, marginTop: 10 }}>
-                                Propuesta cargada: {gruposRecomendadosDia.length} grupos · {alumnosPendientesRecomendacion} alumnos pendientes.
-                              </div>
+                              <>
+                                <p
+                                  style={{
+                                    margin: '10px 0 0',
+                                    color: '#64748b',
+                                    fontSize: 13,
+                                    fontWeight: 800,
+                                  }}
+                                >
+                                  Plantilla base · {gruposRecomendadosDia.length} grupos · {alumnosPendientesRecomendacion} alumnos.
+                                </p>
+                                {diasIntensivo.every(
+                                  (dia) =>
+                                    gruposNormalesDelDiaIntensivo(
+                                      dia.intensivo_dia_id
+                                    ).length === 0
+                                ) && (
+                                  <p
+                                    style={{
+                                      margin: '4px 0 0',
+                                      color: '#64748b',
+                                      fontSize: 12,
+                                    }}
+                                  >
+                                    Los cambios que hagas aquí serán la base de los 4 días.
+                                  </p>
+                                )}
+                              </>
                             )}
 
                             {gruposRecomendadosDia.length > 0 && (
                               <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
-                                <div style={avisoNeutral}>
-                                  Propuesta editable antes de publicar: puedes mover un niño a otro grupo o dejarlo fuera de momento. El trabajo diario se genera solo según nivel/pista y puedes retocarlo antes de crear el grupo.
-                                </div>
-
                                 {gruposRecomendadosDia.map(({ nombreGrupo, alumnosGrupo }) => {
                                   const primero = alumnosGrupo[0];
                                   const clave = diaSeleccionadoGrupo
@@ -1489,60 +1419,64 @@ export function PantallaIntensivos(ctx: any) {
                                         nombreGrupo
                                       )
                                     : nombreGrupo;
-                                  const alertasGrupo = Array.from(
-                                    new Set(
-                                      alumnosGrupo
-                                        .map((alumno) => alumno.alerta_grupo)
-                                        .filter((alerta) => alerta && alerta !== 'OK')
-                                    )
-                                  );
-                                  const nivelesGrupo = Array.from(
-                                    new Set(
-                                      alumnosGrupo
-                                        .map((alumno) => alumno.nivel_resumen)
-                                        .filter(Boolean)
-                                    )
-                                  ).join(' / ');
                                   const trabajoAuto = generarTrabajoDiarioAutomaticoGrupo(
                                     nombreGrupo,
                                     alumnosGrupo
                                   );
                                   const trabajoGrupo = trabajoDiarioPorGrupoRecomendado[clave] ?? trabajoAuto;
                                   const observacionesGrupo = observacionesPorGrupoRecomendado[clave] ?? '';
-                                  const observacionesAutoGrupoIntensivo = observacionesAutomaticasGrupoIntensivo(alumnosGrupo);
+                                  const observacionesAutoGrupo =
+                                    observacionesAutomaticasGrupoIntensivo(alumnosGrupo);
                                   const validacionPedagogicaGrupo = textoValidacionPedagogicaGrupoApp(alumnosGrupo);
 
                                   return (
-                                    <div key={clave} style={miniTarjetaBlanca}>
-                                      <h4 style={{ marginTop: 0, marginBottom: 6 }}>
-                                        {nombreGrupo}
-                                      </h4>
+                                    <article
+                                      key={clave}
+                                      style={{
+                                        ...agendaGrupoPropuesta,
+                                        ...estiloGrupoPorPistaApp({
+                                          pista: primero?.pista_recomendada,
+                                          nivel_grupo: primero?.nivel_resumen,
+                                        }),
+                                      }}
+                                    >
+                                      <div style={agendaGrupoLinea}>
+                                        <h3 style={{ margin: 0 }}>{nombreGrupo}</h3>
+                                        <span>{alumnosGrupo.length} niños</span>
+                                      </div>
 
-                                      <p style={{ margin: '4px 0' }}>
+                                      <p>
                                         <strong>Bloque:</strong>{' '}
                                         {primero?.bloque_tecnico || '-'} ·{' '}
                                         <strong>Pista:</strong>{' '}
-                                        {primero?.pista_recomendada || '-'} ·{' '}
-                                        <strong>Niveles:</strong> {nivelesGrupo || '-'} ·{' '}
-                                        <strong>Alumnos:</strong> {alumnosGrupo.length}
+                                        {primero?.pista_recomendada || '-'}
                                       </p>
 
-                                      {alertasGrupo.length > 0 && (
-                                        <div style={avisoPendiente}>
-                                          {alertasGrupo.join(' | ')}
-                                        </div>
-                                      )}
-
-                                      <div style={{ ...estiloValidacionPedagogicaApp(validacionPedagogicaGrupo.estado), marginTop: 10 }}>
+                                      <div
+                                        style={{
+                                          ...estiloValidacionPedagogicaApp(
+                                            validacionPedagogicaGrupo.estado
+                                          ),
+                                          marginBottom: 10,
+                                        }}
+                                      >
                                         <strong>{validacionPedagogicaGrupo.titulo}</strong>
                                         {validacionPedagogicaGrupo.mensajes.length > 0 && (
                                           <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
-                                            {validacionPedagogicaGrupo.mensajes.map((mensaje) => <li key={`${clave}-${mensaje}`}>{mensaje}</li>)}
+                                            {validacionPedagogicaGrupo.mensajes.map((mensaje) => (
+                                              <li key={`${clave}-${mensaje}`}>{mensaje}</li>
+                                            ))}
                                           </ul>
                                         )}
                                       </div>
 
-                                      <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
+                                      <div
+                                        style={{
+                                          display: 'grid',
+                                          gap: 8,
+                                          marginBottom: 12,
+                                        }}
+                                      >
                                         {alumnosGrupo.map((alumno) => {
                                           const claveAlumno = diaSeleccionadoGrupo
                                             ? claveAlumnoRecomendado(
@@ -1554,216 +1488,155 @@ export function PantallaIntensivos(ctx: any) {
                                           return (
                                             <div
                                               key={`${clave}-${alumno.alumno_id}`}
-                                              style={{
-                                                borderBottom: '1px solid #eeeeee',
-                                                paddingBottom: 8,
-                                              }}
+                                              style={agendaAlumnoLinea}
                                             >
-                                              <strong>
-                                                - {alumno.alumno} · {alumno.nivel_resumen || 'SIN NIVEL'}
-                                              </strong>
-                                              <p style={{ margin: '3px 0 0', color: '#64748b', fontSize: 13 }}>
-                                                {alumno.fuente_nivel}{alumno.edad ? ` · ${alumno.edad} años` : ''}
-                                              </p>
-
-                                              <div style={{ ...gridFormulario, marginTop: 6 }}>
-                                                <label style={labelCampo}>
-                                                  Mover / dejar fuera
-                                                  <select
-                                                    value={
-                                                      destinoAlumnoRecomendado[claveAlumno] ||
-                                                      alumno.grupo_recomendado
-                                                    }
-                                                    onChange={(e) =>
-                                                      setDestinoAlumnoRecomendado({
-                                                        ...destinoAlumnoRecomendado,
-                                                        [claveAlumno]: e.target.value,
-                                                      })
-                                                    }
-                                                    style={selectCampo}
-                                                  >
-                                                    {nombresBaseRecomendados.map((nombreBase) => (
-                                                      <option key={`${claveAlumno}-${nombreBase}`} value={nombreBase}>
-                                                        {nombreBase}
-                                                      </option>
-                                                    ))}
-                                                    <option value="__NO_CREAR__">No meter en grupo todavía</option>
-                                                  </select>
-                                                </label>
+                                              <div>
+                                                <strong>{alumno.alumno}</strong>
+                                                <p style={{ margin: '4px 0 0' }}>
+                                                  {alumno.nivel_resumen || 'SIN NIVEL'} ·{' '}
+                                                  {alumno.pista_recomendada || '-'}
+                                                  {alumno.edad ? ` · ${alumno.edad} años` : ''}
+                                                </p>
                                               </div>
 
-                                              {alumno.observacion_visible_entrenador && (
-                                                <p style={{ margin: '4px 0 0' }}>
-                                                  Obs: {alumno.observacion_visible_entrenador}
-                                                </p>
-                                              )}
+                                              <label style={{ ...labelCampo, minWidth: 240 }}>
+                                                Mover a
+                                                <select
+                                                  value={
+                                                    destinoAlumnoRecomendado[claveAlumno] ||
+                                                    alumno.grupo_recomendado
+                                                  }
+                                                  onChange={(e) =>
+                                                    setDestinoAlumnoRecomendado({
+                                                      ...destinoAlumnoRecomendado,
+                                                      [claveAlumno]: e.target.value,
+                                                    })
+                                                  }
+                                                  style={selectCampo}
+                                                >
+                                                  {nombresBaseRecomendados.map((nombreBase) => (
+                                                    <option
+                                                      key={`${claveAlumno}-${nombreBase}`}
+                                                      value={nombreBase}
+                                                    >
+                                                      {nombreBase}
+                                                    </option>
+                                                  ))}
+                                                  <option value="__NO_CREAR__">
+                                                    Dejar fuera de momento
+                                                  </option>
+                                                </select>
+                                              </label>
                                             </div>
                                           );
                                         })}
                                       </div>
 
-                                      <div style={{ ...avisoNeutral, marginTop: 10 }}>
-                                        {avisoDisponibilidadDiaIntensivo(diaSeleccionadoGrupo)}
-                                      </div>
-
-                                      <div style={{ ...gridFormulario, marginTop: 10 }}>
-                                        <label style={labelCampo}>
-                                          Entrenador para este grupo
-                                          <select
-                                            value={entrenadoresPorGrupoRecomendado[clave] || ''}
-                                            onChange={(e) =>
-                                              setEntrenadoresPorGrupoRecomendado({
-                                                ...entrenadoresPorGrupoRecomendado,
-                                                [clave]: e.target.value,
-                                              })
-                                            }
-                                            style={selectCampo}
-                                          >
-                                            <option value="">Selecciona entrenador</option>
-                                            {entrenadoresDisponiblesDiaIntensivo(diaSeleccionadoGrupo)
-                                              .filter((entrenador) => {
-                                                const usadoEnOtroGrupo = Object.entries(entrenadoresPorGrupoRecomendado).some(
-                                                  ([otraClave, id]) => otraClave !== clave && id === entrenador.entrenador_id
-                                                ) || Object.entries(entrenadoresApoyoPorGrupoRecomendado).some(
-                                                  ([otraClave, id]) => otraClave !== clave && id === entrenador.entrenador_id
-                                                );
-                                                return !usadoEnOtroGrupo || entrenador.entrenador_id === entrenadoresPorGrupoRecomendado[clave];
-                                              })
-                                              .map((entrenador) => (
-                                              <option
-                                                key={`${clave}-${entrenador.entrenador_id}`}
-                                                value={entrenador.entrenador_id}
-                                              >
-                                                {entrenador.nombre_completo}
-                                              </option>
-                                            ))}
-                                          </select>
-                                        </label>
-                                        <label style={labelCampo}>
-                                          Segundo entrenador, si hace falta
-                                          <select
-                                            value={entrenadoresApoyoPorGrupoRecomendado[clave] || ''}
-                                            onChange={(e) =>
-                                              setEntrenadoresApoyoPorGrupoRecomendado({
-                                                ...entrenadoresApoyoPorGrupoRecomendado,
-                                                [clave]: e.target.value,
-                                              })
-                                            }
-                                            style={selectCampo}
-                                          >
-                                            <option value="">Sin segundo entrenador</option>
-                                            {entrenadoresDisponiblesDiaIntensivo(diaSeleccionadoGrupo)
-                                              .filter((entrenador) => entrenador.entrenador_id !== (entrenadoresPorGrupoRecomendado[clave] || ''))
-                                              .filter((entrenador) => {
-                                                const usadoEnOtroGrupo = Object.entries(entrenadoresPorGrupoRecomendado).some(
-                                                  ([otraClave, id]) => otraClave !== clave && id === entrenador.entrenador_id
-                                                ) || Object.entries(entrenadoresApoyoPorGrupoRecomendado).some(
-                                                  ([otraClave, id]) => otraClave !== clave && id === entrenador.entrenador_id
-                                                );
-                                                return !usadoEnOtroGrupo || entrenador.entrenador_id === entrenadoresApoyoPorGrupoRecomendado[clave];
-                                              })
-                                              .map((entrenador) => (
-                                                <option
-                                                  key={`${clave}-apoyo-${entrenador.entrenador_id}`}
-                                                  value={entrenador.entrenador_id}
-                                                >
-                                                  {entrenador.nombre_completo}
-                                                </option>
-                                              ))}
-                                          </select>
-                                        </label>
-                                      </div>
-
-                                      {necesitaDosEntrenadoresGrupoApp(alumnosGrupo) && (
-                                        <div style={{ ...avisoPendiente, marginTop: 8 }}>
-                                          {textoNecesidadDosEntrenadoresApp(alumnosGrupo)}
-                                        </div>
-                                      )}
-
-                                      {(entrenadoresPorGrupoRecomendado[clave] && entrenadoresApoyoPorGrupoRecomendado[clave]) && (
-                                        <details style={{ ...avisoNeutral, marginTop: 8 }}>
-                                          <summary style={{ cursor: 'pointer', fontWeight: 900 }}>Reparto de reportes / niños</summary>
-                                          <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-                                            {alumnosGrupo.map((alumno, indiceAlumnoReparto) => (
-                                              <label key={`${clave}-resp-${alumno.alumno_id}`} style={labelCampo}>
-                                                {alumno.alumno}
-                                                <select
-                                                  value={responsableReporteRecomendadoApp(
-                                                    clave,
-                                                    alumno.alumno_id,
-                                                    indiceAlumnoReparto,
-                                                    entrenadoresPorGrupoRecomendado[clave],
-                                                    entrenadoresApoyoPorGrupoRecomendado[clave]
-                                                  )}
-                                                  onChange={(e) => setResponsablesReportePorGrupoRecomendado({
-                                                    ...responsablesReportePorGrupoRecomendado,
-                                                    [`${clave}__${alumno.alumno_id}`]: e.target.value,
-                                                  })}
-                                                  style={selectCampo}
-                                                >
-                                                  <option value={entrenadoresPorGrupoRecomendado[clave]}>
-                                                    {entrenadores.find((entrenador) => entrenador.entrenador_id === entrenadoresPorGrupoRecomendado[clave])?.nombre_completo || 'Entrenador 1'}
-                                                  </option>
-                                                  <option value={entrenadoresApoyoPorGrupoRecomendado[clave]}>
-                                                    {entrenadores.find((entrenador) => entrenador.entrenador_id === entrenadoresApoyoPorGrupoRecomendado[clave])?.nombre_completo || 'Entrenador 2'}
-                                                  </option>
-                                                </select>
-                                              </label>
-                                            ))}
-                                          </div>
-                                        </details>
-                                      )}
-
-                                      <label style={{ ...labelCampo, marginTop: 10 }}>
-                                        Trabajo diario automático según nivel/pista para este grupo
-                                        <textarea
-                                          value={trabajoGrupo}
-                                          onChange={(e) =>
-                                            setTrabajoDiarioPorGrupoRecomendado({
-                                              ...trabajoDiarioPorGrupoRecomendado,
-                                              [clave]: e.target.value,
-                                            })
-                                          }
-                                          style={{ ...inputCampo, minHeight: 130 }}
-                                        />
-                                      </label>
-
-                                      {observacionesAutoGrupoIntensivo && (
-                                        <div style={{ ...avisoCompleto, marginTop: 10 }}>
-                                          <strong>Observaciones</strong>
-                                          <div style={{ marginTop: 6 }}>{formatearObservaciones(observacionesAutoGrupoIntensivo)}</div>
-                                        </div>
-                                      )}
-
-                                      <label style={{ ...labelCampo, marginTop: 10 }}>
-                                        Observaciones tuyas para este grupo, opcional
-                                        <textarea
-                                          value={observacionesGrupo}
-                                          onChange={(e) =>
-                                            setObservacionesPorGrupoRecomendado({
-                                              ...observacionesPorGrupoRecomendado,
-                                              [clave]: e.target.value,
-                                            })
-                                          }
-                                          placeholder="Se sumará a las observaciones automáticas. Ejemplo: padre avisa algo, entrar despacio, revisar percha..."
-                                          style={{ ...inputCampo, minHeight: 70 }}
-                                        />
-                                      </label>
-
-                                      <button
-                                        onClick={() =>
-                                          crearGrupoDesdeRecomendacion(
-                                            intensivo,
-                                            diaSeleccionadoGrupo || undefined,
-                                            nombreGrupo,
-                                            alumnosGrupo
-                                          )
-                                        }
-                                        style={botonPrincipal}
+                                      <p
+                                        style={{
+                                          margin: '0 0 10px',
+                                          color: '#64748b',
+                                          fontSize: 13,
+                                          fontWeight: 700,
+                                        }}
                                       >
-                                        Crear este grupo editado y publicar
-                                      </button>
-                                    </div>
+                                        Entrenador, segundo entrenador, punto y publicación se asignan después en Días de entrenamiento.
+                                      </p>
+
+                                      <details
+                                        style={{
+                                          ...avisoNeutral,
+                                          marginBottom: 10,
+                                        }}
+                                      >
+                                        <summary
+                                          style={{
+                                            cursor: 'pointer',
+                                            fontWeight: 900,
+                                          }}
+                                        >
+                                          Trabajo diario
+                                        </summary>
+                                        <label
+                                          style={{
+                                            ...labelCampo,
+                                            display: 'block',
+                                            marginTop: 10,
+                                          }}
+                                        >
+                                          Trabajo diario automático según nivel/pista
+                                          <textarea
+                                            value={trabajoGrupo}
+                                            onChange={(e) =>
+                                              setTrabajoDiarioPorGrupoRecomendado({
+                                                ...trabajoDiarioPorGrupoRecomendado,
+                                                [clave]: e.target.value,
+                                              })
+                                            }
+                                            rows={4}
+                                            style={{ ...inputCampo, width: '100%', boxSizing: 'border-box' }}
+                                          />
+                                        </label>
+                                      </details>
+
+                                      <details
+                                        style={{
+                                          ...avisoNeutral,
+                                          marginBottom: 10,
+                                        }}
+                                      >
+                                        <summary
+                                          style={{
+                                            cursor: 'pointer',
+                                            fontWeight: 900,
+                                          }}
+                                        >
+                                          Observaciones
+                                        </summary>
+                                        <label
+                                          style={{
+                                            ...labelCampo,
+                                            display: 'block',
+                                            marginTop: 10,
+                                          }}
+                                        >
+                                          Observaciones importantes para el entrenador
+                                          <textarea
+                                            value={observacionesAutoGrupo || ''}
+                                            readOnly
+                                            rows={Math.max(
+                                              3,
+                                              Math.min(
+                                                7,
+                                                (observacionesAutoGrupo || '').split('\n').length + 1
+                                              )
+                                            )}
+                                            style={{ ...inputCampo, width: '100%', boxSizing: 'border-box' }}
+                                          />
+                                        </label>
+                                        <label
+                                          style={{
+                                            ...labelCampo,
+                                            display: 'block',
+                                            marginTop: 10,
+                                          }}
+                                        >
+                                          Añadir observación manual · opcional
+                                          <textarea
+                                            value={observacionesGrupo}
+                                            onChange={(e) =>
+                                              setObservacionesPorGrupoRecomendado({
+                                                ...observacionesPorGrupoRecomendado,
+                                                [clave]: e.target.value,
+                                              })
+                                            }
+                                            rows={3}
+                                            style={{ ...inputCampo, width: '100%', boxSizing: 'border-box' }}
+                                          />
+                                        </label>
+                                      </details>
+
+                                    </article>
                                   );
                                 })}
                               </div>
@@ -1785,13 +1658,6 @@ export function PantallaIntensivos(ctx: any) {
                             />
                           </label>
 
-                          {observacionesAutomaticasGrupoIntensivoManual(formGrupoIntensivo.alumnos_ids) && (
-                            <div style={{ ...avisoCompleto, marginTop: 10 }}>
-                              <strong>Observaciones</strong>
-                              <div style={{ marginTop: 6 }}>{formatearObservaciones(observacionesAutomaticasGrupoIntensivoManual(formGrupoIntensivo.alumnos_ids))}</div>
-                            </div>
-                          )}
-
                           <label style={{ ...labelCampo, marginTop: 10 }}>
                             Observaciones importantes visibles para entrenador
                             <textarea
@@ -1807,113 +1673,14 @@ export function PantallaIntensivos(ctx: any) {
                             />
                           </label>
 
-                          <details style={{ marginTop: 12 }}>
-                            <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>
-                              Seleccionar alumnos manual
-                            </summary>
-                            {alumnosInscritosIntensivo.length === 0 && (
-                              <div style={avisoPendiente}>
-                                Este intensivo todavía no tiene alumnos inscritos.
-                              </div>
-                            )}
-
-                            <div style={{ display: 'grid', gap: 8, marginTop: 8 }}>
-                              {alumnosInscritosIntensivo.map((registro) => {
-                                const seleccionado = formGrupoIntensivo.alumnos_ids.includes(
-                                  registro.alumno_id
-                                );
-
-                                return (
-                                  <label
-                                    key={registro.intensivo_alumno_id}
-                                    style={{
-                                      ...miniTarjetaBlanca,
-                                      display: 'flex',
-                                      alignItems: 'center',
-                                      gap: 8,
-                                    }}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={seleccionado}
-                                      onChange={(e) => {
-                                        const nuevosAlumnos = e.target.checked
-                                          ? [
-                                              ...formGrupoIntensivo.alumnos_ids,
-                                              registro.alumno_id,
-                                            ]
-                                          : formGrupoIntensivo.alumnos_ids.filter(
-                                              (alumnoId) => alumnoId !== registro.alumno_id
-                                            );
-
-                                        setFormGrupoIntensivo({
-                                          ...formGrupoIntensivo,
-                                          alumnos_ids: nuevosAlumnos,
-                                        });
-                                      }}
-                                    />
-                                    <span>
-                                      {registro.alumno}
-                                      {(() => {
-                                        const resumenAlumno = resumenAlumnoIntensivo(registro.alumno_id);
-                                        return resumenAlumno ? (
-                                          <>
-                                            {' '}· Nivel: {resumenAlumno.nivel_resumen || 'SIN NIVEL'} · Pista: {resumenAlumno.pista_resumen || 'Pendiente'}
-                                          </>
-                                        ) : null;
-                                      })()}
-                                    </span>
-                                  </label>
-                                );
-                              })}
-                            </div>
-                          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-                            <button
-                              onClick={() =>
-                                crearGrupoNormalIntensivo(
-                                  intensivo,
-                                  diaSeleccionadoGrupo || undefined
-                                )
-                              }
-                              style={botonPrincipal}
-                            >
-                              Crear grupo manual
-                            </button>
-
-                            <button
-                              onClick={() =>
-                                setFormGrupoIntensivo({
-                                  ...formGrupoIntensivo,
-                                  alumnos_ids: alumnosInscritosIntensivo.map(
-                                    (registro) => registro.alumno_id
-                                  ),
-                                })
-                              }
-                              style={botonSecundario}
-                            >
-                              Seleccionar todos
-                            </button>
-
-                            <button
-                              onClick={() =>
-                                setFormGrupoIntensivo({
-                                  ...formGrupoIntensivo,
-                                  alumnos_ids: [],
-                                })
-                              }
-                              style={botonSecundario}
-                            >
-                              Vaciar selección
-                            </button>
-                          </div>
-                          </details>
+                          
 
                           <details style={{ ...ayudaDesplegableCompacta, marginTop: 14 }}>
-                            <summary>Ver grupos publicados este día ({gruposDiaSeleccionado.length})</summary>
+                            <summary>Ver grupos preparados este día ({gruposDiaSeleccionado.length})</summary>
                             <div style={{ marginTop: 10 }}>
                           {gruposDiaSeleccionado.length === 0 && (
                             <div style={avisoNeutral}>
-                              Todavía no hay grupos normales creados para este día.
+                              Todavía no hay grupos preparados para este día.
                             </div>
                           )}
 
@@ -1924,14 +1691,10 @@ export function PantallaIntensivos(ctx: any) {
                                   {nombreGrupoVisualApp(grupo, indiceGrupoIntensivoCreado)}
                                 </p>
                                 <p>
-                                  <strong>Entrenador:</strong>{' '}
-                                  {grupo.entrenador || 'Sin entrenador'} ·{' '}
-                                  {grupo.estado_confirmacion || 'Sin confirmar'}
-                                </p>
-                                <p>
-                                  <strong>Estado:</strong>{' '}
-                                  {grupo.estado_grupo || '-'} ·{' '}
-                                  {grupo.publicado ? 'Publicado' : 'Borrador'} ·{' '}
+                                  <strong>Estado operativo:</strong>{' '}
+                                  {grupo.publicado
+                                    ? 'Publicado en Días de entrenamiento'
+                                    : 'Preparado · pendiente de recursos/publicación'} ·{' '}
                                   {grupo.total_alumnos || 0} alumnos
                                 </p>
                                 <p>
@@ -2256,7 +2019,7 @@ export function PantallaIntensivos(ctx: any) {
                       </h4>
 
                       <p style={{ marginTop: 0 }}>
-                        Primero marca en asistencia una falta como “Sí genera”. Después pulsa este botón para crear las recuperaciones pendientes.
+                        Las faltas vienen de la asistencia real del entrenamiento. Pulsa el botón para crear recuperaciones pendientes a partir de alumnos marcados como Ausente.
                       </p>
 
                       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
