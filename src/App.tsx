@@ -4692,7 +4692,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     try {
       await ejecutarFuncion('confirmar_grupo_entrenador_app', {
         p_grupo_id: grupoId,
-        p_entrenador_id: null,
+        p_entrenador_id: entrenadorId,
       });
 
       await cargarGruposEntrenador();
