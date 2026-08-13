@@ -31034,19 +31034,44 @@ Gracias!`;
                 resumenFinal?.dias_pendiente_asistencia || 0
               );
               const totalReportes = Number(resumenFinal?.total_reportes || 0);
-              const nivel =
+              const reportesAlumno = reportesDetalleIntensivo
+                .filter(
+                  (item) =>
+                    item.intensivo_id === registro.intensivo_id &&
+                    item.alumno_id === registro.alumno_id
+                )
+                .sort((a, b) =>
+                  `${a.fecha || ''}-${a.numero_dia || 0}`.localeCompare(
+                    `${b.fecha || ''}-${b.numero_dia || 0}`
+                  )
+                );
+              const primerReporte = reportesAlumno[0];
+              const ultimoReporte =
+                reportesAlumno[reportesAlumno.length - 1];
+
+              const nivelEntrada =
+                primerReporte?.nivel_reportado ||
+                fichaMaestra?.nivel_estimado ||
+                fichaMaestra?.nivel_actual ||
+                'SIN NIVEL';
+              const nivelFinal =
                 resumenFinal?.nivel_final_confirmado ||
                 resumenFinal?.nivel_final_propuesto ||
                 resumenFinal?.nivel_ultimo_reporte ||
+                ultimoReporte?.nivel_reportado ||
                 fichaMaestra?.nivel_actual ||
                 fichaMaestra?.ultimo_nivel_reportado ||
                 fichaMaestra?.nivel_estimado ||
                 'SIN NIVEL';
+              const nivel = nivelFinal;
+              const sesionesRegistradas = Math.min(
+                totalDias,
+                diasPresentes + diasAusentes
+              );
               const finalizado = resumenFinal?.estado_diploma === 'Revisado';
               const pendienteRecuperar =
                 recuperacionesActivas.length > 0 ||
                 faltasRealesPendientes.length > 0;
-
               return {
                 registro,
                 curso,
@@ -31059,7 +31084,13 @@ Gracias!`;
                 diasAusentes,
                 diasPendientes,
                 totalReportes,
+                reportesAlumno,
+                primerReporte,
+                ultimoReporte,
+                nivelEntrada,
+                nivelFinal,
                 nivel,
+                sesionesRegistradas,
                 finalizado,
                 pendienteRecuperar,
               };
@@ -31542,7 +31573,12 @@ Gracias!`;
                         diasAusentes,
                         diasPendientes,
                         totalReportes,
+                        primerReporte,
+                        ultimoReporte,
+                        nivelEntrada,
+                        nivelFinal,
                         nivel,
+                        sesionesRegistradas,
                         finalizado,
                         pendienteRecuperar,
                       } = ficha;
@@ -31578,7 +31614,11 @@ Gracias!`;
                                 }}
                               >
                                 <h3 style={{ margin: 0 }}>{registro.alumno}</h3>
-                                <span style={badgeNivelFicha(nivel)}>{nivel}</span>
+                                <span style={badgeNivelFicha(nivelFinal)}>
+                                  {resumenFinal?.nivel_final_confirmado
+                                    ? `Nivel final ${nivelFinal}`
+                                    : `Nivel actual ${nivelFinal}`}
+                                </span>
 
                                 {pendienteRecuperar && (
                                   <span
@@ -31617,6 +31657,19 @@ Gracias!`;
                                 {curso?.fecha_fin ? ` → ${formatearFecha(curso.fecha_fin)}` : ''}
                                 {curso?.lugar ? ` · ${curso.lugar}` : ''}
                               </p>
+
+                              <p
+                                style={{
+                                  margin: '7px 0 0',
+                                  color: '#334155',
+                                  fontWeight: 800,
+                                }}
+                              >
+                                Nivel de entrada: {nivelEntrada} →{' '}
+                                {resumenFinal?.nivel_final_confirmado
+                                  ? `Nivel final: ${nivelFinal}`
+                                  : `Nivel actual: ${nivelFinal}`}
+                              </p>
                             </div>
 
                             <div
@@ -31628,9 +31681,9 @@ Gracias!`;
                               }}
                             >
                               <div style={miniTarjetaBlanca}>
-                                <strong>{diasPresentes}/{totalDias}</strong>
+                                <strong>{sesionesRegistradas}/{totalDias}</strong>
                                 <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 12 }}>
-                                  asistencias
+                                  sesiones registradas
                                 </p>
                               </div>
 
@@ -31656,12 +31709,58 @@ Gracias!`;
                               <strong>Asistencia</strong>
                               <p style={{ margin: '5px 0 0' }}>
                                 {diasPresentes} presente · {diasAusentes} ausente
-                                {diasPendientes > 0 ? ` · ${diasPendientes} pendiente` : ''}
+                                {diasPendientes > 0
+                                  ? ` · ${diasPendientes} pendiente`
+                                  : ''}
                               </p>
                             </div>
 
                             <div style={miniTarjetaBlanca}>
-                              <strong>Evaluación final</strong>
+                              <strong>Nivel de entrada</strong>
+                              <p style={{ margin: '5px 0 0', fontWeight: 900 }}>
+                                {nivelEntrada}
+                              </p>
+                              <p
+                                style={{
+                                  margin: '3px 0 0',
+                                  color: '#64748b',
+                                  fontSize: 12,
+                                }}
+                              >
+                                {primerReporte
+                                  ? `Primer reporte · Día ${primerReporte.numero_dia}`
+                                  : 'Nivel base de la ficha'}
+                              </p>
+                            </div>
+
+                            <div style={miniTarjetaBlanca}>
+                              <strong>
+                                {resumenFinal?.nivel_final_confirmado
+                                  ? 'Nivel final'
+                                  : 'Nivel actual'}
+                              </strong>
+                              <p style={{ margin: '5px 0 0', fontWeight: 900 }}>
+                                {nivelFinal}
+                              </p>
+                              <p
+                                style={{
+                                  margin: '3px 0 0',
+                                  color: '#64748b',
+                                  fontSize: 12,
+                                }}
+                              >
+                                {resumenFinal?.nivel_final_confirmado
+                                  ? 'Confirmado en evaluación final'
+                                  : resumenFinal?.nivel_final_propuesto
+                                    ? 'Propuesto · pendiente de confirmar'
+                                    : ultimoReporte
+                                      ? 'Último nivel reportado'
+                                      : 'Nivel de la ficha'}
+                              </p>
+                            </div>
+
+                            <div style={miniTarjetaBlanca}>
+                              <strong>Evaluación / diploma</strong>
                               <p style={{ margin: '5px 0 0' }}>
                                 {resumenFinal?.estado_diploma || 'Pendiente'}
                               </p>
@@ -31669,46 +31768,49 @@ Gracias!`;
 
                             <div style={miniTarjetaBlanca}>
                               <strong>Siguiente paso</strong>
-                              <p style={{ margin: '5px 0 0' }}>
+                              <p style={{ margin: '5px 0 0', fontWeight: 850 }}>
                                 {resumenFinal?.recomendacion_siguiente_paso ||
                                   registro.recomendacion_siguiente_paso ||
                                   'Pendiente'}
-                              </p>
-                            </div>
-
-                            <div style={miniTarjetaBlanca}>
-                              <strong>Último reporte</strong>
-                              <p style={{ margin: '5px 0 0' }}>
-                                {resumenFinal?.nivel_ultimo_reporte ||
-                                  fichaMaestra?.ultimo_nivel_reportado ||
-                                  '-'}
                               </p>
                             </div>
                           </div>
 
                           {pendienteRecuperar && (
                             <div style={{ ...avisoPendiente, marginTop: 12 }}>
-                              <strong>
-                                Recuperación pendiente
-                              </strong>
-                              <p style={{ margin: '6px 0 0' }}>
-                                {recuperacionesActivas.length > 0
-                                  ? recuperacionesActivas
-                                      .map(
-                                        (item) =>
-                                          `${item.estado || 'Pendiente valorar'}${
-                                            item.intensivo_destino
-                                              ? ` · ${item.intensivo_destino}`
-                                              : ''
-                                          }${
-                                            item.grupo_destino
-                                              ? ` · ${item.grupo_destino}`
-                                              : ''
-                                          }`
-                                      )
-                                      .join(' || ')
-                                  : `${faltasRealesPendientes.length} falta(s) registrada(s) · pendiente de gestionar`}
-                              </p>
+                              <strong>Recuperación pendiente</strong>
+
+                              {recuperacionesActivas.length > 0 ? (
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gap: 6,
+                                    marginTop: 8,
+                                  }}
+                                >
+                                  {recuperacionesActivas.map((item) => (
+                                    <div key={item.recuperacion_id}>
+                                      <strong>
+                                        {item.estado || 'Pendiente valorar'}
+                                      </strong>
+                                      <span>
+                                        {' · '}
+                                        {item.intensivo_destino ||
+                                          'Sin intensivo destino'}
+                                        {item.grupo_destino
+                                          ? ` · ${item.grupo_destino}`
+                                          : ''}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p style={{ margin: '6px 0 0' }}>
+                                  {faltasRealesPendientes.length} falta(s)
+                                  registrada(s) · pendiente de asignar
+                                  recuperación.
+                                </p>
+                              )}
                             </div>
                           )}
 
@@ -31717,7 +31819,14 @@ Gracias!`;
                             resumenFinal?.actitud_ultimo_reporte) && (
                             <details style={{ marginTop: 12 }}>
                               <summary style={{ cursor: 'pointer', fontWeight: 900 }}>
-                                Ver última evaluación
+                                Ver última evaluación del entrenador
+                                {resumenFinal?.ultimo_reporte_fecha
+                                  ? ` · ${formatearFecha(
+                                      String(
+                                        resumenFinal.ultimo_reporte_fecha
+                                      ).slice(0, 10)
+                                    )}`
+                                  : ''}
                               </summary>
                               <div style={{ ...avisoNeutral, marginTop: 8, display: 'grid', gap: 6 }}>
                                 <p style={{ margin: 0 }}>

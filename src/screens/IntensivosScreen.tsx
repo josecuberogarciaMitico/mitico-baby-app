@@ -440,12 +440,6 @@ export function PantallaIntensivos(ctx: any) {
                       5 · Evaluación final
                     </button>
 
-                    <button
-                      onClick={() => borrarIntensivoCompleto(intensivo)}
-                      style={botonPeligro}
-                    >
-                      Eliminar intensivo
-                    </button>
                   </div>
 
                   {gestorPanelControlAbierto && (
