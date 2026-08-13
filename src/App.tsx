@@ -301,6 +301,12 @@ type DetalleGrupo = {
   cancelado: boolean;
 };
 
+type AlumnoBabyFichaApp = {
+  alumno_id: string;
+  ultimo_baby: string | null;
+  total_sesiones_baby: number;
+};
+
 type AlumnoResumen = {
   alumno_id: string;
   alumno: string;
@@ -1685,6 +1691,8 @@ type AltaNivelInicialApp = {
   respuesta_giros: string | null;
   respuesta_remonte: string | null;
   respuesta_pista: string | null;
+  respuesta_control_velocidad: string | null;
+  respuesta_tecnica: string | null;
   observaciones_familia: string | null;
   nivel_propuesto_id: string | null;
   nivel_propuesto: string | null;
@@ -1729,6 +1737,8 @@ type TestNivelPublicoRespuestasApp = {
   giros: string;
   remonte: string;
   pista: string;
+  controlVelocidad: string;
+  tecnica: string;
   observaciones: string;
 };
 
@@ -1750,6 +1760,8 @@ function testNivelPublicoRespuestasVaciasApp(): TestNivelPublicoRespuestasApp {
     giros: '',
     remonte: '',
     pista: '',
+    controlVelocidad: '',
+    tecnica: '',
     observaciones: '',
   };
 }
@@ -2569,39 +2581,63 @@ function PantallaTestNivelPublicoApp({ token }: { token: string }) {
       opciones: [
         ['A', 'No'],
         ['B', 'A veces / necesita indicaciones'],
-        ['C', 'Sí, controla la velocidad solo'],
+        ['C', 'Sí, frena con autonomía'],
       ],
     },
     {
       clave: 'giros',
-      titulo: '4. ¿Hace giros para cambiar de dirección?',
-      ayuda: 'Marca lo que haga de forma habitual, no algo que haya hecho una vez.',
+      titulo: '4. ¿Cómo hace los giros para cambiar de dirección?',
+      ayuda: 'Marca lo que haga de forma habitual, no algo que haya hecho una sola vez.',
       opciones: [
-        ['A', 'No'],
+        ['A', 'Todavía no hace giros'],
         ['B', 'Está empezando a girar'],
         ['C', 'Hace giros en cuña de forma autónoma'],
         ['D', 'Hace algunos giros con los esquís en paralelo'],
+        ['E', 'Hace giros paralelos fluidos y enlazados'],
       ],
     },
     {
       clave: 'remonte',
-      titulo: '5. ¿Qué remonte utiliza sin ayuda?',
-      ayuda: 'Marca el remonte más avanzado que utilice con autonomía.',
+      titulo: '5. ¿Qué remontes utiliza sin ayuda?',
+      ayuda: 'Marca la opción más completa que haga con autonomía.',
       opciones: [
         ['A', 'Ninguno'],
         ['B', 'Cinta transportadora'],
         ['C', 'Percha / telesquí'],
         ['D', 'Silla'],
+        ['E', 'Todos: cinta, percha y silla'],
       ],
     },
     {
       clave: 'pista',
-      titulo: '6. ¿Por qué terreno baja con seguridad?',
-      ayuda: 'Marca dónde puede esquiar sin que un adulto tenga que sujetarlo.',
+      titulo: '6. ¿Por dónde baja con seguridad sin que un adulto tenga que sujetarlo?',
+      ayuda: 'En Madrid SnowZone diferenciamos pista pequeña y pista grande.',
       opciones: [
-        ['A', 'Zona de debutantes'],
-        ['B', 'Pista pequeña / sencilla'],
-        ['C', 'Pista grande / completa'],
+        ['A', 'Todavía no baja una pista con autonomía'],
+        ['B', 'Pista pequeña'],
+        ['C', 'Pista grande'],
+      ],
+    },
+    {
+      clave: 'controlVelocidad',
+      titulo: '7. En pista, ¿cómo controla la velocidad y la dirección?',
+      ayuda: 'Piensa en cómo esquía durante una bajada normal.',
+      opciones: [
+        ['A', 'Necesita ayuda o recordatorios constantes para frenar'],
+        ['B', 'Controla principalmente haciendo cuña'],
+        ['C', 'Controla enlazando giros y elige por dónde bajar'],
+        ['D', 'Controla con paralelo y adapta el giro y la trayectoria'],
+      ],
+    },
+    {
+      clave: 'tecnica',
+      titulo: '8. Si el profesor le propone ejercicios mientras baja, ¿qué es capaz de hacer?',
+      ayuda: 'No pasa nada si no lo sabes: marca la opción más parecida a lo que le hayas visto hacer.',
+      opciones: [
+        ['A', 'No lo sabemos / todavía no sigue ejercicios esquiando'],
+        ['B', 'Sigue ejercicios sencillos mientras baja'],
+        ['C', 'Puede hacer giros más cortos o más largos cuando se lo piden'],
+        ['D', 'Cambia ritmo y trazado con facilidad y resuelve ejercicios técnicos'],
       ],
     },
   ];
@@ -2623,6 +2659,8 @@ function PantallaTestNivelPublicoApp({ token }: { token: string }) {
           p_giros: respuestas.giros,
           p_remonte: respuestas.remonte,
           p_pista: respuestas.pista,
+          p_control_velocidad: respuestas.controlVelocidad,
+          p_tecnica: respuestas.tecnica,
           p_observaciones: respuestas.observaciones || null,
         }
       );
@@ -2703,37 +2741,116 @@ function PantallaTestNivelPublicoApp({ token }: { token: string }) {
             ...authCardApp,
             width: '100%',
             maxWidth: 'none',
-            background: 'linear-gradient(135deg, #eff6ff, #ffffff 52%, #f0fdf4)',
+            padding: 0,
+            overflow: 'hidden',
+            border: '1px solid #dbeafe',
+            boxShadow: '0 18px 42px rgba(15, 23, 42, 0.12)',
           }}
         >
-          <p
-            style={{
-              margin: '0 0 5px',
-              color: '#2563eb',
-              fontSize: 11,
-              fontWeight: 950,
-              letterSpacing: '0.08em',
-            }}
-          >
-            MÍTICO BABY · NIVEL INICIAL
-          </p>
-          <h1 style={{ margin: 0, fontSize: 25 }}>{info?.nombre_completo}</h1>
-          <p style={{ margin: '7px 0 0', color: '#475569' }}>
-            Modalidad: <strong>{info?.modalidad}</strong>
-          </p>
           <div
             style={{
-              marginTop: 12,
-              padding: 12,
-              borderRadius: 14,
-              background: '#fff',
-              border: '1px solid #dbeafe',
-              color: '#475569',
-              lineHeight: 1.45,
+              position: 'relative',
+              minHeight: 235,
+              padding: '20px 18px 22px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'flex-end',
+              backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.08) 0%, rgba(15, 23, 42, 0.30) 48%, rgba(15, 23, 42, 0.82) 100%), url(${FOTO_MITICO_HERO})`,
+              backgroundSize: '118% auto',
+              backgroundPosition: 'center center',
+              backgroundRepeat: 'no-repeat',
             }}
           >
-            No necesitamos que conozcas su “nivel”. Marca únicamente lo que has
-            visto hacer al niño/a. Son 6 preguntas y se tarda aproximadamente un minuto.
+            <img
+              src="/logo-cabecera-mitico.png"
+              alt="Mítico Club"
+              style={{
+                position: 'absolute',
+                top: 16,
+                left: 16,
+                width: 70,
+                height: 70,
+                padding: 6,
+                borderRadius: 18,
+                objectFit: 'contain',
+                background: 'rgba(255,255,255,.94)',
+                border: '1px solid rgba(255,255,255,.75)',
+                boxShadow: '0 8px 22px rgba(15,23,42,.18)',
+              }}
+            />
+
+            <p
+              style={{
+                margin: '0 0 5px',
+                color: '#dbeafe',
+                fontSize: 11,
+                fontWeight: 950,
+                letterSpacing: '0.10em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Mítico Baby · Test inicial
+            </p>
+
+            <h1
+              style={{
+                margin: 0,
+                color: '#ffffff',
+                fontSize: 'clamp(24px, 6vw, 32px)',
+                lineHeight: 1.08,
+                textShadow: '0 2px 12px rgba(15,23,42,.35)',
+              }}
+            >
+              Queremos conocer un poquito mejor a {info?.nombre_completo}
+            </h1>
+
+            <p
+              style={{
+                margin: '8px 0 0',
+                color: '#e2e8f0',
+                fontSize: 14,
+                fontWeight: 750,
+              }}
+            >
+              Modalidad: <strong style={{ color: '#fff' }}>{info?.modalidad}</strong>
+            </p>
+          </div>
+
+          <div
+            style={{
+              padding: '16px 18px 18px',
+              background: 'linear-gradient(135deg, #f8fbff, #ffffff 58%, #f0fdf4)',
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                color: '#334155',
+                lineHeight: 1.55,
+                fontSize: 14,
+              }}
+            >
+              No hace falta que conozcas su nivel de esquí. Marca simplemente lo
+              que le hayas visto hacer. Son <strong>8 preguntas rápidas</strong> y
+              tardarás aproximadamente <strong>2 minutos</strong>.
+            </p>
+
+            <div
+              style={{
+                marginTop: 12,
+                padding: '10px 12px',
+                borderRadius: 14,
+                background: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                color: '#1e3a8a',
+                fontSize: 13,
+                lineHeight: 1.45,
+                fontWeight: 750,
+              }}
+            >
+              La propuesta de nivel será revisada por coordinación antes de
+              incorporarlo a un grupo.
+            </div>
           </div>
         </article>
 
@@ -3472,6 +3589,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }, [overlayEntrenadorAbierto]);
 
   const [alumnos, setAlumnos] = useState<AlumnoResumen[]>([]);
+  const [alumnosBabyFicha, setAlumnosBabyFicha] = useState<
+    AlumnoBabyFichaApp[]
+  >([]);
   const [busquedaAlumno, setBusquedaAlumno] = useState('');
   const [filtroAlumnos, setFiltroAlumnos] = useState<
     | 'todos'
@@ -4178,33 +4298,53 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         opciones: {
           A: 'No',
           B: 'A veces / necesita indicaciones',
-          C: 'Sí, controla la velocidad solo',
+          C: 'Sí, frena con autonomía',
         },
       },
       Giros: {
-        pregunta: '¿Hace giros para cambiar de dirección?',
+        pregunta: '¿Cómo hace los giros para cambiar de dirección?',
         opciones: {
-          A: 'No',
+          A: 'Todavía no hace giros',
           B: 'Está empezando a girar',
           C: 'Hace giros en cuña de forma autónoma',
           D: 'Hace algunos giros con los esquís en paralelo',
+          E: 'Hace giros paralelos fluidos y enlazados',
         },
       },
       Remonte: {
-        pregunta: '¿Qué remonte utiliza sin ayuda?',
+        pregunta: '¿Qué remontes utiliza sin ayuda?',
         opciones: {
           A: 'Ninguno',
           B: 'Cinta transportadora',
           C: 'Percha / telesquí',
           D: 'Silla',
+          E: 'Todos: cinta, percha y silla',
         },
       },
       Pista: {
-        pregunta: '¿Por qué terreno baja con seguridad?',
+        pregunta: '¿Por dónde baja con seguridad sin que un adulto tenga que sujetarlo?',
         opciones: {
-          A: 'Zona de debutantes',
-          B: 'Pista pequeña / sencilla',
-          C: 'Pista grande / completa',
+          A: 'Todavía no baja una pista con autonomía',
+          B: 'Pista pequeña',
+          C: 'Pista grande',
+        },
+      },
+      Control: {
+        pregunta: 'En pista, ¿cómo controla la velocidad y la dirección?',
+        opciones: {
+          A: 'Necesita ayuda o recordatorios constantes para frenar',
+          B: 'Controla principalmente haciendo cuña',
+          C: 'Controla enlazando giros y elige por dónde bajar',
+          D: 'Controla con paralelo y adapta el giro y la trayectoria',
+        },
+      },
+      Técnica: {
+        pregunta: 'Si el profesor le propone ejercicios mientras baja, ¿qué es capaz de hacer?',
+        opciones: {
+          A: 'No lo sabemos / todavía no sigue ejercicios esquiando',
+          B: 'Sigue ejercicios sencillos mientras baja',
+          C: 'Puede hacer giros más cortos o más largos cuando se lo piden',
+          D: 'Cambia ritmo y trazado con facilidad y resuelve ejercicios técnicos',
         },
       },
     };
@@ -4415,7 +4555,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const nombrePila = alta.nombre_completo.trim().split(/\\s+/)[0] || alta.nombre_completo;
     const texto =
       `Hola familia, para preparar correctamente el grupo de ${nombrePila} necesitamos una pequeña valoración de su experiencia esquiando.\n\n` +
-      `No tenéis que conocer su nivel: son 6 preguntas de respuesta cerrada sobre lo que le habéis visto hacer y se tarda aproximadamente 1 minuto.\n\n` +
+      `No tenéis que conocer su nivel: son 8 preguntas de respuesta cerrada sobre lo que le habéis visto hacer y se tarda aproximadamente 2 minutos.\n\n` +
       `${enlace}\n\nMuchas gracias.`;
 
     try {
@@ -4848,7 +4988,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setDetalle(null);
 
     try {
-      const [data, ocioData] = await Promise.all([
+      const [data, ocioData, babyData] = await Promise.all([
         consultarSupabase<AlumnoResumen>(
           'v_resumen_alumno',
           'select=*&order=alumno.asc'
@@ -4857,16 +4997,21 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           'v_ocio_alumnos_app',
           'select=*&order=alumno.asc'
         ),
+        ejecutarFuncionConRespuesta<AlumnoBabyFichaApp>(
+          'obtener_alumnos_baby_fichas_app',
+          {}
+        ),
       ]);
 
-      // `alumnos` se mantiene como maestro global completo porque lo usan
-      // otros flujos de la app. La separación Baby/Intensivos vs Ocio se hace
-      // únicamente en la pantalla de Fichas.
+      // `alumnos` se mantiene como ficha maestra global.
+      // La pantalla Alumnos Baby usa únicamente actividad Baby real.
       setAlumnos(data);
       setOcioAlumnos(ocioData);
+      setAlumnosBabyFicha(babyData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
       setAlumnos([]);
+      setAlumnosBabyFicha([]);
     }
 
     setCargando(false);
@@ -11158,6 +11303,7 @@ Gracias!`;
       });
 
       await cargarIntensivos();
+      await cargarAlumnos();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     }
@@ -14331,12 +14477,12 @@ Gracias!`;
     };
   });
 
-  const idsAlumnosOcio = new Set(
-    ocioAlumnos.map((alumno) => alumno.alumno_id)
+  const idsAlumnosBaby = new Set(
+    alumnosBabyFicha.map((registro) => registro.alumno_id)
   );
 
-  const alumnosBabyIntensivos = alumnos.filter(
-    (alumno) => !idsAlumnosOcio.has(alumno.alumno_id)
+  const alumnosBabyIntensivos = alumnos.filter((alumno) =>
+    idsAlumnosBaby.has(alumno.alumno_id)
   );
 
   function abrirFiltroFichas(
@@ -30592,6 +30738,8 @@ Gracias!`;
                                   ['Giros', alta.respuesta_giros],
                                   ['Remonte', alta.respuesta_remonte],
                                   ['Pista', alta.respuesta_pista],
+                                  ['Control', alta.respuesta_control_velocidad],
+                                  ['Técnica', alta.respuesta_tecnica],
                                 ].map(([titulo, respuesta]) => {
                                   const claveDetalle = `${alta.id}-${String(titulo)}`;
                                   const detalleAbierto = detalleRespuestaAlta === claveDetalle;
@@ -31388,28 +31536,6 @@ Gracias!`;
                     Ver alumnos Ocio ({ocioAlumnos.length})
                   </button>
 
-                  {vistaFichasAlumnos === 'general' && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setMostrarNuevoAlumnoManual((valor) => !valor)
-                      }
-                      style={{
-                        ...botonPrincipal,
-                        ...(esVistaMovilApp
-                          ? {
-                              flex: '1 1 150px',
-                              minWidth: 0,
-                              whiteSpace: 'normal',
-                            }
-                          : {}),
-                      }}
-                      title="Crear ficha manual para un niño que no viene de listado."
-                    >
-                      + Añadir alumno
-                    </button>
-                  )}
-
                   <button
                     onClick={() => {
                       cargarAlumnos();
@@ -31767,11 +31893,11 @@ Gracias!`;
                             </div>
 
                             <div style={miniTarjetaBlanca}>
-                              <strong>Siguiente paso</strong>
+                              <strong>Destino familia</strong>
                               <p style={{ margin: '5px 0 0', fontWeight: 850 }}>
                                 {resumenFinal?.recomendacion_siguiente_paso ||
                                   registro.recomendacion_siguiente_paso ||
-                                  'Pendiente'}
+                                  'Sin comunicar'}
                               </p>
                             </div>
                           </div>
@@ -31861,7 +31987,9 @@ Gracias!`;
                                   window.setTimeout(() => {
                                     abrirPanelIntensivo(
                                       curso,
-                                      pendienteRecuperar ? 'asistencia' : 'alumnos'
+                                      pendienteRecuperar
+                                        ? 'recuperaciones'
+                                        : 'alumnos'
                                     );
                                   }, 80);
                                 }}
@@ -31917,7 +32045,7 @@ Gracias!`;
                 >
                   <p style={{ margin: 0 }}>
                     Usa esta pantalla para revisar nivel real, historial, último
-                    reporte y evaluación técnica de Baby/Intensivos.
+                    reporte y evaluación técnica de alumnos con actividad Baby.
                   </p>
                   <p style={{ margin: 0 }}>
                     Ocio tiene su propia subpestaña porque funciona como escuela
@@ -32009,124 +32137,6 @@ Gracias!`;
                   <span>ver fichas</span>
                 </button>
               </section>
-
-              {mostrarNuevoAlumnoManual && (
-                <article
-                  style={{
-                    ...agendaBloqueBlanco,
-                    borderColor: '#ddd6fe',
-                    background: '#faf5ff',
-                  }}
-                >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      gap: 10,
-                      flexWrap: 'wrap',
-                      alignItems: 'flex-start',
-                    }}
-                  >
-                    <div>
-                      <h3 style={{ marginTop: 0 }}>Crear alumno manual</h3>
-                      <p style={{ marginTop: 0, color: '#555' }}>
-                        Para niños que no vienen de Aimharder o pruebas. Si no
-                        sabes nivel, déjalo pendiente.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setMostrarNuevoAlumnoManual(false)}
-                      style={botonSecundario}
-                    >
-                      Cerrar
-                    </button>
-                  </div>
-
-                  <div style={gridFormulario}>
-                    <label style={labelCampo}>
-                      Nombre completo
-                      <input
-                        value={nuevoAlumnoNombre}
-                        onChange={(e) =>
-                          setNuevoAlumnoNombre(e.target.value.toUpperCase())
-                        }
-                        placeholder="NOMBRE APELLIDO APELLIDO"
-                        style={inputCampo}
-                      />
-                    </label>
-
-                    <label style={labelCampo}>
-                      Nivel real inicial
-                      <select
-                        value={nuevoAlumnoNivel}
-                        onChange={(e) => setNuevoAlumnoNivel(e.target.value)}
-                        style={selectCampo}
-                      >
-                        <option value="">Sin nivel / pendiente</option>
-                        {opcionesNivel.map((nivel) => (
-                          <option key={nivel} value={nivel}>
-                            {nivel}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
-                    <label style={labelCampo}>
-                      Origen del nivel
-                      <select
-                        value={nuevoAlumnoOrigen}
-                        onChange={(e) => setNuevoAlumnoOrigen(e.target.value)}
-                        style={selectCampo}
-                      >
-                        <option value="Jose / Coordinador">
-                          Jose / Coordinador
-                        </option>
-                        <option value="Familia">Familia</option>
-                        <option value="Ventas / compañera">
-                          Ventas / compañera
-                        </option>
-                        <option value="Clase de prueba pendiente">
-                          Clase de prueba pendiente
-                        </option>
-                        <option value="Desconocido">Desconocido</option>
-                      </select>
-                    </label>
-
-                    <label style={labelCampo}>
-                      Estado ficha
-                      <select
-                        value={nuevoAlumnoEstado}
-                        onChange={(e) => setNuevoAlumnoEstado(e.target.value)}
-                        style={selectCampo}
-                      >
-                        <option value="pendiente completar">
-                          Pendiente completar
-                        </option>
-                        <option value="revisar">Revisar</option>
-                        <option value="completa">Completa</option>
-                      </select>
-                    </label>
-                  </div>
-
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: 8,
-                      flexWrap: 'wrap',
-                      marginTop: 12,
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={crearAlumnoManualBase}
-                      style={botonPrincipal}
-                    >
-                      Crear ficha
-                    </button>
-                  </div>
-                </article>
-              )}
 
               <article
                 id="fichas-listado-alumnos"
