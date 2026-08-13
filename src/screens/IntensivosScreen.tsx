@@ -301,6 +301,15 @@ export function PantallaIntensivos(ctx: any) {
               const gestorDiplomasAbierto =
                 gestionarDiplomasIntensivoId === intensivo.intensivo_id;
               const resumenFinal = resumenFinalDelIntensivo(intensivo.intensivo_id);
+              const recuperacionesActivasAlumno = new Set(
+                recuperacionesIntensivo
+                  .filter(
+                    (registro) =>
+                      registro.estado !== 'Resuelta' &&
+                      registro.estado !== 'Descartada'
+                  )
+                  .map((registro) => registro.alumno_id)
+              );
               const diplomasPendientes = resumenFinal.filter(
                 (registro) => registro.estado_diploma !== 'Revisado'
               ).length;
@@ -864,12 +873,11 @@ export function PantallaIntensivos(ctx: any) {
                             Fichas · {intensivo.intensivo}
                           </h4>
                           <p style={{ margin: '4px 0 0', color: '#64748b' }}>
-                            {alumnosInscritosIntensivo.length} alumnos inscritos
+                            {alumnosInscritosIntensivo.length} alumnos inscritos ·{' '}
+                            {recuperacionesPendientesIntensivo} pendientes de recuperar
                           </p>
                         </div>
                       </div>
-
-
 
                       {alumnosInscritosIntensivo.length === 0 && (
                         <p style={{ marginBottom: 0 }}>
@@ -880,44 +888,187 @@ export function PantallaIntensivos(ctx: any) {
                       <div style={{ display: 'grid', gap: 10 }}>
                         {alumnosInscritosIntensivo.map((registro) => {
                           const resumenAlumno = resumenAlumnoIntensivo(registro.alumno_id);
+                          const resumenFinalAlumno = resumenFinal.find(
+                            (item) => item.alumno_id === registro.alumno_id
+                          );
                           const nivelUsado = resumenAlumno?.nivel_resumen || 'SIN NIVEL';
                           const pistaUsada = resumenAlumno?.pista_resumen || 'Pendiente';
                           const origenNivel = resumenAlumno?.origen_nivel_estimado || 'Desconocido';
-                          const fuenteNivel = resumenAlumno?.nivel_actual
-                            ? 'Nivel actual'
-                            : resumenAlumno?.nivel_estimado
-                              ? 'Nivel estimado'
-                              : 'Sin nivel';
+
+                          const recuperacionesAlumno = recuperacionesIntensivo.filter(
+                            (item) =>
+                              item.alumno_id === registro.alumno_id &&
+                              item.estado !== 'Resuelta' &&
+                              item.estado !== 'Descartada'
+                          );
+                          const tieneRecuperacionPendiente =
+                            recuperacionesAlumno.length > 0;
+
+                          const diasPresentes = Number(
+                            resumenFinalAlumno?.dias_presente || 0
+                          );
+                          const diasAusentes = Number(
+                            resumenFinalAlumno?.dias_ausente || 0
+                          );
+                          const diasPendientes = Number(
+                            resumenFinalAlumno?.dias_pendiente_asistencia || 0
+                          );
+                          const totalDias =
+                            Number(resumenFinalAlumno?.total_dias_intensivo || 0) ||
+                            diasIntensivo.length;
+                          const totalReportes = Number(
+                            resumenFinalAlumno?.total_reportes ||
+                              resumenAlumno?.total_reportes ||
+                              0
+                          );
+                          const nivelFinal =
+                            resumenFinalAlumno?.nivel_final_confirmado ||
+                            resumenFinalAlumno?.nivel_final_propuesto ||
+                            resumenFinalAlumno?.nivel_ultimo_reporte ||
+                            nivelUsado;
+                          const finalizado =
+                            resumenFinalAlumno?.estado_diploma === 'Revisado';
 
                           return (
                             <details
                               key={registro.intensivo_alumno_id}
                               style={{
                                 ...miniTarjetaBlanca,
-                                background: '#ffffff',
-                                border: '1px solid #e2e8f0',
+                                background: tieneRecuperacionPendiente
+                                  ? 'rgba(255,247,237,.9)'
+                                  : finalizado
+                                    ? 'rgba(240,253,244,.78)'
+                                    : '#ffffff',
+                                border: tieneRecuperacionPendiente
+                                  ? '1px solid rgba(249,115,22,.45)'
+                                  : finalizado
+                                    ? '1px solid rgba(22,163,74,.28)'
+                                    : '1px solid #e2e8f0',
                                 boxShadow: '0 4px 14px rgba(15, 23, 42, 0.04)',
                               }}
                             >
                               <summary style={{ cursor: 'pointer', listStyle: 'none' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
-                                  <div>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    gap: 10,
+                                    flexWrap: 'wrap',
+                                    alignItems: 'center',
+                                  }}
+                                >
+                                  <div style={{ flex: '1 1 260px' }}>
                                     <strong>{registro.alumno}</strong>
                                     <p style={{ margin: '5px 0 0', color: '#475569' }}>
-                                      Nivel {nivelUsado} · {pistaUsada}
+                                      Nivel {nivelFinal || nivelUsado} · {pistaUsada}
+                                    </p>
+                                    <p
+                                      style={{
+                                        margin: '5px 0 0',
+                                        color: '#64748b',
+                                        fontSize: 13,
+                                      }}
+                                    >
+                                      Asistencia {diasPresentes}/{totalDias || 4}
+                                      {diasAusentes > 0 ? ` · ${diasAusentes} faltas` : ''}
+                                      {diasPendientes > 0
+                                        ? ` · ${diasPendientes} pendientes`
+                                        : ''}{' '}
+                                      · Reportes {totalReportes}/{totalDias || 4}
                                     </p>
                                   </div>
-                                  <span style={{ color: '#475569', fontSize: 13, fontWeight: 850 }}>
-                                    Ver ficha ▾
-                                  </span>
+
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      gap: 6,
+                                      flexWrap: 'wrap',
+                                      alignItems: 'center',
+                                      justifyContent: 'flex-end',
+                                    }}
+                                  >
+                                    {tieneRecuperacionPendiente && (
+                                      <span style={agendaBadgeModalidad}>
+                                        Recuperar
+                                      </span>
+                                    )}
+                                    <span
+                                      style={
+                                        finalizado ? avisoCompleto : avisoPendiente
+                                      }
+                                    >
+                                      {finalizado ? 'Finalizado' : 'En curso'}
+                                    </span>
+                                    <span
+                                      style={{
+                                        color: '#475569',
+                                        fontSize: 13,
+                                        fontWeight: 850,
+                                      }}
+                                    >
+                                      Ver ficha ▾
+                                    </span>
+                                  </div>
                                 </div>
                               </summary>
 
                               <div style={{ marginTop: 12 }}>
-                                <p>
-                                  <strong>Ficha:</strong>{' '}
-                                  {resumenAlumno?.estado_ficha || registro.estado_diploma || '-'}
-                                </p>
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns:
+                                      'repeat(auto-fit, minmax(170px, 1fr))',
+                                    gap: 8,
+                                  }}
+                                >
+                                  <div style={miniTarjetaBlanca}>
+                                    <strong>Asistencia</strong>
+                                    <p style={{ margin: '5px 0 0' }}>
+                                      {diasPresentes}/{totalDias || 4} presentes
+                                    </p>
+                                  </div>
+                                  <div style={miniTarjetaBlanca}>
+                                    <strong>Reportes</strong>
+                                    <p style={{ margin: '5px 0 0' }}>
+                                      {totalReportes}/{totalDias || 4}
+                                    </p>
+                                  </div>
+                                  <div style={miniTarjetaBlanca}>
+                                    <strong>Evaluación</strong>
+                                    <p style={{ margin: '5px 0 0' }}>
+                                      {resumenFinalAlumno?.estado_diploma || 'Pendiente'}
+                                    </p>
+                                  </div>
+                                  <div style={miniTarjetaBlanca}>
+                                    <strong>Siguiente paso</strong>
+                                    <p style={{ margin: '5px 0 0' }}>
+                                      {resumenFinalAlumno?.recomendacion_siguiente_paso ||
+                                        registro.recomendacion_siguiente_paso ||
+                                        'Pendiente'}
+                                    </p>
+                                  </div>
+                                </div>
+
+                                {tieneRecuperacionPendiente && (
+                                  <div
+                                    style={{
+                                      ...avisoPendiente,
+                                      marginTop: 10,
+                                    }}
+                                  >
+                                    <strong>Pendiente de recuperar.</strong>{' '}
+                                    {recuperacionesAlumno
+                                      .map(
+                                        (item) =>
+                                          `${item.estado || 'Pendiente valorar'}${
+                                            item.intensivo_destino
+                                              ? ` · ${item.intensivo_destino}`
+                                              : ''
+                                          }`
+                                      )
+                                      .join(' · ')}
+                                  </div>
+                                )}
 
                                 {resumenAlumno?.observacion_visible_entrenador && (
                                   <p>
@@ -927,7 +1078,13 @@ export function PantallaIntensivos(ctx: any) {
                                 )}
 
                                 {Number(resumenAlumno?.total_reportes || 0) > 0 && (
-                                  <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
+                                  <div
+                                    style={{
+                                      display: 'grid',
+                                      gap: 6,
+                                      marginTop: 10,
+                                    }}
+                                  >
                                     <p style={{ margin: 0 }}>
                                       <strong>Última autonomía:</strong>{' '}
                                       {resumenAlumno?.ultima_autonomia || '-'}
@@ -947,10 +1104,14 @@ export function PantallaIntensivos(ctx: any) {
                                   </div>
                                 )}
 
-                                <div style={gridFormulario}>
+                                <div style={{ ...gridFormulario, marginTop: 10 }}>
                                   <CampoSelect
                                     label="Cambiar nivel rápido"
-                                    value={nivelUsado === 'SIN NIVEL' ? 'INICIACION' : nivelUsado}
+                                    value={
+                                      nivelUsado === 'SIN NIVEL'
+                                        ? 'INICIACION'
+                                        : nivelUsado
+                                    }
                                     opciones={opcionesNivel}
                                     onChange={(valor) =>
                                       actualizarNivelAlumnoIntensivo(
@@ -968,14 +1129,38 @@ export function PantallaIntensivos(ctx: any) {
                                     onChange={(valor) =>
                                       actualizarNivelAlumnoIntensivo(
                                         registro,
-                                        nivelUsado === 'SIN NIVEL' ? 'INICIACION' : nivelUsado,
+                                        nivelUsado === 'SIN NIVEL'
+                                          ? 'INICIACION'
+                                          : nivelUsado,
                                         valor
                                       )
                                     }
                                   />
                                 </div>
 
-                                <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    gap: 8,
+                                    marginTop: 10,
+                                    flexWrap: 'wrap',
+                                  }}
+                                >
+                                  {tieneRecuperacionPendiente && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        abrirPanelIntensivo(
+                                          intensivo,
+                                          'asistencia'
+                                        )
+                                      }
+                                      style={botonPrincipal}
+                                    >
+                                      Gestionar recuperación
+                                    </button>
+                                  )}
+
                                   <button
                                     onClick={() => quitarAlumnoDeIntensivo(registro)}
                                     style={botonPeligro}

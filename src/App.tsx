@@ -3481,6 +3481,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     | 'revision_reciente'
     | 'seguimiento_especial'
   >('todos');
+  const [vistaFichasAlumnos, setVistaFichasAlumnos] = useState<
+    'general' | 'intensivos'
+  >('general');
+  const [filtroFichasIntensivos, setFiltroFichasIntensivos] = useState<
+    'todos' | 'en_curso' | 'recuperar' | 'finalizados'
+  >('todos');
+  const [busquedaFichasIntensivos, setBusquedaFichasIntensivos] =
+    useState('');
   const [alumnoEditandoId, setAlumnoEditandoId] = useState<string | null>(null);
   const [alumnoEditNombre, setAlumnoEditNombre] = useState('');
   const [alumnoEditNivel, setAlumnoEditNivel] = useState('');
@@ -3549,6 +3557,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [filtroDiaFichasOcio, setFiltroDiaFichasOcio] = useState<
     '' | 'Jueves' | 'Sábado' | 'Domingo'
   >('');
+  const [filtroEstadoFichasOcio, setFiltroEstadoFichasOcio] = useState<
+    'todos' | 'sin_grupo' | 'sin_nivel' | 'revisar_grupo'
+  >('todos');
   const [mostrarNuevoOcio, setMostrarNuevoOcio] = useState(false);
   const [ocioAlumnoEditandoId, setOcioAlumnoEditandoId] = useState<
     string | null
@@ -7986,7 +7997,21 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
       !filtroDiaFichasOcio ||
       diaAlumno === textoSinAcentosGrupoApp(filtroDiaFichasOcio);
 
-    return coincideBusqueda && coincideDia;
+    const recomendacionCambio = ocioRecomendacionesCambio.find(
+      (item) => item.alumno_id === alumno.alumno_id
+    );
+    const necesitaRevisarGrupo = Boolean(
+      recomendacionCambio && recomendacionCambio.recomendacion !== 'OK'
+    );
+
+    const coincideEstado =
+      filtroEstadoFichasOcio === 'todos' ||
+      (filtroEstadoFichasOcio === 'sin_grupo' && !alumno.grupo_id) ||
+      (filtroEstadoFichasOcio === 'sin_nivel' &&
+        !(alumno.nivel_usado || alumno.nivel)) ||
+      (filtroEstadoFichasOcio === 'revisar_grupo' && necesitaRevisarGrupo);
+
+    return coincideBusqueda && coincideDia && coincideEstado;
   });
 
   async function cargarEntrenadores() {
@@ -13937,7 +13962,10 @@ Gracias!`;
       cargarGruposEntrenador();
       cargarDisponibilidad();
     }
-    if (pantalla === 'alumnos') cargarAlumnos();
+    if (pantalla === 'alumnos') {
+      cargarAlumnos();
+      cargarIntensivos();
+    }
     if (pantalla === 'ocioAlumnos') {
       cargarOcioAlumnos();
       cargarOcioGrupos();
@@ -17604,7 +17632,7 @@ Gracias!`;
                     : {}),
                 }}
               >
-                Alumnos
+                Alumnos Baby
               </button>
             </div>
 
@@ -23409,9 +23437,14 @@ Gracias!`;
           const ocioSinNivel = ocioAlumnos.filter(
             (alumno) => !(alumno.nivel_usado || alumno.nivel)
           ).length;
-          const ocioConReportes = ocioAlumnos.filter(
-            (alumno) => Number(alumno.total_reportes || 0) > 0
-          ).length;
+          const ocioRevisarGrupo = ocioAlumnos.filter((alumno) => {
+            const recomendacion = ocioRecomendacionesCambio.find(
+              (item) => item.alumno_id === alumno.alumno_id
+            );
+            return Boolean(
+              recomendacion && recomendacion.recomendacion !== 'OK'
+            );
+          }).length;
 
           const estiloOcioHero = {
             ...agendaHero,
@@ -23465,7 +23498,10 @@ Gracias!`;
                   }}
                 >
                   <button
-                    onClick={() => setPantalla('alumnos')}
+                    onClick={() => {
+                      setVistaFichasAlumnos('general');
+                      setPantalla('alumnos');
+                    }}
                     style={{
                       ...botonSecundario,
                       borderColor: '#ddd6fe',
@@ -23473,7 +23509,22 @@ Gracias!`;
                       background: '#f5f3ff',
                     }}
                   >
-                    Ver alumnos Baby/Intensivos
+                    Ver alumnos Baby
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setVistaFichasAlumnos('intensivos');
+                      setPantalla('alumnos');
+                    }}
+                    style={{
+                      ...botonSecundario,
+                      borderColor: '#fed7aa',
+                      color: '#c2410c',
+                      background: '#fff7ed',
+                    }}
+                  >
+                    Ver alumnos Intensivos
                   </button>
 
                 </div>
@@ -23492,42 +23543,85 @@ Gracias!`;
                   boxSizing: 'border-box',
                 }}
               >
-                <div style={tarjetaMetricaOcio('#16a34a', '#f0fdf4')}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFiltroEstadoFichasOcio('todos');
+                    setFiltroDiaFichasOcio('');
+                    setBusquedaOcio('');
+                  }}
+                  style={{
+                    ...tarjetaMetricaOcio('#16a34a', '#f0fdf4'),
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    font: 'inherit',
+                  }}
+                >
                   <span
                     style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
                   >
                     TOTAL OCIO
                   </span>
                   <strong style={{ fontSize: 28 }}>{totalOcio}</strong>
-                  <span>alumnos</span>
-                </div>
-                <div style={tarjetaMetricaOcio('#dc2626', '#fef2f2')}>
+                  <span>ver todos</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFiltroEstadoFichasOcio('sin_grupo')}
+                  style={{
+                    ...tarjetaMetricaOcio('#dc2626', '#fef2f2'),
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    font: 'inherit',
+                  }}
+                >
                   <span
                     style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
                   >
                     SIN GRUPO
                   </span>
                   <strong style={{ fontSize: 28 }}>{ocioSinGrupo}</strong>
-                  <span>pendientes</span>
-                </div>
-                <div style={tarjetaMetricaOcio('#f97316', '#fff7ed')}>
+                  <span>ver pendientes</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFiltroEstadoFichasOcio('sin_nivel')}
+                  style={{
+                    ...tarjetaMetricaOcio('#f97316', '#fff7ed'),
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    font: 'inherit',
+                  }}
+                >
                   <span
                     style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
                   >
                     SIN NIVEL
                   </span>
                   <strong style={{ fontSize: 28 }}>{ocioSinNivel}</strong>
-                  <span>revisar</span>
-                </div>
-                <div style={tarjetaMetricaOcio('#2563eb', '#eff6ff')}>
+                  <span>ver fichas</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFiltroEstadoFichasOcio('revisar_grupo')}
+                  style={{
+                    ...tarjetaMetricaOcio('#2563eb', '#eff6ff'),
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    font: 'inherit',
+                  }}
+                >
                   <span
                     style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
                   >
-                    CON REPORTES
+                    REVISAR GRUPO
                   </span>
-                  <strong style={{ fontSize: 28 }}>{ocioConReportes}</strong>
-                  <span>histórico</span>
-                </div>
+                  <strong style={{ fontSize: 28 }}>{ocioRevisarGrupo}</strong>
+                  <span>nivel / encaje</span>
+                </button>
               </section>
 
               {mostrarNuevoOcio && (
@@ -23657,7 +23751,8 @@ Gracias!`;
                     style={{ ...buscador, margin: 0, flex: '1 1 260px' }}
                   />
 
-                  {filtroDiaFichasOcio && (
+                  {(filtroDiaFichasOcio ||
+                    filtroEstadoFichasOcio !== 'todos') && (
                     <>
                       <span
                         style={{
@@ -23667,7 +23762,17 @@ Gracias!`;
                           borderColor: '#bbf7d0',
                         }}
                       >
-                        {filtroDiaFichasOcio} · {ocioAlumnosFiltrados.length} fichas
+                        {filtroDiaFichasOcio
+                          ? `${filtroDiaFichasOcio} · `
+                          : ''}
+                        {filtroEstadoFichasOcio === 'sin_grupo'
+                          ? 'Sin grupo · '
+                          : filtroEstadoFichasOcio === 'sin_nivel'
+                            ? 'Sin nivel · '
+                            : filtroEstadoFichasOcio === 'revisar_grupo'
+                              ? 'Revisar grupo · '
+                              : ''}
+                        {ocioAlumnosFiltrados.length} fichas
                       </span>
                       <button
                         type="button"
@@ -30843,6 +30948,187 @@ Gracias!`;
               .includes('revis')
           ).length;
 
+          const inscripcionIntensivoMasRecientePorAlumno = new Map<
+            string,
+            IntensivoAlumnoApp
+          >();
+
+          intensivoAlumnos.forEach((registro) => {
+            const anterior =
+              inscripcionIntensivoMasRecientePorAlumno.get(registro.alumno_id);
+
+            if (!anterior) {
+              inscripcionIntensivoMasRecientePorAlumno.set(
+                registro.alumno_id,
+                registro
+              );
+              return;
+            }
+
+            const cursoRegistro = intensivos.find(
+              (item) => item.intensivo_id === registro.intensivo_id
+            );
+            const cursoAnterior = intensivos.find(
+              (item) => item.intensivo_id === anterior.intensivo_id
+            );
+
+            const fechaRegistro =
+              cursoRegistro?.fecha_fin ||
+              cursoRegistro?.fecha_inicio ||
+              registro.created_at ||
+              '';
+            const fechaAnterior =
+              cursoAnterior?.fecha_fin ||
+              cursoAnterior?.fecha_inicio ||
+              anterior.created_at ||
+              '';
+
+            if (fechaRegistro >= fechaAnterior) {
+              inscripcionIntensivoMasRecientePorAlumno.set(
+                registro.alumno_id,
+                registro
+              );
+            }
+          });
+
+          const fichasIntensivosGlobales = Array.from(
+            inscripcionIntensivoMasRecientePorAlumno.values()
+          )
+            .map((registro) => {
+              const curso = intensivos.find(
+                (item) => item.intensivo_id === registro.intensivo_id
+              );
+              const resumenFinal = resumenFinalIntensivo.find(
+                (item) =>
+                  item.intensivo_id === registro.intensivo_id &&
+                  item.alumno_id === registro.alumno_id
+              );
+              const fichaMaestra = alumnos.find(
+                (item) => item.alumno_id === registro.alumno_id
+              );
+              const diasCurso = intensivoDias.filter(
+                (item) => item.intensivo_id === registro.intensivo_id
+              );
+              const recuperacionesActivas = intensivoMás.filter(
+                (item) =>
+                  item.alumno_id === registro.alumno_id &&
+                  item.estado !== 'Resuelta' &&
+                  item.estado !== 'Descartada'
+              );
+              const faltasRealesPendientes = intensivoAsistencias.filter(
+                (item) =>
+                  item.intensivo_id === registro.intensivo_id &&
+                  item.alumno_id === registro.alumno_id &&
+                  ['NO_PRESENTADO', 'BAJA_AVISADA'].includes(
+                    String(item.estado || '')
+                  )
+              );
+
+              const totalDias =
+                Number(resumenFinal?.total_dias_intensivo || 0) ||
+                diasCurso.length ||
+                4;
+              const diasPresentes = Number(resumenFinal?.dias_presente || 0);
+              const diasAusentes = Number(resumenFinal?.dias_ausente || 0);
+              const diasPendientes = Number(
+                resumenFinal?.dias_pendiente_asistencia || 0
+              );
+              const totalReportes = Number(resumenFinal?.total_reportes || 0);
+              const nivel =
+                resumenFinal?.nivel_final_confirmado ||
+                resumenFinal?.nivel_final_propuesto ||
+                resumenFinal?.nivel_ultimo_reporte ||
+                fichaMaestra?.nivel_actual ||
+                fichaMaestra?.ultimo_nivel_reportado ||
+                fichaMaestra?.nivel_estimado ||
+                'SIN NIVEL';
+              const finalizado = resumenFinal?.estado_diploma === 'Revisado';
+              const pendienteRecuperar =
+                recuperacionesActivas.length > 0 ||
+                faltasRealesPendientes.length > 0;
+
+              return {
+                registro,
+                curso,
+                resumenFinal,
+                fichaMaestra,
+                recuperacionesActivas,
+                faltasRealesPendientes,
+                totalDias,
+                diasPresentes,
+                diasAusentes,
+                diasPendientes,
+                totalReportes,
+                nivel,
+                finalizado,
+                pendienteRecuperar,
+              };
+            })
+            .filter((ficha) => {
+              const buscado = busquedaFichasIntensivos.trim().toLowerCase();
+              const texto = `${ficha.registro.alumno} ${
+                ficha.curso?.intensivo || ''
+              } ${ficha.nivel}`.toLowerCase();
+
+              if (buscado && !texto.includes(buscado)) return false;
+              if (filtroFichasIntensivos === 'en_curso') {
+                return !ficha.finalizado;
+              }
+              if (filtroFichasIntensivos === 'recuperar') {
+                return ficha.pendienteRecuperar;
+              }
+              if (filtroFichasIntensivos === 'finalizados') {
+                return ficha.finalizado;
+              }
+              return true;
+            })
+            .sort((a, b) =>
+              String(a.registro.alumno || '').localeCompare(
+                String(b.registro.alumno || ''),
+                'es'
+              )
+            );
+
+          const totalFichasIntensivos = new Set(
+            intensivoAlumnos.map((registro) => registro.alumno_id)
+          ).size;
+
+          const alumnosPendientesRecuperarGlobal = new Set<string>();
+
+          intensivoMás
+            .filter(
+              (registro) =>
+                registro.estado !== 'Resuelta' &&
+                registro.estado !== 'Descartada'
+            )
+            .forEach((registro) =>
+              alumnosPendientesRecuperarGlobal.add(registro.alumno_id)
+            );
+
+          intensivoAsistencias
+            .filter((registro) =>
+              ['NO_PRESENTADO', 'BAJA_AVISADA'].includes(
+                String(registro.estado || '')
+              )
+            )
+            .forEach((registro) =>
+              alumnosPendientesRecuperarGlobal.add(registro.alumno_id)
+            );
+
+          const totalRecuperacionesFichas =
+            alumnosPendientesRecuperarGlobal.size;
+
+          const totalFinalizadosFichas = Array.from(
+            inscripcionIntensivoMasRecientePorAlumno.values()
+          ).filter((registro) =>
+            resumenFinalIntensivo.some(
+              (item) =>
+                item.intensivo_id === registro.intensivo_id &&
+                item.alumno_id === registro.alumno_id &&
+                item.estado_diploma === 'Revisado'
+            )
+          ).length;
+
           const estiloFichaHero = {
             ...agendaHero,
             background:
@@ -30971,7 +31257,11 @@ Gracias!`;
                   >
                     FICHAS
                   </span>
-                  <h2 style={{ margin: '10px 0 0' }}>Alumnos</h2>
+                  <h2 style={{ margin: '10px 0 0' }}>
+                    {vistaFichasAlumnos === 'intensivos'
+                      ? 'Alumnos Intensivos'
+                      : 'Alumnos Baby'}
+                  </h2>
                   <p
                     style={{
                       margin: '8px 0 0',
@@ -30984,8 +31274,9 @@ Gracias!`;
                       lineHeight: 1.35,
                     }}
                   >
-                    Baby e Intensivos juntos. Aquí queda el nivel real que usa
-                    toda la app.
+                    {vistaFichasAlumnos === 'intensivos'
+                      ? 'Seguimiento global de los alumnos que están o han estado en Intensivos.'
+                      : 'Fichas maestras de alumnos Baby y seguimiento de su nivel real.'}
                   </p>
                 </div>
 
@@ -31000,6 +31291,48 @@ Gracias!`;
                     minWidth: 0,
                   }}
                 >
+                  {vistaFichasAlumnos === 'general' ? (
+                    <button
+                      type="button"
+                      onClick={() => setVistaFichasAlumnos('intensivos')}
+                      style={{
+                        ...botonSecundario,
+                        borderColor: '#fed7aa',
+                        color: '#c2410c',
+                        background: '#fff7ed',
+                        ...(esVistaMovilApp
+                          ? {
+                              flex: '1 1 150px',
+                              minWidth: 0,
+                              whiteSpace: 'normal',
+                            }
+                          : {}),
+                      }}
+                    >
+                      Ver alumnos Intensivos ({totalFichasIntensivos})
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setVistaFichasAlumnos('general')}
+                      style={{
+                        ...botonSecundario,
+                        borderColor: '#ddd6fe',
+                        color: '#6d28d9',
+                        background: '#f5f3ff',
+                        ...(esVistaMovilApp
+                          ? {
+                              flex: '1 1 150px',
+                              minWidth: 0,
+                              whiteSpace: 'normal',
+                            }
+                          : {}),
+                      }}
+                    >
+                      Ver alumnos Baby
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => {
@@ -31023,27 +31356,36 @@ Gracias!`;
                   >
                     Ver alumnos Ocio ({ocioAlumnos.length})
                   </button>
+
+                  {vistaFichasAlumnos === 'general' && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setMostrarNuevoAlumnoManual((valor) => !valor)
+                      }
+                      style={{
+                        ...botonPrincipal,
+                        ...(esVistaMovilApp
+                          ? {
+                              flex: '1 1 150px',
+                              minWidth: 0,
+                              whiteSpace: 'normal',
+                            }
+                          : {}),
+                      }}
+                      title="Crear ficha manual para un niño que no viene de listado."
+                    >
+                      + Añadir alumno
+                    </button>
+                  )}
+
                   <button
-                    type="button"
-                    onClick={() =>
-                      setMostrarNuevoAlumnoManual((valor) => !valor)
-                    }
-                    style={{
-                      ...botonPrincipal,
-                      ...(esVistaMovilApp
-                        ? {
-                            flex: '1 1 150px',
-                            minWidth: 0,
-                            whiteSpace: 'normal',
-                          }
-                        : {}),
+                    onClick={() => {
+                      cargarAlumnos();
+                      if (vistaFichasAlumnos === 'intensivos') {
+                        cargarIntensivos();
+                      }
                     }}
-                    title="Crear ficha manual para un niño que no viene de listado."
-                  >
-                    + Añadir alumno
-                  </button>
-                  <button
-                    onClick={cargarAlumnos}
                     style={{
                       ...botonSecundario,
                       ...(esVistaMovilApp
@@ -31059,6 +31401,378 @@ Gracias!`;
                   </button>
                 </div>
               </article>
+
+              {vistaFichasAlumnos === 'intensivos' && (
+                <>
+                  <article
+                    style={{
+                      ...agendaBloqueBlanco,
+                      border: '1px solid #fed7aa',
+                      background:
+                        'linear-gradient(135deg, #fff7ed 0%, #ffffff 62%)',
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fit, minmax(150px, 1fr))',
+                        gap: 10,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setFiltroFichasIntensivos('todos')}
+                        style={{
+                          ...tarjetaMetricaFicha('#f97316', '#fff7ed'),
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          font: 'inherit',
+                        }}
+                      >
+                        <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>
+                          ALUMNOS INTENSIVOS
+                        </span>
+                        <strong style={{ fontSize: 28 }}>{totalFichasIntensivos}</strong>
+                        <span>ver todos</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setFiltroFichasIntensivos('recuperar')}
+                        style={{
+                          ...tarjetaMetricaFicha('#f59e0b', '#fffbeb'),
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          font: 'inherit',
+                        }}
+                      >
+                        <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>
+                          PENDIENTES RECUPERAR
+                        </span>
+                        <strong style={{ fontSize: 28 }}>{totalRecuperacionesFichas}</strong>
+                        <span>ver alumnos</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setFiltroFichasIntensivos('finalizados')}
+                        style={{
+                          ...tarjetaMetricaFicha('#16a34a', '#f0fdf4'),
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          font: 'inherit',
+                        }}
+                      >
+                        <span style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}>
+                          FINALIZADOS
+                        </span>
+                        <strong style={{ fontSize: 28 }}>{totalFinalizadosFichas}</strong>
+                        <span>ver evaluaciones</span>
+                      </button>
+                    </div>
+                  </article>
+
+                  <article style={agendaBloqueBlanco}>
+                    <input
+                      value={busquedaFichasIntensivos}
+                      onChange={(e) =>
+                        setBusquedaFichasIntensivos(e.target.value)
+                      }
+                      placeholder="Buscar alumno o intensivo..."
+                      style={{ ...buscador, margin: 0 }}
+                    />
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                        marginTop: 10,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setFiltroFichasIntensivos('todos')}
+                        style={botonMenu(filtroFichasIntensivos === 'todos')}
+                      >
+                        Todos
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFiltroFichasIntensivos('en_curso')}
+                        style={botonMenu(filtroFichasIntensivos === 'en_curso')}
+                      >
+                        En curso
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFiltroFichasIntensivos('recuperar')}
+                        style={botonMenu(filtroFichasIntensivos === 'recuperar')}
+                      >
+                        Pendientes recuperar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFiltroFichasIntensivos('finalizados')}
+                        style={botonMenu(filtroFichasIntensivos === 'finalizados')}
+                      >
+                        Finalizados
+                      </button>
+                    </div>
+                  </article>
+
+                  {fichasIntensivosGlobales.length === 0 && !cargando && (
+                    <article style={agendaBloqueBlanco}>
+                      <strong>Sin alumnos para este filtro.</strong>
+                    </article>
+                  )}
+
+                  <section style={{ display: 'grid', gap: 12 }}>
+                    {fichasIntensivosGlobales.map((ficha) => {
+                      const {
+                        registro,
+                        curso,
+                        resumenFinal,
+                        fichaMaestra,
+                        recuperacionesActivas,
+                        faltasRealesPendientes,
+                        totalDias,
+                        diasPresentes,
+                        diasAusentes,
+                        diasPendientes,
+                        totalReportes,
+                        nivel,
+                        finalizado,
+                        pendienteRecuperar,
+                      } = ficha;
+
+                      return (
+                        <article
+                          key={`ficha-intensivo-${registro.alumno_id}`}
+                          style={{
+                            ...estiloTarjetaAlumno(nivel),
+                            border: pendienteRecuperar
+                              ? '1px solid #fdba74'
+                              : finalizado
+                                ? '1px solid #86efac'
+                                : undefined,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              gap: 12,
+                              flexWrap: 'wrap',
+                              alignItems: 'flex-start',
+                            }}
+                          >
+                            <div style={{ flex: '1 1 280px' }}>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  gap: 8,
+                                  flexWrap: 'wrap',
+                                  alignItems: 'center',
+                                }}
+                              >
+                                <h3 style={{ margin: 0 }}>{registro.alumno}</h3>
+                                <span style={badgeNivelFicha(nivel)}>{nivel}</span>
+
+                                {pendienteRecuperar && (
+                                  <span
+                                    style={{
+                                      ...agendaBadgeModalidad,
+                                      background: '#fff7ed',
+                                      color: '#c2410c',
+                                      borderColor: '#fdba74',
+                                    }}
+                                  >
+                                    PENDIENTE RECUPERAR
+                                  </span>
+                                )}
+
+                                {finalizado && (
+                                  <span
+                                    style={{
+                                      ...agendaBadgeModalidad,
+                                      background: '#f0fdf4',
+                                      color: '#15803d',
+                                      borderColor: '#86efac',
+                                    }}
+                                  >
+                                    FINALIZADO
+                                  </span>
+                                )}
+                              </div>
+
+                              <p style={{ margin: '8px 0 0', color: '#475569', fontWeight: 750 }}>
+                                Último intensivo:{' '}
+                                <strong>{curso?.intensivo || registro.intensivo}</strong>
+                              </p>
+
+                              <p style={{ margin: '5px 0 0', color: '#64748b' }}>
+                                {curso?.fecha_inicio ? formatearFecha(curso.fecha_inicio) : '-'}
+                                {curso?.fecha_fin ? ` → ${formatearFecha(curso.fecha_fin)}` : ''}
+                                {curso?.lugar ? ` · ${curso.lugar}` : ''}
+                              </p>
+                            </div>
+
+                            <div
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(2, minmax(90px, 1fr))',
+                                gap: 8,
+                                minWidth: esVistaMovilApp ? '100%' : 230,
+                              }}
+                            >
+                              <div style={miniTarjetaBlanca}>
+                                <strong>{diasPresentes}/{totalDias}</strong>
+                                <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 12 }}>
+                                  asistencias
+                                </p>
+                              </div>
+
+                              <div style={miniTarjetaBlanca}>
+                                <strong>{totalReportes}/{totalDias}</strong>
+                                <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 12 }}>
+                                  reportes
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns:
+                                'repeat(auto-fit, minmax(190px, 1fr))',
+                              gap: 8,
+                              marginTop: 12,
+                            }}
+                          >
+                            <div style={miniTarjetaBlanca}>
+                              <strong>Asistencia</strong>
+                              <p style={{ margin: '5px 0 0' }}>
+                                {diasPresentes} presente · {diasAusentes} ausente
+                                {diasPendientes > 0 ? ` · ${diasPendientes} pendiente` : ''}
+                              </p>
+                            </div>
+
+                            <div style={miniTarjetaBlanca}>
+                              <strong>Evaluación final</strong>
+                              <p style={{ margin: '5px 0 0' }}>
+                                {resumenFinal?.estado_diploma || 'Pendiente'}
+                              </p>
+                            </div>
+
+                            <div style={miniTarjetaBlanca}>
+                              <strong>Siguiente paso</strong>
+                              <p style={{ margin: '5px 0 0' }}>
+                                {resumenFinal?.recomendacion_siguiente_paso ||
+                                  registro.recomendacion_siguiente_paso ||
+                                  'Pendiente'}
+                              </p>
+                            </div>
+
+                            <div style={miniTarjetaBlanca}>
+                              <strong>Último reporte</strong>
+                              <p style={{ margin: '5px 0 0' }}>
+                                {resumenFinal?.nivel_ultimo_reporte ||
+                                  fichaMaestra?.ultimo_nivel_reportado ||
+                                  '-'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {pendienteRecuperar && (
+                            <div style={{ ...avisoPendiente, marginTop: 12 }}>
+                              <strong>
+                                Recuperación pendiente
+                              </strong>
+                              <p style={{ margin: '6px 0 0' }}>
+                                {recuperacionesActivas.length > 0
+                                  ? recuperacionesActivas
+                                      .map(
+                                        (item) =>
+                                          `${item.estado || 'Pendiente valorar'}${
+                                            item.intensivo_destino
+                                              ? ` · ${item.intensivo_destino}`
+                                              : ''
+                                          }${
+                                            item.grupo_destino
+                                              ? ` · ${item.grupo_destino}`
+                                              : ''
+                                          }`
+                                      )
+                                      .join(' || ')
+                                  : `${faltasRealesPendientes.length} falta(s) registrada(s) · pendiente de gestionar`}
+                              </p>
+                            </div>
+                          )}
+
+                          {(resumenFinal?.tecnica_ultimo_reporte ||
+                            resumenFinal?.autonomia_ultimo_reporte ||
+                            resumenFinal?.actitud_ultimo_reporte) && (
+                            <details style={{ marginTop: 12 }}>
+                              <summary style={{ cursor: 'pointer', fontWeight: 900 }}>
+                                Ver última evaluación
+                              </summary>
+                              <div style={{ ...avisoNeutral, marginTop: 8, display: 'grid', gap: 6 }}>
+                                <p style={{ margin: 0 }}>
+                                  <strong>Técnica:</strong>{' '}
+                                  {resumenFinal?.tecnica_ultimo_reporte || '-'}
+                                </p>
+                                <p style={{ margin: 0 }}>
+                                  <strong>Autonomía:</strong>{' '}
+                                  {resumenFinal?.autonomia_ultimo_reporte || '-'}
+                                </p>
+                                <p style={{ margin: 0 }}>
+                                  <strong>Actitud:</strong>{' '}
+                                  {resumenFinal?.actitud_ultimo_reporte || '-'}
+                                </p>
+                                <p style={{ margin: 0 }}>
+                                  <strong>Recomendación:</strong>{' '}
+                                  {resumenFinal?.recomendacion_ultimo_reporte ||
+                                    fichaMaestra?.ultima_recomendacion ||
+                                    '-'}
+                                </p>
+                              </div>
+                            </details>
+                          )}
+
+                          {curso && (
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setPantalla('intensivos');
+                                  setIntensivoCursoAbiertoId(curso.intensivo_id);
+                                  window.setTimeout(() => {
+                                    abrirPanelIntensivo(
+                                      curso,
+                                      pendienteRecuperar ? 'asistencia' : 'alumnos'
+                                    );
+                                  }, 80);
+                                }}
+                                style={pendienteRecuperar ? botonPrincipal : botonSecundario}
+                              >
+                                {pendienteRecuperar
+                                  ? 'Gestionar recuperación'
+                                  : 'Abrir intensivo'}
+                              </button>
+                            </div>
+                          )}
+                        </article>
+                      );
+                    })}
+                  </section>
+                </>
+              )}
+
+              {vistaFichasAlumnos === 'general' && (
+                <>
 
               <details style={{
                               width: '100%',
@@ -31123,7 +31837,7 @@ Gracias!`;
                   <span
                     style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
                   >
-                    TOTAL BABY / INTENSIVOS
+                    TOTAL BABY
                   </span>
                   <strong style={{ fontSize: 28 }}>{totalFichas}</strong>
                   <span>fichas</span>
@@ -31958,6 +32672,9 @@ Gracias!`;
                   );
                 })}
               </section>
+
+                </>
+              )}
             </section>
           );
         })()}
