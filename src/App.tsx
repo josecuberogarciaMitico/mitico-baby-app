@@ -1447,6 +1447,7 @@ type ReporteFormState = {
   tecnica: string;
   pista: string;
   autonomia: string;
+  ritmoGrupo: string;
   remontes: string;
   incidencia: string;
   recomendacion: string;
@@ -1694,6 +1695,8 @@ type AltaNivelInicialApp = {
   respuesta_pista: string | null;
   respuesta_control_velocidad: string | null;
   respuesta_tecnica: string | null;
+  observaciones_entrenador_familia: string[] | null;
+  observacion_entrenador_otra: string | null;
   observaciones_familia: string | null;
   nivel_propuesto_id: string | null;
   nivel_propuesto: string | null;
@@ -1758,7 +1761,9 @@ type TestNivelPublicoRespuestasApp = {
   pista: string;
   controlVelocidad: string;
   tecnica: string;
-  observaciones: string;
+  observacionesEntrenador: string[];
+  observacionEntrenadorOtra: string;
+  observacionesCoordinacion: string;
 };
 
 function altaNivelInicialFormVacioApp(): AltaNivelInicialFormApp {
@@ -1781,7 +1786,9 @@ function testNivelPublicoRespuestasVaciasApp(): TestNivelPublicoRespuestasApp {
     pista: '',
     controlVelocidad: '',
     tecnica: '',
-    observaciones: '',
+    observacionesEntrenador: [],
+    observacionEntrenadorOtra: '',
+    observacionesCoordinacion: '',
   };
 }
 
@@ -2642,6 +2649,7 @@ function PantallaTestNivelPublicoApp({ token }: { token: string }) {
       titulo: '7. En pista, ¿cómo controla la velocidad y la dirección?',
       ayuda: 'Piensa en cómo esquía durante una bajada normal.',
       opciones: [
+        ['0', 'Todavía no sabe frenar ni controlar la velocidad'],
         ['A', 'Necesita ayuda o recordatorios constantes para frenar'],
         ['B', 'Controla principalmente haciendo cuña'],
         ['C', 'Controla enlazando giros y elige por dónde bajar'],
@@ -2660,6 +2668,51 @@ function PantallaTestNivelPublicoApp({ token }: { token: string }) {
       ],
     },
   ];
+
+  const opcionesObservacionEntrenador = [
+    ['MIEDO_INSEGURIDAD', 'Miedo o inseguridad'],
+    ['BLOQUEO_LLANTO', 'Se bloquea o llora con facilidad'],
+    ['DIFICULTAD_REMONTES', 'Dificultad o miedo con los remontes'],
+    ['AYUDA_MATERIAL', 'Necesita ayuda con el material'],
+    ['SEPARACION_FAMILIA', 'Le cuesta separarse de la familia'],
+    ['LIMITACION_FISICA', 'Lesión o limitación física a tener en cuenta'],
+    ['NECESIDAD_ESPECIAL', 'Necesidad especial comunicada por la familia'],
+    ['OTRA', 'Otra observación importante para el profesor'],
+    ['NINGUNA', 'Ninguna'],
+  ] as const;
+
+  function alternarObservacionEntrenador(codigo: string) {
+    setRespuestas((actual) => {
+      const seleccionadas = actual.observacionesEntrenador || [];
+
+      if (codigo === 'NINGUNA') {
+        return {
+          ...actual,
+          observacionesEntrenador: seleccionadas.includes('NINGUNA')
+            ? []
+            : ['NINGUNA'],
+          observacionEntrenadorOtra: '',
+        };
+      }
+
+      const sinNinguna = seleccionadas.filter(
+        (item) => item !== 'NINGUNA'
+      );
+      const yaSeleccionada = sinNinguna.includes(codigo);
+      const siguientes = yaSeleccionada
+        ? sinNinguna.filter((item) => item !== codigo)
+        : [...sinNinguna, codigo];
+
+      return {
+        ...actual,
+        observacionesEntrenador: siguientes,
+        observacionEntrenadorOtra:
+          codigo === 'OTRA' && yaSeleccionada
+            ? ''
+            : actual.observacionEntrenadorOtra,
+      };
+    });
+  }
 
   const completo = preguntas.every(({ clave }) => Boolean(respuestas[clave]));
 
@@ -2680,7 +2733,12 @@ function PantallaTestNivelPublicoApp({ token }: { token: string }) {
           p_pista: respuestas.pista,
           p_control_velocidad: respuestas.controlVelocidad,
           p_tecnica: respuestas.tecnica,
-          p_observaciones: respuestas.observaciones || null,
+          p_observaciones_entrenador:
+            respuestas.observacionesEntrenador || [],
+          p_observacion_entrenador_otra:
+            respuestas.observacionEntrenadorOtra.trim() || null,
+          p_observaciones:
+            respuestas.observacionesCoordinacion.trim() || null,
         }
       );
       setEnviado(true);
@@ -2892,6 +2950,16 @@ function PantallaTestNivelPublicoApp({ token }: { token: string }) {
             <div style={{ display: 'grid', gap: 8 }}>
               {pregunta.opciones.map(([codigo, texto]) => {
                 const activo = respuestas[pregunta.clave] === codigo;
+                const codigoVisible =
+                  pregunta.clave === 'controlVelocidad'
+                    ? ({
+                        '0': 'A',
+                        A: 'B',
+                        B: 'C',
+                        C: 'D',
+                        D: 'E',
+                      } as Record<string, string>)[codigo] || codigo
+                    : codigo;
                 return (
                   <button
                     key={codigo}
@@ -2918,7 +2986,7 @@ function PantallaTestNivelPublicoApp({ token }: { token: string }) {
                         : 'none',
                     }}
                   >
-                    <strong style={{ marginRight: 8 }}>{codigo}.</strong>
+                    <strong style={{ marginRight: 8 }}>{codigoVisible}.</strong>
                     {texto}
                   </button>
                 );
@@ -2935,21 +3003,146 @@ function PantallaTestNivelPublicoApp({ token }: { token: string }) {
             padding: 16,
           }}
         >
-          <label style={{ display: 'grid', gap: 7, fontWeight: 900 }}>
-            Observaciones importantes (opcional)
+          <div style={{ display: 'grid', gap: 10 }}>
+            <div>
+              <strong style={{ fontSize: 16 }}>
+                ¿Hay algo importante que deba saber el profesor? (opcional)
+              </strong>
+              <p
+                style={{
+                  margin: '5px 0 0',
+                  color: '#64748b',
+                  fontSize: 13,
+                  lineHeight: 1.45,
+                }}
+              >
+                Marca solo lo que sea útil durante la clase. Puedes elegir más
+                de una opción.
+              </p>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 8,
+                minWidth: 0,
+              }}
+            >
+              {opcionesObservacionEntrenador.map(([codigo, texto]) => {
+                const activa =
+                  respuestas.observacionesEntrenador.includes(codigo);
+
+                return (
+                  <button
+                    key={codigo}
+                    type="button"
+                    onClick={() => alternarObservacionEntrenador(codigo)}
+                    style={{
+                      minHeight: 46,
+                      width: '100%',
+                      minWidth: 0,
+                      padding: '9px 11px',
+                      borderRadius: 13,
+                      border: activa
+                        ? '2px solid #2563eb'
+                        : '1px solid #cbd5e1',
+                      background: activa ? '#eff6ff' : '#ffffff',
+                      color: activa ? '#1d4ed8' : '#334155',
+                      textAlign: 'left',
+                      fontWeight: 800,
+                      lineHeight: 1.3,
+                      whiteSpace: 'normal',
+                      overflowWrap: 'anywhere',
+                    }}
+                  >
+                    {activa ? '✓ ' : ''}
+                    {texto}
+                  </button>
+                );
+              })}
+            </div>
+
+            {respuestas.observacionesEntrenador.includes('OTRA') && (
+              <label
+                style={{
+                  display: 'grid',
+                  gap: 6,
+                  fontWeight: 850,
+                  minWidth: 0,
+                }}
+              >
+                Otra observación importante para el profesor
+                <input
+                  value={respuestas.observacionEntrenadorOtra}
+                  maxLength={120}
+                  onChange={(e) =>
+                    setRespuestas({
+                      ...respuestas,
+                      observacionEntrenadorOtra: e.target.value,
+                    })
+                  }
+                  placeholder="Ej.: se asusta al subir a la silla"
+                  style={{
+                    width: '100%',
+                    minWidth: 0,
+                    border: '1px solid #cbd5e1',
+                    borderRadius: 13,
+                    padding: 11,
+                    fontSize: 16,
+                  }}
+                />
+                <small style={{ color: '#64748b', fontWeight: 700 }}>
+                  Máximo 120 caracteres.
+                </small>
+              </label>
+            )}
+          </div>
+        </article>
+
+        <article
+          style={{
+            ...authCardApp,
+            width: '100%',
+            maxWidth: 'none',
+            padding: 16,
+          }}
+        >
+          <label
+            style={{
+              display: 'grid',
+              gap: 7,
+              fontWeight: 900,
+              minWidth: 0,
+            }}
+          >
+            Comentario adicional (opcional)
+            <span
+              style={{
+                color: '#64748b',
+                fontSize: 13,
+                fontWeight: 650,
+                lineHeight: 1.45,
+              }}
+            >
+              Si quieres contarnos algo más que pueda ayudarnos a organizar
+              mejor su experiencia, puedes escribirlo aquí. Por ejemplo:
+              “Me gustaría que estuviera con su hermanito”.
+            </span>
             <textarea
-              value={respuestas.observaciones}
-              maxLength={500}
+              value={respuestas.observacionesCoordinacion}
+              maxLength={350}
               onChange={(e) =>
                 setRespuestas({
                   ...respuestas,
-                  observaciones: e.target.value,
+                  observacionesCoordinacion: e.target.value,
                 })
               }
-              rows={4}
-              placeholder="Miedo, ayuda en remontes, lesión, algo que debamos saber..."
+              rows={3}
+              placeholder="Escribe aquí cualquier comentario adicional..."
               style={{
                 width: '100%',
+                minWidth: 0,
                 border: '1px solid #cbd5e1',
                 borderRadius: 14,
                 padding: 12,
@@ -3068,6 +3261,13 @@ const opcionesAutonomia = [
   'Autónomo en pista pequeña',
   'Autónomo en pista grande',
   'Autónomo total',
+];
+
+const opcionesRitmoGrupo = [
+  'Lento para su nivel',
+  'Adecuado para su nivel',
+  'Rápido para su nivel',
+  'Muy rápido · podría ir con nivel superior',
 ];
 
 const opcionesRemontes = [
@@ -3209,6 +3409,7 @@ function reporteInicial(): ReporteFormState {
     tecnica: 'Giros en cuña',
     pista: 'Pequeña',
     autonomia: 'Necesita ayuda puntual',
+    ritmoGrupo: '',
     remontes: 'Cinta',
     incidencia: 'Sin incidencia',
     recomendacion: 'Mantener el mismo nivel',
@@ -3843,6 +4044,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     useState<CobroPdfPreviewState | null>(null);
 
   const [intensivos, setIntensivos] = useState<IntensivoApp[]>([]);
+  const [intensivoFichaSeleccionado, setIntensivoFichaSeleccionado] =
+    useState<Record<string, string>>({});
+  const [anadiendoFichaAIntensivoId, setAnadiendoFichaAIntensivoId] =
+    useState('');
+  const [selectorIntensivoFichaAbiertoId, setSelectorIntensivoFichaAbiertoId] =
+    useState('');
   const [panelControlIntensivo, setPanelControlIntensivo] = useState<
     PanelControlIntensivoApp[]
   >([]);
@@ -4361,6 +4568,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       Control: {
         pregunta: 'En pista, ¿cómo controla la velocidad y la dirección?',
         opciones: {
+          '0': 'Todavía no sabe frenar ni controlar la velocidad',
           A: 'Necesita ayuda o recordatorios constantes para frenar',
           B: 'Controla principalmente haciendo cuña',
           C: 'Controla enlazando giros y elige por dónde bajar',
@@ -4462,7 +4670,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
       if (!resolucion) {
         setError(
-          `Hay ${candidatasMismaFecha.length} posible(s) ficha(s) con la misma fecha de nacimiento. Elige si corresponde a una ficha existente o si es otro alumno.`
+          `Hay ${candidatasMismaFecha.length} posible(s) ficha(s) compatibles por nombre y fecha de nacimiento. Elige si corresponde a una ficha existente o si es otro alumno.`
         );
         return;
       }
@@ -4585,6 +4793,38 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       await cargarAltasNivelInicial();
     } catch (err: any) {
       setError(err?.message || 'No se pudo eliminar el alta.');
+    }
+  }
+
+  async function borrarRegistroTemporalAnadido(
+    alta: AltaNivelInicialApp
+  ) {
+    if (alta.estado !== 'ANADIDO') return;
+
+    const confirmar = window.confirm(
+      `¿Borrar el registro temporal de ${alta.nombre_completo}?\n\n` +
+        `La ficha del alumno y los datos ya incorporados a ${alta.modalidad} ` +
+        `no se eliminarán. Solo desaparecerá este registro de Administración/Test.`
+    );
+
+    if (!confirmar) return;
+
+    setError('');
+
+    try {
+      await ejecutarFuncion('eliminar_registro_temporal_alta_nivel_app', {
+        p_id: alta.id,
+      });
+
+      if (altaNivelAbiertaId === alta.id) {
+        setAltaNivelAbiertaId('');
+      }
+
+      await cargarAltasNivelInicial();
+    } catch (err: any) {
+      setError(
+        err?.message || 'No se pudo borrar el registro temporal.'
+      );
     }
   }
 
@@ -5109,6 +5349,13 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   async function guardarReporteAlumno(alumno: AlumnoReporteEntrenador) {
+    if (!formReporte.ritmoGrupo) {
+      setError(
+        'Selecciona el ritmo del alumno dentro del grupo antes de guardar el reporte.'
+      );
+      return;
+    }
+
     const confirmar = window.confirm(`¿Guardar reporte de ${alumno.alumno}?`);
 
     if (!confirmar) return;
@@ -5131,6 +5378,13 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_recomendacion: formReporte.recomendacion,
         p_observaciones:
           formReporte.observaciones || 'Reporte enviado desde la app',
+      });
+
+      await ejecutarFuncion('guardar_ritmo_ultimo_reporte_app', {
+        p_grupo_id: alumno.grupo_id,
+        p_alumno_id: alumno.alumno_id,
+        p_entrenador_id: alumno.entrenador_id,
+        p_ritmo_grupo: formReporte.ritmoGrupo,
       });
 
       cerrarFormularioReporte();
@@ -9672,6 +9926,57 @@ Gracias!`;
 
     setCargando(false);
   }
+
+  async function añadirFichaExistenteAIntensivo(
+    alumnoId: string,
+    alumnoNombre: string
+  ) {
+    const intensivoId = intensivoFichaSeleccionado[alumnoId] || '';
+
+    if (!intensivoId) {
+      setError('Selecciona primero el Intensivo de destino.');
+      return;
+    }
+
+    const intensivo = intensivos.find(
+      (item) => item.intensivo_id === intensivoId
+    );
+
+    if (!intensivo) {
+      setError('El Intensivo seleccionado ya no está disponible.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Añadir a ${alumnoNombre} a ${intensivo.intensivo}?` +
+        `\n\nSe reutilizará su misma ficha maestra, nivel, historial y observaciones.`
+    );
+
+    if (!confirmar) return;
+
+    setAnadiendoFichaAIntensivoId(alumnoId);
+    setError('');
+
+    try {
+      await ejecutarFuncion('añadir_alumno_intensivo_app', {
+        p_intensivo_id: intensivo.intensivo_id,
+        p_alumno_id: alumnoId,
+      });
+
+      setIntensivoFichaSeleccionado((actual) => {
+        const siguiente = { ...actual };
+        delete siguiente[alumnoId];
+        return siguiente;
+      });
+
+      await Promise.all([cargarIntensivos(), cargarAlumnos()]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    } finally {
+      setAnadiendoFichaAIntensivoId('');
+    }
+  }
+
 
   async function volcarListadoAlumnosIntensivo(intensivo: IntensivoApp) {
     if (!textoVolcadoIntensivo.trim()) {
@@ -14281,6 +14586,7 @@ Gracias!`;
     if (pantalla === 'ocioAlumnos') {
       cargarOcioAlumnos();
       cargarOcioGrupos();
+      cargarIntensivos();
     }
     if (pantalla === 'ocioGrupos') {
       cargarOcioAlumnos();
@@ -15772,6 +16078,14 @@ Gracias!`;
             opciones={opcionesAutonomia}
             onChange={(valor) =>
               setFormReporte({ ...formReporte, autonomia: valor })
+            }
+          />
+          <CampoSelect
+            label="Ritmo en el grupo"
+            value={formReporte.ritmoGrupo}
+            opciones={opcionesRitmoGrupo}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, ritmoGrupo: valor })
             }
           />
           <CampoSelect
@@ -24204,6 +24518,19 @@ Gracias!`;
                             Ver evaluación
                           </button>
                           <button
+                            type="button"
+                            onClick={() =>
+                              setSelectorIntensivoFichaAbiertoId((actual) =>
+                                actual === alumno.alumno_id
+                                  ? ''
+                                  : alumno.alumno_id
+                              )
+                            }
+                            style={botonSecundario}
+                          >
+                            Añadir a Intensivo
+                          </button>
+                          <button
                             onClick={() => eliminarAlumnoOcio(alumno)}
                             style={botonPeligro}
                           >
@@ -24211,6 +24538,98 @@ Gracias!`;
                           </button>
                         </div>
                       </div>
+
+                      {selectorIntensivoFichaAbiertoId === alumno.alumno_id && (
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: 8,
+                            flexWrap: 'wrap',
+                            alignItems: 'flex-end',
+                            marginTop: 10,
+                            padding: 10,
+                            borderRadius: 12,
+                            border: '1px solid #dbeafe',
+                            background: '#f8fbff',
+                          }}
+                        >
+                          <label
+                            style={{
+                              ...labelCampo,
+                              flex: '1 1 220px',
+                              minWidth: 0,
+                            }}
+                          >
+                            Intensivo de destino
+                            <select
+                              value={
+                                intensivoFichaSeleccionado[alumno.alumno_id] || ''
+                              }
+                              onChange={(e) =>
+                                setIntensivoFichaSeleccionado((actual) => ({
+                                  ...actual,
+                                  [alumno.alumno_id]: e.target.value,
+                                }))
+                              }
+                              style={{
+                                ...selectCampo,
+                                width: '100%',
+                                minWidth: 0,
+                              }}
+                            >
+                              <option value="">Seleccionar Intensivo abierto</option>
+                              {intensivos
+                                .filter(
+                                  (item) =>
+                                    String(item.estado || '').toLowerCase() !==
+                                    'cerrado'
+                                )
+                                .map((intensivo) => (
+                                  <option
+                                    key={intensivo.intensivo_id}
+                                    value={intensivo.intensivo_id}
+                                  >
+                                    {intensivo.intensivo}
+                                    {intensivo.fecha_inicio
+                                      ? ` · ${formatearFecha(
+                                          intensivo.fecha_inicio
+                                        )}`
+                                      : ''}
+                                    {intensivo.lugar
+                                      ? ` · ${intensivo.lugar}`
+                                      : ''}
+                                  </option>
+                                ))}
+                            </select>
+                          </label>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              añadirFichaExistenteAIntensivo(
+                                alumno.alumno_id,
+                                alumno.alumno
+                              )
+                            }
+                            disabled={
+                              !intensivoFichaSeleccionado[alumno.alumno_id] ||
+                              anadiendoFichaAIntensivoId === alumno.alumno_id
+                            }
+                            style={{
+                              ...botonSecundario,
+                              opacity:
+                                !intensivoFichaSeleccionado[alumno.alumno_id] ||
+                                anadiendoFichaAIntensivoId === alumno.alumno_id
+                                  ? 0.55
+                                  : 1,
+                            }}
+                          >
+                            {anadiendoFichaAIntensivoId === alumno.alumno_id
+                              ? 'Añadiendo...'
+                              : 'Confirmar'}
+                          </button>
+                        </div>
+                      )}
 
                       <div
                         style={{
@@ -31001,9 +31420,97 @@ Gracias!`;
                                 })}
                               </div>
 
+                              {(
+                                (alta.observaciones_entrenador_familia || [])
+                                  .length > 0 ||
+                                alta.observacion_entrenador_otra
+                              ) && (
+                                <div
+                                  style={{
+                                    ...avisoNeutral,
+                                    borderColor: '#bfdbfe',
+                                    background: '#eff6ff',
+                                  }}
+                                >
+                                  <strong>
+                                    Información de familia para el profesor:
+                                  </strong>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      gap: 6,
+                                      flexWrap: 'wrap',
+                                      marginTop: 8,
+                                    }}
+                                  >
+                                    {(alta.observaciones_entrenador_familia || [])
+                                      .filter((codigo) => codigo !== 'NINGUNA')
+                                      .map((codigo) => {
+                                        const etiquetas: Record<string, string> = {
+                                          MIEDO_INSEGURIDAD:
+                                            'Miedo o inseguridad',
+                                          BLOQUEO_LLANTO:
+                                            'Se bloquea o llora',
+                                          DIFICULTAD_REMONTES:
+                                            'Dificultad con remontes',
+                                          AYUDA_MATERIAL:
+                                            'Necesita ayuda con material',
+                                          SEPARACION_FAMILIA:
+                                            'Le cuesta separarse de la familia',
+                                          LIMITACION_FISICA:
+                                            'Lesión / limitación física',
+                                          NECESIDAD_ESPECIAL:
+                                            'Necesidad especial comunicada',
+                                          OTRA: 'Otra observación',
+                                        };
+                                        return (
+                                          <span
+                                            key={codigo}
+                                            style={{
+                                              ...miniBadge,
+                                              whiteSpace: 'normal',
+                                            }}
+                                          >
+                                            {etiquetas[codigo] || codigo}
+                                          </span>
+                                        );
+                                      })}
+                                  </div>
+                                  {alta.observacion_entrenador_otra && (
+                                    <p
+                                      style={{
+                                        margin: '8px 0 0',
+                                        lineHeight: 1.45,
+                                      }}
+                                    >
+                                      <strong>Otra:</strong>{' '}
+                                      {alta.observacion_entrenador_otra}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
                               {alta.observaciones_familia && (
-                                <div style={avisoNeutral}>
-                                  <strong>Familia:</strong> {alta.observaciones_familia}
+                                <div
+                                  style={{
+                                    ...avisoNeutral,
+                                    borderColor: '#e2e8f0',
+                                    background: '#f8fafc',
+                                  }}
+                                >
+                                  <strong>Comentario para coordinación:</strong>{' '}
+                                  {alta.observaciones_familia}
+                                  <div
+                                    style={{
+                                      marginTop: 5,
+                                      color: '#64748b',
+                                      fontSize: 12,
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    No se añade automáticamente a la ficha del
+                                    alumno ni al profesor.
+                                  </div>
                                 </div>
                               )}
 
@@ -31177,8 +31684,9 @@ Gracias!`;
                                           lineHeight: 1.4,
                                         }}
                                       >
-                                        Hay una o más fichas con la misma fecha
-                                        de nacimiento. No se fusionará nada
+                                        Hay una o más fichas que podrían
+                                        corresponder al mismo alumno por nombre y
+                                        fecha de nacimiento. No se fusionará nada
                                         automáticamente: elige la opción correcta.
                                       </p>
                                     </div>
@@ -31337,14 +31845,55 @@ Gracias!`;
                                 background: '#f0fdfa',
                                 border: '1px solid #99f6e4',
                                 color: '#115e59',
+                                display: 'grid',
+                                gap: 10,
+                                minWidth: 0,
                               }}
                             >
-                              <strong>
-                                Añadido correctamente a {alta.modalidad}.
-                              </strong>
-                              <br />
-                              Este registro temporal podrá limpiarse 7 días
-                              después de la incorporación.
+                              <div style={{ minWidth: 0 }}>
+                                <strong>
+                                  Añadido correctamente a {alta.modalidad}.
+                                </strong>
+                                <div
+                                  style={{
+                                    marginTop: 4,
+                                    lineHeight: 1.45,
+                                    overflowWrap: 'anywhere',
+                                  }}
+                                >
+                                  {alta.eliminar_despues_de
+                                    ? `Este registro temporal se limpiará automáticamente el ${formatearFecha(
+                                        String(
+                                          alta.eliminar_despues_de
+                                        ).slice(0, 10)
+                                      )}.`
+                                    : 'Este registro temporal se limpiará automáticamente cuando corresponda.'}
+                                </div>
+                              </div>
+
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'flex-end',
+                                  flexWrap: 'wrap',
+                                  gap: 8,
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    borrarRegistroTemporalAnadido(alta)
+                                  }
+                                  style={{
+                                    ...botonSecundario,
+                                    width: 'auto',
+                                    maxWidth: '100%',
+                                    whiteSpace: 'normal',
+                                  }}
+                                >
+                                  Borrar registro temporal
+                                </button>
+                              </div>
                             </div>
                           )}
 
@@ -32804,6 +33353,19 @@ Gracias!`;
                           </button>
                           <button
                             type="button"
+                            onClick={() =>
+                              setSelectorIntensivoFichaAbiertoId((actual) =>
+                                actual === alumno.alumno_id
+                                  ? ''
+                                  : alumno.alumno_id
+                              )
+                            }
+                            style={botonMini}
+                          >
+                            Añadir a Intensivo
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => borrarAlumnoBase(alumno)}
                             style={botonPeligroMini}
                             title="Eliminar la ficha completa del alumno y sus datos asociados."
@@ -32812,6 +33374,98 @@ Gracias!`;
                           </button>
                         </div>
                       </div>
+
+                      {selectorIntensivoFichaAbiertoId === alumno.alumno_id && (
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: 8,
+                            flexWrap: 'wrap',
+                            alignItems: 'flex-end',
+                            marginTop: 10,
+                            padding: 10,
+                            borderRadius: 12,
+                            border: '1px solid #dbeafe',
+                            background: '#f8fbff',
+                          }}
+                        >
+                          <label
+                            style={{
+                              ...labelCampo,
+                              flex: '1 1 220px',
+                              minWidth: 0,
+                            }}
+                          >
+                            Intensivo de destino
+                            <select
+                              value={
+                                intensivoFichaSeleccionado[alumno.alumno_id] || ''
+                              }
+                              onChange={(e) =>
+                                setIntensivoFichaSeleccionado((actual) => ({
+                                  ...actual,
+                                  [alumno.alumno_id]: e.target.value,
+                                }))
+                              }
+                              style={{
+                                ...selectCampo,
+                                width: '100%',
+                                minWidth: 0,
+                              }}
+                            >
+                              <option value="">Seleccionar Intensivo abierto</option>
+                              {intensivos
+                                .filter(
+                                  (item) =>
+                                    String(item.estado || '').toLowerCase() !==
+                                    'cerrado'
+                                )
+                                .map((intensivo) => (
+                                  <option
+                                    key={intensivo.intensivo_id}
+                                    value={intensivo.intensivo_id}
+                                  >
+                                    {intensivo.intensivo}
+                                    {intensivo.fecha_inicio
+                                      ? ` · ${formatearFecha(
+                                          intensivo.fecha_inicio
+                                        )}`
+                                      : ''}
+                                    {intensivo.lugar
+                                      ? ` · ${intensivo.lugar}`
+                                      : ''}
+                                  </option>
+                                ))}
+                            </select>
+                          </label>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              añadirFichaExistenteAIntensivo(
+                                alumno.alumno_id,
+                                alumno.alumno
+                              )
+                            }
+                            disabled={
+                              !intensivoFichaSeleccionado[alumno.alumno_id] ||
+                              anadiendoFichaAIntensivoId === alumno.alumno_id
+                            }
+                            style={{
+                              ...botonMini,
+                              opacity:
+                                !intensivoFichaSeleccionado[alumno.alumno_id] ||
+                                anadiendoFichaAIntensivoId === alumno.alumno_id
+                                  ? 0.55
+                                  : 1,
+                            }}
+                          >
+                            {anadiendoFichaAIntensivoId === alumno.alumno_id
+                              ? 'Añadiendo...'
+                              : 'Confirmar'}
+                          </button>
+                        </div>
+                      )}
 
                       {editandoEsteAlumno && (
                         <div
