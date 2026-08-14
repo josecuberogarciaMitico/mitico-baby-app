@@ -326,6 +326,7 @@ type AlumnoResumen = {
   ultima_autonomia: string | null;
   ultima_incidencia: string | null;
   ultima_recomendacion: string | null;
+  fecha_nacimiento: string | null;
 };
 
 type OcioAlumnoApp = {
@@ -1713,6 +1714,24 @@ type AltaNivelInicialApp = {
   respondido_at: string | null;
   validado_at: string | null;
   eliminar_despues_de: string | null;
+};
+
+type CoincidenciaAltaNivelInicialApp = {
+  alumno_id: string;
+  alumno: string;
+  fecha_nacimiento: string | null;
+  nivel_actual: string | null;
+  tipo_coincidencia: 'EXACTA' | 'MISMA_FECHA';
+};
+
+type AvisoNuevaAltaAlumnoApp = {
+  referencia_id: string;
+  fuente: 'FICHA_MAESTRA' | 'ALTA_TEST';
+  alumno: string;
+  fecha_nacimiento: string | null;
+  nivel_actual: string | null;
+  estado: string | null;
+  motivo: 'MISMA_FECHA' | 'NOMBRE_EXACTO' | 'NOMBRE_COMPATIBLE';
 };
 
 type AltaNivelInicialFormApp = {
@@ -3611,6 +3630,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     useState('');
   const [alumnoEditandoId, setAlumnoEditandoId] = useState<string | null>(null);
   const [alumnoEditNombre, setAlumnoEditNombre] = useState('');
+  const [alumnoEditFechaNacimiento, setAlumnoEditFechaNacimiento] =
+    useState('');
   const [alumnoEditNivel, setAlumnoEditNivel] = useState('');
   const [alumnoEditOrigen, setAlumnoEditOrigen] =
     useState('Jose / Coordinador');
@@ -4157,6 +4178,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [intensivoAltaSeleccionado, setIntensivoAltaSeleccionado] =
     useState<Record<string, string>>({});
   const [anadiendoAltaNivelId, setAnadiendoAltaNivelId] = useState('');
+  const [comprobandoCoincidenciasAltaId, setComprobandoCoincidenciasAltaId] =
+    useState('');
+  const [coincidenciasAltaNivel, setCoincidenciasAltaNivel] = useState<
+    Record<string, CoincidenciaAltaNivelInicialApp[]>
+  >({});
+  const [resolucionCoincidenciaAlta, setResolucionCoincidenciaAlta] = useState<
+    Record<string, string>
+  >({});
 
   const [detalleRespuestaAlta, setDetalleRespuestaAlta] = useState('');
 
@@ -4390,6 +4419,70 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       return;
     }
 
+    let coincidencias = coincidenciasAltaNivel[alta.id];
+
+    if (!coincidencias) {
+      setComprobandoCoincidenciasAltaId(alta.id);
+      setError('');
+
+      try {
+        coincidencias =
+          (await ejecutarFuncionAuthJson<CoincidenciaAltaNivelInicialApp[]>(
+            'obtener_coincidencias_alta_nivel_inicial_app',
+            { p_id: alta.id }
+          )) || [];
+
+        setCoincidenciasAltaNivel((actual) => ({
+          ...actual,
+          [alta.id]: coincidencias || [],
+        }));
+      } catch (err: any) {
+        setError(
+          err?.message ||
+            'No se pudo comprobar si el alumno ya existe en la ficha maestra.'
+        );
+        return;
+      } finally {
+        setComprobandoCoincidenciasAltaId('');
+      }
+    }
+
+    const coincidenciaExacta = (coincidencias || []).find(
+      (item) => item.tipo_coincidencia === 'EXACTA'
+    );
+    const candidatasMismaFecha = (coincidencias || []).filter(
+      (item) => item.tipo_coincidencia === 'MISMA_FECHA'
+    );
+
+    let alumnoExistenteId: string | null = coincidenciaExacta?.alumno_id || null;
+    let confirmarNuevo = false;
+
+    if (!coincidenciaExacta && candidatasMismaFecha.length > 0) {
+      const resolucion = resolucionCoincidenciaAlta[alta.id] || '';
+
+      if (!resolucion) {
+        setError(
+          `Hay ${candidatasMismaFecha.length} posible(s) ficha(s) con la misma fecha de nacimiento. Elige si corresponde a una ficha existente o si es otro alumno.`
+        );
+        return;
+      }
+
+      if (resolucion === '__NUEVO__') {
+        confirmarNuevo = true;
+      } else {
+        const candidataElegida = candidatasMismaFecha.find(
+          (item) => item.alumno_id === resolucion
+        );
+
+        if (!candidataElegida) {
+          setError('La ficha seleccionada ya no está disponible.');
+          return;
+        }
+
+        alumnoExistenteId = candidataElegida.alumno_id;
+      }
+    }
+
     const intensivoElegido =
       alta.modalidad === 'INTENSIVOS'
         ? intensivosAltaNivel.find((item) => item.intensivo_id === intensivoId)
@@ -4402,11 +4495,19 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         ? 'Ocio'
         : 'Baby';
 
+    const identidadTexto = coincidenciaExacta
+      ? `\n\nSe reutilizará la ficha existente: ${coincidenciaExacta.alumno}.`
+      : alumnoExistenteId
+      ? `\n\nSe reutilizará la ficha existente seleccionada.`
+      : confirmarNuevo
+      ? `\n\nHas confirmado que es otro alumno: se creará una ficha nueva.`
+      : '';
+
     if (
       !window.confirm(
         `¿Añadir a ${alta.nombre_completo} a ${destino} con nivel ${
           alta.nivel_validado || '-'
-        }?`
+        }?${identidadTexto}`
       )
     ) {
       return;
@@ -4417,10 +4518,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
     try {
       await ejecutarFuncionAuthJson<string>(
-        'anadir_alta_nivel_inicial_a_listados_app',
+        'anadir_alta_nivel_inicial_resuelta_app',
         {
           p_id: alta.id,
           p_intensivo_id: intensivoId || null,
+          p_alumno_existente_id: alumnoExistenteId,
+          p_confirmar_nuevo: confirmarNuevo,
         }
       );
 
@@ -4430,8 +4533,18 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         delete siguiente[alta.id];
         return siguiente;
       });
+      setCoincidenciasAltaNivel((actual) => {
+        const siguiente = { ...actual };
+        delete siguiente[alta.id];
+        return siguiente;
+      });
+      setResolucionCoincidenciaAlta((actual) => {
+        const siguiente = { ...actual };
+        delete siguiente[alta.id];
+        return siguiente;
+      });
 
-      await cargarAltasNivelInicial();
+      await Promise.all([cargarAltasNivelInicial(), cargarAlumnos()]);
     } catch (err: any) {
       setError(err?.message || 'No se pudo añadir el alumno a los listados.');
     } finally {
@@ -4500,10 +4613,13 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   async function crearAltaNivelInicial() {
     const nombre = formAltaNivelInicial.nombre.trim();
     const telefono = formAltaNivelInicial.telefono.trim();
-    if (!nombre || !formAltaNivelInicial.fechaNacimiento || !telefono) {
+    const fechaNacimiento = formAltaNivelInicial.fechaNacimiento;
+
+    if (!nombre || !fechaNacimiento || !telefono) {
       setError('Completa nombre, fecha de nacimiento, modalidad y teléfono.');
       return;
     }
+
     if (
       formAltaNivelInicial.modalidad === 'OCIO' &&
       !formAltaNivelInicial.ocioDiaFijo
@@ -4511,12 +4627,56 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       setError('Selecciona el día fijo de Ocio.');
       return;
     }
+
     setGuardandoAltaNivel(true);
     setError('');
+
     try {
+      const posibles =
+        (await ejecutarFuncionAuthJson<AvisoNuevaAltaAlumnoApp[]>(
+          'comprobar_posibles_alumnos_nueva_alta_app',
+          {
+            p_nombre_completo: nombre,
+            p_fecha_nacimiento: fechaNacimiento,
+          }
+        )) || [];
+
+      if (posibles.length > 0) {
+        const lineas = posibles
+          .slice(0, 8)
+          .map((item) => {
+            const motivo =
+              item.motivo === 'MISMA_FECHA'
+                ? 'misma fecha de nacimiento'
+                : item.motivo === 'NOMBRE_EXACTO'
+                ? 'mismo nombre'
+                : 'nombre compatible';
+
+            const fuente =
+              item.fuente === 'FICHA_MAESTRA'
+                ? 'ficha existente'
+                : `test/alta ${item.estado || ''}`.trim();
+
+            return `• ${item.alumno} · ${
+              item.fecha_nacimiento
+                ? formatearFecha(item.fecha_nacimiento)
+                : 'sin fecha'
+            } · ${fuente} · ${motivo}`;
+          })
+          .join('\n');
+
+        const continuar = window.confirm(
+          `⚠️ Posible alumno ya existente\n\n${lineas}\n\n` +
+            `Revisa antes de crear otro test. Si realmente es otro niño, ` +
+            `puedes continuar igualmente.\n\n¿Crear este test de todas formas?`
+        );
+
+        if (!continuar) return;
+      }
+
       await ejecutarFuncionAuthJson<string>('crear_alta_nivel_inicial_app', {
         p_nombre_completo: nombre,
-        p_fecha_nacimiento: formAltaNivelInicial.fechaNacimiento,
+        p_fecha_nacimiento: fechaNacimiento,
         p_modalidad: formAltaNivelInicial.modalidad,
         p_telefono: telefono,
         p_ocio_dia_fijo:
@@ -4524,6 +4684,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
             ? formAltaNivelInicial.ocioDiaFijo
             : null,
       });
+
       setFormAltaNivelInicial(altaNivelInicialFormVacioApp());
       setMostrarFormularioAltaNivel(false);
       await cargarAltasNivelInicial();
@@ -5020,6 +5181,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   function cerrarEditorAlumnoBase() {
     setAlumnoEditandoId(null);
     setAlumnoEditNombre('');
+    setAlumnoEditFechaNacimiento('');
     setAlumnoEditNivel('');
     setAlumnoEditOrigen('Jose / Coordinador');
     setAlumnoEditEstado('pendiente completar');
@@ -5028,6 +5190,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   async function guardarAlumnoBaseConDatos(
     alumnoId: string,
     nombre: string,
+    fechaNacimiento: string,
     nivel: string,
     origen: string,
     estado: string
@@ -5045,6 +5208,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       await ejecutarFuncion('actualizar_alumno_base_operativa_app', {
         p_alumno_id: alumnoId,
         p_nombre_completo: nombreLimpio,
+        p_fecha_nacimiento: fechaNacimiento || null,
         p_nivel_codigo: nivel || null,
         p_origen_nivel: origen || 'Jose / Coordinador',
         p_estado_ficha: estado || 'pendiente completar',
@@ -5067,6 +5231,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   function editarAlumnoBaseRapido(alumno: AlumnoResumen) {
     setAlumnoEditandoId(alumno.alumno_id);
     setAlumnoEditNombre(alumno.alumno || '');
+    setAlumnoEditFechaNacimiento(alumno.fecha_nacimiento || '');
     setAlumnoEditNivel(
       alumno.nivel_actual ||
         alumno.nivel_estimado ||
@@ -5081,6 +5246,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     await guardarAlumnoBaseConDatos(
       alumnoId,
       alumnoEditNombre,
+      alumnoEditFechaNacimiento,
       alumnoEditNivel,
       alumnoEditOrigen,
       alumnoEditEstado
@@ -30981,11 +31147,161 @@ Gracias!`;
                                 </label>
                               )}
 
+                              {esCoordinadorJefeApp &&
+                                (coincidenciasAltaNivel[alta.id] || []).some(
+                                  (item) =>
+                                    item.tipo_coincidencia === 'MISMA_FECHA'
+                                ) &&
+                                !(coincidenciasAltaNivel[alta.id] || []).some(
+                                  (item) => item.tipo_coincidencia === 'EXACTA'
+                                ) && (
+                                  <div
+                                    style={{
+                                      padding: 13,
+                                      borderRadius: 15,
+                                      border: '1px solid #fdba74',
+                                      background: '#fff7ed',
+                                      display: 'grid',
+                                      gap: 9,
+                                    }}
+                                  >
+                                    <div>
+                                      <strong style={{ color: '#9a3412' }}>
+                                        Posible alumno ya existente
+                                      </strong>
+                                      <p
+                                        style={{
+                                          margin: '4px 0 0',
+                                          color: '#7c2d12',
+                                          fontSize: 13,
+                                          lineHeight: 1.4,
+                                        }}
+                                      >
+                                        Hay una o más fichas con la misma fecha
+                                        de nacimiento. No se fusionará nada
+                                        automáticamente: elige la opción correcta.
+                                      </p>
+                                    </div>
+
+                                    {(coincidenciasAltaNivel[alta.id] || [])
+                                      .filter(
+                                        (item) =>
+                                          item.tipo_coincidencia ===
+                                          'MISMA_FECHA'
+                                      )
+                                      .map((item) => (
+                                        <label
+                                          key={item.alumno_id}
+                                          style={{
+                                            display: 'flex',
+                                            gap: 9,
+                                            alignItems: 'flex-start',
+                                            padding: 10,
+                                            borderRadius: 12,
+                                            background: '#fff',
+                                            border: '1px solid #fed7aa',
+                                            cursor: 'pointer',
+                                          }}
+                                        >
+                                          <input
+                                            type="radio"
+                                            name={`coincidencia-${alta.id}`}
+                                            value={item.alumno_id}
+                                            checked={
+                                              resolucionCoincidenciaAlta[
+                                                alta.id
+                                              ] === item.alumno_id
+                                            }
+                                            onChange={() =>
+                                              setResolucionCoincidenciaAlta(
+                                                (actual) => ({
+                                                  ...actual,
+                                                  [alta.id]: item.alumno_id,
+                                                })
+                                              )
+                                            }
+                                          />
+                                          <span>
+                                            <strong>{item.alumno}</strong>
+                                            <span
+                                              style={{
+                                                display: 'block',
+                                                marginTop: 2,
+                                                color: '#64748b',
+                                                fontSize: 12,
+                                              }}
+                                            >
+                                              {item.fecha_nacimiento
+                                                ? formatearFecha(
+                                                    item.fecha_nacimiento
+                                                  )
+                                                : 'Sin fecha registrada'}
+                                              {' · '}
+                                              Nivel actual:{' '}
+                                              <strong>
+                                                {item.nivel_actual || '-'}
+                                              </strong>
+                                            </span>
+                                          </span>
+                                        </label>
+                                      ))}
+
+                                    <label
+                                      style={{
+                                        display: 'flex',
+                                        gap: 9,
+                                        alignItems: 'flex-start',
+                                        padding: 10,
+                                        borderRadius: 12,
+                                        background: '#fff',
+                                        border: '1px solid #fed7aa',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      <input
+                                        type="radio"
+                                        name={`coincidencia-${alta.id}`}
+                                        value="__NUEVO__"
+                                        checked={
+                                          resolucionCoincidenciaAlta[alta.id] ===
+                                          '__NUEVO__'
+                                        }
+                                        onChange={() =>
+                                          setResolucionCoincidenciaAlta(
+                                            (actual) => ({
+                                              ...actual,
+                                              [alta.id]: '__NUEVO__',
+                                            })
+                                          )
+                                        }
+                                      />
+                                      <span>
+                                        <strong>
+                                          Es otro alumno · crear ficha nueva
+                                        </strong>
+                                        <span
+                                          style={{
+                                            display: 'block',
+                                            marginTop: 2,
+                                            color: '#64748b',
+                                            fontSize: 12,
+                                          }}
+                                        >
+                                          Usa esta opción solo si has comprobado
+                                          que no corresponde a ninguna ficha
+                                          anterior.
+                                        </span>
+                                      </span>
+                                    </label>
+                                  </div>
+                                )}
+
                               {esCoordinadorJefeApp && (
                                 <button
                                   type="button"
                                   disabled={
                                     anadiendoAltaNivelId === alta.id ||
+                                    comprobandoCoincidenciasAltaId === alta.id ||
                                     (alta.modalidad === 'INTENSIVOS' &&
                                       !intensivoAltaSeleccionado[alta.id])
                                   }
@@ -30994,15 +31310,20 @@ Gracias!`;
                                     ...botonPrincipal,
                                     opacity:
                                       anadiendoAltaNivelId === alta.id ||
+                                      comprobandoCoincidenciasAltaId === alta.id ||
                                       (alta.modalidad === 'INTENSIVOS' &&
                                         !intensivoAltaSeleccionado[alta.id])
                                         ? 0.55
                                         : 1,
                                   }}
                                 >
-                                  {anadiendoAltaNivelId === alta.id
+                                  {comprobandoCoincidenciasAltaId === alta.id
+                                    ? 'Comprobando ficha...'
+                                    : anadiendoAltaNivelId === alta.id
                                     ? 'Añadiendo...'
-                                    : 'Añadir a listados'}
+                                    : coincidenciasAltaNivel[alta.id]
+                                    ? 'Añadir a listados'
+                                    : 'Comprobar y añadir'}
                                 </button>
                               )}
                             </div>
@@ -31786,6 +32107,21 @@ Gracias!`;
 
                               <p
                                 style={{
+                                  margin: '5px 0 0',
+                                  color: '#64748b',
+                                  fontWeight: 700,
+                                }}
+                              >
+                                Nacimiento:{' '}
+                                <strong>
+                                  {fichaMaestra?.fecha_nacimiento
+                                    ? formatearFecha(fichaMaestra.fecha_nacimiento)
+                                    : 'Sin registrar'}
+                                </strong>
+                              </p>
+
+                              <p
+                                style={{
                                   margin: '7px 0 0',
                                   color: '#334155',
                                   fontWeight: 800,
@@ -31977,8 +32313,25 @@ Gracias!`;
                             </details>
                           )}
 
-                          {curso && (
-                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 8,
+                              flexWrap: 'wrap',
+                              marginTop: 12,
+                            }}
+                          >
+                            {fichaMaestra && (
+                              <button
+                                type="button"
+                                onClick={() => editarAlumnoBaseRapido(fichaMaestra)}
+                                style={botonMini}
+                              >
+                                Editar ficha
+                              </button>
+                            )}
+
+                            {curso && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -31999,8 +32352,138 @@ Gracias!`;
                                   ? 'Gestionar recuperación'
                                   : 'Abrir intensivo'}
                               </button>
-                            </div>
-                          )}
+                            )}
+                          </div>
+
+                          {fichaMaestra &&
+                            alumnoEditandoId === fichaMaestra.alumno_id && (
+                              <div
+                                style={{
+                                  ...miniTarjetaBlanca,
+                                  marginTop: 12,
+                                  border: '1px solid #ddd6fe',
+                                }}
+                              >
+                                <h4 style={{ marginTop: 0 }}>
+                                  Editar ficha operativa
+                                </h4>
+                                <p style={{ marginTop: 0, color: '#475569' }}>
+                                  Editas la ficha maestra del alumno. Los cambios
+                                  se comparten con Baby, Ocio e Intensivos.
+                                </p>
+
+                                <div style={gridFormulario}>
+                                  <label style={labelCampo}>
+                                    Nombre
+                                    <input
+                                      value={alumnoEditNombre}
+                                      onChange={(e) =>
+                                        setAlumnoEditNombre(
+                                          e.target.value.toUpperCase()
+                                        )
+                                      }
+                                      style={inputCampo}
+                                    />
+                                  </label>
+
+                                  <label style={labelCampo}>
+                                    Fecha de nacimiento
+                                    <input
+                                      type="date"
+                                      value={alumnoEditFechaNacimiento}
+                                      onChange={(e) =>
+                                        setAlumnoEditFechaNacimiento(e.target.value)
+                                      }
+                                      style={inputCampo}
+                                    />
+                                  </label>
+
+                                  <label style={labelCampo}>
+                                    Nivel real de ficha
+                                    <select
+                                      value={alumnoEditNivel}
+                                      onChange={(e) =>
+                                        setAlumnoEditNivel(e.target.value)
+                                      }
+                                      style={selectCampo}
+                                    >
+                                      <option value="">Sin nivel / pendiente</option>
+                                      {opcionesNivel.map((nivel) => (
+                                        <option key={nivel} value={nivel}>
+                                          {nivel}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+
+                                  <label style={labelCampo}>
+                                    Origen del nivel
+                                    <select
+                                      value={alumnoEditOrigen}
+                                      onChange={(e) =>
+                                        setAlumnoEditOrigen(e.target.value)
+                                      }
+                                      style={selectCampo}
+                                    >
+                                      <option value="Jose / Coordinador">
+                                        Jose / Coordinador
+                                      </option>
+                                      <option value="Familia">Familia</option>
+                                      <option value="Ventas / compañera">
+                                        Ventas / compañera
+                                      </option>
+                                      <option value="Clase de prueba pendiente">
+                                        Clase de prueba pendiente
+                                      </option>
+                                      <option value="Desconocido">Desconocido</option>
+                                    </select>
+                                  </label>
+
+                                  <label style={labelCampo}>
+                                    Estado ficha
+                                    <select
+                                      value={alumnoEditEstado}
+                                      onChange={(e) =>
+                                        setAlumnoEditEstado(e.target.value)
+                                      }
+                                      style={selectCampo}
+                                    >
+                                      <option value="pendiente completar">
+                                        Pendiente completar
+                                      </option>
+                                      <option value="revisar">Revisar</option>
+                                      <option value="completa">Completa</option>
+                                    </select>
+                                  </label>
+                                </div>
+
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    gap: 8,
+                                    flexWrap: 'wrap',
+                                    marginTop: 12,
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      guardarAlumnoBase(fichaMaestra.alumno_id)
+                                    }
+                                    style={botonPrincipal}
+                                  >
+                                    Guardar cambios
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={cerrarEditorAlumnoBase}
+                                    style={botonSecundario}
+                                  >
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                         </article>
                       );
                     })}
@@ -32270,7 +32753,21 @@ Gracias!`;
                           <h3 style={{ margin: 0 }}>{alumno.alumno}</h3>
                           <p
                             style={{
-                              margin: '8px 0 0',
+                              margin: '6px 0 0',
+                              color: '#64748b',
+                              fontWeight: 700,
+                            }}
+                          >
+                            Nacimiento:{' '}
+                            <strong>
+                              {alumno.fecha_nacimiento
+                                ? formatearFecha(alumno.fecha_nacimiento)
+                                : 'Sin registrar'}
+                            </strong>
+                          </p>
+                          <p
+                            style={{
+                              margin: '6px 0 0',
                               color: '#475569',
                               fontWeight: 700,
                             }}
@@ -32341,6 +32838,18 @@ Gracias!`;
                                   setAlumnoEditNombre(
                                     e.target.value.toUpperCase()
                                   )
+                                }
+                                style={inputCampo}
+                              />
+                            </label>
+
+                            <label style={labelCampo}>
+                              Fecha de nacimiento
+                              <input
+                                type="date"
+                                value={alumnoEditFechaNacimiento}
+                                onChange={(e) =>
+                                  setAlumnoEditFechaNacimiento(e.target.value)
                                 }
                                 style={inputCampo}
                               />
