@@ -329,6 +329,33 @@ type AlumnoResumen = {
   fecha_nacimiento: string | null;
 };
 
+type TendenciaRitmoAlumnoApp = {
+  alumno_id: string;
+  ritmo_tendencia: string | null;
+  confianza: 'ALTA' | 'MEDIA' | 'BAJA' | null;
+  reportes_usados: number;
+  ritmo_ultimo: string | null;
+  ritmo_anterior: string | null;
+  ritmo_tercero: string | null;
+};
+
+type PerfilOperativoAlumnoApp = {
+  alumno_id: string;
+  alumno: string;
+  nivel_usado: string | null;
+  fuerza_nivel: 'BAJO' | 'ADECUADO' | 'FUERTE' | 'MUY_FUERTE' | null;
+  ritmo_tendencia: string | null;
+  confianza_ritmo: 'ALTA' | 'MEDIA' | 'BAJA' | null;
+  reportes_ritmo: number;
+  autonomia_reciente: string | null;
+  remontes_recientes: string[] | null;
+  demanda_atencion: 'NORMAL' | 'MEDIA' | 'ALTA' | null;
+  edad_aprox: number | null;
+  observacion_visible_entrenador: string | null;
+  mostrar_observacion_entrenador: boolean;
+  aviso_operativo: string | null;
+};
+
 type OcioAlumnoApp = {
   alumno_id: string;
   alumno: string;
@@ -3812,6 +3839,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [alumnosBabyFicha, setAlumnosBabyFicha] = useState<
     AlumnoBabyFichaApp[]
   >([]);
+  const [tendenciasRitmoAlumnos, setTendenciasRitmoAlumnos] = useState<
+    TendenciaRitmoAlumnoApp[]
+  >([]);
+  const [perfilesOperativosAlumnos, setPerfilesOperativosAlumnos] = useState<
+    PerfilOperativoAlumnoApp[]
+  >([]);
   const [busquedaAlumno, setBusquedaAlumno] = useState('');
   const [filtroAlumnos, setFiltroAlumnos] = useState<
     | 'todos'
@@ -5403,33 +5436,79 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setDetalle(null);
 
     try {
-      const [data, ocioData, babyData] = await Promise.all([
-        consultarSupabase<AlumnoResumen>(
-          'v_resumen_alumno',
-          'select=*&order=alumno.asc'
-        ),
-        consultarSupabase<OcioAlumnoApp>(
-          'v_ocio_alumnos_app',
-          'select=*&order=alumno.asc'
-        ),
-        ejecutarFuncionConRespuesta<AlumnoBabyFichaApp>(
-          'obtener_alumnos_baby_fichas_app',
-          {}
-        ),
-      ]);
+      const [data, ocioData, babyData, ritmosData, perfilesData] =
+        await Promise.all([
+          consultarSupabase<AlumnoResumen>(
+            'v_resumen_alumno',
+            'select=*&order=alumno.asc'
+          ),
+          consultarSupabase<OcioAlumnoApp>(
+            'v_ocio_alumnos_app',
+            'select=*&order=alumno.asc'
+          ),
+          ejecutarFuncionConRespuesta<AlumnoBabyFichaApp>(
+            'obtener_alumnos_baby_fichas_app',
+            {}
+          ),
+          ejecutarFuncionConRespuesta<TendenciaRitmoAlumnoApp>(
+            'obtener_tendencia_ritmo_alumnos_app',
+            {}
+          ),
+          ejecutarFuncionConRespuesta<PerfilOperativoAlumnoApp>(
+            'obtener_perfil_operativo_alumnos_app',
+            {}
+          ),
+        ]);
 
       // `alumnos` se mantiene como ficha maestra global.
       // La pantalla Alumnos Baby usa únicamente actividad Baby real.
       setAlumnos(data);
       setOcioAlumnos(ocioData);
       setAlumnosBabyFicha(babyData);
+      setTendenciasRitmoAlumnos(
+        Array.isArray(ritmosData) ? ritmosData : []
+      );
+      setPerfilesOperativosAlumnos(
+        Array.isArray(perfilesData) ? perfilesData : []
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
       setAlumnos([]);
       setAlumnosBabyFicha([]);
+      setTendenciasRitmoAlumnos([]);
+      setPerfilesOperativosAlumnos([]);
     }
 
     setCargando(false);
+  }
+
+  function tendenciaRitmoAlumnoApp(alumnoId: string) {
+    return tendenciasRitmoAlumnos.find(
+      (item) => item.alumno_id === alumnoId
+    );
+  }
+
+  function perfilOperativoAlumnoApp(alumnoId: string) {
+    return perfilesOperativosAlumnos.find(
+      (item) => item.alumno_id === alumnoId
+    );
+  }
+
+  function datosBasicosFichaAlumnoApp(alumno: AlumnoResumen) {
+    const faltan: string[] = [];
+    if (!String(alumno.alumno || '').trim()) faltan.push('nombre');
+    if (!alumno.fecha_nacimiento) faltan.push('fecha de nacimiento');
+    if (
+      !alumno.nivel_actual &&
+      !alumno.ultimo_nivel_reportado &&
+      !alumno.nivel_estimado
+    ) {
+      faltan.push('nivel');
+    }
+    return {
+      completa: faltan.length === 0,
+      faltan,
+    };
   }
 
   function cerrarEditorAlumnoBase() {
@@ -5503,7 +5582,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       alumnoEditFechaNacimiento,
       alumnoEditNivel,
       alumnoEditOrigen,
-      alumnoEditEstado
+      alumnos.find((item) => item.alumno_id === alumnoId)?.estado_ficha ||
+        'pendiente completar'
     );
   }
 
@@ -5841,10 +5921,119 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     return Array.from(new Set(nivelesMiembros));
   }
 
+  function perfilOperativoOcioApp(alumnoId?: string | null) {
+    if (!alumnoId) return undefined;
+    return perfilesOperativosAlumnos.find(
+      (perfil) => perfil.alumno_id === alumnoId
+    );
+  }
+
+  function ajusteFuerzaOcioApp(
+    perfil?: PerfilOperativoAlumnoApp
+  ) {
+    if (!perfil?.fuerza_nivel) return 0;
+    if (perfil.fuerza_nivel === 'MUY_FUERTE') return 3;
+    if (perfil.fuerza_nivel === 'FUERTE') return 2;
+    if (perfil.fuerza_nivel === 'BAJO') return -3;
+    return 0;
+  }
+
+  function puntuacionFuncionalOcioApp(
+    nivel: string | null | undefined,
+    alumnoId?: string | null
+  ) {
+    const perfil = perfilOperativoOcioApp(alumnoId);
+    let score = ordenNivelTrabajoMSZApp(nivel || 'A+') * 10;
+    score += ajusteFuerzaOcioApp(perfil);
+
+    if (perfil?.demanda_atencion === 'ALTA') score -= 1;
+
+    return score;
+  }
+
+  function mediaFuncionalGrupoOcioApp(grupoId: string) {
+    const miembros = ocioAlumnos.filter(
+      (alumno) => alumno.grupo_id === grupoId
+    );
+
+    const valores = miembros
+      .map((alumno) =>
+        puntuacionFuncionalOcioApp(
+          alumno.nivel_usado || alumno.nivel || '',
+          alumno.alumno_id
+        )
+      )
+      .filter((valor) => Number.isFinite(valor));
+
+    if (valores.length === 0) return null;
+    return valores.reduce((suma, valor) => suma + valor, 0) / valores.length;
+  }
+
+  function edadMediaGrupoOcioApp(grupoId: string) {
+    const edades = ocioAlumnos
+      .filter((alumno) => alumno.grupo_id === grupoId)
+      .map((alumno) => edadAproximadaOcio(alumno.fecha_nacimiento))
+      .filter((edad): edad is number => edad !== null);
+
+    if (edades.length === 0) return null;
+    return edades.reduce((suma, edad) => suma + edad, 0) / edades.length;
+  }
+
+  function explicacionCompactaPropuestaOcioApp(
+    alumno: OcioAlumnoApp,
+    grupo: OcioGrupoPropuestaApp,
+    miembros: OcioAlumnoApp[]
+  ) {
+    const nivelAlumno = (
+      alumno.nivel_usado ||
+      alumno.nivel ||
+      ''
+    )
+      .trim()
+      .toUpperCase();
+
+    // Solo explicamos casos frontera para no meter ruido visual.
+    if (nivelAlumno !== 'B+' && nivelAlumno !== 'B++') return '';
+
+    const nivelesCompaneros = miembros
+      .filter((item) => item.alumno_id !== alumno.alumno_id)
+      .map((item) =>
+        (item.nivel_usado || item.nivel || '').trim().toUpperCase()
+      );
+
+    const conviveConC = nivelesCompaneros.some((nivel) =>
+      /^C(?:\+)?$/.test(nivel)
+    );
+    const conviveConB = nivelesCompaneros.some((nivel) => nivel === 'B');
+
+    const perfil = perfilOperativoOcioApp(alumno.alumno_id);
+    const fuerte =
+      perfil?.fuerza_nivel === 'FUERTE' ||
+      perfil?.fuerza_nivel === 'MUY_FUERTE';
+
+    if (conviveConC && fuerte) {
+      return 'Encaje: B+ fuerte · compatible con C';
+    }
+
+    if (conviveConC) {
+      return 'Encaje: ritmo compatible con el grupo';
+    }
+
+    if (conviveConB) {
+      return fuerte
+        ? 'Encaje: equilibra el ritmo del grupo'
+        : 'Encaje: ritmo similar al grupo';
+    }
+
+    return '';
+  }
+
   function evaluarEncajeGrupoEstableOcio(
     grupo: OcioGrupoApp,
     nivelAlumno: string,
-    esTurnoActual: boolean
+    esTurnoActual: boolean,
+    alumnoId?: string | null,
+    fechaNacimiento?: string | null
   ) {
     const compatibilidad = compatibilidadFueraPlazoAgenda(
       nivelAlumno,
@@ -5871,6 +6060,57 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       const huecos = Math.max(0, maxRatio - totalFinal);
       score += Math.max(0, 12 - huecos * 2);
       if (esTurnoActual) score += 20;
+
+      // Afinado Ocio: mismo nivel nominal no siempre significa mismo ritmo.
+      // El perfil común solo afina; no sustituye la compatibilidad técnica base.
+      const perfilAlumno = perfilOperativoOcioApp(alumnoId);
+      const mediaGrupo = mediaFuncionalGrupoOcioApp(grupo.grupo_id);
+
+      if (perfilAlumno && mediaGrupo !== null) {
+        const funcionalAlumno = puntuacionFuncionalOcioApp(
+          nivelAlumno,
+          alumnoId
+        );
+        const diferencia = Math.abs(funcionalAlumno - mediaGrupo);
+
+        if (diferencia <= 2) {
+          score += 14;
+          motivo = `${motivo} Ritmo/fortaleza muy compatible con el grupo.`;
+        } else if (diferencia <= 4) {
+          score += 7;
+          motivo = `${motivo} Ritmo compatible.`;
+        } else if (diferencia >= 7 && estado === 'RECOMENDADO') {
+          estado = 'REVISAR';
+          score = Math.max(1, score - 8);
+          motivo = `${motivo} Nivel compatible, pero el ritmo reciente difiere bastante del grupo.`;
+        }
+      }
+
+      // Edad en Ocio solo desempata cuando ya hay encaje técnico/funcional.
+      const edadAlumno = edadAproximadaOcio(fechaNacimiento);
+      const edadGrupo = edadMediaGrupoOcioApp(grupo.grupo_id);
+      if (
+        estado !== 'NO_ENCAJA' &&
+        edadAlumno !== null &&
+        edadGrupo !== null
+      ) {
+        const diferenciaEdad = Math.abs(edadAlumno - edadGrupo);
+        if (diferenciaEdad <= 2) score += 3;
+        else if (diferenciaEdad <= 4) score += 1;
+      }
+
+      // Si el alumno ya pertenece a este grupo, mantener estabilidad pesa mucho.
+      if (
+        alumnoId &&
+        ocioAlumnos.some(
+          (alumno) =>
+            alumno.alumno_id === alumnoId &&
+            alumno.grupo_id === grupo.grupo_id
+        )
+      ) {
+        score += 30;
+        motivo = `${motivo} Se prioriza mantener su grupo estable.`;
+      }
     }
 
     return {
@@ -5899,7 +6139,13 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     return gruposDia
       .filter((grupo) => Boolean(grupo.activo))
       .map((grupo) =>
-        evaluarEncajeGrupoEstableOcio(grupo, nivel, true)
+        evaluarEncajeGrupoEstableOcio(
+          grupo,
+          nivel,
+          true,
+          alumno.alumno_id,
+          alumno.fecha_nacimiento
+        )
       )
       .sort((a, b) => {
         const ordenEstado = {
@@ -6003,10 +6249,18 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
             textoSinAcentosGrupoApp(grupo.dia_semana || '') === diaActual &&
             (grupo.hora_inicio || '').slice(0, 5) === turno.inicio;
 
+          const fichaMaestra = ocioNuevoAlumnoId
+            ? alumnos.find(
+                (alumno) => alumno.alumno_id === ocioNuevoAlumnoId
+              )
+            : undefined;
+
           return evaluarEncajeGrupoEstableOcio(
             grupo,
             nivel,
-            esTurnoActual
+            esTurnoActual,
+            ocioNuevoAlumnoId || null,
+            fichaMaestra?.fecha_nacimiento || null
           );
         })
         .sort((a, b) => {
@@ -6180,17 +6434,24 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         );
       })
       .sort((a, b) => {
-        const nivelA = ordenNivelTrabajoMSZApp(
-          a.nivel_usado || a.nivel || 'A+'
+        const funcionalA = puntuacionFuncionalOcioApp(
+          a.nivel_usado || a.nivel || 'A+',
+          a.alumno_id
         );
-        const nivelB = ordenNivelTrabajoMSZApp(
-          b.nivel_usado || b.nivel || 'A+'
+        const funcionalB = puntuacionFuncionalOcioApp(
+          b.nivel_usado || b.nivel || 'A+',
+          b.alumno_id
         );
-        if (nivelA !== nivelB) return nivelA - nivelB;
+        if (funcionalA !== funcionalB) return funcionalA - funcionalB;
 
-        const fechaA = a.fecha_nacimiento || '9999-12-31';
-        const fechaB = b.fecha_nacimiento || '9999-12-31';
-        return fechaA.localeCompare(fechaB);
+        // Edad solo como desempate una vez nivel + ritmo están parejos.
+        const edadA = edadAproximadaOcio(a.fecha_nacimiento);
+        const edadB = edadAproximadaOcio(b.fecha_nacimiento);
+        if (edadA !== null && edadB !== null && edadA !== edadB) {
+          return edadA - edadB;
+        }
+
+        return a.alumno.localeCompare(b.alumno);
       });
   }
 
@@ -12480,7 +12741,40 @@ Gracias!`;
           'recomendar_grupos_sesion_operativa_app',
           { p_sesion_id: sesionId }
         );
-      const dataPedagogica = aplicarCinturonPedagogicoAutomaticoAgenda(data);
+
+      const sesionActual = agendaSesionesDirectas.find(
+        (sesion) => sesion.sesion_id === sesionId
+      );
+      const esSesionBaby = textoSinAcentosGrupoApp(
+        sesionActual?.modalidad_codigo || sesionActual?.modalidad || ''
+      ).includes('baby');
+
+      let perfilesParaRecomendador = perfilesOperativosAlumnos;
+
+      if (esSesionBaby) {
+        try {
+          const perfilesActualizados =
+            await ejecutarFuncionConRespuesta<PerfilOperativoAlumnoApp>(
+              'obtener_perfil_operativo_alumnos_app',
+              {}
+            );
+          perfilesParaRecomendador = Array.isArray(perfilesActualizados)
+            ? perfilesActualizados
+            : [];
+          setPerfilesOperativosAlumnos(perfilesParaRecomendador);
+        } catch (errorPerfil) {
+          console.warn(
+            'No se pudo refrescar el perfil operativo para el recomendador Baby. Se mantiene el recomendador base.',
+            errorPerfil
+          );
+          perfilesParaRecomendador = [];
+        }
+      }
+
+      const dataPedagogica = aplicarCinturonPedagogicoAutomaticoAgenda(data, {
+        usarPerfilBaby: esSesionBaby && perfilesParaRecomendador.length > 0,
+        perfiles: perfilesParaRecomendador,
+      });
       setAgendaRecomendaciones(dataPedagogica);
       setDestinoAlumnoAgendaGrupo({});
       // No borramos los grupos manuales: si Jose crea "Grupo B+" antes de generar,
@@ -12966,6 +13260,240 @@ Gracias!`;
     }));
   }
 
+  function fuerzaNumericaPerfilBabyApp(
+    perfil?: PerfilOperativoAlumnoApp
+  ) {
+    if (!perfil?.fuerza_nivel) return 0;
+    if (perfil.fuerza_nivel === 'MUY_FUERTE') return 2;
+    if (perfil.fuerza_nivel === 'FUERTE') return 1;
+    if (perfil.fuerza_nivel === 'BAJO') return -2;
+    return 0;
+  }
+
+  function penalizacionDemandaPerfilBabyApp(
+    perfil?: PerfilOperativoAlumnoApp
+  ) {
+    if (!perfil?.demanda_atencion) return 0;
+    if (perfil.demanda_atencion === 'ALTA') return -3;
+    if (perfil.demanda_atencion === 'MEDIA') return -1;
+    return 0;
+  }
+
+  function tieneRemontePerfilBabyApp(
+    perfil: PerfilOperativoAlumnoApp | undefined,
+    patron: RegExp
+  ) {
+    return (perfil?.remontes_recientes || []).some((remonte) =>
+      patron.test(String(remonte || ''))
+    );
+  }
+
+  function perchaConsolidadaPerfilBabyApp(
+    perfil?: PerfilOperativoAlumnoApp
+  ) {
+    return tieneRemontePerfilBabyApp(perfil, /percha/i);
+  }
+
+  function transicionPerchaPerfilBabyApp(
+    alumno: AgendaRecomendacionSesionApp,
+    perfil?: PerfilOperativoAlumnoApp
+  ) {
+    const orden = nivelOrdenPedagogicoApp(alumno.nivel_resumen);
+    if (orden !== 2 && orden !== 3) return false;
+
+    // A+ / B bajo con datos recientes sin percha consolidada:
+    // se trata como grupo de transición y necesita ratio más conservador.
+    const fuerzaBaja =
+      !perfil?.fuerza_nivel ||
+      perfil.fuerza_nivel === 'BAJO' ||
+      perfil.fuerza_nivel === 'ADECUADO';
+
+    const autonomiaLimitada = /necesita ayuda|pista pequeña|llano/i.test(
+      perfil?.autonomia_reciente || ''
+    );
+
+    const tieneDatosRemontes =
+      Array.isArray(perfil?.remontes_recientes) &&
+      (perfil?.remontes_recientes?.length || 0) > 0;
+
+    return (
+      fuerzaBaja &&
+      (autonomiaLimitada ||
+        (tieneDatosRemontes && !perchaConsolidadaPerfilBabyApp(perfil)))
+    );
+  }
+
+  function bPlusPuedeTirarConCPerfilBabyApp(
+    alumno: AgendaRecomendacionSesionApp,
+    perfil?: PerfilOperativoAlumnoApp
+  ) {
+    if (nivelOrdenPedagogicoApp(alumno.nivel_resumen) !== 4) return false;
+    if (!perfil) return false;
+
+    const ritmoFuerte =
+      perfil.fuerza_nivel === 'MUY_FUERTE' ||
+      (perfil.fuerza_nivel === 'FUERTE' &&
+        perfil.ritmo_tendencia === 'Muy rápido · podría ir con nivel superior');
+
+    const confianzaSuficiente =
+      perfil.confianza_ritmo === 'ALTA' ||
+      perfil.confianza_ritmo === 'MEDIA';
+
+    const autonomiaGrande = /pista grande|autónomo total/i.test(
+      perfil.autonomia_reciente || ''
+    );
+
+    const remonteGrande =
+      tieneRemontePerfilBabyApp(perfil, /percha|silla/i);
+
+    // Solo promovemos funcionalmente un B+ cuando hay evidencia bastante sólida.
+    return (
+      ritmoFuerte &&
+      confianzaSuficiente &&
+      (autonomiaGrande || remonteGrande) &&
+      perfil.demanda_atencion !== 'ALTA'
+    );
+  }
+
+  function explicacionCompactaPropuestaBabyApp(
+    alumno: AgendaRecomendacionSesionApp
+  ) {
+    const alerta = String(alumno.alertas || '');
+
+    if (/B\+ fuerte: puede tirar con C bajo/i.test(alerta)) {
+      return 'Encaje: B+ fuerte · compatible con C';
+    }
+
+    if (/Transición A\+\/B: percha no consolidada/i.test(alerta)) {
+      return 'Encaje: transición a percha · ratio bajo';
+    }
+
+    return '';
+  }
+
+  function bandaFuncionalBabyApp(
+    alumno: AgendaRecomendacionSesionApp,
+    perfiles: PerfilOperativoAlumnoApp[]
+  ) {
+    const perfil = perfiles.find(
+      (item) => item.alumno_id === alumno.alumno_id
+    );
+
+    if (bPlusPuedeTirarConCPerfilBabyApp(alumno, perfil)) {
+      return {
+        id: 'C_D',
+        label: 'B+ fuerte / C / D',
+        bloque: 'B+ fuerte / C / D',
+        pista: 'Grande',
+        orden: 5,
+        max: 7,
+      };
+    }
+
+    return bandaAutomaticaPedagogicaApp(alumno);
+  }
+
+  function puntuacionFuncionalBabyApp(
+    alumno: AgendaRecomendacionSesionApp,
+    perfiles: PerfilOperativoAlumnoApp[]
+  ) {
+    const perfil = perfiles.find(
+      (item) => item.alumno_id === alumno.alumno_id
+    );
+    const nivelBase = nivelOrdenPedagogicoApp(alumno.nivel_resumen) * 3;
+    return (
+      nivelBase +
+      fuerzaNumericaPerfilBabyApp(perfil) +
+      penalizacionDemandaPerfilBabyApp(perfil)
+    );
+  }
+
+  function ordenarBabyPorPerfilOperativoApp(
+    alumnos: AgendaRecomendacionSesionApp[],
+    perfiles: PerfilOperativoAlumnoApp[]
+  ) {
+    return alumnos.slice().sort((a, b) => {
+      const perfilA = perfiles.find((item) => item.alumno_id === a.alumno_id);
+      const perfilB = perfiles.find((item) => item.alumno_id === b.alumno_id);
+
+      const puntuacion =
+        puntuacionFuncionalBabyApp(b, perfiles) -
+        puntuacionFuncionalBabyApp(a, perfiles);
+
+      if (puntuacion !== 0) return puntuacion;
+
+      const edadA =
+        perfilA?.edad_aprox ??
+        (typeof a.edad === 'number' ? a.edad : Number.POSITIVE_INFINITY);
+      const edadB =
+        perfilB?.edad_aprox ??
+        (typeof b.edad === 'number' ? b.edad : Number.POSITIVE_INFINITY);
+
+      if (Number.isFinite(edadA) && Number.isFinite(edadB) && edadA !== edadB) {
+        return edadA - edadB;
+      }
+
+      return a.alumno.localeCompare(b.alumno);
+    });
+  }
+
+  function tamanosGruposBabyPorPerfilApp(
+    alumnosOrdenados: AgendaRecomendacionSesionApp[],
+    banda: ReturnType<typeof bandaAutomaticaPedagogicaApp>,
+    perfiles: PerfilOperativoAlumnoApp[]
+  ) {
+    const total = alumnosOrdenados.length;
+
+    const maximo =
+      banda.id === 'INICIACION_A'
+        ? 4
+        : banda.id === 'APLUS'
+        ? 5
+        : banda.max;
+
+    // Caso crítico real: A+/B en transición a percha.
+    // Solo se divide por debajo del máximo si hay evidencia real en el perfil.
+    if (banda.id === 'APLUS' || banda.id === 'B_BPLUS') {
+      const transicion = alumnosOrdenados.filter((alumno) => {
+        const perfil = perfiles.find(
+          (item) => item.alumno_id === alumno.alumno_id
+        );
+        return transicionPerchaPerfilBabyApp(alumno, perfil);
+      }).length;
+
+      const resto = total - 3;
+
+      if (
+        transicion >= 3 &&
+        resto >= 2 &&
+        resto <= maximo &&
+        total >= 5
+      ) {
+        return [resto, 3];
+      }
+    }
+
+    if (total <= maximo) return [total];
+
+    const demandantes = alumnosOrdenados.filter(
+      (alumno) =>
+        perfiles.find((perfil) => perfil.alumno_id === alumno.alumno_id)
+          ?.demanda_atencion === 'ALTA'
+    ).length;
+    const normales = total - demandantes;
+
+    if (
+      demandantes >= 3 &&
+      demandantes <= 4 &&
+      normales >= 3 &&
+      normales <= maximo
+    ) {
+      return [normales, demandantes];
+    }
+
+    return tamanosGruposPedagogicosApp(total, maximo);
+  }
+
   function tamanosGruposPedagogicosApp(total: number, maximo: number) {
     if (total <= maximo) return [total];
     const numeroGrupos = Math.ceil(total / maximo);
@@ -12982,28 +13510,50 @@ Gracias!`;
   }
 
   function aplicarCinturonPedagogicoAutomaticoAgenda(
-    data: AgendaRecomendacionSesionApp[]
+    data: AgendaRecomendacionSesionApp[],
+    opciones?: {
+      usarPerfilBaby?: boolean;
+      perfiles?: PerfilOperativoAlumnoApp[];
+    }
   ) {
     const porBanda = new Map<string, AgendaRecomendacionSesionApp[]>();
     data.forEach((registro) => {
-      const banda = bandaAutomaticaPedagogicaApp(registro);
+      const banda = opciones?.usarPerfilBaby
+        ? bandaFuncionalBabyApp(registro, opciones.perfiles || [])
+        : bandaAutomaticaPedagogicaApp(registro);
       porBanda.set(banda.id, [...(porBanda.get(banda.id) || []), registro]);
     });
 
     let contador = 1;
     const salida: AgendaRecomendacionSesionApp[] = [];
     ['INICIACION_A', 'APLUS', 'B_BPLUS', 'C_D'].forEach((idBanda) => {
-      const alumnos = (porBanda.get(idBanda) || []).sort((a, b) => {
-        return (
-          nivelOrdenPedagogicoApp(a.nivel_resumen) -
-            nivelOrdenPedagogicoApp(b.nivel_resumen) ||
-          a.alumno.localeCompare(b.alumno)
-        );
-      });
+      const alumnosBase = porBanda.get(idBanda) || [];
+      const alumnos = opciones?.usarPerfilBaby
+        ? ordenarBabyPorPerfilOperativoApp(
+            alumnosBase,
+            opciones.perfiles || []
+          )
+        : alumnosBase.slice().sort((a, b) => {
+            return (
+              nivelOrdenPedagogicoApp(a.nivel_resumen) -
+                nivelOrdenPedagogicoApp(b.nivel_resumen) ||
+              a.alumno.localeCompare(b.alumno)
+            );
+          });
       if (alumnos.length === 0) return;
-      const banda = bandaAutomaticaPedagogicaApp(alumnos[0]);
+      const banda = opciones?.usarPerfilBaby
+        ? bandaFuncionalBabyApp(alumnos[0], opciones.perfiles || [])
+        : bandaAutomaticaPedagogicaApp(alumnos[0]);
       let inicio = 0;
-      tamanosGruposPedagogicosApp(alumnos.length, banda.max).forEach(
+      const tamanos = opciones?.usarPerfilBaby
+        ? tamanosGruposBabyPorPerfilApp(
+            alumnos,
+            banda,
+            opciones.perfiles || []
+          )
+        : tamanosGruposPedagogicosApp(alumnos.length, banda.max);
+
+      tamanos.forEach(
         (tamano) => {
           const alumnosChunk = alumnos.slice(inicio, inicio + tamano);
           const nombre =
@@ -13011,10 +13561,25 @@ Gracias!`;
               ? `REVISIÓN MANUAL · ${banda.label}`
               : `Grupo ${contador++} · Nivel ${banda.label}`;
           alumnosChunk.forEach((alumno, indice) => {
+            const perfilAlumno = (opciones?.perfiles || []).find(
+              (perfil) => perfil.alumno_id === alumno.alumno_id
+            );
+            const promocionBPlus =
+              opciones?.usarPerfilBaby &&
+              bPlusPuedeTirarConCPerfilBabyApp(alumno, perfilAlumno)
+                ? 'B+ fuerte: puede tirar con C bajo por ritmo/autonomía.'
+                : null;
+            const transicionPercha =
+              opciones?.usarPerfilBaby &&
+              transicionPerchaPerfilBabyApp(alumno, perfilAlumno)
+                ? 'Transición A+/B: percha no consolidada, priorizar ratio bajo.'
+                : null;
             const alertaExtra =
               tamano === 1
                 ? 'No crear grupo de 1. Revisión manual.'
-                : alumno.alertas || null;
+                : [promocionBPlus, transicionPercha]
+                    .filter(Boolean)
+                    .join(' · ') || alumno.alertas || null;
             salida.push({
               ...alumno,
               grupo_recomendado: nombre,
@@ -14587,6 +15152,7 @@ Gracias!`;
       cargarOcioAlumnos();
       cargarOcioGrupos();
       cargarIntensivos();
+      cargarAlumnos();
     }
     if (pantalla === 'ocioGrupos') {
       cargarOcioAlumnos();
@@ -23112,9 +23678,6 @@ Gracias!`;
                               · {alumno.origen_nivel || '-'} · Pista{' '}
                               {alumno.pista_recomendada || '-'}
                             </p>
-                            <p style={{ margin: '4px 0 0', color: '#666' }}>
-                              {alumno.estado_ficha}
-                            </p>
                           </div>
                           <div
                             style={{
@@ -23331,23 +23894,70 @@ Gracias!`;
                                     marginBottom: 12,
                                   }}
                                 >
-                                  {alumnosGrupo.map((alumno) => (
+                                  {alumnosGrupo.map((alumno) => {
+                                    const perfilBaby =
+                                      perfilOperativoAlumnoApp(
+                                        alumno.alumno_id
+                                      );
+                                    const explicacionBaby =
+                                      explicacionCompactaPropuestaBabyApp(
+                                        alumno
+                                      );
+
+                                    return (
                                     <div
                                       key={`${nombreGrupo}-${alumno.alumno_id}`}
-                                      style={agendaAlumnoLinea}
+                                      style={{
+                                        ...agendaAlumnoLinea,
+                                        minWidth: 0,
+                                      }}
                                     >
-                                      <div>
+                                      <div
+                                        style={{
+                                          minWidth: 0,
+                                          overflowWrap: 'anywhere',
+                                        }}
+                                      >
                                         <strong>{alumno.alumno}</strong>
-                                        <p style={{ margin: '4px 0 0' }}>
+                                        <p
+                                          style={{
+                                            margin: '4px 0 0',
+                                            overflowWrap: 'anywhere',
+                                          }}
+                                        >
                                           {alumno.nivel_resumen} ·{' '}
-                                          {alumno.pista_alumno}
-                                          {alumno.alertas
-                                            ? ` · ${alumno.alertas}`
+                                          {alumno.pista_alumno ||
+                                            alumno.pista_recomendada ||
+                                            '-'}
+                                          {perfilBaby?.edad_aprox !== null &&
+                                          perfilBaby?.edad_aprox !== undefined
+                                            ? ` · ${perfilBaby.edad_aprox} años`
                                             : ''}
                                         </p>
+                                        {explicacionBaby && (
+                                          <p
+                                            style={{
+                                              margin: '3px 0 0',
+                                              fontSize: 11,
+                                              lineHeight: 1.25,
+                                              color: '#64748b',
+                                              fontWeight: 700,
+                                              overflowWrap: 'anywhere',
+                                            }}
+                                          >
+                                            {explicacionBaby}
+                                          </p>
+                                        )}
                                       </div>
                                       <label
-                                        style={{ ...labelCampo, minWidth: 240 }}
+                                        style={{
+                                          ...labelCampo,
+                                          minWidth: esVistaMovilApp ? 0 : 220,
+                                          width: esVistaMovilApp
+                                            ? '100%'
+                                            : undefined,
+                                          maxWidth: '100%',
+                                        }}
                                       >
                                         Mover a
                                         <select
@@ -23377,7 +23987,8 @@ Gracias!`;
                                         </select>
                                       </label>
                                     </div>
-                                  ))}
+                                    );
+                                  })}
                                 </div>
 
                                 <div style={gridFormulario}>
@@ -25564,8 +26175,10 @@ Gracias!`;
                     display: 'grid',
                     gridTemplateColumns: esVistaMovilApp
                       ? 'minmax(0, 1fr)'
-                      : 'repeat(auto-fit, minmax(290px, 1fr))',
+                      : 'repeat(auto-fit, minmax(min(100%, 390px), 1fr))',
                     gap: 12,
+                    width: '100%',
+                    minWidth: 0,
                     marginTop: 14,
                   }}
                 >
@@ -25588,6 +26201,10 @@ Gracias!`;
                             nivel_grupo: grupo.nivelObjetivo,
                           }),
                           minWidth: 0,
+                          width: '100%',
+                          maxWidth: '100%',
+                          boxSizing: 'border-box',
+                          overflow: 'hidden',
                         }}
                       >
                         <div style={agendaGrupoLinea}>
@@ -25659,21 +26276,78 @@ Gracias!`;
                             return (
                               <div
                                 key={`propuesta-${grupo.propuesta_id}-${alumno.alumno_id}`}
-                                style={agendaAlumnoLinea}
+                                style={{
+                                  ...agendaAlumnoLinea,
+                                  display: 'grid',
+                                  gridTemplateColumns:
+                                    esVistaMovilApp || destinos.length === 0
+                                      ? 'minmax(0, 1fr)'
+                                      : 'minmax(0, 1fr) minmax(170px, 210px)',
+                                  gap: 10,
+                                  alignItems: 'center',
+                                  width: '100%',
+                                  minWidth: 0,
+                                  boxSizing: 'border-box',
+                                }}
                               >
-                                <div>
+                                <div
+                                  style={{
+                                    minWidth: 0,
+                                    overflowWrap: 'anywhere',
+                                  }}
+                                >
                                   <strong>{alumno.alumno}</strong>
-                                  <p style={{ margin: '4px 0 0' }}>
+                                  <p
+                                    style={{
+                                      margin: '4px 0 0',
+                                      overflowWrap: 'anywhere',
+                                    }}
+                                  >
                                     {alumno.nivel_usado || alumno.nivel || '-'} · {grupo.pista}
                                     {edad !== null ? ` · ${edad} años` : ''}
                                   </p>
+                                  {explicacionCompactaPropuestaOcioApp(
+                                    alumno,
+                                    grupo,
+                                    miembros
+                                  ) && (
+                                    <p
+                                      style={{
+                                        margin: '3px 0 0',
+                                        fontSize: 11,
+                                        lineHeight: 1.25,
+                                        color: '#64748b',
+                                        fontWeight: 700,
+                                        overflowWrap: 'anywhere',
+                                      }}
+                                    >
+                                      {explicacionCompactaPropuestaOcioApp(
+                                        alumno,
+                                        grupo,
+                                        miembros
+                                      )}
+                                    </p>
+                                  )}
                                 </div>
 
                                 {destinos.length > 0 && (
-                                  <label style={{ ...labelCampo, minWidth: 220 }}>
+                                  <label
+                                    style={{
+                                      ...labelCampo,
+                                      width: '100%',
+                                      minWidth: 0,
+                                      maxWidth: '100%',
+                                    }}
+                                  >
                                     Mover a
                                     <select
                                       value=""
+                                      style={{
+                                        width: '100%',
+                                        minWidth: 0,
+                                        maxWidth: '100%',
+                                        boxSizing: 'border-box',
+                                      }}
                                       onChange={(e) => {
                                         moverAlumnoEntrePropuestasOcio(
                                           alumno.alumno_id,
@@ -32988,22 +33662,6 @@ Gracias!`;
                                     </select>
                                   </label>
 
-                                  <label style={labelCampo}>
-                                    Estado ficha
-                                    <select
-                                      value={alumnoEditEstado}
-                                      onChange={(e) =>
-                                        setAlumnoEditEstado(e.target.value)
-                                      }
-                                      style={selectCampo}
-                                    >
-                                      <option value="pendiente completar">
-                                        Pendiente completar
-                                      </option>
-                                      <option value="revisar">Revisar</option>
-                                      <option value="completa">Completa</option>
-                                    </select>
-                                  </label>
                                 </div>
 
                                 <div
@@ -33287,16 +33945,6 @@ Gracias!`;
                                 ? 'Sin reportes'
                                 : `${alumno.total_reportes || 0} reportes`}
                             </span>
-                            <span
-                              style={{
-                                ...agendaBadgeModalidad,
-                                background: '#f8fafc',
-                                color: '#475569',
-                                borderColor: '#e2e8f0',
-                              }}
-                            >
-                              {alumno.estado_ficha || 'sin estado'}
-                            </span>
                           </div>
 
                           <h3 style={{ margin: 0 }}>{alumno.alumno}</h3>
@@ -33314,6 +33962,21 @@ Gracias!`;
                                 : 'Sin registrar'}
                             </strong>
                           </p>
+                          {!datosBasicosFichaAlumnoApp(alumno).completa && (
+                            <p
+                              style={{
+                                margin: '6px 0 0',
+                                color: '#92400e',
+                                fontWeight: 800,
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              Faltan datos básicos:{' '}
+                              {datosBasicosFichaAlumnoApp(alumno).faltan.join(
+                                ', '
+                              )}
+                            </p>
+                          )}
                           <p
                             style={{
                               margin: '6px 0 0',
@@ -33325,6 +33988,81 @@ Gracias!`;
                             {alumno.total_entrenamientos_realizados || 0} ·
                             Origen nivel: {alumno.origen_nivel_estimado || '-'}
                           </p>
+                          {tendenciaRitmoAlumnoApp(alumno.alumno_id)
+                            ?.ritmo_tendencia && (
+                            <p
+                              style={{
+                                margin: '5px 0 0',
+                                color: '#475569',
+                                fontWeight: 700,
+                              }}
+                            >
+                              Ritmo reciente:{' '}
+                              <strong>
+                                {
+                                  tendenciaRitmoAlumnoApp(alumno.alumno_id)
+                                    ?.ritmo_tendencia
+                                }
+                              </strong>{' '}
+                              ·{' '}
+                              {tendenciaRitmoAlumnoApp(alumno.alumno_id)
+                                ?.reportes_usados || 0}{' '}
+                              reportes · confianza{' '}
+                              {(
+                                tendenciaRitmoAlumnoApp(alumno.alumno_id)
+                                  ?.confianza || 'BAJA'
+                              ).toLowerCase()}
+                            </p>
+                          )}
+
+                          {perfilOperativoAlumnoApp(alumno.alumno_id) && (
+                            <div
+                              style={{
+                                display: 'flex',
+                                gap: 6,
+                                flexWrap: 'wrap',
+                                marginTop: 8,
+                              }}
+                            >
+                              <span style={miniBadge}>
+                                Fuerza:{' '}
+                                {perfilOperativoAlumnoApp(alumno.alumno_id)
+                                  ?.fuerza_nivel || 'SIN DATOS'}
+                              </span>
+                              <span style={miniBadge}>
+                                Atención:{' '}
+                                {perfilOperativoAlumnoApp(alumno.alumno_id)
+                                  ?.demanda_atencion || 'NORMAL'}
+                              </span>
+                              {perfilOperativoAlumnoApp(alumno.alumno_id)
+                                ?.edad_aprox !== null &&
+                                perfilOperativoAlumnoApp(alumno.alumno_id)
+                                  ?.edad_aprox !== undefined && (
+                                  <span style={miniBadge}>
+                                    Edad:{' '}
+                                    {perfilOperativoAlumnoApp(alumno.alumno_id)
+                                      ?.edad_aprox?.toFixed(1)}
+                                  </span>
+                                )}
+                            </div>
+                          )}
+
+                          {perfilOperativoAlumnoApp(alumno.alumno_id)
+                            ?.aviso_operativo && (
+                            <p
+                              style={{
+                                margin: '7px 0 0',
+                                color: '#92400e',
+                                fontWeight: 750,
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              {
+                                perfilOperativoAlumnoApp(alumno.alumno_id)
+                                  ?.aviso_operativo
+                              }
+                            </p>
+                          )}
                         </div>
 
                         <div
@@ -33550,22 +34288,6 @@ Gracias!`;
                               </select>
                             </label>
 
-                            <label style={labelCampo}>
-                              Estado ficha
-                              <select
-                                value={alumnoEditEstado}
-                                onChange={(e) =>
-                                  setAlumnoEditEstado(e.target.value)
-                                }
-                                style={selectCampo}
-                              >
-                                <option value="pendiente completar">
-                                  Pendiente completar
-                                </option>
-                                <option value="revisar">Revisar</option>
-                                <option value="completa">Completa</option>
-                              </select>
-                            </label>
                           </div>
 
                           <div
