@@ -1929,6 +1929,46 @@ export function PantallaIntensivos(ctx: any) {
                             })}
                           </div>
 
+                          {resumenReportes.length > 0 && (
+<details style={{ ...ayudaDesplegableCompacta, marginTop: 14 }}>
+                            <summary>
+                              Reportes del intensivo ({resumenReportes.length})
+                            </summary>
+                            <div style={{ marginTop: 10 }}>
+                              <div style={{ display: 'grid', gap: 10 }}>
+                                {resumenReportes.map((registro) => (
+                                  <div key={registro.alumno_id} style={miniTarjetaBlanca}>
+                                    <p style={{ marginTop: 0, fontWeight: 'bold' }}>
+                                      {registro.alumno}
+                                    </p>
+                                    <p>
+                                      <strong>Reportes:</strong>{' '}
+                                      {registro.total_reportes || 0} /{' '}
+                                      {registro.total_dias_intensivo || 0}
+                                    </p>
+                                    <p>
+                                      <strong>Actitud:</strong>{' '}
+                                      {registro.actitudes_reportadas || '-'}
+                                    </p>
+                                    <p>
+                                      <strong>Técnica:</strong>{' '}
+                                      {registro.tecnicas_reportadas || '-'}
+                                    </p>
+                                    <p>
+                                      <strong>Autonomía:</strong>{' '}
+                                      {registro.autonomias_reportadas || '-'}
+                                    </p>
+                                    <p style={{ marginBottom: 0 }}>
+                                      <strong>Recomendación:</strong>{' '}
+                                      {registro.recomendaciones_reportadas || '-'}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </details>
+                          )}
+
 <div
                             id="intensivo-recomendador-activo"
                             style={{ ...miniTarjetaBlanca, marginTop: 12 }}
@@ -2000,7 +2040,7 @@ export function PantallaIntensivos(ctx: any) {
                                     }
                                     style={botonPrincipal}
                                   >
-                                    Editar composición del día
+                                    Ver / editar grupos del día
                                   </button>
                                 )}
 
@@ -2076,7 +2116,15 @@ export function PantallaIntensivos(ctx: any) {
                             )}
 
                             {gruposRecomendadosDia.length > 0 && (
-                              <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+                              <div
+                                id={`intensivo-editor-grupos-${diaSeleccionadoGrupo?.intensivo_dia_id || 'sin-dia'}`}
+                                style={{
+                                  display: 'grid',
+                                  gap: 10,
+                                  marginTop: 12,
+                                  scrollMarginTop: 16,
+                                }}
+                              >
                                 {gruposRecomendadosDia.map(({ nombreGrupo, alumnosGrupo }) => {
                                   const primero = alumnosGrupo[0];
                                   const clave = diaSeleccionadoGrupo
@@ -2354,103 +2402,9 @@ export function PantallaIntensivos(ctx: any) {
 
                           
 
-                          <details style={{ ...ayudaDesplegableCompacta, marginTop: 14 }}>
-                            <summary>Ver grupos preparados este día ({gruposDiaSeleccionado.length})</summary>
-                            <div style={{ marginTop: 10 }}>
-                          {gruposDiaSeleccionado.length === 0 && (
-                            <div style={avisoNeutral}>
-                              Todavía no hay grupos preparados para este día.
-                            </div>
-                          )}
+                          
 
-                          <div style={{ display: 'grid', gap: 10 }}>
-                            {gruposDiaSeleccionado.map((grupo, indiceGrupoIntensivoCreado) => (
-                              <div key={grupo.grupo_id || grupo.intensivo_dia_id} style={estiloGrupoPorPistaApp(grupo)}>
-                                <p style={{ marginTop: 0, fontWeight: 'bold' }}>
-                                  {nombreGrupoVisualApp(grupo, indiceGrupoIntensivoCreado)}
-                                </p>
-                                <p>
-                                  <strong>Estado operativo:</strong>{' '}
-                                  {grupo.publicado
-                                    ? 'Publicado en Días de entrenamiento'
-                                    : 'Preparado · pendiente de recursos/publicación'} ·{' '}
-                                  {grupo.total_alumnos || 0} alumnos
-                                </p>
-                                <p>
-                                  <strong>Pista:</strong> {grupo.pista || '-'} ·{' '}
-                                  <strong>Nivel:</strong> {grupo.nivel_grupo || '-'}
-                                </p>
-
-                                <div style={{ ...avisoNeutral, marginTop: 8 }}>
-                                  <strong>Alumnos del grupo:</strong>
-                                  {grupo.alumnos_lista ? (
-                                    <ul style={{ margin: '6px 0 0 18px', padding: 0 }}>
-                                      {grupo.alumnos_lista.split(' || ').map((alumnoGrupo, indiceAlumnoGrupo) => (
-                                        <li key={`${grupo.grupo_id}-alumno-${indiceAlumnoGrupo}`}>
-                                          {formatearAlumnoListadoOperativo(alumnoGrupo)}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  ) : (
-                                    <span> No hay listado cargado. Pulsa Actualizar intensivos.</span>
-                                  )}
-                                </div>
-
-                                {grupo.grupo_id && (
-                                  <button
-                                    onClick={() => borrarGrupoIntensivo(grupo)}
-                                    style={botonPeligro}
-                                  >
-                                    Eliminar grupo
-                                  </button>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                            </div>
-                          </details>
-
-                          <details style={{ ...ayudaDesplegableCompacta, marginTop: 14 }}>
-                            <summary>Ver resumen de reportes del intensivo, opcional</summary>
-                            <div style={{ marginTop: 10 }}>
-                              {resumenReportes.length === 0 && (
-                                <div style={avisoNeutral}>
-                                  Todavía no hay reportes normales vinculados a este intensivo.
-                                </div>
-                              )}
-
-                              <div style={{ display: 'grid', gap: 10 }}>
-                                {resumenReportes.map((registro) => (
-                                  <div key={registro.alumno_id} style={miniTarjetaBlanca}>
-                                    <p style={{ marginTop: 0, fontWeight: 'bold' }}>
-                                      {registro.alumno}
-                                    </p>
-                                    <p>
-                                      <strong>Reportes:</strong>{' '}
-                                      {registro.total_reportes || 0} /{' '}
-                                      {registro.total_dias_intensivo || 0}
-                                    </p>
-                                    <p>
-                                      <strong>Actitud:</strong>{' '}
-                                      {registro.actitudes_reportadas || '-'}
-                                    </p>
-                                    <p>
-                                      <strong>Técnica:</strong>{' '}
-                                      {registro.tecnicas_reportadas || '-'}
-                                    </p>
-                                    <p>
-                                      <strong>Autonomía:</strong>{' '}
-                                      {registro.autonomias_reportadas || '-'}
-                                    </p>
-                                    <p style={{ marginBottom: 0 }}>
-                                      <strong>Recomendación:</strong>{' '}
-                                      {registro.recomendaciones_reportadas || '-'}
-                                    </p>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </details>
+                          
                         </>
                       )}
                     </div>

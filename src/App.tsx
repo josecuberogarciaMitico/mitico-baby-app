@@ -11631,6 +11631,17 @@ async function cargarEdicionGruposIntensivoDia(
         });
         return copia;
       });
+
+      window.setTimeout(() => {
+        document
+          .getElementById(
+            `intensivo-editor-grupos-${dia.intensivo_dia_id}`
+          )
+          ?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          });
+      }, 100);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Error cargando composición'
