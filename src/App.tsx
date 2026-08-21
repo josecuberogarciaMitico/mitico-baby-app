@@ -18862,51 +18862,6 @@ async function cargarEdicionGruposIntensivoDia(
           : {}),
       }}
     >
-      {esVistaMovilApp && (
-        <style>{`
-          @media (max-width: 719px) {
-            main, main section, main article, main nav, main form {
-              max-width: 100%;
-              min-width: 0;
-              box-sizing: border-box;
-            }
-
-            main input,
-            main select,
-            main textarea {
-              width: 100%;
-              max-width: 100%;
-              min-width: 0;
-              box-sizing: border-box;
-            }
-
-            main button {
-              max-width: 100%;
-              min-width: 0;
-              box-sizing: border-box;
-              white-space: normal;
-              overflow-wrap: anywhere;
-            }
-
-            main img,
-            main svg {
-              max-width: 100%;
-            }
-
-            main table {
-              max-width: 100%;
-            }
-
-            main pre {
-              max-width: 100%;
-              overflow-x: auto;
-              white-space: pre-wrap;
-              overflow-wrap: anywhere;
-            }
-          }
-        `}</style>
-      )}
-
       <header
         style={{
           ...cabeceraAppLimpia,
@@ -23269,36 +23224,8 @@ async function cargarEdicionGruposIntensivoDia(
       )}
 
       {pantalla === 'agenda' && (
-        <section
-          style={{
-            ...agendaShellCompacto,
-            ...(esVistaMovilApp
-              ? {
-                  width: '100%',
-                  maxWidth: '100%',
-                  minWidth: 0,
-                  boxSizing: 'border-box',
-                  overflowX: 'hidden',
-                }
-              : {}),
-          }}
-        >
-          <article
-            style={{
-              ...agendaHeroTrabajoSemanal,
-              ...(esVistaMovilApp
-                ? {
-                    width: '100%',
-                    maxWidth: '100%',
-                    minWidth: 0,
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0, 1fr)',
-                    gap: 12,
-                    boxSizing: 'border-box',
-                  }
-                : {}),
-            }}
-          >
+        <section style={agendaShellCompacto}>
+          <article style={agendaHeroTrabajoSemanal}>
             <div>
               <p style={etiquetaSuperior}>TRABAJO SEMANAL · AGENDA</p>
               <h2 style={{ margin: '3px 0 0', fontSize: 28 }}>
@@ -23309,19 +23236,7 @@ async function cargarEdicionGruposIntensivoDia(
                 sesión. Sin bajar toda la pantalla.
               </p>
             </div>
-            <div
-              style={{
-                ...agendaPanelRangoSemana,
-                ...(esVistaMovilApp
-                  ? {
-                      width: '100%',
-                      maxWidth: '100%',
-                      minWidth: 0,
-                      boxSizing: 'border-box',
-                    }
-                  : {}),
-              }}
-            >
+            <div style={agendaPanelRangoSemana}>
               <span style={agendaMiniLabel}>Semana completa</span>
               <strong>
                 {semanaAgendaActiva
@@ -23348,34 +23263,8 @@ async function cargarEdicionGruposIntensivoDia(
             </div>
           </article>
 
-          <section
-            style={{
-              ...agendaPanelControles,
-              ...(esVistaMovilApp
-                ? {
-                    width: '100%',
-                    maxWidth: '100%',
-                    minWidth: 0,
-                    boxSizing: 'border-box',
-                    overflowX: 'hidden',
-                  }
-                : {}),
-            }}
-          >
-            <div
-              style={{
-                ...agendaControlesGrid,
-                ...(esVistaMovilApp
-                  ? {
-                      width: '100%',
-                      maxWidth: '100%',
-                      minWidth: 0,
-                      gridTemplateColumns: 'minmax(0, 1fr)',
-                      boxSizing: 'border-box',
-                    }
-                  : {}),
-              }}
-            >
+          <section style={agendaPanelControles}>
+            <div style={agendaControlesGrid}>
               <label style={labelCampo}>
                 Temporada
                 <select
@@ -23460,21 +23349,7 @@ async function cargarEdicionGruposIntensivoDia(
 
                 return (
                   <div style={{ display: 'grid', gap: 14 }}>
-                    <div
-                      style={{
-                        ...agendaDiasSelectorCompacto,
-                        ...(esVistaMovilApp
-                          ? {
-                              width: '100%',
-                              maxWidth: '100%',
-                              minWidth: 0,
-                              gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                              boxSizing: 'border-box',
-                              overflowX: 'hidden',
-                            }
-                          : {}),
-                      }}
-                    >
+                    <div style={agendaDiasSelectorCompacto}>
                       {diasSemanaAgenda.map((dia) => {
                         const sesionesDiaBoton = sesionesDelDiaAgenda(
                           dia.fecha
@@ -25785,11 +25660,7 @@ async function cargarEdicionGruposIntensivoDia(
                             display: 'flex',
                             gap: 8,
                             flexWrap: 'wrap',
-                            justifyContent: esVistaMovilApp ? 'stretch' : 'flex-end',
-                            width: esVistaMovilApp ? '100%' : undefined,
-                            maxWidth: '100%',
-                            minWidth: 0,
-                            boxSizing: 'border-box',
+                            justifyContent: 'flex-end',
                           }}
                         >
                           <button
@@ -25813,22 +25684,7 @@ async function cargarEdicionGruposIntensivoDia(
                                   : alumno.alumno_id
                               )
                             }
-                            style={{
-                              ...botonSecundario,
-                              maxWidth: '100%',
-                              minWidth: 0,
-                              whiteSpace: 'normal',
-                              overflowWrap: 'anywhere',
-                              lineHeight: 1.2,
-                              textAlign: 'center',
-                              ...(esVistaMovilApp
-                                ? {
-                                    flex: '1 1 132px',
-                                    padding: '9px 10px',
-                                    fontSize: 13,
-                                  }
-                                : {}),
-                            }}
+                            style={botonSecundario}
                           >
                             Añadir a Intensivo
                           </button>
@@ -31798,30 +31654,16 @@ async function cargarEdicionGruposIntensivoDia(
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: esVistaMovilApp
-                      ? 'minmax(0, 1fr)'
-                      : 'minmax(0, 1fr) auto',
+                    gridTemplateColumns: '1fr auto',
                     gap: 12,
                     alignItems: 'center',
-                    width: '100%',
-                    maxWidth: '100%',
-                    minWidth: 0,
-                    boxSizing: 'border-box',
                   }}
                 >
                   <input
                     value={busquedaReportes}
                     onChange={(e) => setBusquedaReportes(e.target.value)}
                     placeholder="Buscar entrenador, alumno, grupo o modalidad..."
-                    aria-label="Buscar en cierre semanal"
-                    style={{
-                      ...buscador,
-                      margin: 0,
-                      width: '100%',
-                      maxWidth: '100%',
-                      minWidth: 0,
-                      boxSizing: 'border-box',
-                    }}
+                    style={{ ...buscador, margin: 0 }}
                   />
                   <div
                     style={{
@@ -34775,11 +34617,7 @@ async function cargarEdicionGruposIntensivoDia(
                             display: 'flex',
                             gap: 8,
                             flexWrap: 'wrap',
-                            justifyContent: esVistaMovilApp ? 'stretch' : 'flex-end',
-                            width: esVistaMovilApp ? '100%' : undefined,
-                            maxWidth: '100%',
-                            minWidth: 0,
-                            boxSizing: 'border-box',
+                            justifyContent: 'flex-end',
                           }}
                         >
                           <button
@@ -34807,22 +34645,7 @@ async function cargarEdicionGruposIntensivoDia(
                                   : alumno.alumno_id
                               )
                             }
-                            style={{
-                              ...botonMini,
-                              maxWidth: '100%',
-                              minWidth: 0,
-                              whiteSpace: 'normal',
-                              overflowWrap: 'anywhere',
-                              lineHeight: 1.2,
-                              textAlign: 'center',
-                              ...(esVistaMovilApp
-                                ? {
-                                    flex: '1 1 128px',
-                                    padding: '8px 9px',
-                                    fontSize: 12,
-                                  }
-                                : {}),
-                            }}
+                            style={botonMini}
                           >
                             Añadir a Intensivo
                           </button>
