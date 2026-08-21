@@ -17,6 +17,7 @@ export function PantallaIntensivos(ctx: any) {
     crearTodosGruposDesdeRecomendacionIntensivo, crearGrupoNormalIntensivo,
     crearGrupoVacioPropuestaIntensivo, generarPlantillaCuatroDiasIntensivo,
     crearPlantillaCuatroDiasIntensivo, cargarEdicionGruposIntensivoDia,
+    abrirGestionOperativaIntensivoDia,
     guardarComposicionDiaIntensivo,
     crearIntensivoDesdeApp, destinoAlumnoRecomendado, diaActivoIntensivoId,
     diaAsistenciaSeleccionadoId, diaEditandoIntensivoId, diaGrupoSeleccionadoId,
@@ -41,6 +42,7 @@ export function PantallaIntensivos(ctx: any) {
     opcionesOrigenNivelAlumno, opcionesPistaGrupoIntensivo, opcionesRecomendacionIntensivo,
     panelControlDelIntensivo, plantillaCuatroSesionesInicial, plantillaCuatroSesionesIntensivo,
     prepararEdicionDiaIntensivo, prepararCambioRevisionIntensivo,
+    moverAlumnoManualRevisionIntensivo,
     analizarRevisionEntreSesionesIntensivo, revisionIntensivoId,
     revisionIntensivoDiaId, revisionIntensivoSugerencias,
     revisionIntensivoAnalizando, revisionIntensivoAnalizado,
@@ -1407,7 +1409,7 @@ export function PantallaIntensivos(ctx: any) {
                               lineHeight: 1.45,
                             }}
                           >
-                            Compara los grupos actuales con los últimos reportes.
+                            Compara los grupos con los últimos reportes. Si confirmas un cambio, se aplica desde el día seleccionado hasta el final del intensivo; los días anteriores mantienen su histórico.
                           </p>
                         </div>
                       </div>
@@ -1477,6 +1479,20 @@ export function PantallaIntensivos(ctx: any) {
                               {revisionIntensivoAnalizando
                                 ? 'Analizando...'
                                 : 'Revisar grupos'}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void moverAlumnoManualRevisionIntensivo()
+                              }
+                              disabled={
+                                !revisionIntensivoDiaId ||
+                                revisionIntensivoAnalizando
+                              }
+                              style={botonSecundario}
+                            >
+                              Mover alumno manualmente
                             </button>
                           </div>
 
@@ -1583,7 +1599,7 @@ export function PantallaIntensivos(ctx: any) {
                                       }
                                       style={botonSecundario}
                                     >
-                                      Preparar cambio
+                                      Aplicar cambio
                                     </button>
                                   </div>
                                 </div>
@@ -2040,7 +2056,7 @@ export function PantallaIntensivos(ctx: any) {
                                   <button
                                     type="button"
                                     onClick={() =>
-                                      cargarEdicionGruposIntensivoDia(
+                                      abrirGestionOperativaIntensivoDia(
                                         diaSeleccionadoGrupo || undefined
                                       )
                                     }

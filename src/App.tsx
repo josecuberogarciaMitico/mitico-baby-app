@@ -4071,7 +4071,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   >([]);
   const [busquedaReportes, setBusquedaReportes] = useState('');
   const [filtroReportes, setFiltroReportes] = useState<
-    'todos' | 'faltan_reportes' | 'asistencias_sin_confirmar'
+    'todos' | 'faltan_reportes' | 'asistencias_sin_confirmar' | 'criticos'
   >('todos');
 
   const [cobros, setCobros] = useState<CobroMensual[]>([]);
@@ -9473,6 +9473,100 @@ Gracias!`;
     }
   }
 
+  function abrirResumenCierreSemanal(
+    filtro: 'todos' | 'faltan_reportes' | 'asistencias_sin_confirmar' | 'criticos'
+  ) {
+    setFiltroReportes(filtro);
+    setBusquedaReportes('');
+
+    window.setTimeout(() => {
+      document
+        .getElementById('cierre-semanal-listado-pendientes')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 120);
+  }
+
+  async function abrirPendienteCierreSemanal(reporte: ReportePendiente) {
+    setCargando(true);
+    setError('');
+
+    try {
+      const [anioDia, mesDia] = reporte.fecha.split('-').map(Number);
+      const mesObjetivo = `${anioDia}-${String(mesDia).padStart(2, '0')}`;
+      const semanaObjetivo = inicioSemanaAgenda(reporte.fecha);
+
+      // La Vista entrenador del coordinador usa la semana de trabajo activa.
+      // Sincronizamos primero esa semana para que el grupo objetivo no quede
+      // oculto por el filtro semanal de la propia Vista entrenador.
+      setAnioInicioTemporadaAgenda(mesDia >= 9 ? anioDia : anioDia - 1);
+      setMesAgenda(mesObjetivo);
+      setSemanaAgendaInicio(semanaObjetivo);
+      setBusquedaGrupoEntrenador('');
+      setTabVistaEntrenador('grupos');
+      setPantalla('entrenador');
+
+      await cargarGruposEntrenador();
+
+      const grupoObjetivo = gruposEntrenador.find(
+        (grupo) =>
+          grupo.grupo_id === reporte.grupo_id &&
+          grupo.entrenador_id === reporte.entrenador_id
+      );
+
+      // El estado React de cargarGruposEntrenador puede actualizarse después
+      // de este mismo tick. Aunque todavía no esté en la copia local, el
+      // identificador grupo+entrenador que trae Cierre semanal es suficiente
+      // para abrir exactamente la ficha correcta al renderizar.
+      setGrupoActivoEntrenador({
+        grupo_id: reporte.grupo_id,
+        entrenador_id: reporte.entrenador_id,
+      });
+      setSeccionGrupoEntrenador('asistencia');
+
+      window.setTimeout(() => {
+        const grupoDomId =
+          `trainer-group-${reporte.entrenador_id}-${reporte.grupo_id}`.replace(
+            /[^a-zA-Z0-9_-]/g,
+            '-'
+          );
+
+        const objetivo = document.getElementById(grupoDomId);
+
+        if (!objetivo) {
+          setError(
+            `He abierto Vista entrenador, pero no encuentro visible el grupo ${reporte.nombre_grupo}. Pulsa “Actualizar vista” si acaba de cambiar la semana.`
+          );
+          return;
+        }
+
+        let padre = objetivo.parentElement;
+        while (padre) {
+          if (padre instanceof HTMLDetailsElement) {
+            padre.open = true;
+          }
+          padre = padre.parentElement;
+        }
+
+        objetivo.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+
+        window.setTimeout(() => {
+          irASeccionGrupoEntrenador('asistencia', grupoDomId);
+        }, 180);
+      }, 520);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo abrir la tarea en Vista entrenador.'
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
   async function cargarReportesPendientes() {
     setCargando(true);
     setError('');
@@ -11446,64 +11540,351 @@ Gracias!`;
     }
   }
 
+  function normalizarNombreGrupoRevisionIntensivo(valor: string | null | undefined) {
+    return String(valor || '')
+      .trim()
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+  }
+
+  async function aplicarCambioAlumnoIntensivoDesdeDia(
+    alumnoId: string,
+    alumnoNombre: string,
+    grupoDestinoNombre: string
+  ) {
+    const diaInicio = intensivoDias.find(
+      (item) => item.intensivo_dia_id === revisionIntensivoDiaId
+    );
+
+    if (!diaInicio) {
+      throw new Error('No encuentro el día desde el que debe aplicarse el cambio.');
+    }
+
+    const diasAfectados = intensivoDias
+      .filter(
+        (item) =>
+          item.intensivo_id === diaInicio.intensivo_id &&
+          item.numero_dia >= diaInicio.numero_dia
+      )
+      .slice()
+      .sort((a, b) => a.numero_dia - b.numero_dia);
+
+    if (diasAfectados.length === 0) {
+      throw new Error('No hay sesiones futuras donde aplicar el cambio.');
+    }
+
+    const destinoNormalizado =
+      normalizarNombreGrupoRevisionIntensivo(grupoDestinoNombre);
+
+    const plan: Array<{
+      dia: IntensivoDiaApp;
+      grupo_origen_id: string;
+      grupo_origen: string;
+      grupo_destino_id: string;
+      grupo_destino: string;
+    }> = [];
+
+    for (const dia of diasAfectados) {
+      const filas =
+        await ejecutarFuncionConRespuesta<GrupoEditableIntensivoDiaApp>(
+          'obtener_grupos_intensivo_dia_editables_app',
+          { p_intensivo_dia_id: dia.intensivo_dia_id }
+        );
+
+      if (filas.length === 0) {
+        throw new Error(
+          `Día ${dia.numero_dia}: todavía no tiene grupos creados. No aplico ningún cambio para evitar dejar el intensivo a medias.`
+        );
+      }
+
+      const filaAlumno = filas.find((fila) => fila.alumno_id === alumnoId);
+
+      if (!filaAlumno) {
+        throw new Error(
+          `Día ${dia.numero_dia}: ${alumnoNombre} no aparece en ningún grupo. No aplico ningún cambio.`
+        );
+      }
+
+      const filaDestino = filas.find(
+        (fila) =>
+          normalizarNombreGrupoRevisionIntensivo(fila.nombre_grupo) ===
+          destinoNormalizado
+      );
+
+      if (!filaDestino) {
+        throw new Error(
+          `Día ${dia.numero_dia}: no existe el grupo destino “${grupoDestinoNombre}”. No aplico ningún cambio.`
+        );
+      }
+
+      if (filaAlumno.grupo_id === filaDestino.grupo_id) {
+        continue;
+      }
+
+      const alumnosDestino = filas.filter(
+        (fila) => fila.grupo_id === filaDestino.grupo_id
+      );
+
+      const maxRatio = maxRatioGrupoRevisionIntensivoApp(filaDestino);
+
+      if (alumnosDestino.length + 1 > maxRatio) {
+        throw new Error(
+          `Día ${dia.numero_dia}: ${filaDestino.nombre_grupo} quedaría con ${alumnosDestino.length + 1} niños y supera el ratio máximo (${maxRatio}). No aplico ningún cambio.`
+        );
+      }
+
+      plan.push({
+        dia,
+        grupo_origen_id: filaAlumno.grupo_id,
+        grupo_origen: filaAlumno.nombre_grupo,
+        grupo_destino_id: filaDestino.grupo_id,
+        grupo_destino: filaDestino.nombre_grupo,
+      });
+    }
+
+    if (plan.length === 0) {
+      throw new Error(
+        `${alumnoNombre} ya está en ${grupoDestinoNombre} desde el día seleccionado en adelante.`
+      );
+    }
+
+    const resumenPlan = plan
+      .map(
+        (item) =>
+          `Día ${item.dia.numero_dia}: ${item.grupo_origen} → ${item.grupo_destino}`
+      )
+      .join('\n');
+
+    const confirmar = window.confirm(
+      `¿Confirmar cambio de grupo para ${alumnoNombre}?\n\n${resumenPlan}\n\nEl cambio empieza en el Día ${diaInicio.numero_dia} y se mantiene en los días siguientes. Los días anteriores NO se modifican.`
+    );
+
+    if (!confirmar) return false;
+
+    for (const item of plan) {
+      await ejecutarFuncion('mover_alumno_grupo_intensivo_dia_app', {
+        p_alumno_id: alumnoId,
+        p_grupo_origen_id: item.grupo_origen_id,
+        p_grupo_destino_id: item.grupo_destino_id,
+      });
+    }
+
+    await cargarIntensivos();
+    await cargarGruposEntrenador();
+    await cargarPlanning();
+    await cargarReportesPendientes();
+
+    setRevisionIntensivoSugerencias([]);
+    setRevisionIntensivoAnalizado(false);
+
+    return true;
+  }
+
   async function prepararCambioRevisionIntensivo(
     sugerencia: RevisionEntreSesionesIntensivoApp
   ) {
+    setCargando(true);
+    setError('');
+
+    try {
+      await aplicarCambioAlumnoIntensivoDesdeDia(
+        sugerencia.alumno_id,
+        sugerencia.alumno,
+        sugerencia.grupo_destino
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo aplicar el cambio recomendado.'
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function moverAlumnoManualRevisionIntensivo() {
     const dia = intensivoDias.find(
       (item) => item.intensivo_dia_id === revisionIntensivoDiaId
     );
 
     if (!dia) {
-      setError('No encuentro el día del intensivo.');
+      setError('Selecciona primero el día desde el que quieres hacer el cambio.');
       return;
     }
 
-    const filas =
-      await ejecutarFuncionConRespuesta<GrupoEditableIntensivoDiaApp>(
-        'obtener_grupos_intensivo_dia_editables_app',
-        { p_intensivo_dia_id: dia.intensivo_dia_id }
+    setCargando(true);
+    setError('');
+
+    try {
+      const filas =
+        await ejecutarFuncionConRespuesta<GrupoEditableIntensivoDiaApp>(
+          'obtener_grupos_intensivo_dia_editables_app',
+          { p_intensivo_dia_id: dia.intensivo_dia_id }
+        );
+
+      if (filas.length === 0) {
+        throw new Error('Este día todavía no tiene grupos creados.');
+      }
+
+      const alumnos = filas
+        .slice()
+        .sort(
+          (a, b) =>
+            a.nombre_grupo.localeCompare(b.nombre_grupo) ||
+            a.orden_en_grupo - b.orden_en_grupo ||
+            a.alumno.localeCompare(b.alumno)
+        );
+
+      const textoAlumnos = alumnos
+        .map(
+          (fila, indice) =>
+            `${indice + 1}. ${fila.alumno} · ${fila.nivel_resumen || 'SIN NIVEL'} · ${fila.nombre_grupo}`
+        )
+        .join('\n');
+
+      const seleccionAlumno = window.prompt(
+        `Mover manualmente desde el Día ${dia.numero_dia}\n\nElige alumno:\n${textoAlumnos}`
       );
 
-    if (filas.some((fila) => fila.publicado)) {
+      if (!seleccionAlumno) return;
+
+      const alumno = alumnos[Number(seleccionAlumno) - 1];
+
+      if (!alumno) {
+        throw new Error('La selección de alumno no es válida.');
+      }
+
+      const gruposMapa = new Map<
+        string,
+        {
+          grupo_id: string;
+          nombre_grupo: string;
+          nivel_grupo: string | null;
+          pista: string | null;
+          total: number;
+        }
+      >();
+
+      filas.forEach((fila) => {
+        const actual = gruposMapa.get(fila.grupo_id);
+        if (actual) {
+          actual.total += 1;
+        } else {
+          gruposMapa.set(fila.grupo_id, {
+            grupo_id: fila.grupo_id,
+            nombre_grupo: fila.nombre_grupo,
+            nivel_grupo: fila.nivel_grupo,
+            pista: fila.pista,
+            total: 1,
+          });
+        }
+      });
+
+      const destinos = Array.from(gruposMapa.values()).filter(
+        (grupo) => grupo.grupo_id !== alumno.grupo_id
+      );
+
+      if (destinos.length === 0) {
+        throw new Error('No hay otro grupo de destino en este día.');
+      }
+
+      const textoDestinos = destinos
+        .map(
+          (grupo, indice) =>
+            `${indice + 1}. ${grupo.nombre_grupo} · ${grupo.nivel_grupo || 'SIN NIVEL'} · ${grupo.pista || '-'} · ${grupo.total} niños`
+        )
+        .join('\n');
+
+      const seleccionDestino = window.prompt(
+        `${alumno.alumno}\nGrupo actual: ${alumno.nombre_grupo}\n\nElige nuevo grupo desde el Día ${dia.numero_dia}:\n${textoDestinos}`
+      );
+
+      if (!seleccionDestino) return;
+
+      const destino = destinos[Number(seleccionDestino) - 1];
+
+      if (!destino) {
+        throw new Error('La selección de grupo destino no es válida.');
+      }
+
+      await aplicarCambioAlumnoIntensivoDesdeDia(
+        alumno.alumno_id,
+        alumno.alumno,
+        destino.nombre_grupo
+      );
+    } catch (err) {
       setError(
-        'Ese día ya está publicado. Haz el cambio desde Días de entrenamiento.'
+        err instanceof Error
+          ? err.message
+          : 'No se pudo hacer el cambio manual.'
       );
-      return;
+    } finally {
+      setCargando(false);
     }
-
-    if (filas.some((fila) => Boolean(fila.entrenador_id))) {
-      setError(
-        'Ese día ya tiene entrenador asignado. Quita primero los recursos antes de reorganizar.'
-      );
-      return;
-    }
-
-    await cargarEdicionGruposIntensivoDia(dia);
-
-    setGestionarGruposIntensivoId(revisionIntensivoId);
-    setDiaGrupoSeleccionadoId(revisionIntensivoDiaId);
-
-    setDestinoAlumnoRecomendado((anteriores) => ({
-      ...anteriores,
-      [claveAlumnoRecomendado(
-        revisionIntensivoDiaId,
-        sugerencia.alumno_id
-      )]: sugerencia.grupo_destino,
-    }));
-
-    const intensivoIdPreparado = revisionIntensivoId;
-    setRevisionIntensivoId('');
-    setRevisionIntensivoSugerencias([]);
-    setRevisionIntensivoAnalizado(false);
-
-    window.setTimeout(() => {
-      document
-        .getElementById(`intensivo-curso-${intensivoIdPreparado}`)
-        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 80);
   }
 
-async function cargarEdicionGruposIntensivoDia(
+async function abrirGestionOperativaIntensivoDia(
+    dia: IntensivoDiaApp | undefined
+  ) {
+    if (!dia?.sesion_id) {
+      setError(
+        'Este día todavía no tiene una sesión operativa asociada. Crea primero sus grupos.'
+      );
+      return;
+    }
+
+    setError('');
+
+    const [anioDia, mesDia] = dia.fecha.split('-').map(Number);
+    const mesObjetivo = `${anioDia}-${String(mesDia).padStart(2, '0')}`;
+    const semanaObjetivo = inicioSemanaAgenda(dia.fecha);
+
+    // Sincroniza TODOS los selectores de Días de entrenamiento con el día
+    // elegido en Intensivos. Antes solo cambiaba la sesión interna y la UI
+    // seguía enseñando el miércoles/semana anterior.
+    setAnioInicioTemporadaAgenda(
+      mesDia >= 9 ? anioDia : anioDia - 1
+    );
+    setMesAgenda(mesObjetivo);
+    setSemanaAgendaInicio(semanaObjetivo);
+    setAgendaDiaCompactoActivo(dia.fecha);
+    setAgendaFormularioAbierto(false);
+    setAgendaSesionActivaId(dia.sesion_id);
+    setPantalla('agenda');
+
+    try {
+      await cargarAgendaOperativaDirecta();
+      await cargarDetalleSesionAgenda(dia.sesion_id, {
+        preservarScroll: true,
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo abrir este día en Días de entrenamiento.'
+      );
+      return;
+    }
+
+    // Damos tiempo a React para renderizar mes + semana + día + sesión.
+    // Primer salto: tarjeta del día correcto.
+    window.setTimeout(() => {
+      document
+        .getElementById('agenda-dia-seleccionado')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 220);
+
+    // Segundo salto: grupos concretos de esa sesión.
+    window.setTimeout(() => {
+      document
+        .getElementById('agenda-grupos-creados')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 520);
+  }
+
+  async function cargarEdicionGruposIntensivoDia(
     dia: IntensivoDiaApp | undefined
   ) {
     if (!dia) {
@@ -16142,7 +16523,7 @@ async function cargarEdicionGruposIntensivoDia(
       )
     : '';
 
-  const reportesFiltrados = reportesPendientes.filter((reporte) => {
+  const reportesSemanaCierre = reportesPendientes.filter((reporte) => {
     if (
       !esCoordinadorApp &&
       entrenadorIdSesionApp &&
@@ -16150,24 +16531,34 @@ async function cargarEdicionGruposIntensivoDia(
     )
       return false;
     if (!esCoordinadorApp && !entrenadorIdSesionApp) return false;
+
+    return semanaAgendaActiva
+      ? reporte.fecha >= semanaAgendaActiva &&
+          reporte.fecha <= finSemanaReportes
+      : true;
+  });
+
+  const reportesFiltrados = reportesSemanaCierre.filter((reporte) => {
     const texto =
       `${reporte.entrenador} ${reporte.alumno} ${reporte.nombre_grupo} ${reporte.modalidad} ${reporte.estado_reporte}`.toLowerCase();
 
-    const coincideSemana = semanaAgendaActiva
-      ? reporte.fecha >= semanaAgendaActiva &&
-        reporte.fecha <= finSemanaReportes
-      : true;
-
     const coincideBusqueda = texto.includes(busquedaReportes.toLowerCase());
+
+    const asistenciaPendiente =
+      reporte.estado_reporte === 'Asistencia sin confirmar' ||
+      reporte.estado_asistencia === 'Pendiente';
 
     const coincideFiltro =
       filtroReportes === 'todos' ||
       (filtroReportes === 'faltan_reportes' &&
         reporte.estado_reporte === 'Falta reporte') ||
       (filtroReportes === 'asistencias_sin_confirmar' &&
-        reporte.estado_reporte === 'Asistencia sin confirmar');
+        asistenciaPendiente) ||
+      (filtroReportes === 'criticos' &&
+        reporte.estado_reporte === 'Falta reporte' &&
+        asistenciaPendiente);
 
-    return coincideSemana && coincideBusqueda && coincideFiltro;
+    return coincideBusqueda && coincideFiltro;
   });
 
   const cobrosFiltrados = cobros.filter((cobro) => {
@@ -31331,20 +31722,25 @@ async function cargarEdicionGruposIntensivoDia(
 
       {pantalla === 'reportes' &&
         (() => {
-          const totalReportesPendientes = reportesFiltrados.filter(
+          const totalReportesPendientes = reportesSemanaCierre.filter(
             (reporte) => reporte.estado_reporte === 'Falta reporte'
           ).length;
-          const totalAsistenciasPendientes = reportesFiltrados.filter(
+          const totalAsistenciasPendientes = reportesSemanaCierre.filter(
             (reporte) =>
               reporte.estado_reporte === 'Asistencia sin confirmar' ||
               reporte.estado_asistencia === 'Pendiente'
           ).length;
-          const totalAmbosPendientes = reportesFiltrados.filter(
+          const totalAmbosPendientes = reportesSemanaCierre.filter(
             (reporte) =>
               reporte.estado_reporte === 'Falta reporte' &&
-              reporte.estado_asistencia === 'Pendiente'
+              (
+                reporte.estado_reporte === 'Asistencia sin confirmar' ||
+                reporte.estado_asistencia === 'Pendiente'
+              )
           ).length;
-          const totalEntrenadoresPendientes = reportesPorEntrenador.length;
+          const totalEntrenadoresPendientes = new Set(
+            reportesSemanaCierre.map((reporte) => reporte.entrenador_id)
+          ).size;
 
           const chipEstadoReporte = (reporte: ReportePendiente) => {
             const faltaReporte = reporte.estado_reporte === 'Falta reporte';
@@ -31389,6 +31785,7 @@ async function cargarEdicionGruposIntensivoDia(
               titulo: 'Entrenadores',
               valor: totalEntrenadoresPendientes,
               detalle: 'con tareas',
+              filtro: 'todos' as const,
               estilo: {
                 background: 'linear-gradient(135deg, #eff6ff, #ffffff)',
                 border: '1px solid #bfdbfe',
@@ -31399,6 +31796,7 @@ async function cargarEdicionGruposIntensivoDia(
               titulo: 'Reportes',
               valor: totalReportesPendientes,
               detalle: 'por rellenar',
+              filtro: 'faltan_reportes' as const,
               estilo: {
                 background: 'linear-gradient(135deg, #eef2ff, #ffffff)',
                 border: '1px solid #c7d2fe',
@@ -31409,6 +31807,7 @@ async function cargarEdicionGruposIntensivoDia(
               titulo: 'Asistencia',
               valor: totalAsistenciasPendientes,
               detalle: 'sin cerrar',
+              filtro: 'asistencias_sin_confirmar' as const,
               estilo: {
                 background: 'linear-gradient(135deg, #fff7ed, #ffffff)',
                 border: '1px solid #fed7aa',
@@ -31419,6 +31818,7 @@ async function cargarEdicionGruposIntensivoDia(
               titulo: 'Críticos',
               valor: totalAmbosPendientes,
               detalle: 'ambos pendientes',
+              filtro: 'criticos' as const,
               estilo: {
                 background: 'linear-gradient(135deg, #fef2f2, #ffffff)',
                 border: '1px solid #fecaca',
@@ -31603,12 +32003,30 @@ async function cargarEdicionGruposIntensivoDia(
                 {metricasPendientes.map((metrica) => (
                   <article
                     key={metrica.titulo}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${metrica.titulo}: ${metrica.valor} ${metrica.detalle}`}
+                    onClick={() => abrirResumenCierreSemanal(metrica.filtro)}
+                    onKeyDown={(evento) => {
+                      if (evento.key === 'Enter' || evento.key === ' ') {
+                        evento.preventDefault();
+                        abrirResumenCierreSemanal(metrica.filtro);
+                      }
+                    }}
                     style={{
                       ...metrica.estilo,
                       borderRadius: 20,
                       padding: 16,
                       boxShadow: '0 12px 25px rgba(15, 23, 42, 0.05)',
+                      cursor: 'pointer',
+                      transition: 'transform .16s ease, box-shadow .16s ease',
+                      outline:
+                        filtroReportes === metrica.filtro
+                          ? '2px solid rgba(37,99,235,.35)'
+                          : 'none',
+                      outlineOffset: 2,
                     }}
+                    title="Pulsa para ver los pendientes concretos"
                   >
                     <p
                       style={{
@@ -31674,7 +32092,10 @@ async function cargarEdicionGruposIntensivoDia(
                     }}
                   >
                     <button
-                      onClick={() => setFiltroReportes('todos')}
+                      onClick={() => {
+                        setFiltroReportes('todos');
+                        setBusquedaReportes('');
+                      }}
                       style={botonMenu(filtroReportes === 'todos')}
                     >
                       Todos
@@ -31695,6 +32116,15 @@ async function cargarEdicionGruposIntensivoDia(
                     >
                       Asistencia
                     </button>
+                    {filtroReportes === 'criticos' && (
+                      <button
+                        onClick={() => setFiltroReportes('criticos')}
+                        style={botonMenu(true)}
+                        title="Reporte y asistencia pendientes a la vez"
+                      >
+                        Críticos
+                      </button>
+                    )}
                   </div>
                 </div>
               </article>
@@ -31718,7 +32148,10 @@ async function cargarEdicionGruposIntensivoDia(
                 </article>
               )}
 
-              <section style={{ display: 'grid', gap: 14 }}>
+              <section
+                id="cierre-semanal-listado-pendientes"
+                style={{ display: 'grid', gap: 14, scrollMarginTop: 18 }}
+              >
                 {reportesPorEntrenador.map((grupo) => {
                   const faltanReportes = grupo.reportes.filter(
                     (reporte) => reporte.estado_reporte === 'Falta reporte'
@@ -31854,7 +32287,10 @@ async function cargarEdicionGruposIntensivoDia(
                         </span>
                       </div>
 
-                      <details style={{ marginTop: 12 }}>
+                      <details
+                        data-cierre-detalle="true"
+                        style={{ marginTop: 12 }}
+                      >
                         <summary
                           style={{
                             cursor: 'pointer',
@@ -31918,11 +32354,29 @@ async function cargarEdicionGruposIntensivoDia(
                                     return (
                                       <div
                                         key={`${reporte.grupo_id}-${reporte.alumno_id}-${reporte.estado_reporte}`}
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() =>
+                                          void abrirPendienteCierreSemanal(reporte)
+                                        }
+                                        onKeyDown={(evento) => {
+                                          if (
+                                            evento.key === 'Enter' ||
+                                            evento.key === ' '
+                                          ) {
+                                            evento.preventDefault();
+                                            void abrirPendienteCierreSemanal(
+                                              reporte
+                                            );
+                                          }
+                                        }}
+                                        title="Resolver esta tarea en Vista entrenador"
                                         style={{
                                           ...miniTarjetaBlanca,
                                           border: '1px solid #e2e8f0',
                                           borderRadius: 16,
                                           boxShadow: 'none',
+                                          cursor: 'pointer',
                                         }}
                                       >
                                         <div
@@ -31987,6 +32441,16 @@ async function cargarEdicionGruposIntensivoDia(
                                               {reporte.estado_asistencia} ·{' '}
                                               <strong>Reporte:</strong>{' '}
                                               {reporte.estado_reporte}
+                                            </p>
+                                            <p
+                                              style={{
+                                                margin: '4px 0 0',
+                                                color: '#2563eb',
+                                                fontWeight: 900,
+                                                fontSize: 12,
+                                              }}
+                                            >
+                                              Resolver en Vista entrenador →
                                             </p>
                                           </div>
                                         </div>
@@ -38392,6 +38856,7 @@ async function cargarEdicionGruposIntensivoDia(
           generarPlantillaCuatroDiasIntensivo,
           crearPlantillaCuatroDiasIntensivo,
           cargarEdicionGruposIntensivoDia,
+          abrirGestionOperativaIntensivoDia,
           guardarComposicionDiaIntensivo,
           crearIntensivoDesdeApp,
           destinoAlumnoRecomendado,
@@ -38463,6 +38928,7 @@ async function cargarEdicionGruposIntensivoDia(
           plantillaCuatroSesionesIntensivo,
           prepararEdicionDiaIntensivo,
           prepararCambioRevisionIntensivo,
+          moverAlumnoManualRevisionIntensivo,
           analizarRevisionEntreSesionesIntensivo,
           revisionIntensivoId,
           revisionIntensivoDiaId,
