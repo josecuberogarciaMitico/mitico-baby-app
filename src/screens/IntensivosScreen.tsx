@@ -17,6 +17,7 @@ export function PantallaIntensivos(ctx: any) {
     crearTodosGruposDesdeRecomendacionIntensivo, crearGrupoNormalIntensivo,
     crearGrupoVacioPropuestaIntensivo, generarPlantillaCuatroDiasIntensivo,
     crearPlantillaCuatroDiasIntensivo, cargarEdicionGruposIntensivoDia,
+    abrirGestionOperativaIntensivoDia,
     guardarComposicionDiaIntensivo,
     crearIntensivoDesdeApp, destinoAlumnoRecomendado, diaActivoIntensivoId,
     diaAsistenciaSeleccionadoId, diaEditandoIntensivoId, diaGrupoSeleccionadoId,
@@ -41,6 +42,7 @@ export function PantallaIntensivos(ctx: any) {
     opcionesOrigenNivelAlumno, opcionesPistaGrupoIntensivo, opcionesRecomendacionIntensivo,
     panelControlDelIntensivo, plantillaCuatroSesionesInicial, plantillaCuatroSesionesIntensivo,
     prepararEdicionDiaIntensivo, prepararCambioRevisionIntensivo,
+    moverAlumnoManualRevisionIntensivo,
     analizarRevisionEntreSesionesIntensivo, revisionIntensivoId,
     revisionIntensivoDiaId, revisionIntensivoSugerencias,
     revisionIntensivoAnalizando, revisionIntensivoAnalizado,
@@ -1407,7 +1409,7 @@ export function PantallaIntensivos(ctx: any) {
                               lineHeight: 1.45,
                             }}
                           >
-                            Compara los grupos actuales con los últimos reportes.
+                            Compara los grupos con los últimos reportes. Si confirmas un cambio, se aplica desde el día seleccionado hasta el final del intensivo; los días anteriores mantienen su histórico.
                           </p>
                         </div>
                       </div>
@@ -1477,6 +1479,20 @@ export function PantallaIntensivos(ctx: any) {
                               {revisionIntensivoAnalizando
                                 ? 'Analizando...'
                                 : 'Revisar grupos'}
+                            </button>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void moverAlumnoManualRevisionIntensivo()
+                              }
+                              disabled={
+                                !revisionIntensivoDiaId ||
+                                revisionIntensivoAnalizando
+                              }
+                              style={botonSecundario}
+                            >
+                              Mover alumno manualmente
                             </button>
                           </div>
 
@@ -1583,7 +1599,7 @@ export function PantallaIntensivos(ctx: any) {
                                       }
                                       style={botonSecundario}
                                     >
-                                      Preparar cambio
+                                      Aplicar cambio
                                     </button>
                                   </div>
                                 </div>
@@ -1653,7 +1669,8 @@ export function PantallaIntensivos(ctx: any) {
                               asistencia: asistenciasDelIntensivoDia(intensivo.intensivo_id, dia.intensivo_dia_id).find((registro) => registro.alumno_id === alumnoIntensivo.alumno_id),
                             }));
                             const faltas = registrosAlumno.filter((item) => item.asistencia && ['NO_PRESENTADO', 'BAJA_AVISADA'].includes(item.asistencia.estado || '')).length;
-                            const presentes = Math.max(0, diasIntensivo.length - faltas);
+                            const presentes = registrosAlumno.filter((item) => item.asistencia?.estado === 'PRESENTE').length;
+                            const pendientes = Math.max(0, diasIntensivo.length - presentes - faltas);
                             const nivelUtil = resumenAlumno?.nivel_resumen || alumnoIntensivo.nivel_resumen || 'SIN NIVEL';
                             const pistaUtil = resumenAlumno?.pista_resumen || 'Pendiente';
                             return (
@@ -1663,9 +1680,13 @@ export function PantallaIntensivos(ctx: any) {
                                 style={{
                                   border: faltas > 0
                                     ? '1px solid rgba(249,115,22,.45)'
+                                    : pendientes > 0
+                                    ? '1px solid rgba(100,116,139,.30)'
                                     : '1px solid rgba(22,163,74,.24)',
                                   background: faltas > 0
                                     ? 'rgba(255,247,237,.9)'
+                                    : pendientes > 0
+                                    ? 'rgba(248,250,252,.92)'
                                     : 'rgba(240,253,244,.72)',
                                   borderRadius: 14,
                                   overflow: 'hidden',
@@ -1695,6 +1716,7 @@ export function PantallaIntensivos(ctx: any) {
                                     >
                                       {nivelUtil} · {presentes}/{diasIntensivo.length} presentes
                                       {faltas > 0 ? ` · ${faltas} falta${faltas === 1 ? '' : 's'}` : ''}
+                                      {pendientes > 0 ? ` · ${pendientes} pendiente${pendientes === 1 ? '' : 's'}` : ''}
                                     </p>
                                   </div>
                                   {faltas > 0 && (
@@ -2034,7 +2056,7 @@ export function PantallaIntensivos(ctx: any) {
                                   <button
                                     type="button"
                                     onClick={() =>
-                                      cargarEdicionGruposIntensivoDia(
+                                      abrirGestionOperativaIntensivoDia(
                                         diaSeleccionadoGrupo || undefined
                                       )
                                     }
