@@ -1156,6 +1156,21 @@ type GrupoEditableIntensivoDiaApp = {
   orden_en_grupo: number;
 };
 
+type RevisionEntreSesionesIntensivoApp = {
+  alumno_id: string;
+  alumno: string;
+  nivel: string;
+  grupo_origen_id: string;
+  grupo_origen: string;
+  grupo_destino_id: string;
+  grupo_destino: string;
+  estado: 'CAMBIO_RECOMENDADO' | 'REVISAR' | 'MANTENER';
+  motivo: string;
+  diferencia_actual: number;
+  diferencia_destino: number;
+};
+
+
 type ResumenReportesIntensivoApp = {
   intensivo_id: string;
   intensivo: string;
@@ -4205,6 +4220,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   ] = useState<Record<string, string>>({});
   const [gruposExtraIntensivoPorDia, setGruposExtraIntensivoPorDia] =
     useState<Record<string, string[]>>({});
+
+  const [revisionIntensivoId, setRevisionIntensivoId] = useState('');
+  const [revisionIntensivoDiaId, setRevisionIntensivoDiaId] = useState('');
+  const [revisionIntensivoSugerencias, setRevisionIntensivoSugerencias] =
+    useState<RevisionEntreSesionesIntensivoApp[]>([]);
+  const [revisionIntensivoAnalizando, setRevisionIntensivoAnalizando] =
+    useState(false);
+  const [revisionIntensivoAnalizado, setRevisionIntensivoAnalizado] =
+    useState(false);
 
   const [listados, setListados] = useState<ListadoApp[]>([]);
   const [busquedaListados, setBusquedaListados] = useState('');
@@ -11152,7 +11176,334 @@ Gracias!`;
     setCargando(false);
   }
 
-  async function cargarEdicionGruposIntensivoDia(
+  
+  function maxRatioGrupoRevisionIntensivoApp(
+    fila: GrupoEditableIntensivoDiaApp
+  ) {
+    const pista = String(fila.pista || '').toLowerCase();
+    return pista.includes('peque') ? 4 : 7;
+  }
+
+  function convertirFilaEditableARecomendacionIntensivoApp(
+    fila: GrupoEditableIntensivoDiaApp,
+    tamanioGrupo: number
+  ): RecomendacionGrupoIntensivoDiaApp {
+    return {
+      intensivo_dia_id: fila.intensivo_dia_id,
+      intensivo_id: fila.intensivo_id,
+      numero_dia: fila.numero_dia,
+      fecha: fila.fecha,
+      grupo_recomendado: fila.nombre_grupo,
+      bloque_tecnico: fila.nivel_grupo || 'REVISIÓN',
+      orden_bloque:
+        Number(fila.nivel_orden || 0) <= 1
+          ? 1
+          : Number(fila.nivel_orden || 0) <= 3
+          ? 2
+          : 3,
+      pista_recomendada: fila.pista || 'Pequeña/Grande',
+      tamanio_grupo: tamanioGrupo,
+      alerta_grupo: 'OK',
+      alumno_id: fila.alumno_id,
+      alumno: fila.alumno,
+      nivel_resumen: fila.nivel_resumen,
+      nivel_orden: fila.nivel_orden,
+      fuente_nivel: fila.fuente_nivel,
+      edad: fila.edad,
+      estado_ficha: fila.estado_ficha,
+      observacion_visible_entrenador:
+        fila.observacion_visible_entrenador,
+      orden_en_grupo: fila.orden_en_grupo,
+    };
+  }
+
+  function textoMotivoRevisionIntensivoApp(
+    perfil: PerfilOperativoAlumnoApp | undefined,
+    grupoDestino: string
+  ) {
+    const partes: string[] = [];
+
+    if (
+      perfil?.fuerza_nivel === 'FUERTE' ||
+      perfil?.fuerza_nivel === 'MUY_FUERTE'
+    ) {
+      partes.push(
+        perfil.fuerza_nivel === 'MUY_FUERTE'
+          ? 'ritmo muy alto'
+          : 'ritmo alto'
+      );
+    } else if (perfil?.fuerza_nivel === 'BAJO') {
+      partes.push('ritmo bajo para su nivel');
+    }
+
+    if (perfil?.autonomia_reciente) {
+      partes.push(`autonomía: ${perfil.autonomia_reciente}`);
+    }
+
+    if (perfil?.demanda_atencion === 'ALTA') {
+      partes.push('necesita bastante atención');
+    }
+
+    if (partes.length === 0) {
+      partes.push('mejor encaje con el perfil actual del grupo');
+    }
+
+    return `${partes.join(' · ')} → ${grupoDestino}`;
+  }
+
+  async function analizarRevisionEntreSesionesIntensivo() {
+    if (!revisionIntensivoId || !revisionIntensivoDiaId) {
+      setError('Selecciona intensivo y día a revisar.');
+      return;
+    }
+
+    setRevisionIntensivoAnalizando(true);
+    setRevisionIntensivoAnalizado(false);
+    setRevisionIntensivoSugerencias([]);
+    setError('');
+
+    try {
+      const [filas, perfilesActualizados] = await Promise.all([
+        ejecutarFuncionConRespuesta<GrupoEditableIntensivoDiaApp>(
+          'obtener_grupos_intensivo_dia_editables_app',
+          { p_intensivo_dia_id: revisionIntensivoDiaId }
+        ),
+        ejecutarFuncionConRespuesta<PerfilOperativoAlumnoApp>(
+          'obtener_perfil_operativo_alumnos_app',
+          {}
+        ).catch(() => [] as PerfilOperativoAlumnoApp[]),
+      ]);
+
+      if (filas.length === 0) {
+        throw new Error(
+          'Este día todavía no tiene grupos creados para revisar.'
+        );
+      }
+
+      const perfiles = Array.isArray(perfilesActualizados)
+        ? perfilesActualizados
+        : perfilesOperativosAlumnos;
+
+      if (perfiles.length > 0) {
+        setPerfilesOperativosAlumnos(perfiles);
+      }
+
+      const porGrupo = new Map<string, GrupoEditableIntensivoDiaApp[]>();
+      filas.forEach((fila) => {
+        const existentes = porGrupo.get(fila.grupo_id) || [];
+        existentes.push(fila);
+        porGrupo.set(fila.grupo_id, existentes);
+      });
+
+      const mediaGrupo = new Map<string, number>();
+
+      porGrupo.forEach((miembros, grupoId) => {
+        const puntuaciones = miembros.map((fila) => {
+          const convertido =
+            convertirFilaEditableARecomendacionIntensivoApp(
+              fila,
+              miembros.length
+            );
+          return puntuacionFuncionalIntensivoApp(convertido, perfiles);
+        });
+
+        mediaGrupo.set(
+          grupoId,
+          puntuaciones.reduce((suma, valor) => suma + valor, 0) /
+            Math.max(1, puntuaciones.length)
+        );
+      });
+
+      const sugerencias: RevisionEntreSesionesIntensivoApp[] = [];
+
+      filas.forEach((fila) => {
+        const grupoOrigen = porGrupo.get(fila.grupo_id) || [];
+        const convertido =
+          convertirFilaEditableARecomendacionIntensivoApp(
+            fila,
+            grupoOrigen.length
+          );
+
+        const puntuacionAlumno =
+          puntuacionFuncionalIntensivoApp(convertido, perfiles);
+
+        const mediaOrigen = mediaGrupo.get(fila.grupo_id);
+        if (mediaOrigen === undefined) return;
+
+        const diferenciaActual = Math.abs(
+          puntuacionAlumno - mediaOrigen
+        );
+
+        let mejor:
+          | {
+              grupoId: string;
+              grupo: GrupoEditableIntensivoDiaApp[];
+              diferencia: number;
+            }
+          | undefined;
+
+        porGrupo.forEach((grupoDestino, grupoDestinoId) => {
+          if (grupoDestinoId === fila.grupo_id) return;
+          if (grupoDestino.length === 0) return;
+
+          const representante = grupoDestino[0];
+          const maxRatio =
+            maxRatioGrupoRevisionIntensivoApp(representante);
+
+          if (grupoDestino.length + 1 > maxRatio) return;
+          if (grupoOrigen.length - 1 < 3) return;
+
+          const ordenAlumno =
+            nivelOrdenPedagogicoApp(fila.nivel_resumen);
+
+          const ordenesDestino = grupoDestino.map((item) =>
+            nivelOrdenPedagogicoApp(item.nivel_resumen)
+          );
+          const mediaOrdenDestino =
+            ordenesDestino.reduce((suma, valor) => suma + valor, 0) /
+            Math.max(1, ordenesDestino.length);
+
+          // Solo niveles iguales o adyacentes: no inventar saltos.
+          if (Math.abs(ordenAlumno - mediaOrdenDestino) > 1.25) return;
+
+          const mediaDestino = mediaGrupo.get(grupoDestinoId);
+          if (mediaDestino === undefined) return;
+
+          const diferencia = Math.abs(
+            puntuacionAlumno - mediaDestino
+          );
+
+          if (!mejor || diferencia < mejor.diferencia) {
+            mejor = {
+              grupoId: grupoDestinoId,
+              grupo: grupoDestino,
+              diferencia,
+            };
+          }
+        });
+
+        if (!mejor) return;
+
+        const mejora = diferenciaActual - mejor.diferencia;
+
+        // Solo sugerimos si el destino es claramente mejor.
+        if (mejora < 3) return;
+
+        const perfil = perfiles.find(
+          (item) => item.alumno_id === fila.alumno_id
+        );
+
+        const estado =
+          mejora >= 6 &&
+          (perfil?.confianza_ritmo === 'ALTA' ||
+            perfil?.confianza_ritmo === 'MEDIA' ||
+            Number(perfil?.reportes_ritmo || 0) >= 2)
+            ? 'CAMBIO_RECOMENDADO'
+            : 'REVISAR';
+
+        sugerencias.push({
+          alumno_id: fila.alumno_id,
+          alumno: fila.alumno,
+          nivel: fila.nivel_resumen,
+          grupo_origen_id: fila.grupo_id,
+          grupo_origen: fila.nombre_grupo,
+          grupo_destino_id: mejor.grupoId,
+          grupo_destino: mejor.grupo[0].nombre_grupo,
+          estado,
+          motivo: textoMotivoRevisionIntensivoApp(
+            perfil,
+            mejor.grupo[0].nombre_grupo
+          ),
+          diferencia_actual: Number(diferenciaActual.toFixed(1)),
+          diferencia_destino: Number(mejor.diferencia.toFixed(1)),
+        });
+      });
+
+      sugerencias.sort((a, b) => {
+        const prioridad = {
+          CAMBIO_RECOMENDADO: 0,
+          REVISAR: 1,
+          MANTENER: 2,
+        } as const;
+
+        return (
+          prioridad[a.estado] - prioridad[b.estado] ||
+          a.diferencia_destino - b.diferencia_destino ||
+          a.alumno.localeCompare(b.alumno)
+        );
+      });
+
+      setRevisionIntensivoSugerencias(sugerencias);
+      setRevisionIntensivoAnalizado(true);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo revisar el intensivo.'
+      );
+    } finally {
+      setRevisionIntensivoAnalizando(false);
+    }
+  }
+
+  async function prepararCambioRevisionIntensivo(
+    sugerencia: RevisionEntreSesionesIntensivoApp
+  ) {
+    const dia = intensivoDias.find(
+      (item) => item.intensivo_dia_id === revisionIntensivoDiaId
+    );
+
+    if (!dia) {
+      setError('No encuentro el día del intensivo.');
+      return;
+    }
+
+    const filas =
+      await ejecutarFuncionConRespuesta<GrupoEditableIntensivoDiaApp>(
+        'obtener_grupos_intensivo_dia_editables_app',
+        { p_intensivo_dia_id: dia.intensivo_dia_id }
+      );
+
+    if (filas.some((fila) => fila.publicado)) {
+      setError(
+        'Ese día ya está publicado. Haz el cambio desde Días de entrenamiento.'
+      );
+      return;
+    }
+
+    if (filas.some((fila) => Boolean(fila.entrenador_id))) {
+      setError(
+        'Ese día ya tiene entrenador asignado. Quita primero los recursos antes de reorganizar.'
+      );
+      return;
+    }
+
+    await cargarEdicionGruposIntensivoDia(dia);
+
+    setGestionarGruposIntensivoId(revisionIntensivoId);
+    setDiaGrupoSeleccionadoId(revisionIntensivoDiaId);
+
+    setDestinoAlumnoRecomendado((anteriores) => ({
+      ...anteriores,
+      [claveAlumnoRecomendado(
+        revisionIntensivoDiaId,
+        sugerencia.alumno_id
+      )]: sugerencia.grupo_destino,
+    }));
+
+    const intensivoIdPreparado = revisionIntensivoId;
+    setRevisionIntensivoId('');
+    setRevisionIntensivoSugerencias([]);
+    setRevisionIntensivoAnalizado(false);
+
+    window.setTimeout(() => {
+      document
+        .getElementById(`intensivo-curso-${intensivoIdPreparado}`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }
+
+async function cargarEdicionGruposIntensivoDia(
     dia: IntensivoDiaApp | undefined
   ) {
     if (!dia) {
@@ -11280,6 +11631,17 @@ Gracias!`;
         });
         return copia;
       });
+
+      window.setTimeout(() => {
+        document
+          .getElementById(
+            `intensivo-editor-grupos-${dia.intensivo_dia_id}`
+          )
+          ?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          });
+      }, 100);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Error cargando composición'
@@ -11667,8 +12029,33 @@ Gracias!`;
           }
         );
 
+      let perfilesParaIntensivo = perfilesOperativosAlumnos;
+
+      try {
+        const perfilesActualizados =
+          await ejecutarFuncionConRespuesta<PerfilOperativoAlumnoApp>(
+            'obtener_perfil_operativo_alumnos_app',
+            {}
+          );
+
+        perfilesParaIntensivo = Array.isArray(perfilesActualizados)
+          ? perfilesActualizados
+          : [];
+
+        setPerfilesOperativosAlumnos(perfilesParaIntensivo);
+      } catch (errorPerfil) {
+        console.warn(
+          'No se pudo refrescar el perfil operativo para Intensivos. Se mantiene el recomendador base.',
+          errorPerfil
+        );
+        perfilesParaIntensivo = [];
+      }
+
       const resultadoPedagogico =
-        aplicarCinturonPedagogicoAutomaticoIntensivo(resultado);
+        aplicarCinturonPedagogicoAutomaticoIntensivo(
+          resultado,
+          perfilesParaIntensivo
+        );
 
       setRecomendacionesGrupoIntensivo((anteriores) => [
         ...anteriores.filter(
@@ -13599,8 +13986,95 @@ Gracias!`;
     return salida;
   }
 
+  function ajusteAutonomiaPerfilIntensivoApp(
+    perfil?: PerfilOperativoAlumnoApp
+  ) {
+    const texto = String(perfil?.autonomia_reciente || '').toLowerCase();
+
+    if (/autónomo total|autonomo total|muy autónom|muy autonom|pista grande/.test(texto)) {
+      return 2;
+    }
+
+    if (/necesita ayuda|pista pequeña|pista pequena|poca autonomía|poca autonomia/.test(texto)) {
+      return -2;
+    }
+
+    return 0;
+  }
+
+  function ajusteDemandaPerfilIntensivoApp(
+    perfil?: PerfilOperativoAlumnoApp
+  ) {
+    if (perfil?.demanda_atencion === 'ALTA') return -2;
+    if (perfil?.demanda_atencion === 'MEDIA') return -1;
+    return 0;
+  }
+
+  function puntuacionFuncionalIntensivoApp(
+    alumno: RecomendacionGrupoIntensivoDiaApp,
+    perfiles: PerfilOperativoAlumnoApp[]
+  ) {
+    const perfil = perfiles.find(
+      (item) => item.alumno_id === alumno.alumno_id
+    );
+
+    const fuerza =
+      perfil?.fuerza_nivel === 'MUY_FUERTE'
+        ? 3
+        : perfil?.fuerza_nivel === 'FUERTE'
+        ? 2
+        : perfil?.fuerza_nivel === 'BAJO'
+        ? -3
+        : 0;
+
+    return (
+      nivelOrdenPedagogicoApp(alumno.nivel_resumen) * 10 +
+      fuerza +
+      ajusteAutonomiaPerfilIntensivoApp(perfil) +
+      ajusteDemandaPerfilIntensivoApp(perfil)
+    );
+  }
+
+  function ordenarIntensivoPorPerfilOperativoApp(
+    alumnos: RecomendacionGrupoIntensivoDiaApp[],
+    perfiles: PerfilOperativoAlumnoApp[]
+  ) {
+    return alumnos.slice().sort((a, b) => {
+      const puntuacion =
+        puntuacionFuncionalIntensivoApp(b, perfiles) -
+        puntuacionFuncionalIntensivoApp(a, perfiles);
+
+      if (puntuacion !== 0) return puntuacion;
+
+      const perfilA = perfiles.find(
+        (item) => item.alumno_id === a.alumno_id
+      );
+      const perfilB = perfiles.find(
+        (item) => item.alumno_id === b.alumno_id
+      );
+
+      const edadA =
+        perfilA?.edad_aprox ??
+        (typeof a.edad === 'number' ? a.edad : Number.POSITIVE_INFINITY);
+      const edadB =
+        perfilB?.edad_aprox ??
+        (typeof b.edad === 'number' ? b.edad : Number.POSITIVE_INFINITY);
+
+      if (
+        Number.isFinite(edadA) &&
+        Number.isFinite(edadB) &&
+        edadA !== edadB
+      ) {
+        return edadA - edadB;
+      }
+
+      return a.alumno.localeCompare(b.alumno);
+    });
+  }
+
   function aplicarCinturonPedagogicoAutomaticoIntensivo(
-    data: RecomendacionGrupoIntensivoDiaApp[]
+    data: RecomendacionGrupoIntensivoDiaApp[],
+    perfiles?: PerfilOperativoAlumnoApp[]
   ) {
     const porBanda = new Map<string, RecomendacionGrupoIntensivoDiaApp[]>();
     data.forEach((registro) => {
@@ -13611,13 +14085,20 @@ Gracias!`;
     let contador = 1;
     const salida: RecomendacionGrupoIntensivoDiaApp[] = [];
     ['INICIACION_A', 'APLUS', 'B_BPLUS', 'C_D'].forEach((idBanda) => {
-      const alumnos = (porBanda.get(idBanda) || []).sort((a, b) => {
-        return (
-          nivelOrdenPedagogicoApp(a.nivel_resumen) -
-            nivelOrdenPedagogicoApp(b.nivel_resumen) ||
-          a.alumno.localeCompare(b.alumno)
-        );
-      });
+      const alumnosBase = porBanda.get(idBanda) || [];
+      const alumnos =
+        perfiles && perfiles.length > 0
+          ? ordenarIntensivoPorPerfilOperativoApp(
+              alumnosBase,
+              perfiles
+            )
+          : alumnosBase.slice().sort((a, b) => {
+              return (
+                nivelOrdenPedagogicoApp(a.nivel_resumen) -
+                  nivelOrdenPedagogicoApp(b.nivel_resumen) ||
+                a.alumno.localeCompare(b.alumno)
+              );
+            });
       if (alumnos.length === 0) return;
       const banda = bandaAutomaticaPedagogicaApp(alumnos[0]);
       let inicio = 0;
@@ -16374,6 +16855,37 @@ Gracias!`;
     );
   }
 
+  function diaRevisionSugeridoIntensivoApp(intensivoId: string) {
+    const dias = diasDelIntensivo(intensivoId)
+      .slice()
+      .sort((a, b) => a.numero_dia - b.numero_dia);
+
+    const revisables = dias.filter((dia) => dia.numero_dia >= 2);
+    if (revisables.length === 0) return '';
+
+    const reportesCurso = reportesDetalleIntensivo.filter(
+      (reporte) => reporte.intensivo_id === intensivoId
+    );
+
+    const ultimoDiaReportado = reportesCurso.reduce(
+      (maximo, reporte) =>
+        Math.max(maximo, Number(reporte.numero_dia || 0)),
+      0
+    );
+
+    const numeroObjetivo =
+      ultimoDiaReportado <= 0
+        ? 2
+        : Math.min(4, ultimoDiaReportado + 1);
+
+    return (
+      revisables.find((dia) => dia.numero_dia === numeroObjetivo)
+        ?.intensivo_dia_id ||
+      revisables[0]?.intensivo_dia_id ||
+      ''
+    );
+  }
+
   function panelControlDelIntensivo(intensivoId: string) {
     return panelControlIntensivo.find(
       (registro) => registro.intensivo_id === intensivoId
@@ -16390,8 +16902,23 @@ Gracias!`;
     setGestionarAsistenciaIntensivoId(null);
     setGestionarMásIntensivoId(null);
     setGestionarDiplomasIntensivoId(null);
+    setRevisionIntensivoId('');
+    setRevisionIntensivoDiaId('');
+    setRevisionIntensivoSugerencias([]);
+    setRevisionIntensivoAnalizado(false);
     setTextoVolcadoIntensivo('');
     setResultadoVolcadoIntensivo([]);
+  }
+
+  function scrollPanelIntensivoApp(intensivoId: string) {
+    window.setTimeout(() => {
+      document
+        .getElementById(`intensivo-panel-activo-${intensivoId}`)
+        ?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+    }, 100);
   }
 
   function abrirPanelIntensivo(
@@ -16401,6 +16928,7 @@ Gracias!`;
       | 'dias'
       | 'alumnos'
       | 'grupos'
+      | 'revision'
       | 'asistencia'
       | 'recuperaciones'
       | 'diplomas'
@@ -16412,6 +16940,7 @@ Gracias!`;
       (panel === 'dias' && diaActivoIntensivoId === intensivoId) ||
       (panel === 'alumnos' && gestionarAlumnosIntensivoId === intensivoId) ||
       (panel === 'grupos' && gestionarGruposIntensivoId === intensivoId) ||
+      (panel === 'revision' && revisionIntensivoId === intensivoId) ||
       (panel === 'asistencia' &&
         gestionarAsistenciaIntensivoId === intensivoId) ||
       (panel === 'recuperaciones' && gestionarMásIntensivoId === intensivoId) ||
@@ -16423,12 +16952,14 @@ Gracias!`;
 
     if (panel === 'control') {
       setGestionarPanelControlIntensivoId(intensivoId);
+      scrollPanelIntensivoApp(intensivoId);
       return;
     }
 
     if (panel === 'dias') {
       setDiaActivoIntensivoId(intensivoId);
       setFormDiaIntensivo(diaIntensivoInicial());
+      scrollPanelIntensivoApp(intensivoId);
       return;
     }
 
@@ -16436,6 +16967,7 @@ Gracias!`;
       setGestionarAlumnosIntensivoId(intensivoId);
       setAlumnoSeleccionadoIntensivoId('');
       setBusquedaAlumnoIntensivo('');
+      scrollPanelIntensivoApp(intensivoId);
       return;
     }
 
@@ -16456,6 +16988,18 @@ Gracias!`;
       setTrabajoDiarioPorGrupoRecomendado({});
       setObservacionesPorGrupoRecomendado({});
       setGruposExtraIntensivoPorDia({});
+      scrollPanelIntensivoApp(intensivoId);
+      return;
+    }
+
+    if (panel === 'revision') {
+      setRevisionIntensivoId(intensivoId);
+      setRevisionIntensivoDiaId(
+        diaRevisionSugeridoIntensivoApp(intensivoId)
+      );
+      setRevisionIntensivoSugerencias([]);
+      setRevisionIntensivoAnalizado(false);
+      scrollPanelIntensivoApp(intensivoId);
       return;
     }
 
@@ -16463,16 +17007,19 @@ Gracias!`;
       const primerDia = diasDelIntensivo(intensivoId)[0];
       setGestionarAsistenciaIntensivoId(intensivoId);
       setDiaAsistenciaSeleccionadoId(primerDia?.intensivo_dia_id || '');
+      scrollPanelIntensivoApp(intensivoId);
       return;
     }
 
     if (panel === 'recuperaciones') {
       setGestionarMásIntensivoId(intensivoId);
+      scrollPanelIntensivoApp(intensivoId);
       return;
     }
 
     if (panel === 'diplomas') {
       setGestionarDiplomasIntensivoId(intensivoId);
+      scrollPanelIntensivoApp(intensivoId);
     }
   }
 
@@ -37860,6 +38407,7 @@ Gracias!`;
           entrenadoresDisponiblesDiaIntensivo,
           entrenadoresPorGrupoRecomendado,
           error,
+          esVistaMovilApp,
           estiloBadgePistaApp,
           estiloGrupoPorPistaApp,
           estiloValidacionPedagogicaApp,
@@ -37914,6 +38462,16 @@ Gracias!`;
           plantillaCuatroSesionesInicial,
           plantillaCuatroSesionesIntensivo,
           prepararEdicionDiaIntensivo,
+          prepararCambioRevisionIntensivo,
+          analizarRevisionEntreSesionesIntensivo,
+          revisionIntensivoId,
+          revisionIntensivoDiaId,
+          revisionIntensivoSugerencias,
+          revisionIntensivoAnalizando,
+          revisionIntensivoAnalizado,
+          setRevisionIntensivoDiaId,
+          setRevisionIntensivoSugerencias,
+          setRevisionIntensivoAnalizado,
           quitarAlumnoDeIntensivo,
           recomendacionesDelDiaIntensivo,
           recuperacionesDelIntensivo,
