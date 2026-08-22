@@ -203,6 +203,11 @@ type WhatsappPreviewState = {
   titulo: string;
   texto: string;
   telefonoDestino?: string;
+  claveGrupoWhatsapp?: string;
+  modalidadGrupoWhatsapp?: string;
+  referenciaGrupoWhatsapp?: string;
+  enlaceGrupoWhatsapp?: string;
+  mensajeGrupoCopiado?: boolean;
 };
 
 type AvisoJose = {
@@ -1415,6 +1420,15 @@ type AgendaAlumnoSesionApp = {
   origen_nivel: string | null;
   estado_ficha: string;
   observacion: string | null;
+};
+
+type WhatsappGrupoApp = {
+  clave_grupo: string;
+  modalidad: string;
+  referencia: string;
+  nombre_grupo: string;
+  enlace_whatsapp: string;
+  actualizado_at: string | null;
 };
 
 type AgendaGrupoSesionApp = {
@@ -3694,6 +3708,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     'todos' | 'pendientes' | 'cerrados' | 'sin_publicar'
   >('todos');
   const [detalle, setDetalle] = useState<DetalleGrupo | null>(null);
+  const [whatsappGruposApp, setWhatsappGruposApp] = useState<
+    WhatsappGrupoApp[]
+  >([]);
 
   const [gruposEntrenador, setGruposEntrenador] = useState<
     GrupoEntrenadorApp[]
@@ -3705,6 +3722,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [tabVistaEntrenador, setTabVistaEntrenador] = useState<
     'disponibilidad' | 'grupos'
   >('disponibilidad');
+  const [tareaEntrenadorAbierta, setTareaEntrenadorAbierta] =
+    useState<string | null>(null);
   const [semanaEntrenadorSeleccionada, setSemanaEntrenadorSeleccionada] =
     useState('');
   const [diaDisponibilidadAbierto, setDiaDisponibilidadAbierto] =
@@ -7031,7 +7050,13 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   function abrirPrevisualizacionWhatsapp(
     titulo: string,
     texto: string,
-    telefonoDestino?: string
+    telefonoDestino?: string,
+    grupoWhatsapp?: {
+      clave: string;
+      modalidad: string;
+      referencia: string;
+      enlace: string;
+    }
   ) {
     if (!texto.trim()) {
       setError('No hay mensaje de WhatsApp para revisar todavía.');
@@ -7042,6 +7067,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       titulo,
       texto,
       telefonoDestino: telefonoDestino || undefined,
+      claveGrupoWhatsapp: grupoWhatsapp?.clave,
+      modalidadGrupoWhatsapp: grupoWhatsapp?.modalidad,
+      referenciaGrupoWhatsapp: grupoWhatsapp?.referencia,
+      enlaceGrupoWhatsapp: grupoWhatsapp?.enlace || '',
     });
   }
 
@@ -9586,7 +9615,34 @@ Gracias!`;
     setCargando(false);
   }
 
-  async function cargarCobros() {
+  function periodoCobrosDesdeSemanaActiva() {
+    const semana = semanaAgendaActiva;
+
+    if (!semana) {
+      return {
+        anio: anioCobros,
+        mes: mesCobros,
+      };
+    }
+
+    // Tomamos el jueves de la semana como referencia.
+    // Así una semana 31/08–06/09 pertenece a septiembre, porque la mayor
+    // parte de sus días de trabajo están en septiembre.
+    const referencia = crearFechaAgenda(semana);
+    referencia.setDate(referencia.getDate() + 3);
+
+    return {
+      anio: referencia.getFullYear(),
+      mes: referencia.getMonth() + 1,
+    };
+  }
+
+  async function cargarCobros(
+    periodo?: { anio: number; mes: number }
+  ) {
+    const anioObjetivo = periodo?.anio ?? anioCobros;
+    const mesObjetivo = periodo?.mes ?? mesCobros;
+
     setCargando(true);
     setError('');
     setDetalle(null);
@@ -9595,11 +9651,11 @@ Gracias!`;
       const [resumenData, detalleData] = await Promise.all([
         consultarSupabase<CobroMensual>(
           'v_cobros_mensuales_dos_entrenadores',
-          `select=*&anio=eq.${anioCobros}&mes=eq.${mesCobros}&order=entrenador.asc`
+          `select=*&anio=eq.${anioObjetivo}&mes=eq.${mesObjetivo}&order=entrenador.asc`
         ),
         consultarSupabase<CobroDetalleMensual>(
           'v_cobros_detalle_mensual_dos_entrenadores',
-          `select=*&anio=eq.${anioCobros}&mes=eq.${mesCobros}&order=entrenador.asc,fecha.asc,hora_inicio.asc,modalidad.asc,nombre_grupo.asc`
+          `select=*&anio=eq.${anioObjetivo}&mes=eq.${mesObjetivo}&order=entrenador.asc,fecha.asc,hora_inicio.asc,modalidad.asc,nombre_grupo.asc`
         ),
       ]);
       setCobros(resumenData);
@@ -9618,6 +9674,13 @@ Gracias!`;
     }
 
     setCargando(false);
+  }
+
+  async function cargarCobrosDesdeSemanaActiva() {
+    const periodo = periodoCobrosDesdeSemanaActiva();
+    setAnioCobros(periodo.anio);
+    setMesCobros(periodo.mes);
+    await cargarCobros(periodo);
   }
 
   function detallesDeCobro(entrenadorId: string) {
@@ -10959,6 +11022,254 @@ Gracias!`;
     );
   }
 
+  async function cargarWhatsappGruposApp() {
+    try {
+      const data = await consultarSupabase<WhatsappGrupoApp>(
+        'whatsapp_grupos_app',
+        'select=*&order=modalidad.asc,nombre_grupo.asc'
+      );
+      setWhatsappGruposApp(data);
+    } catch {
+      // La ausencia temporal de enlaces no debe bloquear la operativa.
+      setWhatsappGruposApp([]);
+    }
+  }
+
+  function normalizarClaveWhatsappGrupoApp(valor: string | null | undefined) {
+    return String(valor || '')
+      .trim()
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^A-Z0-9+]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+  }
+
+  function contextoWhatsappSesionApp(sesion: AgendaSesionDirectaApp) {
+    const modalidad = normalizarClaveWhatsappGrupoApp(sesion.modalidad);
+
+    if (modalidad === 'INTENSIVOS') {
+      const dia = intensivoDias.find(
+        (item) => item.sesion_id === sesion.sesion_id
+      );
+
+      if (dia?.intensivo_id) {
+        const intensivo = intensivos.find(
+          (item) => item.intensivo_id === dia.intensivo_id
+        );
+
+        return {
+          clave: `INTENSIVO:${dia.intensivo_id}`,
+          modalidad: 'INTENSIVOS',
+          referencia: dia.intensivo_id,
+          nombre: intensivo?.intensivo || 'Intensivo',
+        };
+      }
+    }
+
+    if (modalidad === 'OCIO') {
+      return {
+        clave: 'GLOBAL:OCIO',
+        modalidad: 'OCIO',
+        referencia: 'OCIO',
+        nombre: 'Ocio',
+      };
+    }
+
+    return {
+      clave: 'GLOBAL:BABY',
+      modalidad: 'BABY',
+      referencia: 'BABY',
+      nombre: 'Baby',
+    };
+  }
+
+  function enlaceWhatsappPorClaveApp(clave: string) {
+    return (
+      whatsappGruposApp.find((registro) => registro.clave_grupo === clave)
+        ?.enlace_whatsapp || ''
+    );
+  }
+
+  function enlaceWhatsappSesionApp(sesion: AgendaSesionDirectaApp) {
+    return enlaceWhatsappPorClaveApp(
+      contextoWhatsappSesionApp(sesion).clave
+    );
+  }
+
+  function contextoWhatsappIntensivoApp(intensivo: IntensivoApp) {
+    return {
+      clave: `INTENSIVO:${intensivo.intensivo_id}`,
+      modalidad: 'INTENSIVOS',
+      referencia: intensivo.intensivo_id,
+      nombre: intensivo.intensivo,
+    };
+  }
+
+  function enlaceWhatsappIntensivoApp(intensivo: IntensivoApp) {
+    return enlaceWhatsappPorClaveApp(
+      contextoWhatsappIntensivoApp(intensivo).clave
+    );
+  }
+
+  async function configurarWhatsappIntensivoApp(intensivo: IntensivoApp) {
+    const contexto = contextoWhatsappIntensivoApp(intensivo);
+    const actual = enlaceWhatsappIntensivoApp(intensivo);
+
+    const valor = window.prompt(
+      `Grupo de WhatsApp · ${intensivo.intensivo}\n\nPega el enlace del grupo de WhatsApp de este intensivo.\n\nDéjalo vacío para eliminarlo.`,
+      actual
+    );
+
+    if (valor === null) return;
+
+    const limpio = valor.trim();
+
+    if (!limpio) {
+      if (!actual) return;
+
+      const confirmar = window.confirm(
+        `¿Eliminar el enlace de WhatsApp de ${intensivo.intensivo}?`
+      );
+      if (!confirmar) return;
+
+      try {
+        await ejecutarFuncion('eliminar_whatsapp_grupo_app', {
+          p_clave_grupo: contexto.clave,
+        });
+        await cargarWhatsappGruposApp();
+        setError('');
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'No se pudo eliminar el enlace de WhatsApp.'
+        );
+      }
+      return;
+    }
+
+    if (!esEnlaceGrupoWhatsappValido(limpio)) {
+      setError(
+        'El enlace no parece un grupo de WhatsApp válido. Debe empezar por https://chat.whatsapp.com/'
+      );
+      return;
+    }
+
+    try {
+      await ejecutarFuncion('guardar_whatsapp_grupo_app', {
+        p_clave_grupo: contexto.clave,
+        p_modalidad: contexto.modalidad,
+        p_referencia: contexto.referencia,
+        p_nombre_grupo: contexto.nombre,
+        p_enlace_whatsapp: limpio,
+      });
+      await cargarWhatsappGruposApp();
+      setError('');
+      alert(`WhatsApp guardado para ${intensivo.intensivo}.`);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo guardar el enlace de WhatsApp.'
+      );
+    }
+  }
+
+  function esEnlaceGrupoWhatsappValido(valor: string) {
+    try {
+      const url = new URL(valor.trim());
+      return (
+        url.protocol === 'https:' &&
+        (url.hostname === 'chat.whatsapp.com' ||
+          url.hostname.endsWith('.whatsapp.com'))
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  async function guardarEnlaceWhatsappPreview() {
+    if (!whatsappPreview?.claveGrupoWhatsapp) return;
+
+    const limpio = String(whatsappPreview.enlaceGrupoWhatsapp || '').trim();
+
+    if (!limpio) {
+      setError('Pega primero el enlace del grupo de WhatsApp.');
+      return;
+    }
+
+    if (!esEnlaceGrupoWhatsappValido(limpio)) {
+      setError(
+        'El enlace no parece un grupo de WhatsApp válido. Debe empezar por https://chat.whatsapp.com/'
+      );
+      return;
+    }
+
+    try {
+      await ejecutarFuncion('guardar_whatsapp_grupo_app', {
+        p_clave_grupo: whatsappPreview.claveGrupoWhatsapp,
+        p_modalidad: whatsappPreview.modalidadGrupoWhatsapp || 'BABY',
+        p_referencia:
+          whatsappPreview.referenciaGrupoWhatsapp ||
+          whatsappPreview.claveGrupoWhatsapp,
+        p_nombre_grupo: whatsappPreview.titulo,
+        p_enlace_whatsapp: limpio,
+      });
+      await cargarWhatsappGruposApp();
+      setError('');
+      alert('Enlace de WhatsApp guardado para esta modalidad y turno.');
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo guardar el enlace de WhatsApp.'
+      );
+    }
+  }
+
+  function abrirGrupoWhatsappDesdePreview() {
+    if (!whatsappPreview?.texto.trim()) return;
+
+    const enlace = String(whatsappPreview.enlaceGrupoWhatsapp || '').trim();
+
+    if (!enlace) {
+      setError(
+        'Este grupo todavía no tiene enlace de WhatsApp. Pégalo y guárdalo primero.'
+      );
+      return;
+    }
+
+    if (!esEnlaceGrupoWhatsappValido(enlace)) {
+      setError(
+        'El enlace configurado no parece válido. Revisa el enlace del grupo de WhatsApp.'
+      );
+      return;
+    }
+
+    const texto = whatsappPreview.texto;
+
+    // Se ejecuta dentro del mismo clic para que el navegador permita
+    // tanto copiar al portapapeles como abrir WhatsApp sin pasos intermedios.
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(texto).then(
+        () => {
+          setWhatsappPreview((actual) =>
+            actual ? { ...actual, mensajeGrupoCopiado: true } : actual
+          );
+        },
+        () => {
+          setWhatsappPreview((actual) =>
+            actual ? { ...actual, mensajeGrupoCopiado: false } : actual
+          );
+        }
+      );
+    }
+
+    setError('');
+    window.open(enlace, '_blank', 'noopener,noreferrer');
+  }
+
   function mensajeWhatsAppPapisSesionActual() {
     const sesion = agendaSesionesDirectas.find(
       (item) => item.sesion_id === agendaSesionActivaId
@@ -11035,6 +11346,18 @@ Gracias!`;
           5
         )}-${sesion.hora_fin.slice(0, 5)}`
       : 'WhatsApp papis';
+    if (sesion) {
+      const contexto = contextoWhatsappSesionApp(sesion);
+
+      abrirPrevisualizacionWhatsapp(titulo, mensaje, undefined, {
+        clave: contexto.clave,
+        modalidad: contexto.modalidad,
+        referencia: contexto.referencia,
+        enlace: enlaceWhatsappSesionApp(sesion),
+      });
+      return;
+    }
+
     abrirPrevisualizacionWhatsapp(titulo, mensaje);
   }
 
@@ -15984,6 +16307,7 @@ async function abrirGestionOperativaIntensivoDia(
   useEffect(() => {
     if (pantalla === 'agenda') {
       cargarAgendaOperativaDirecta();
+      cargarWhatsappGruposApp();
       cargarIntensivos();
       cargarPlanning();
       cargarListados();
@@ -16033,6 +16357,7 @@ async function abrirGestionOperativaIntensivoDia(
       cargarOcioCambios();
     }
     if (pantalla === 'ocioSemana') {
+      cargarWhatsappGruposApp();
       cargarOcioAlumnos();
       cargarOcioGrupos();
       cargarOcioCambios();
@@ -16051,7 +16376,7 @@ async function abrirGestionOperativaIntensivoDia(
     if (pantalla === 'disponibilidad') cargarDisponibilidad();
     if (pantalla === 'reportes') cargarReportesPendientes();
     if (pantalla === 'cobros' && esCoordinadorJefeApp) {
-      cargarCobros();
+      void cargarCobrosDesdeSemanaActiva();
       cargarEntrenadores();
     }
     if (pantalla === 'exportaciones' && esCoordinadorJefeApp) {
@@ -16066,6 +16391,7 @@ async function abrirGestionOperativaIntensivoDia(
       cargarCobros();
     }
     if (pantalla === 'intensivos') {
+      cargarWhatsappGruposApp();
       cargarIntensivos();
       cargarDisponibilidad();
       cargarEntrenadores();
@@ -16987,6 +17313,52 @@ async function abrirGestionOperativaIntensivoDia(
         grupo.entrenador_id === entrenadorId &&
         grupo.estado_confirmacion !== 'Confirmado'
     );
+  }
+
+  function abrirGrupoDesdeTareaEntrenador(
+    grupoId: string,
+    entrenadorId: string,
+    seccion: 'asistencia' | 'trabajo' | 'observaciones' = 'asistencia',
+    reporte?: AlumnoReporteEntrenador
+  ) {
+    setTabVistaEntrenador('grupos');
+    setGrupoActivoEntrenador({
+      grupo_id: grupoId,
+      entrenador_id: entrenadorId,
+    });
+    setSeccionGrupoEntrenador(seccion);
+
+    window.setTimeout(() => {
+      const grupoDomId = `trainer-group-${entrenadorId}-${grupoId}`.replace(
+        /[^a-zA-Z0-9_-]/g,
+        '-'
+      );
+      const objetivo = document.getElementById(grupoDomId);
+
+      if (!objetivo) return;
+
+      let padre = objetivo.parentElement;
+      while (padre) {
+        if (padre instanceof HTMLDetailsElement) {
+          padre.open = true;
+        }
+        padre = padre.parentElement;
+      }
+
+      objetivo.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+
+      window.setTimeout(() => {
+        irASeccionGrupoEntrenador(seccion, grupoDomId);
+        if (reporte) {
+          window.setTimeout(() => {
+            void abrirFormularioReporte(reporte);
+          }, 160);
+        }
+      }, 140);
+    }, 140);
   }
 
   function abrirTurnoPendienteReporteEntrenador(
@@ -20025,10 +20397,74 @@ async function abrirGestionOperativaIntensivoDia(
             </div>
 
             <div style={{ ...avisoNeutral, marginBottom: 12 }}>
-              {whatsappPreview.titulo.startsWith('Alta entrenador')
+              {whatsappPreview.claveGrupoWhatsapp
+                ? 'Revisa el mensaje. Al pulsar enviar, se copiará y se abrirá directamente el grupo de WhatsApp configurado para este turno.'
+                : whatsappPreview.titulo.startsWith('Alta entrenador')
                 ? 'Edita el mensaje si necesitas cambiar algo y después copia el texto para enviarlo por WhatsApp.'
                 : 'Revisa y modifica aquí el texto antes de copiarlo.'}
             </div>
+
+            {whatsappPreview.claveGrupoWhatsapp && (
+              <div
+                style={{
+                  display: 'grid',
+                  gap: 8,
+                  marginBottom: 12,
+                  padding: 12,
+                  borderRadius: 14,
+                  border: '1px solid #bbf7d0',
+                  background: '#f0fdf4',
+                }}
+              >
+                <strong style={{ color: '#166534' }}>
+                  Grupo de WhatsApp de papis
+                </strong>
+                <input
+                  type="url"
+                  value={whatsappPreview.enlaceGrupoWhatsapp || ''}
+                  onChange={(e) =>
+                    setWhatsappPreview({
+                      ...whatsappPreview,
+                      enlaceGrupoWhatsapp: e.target.value,
+                      mensajeGrupoCopiado: false,
+                    })
+                  }
+                  placeholder="https://chat.whatsapp.com/..."
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    borderRadius: 12,
+                    border: '1px solid #86efac',
+                    padding: '10px 12px',
+                    background: '#ffffff',
+                  }}
+                />
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => void guardarEnlaceWhatsappPreview()}
+                    style={botonSecundario}
+                  >
+                    Guardar / actualizar enlace
+                  </button>
+                  <span
+                    style={{
+                      alignSelf: 'center',
+                      fontSize: 12,
+                      color: '#64748b',
+                    }}
+                  >
+                    Baby y Ocio se guardan una sola vez. En Intensivos, el enlace pertenece a ese curso.
+                  </span>
+                </div>
+              </div>
+            )}
 
             <textarea
               value={whatsappPreview.texto}
@@ -20036,6 +20472,7 @@ async function abrirGestionOperativaIntensivoDia(
                 setWhatsappPreview({
                   ...whatsappPreview,
                   texto: e.target.value,
+                  mensajeGrupoCopiado: false,
                 })
               }
               rows={18}
@@ -20053,6 +20490,31 @@ async function abrirGestionOperativaIntensivoDia(
               }}
             />
 
+            {whatsappPreview.claveGrupoWhatsapp && (
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: '10px 12px',
+                  borderRadius: 12,
+                  border: whatsappPreview.mensajeGrupoCopiado
+                    ? '1px solid #86efac'
+                    : '1px solid #dbeafe',
+                  background: whatsappPreview.mensajeGrupoCopiado
+                    ? '#f0fdf4'
+                    : '#eff6ff',
+                  color: whatsappPreview.mensajeGrupoCopiado
+                    ? '#166534'
+                    : '#1e3a8a',
+                  fontSize: 12,
+                  fontWeight: 800,
+                }}
+              >
+                {whatsappPreview.mensajeGrupoCopiado
+                  ? 'Mensaje copiado ✓ Solo pégalo en el grupo y pulsa enviar.'
+                  : 'Un toque: copia el mensaje y abre directamente el grupo de WhatsApp.'}
+              </div>
+            )}
+
             <div
               style={{
                 display: 'flex',
@@ -20061,6 +20523,14 @@ async function abrirGestionOperativaIntensivoDia(
                 marginTop: 12,
               }}
             >
+              {whatsappPreview.claveGrupoWhatsapp && (
+                <button
+                  onClick={() => void abrirGrupoWhatsappDesdePreview()}
+                  style={botonPrincipal}
+                >
+                  Enviar a grupo WhatsApp
+                </button>
+              )}
               {whatsappPreview.telefonoDestino && (
                 <button
                   onClick={abrirWhatsappDesdePrevisualizacion}
@@ -30705,194 +31175,307 @@ async function abrirGestionOperativaIntensivoDia(
                       ]
                         .filter((tarea) => tarea.cantidad > 0)
                         .map((tarea) => {
-                          const completada = false;
+                          const claveTarea = `${bloqueEntrenador.entrenador_id}-${tarea.paso}`;
+                          const abierta =
+                            tareaEntrenadorAbierta === claveTarea;
 
-                          return (
-                          <div
-                            key={`${bloqueEntrenador.entrenador_id}-${tarea.paso}`}
-                            style={{
-                              display: 'grid',
-                              gridTemplateColumns: 'minmax(0, 1fr) auto',
-                              alignItems: 'center',
-                              gap: 9,
-                              minWidth: 0,
-                              padding: '8px 9px',
-                              borderRadius: 12,
-                              border: `1px solid ${
-                                completada ? '#dbe5df' : tarea.borde
-                              }`,
-                              background: completada
-                                ? '#f8faf9'
-                                : tarea.fondo,
-                            }}
-                          >
-                            <div style={{ minWidth: 0 }}>
-                              <strong
-                                style={{
-                                  display: 'block',
-                                  fontSize: 12,
-                                  lineHeight: 1.2,
-                                  color: completada
-                                    ? '#5f6f64'
-                                    : '#24324a',
-                                }}
-                              >
-                                {tarea.titulo}
-                              </strong>
-
-                              {!completada && (
-                                <span
-                                  style={{
-                                    display: 'block',
-                                    marginTop: 2,
-                                    fontSize: 11,
-                                    lineHeight: 1.25,
-                                    color: '#667085',
-                                  }}
-                                >
-                                  {tarea.detalle}
-                                </span>
-                              )}
-                            </div>
-
-                            <span
-                              style={{
-                                justifySelf: 'end',
-                                minWidth: 30,
-                                padding: '4px 7px',
-                                borderRadius: 999,
-                                textAlign: 'center',
-                                fontSize: 11,
-                                fontWeight: 900,
-                                whiteSpace: 'nowrap',
-                                color: completada
-                                  ? '#52705d'
-                                  : tarea.texto,
-                                background: completada
-                                  ? '#edf4ef'
-                                  : '#ffffff',
-                                border: `1px solid ${
-                                  completada ? '#d7e4da' : tarea.borde
-                                }`,
-                              }}
-                            >
-                              {completada ? 'Hecho' : tarea.cantidad}
-                            </span>
-                          </div>
-                          );
-                        })}
-
-                      {pendientesEntrenadorVista(
-                        bloqueEntrenador.entrenador_id
-                      ).filter(
-                        (reporte) => reporte.estado_reporte === 'Falta reporte'
-                      ).length > 0 && (
-                        <details
-                          style={{
-                            border: '1px solid #e9d5ff',
-                            borderRadius: 12,
-                            background: '#faf5ff',
-                            overflow: 'hidden',
-                          }}
-                        >
-                          <summary
-                            style={{
-                              cursor: 'pointer',
-                              padding: '9px 11px',
-                              fontSize: 12,
-                              fontWeight: 900,
-                              color: '#7e22ce',
-                              listStyle: 'none',
-                            }}
-                          >
-                            Ver turnos con reportes pendientes
-                          </summary>
-
-                          <div
-                            style={{
-                              display: 'grid',
-                              gap: 6,
-                              padding: '0 10px 10px',
-                            }}
-                          >
-                            {Array.from(
-                              new Map(
-                                pendientesEntrenadorVista(
+                          const gruposConfirmar =
+                            tarea.paso === '1'
+                              ? gruposSinConfirmarEntrenadorVista(
                                   bloqueEntrenador.entrenador_id
                                 )
-                                  .filter(
-                                    (reporte) =>
-                                      reporte.estado_reporte === 'Falta reporte'
-                                  )
-                                  .map((reporte) => [
-                                    `${reporte.fecha}-${reporte.hora_inicio}-${reporte.hora_fin}`,
-                                    {
-                                      fecha: reporte.fecha,
-                                      hora_inicio: reporte.hora_inicio,
-                                      hora_fin: reporte.hora_fin,
-                                      modalidad: reporte.modalidad,
-                                    },
-                                  ])
-                              ).values()
-                            ).map((turno) => (
+                              : [];
+
+                          const asistenciasPendientes =
+                            tarea.paso === '2'
+                              ? Array.from(
+                                  new Map(
+                                    pendientesEntrenadorVista(
+                                      bloqueEntrenador.entrenador_id
+                                    )
+                                      .filter(
+                                        (reporte) =>
+                                          reporte.estado_reporte ===
+                                            'Asistencia sin confirmar' ||
+                                          reporte.estado_asistencia ===
+                                            'Pendiente'
+                                      )
+                                      .map((reporte) => [
+                                        reporte.grupo_id,
+                                        reporte,
+                                      ])
+                                  ).values()
+                                )
+                              : [];
+
+                          const reportesPendientesTarea =
+                            tarea.paso === '3'
+                              ? pendientesEntrenadorVista(
+                                  bloqueEntrenador.entrenador_id
+                                ).filter(
+                                  (reporte) =>
+                                    reporte.estado_reporte === 'Falta reporte'
+                                )
+                              : [];
+
+                          return (
+                            <div
+                              key={claveTarea}
+                              style={{
+                                display: 'grid',
+                                gap: 6,
+                                minWidth: 0,
+                              }}
+                            >
                               <button
                                 type="button"
-                                key={`${bloqueEntrenador.entrenador_id}-${turno.fecha}-${turno.hora_inicio}`}
                                 onClick={() =>
-                                  abrirTurnoPendienteReporteEntrenador(
-                                    bloqueEntrenador.entrenador_id,
-                                    turno.fecha,
-                                    turno.hora_inicio,
-                                    turno.hora_fin
+                                  setTareaEntrenadorAbierta((actual) =>
+                                    actual === claveTarea ? null : claveTarea
                                   )
                                 }
+                                aria-expanded={abierta}
                                 style={{
                                   display: 'grid',
-                                  gap: 2,
+                                  gridTemplateColumns:
+                                    'minmax(0, 1fr) auto',
+                                  alignItems: 'center',
+                                  gap: 9,
                                   width: '100%',
-                                  padding: '8px 9px',
-                                  borderRadius: 10,
-                                  border: '1px solid #eadcff',
-                                  background: '#ffffff',
                                   minWidth: 0,
+                                  padding: '8px 9px',
+                                  borderRadius: 12,
+                                  border: `1px solid ${tarea.borde}`,
+                                  background: tarea.fondo,
                                   textAlign: 'left',
                                   cursor: 'pointer',
                                 }}
                               >
-                                <strong
-                                  style={{
-                                    fontSize: 11,
-                                    color: '#4b3b63',
-                                  }}
-                                >
-                                  {turno.fecha}
-                                </strong>
+                                <div style={{ minWidth: 0 }}>
+                                  <strong
+                                    style={{
+                                      display: 'block',
+                                      fontSize: 12,
+                                      lineHeight: 1.2,
+                                      color: '#24324a',
+                                    }}
+                                  >
+                                    {tarea.titulo}
+                                  </strong>
+                                  <span
+                                    style={{
+                                      display: 'block',
+                                      marginTop: 2,
+                                      fontSize: 11,
+                                      lineHeight: 1.25,
+                                      color: '#667085',
+                                    }}
+                                  >
+                                    {tarea.detalle}
+                                  </span>
+                                </div>
+
                                 <span
                                   style={{
+                                    justifySelf: 'end',
+                                    minWidth: 30,
+                                    padding: '4px 7px',
+                                    borderRadius: 999,
+                                    textAlign: 'center',
                                     fontSize: 11,
-                                    color: '#6b5a7d',
-                                  }}
-                                >
-                                  {turno.hora_inicio}–{turno.hora_fin}
-                                  {turno.modalidad
-                                    ? ` · ${turno.modalidad}`
-                                    : ''}
-                                </span>
-                                <span
-                                  style={{
-                                    marginTop: 3,
-                                    fontSize: 10,
                                     fontWeight: 900,
-                                    color: '#7e22ce',
+                                    whiteSpace: 'nowrap',
+                                    color: tarea.texto,
+                                    background: '#ffffff',
+                                    border: `1px solid ${tarea.borde}`,
                                   }}
                                 >
-                                  Abrir turno y rellenar reporte →
+                                  {tarea.cantidad} {abierta ? '▲' : '▼'}
                                 </span>
                               </button>
-                            ))}
-                          </div>
-                        </details>
-                      )}
+
+                              {abierta && (
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gap: 6,
+                                    padding: '2px 0 4px',
+                                  }}
+                                >
+                                  {gruposConfirmar.map((grupo) => (
+                                    <button
+                                      type="button"
+                                      key={`confirmar-${grupo.entrenador_id}-${grupo.grupo_id}`}
+                                      onClick={() =>
+                                        abrirGrupoDesdeTareaEntrenador(
+                                          grupo.grupo_id,
+                                          grupo.entrenador_id,
+                                          'asistencia'
+                                        )
+                                      }
+                                      style={{
+                                        width: '100%',
+                                        padding: '8px 10px',
+                                        borderRadius: 10,
+                                        border: '1px solid #bfdbfe',
+                                        background: '#ffffff',
+                                        textAlign: 'left',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      <strong
+                                        style={{
+                                          display: 'block',
+                                          fontSize: 11,
+                                          color: '#1e3a8a',
+                                        }}
+                                      >
+                                        {grupo.nombre_grupo}
+                                      </strong>
+                                      <span
+                                        style={{
+                                          display: 'block',
+                                          marginTop: 2,
+                                          fontSize: 10,
+                                          color: '#64748b',
+                                        }}
+                                      >
+                                        {formatearFecha(grupo.fecha)} ·{' '}
+                                        {grupo.hora_inicio.slice(0, 5)}–
+                                        {grupo.hora_fin.slice(0, 5)}
+                                      </span>
+                                      <span
+                                        style={{
+                                          display: 'block',
+                                          marginTop: 3,
+                                          fontSize: 10,
+                                          fontWeight: 900,
+                                          color: '#1d4ed8',
+                                        }}
+                                      >
+                                        Abrir y confirmar →
+                                      </span>
+                                    </button>
+                                  ))}
+
+                                  {asistenciasPendientes.map((reporte) => (
+                                    <button
+                                      type="button"
+                                      key={`asistencia-${reporte.entrenador_id}-${reporte.grupo_id}`}
+                                      onClick={() =>
+                                        abrirGrupoDesdeTareaEntrenador(
+                                          reporte.grupo_id,
+                                          reporte.entrenador_id,
+                                          'asistencia'
+                                        )
+                                      }
+                                      style={{
+                                        width: '100%',
+                                        padding: '8px 10px',
+                                        borderRadius: 10,
+                                        border: '1px solid #bbf7d0',
+                                        background: '#ffffff',
+                                        textAlign: 'left',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      <strong
+                                        style={{
+                                          display: 'block',
+                                          fontSize: 11,
+                                          color: '#166534',
+                                        }}
+                                      >
+                                        {reporte.nombre_grupo}
+                                      </strong>
+                                      <span
+                                        style={{
+                                          display: 'block',
+                                          marginTop: 2,
+                                          fontSize: 10,
+                                          color: '#64748b',
+                                        }}
+                                      >
+                                        {formatearFecha(reporte.fecha)} ·{' '}
+                                        {reporte.hora_inicio.slice(0, 5)}–
+                                        {reporte.hora_fin.slice(0, 5)}
+                                      </span>
+                                      <span
+                                        style={{
+                                          display: 'block',
+                                          marginTop: 3,
+                                          fontSize: 10,
+                                          fontWeight: 900,
+                                          color: '#15803d',
+                                        }}
+                                      >
+                                        Abrir asistencia →
+                                      </span>
+                                    </button>
+                                  ))}
+
+                                  {reportesPendientesTarea.map((reporte) => (
+                                    <button
+                                      type="button"
+                                      key={`reporte-${reporte.entrenador_id}-${reporte.grupo_id}-${reporte.alumno_id}`}
+                                      onClick={() =>
+                                        abrirGrupoDesdeTareaEntrenador(
+                                          reporte.grupo_id,
+                                          reporte.entrenador_id,
+                                          'asistencia',
+                                          reporte
+                                        )
+                                      }
+                                      style={{
+                                        width: '100%',
+                                        padding: '8px 10px',
+                                        borderRadius: 10,
+                                        border: '1px solid #e9d5ff',
+                                        background: '#ffffff',
+                                        textAlign: 'left',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      <strong
+                                        style={{
+                                          display: 'block',
+                                          fontSize: 11,
+                                          color: '#6b21a8',
+                                        }}
+                                      >
+                                        {reporte.alumno}
+                                      </strong>
+                                      <span
+                                        style={{
+                                          display: 'block',
+                                          marginTop: 2,
+                                          fontSize: 10,
+                                          color: '#64748b',
+                                        }}
+                                      >
+                                        {reporte.nombre_grupo} ·{' '}
+                                        {formatearFecha(reporte.fecha)} ·{' '}
+                                        {reporte.hora_inicio.slice(0, 5)}–
+                                        {reporte.hora_fin.slice(0, 5)}
+                                      </span>
+                                      <span
+                                        style={{
+                                          display: 'block',
+                                          marginTop: 3,
+                                          fontSize: 10,
+                                          fontWeight: 900,
+                                          color: '#7e22ce',
+                                        }}
+                                      >
+                                        Abrir reporte →
+                                      </span>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
                     </div>
                   </section>
                 )}
@@ -37829,7 +38412,11 @@ async function abrirGestionOperativaIntensivoDia(
               </p>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={cargarCobros} style={botonSecundario}>
+              <button
+                onClick={() => void cargarCobrosDesdeSemanaActiva()}
+                style={botonSecundario}
+                title="Vuelve al mes correspondiente a la semana de trabajo activa"
+              >
                 Actualizar
               </button>
               <button onClick={abrirPdfCobrosConjunto} style={botonPrincipal}>
@@ -37871,6 +38458,17 @@ async function abrirGestionOperativaIntensivoDia(
                   Periodo
                 </p>
                 <h3 style={{ margin: 0, color: '#172033' }}>Mes a revisar</h3>
+                <span
+                  style={{
+                    display: 'block',
+                    marginTop: 4,
+                    color: '#64748b',
+                    fontSize: 11,
+                    fontWeight: 800,
+                  }}
+                >
+                  Al entrar o pulsar Actualizar se usa la semana de trabajo activa.
+                </span>
               </div>
               <span
                 style={{
@@ -38857,6 +39455,8 @@ async function abrirGestionOperativaIntensivoDia(
           crearPlantillaCuatroDiasIntensivo,
           cargarEdicionGruposIntensivoDia,
           abrirGestionOperativaIntensivoDia,
+          configurarWhatsappIntensivoApp,
+          enlaceWhatsappIntensivoApp,
           guardarComposicionDiaIntensivo,
           crearIntensivoDesdeApp,
           destinoAlumnoRecomendado,
