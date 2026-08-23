@@ -25,7 +25,7 @@ export function PantallaIntensivos(ctx: any) {
     diaIntensivoInicial, diasDelIntensivo, eliminarRecuperacionIntensivo, entrenadores,
     entrenadoresApoyoPorGrupoRecomendado, entrenadoresDisponiblesDiaIntensivo,
     entrenadoresPorGrupoRecomendado, error, esVistaMovilApp,
-    estiloBadgePistaApp, estiloGrupoPorPistaApp,
+    enfocarElementoApp, estiloBadgePistaApp, estiloGrupoPorPistaApp,
     estiloValidacionPedagogicaApp, etiquetaPistaVisualApp, etiquetaSuperior, filtroIntensivos,
     formDiaIntensivo, formGrupoIntensivo, formIntensivo, formatearAlumnoListadoOperativo, formatearFecha, formatearObservaciones,
     formularioCaja, generarMásDesdeAsistencias, generarRecomendacionGruposIntensivo,
@@ -446,16 +446,10 @@ export function PantallaIntensivos(ctx: any) {
                           );
 
                           if (abrir) {
-                            window.setTimeout(() => {
-                              document
-                                .getElementById(
-                                  `intensivo-opciones-${intensivo.intensivo_id}`
-                                )
-                                ?.scrollIntoView({
-                                  behavior: 'smooth',
-                                  block: 'start',
-                                });
-                            }, 100);
+                            enfocarElementoApp(
+                              `intensivo-opciones-${intensivo.intensivo_id}`,
+                              { espera: 100, block: 'start' }
+                            );
                           }
                         }}
                         style={intensivoCursoAbierto ? botonSecundario : botonPrincipal}

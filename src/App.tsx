@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import './App.css';
 import { FOTO_MITICO_HERO } from './assets/imagenes';
 import {
-  AyudaReporteEntrenador,
   CampoSelect,
   PantallaSegura,
   agendaAccionesSesion,
@@ -170,7 +169,6 @@ import {
   panelEntrenadorFiltroApp,
   panelRevisionIntegradaOcio,
   panelTrabajoGrupo,
-  perfilAyudaReporteEntrenador,
   resumenChipsMovil,
   resumenCursoIntensivoGrid,
   selectCampo,
@@ -180,7 +178,6 @@ import {
   summaryTrabajoGrupo,
   tabBarEntrenadorModerno,
   tabEntrenadorModerno,
-  tablaAyudaReporteEntrenador,
   tarjeta,
   tarjetaEntrenadorMovil,
   tarjetaInicioAlerta,
@@ -198,6 +195,10 @@ import {
   vistaEntrenadorShell,
 } from './lib/appHelpers';
 import { PantallaIntensivos } from './screens/IntensivosScreen';
+import {
+  generarTrabajoDiarioInteligenteApp,
+  type AlumnoContextoTrabajoDiarioApp,
+} from './lib/dailyWorkEngine';
 
 type WhatsappPreviewState = {
   titulo: string;
@@ -306,6 +307,13 @@ type DetalleGrupo = {
   cancelado: boolean;
 };
 
+type TrabajoDiarioHistoricoApp = {
+  fecha: string;
+  modalidad: string;
+  alumnos_detalle: string | null;
+  trabajo_diario: string | null;
+};
+
 type AlumnoBabyFichaApp = {
   alumno_id: string;
   ultimo_baby: string | null;
@@ -359,6 +367,20 @@ type PerfilOperativoAlumnoApp = {
   observacion_visible_entrenador: string | null;
   mostrar_observacion_entrenador: boolean;
   aviso_operativo: string | null;
+};
+
+
+type ProgresionInicialAlumnoApp = {
+  alumno_id: string;
+  grupo_id: string;
+  entrenador_id: string;
+  nivel_reportado: string | null;
+  autonomia_cinta: string | null;
+  cuna_frenada: string | null;
+  giro_inicial: string | null;
+  dinamica_autonoma: string | null;
+  ayuda_cunero: string | null;
+  updated_at: string | null;
 };
 
 type OcioAlumnoApp = {
@@ -1508,6 +1530,11 @@ type ReporteFormState = {
   incidencia: string;
   recomendacion: string;
   observaciones: string;
+  autonomiaCinta: string;
+  cunaFrenada: string;
+  giroInicial: string;
+  dinamicaAutonoma: string;
+  ayudaCunero: string;
 };
 
 type ReporteActivo = {
@@ -3301,10 +3328,10 @@ const opcionesTecnica = [
   'Control de velocidad en cuña',
   'Giros en cuña',
   'Giros en cuña encadenados',
+  'Fundamental',
   'Inicio de paralelo',
   'Paralelo elemental',
   'Paralelo consolidado',
-  'Viraje corto inicial',
   'Viraje conducido / avanzado',
 ];
 
@@ -3458,6 +3485,94 @@ function agendaFormInicial(): AgendaFormState {
   };
 }
 
+function referenciaTecnicaReporteApp(nivel: string): Array<[string, string]> {
+  const limpio = String(nivel || '')
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  if (limpio === 'INICIACION') {
+    return [
+      ['Nivel', 'Familiarización, deslizamiento y primeras frenadas.'],
+      ['Cuña / giro', 'Mira si empieza a abrir cuña, frena y hacia dónde consigue girar.'],
+      ['Autonomía', 'Entrada/salida de cinta y ayuda necesaria.'],
+      ['Siguiente paso', 'A cuando controle el deslizamiento y empiece a frenar en cuña.'],
+    ];
+  }
+  if (limpio === 'A') {
+    return [
+      ['Nivel', 'Cuña de frenado, control de velocidad y primeros giros.'],
+      ['Cuña / giro', 'Mira si frena a demanda y gira a ambos lados.'],
+      ['Autonomía', 'Cinta, espera arriba y dependencia del profesor.'],
+      ['Siguiente paso', 'A+ cuando encadene giros y gane autonomía.'],
+    ];
+  }
+  if (limpio === 'A+') {
+    return [
+      ['Nivel', 'Giros en cuña encadenados y preparación para pista grande.'],
+      ['Cuña / giro', 'Mira continuidad de giros, control de velocidad y si encadena sin ayuda.'],
+      ['Autonomía', 'Cinta y dinámica de grupo casi sin ayuda.'],
+      ['Siguiente paso', 'B / pista grande cuando controle, siga al entrenador y pare donde se le pide.'],
+    ];
+  }
+  if (limpio === 'B') {
+    return [
+      ['Nivel', 'Cuña todavía asentándose en pista grande.'],
+      ['Técnica', 'Giros enlazados y control de velocidad en grande.'],
+      ['Autonomía', 'Moverse con seguridad en pista grande y remontes.'],
+      ['Siguiente paso', 'B+ cuando la cuña sea sólida y encadenada.'],
+    ];
+  }
+  if (limpio === 'B+' || limpio === 'B++') {
+    return [
+      ['Nivel', 'Cuña encadenada → Fundamental → inicio de paralelo.'],
+      ['Técnica', 'Paralelo en diagonales y cuña cada vez menor durante el giro.'],
+      ['Autonomía', 'Soltura en pista grande y remontes.'],
+      ['Siguiente paso', 'C cuando el paralelo empiece a aparecer de forma clara y repetida.'],
+    ];
+  }
+  if (limpio === 'C') {
+    return [
+      ['Nivel', 'Inicio de paralelo / paralelo elemental.'],
+      ['Técnica', 'Apoyo exterior, postura y continuidad del paralelo.'],
+      ['Autonomía', 'Autónomo en pista grande y remontes.'],
+      ['Siguiente paso', 'C+ cuando el paralelo sea amplio, fluido y estable.'],
+    ];
+  }
+  if (limpio === 'C+') {
+    return [
+      ['Nivel', 'Paralelo amplio y fluido.'],
+      ['Técnica', 'Apoyo exterior, ritmo, trayectoria y primeras sensaciones de canto.'],
+      ['Autonomía', 'Autonomía completa.'],
+      ['Siguiente paso', 'D cuando el paralelo esté consolidado y admita trabajo técnico más exigente.'],
+    ];
+  }
+  if (limpio === 'D') {
+    return [
+      ['Nivel', 'Paralelo consolidado y trabajo técnico avanzado.'],
+      ['Técnica', 'Precisión, apoyo exterior, ritmo, coordinación y cantos.'],
+      ['Autonomía', 'Autonomía completa.'],
+      ['Siguiente paso', 'D+ cuando aparezca conducción clara y estable.'],
+    ];
+  }
+  if (limpio === 'D+') {
+    return [
+      ['Nivel', 'Viraje conducido / avanzado.'],
+      ['Técnica', 'Conducción, presión, cantos, cambios de radio y precisión.'],
+      ['Autonomía', 'Autonomía completa y retos técnicos.'],
+      ['Siguiente paso', 'Refinar técnica y preparación hacia dinámica de competición.'],
+    ];
+  }
+
+  return [
+    ['Nivel', 'Selecciona lo que realmente has visto hoy.'],
+    ['Técnica', 'Marca la fase técnica dominante del niño.'],
+    ['Autonomía', 'Valora la ayuda real que necesita.'],
+    ['Siguiente paso', 'Usa la recomendación solo si ves una progresión clara.'],
+  ];
+}
+
 function reporteInicial(): ReporteFormState {
   return {
     nivel: 'B',
@@ -3470,7 +3585,87 @@ function reporteInicial(): ReporteFormState {
     incidencia: 'Sin incidencia',
     recomendacion: 'Mantener el mismo nivel',
     observaciones: '',
+    autonomiaCinta: '',
+    cunaFrenada: '',
+    giroInicial: '',
+    dinamicaAutonoma: '',
+    ayudaCunero: 'No',
   };
+}
+
+const opcionesAutonomiaCintaInicialApp = [
+  'Necesita ayuda completa',
+  'Sube acompañado',
+  'Entra solo · ayuda al salir',
+  'Entra y sale solo',
+  'Sube solo · espera arriba · sale a señal',
+];
+
+const opcionesCunaFrenadaInicialApp = [
+  'No abre cuña',
+  'Abre cuña con ayuda',
+  'Cuña funcional',
+  'Frena con ayuda',
+  'Frena a demanda',
+];
+
+const opcionesGiroInicialApp = [
+  'No gira',
+  'Gira solo hacia un lado',
+  'Giros aislados',
+  'Enlaza giros en cuña',
+];
+
+const opcionesDinamicaAutonomaInicialApp = [
+  'Necesita al profesor todo el tiempo',
+  'Espera arriba con ayuda',
+  'Espera arriba solo',
+  'Sigue al profesor y mantiene su sitio en fila',
+  'Listo para probar pista grande',
+];
+
+const opcionesAyudaCuneroInicialApp = [
+  'No',
+  'Sí · 1 bajada y después hace cuña solo',
+  'Sí · 1 bajada y sigue necesitando ayuda',
+];
+
+
+function tecnicaInicialDerivadaReporteApp(form: ReporteFormState) {
+  const giro = String(form.giroInicial || '').trim();
+  const cuna = String(form.cunaFrenada || '').trim();
+
+  if (giro === 'Enlaza giros en cuña') return 'Giros en cuña encadenados';
+  if (giro === 'Giros aislados' || giro === 'Gira solo hacia un lado')
+    return 'Giros en cuña';
+  if (giro === 'No gira') {
+    if (cuna === 'Frena a demanda') return 'Control de velocidad en cuña';
+    if (cuna === 'Cuña funcional' || cuna === 'Frena con ayuda')
+      return 'Cuña de frenado';
+  }
+
+  if (cuna === 'Frena a demanda') return 'Control de velocidad en cuña';
+  if (cuna === 'Cuña funcional' || cuna === 'Frena con ayuda')
+    return 'Cuña de frenado';
+  if (cuna === 'Abre cuña con ayuda') return 'Cuña de frenado';
+  if (cuna === 'No abre cuña') return 'Deslizamiento directo';
+
+  return 'Primer contacto / familiarización';
+}
+
+function esNivelAprendizajeInicialApp(nivel: string | null | undefined) {
+  const limpio = String(nivel || '')
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  return (
+    limpio === 'INICIACION' ||
+    limpio === 'DEBUT' ||
+    limpio === 'A' ||
+    limpio === 'A+'
+  );
 }
 
 const temporadaInicioDefectoAgenda = (() => {
@@ -3558,16 +3753,64 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
   const contenidoPantallaRef = useRef<HTMLDivElement | null>(null);
 
+  type EnfoqueAppOpciones = {
+    espera?: number;
+    block?: ScrollLogicalPosition;
+    inline?: ScrollLogicalPosition;
+    abrirDetallesPadre?: boolean;
+  };
+
+  // Regla de interacción Mítico:
+  // usar este motor cuando una acción ABRE contenido (panel, ficha, grupo,
+  // acordeón o subvista). No usarlo para guardar, borrar, publicar,
+  // asistencia ni acciones rápidas que no abren contenido.
+  function enfocarElementoApp(
+    objetivo: string | HTMLElement | null | undefined,
+    opciones: EnfoqueAppOpciones = {}
+  ) {
+    const {
+      espera = 0,
+      block = 'start',
+      inline = 'nearest',
+      abrirDetallesPadre = false,
+    } = opciones;
+
+    const ejecutar = () => {
+      const elemento =
+        typeof objetivo === 'string'
+          ? document.getElementById(objetivo)
+          : objetivo;
+
+      if (!elemento) return;
+
+      if (abrirDetallesPadre) {
+        let padre = elemento.parentElement;
+        while (padre) {
+          if (padre instanceof HTMLDetailsElement) padre.open = true;
+          padre = padre.parentElement;
+        }
+      }
+
+      elemento.scrollIntoView({
+        behavior: 'smooth',
+        block,
+        inline,
+      });
+    };
+
+    if (espera > 0) {
+      window.setTimeout(ejecutar, espera);
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(ejecutar);
+    });
+  }
+
   const abrirPantallaConScroll = (destino: typeof pantalla) => {
     setPantalla(destino);
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        contenidoPantallaRef.current?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        });
-      });
-    });
+    enfocarElementoApp(contenidoPantallaRef.current);
   };
 
   useEffect(() => {
@@ -3774,14 +4017,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const detalle = event.currentTarget.closest('details');
     if (!(detalle instanceof HTMLDetailsElement) || detalle.open) return;
 
-    window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(() => {
-        detalle.scrollIntoView({
-          behavior: 'smooth',
-          block: 'start',
-        });
-      });
-    });
+    enfocarElementoApp(detalle, { block: 'start' });
   };
 
   const irASeccionGrupoEntrenador = (
@@ -3878,6 +4114,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   >([]);
   const [perfilesOperativosAlumnos, setPerfilesOperativosAlumnos] = useState<
     PerfilOperativoAlumnoApp[]
+  >([]);
+  const [progresionInicialAlumnos, setProgresionInicialAlumnos] = useState<
+    ProgresionInicialAlumnoApp[]
+  >([]);
+  const [trabajosDiariosHistoricos, setTrabajosDiariosHistoricos] = useState<
+    TrabajoDiarioHistoricoApp[]
   >([]);
   const [busquedaAlumno, setBusquedaAlumno] = useState('');
   const [filtroAlumnos, setFiltroAlumnos] = useState<
@@ -5360,6 +5602,23 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setCargando(false);
   }
 
+  function enfocarFormularioReporteEntrenador(
+    alumno: AlumnoReporteEntrenador,
+    espera = 140
+  ) {
+    const reporteDomId =
+      `trainer-report-${alumno.entrenador_id}-${alumno.grupo_id}-${alumno.alumno_id}`.replace(
+        /[^a-zA-Z0-9_-]/g,
+        '-'
+      );
+
+    enfocarElementoApp(reporteDomId, {
+      espera,
+      block: 'start',
+      abrirDetallesPadre: true,
+    });
+  }
+
   async function abrirFormularioReporte(alumno: AlumnoReporteEntrenador) {
     setReporteActivo({
       grupo_id: alumno.grupo_id,
@@ -5387,6 +5646,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       observaciones: '',
     });
 
+    enfocarFormularioReporteEntrenador(alumno, 160);
+
     try {
       const datos = await ejecutarFuncionConRespuesta<{
         nivel_partida: string | null;
@@ -5406,6 +5667,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         nivel: nivelPartida,
         pista: pistaPartida,
       }));
+
+      enfocarFormularioReporteEntrenador(alumno, 80);
     } catch (err) {
       // Fallback seguro: si por cualquier motivo no responde la RPC,
       // mantenemos el nivel ya mostrado por la ficha/grupo y no bloqueamos el reporte.
@@ -5446,7 +5709,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_entrenador_id: alumno.entrenador_id,
         p_actitud: formReporte.actitud,
         p_nivel_reportado: formReporte.nivel,
-        p_tecnica: formReporte.tecnica,
+        p_tecnica: esNivelAprendizajeInicialApp(formReporte.nivel)
+          ? tecnicaInicialDerivadaReporteApp(formReporte)
+          : formReporte.tecnica,
         p_pista: formReporte.pista,
         p_autonomia: formReporte.autonomia,
         p_remontes: formReporte.remontes,
@@ -5462,6 +5727,28 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_entrenador_id: alumno.entrenador_id,
         p_ritmo_grupo: formReporte.ritmoGrupo,
       });
+
+      if (
+        esNivelAprendizajeInicialApp(
+          formReporte.nivel ||
+            nivelPartidaReporte ||
+            alumno.nivel_alumno ||
+            grupoNivelAFormulario(alumno.nombre_grupo) ||
+            ''
+        )
+      ) {
+        await ejecutarFuncion('guardar_progresion_inicial_reporte_app', {
+          p_grupo_id: alumno.grupo_id,
+          p_alumno_id: alumno.alumno_id,
+          p_entrenador_id: alumno.entrenador_id,
+          p_nivel_reportado: formReporte.nivel,
+          p_autonomia_cinta: formReporte.autonomiaCinta || null,
+          p_cuna_frenada: formReporte.cunaFrenada || null,
+          p_giro_inicial: formReporte.giroInicial || null,
+          p_dinamica_autonoma: formReporte.dinamicaAutonoma || null,
+          p_ayuda_cunero: formReporte.ayudaCunero || 'No',
+        });
+      }
 
       cerrarFormularioReporte();
       await cargarGruposEntrenador();
@@ -5523,6 +5810,180 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     }
 
     setCargando(false);
+  }
+
+  async function cargarContextoCerebroTrabajoDiarioApp() {
+    const [
+      resumenData,
+      ritmosData,
+      perfilesData,
+      progresionData,
+      trabajosHistoricosData,
+    ] = await Promise.all([
+        consultarSupabase<AlumnoResumen>(
+          'v_resumen_alumno',
+          'select=*&order=alumno.asc'
+        ).catch(() => [] as AlumnoResumen[]),
+        ejecutarFuncionConRespuesta<TendenciaRitmoAlumnoApp>(
+          'obtener_tendencia_ritmo_alumnos_app',
+          {}
+        ).catch(() => [] as TendenciaRitmoAlumnoApp[]),
+        ejecutarFuncionConRespuesta<PerfilOperativoAlumnoApp>(
+          'obtener_perfil_operativo_alumnos_app',
+          {}
+        ).catch(() => [] as PerfilOperativoAlumnoApp[]),
+        consultarSupabase<ProgresionInicialAlumnoApp>(
+          'v_ultima_progresion_inicial_alumno_app',
+          'select=*'
+        ).catch(() => [] as ProgresionInicialAlumnoApp[]),
+        consultarSupabase<TrabajoDiarioHistoricoApp>(
+          'v_detalle_grupos',
+          'select=fecha,modalidad,alumnos_detalle,trabajo_diario&trabajo_diario=not.is.null&order=fecha.desc,hora_inicio.desc&limit=240'
+        ).catch(() => [] as TrabajoDiarioHistoricoApp[]),
+      ]);
+
+    if (Array.isArray(resumenData) && resumenData.length > 0) {
+      setAlumnos(resumenData);
+    }
+    setTendenciasRitmoAlumnos(
+      Array.isArray(ritmosData) ? ritmosData : []
+    );
+    setPerfilesOperativosAlumnos(
+      Array.isArray(perfilesData) ? perfilesData : []
+    );
+    setProgresionInicialAlumnos(
+      Array.isArray(progresionData) ? progresionData : []
+    );
+    setTrabajosDiariosHistoricos(
+      Array.isArray(trabajosHistoricosData) ? trabajosHistoricosData : []
+    );
+  }
+
+  function normalizarNombreMemoriaTrabajoApp(texto: string) {
+    return texto
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function trabajosRecientesParaGrupoApp(
+    nombresAlumnos: string[],
+    fechaActual?: string | null
+  ) {
+    const nombres = nombresAlumnos
+      .map(normalizarNombreMemoriaTrabajoApp)
+      .filter((nombre) => nombre.length >= 4);
+
+    if (nombres.length === 0 || trabajosDiariosHistoricos.length === 0) {
+      return [] as string[];
+    }
+
+    const candidatos = trabajosDiariosHistoricos
+      .filter((item) => {
+        if (!item.trabajo_diario || !item.alumnos_detalle) return false;
+        if (fechaActual && item.fecha >= fechaActual) return false;
+
+        const alumnosHistoricos = normalizarNombreMemoriaTrabajoApp(
+          item.alumnos_detalle
+        );
+
+        return nombres.some((nombre) => alumnosHistoricos.includes(nombre));
+      })
+      .map((item) => ({
+        texto: item.trabajo_diario || '',
+        coincidencias: nombres.filter((nombre) =>
+          normalizarNombreMemoriaTrabajoApp(item.alumnos_detalle || '').includes(
+            nombre
+          )
+        ).length,
+        fecha: item.fecha,
+      }))
+      .sort(
+        (a, b) =>
+          b.coincidencias - a.coincidencias ||
+          String(b.fecha).localeCompare(String(a.fecha))
+      );
+
+    const unicos: string[] = [];
+    const vistos = new Set<string>();
+
+    candidatos.forEach((item) => {
+      const clave = normalizarNombreMemoriaTrabajoApp(item.texto);
+      if (!clave || vistos.has(clave) || unicos.length >= 6) return;
+      vistos.add(clave);
+      unicos.push(item.texto);
+    });
+
+    return unicos;
+  }
+
+  function contextoAlumnoTrabajoDiarioApp(
+    alumnoId: string,
+    nombreFallback = '',
+    nivelFallback = ''
+  ): AlumnoContextoTrabajoDiarioApp {
+    const resumen = alumnos.find((item) => item.alumno_id === alumnoId);
+    const perfil = perfilesOperativosAlumnos.find(
+      (item) => item.alumno_id === alumnoId
+    );
+    const ritmo = tendenciasRitmoAlumnos.find(
+      (item) => item.alumno_id === alumnoId
+    );
+    const progresion = progresionInicialAlumnos.find(
+      (item) => item.alumno_id === alumnoId
+    );
+
+    return {
+      alumnoId,
+      nombre: resumen?.alumno || perfil?.alumno || nombreFallback || 'Alumno',
+      nivel:
+        perfil?.nivel_usado ||
+        resumen?.nivel_actual ||
+        resumen?.ultimo_nivel_reportado ||
+        resumen?.nivel_estimado ||
+        progresion?.nivel_reportado ||
+        nivelFallback ||
+        '',
+      tecnica: resumen?.ultima_tecnica || '',
+      actitud: resumen?.ultima_actitud || '',
+      autonomia: resumen?.ultima_autonomia || perfil?.autonomia_reciente || '',
+      incidencia: resumen?.ultima_incidencia || '',
+      recomendacion: resumen?.ultima_recomendacion || '',
+      remontes: Array.from(
+        new Set([
+          ...(Array.isArray(resumen?.ultimos_remontes)
+            ? resumen.ultimos_remontes
+            : []),
+          ...(Array.isArray(perfil?.remontes_recientes)
+            ? perfil.remontes_recientes
+            : []),
+        ].filter(Boolean))
+      ),
+      ritmo:
+        perfil?.ritmo_tendencia ||
+        ritmo?.ritmo_tendencia ||
+        ritmo?.ritmo_ultimo ||
+        '',
+      fuerzaNivel: perfil?.fuerza_nivel || '',
+      demandaAtencion: perfil?.demanda_atencion || '',
+      observacionOperativa:
+        perfil?.observacion_visible_entrenador ||
+        perfil?.aviso_operativo ||
+        '',
+      faseViraje: resumen?.ultima_tecnica || '',
+      progresionInicial: progresion
+        ? {
+            autonomiaCinta: progresion.autonomia_cinta || '',
+            cunaFrenada: progresion.cuna_frenada || '',
+            giroInicial: progresion.giro_inicial || '',
+            dinamicaAutonoma: progresion.dinamica_autonoma || '',
+            ayudaCunero: progresion.ayuda_cunero || '',
+          }
+        : undefined,
+    };
   }
 
   function tendenciaRitmoAlumnoApp(alumnoId: string) {
@@ -6429,11 +6890,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       await cargarOcioAlumnos();
       await cargarOcioGrupos();
 
-      window.setTimeout(() => {
-        document
-          .getElementById('ocio-grupos-turno-activo')
-          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
+      enfocarElementoApp('ocio-grupos-turno-activo', {
+        espera: 100,
+        block: 'start',
+      });
     } catch (err) {
       setError(
         err instanceof Error
@@ -6620,11 +7080,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setOcioPropuestaGrupos(nuevas);
     setOcioGenerandoPropuesta(false);
 
-    window.setTimeout(() => {
-      document
-        .getElementById('ocio-propuesta-grupos')
-        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 80);
+    enfocarElementoApp('ocio-propuesta-grupos', {
+      espera: 80,
+      block: 'start',
+    });
   }
 
   function moverAlumnoEntrePropuestasOcio(
@@ -6707,11 +7166,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       return [...actuales, nuevo];
     });
 
-    window.setTimeout(() => {
-      document
-        .getElementById('ocio-propuesta-grupos')
-        ?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }, 80);
+    enfocarElementoApp('ocio-propuesta-grupos', {
+      espera: 80,
+      block: 'end',
+    });
   }
 
   function cambiarPistaPropuestaOcio(
@@ -6833,11 +7291,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       await cargarOcioGrupos();
       await cargarOcioAlumnos();
 
-      window.setTimeout(() => {
-        document
-          .getElementById('ocio-grupos-turno-activo')
-          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
+      enfocarElementoApp('ocio-grupos-turno-activo', {
+        espera: 100,
+        block: 'start',
+      });
 
       alert('Grupos estables creados correctamente.');
     } catch (err) {
@@ -6892,11 +7349,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         : 'Jueves'
     );
     setMostrarFormularioOcioGrupo(true);
-    window.setTimeout(() => {
-      document
-        .getElementById('ocio-formulario-grupo-estable')
-        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 80);
+    enfocarElementoApp('ocio-formulario-grupo-estable', {
+      espera: 80,
+      block: 'start',
+    });
   }
 
   async function guardarGrupoOcio() {
@@ -7990,11 +8446,21 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
 
     const observaciones = observacionesAutomaticasGrupoOcio(alumnosGrupo);
 
+    const alumnosContexto = alumnosGrupo.map((alumno) =>
+      contextoAlumnoTrabajoDiarioApp(
+        alumno.alumno_id,
+        alumno.alumno,
+        alumno.nivel_usado || alumno.nivel || ''
+      )
+    );
+
     return trabajoDiarioMSZApp(
       grupo.nombre_grupo,
       niveles,
       grupo.pista || alumnosGrupo[0]?.grupo_pista || 'Pequeña/Grande',
-      observaciones
+      observaciones,
+      alumnosContexto,
+      'OCIO'
     );
   }
 
@@ -9508,11 +9974,10 @@ Gracias!`;
     setFiltroReportes(filtro);
     setBusquedaReportes('');
 
-    window.setTimeout(() => {
-      document
-        .getElementById('cierre-semanal-listado-pendientes')
-        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 120);
+    enfocarElementoApp('cierre-semanal-listado-pendientes', {
+      espera: 120,
+      block: 'start',
+    });
   }
 
   async function abrirPendienteCierreSemanal(reporte: ReportePendiente) {
@@ -11370,33 +11835,28 @@ Gracias!`;
       .filter(Boolean);
     const pista = alumnosGrupo[0]?.pista_recomendada || 'Pequeña/Grande';
     const observaciones = observacionesAutomaticasGrupoIntensivo(alumnosGrupo);
-    const base = trabajoDiarioMSZApp(
+    const alumnosContexto = alumnosGrupo.map((alumno) =>
+      contextoAlumnoTrabajoDiarioApp(
+        alumno.alumno_id,
+        alumno.alumno,
+        alumno.nivel_resumen || ''
+      )
+    );
+
+    const trabajosRecientes = trabajosRecientesParaGrupoApp(
+      alumnosGrupo.map((alumno) => alumno.alumno),
+      alumnosGrupo[0]?.fecha
+    );
+
+    return trabajoDiarioMSZApp(
       nombreGrupo,
       niveles,
       pista,
-      observaciones
+      observaciones,
+      alumnosContexto,
+      'INTENSIVOS',
+      trabajosRecientes
     );
-    const declaradosFamilia = alumnosGrupo.filter(
-      (a) => a.fuente_nivel === 'Nivel declarado familia'
-    );
-    const fichasPendientes = alumnosGrupo.filter(
-      (a) => a.estado_ficha !== 'completa'
-    );
-
-    const avisos = [
-      declaradosFamilia.length > 0
-        ? `Aviso reporte: validar nivel declarado por familia: ${declaradosFamilia
-            .map((a) => `${a.alumno} (${a.nivel_resumen})`)
-            .join(', ')}.`
-        : '',
-      fichasPendientes.length > 0
-        ? `Aviso ficha: observar nivel real, autonomía y actitud de ${fichasPendientes
-            .map((a) => a.alumno)
-            .join(', ')}.`
-        : '',
-    ].filter(Boolean);
-
-    return [base, ...avisos].filter(Boolean).join('\n');
   }
 
   function textoBaseDiplomaIntensivo(
@@ -14883,85 +15343,20 @@ async function abrirGestionOperativaIntensivoDia(
     nombreGrupo: string,
     niveles: string[],
     pistaTexto: string,
-    observacionesTexto?: string | null
+    observacionesTexto?: string | null,
+    alumnosContexto: AlumnoContextoTrabajoDiarioApp[] = [],
+    modalidad = 'BABY',
+    trabajosRecientes: string[] = []
   ) {
-    const perfil = perfilTrabajoMSZApp(niveles, pistaTexto);
-    const pista = pistaTexto || 'Pequeña/Grande';
-    const obs = textoSinAcentosGrupoApp(observacionesTexto || '');
-    const ajustes: string[] = [];
-
-    if (/miedo|llor|bloque|asust|nervi|agobia/.test(obs)) {
-      ajustes.push(
-        'Ajuste emocional: entrada muy progresiva, pocas consignas y primera bajada fácil para generar confianza.'
-      );
-    }
-    if (/fila|despista|atencion|adelant|escapa|separa/.test(obs)) {
-      ajustes.push(
-        'Ajuste de grupo: prioridad a fila, distancia entre niños y salir solo cuando lo indique el entrenador.'
-      );
-    }
-    if (/rigid|sentad|equilibr|postura/.test(obs)) {
-      ajustes.push(
-        'Ajuste técnico: ejercicios de movilidad, manos delante y equilibrio antes de subir ritmo.'
-      );
-    }
-    if (/remonte|percha|silla|cinta/.test(obs)) {
-      ajustes.push(
-        'Ajuste remonte: revisar entrada y salida; no forzar percha/silla si aparece bloqueo.'
-      );
-    }
-
-    const planes: Record<string, string[]> = {
-      INICIACION_A: [
-        'Objetivo principal: confianza, deslizamiento y cuña básica. El niño tiene que acabar la sesión seguro y con ganas de repetir.',
-        '1. Entrada: revisión de material, explicación muy corta y desplazamiento tranquilo hasta la zona de trabajo.',
-        '2. Autonomía fija: ponerse/quitarse esquís con ayuda mínima, levantarse si se cae, entrar/salir de cinta y esperar turno.',
-        '3. Deslizamiento: bajadas muy sencillas, postura equilibrada, manos delante y parada en zona marcada.',
-        '4. Cuña básica: abrir cuña para frenar, frenar antes de la cola y repetir hasta que salga sin tensión.',
-        '5. Giros solo si procede: serpiente detrás del profesor, giro muy amplio y sin exigir continuidad si todavía no frena bien.',
-        '6. Cierre: última bajada fácil y positiva; no forzar pista grande ni remonte si hay dudas.',
-      ],
-      APLUS: [
-        'Objetivo principal: cuña sólida, giros aislados y autonomía real en pista pequeña.',
-        '1. Calentamiento: 2 bajadas suaves para comprobar freno, equilibrio y atención.',
-        '2. Cuña sólida: frenar donde diga el entrenador y controlar velocidad sin sentarse.',
-        '3. Giros aislados: trabajar giro a un lado, luego giro al otro; todavía no exigir buenos giros continuados.',
-        '4. Referencias: manos delante, mirada hacia donde quiere girar y acabar el giro antes de cruzar la pista.',
-        '5. Autonomía pista pequeña: entrar/salir de cinta, mantener fila, no adelantar y parar detrás del profesor.',
-        '6. Progresión: solo valorar transición a zona más larga si el grupo gira, frena y emocionalmente está estable.',
-      ],
-      B_BPLUS: [
-        'Objetivo principal: buenos giros continuados, control de velocidad y transición ordenada a pista grande.',
-        '1. Diagnóstico: primera bajada en fila para ver ritmo, distancia, freno y autonomía real.',
-        '2. Giros continuados: encadenar curvas, terminar cada giro y controlar velocidad con giros, no bajando recto.',
-        '3. Técnica base: manos delante, tronco estable, mirada al siguiente giro y presión progresiva exterior.',
-        '4. Ejercicios: palmada en rodilla exterior, avión, manos en rodillas y levantar pie interior solo si el grupo está preparado.',
-        '5. Remontes y fila: percha/silla/cinta según nivel, salidas ordenadas y mantener sitio dentro del grupo.',
-        '6. Cierre: una bajada fluida con ritmo cómodo; si hay mucho desnivel interno, proponer separar B+ de C/D.',
-      ],
-      C_CPLUS: [
-        'Objetivo principal: técnica limpia, autonomía, precisión y ritmo estable en pista grande.',
-        '1. Activación: 2 bajadas en fila para medir ritmo y detectar diferencias dentro del grupo.',
-        '2. Técnica: giros redondos, presión exterior, brazos estables, mirada anticipada y control de trayectoria.',
-        '3. Precisión: pasillo de giros medios, parada exacta y cambios de ritmo controlados.',
-        '4. Autonomía: remontes sin ayuda, espera ordenada y escucha antes de iniciar ejercicio.',
-        '5. Ejercicios: avión, palmada exterior, levantar pie interior, twister solo si hay espacio y control.',
-        '6. Cierre: bajada con objetivo individual para cada niño y nota clara para reporte.',
-      ],
-      D_DPLUS: [
-        'Objetivo principal: ritmo alto, trazado, precisión y precompetición suave sin perder seguridad.',
-        '1. Activación: bajadas de ritmo progresivo, distancia entre niños y revisión de control.',
-        '2. Trazado: línea marcada sencilla, anticipación de giro, presión exterior y salida controlada.',
-        '3. Técnica avanzada base: cambios de ritmo, giro corto controlado, brazos estables y mirada anticipada.',
-        '4. Autonomía total: remontes, orden de salida, feedback rápido y corrección individual.',
-        '5. Retos: pequeños saltos o recursos solo si el grupo está muy controlado y hay espacio.',
-        '6. Cierre: una bajada tipo equipo/precompetición suave y recomendación clara de siguiente paso.',
-      ],
-    };
-
-    return [...(planes[perfil] || planes.APLUS), ...ajustes].join(
-      '\n'
-    );
+    return generarTrabajoDiarioInteligenteApp({
+      nombreGrupo,
+      modalidad,
+      niveles,
+      pista: pistaTexto || 'Pequeña/Grande',
+      observacionesGrupo: observacionesTexto || '',
+      alumnos: alumnosContexto,
+      trabajosRecientes,
+    });
   }
 
   function trabajoDiarioAutomaticoAgenda(
@@ -14976,7 +15371,32 @@ async function abrirGestionOperativaIntensivoDia(
       alumnosGrupo[0]?.pista_alumno ||
       'Pequeña/Grande';
     const observaciones = observacionesAutomaticasGrupoAgenda(alumnosGrupo);
-    return trabajoDiarioMSZApp(nombreGrupo, niveles, pista, observaciones);
+    const alumnosContexto = alumnosGrupo.map((alumno) =>
+      contextoAlumnoTrabajoDiarioApp(
+        alumno.alumno_id,
+        alumno.alumno,
+        alumno.nivel_resumen || ''
+      )
+    );
+
+    const sesion = agendaSesionesDirectas.find(
+      (item) => item.sesion_id === agendaSesionActivaId
+    );
+
+    const trabajosRecientes = trabajosRecientesParaGrupoApp(
+      alumnosGrupo.map((alumno) => alumno.alumno),
+      sesion?.fecha
+    );
+
+    return trabajoDiarioMSZApp(
+      nombreGrupo,
+      niveles,
+      pista,
+      observaciones,
+      alumnosContexto,
+      sesion?.modalidad || 'BABY',
+      trabajosRecientes
+    );
   }
 
   function limpiarObservacionCortaGrupoApp(
@@ -16397,6 +16817,16 @@ async function abrirGestionOperativaIntensivoDia(
       cargarEntrenadores();
     }
     if (pantalla === 'listados') cargarListados();
+  }, [pantalla]);
+
+  useEffect(() => {
+    if (
+      pantalla === 'agenda' ||
+      pantalla === 'ocioSemana' ||
+      pantalla === 'intensivos'
+    ) {
+      void cargarContextoCerebroTrabajoDiarioApp();
+    }
   }, [pantalla]);
 
   useEffect(() => {
@@ -17840,9 +18270,23 @@ async function abrirGestionOperativaIntensivoDia(
     modo: 'inline' | 'sheet'
   ) {
     const esSheet = modo === 'sheet';
+    const nivelEfectivoReporte =
+      formReporte.nivel ||
+      nivelPartidaReporte ||
+      alumno.nivel_alumno ||
+      nivelGrupo ||
+      '';
+    const esProgresionInicialReporte =
+      esNivelAprendizajeInicialApp(nivelEfectivoReporte);
+    const reporteDomId =
+      `trainer-report-${alumno.entrenador_id}-${alumno.grupo_id}-${alumno.alumno_id}`.replace(
+        /[^a-zA-Z0-9_-]/g,
+        '-'
+      );
 
     return (
       <div
+        id={reporteDomId}
         className={`trainer-report-form trainer-report-form--${modo}`}
         style={{
           ...(esSheet ? {} : formularioCaja),
@@ -17885,16 +18329,31 @@ async function abrirGestionOperativaIntensivoDia(
           }}
         >
           <summary style={summaryAyudaReporteEntrenador}>
-            Ver ayuda rápida para rellenar reporte
+            Ver referencia técnica del nivel
           </summary>
-          <AyudaReporteEntrenador
-            nivel={
-              formReporte.nivel ||
-              alumno.nivel_alumno ||
-              nivelGrupo ||
-              ''
-            }
-          />
+          <div style={{ padding: '10px 12px 12px' }}>
+            {referenciaTecnicaReporteApp(
+              formReporte.nivel || alumno.nivel_alumno || nivelGrupo || ''
+            ).map(([titulo, texto], indice) => (
+              <div
+                key={titulo}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '112px 1fr',
+                  gap: 10,
+                  padding: '8px 0',
+                  borderTop: indice === 0 ? 'none' : '1px solid #e5edf8',
+                }}
+              >
+                <strong style={{ color: '#1e3a8a', fontSize: 12 }}>
+                  {titulo}
+                </strong>
+                <span style={{ color: '#475569', fontSize: 12, lineHeight: 1.4 }}>
+                  {texto}
+                </span>
+              </div>
+            ))}
+          </div>
         </details>
 
         <div className="trainer-report-grid" style={gridFormulario}>
@@ -17924,6 +18383,7 @@ async function abrirGestionOperativaIntensivoDia(
               }
             />
           </div>
+
           <CampoSelect
             label="Actitud"
             value={formReporte.actitud}
@@ -17932,14 +18392,46 @@ async function abrirGestionOperativaIntensivoDia(
               setFormReporte({ ...formReporte, actitud: valor })
             }
           />
-          <CampoSelect
-            label="Técnica"
-            value={formReporte.tecnica}
-            opciones={opcionesTecnica}
-            onChange={(valor) =>
-              setFormReporte({ ...formReporte, tecnica: valor })
-            }
-          />
+
+          {!esProgresionInicialReporte && (
+            <CampoSelect
+              label="Técnica"
+              value={formReporte.tecnica}
+              opciones={opcionesTecnica}
+              onChange={(valor) =>
+                setFormReporte({ ...formReporte, tecnica: valor })
+              }
+            />
+          )}
+
+          {esProgresionInicialReporte && (
+            <CampoSelect
+              label="Cuña y frenada"
+              value={formReporte.cunaFrenada}
+              opciones={['', ...opcionesCunaFrenadaInicialApp]}
+              onChange={(valor) =>
+                setFormReporte({
+                  ...formReporte,
+                  cunaFrenada: valor,
+                })
+              }
+            />
+          )}
+
+          {esProgresionInicialReporte && (
+            <CampoSelect
+              label="Giro"
+              value={formReporte.giroInicial}
+              opciones={['', ...opcionesGiroInicialApp]}
+              onChange={(valor) =>
+                setFormReporte({
+                  ...formReporte,
+                  giroInicial: valor,
+                })
+              }
+            />
+          )}
+
           <CampoSelect
             label="Pista"
             value={formReporte.pista}
@@ -17948,6 +18440,7 @@ async function abrirGestionOperativaIntensivoDia(
               setFormReporte({ ...formReporte, pista: valor })
             }
           />
+
           <CampoSelect
             label="Autonomía"
             value={formReporte.autonomia}
@@ -17956,14 +18449,35 @@ async function abrirGestionOperativaIntensivoDia(
               setFormReporte({ ...formReporte, autonomia: valor })
             }
           />
-          <CampoSelect
-            label="Ritmo en el grupo"
-            value={formReporte.ritmoGrupo}
-            opciones={opcionesRitmoGrupo}
-            onChange={(valor) =>
-              setFormReporte({ ...formReporte, ritmoGrupo: valor })
-            }
-          />
+
+          {esProgresionInicialReporte && (
+            <CampoSelect
+              label="Autonomía en cinta"
+              value={formReporte.autonomiaCinta}
+              opciones={['', ...opcionesAutonomiaCintaInicialApp]}
+              onChange={(valor) =>
+                setFormReporte({
+                  ...formReporte,
+                  autonomiaCinta: valor,
+                })
+              }
+            />
+          )}
+
+          {esProgresionInicialReporte && (
+            <CampoSelect
+              label="Funcionamiento en pista"
+              value={formReporte.dinamicaAutonoma}
+              opciones={['', ...opcionesDinamicaAutonomaInicialApp]}
+              onChange={(valor) =>
+                setFormReporte({
+                  ...formReporte,
+                  dinamicaAutonoma: valor,
+                })
+              }
+            />
+          )}
+
           <CampoSelect
             label="Remontes"
             value={formReporte.remontes}
@@ -17972,6 +18486,30 @@ async function abrirGestionOperativaIntensivoDia(
               setFormReporte({ ...formReporte, remontes: valor })
             }
           />
+
+          {esProgresionInicialReporte && (
+            <CampoSelect
+              label="¿Ha usado cuñero?"
+              value={formReporte.ayudaCunero}
+              opciones={opcionesAyudaCuneroInicialApp}
+              onChange={(valor) =>
+                setFormReporte({
+                  ...formReporte,
+                  ayudaCunero: valor,
+                })
+              }
+            />
+          )}
+
+          <CampoSelect
+            label="Ritmo en el grupo"
+            value={formReporte.ritmoGrupo}
+            opciones={opcionesRitmoGrupo}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, ritmoGrupo: valor })
+            }
+          />
+
           <CampoSelect
             label="Incidencia"
             value={formReporte.incidencia}
@@ -17980,6 +18518,7 @@ async function abrirGestionOperativaIntensivoDia(
               setFormReporte({ ...formReporte, incidencia: valor })
             }
           />
+
           <CampoSelect
             label="Recomendación"
             value={formReporte.recomendacion}
@@ -17988,6 +18527,7 @@ async function abrirGestionOperativaIntensivoDia(
               setFormReporte({ ...formReporte, recomendacion: valor })
             }
           />
+
         </div>
 
         <label style={labelCampo}>
@@ -39473,6 +40013,7 @@ async function abrirGestionOperativaIntensivoDia(
           entrenadoresPorGrupoRecomendado,
           error,
           esVistaMovilApp,
+          enfocarElementoApp,
           estiloBadgePistaApp,
           estiloGrupoPorPistaApp,
           estiloValidacionPedagogicaApp,
