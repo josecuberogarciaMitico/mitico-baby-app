@@ -1,8 +1,7 @@
 {
   "name": "Mítico Baby",
   "short_name": "Mítico Baby",
-  "description": "Logística y coordinación deportiva Mítico Baby",
-  "lang": "es",
+  "description": "Operativa y coordinación Mítico Baby",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
