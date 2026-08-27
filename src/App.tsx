@@ -34243,8 +34243,15 @@ async function abrirGestionOperativaIntensivoDia(
                   ['TODOS', 'Todos', altasNivelInicial.length, '#4f46e5', '#eef2ff'],
                   ['PENDIENTE_ENVIO', 'Pendiente de enviar', altasNivelInicial.filter((a) => a.estado === 'PENDIENTE_ENVIO').length, '#64748b', '#f8fafc'],
                   ['ENVIADO', 'Esperando respuesta', altasNivelInicial.filter((a) => a.estado === 'ENVIADO').length, '#d97706', '#fffbeb'],
-                  ['RESPONDIDO', 'Respondido · revisar', altasNivelInicial.filter((a) => a.estado === 'RESPONDIDO').length, '#2563eb', '#eff6ff'],
-                  ['VALIDADO', 'Pendiente de añadir a listados', altasNivelInicial.filter((a) => a.estado === 'VALIDADO').length, '#16a34a', '#f0fdf4'],
+                  [
+                    'RESPONDIDO',
+                    'Respondido · revisar',
+                    altasNivelInicial.filter(
+                      (a) => a.estado === 'RESPONDIDO' || a.estado === 'VALIDADO'
+                    ).length,
+                    '#2563eb',
+                    '#eff6ff',
+                  ],
                   ['ANADIDO', 'Añadidos', altasNivelInicial.filter((a) => a.estado === 'ANADIDO').length, '#0f766e', '#f0fdfa'],
                   ['DESCARTADO', 'Descartado', altasNivelInicial.filter((a) => a.estado === 'DESCARTADO').length, '#dc2626', '#fef2f2'],
                 ].map(([valor, etiqueta, cantidad, color, fondo]) => {
@@ -34290,7 +34297,11 @@ async function abrirGestionOperativaIntensivoDia(
             {!cargandoAltasNivel &&
               altasNivelInicial.length > 0 &&
               altasNivelInicial.filter((alta) =>
-                filtroAltasNivel === 'TODOS' ? true : alta.estado === filtroAltasNivel
+                filtroAltasNivel === 'TODOS'
+                  ? true
+                  : filtroAltasNivel === 'RESPONDIDO'
+                  ? alta.estado === 'RESPONDIDO' || alta.estado === 'VALIDADO'
+                  : alta.estado === filtroAltasNivel
               ).length === 0 && (
                 <article style={tarjeta}>
                   <h3 style={{ marginTop: 0 }}>No hay altas en este estado</h3>
@@ -34303,7 +34314,11 @@ async function abrirGestionOperativaIntensivoDia(
             <section style={{ display: 'grid', gap: 10 }}>
               {altasNivelInicial
                 .filter((alta) =>
-                  filtroAltasNivel === 'TODOS' ? true : alta.estado === filtroAltasNivel
+                  filtroAltasNivel === 'TODOS'
+                  ? true
+                  : filtroAltasNivel === 'RESPONDIDO'
+                  ? alta.estado === 'RESPONDIDO' || alta.estado === 'VALIDADO'
+                  : alta.estado === filtroAltasNivel
                 )
                 .map((alta) => {
                   const respondido = alta.estado === 'RESPONDIDO';
@@ -34323,7 +34338,7 @@ async function abrirGestionOperativaIntensivoDia(
                     alta.estado === 'PENDIENTE_ENVIO' ? 'PENDIENTE DE ENVIAR'
                     : alta.estado === 'ENVIADO' ? 'ESPERANDO RESPUESTA'
                     : alta.estado === 'RESPONDIDO' ? 'RESPONDIDO · REVISAR'
-                    : alta.estado === 'VALIDADO' ? 'PENDIENTE DE AÑADIR A LISTADOS'
+                    : alta.estado === 'VALIDADO' ? 'REVISADO · LISTO PARA AÑADIR'
                     : alta.estado === 'ANADIDO' ? 'AÑADIDO'
                     : 'DESCARTADO';
 
@@ -34809,7 +34824,7 @@ async function abrirGestionOperativaIntensivoDia(
                                     fontSize: 13,
                                   }}
                                 >
-                                  Pendiente de incorporación a {alta.modalidad}.
+                                  Revisión completada. Añádelo ahora a {alta.modalidad} desde este mismo bloque.
                                 </div>
                               </div>
 
@@ -35021,8 +35036,8 @@ async function abrirGestionOperativaIntensivoDia(
                                     : anadiendoAltaNivelId === alta.id
                                     ? 'Añadiendo...'
                                     : coincidenciasAltaNivel[alta.id]
-                                    ? 'Añadir a listados'
-                                    : 'Comprobar y añadir'}
+                                    ? `Añadir a ${alta.modalidad}`
+                                    : `Comprobar y añadir a ${alta.modalidad}`}
                                 </button>
                               )}
                             </div>
