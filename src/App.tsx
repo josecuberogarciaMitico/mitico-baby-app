@@ -323,6 +323,7 @@ type AlumnoBabyFichaApp = {
 type AlumnoResumen = {
   alumno_id: string;
   alumno: string;
+  telefono: string | null;
   nivel_actual: string | null;
   nivel_estimado: string | null;
   origen_nivel_estimado: string | null;
@@ -386,6 +387,7 @@ type ProgresionInicialAlumnoApp = {
 type OcioAlumnoApp = {
   alumno_id: string;
   alumno: string;
+  telefono: string | null;
   nivel: string | null;
   nivel_usado: string | null;
   fuente_nivel: string | null;
@@ -1370,6 +1372,7 @@ type CierreTemporadaAlumnoApp = {
   alumno: string;
   temporada: string;
   fecha_nacimiento: string | null;
+  telefono: string | null;
   ultimo_nivel_real: string | null;
   ultima_pista: string | null;
   ultimo_entreno: string | null;
@@ -1397,6 +1400,7 @@ type FilaCopiaMaestraImportApp = {
   alumno_id: string;
   alumno: string;
   fecha_nacimiento: string;
+  telefono: string;
   ultimo_nivel_real: string;
   pista: string;
   ultimo_entreno: string;
@@ -4142,6 +4146,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [alumnoEditNombre, setAlumnoEditNombre] = useState('');
   const [alumnoEditFechaNacimiento, setAlumnoEditFechaNacimiento] =
     useState('');
+  const [alumnoEditTelefono, setAlumnoEditTelefono] = useState('');
   const [alumnoEditNivel, setAlumnoEditNivel] = useState('');
   const [alumnoEditOrigen, setAlumnoEditOrigen] =
     useState('Jose / Coordinador');
@@ -4216,6 +4221,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     string | null
   >(null);
   const [ocioNombre, setOcioNombre] = useState('');
+  const [ocioTelefono, setOcioTelefono] = useState('');
   const [ocioNivel, setOcioNivel] = useState('');
   const [ocioFechaNacimiento, setOcioFechaNacimiento] = useState('');
   const [ocioDiaFijo, setOcioDiaFijo] = useState('Jueves');
@@ -5769,11 +5775,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       const [data, ocioData, babyData, ritmosData, perfilesData] =
         await Promise.all([
           consultarSupabase<AlumnoResumen>(
-            'v_resumen_alumno',
+            'v_resumen_alumno_v2',
             'select=*&order=alumno.asc'
           ),
           consultarSupabase<OcioAlumnoApp>(
-            'v_ocio_alumnos_app',
+            'v_ocio_alumnos_v2_app',
             'select=*&order=alumno.asc'
           ),
           ejecutarFuncionConRespuesta<AlumnoBabyFichaApp>(
@@ -5821,7 +5827,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       trabajosHistoricosData,
     ] = await Promise.all([
         consultarSupabase<AlumnoResumen>(
-          'v_resumen_alumno',
+          'v_resumen_alumno_v2',
           'select=*&order=alumno.asc'
         ).catch(() => [] as AlumnoResumen[]),
         ejecutarFuncionConRespuesta<TendenciaRitmoAlumnoApp>(
@@ -5998,10 +6004,81 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     );
   }
 
+  function enlaceWhatsAppFamiliaApp(telefono?: string | null) {
+    let numero = String(telefono || '').replace(/\D/g, '');
+    if (!numero) return '';
+    if (numero.startsWith('00')) numero = numero.slice(2);
+    if (numero.length === 9) numero = `34${numero}`;
+    return `https://wa.me/${numero}`;
+  }
+
+  function bloqueIdentidadFichaAlumnoApp(
+    nombre: string,
+    fechaNacimiento?: string | null,
+    telefono?: string | null
+  ) {
+    const enlaceWhatsApp = enlaceWhatsAppFamiliaApp(telefono);
+
+    return (
+      <div style={{ display: 'grid', gap: 7, minWidth: 0 }}>
+        <h3 style={{ margin: 0, overflowWrap: 'anywhere', lineHeight: 1.2 }}>
+          {nombre}
+        </h3>
+
+        <span style={{ color: '#64748b', fontWeight: 700 }}>
+          Nacimiento:{' '}
+          <strong>
+            {fechaNacimiento ? formatearFecha(fechaNacimiento) : 'Sin registrar'}
+          </strong>
+        </span>
+
+        {telefono ? (
+          <a
+            href={enlaceWhatsApp || undefined}
+            target="_blank"
+            rel="noreferrer"
+            title="Abrir conversación de WhatsApp con la familia"
+            style={{
+              ...botonMini,
+              width: 'fit-content',
+              maxWidth: '100%',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              background: '#ecfdf5',
+              borderColor: '#86efac',
+              color: '#166534',
+              overflowWrap: 'anywhere',
+            }}
+          >
+            WhatsApp · {telefono}
+          </a>
+        ) : (
+          <span
+            style={{
+              width: 'fit-content',
+              padding: '7px 10px',
+              borderRadius: 10,
+              border: '1px solid #e2e8f0',
+              background: '#f8fafc',
+              color: '#64748b',
+              fontWeight: 750,
+              fontSize: 13,
+            }}
+          >
+            Teléfono sin registrar
+          </span>
+        )}
+      </div>
+    );
+  }
+
   function datosBasicosFichaAlumnoApp(alumno: AlumnoResumen) {
     const faltan: string[] = [];
     if (!String(alumno.alumno || '').trim()) faltan.push('nombre');
     if (!alumno.fecha_nacimiento) faltan.push('fecha de nacimiento');
+    if (!String(alumno.telefono || '').trim()) faltan.push('teléfono');
     if (
       !alumno.nivel_actual &&
       !alumno.ultimo_nivel_reportado &&
@@ -6019,6 +6096,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setAlumnoEditandoId(null);
     setAlumnoEditNombre('');
     setAlumnoEditFechaNacimiento('');
+    setAlumnoEditTelefono('');
     setAlumnoEditNivel('');
     setAlumnoEditOrigen('Jose / Coordinador');
     setAlumnoEditEstado('pendiente completar');
@@ -6028,6 +6106,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     alumnoId: string,
     nombre: string,
     fechaNacimiento: string,
+    telefono: string,
     nivel: string,
     origen: string,
     estado: string
@@ -6042,10 +6121,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setError('');
 
     try {
-      await ejecutarFuncion('actualizar_alumno_base_operativa_app', {
+      await ejecutarFuncion('actualizar_alumno_base_v2_app', {
         p_alumno_id: alumnoId,
         p_nombre_completo: nombreLimpio,
         p_fecha_nacimiento: fechaNacimiento || null,
+        p_telefono: telefono.trim() || null,
         p_nivel_codigo: nivel || null,
         p_origen_nivel: origen || 'Jose / Coordinador',
         p_estado_ficha: estado || 'pendiente completar',
@@ -6069,6 +6149,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setAlumnoEditandoId(alumno.alumno_id);
     setAlumnoEditNombre(alumno.alumno || '');
     setAlumnoEditFechaNacimiento(alumno.fecha_nacimiento || '');
+    setAlumnoEditTelefono(alumno.telefono || '');
     setAlumnoEditNivel(
       alumno.nivel_actual ||
         alumno.nivel_estimado ||
@@ -6084,6 +6165,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       alumnoId,
       alumnoEditNombre,
       alumnoEditFechaNacimiento,
+      alumnoEditTelefono,
       alumnoEditNivel,
       alumnoEditOrigen,
       alumnos.find((item) => item.alumno_id === alumnoId)?.estado_ficha ||
@@ -6192,7 +6274,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setError('');
     try {
       const data = await consultarSupabase<OcioAlumnoApp>(
-        'v_ocio_alumnos_app',
+        'v_ocio_alumnos_v2_app',
         'select=*&order=alumno.asc'
       );
       setOcioAlumnos(data);
@@ -6253,6 +6335,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   function limpiarFormularioOcioAlumno() {
     setOcioAlumnoEditandoId(null);
     setOcioNombre('');
+    setOcioTelefono('');
     setOcioNivel('');
     setOcioFechaNacimiento('');
     setOcioDiaFijo('Jueves');
@@ -6269,6 +6352,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   function editarAlumnoOcio(alumno: OcioAlumnoApp) {
     setOcioAlumnoEditandoId(alumno.alumno_id);
     setOcioNombre(alumno.alumno || '');
+    setOcioTelefono(alumno.telefono || '');
     setOcioNivel(
       alumno.nivel_usado && alumno.nivel_usado !== '-' ? alumno.nivel_usado : ''
     );
@@ -6297,9 +6381,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setError('');
     try {
       if (ocioAlumnoEditandoId) {
-        await ejecutarFuncion('actualizar_alumno_ocio_app', {
+        await ejecutarFuncion('actualizar_alumno_ocio_v2_app', {
           p_alumno_id: ocioAlumnoEditandoId,
           p_nombre_completo: nombre,
+          p_telefono: ocioTelefono.trim() || null,
           p_nivel_codigo: ocioNivel || null,
           p_fecha_nacimiento: ocioFechaNacimiento || null,
           p_dia_fijo: ocioDiaFijo || null,
@@ -6697,7 +6782,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         alumnos.length > 0
           ? alumnos
           : await consultarSupabase<AlumnoResumen>(
-              'v_resumen_alumno',
+              'v_resumen_alumno_v2',
               'select=*&order=alumno.asc'
             );
 
@@ -6838,7 +6923,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         });
 
         const actualizados = await consultarSupabase<OcioAlumnoApp>(
-          'v_ocio_alumnos_app',
+          'v_ocio_alumnos_v2_app',
           'select=*&order=alumno.asc'
         );
         setOcioAlumnos(actualizados);
@@ -13896,6 +13981,29 @@ async function abrirGestionOperativaIntensivoDia(
     irAlTrabajoAgenda('formulario');
   }
 
+  function abrirAltaTestDesdeAgenda(alumno: AgendaAlumnoSesionApp) {
+    setFormAltaNivelInicial({
+      ...altaNivelInicialFormVacioApp(),
+      nombre: alumno.alumno || '',
+      modalidad:
+        agendaForm.modalidad === 'OCIO'
+          ? 'OCIO'
+          : agendaForm.modalidad === 'INTENSIVOS'
+          ? 'INTENSIVOS'
+          : 'BABY',
+    });
+    setMostrarFormularioAltaNivel(true);
+    setPantalla('administracion');
+    setError('');
+
+    window.setTimeout(() => {
+      contenidoPantallaRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 100);
+  }
+
   async function volcarListadoAgendaOperativa() {
     if (!agendaForm.fecha) {
       setError('Selecciona un día de la agenda.');
@@ -13933,6 +14041,13 @@ async function abrirGestionOperativaIntensivoDia(
 
       if (sesionId) {
         await cargarDetalleSesionAgenda(sesionId);
+      }
+
+      const nuevosPendientes = Number(resultado[0]?.total_nuevos || 0);
+      if (nuevosPendientes > 0) {
+        setError(
+          `${nuevosPendientes} alumno(s) no están en la semilla. Quedan como PENDIENTE TEST y no entrarán en grupos hasta pasar por Altas/Test.`
+        );
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
@@ -14280,6 +14395,19 @@ async function abrirGestionOperativaIntensivoDia(
   async function generarRecomendacionAgendaSesion(sesionId: string) {
     if (!sesionId) {
       setError('Primero carga o selecciona una sesión.');
+      return;
+    }
+
+    const pendientesTest = agendaAlumnosSesion.filter(
+      (alumno) => alumno.estado_en_listado === 'PENDIENTE_TEST'
+    );
+
+    if (pendientesTest.length > 0) {
+      setError(
+        `Hay ${pendientesTest.length} alumno(s) nuevos pendientes de Altas/Test. Resuélvelos antes de generar grupos: ${pendientesTest
+          .map((alumno) => alumno.alumno)
+          .join(', ')}`
+      );
       return;
     }
 
@@ -19448,7 +19576,7 @@ async function abrirGestionOperativaIntensivoDia(
     try {
       const [alumnos, resumen] = await Promise.all([
         ejecutarFuncionConRespuesta<CierreTemporadaAlumnoApp>(
-          'obtener_cierre_temporada_alumnos_app'
+          'obtener_cierre_temporada_alumnos_v2_app'
         ),
         ejecutarFuncionConRespuesta<ResumenCierreTemporadaApp>(
           'obtener_resumen_cierre_temporada_app'
@@ -19521,6 +19649,7 @@ async function abrirGestionOperativaIntensivoDia(
         'Alumno ID',
         'Alumno',
         'Fecha nacimiento',
+        'Teléfono',
         'Último nivel real',
         'Pista',
         'Último entrenamiento',
@@ -19532,6 +19661,7 @@ async function abrirGestionOperativaIntensivoDia(
         fila.alumno_id,
         fila.alumno,
         fila.fecha_nacimiento ? formatearFecha(fila.fecha_nacimiento) : '',
+        fila.telefono || '',
         fila.ultimo_nivel_real || '',
         fila.ultima_pista || '',
         fila.ultimo_entreno ? formatearFecha(fila.ultimo_entreno) : '',
@@ -19578,6 +19708,16 @@ async function abrirGestionOperativaIntensivoDia(
     return celdas.map((valor) => valor.trim());
   }
 
+  function normalizarCabeceraCsvTemporada(valor: string) {
+    return String(valor || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('es-ES')
+      .replace(/[_-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   async function cargarCopiaMaestraParaRevisar(archivo: File | null) {
     setErrorCopiaMaestraImport('');
     setFilasCopiaMaestraImport([]);
@@ -19588,7 +19728,7 @@ async function abrirGestionOperativaIntensivoDia(
 
     if (!archivo.name.toLowerCase().endsWith('.csv')) {
       setErrorCopiaMaestraImport(
-        'Selecciona un archivo CSV compatible con la copia maestra.'
+        'Selecciona un archivo CSV compatible con la copia maestra o la semilla de temporada.'
       );
       return;
     }
@@ -19596,89 +19736,174 @@ async function abrirGestionOperativaIntensivoDia(
     try {
       const texto = (await archivo.text()).replace(/^\uFEFF/, '');
       const lineas = texto.split(/\r?\n/).filter((linea) => linea.trim());
-      const indiceCabecera = lineas.findIndex((linea) => {
-        const columnas = parsearLineaCsvCopiaMaestra(linea).map((valor) =>
-          valor.toLocaleLowerCase('es-ES')
-        );
-        return (
-          columnas[0] === 'alumno id' &&
-          columnas[1] === 'alumno' &&
-          columnas[2] === 'fecha nacimiento' &&
-          columnas[3] === 'último nivel real'
-        );
-      });
 
-      if (indiceCabecera < 0) {
+      if (lineas.length < 2) {
+        throw new Error('El CSV está vacío o no contiene alumnos.');
+      }
+
+      let indiceCabecera = -1;
+      let tipoCsv: 'MAESTRA' | 'SEMILLA_SIMPLE' | '' = '';
+
+      for (let i = 0; i < lineas.length; i += 1) {
+        const columnas = parsearLineaCsvCopiaMaestra(lineas[i]).map(
+          normalizarCabeceraCsvTemporada
+        );
+
+        const esMaestra =
+          columnas.includes('alumno') &&
+          columnas.includes('fecha nacimiento') &&
+          columnas.some((columna) =>
+            ['ultimo nivel real', 'nivel'].includes(columna)
+          );
+
+        const esSemillaSimple =
+          columnas.includes('nombre apellidos') &&
+          columnas.includes('nivel') &&
+          columnas.includes('telefono') &&
+          columnas.includes('fecha nacimiento');
+
+        if (esSemillaSimple) {
+          indiceCabecera = i;
+          tipoCsv = 'SEMILLA_SIMPLE';
+          break;
+        }
+
+        if (esMaestra) {
+          indiceCabecera = i;
+          tipoCsv = 'MAESTRA';
+          break;
+        }
+      }
+
+      if (indiceCabecera < 0 || !tipoCsv) {
         throw new Error(
-          'El CSV no tiene las columnas mínimas de una copia maestra compatible.'
+          'El CSV no coincide con la copia maestra de la app ni con la semilla nombre/nivel/teléfono/fecha.'
         );
       }
+
+      const cabeceraOriginal = parsearLineaCsvCopiaMaestra(
+        lineas[indiceCabecera]
+      );
+      const cabecera = cabeceraOriginal.map(normalizarCabeceraCsvTemporada);
+      const indice = (nombres: string[]) =>
+        cabecera.findIndex((columna) => nombres.includes(columna));
+      const valor = (columnas: string[], nombres: string[]) => {
+        const i = indice(nombres);
+        return i >= 0 ? (columnas[i] || '').trim() : '';
+      };
 
       const textoPrevioCabecera = lineas.slice(0, indiceCabecera).join(' ');
       const temporadaEnContenido = textoPrevioCabecera.match(
         /COPIA\s+MAESTRA\s+FIN\s+DE\s+TEMPORADA\s*[·:-]?\s*([0-9]{4}\s*[\/-]\s*[0-9]{2,4})/i
       )?.[1];
-      const temporadaEnNombreMatch = archivo.name.match(
-        /([0-9]{4})[-_\s]?([0-9]{2,4})/
-      );
-      const temporadaEnNombre = temporadaEnNombreMatch
-        ? `${temporadaEnNombreMatch[1]}/${temporadaEnNombreMatch[2]}`
-        : '';
 
       setTemporadaOrigenCopiaMaestra(
-        (temporadaEnContenido || temporadaEnNombre || 'importación externa')
+        (temporadaEnContenido || 'importación externa')
           .replace(/\s+/g, '')
           .replace('-', '/')
       );
 
       const filas = lineas.slice(indiceCabecera + 1).map((linea) => {
         const columnas = parsearLineaCsvCopiaMaestra(linea);
-        const [
-          alumnoId = '',
-          alumno = '',
-          fechaNacimiento = '',
-          ultimoNivel = '',
-          pista = '',
-          ultimoEntreno = '',
-          ultimaModalidad = '',
-          entrenamientos = '0',
-          recomendacion = '',
-        ] = columnas;
+
+        const alumnoId =
+          tipoCsv === 'MAESTRA'
+            ? valor(columnas, ['alumno id'])
+            : '';
+
+        const alumno =
+          tipoCsv === 'SEMILLA_SIMPLE'
+            ? valor(columnas, ['nombre apellidos'])
+            : valor(columnas, ['alumno', 'nombre apellidos']);
+
+        const fechaNacimiento = valor(columnas, [
+          'fecha nacimiento',
+          'fecha de nacimiento',
+        ]);
+
+        const telefono = valor(columnas, ['telefono', 'telefono familia']);
+
+        const ultimoNivel =
+          tipoCsv === 'SEMILLA_SIMPLE'
+            ? valor(columnas, ['nivel'])
+            : valor(columnas, ['ultimo nivel real', 'nivel']);
+
+        const pista =
+          tipoCsv === 'MAESTRA' ? valor(columnas, ['pista']) : '';
+        const ultimoEntreno =
+          tipoCsv === 'MAESTRA'
+            ? valor(columnas, ['ultimo entrenamiento'])
+            : '';
+        const ultimaModalidad =
+          tipoCsv === 'MAESTRA'
+            ? valor(columnas, ['ultima modalidad'])
+            : 'BABY';
+        const entrenamientosTexto =
+          tipoCsv === 'MAESTRA'
+            ? valor(columnas, ['entrenamientos temporada'])
+            : '0';
+        const recomendacion =
+          tipoCsv === 'MAESTRA'
+            ? valor(columnas, ['ultima recomendacion tecnica'])
+            : '';
 
         const errores: string[] = [];
+
         if (
-          alumnoId.trim() &&
+          alumnoId &&
           !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
-            alumnoId.trim()
+            alumnoId
           )
         ) {
           errores.push('ID de alumno no válido');
         }
-        if (!alumno.trim()) errores.push('Falta nombre');
+
+        if (!alumno) errores.push('Falta nombre');
+
         if (
           ultimoNivel &&
-          !/^(INICIACION|A\+?|B\+?|C\+?|D\+?)$/i.test(ultimoNivel.trim())
+          !/^(INICIACION|A\+?|B\+?|C\+?|D\+?)$/i.test(ultimoNivel)
         ) {
           errores.push('Nivel no reconocido');
         }
 
-        const numeroEntrenos = Number(String(entrenamientos).replace(',', '.'));
+        if (
+          fechaNacimiento &&
+          !/^(\d{4}-\d{2}-\d{2}|\d{1,2}[\/-]\d{1,2}[\/-]\d{4})$/.test(
+            fechaNacimiento
+          )
+        ) {
+          errores.push('Fecha de nacimiento no reconocida');
+        }
+
+        const telefonoLimpio = telefono.replace(/\s+/g, '');
+        if (
+          telefonoLimpio &&
+          !/^\+?[0-9]{6,15}$/.test(telefonoLimpio)
+        ) {
+          errores.push('Teléfono no válido');
+        }
+
+        const numeroEntrenos = Number(
+          String(entrenamientosTexto || '0').replace(',', '.')
+        );
         if (!Number.isFinite(numeroEntrenos) || numeroEntrenos < 0) {
           errores.push('Entrenamientos no válidos');
         }
 
         return {
-          alumno_id: alumnoId.trim(),
-          alumno: alumno.trim(),
-          fecha_nacimiento: fechaNacimiento.trim(),
-          ultimo_nivel_real: ultimoNivel.trim(),
-          pista: pista.trim(),
-          ultimo_entreno: ultimoEntreno.trim(),
-          ultima_modalidad: ultimaModalidad.trim(),
+          alumno_id: alumnoId,
+          alumno,
+          fecha_nacimiento: fechaNacimiento,
+          telefono: telefonoLimpio,
+          ultimo_nivel_real: ultimoNivel,
+          pista,
+          ultimo_entreno: ultimoEntreno,
+          ultima_modalidad: ultimaModalidad,
           entrenamientos_temporada: Number.isFinite(numeroEntrenos)
             ? numeroEntrenos
             : 0,
-          ultima_recomendacion: recomendacion.trim(),
+          ultima_recomendacion: recomendacion,
           valido: errores.length === 0,
           error: errores.join(' · '),
         } as FilaCopiaMaestraImportApp;
@@ -19699,6 +19924,13 @@ async function abrirGestionOperativaIntensivoDia(
 
   async function importarCopiaMaestraEnAlumnos() {
     if (!esCoordinadorJefeApp) return;
+
+    if (!temporadaActivaCierre) {
+      setErrorCopiaMaestraImport(
+        'Primero inicia la nueva temporada. Después carga la semilla.'
+      );
+      return;
+    }
 
     const filasInvalidas = filasCopiaMaestraImport.filter((fila) => !fila.valido);
     if (filasCopiaMaestraImport.length === 0) {
@@ -19723,13 +19955,14 @@ async function abrirGestionOperativaIntensivoDia(
         actualizados: number;
         reconciliados: number;
         omitidos: number;
-      }>('importar_semilla_copia_maestra_v2_app', {
+      }>('importar_semilla_copia_maestra_v3_app', {
         p_temporada_origen:
           temporadaOrigenCopiaMaestra || archivoCopiaMaestraNombre || 'importación externa',
         p_filas: filasCopiaMaestraImport.map((fila) => ({
           alumno_id: fila.alumno_id || null,
           alumno: fila.alumno,
           fecha_nacimiento: fila.fecha_nacimiento || null,
+          telefono: fila.telefono || null,
           ultimo_nivel_real: fila.ultimo_nivel_real || null,
           pista: fila.pista || null,
           ultimo_entreno: fila.ultimo_entreno || null,
@@ -19826,7 +20059,19 @@ async function abrirGestionOperativaIntensivoDia(
   }, [esCoordinadorJefeApp]);
 
   async function ejecutarCierreDefinitivoTemporada() {
-    if (!esCoordinadorJefeApp || !resumenCierreTemporada) return;
+    if (!esCoordinadorJefeApp) {
+      setCierreTemporadaError(
+        'Solo el Coordinador jefe puede cerrar la temporada.'
+      );
+      return;
+    }
+
+    if (!resumenCierreTemporada) {
+      setCierreTemporadaError(
+        'Primero analiza la temporada en el Paso 1.'
+      );
+      return;
+    }
 
     const temporada = resumenCierreTemporada.temporada;
     const textoEsperado = `CERRAR ${temporada}`;
@@ -19855,7 +20100,7 @@ async function abrirGestionOperativaIntensivoDia(
         alumnos_conservados: number;
         alumnos_eliminados: number;
         filas_operativas_eliminadas: number;
-      }>('cerrar_temporada_definitivo_app', {
+      }>('cerrar_temporada_seguro_v2_app', {
         p_confirmacion: textoEsperado,
       });
 
@@ -19874,6 +20119,26 @@ async function abrirGestionOperativaIntensivoDia(
       setCierreTemporadaAnalizado(false);
       setResumenCierreTemporada(null);
       setCierreTemporadaAlumnos([]);
+
+      // Importante: el RPC ya ha borrado la operativa en Supabase,
+      // pero las distintas pantallas conservaban sus arrays React anteriores.
+      // Recargamos todas las fuentes principales para que la UI quede vacía
+      // inmediatamente después del cierre.
+      await Promise.all([
+        cargarTemporadaActivaCierre(),
+        cargarAgendaOperativaDirecta(),
+        cargarAlumnos(),
+        cargarPlanning(),
+        cargarListados(),
+        cargarOcioAlumnos(),
+        cargarOcioGrupos(),
+        cargarIntensivos(),
+      ]);
+
+      setAgendaGruposSesion([]);
+      setAgendaGruposRecursosTurno([]);
+      setGruposOperativosResumenDia([]);
+      setGruposEntrenador([]);
     } catch (err) {
       setCierreTemporadaError(
         err instanceof Error
@@ -23166,17 +23431,15 @@ async function abrirGestionOperativaIntensivoDia(
                           “Conservar / Eliminar” y descargar la copia maestra.
                         </li>
                         <li>
-                          <strong>Paso 2:</strong> comprobar el CSV y cargar la semilla.
+                          <strong>Paso 2:</strong> guardar el backup completo de
+                          Supabase y cerrar la temporada actual.
                         </li>
                         <li>
-                          <strong>Antes del Paso 3:</strong> guardar el backup completo
-                          de Supabase en el Mac.
+                          <strong>Paso 3:</strong> iniciar la nueva temporada.
                         </li>
                         <li>
-                          <strong>Paso 3:</strong> cerrar la temporada definitivamente.
-                        </li>
-                        <li>
-                          <strong>Paso 4:</strong> iniciar la nueva temporada.
+                          <strong>Paso 4:</strong> cargar en la nueva temporada el
+                          CSV semilla o la copia maestra descargada.
                         </li>
                       </ol>
                     </div>
@@ -23225,7 +23488,9 @@ async function abrirGestionOperativaIntensivoDia(
                 }}
               >
                 Este paso es únicamente de lectura. No elimina alumnos, reportes,
-                grupos, cobros ni ninguna otra información.
+                grupos, cobros ni ninguna otra información. Descarga aquí la copia maestra,
+                pero NO vuelvas a cargarla todavía: la semilla se importa en el Paso 4,
+                después de cerrar la temporada vieja y activar la nueva.
               </div>
 
               <div
@@ -23246,10 +23511,10 @@ async function abrirGestionOperativaIntensivoDia(
                     flex: '1 1 430px',
                   }}
                 >
-                  Consideramos activo a un alumno si ha tenido al menos una
-                  asistencia real o un reporte durante la temporada. Si lleva la
-                  temporada completa sin ninguna de las dos cosas, aparece como
-                  candidato a eliminar en el futuro cierre definitivo.
+                  “Con actividad” significa que el alumno ya tiene al menos una
+                  asistencia real o un reporte en esta temporada. Al principio de
+                  curso es normal que todos estén a 0: siguen siendo alumnos cargados
+                  y NO son candidatos reales a borrar hasta el cierre de final de temporada.
                 </p>
 
                 <button
@@ -23281,6 +23546,26 @@ async function abrirGestionOperativaIntensivoDia(
 
               {resumenCierreTemporada && (
                 <>
+                  {resumenCierreTemporada.total_alumnos_base > 0 &&
+                    resumenCierreTemporada.activos_temporada === 0 && (
+                      <div
+                        style={{
+                          marginTop: 14,
+                          padding: '13px 14px',
+                          borderRadius: 14,
+                          border: '1px solid #bbf7d0',
+                          background: '#f0fdf4',
+                          color: '#166534',
+                          fontWeight: 900,
+                          lineHeight: 1.45,
+                        }}
+                      >
+                        INICIO DE TEMPORADA · {resumenCierreTemporada.total_alumnos_base} alumnos
+                        cargados como semilla. Todavía no tienen entrenamientos ni reportes.
+                        No hay nada que cerrar ni borrar.
+                      </div>
+                    )}
+
                   <div
                     style={{
                       display: 'grid',
@@ -23291,19 +23576,23 @@ async function abrirGestionOperativaIntensivoDia(
                     }}
                   >
                     <div style={miniTarjetaBlanca}>
-                      <strong>Total base</strong>
+                      <strong>Total alumnos cargados</strong>
                       <div style={{ fontSize: 26, fontWeight: 900, marginTop: 5 }}>
                         {resumenCierreTemporada.total_alumnos_base}
                       </div>
                     </div>
                     <div style={miniTarjetaBlanca}>
-                      <strong>Activos temporada</strong>
+                      <strong>Con actividad esta temporada</strong>
                       <div style={{ fontSize: 26, fontWeight: 900, marginTop: 5 }}>
                         {resumenCierreTemporada.activos_temporada}
                       </div>
                     </div>
                     <div style={miniTarjetaBlanca}>
-                      <strong>Conservar</strong>
+                      <strong>
+                        {resumenCierreTemporada.activos_temporada === 0
+                          ? 'Semilla cargada'
+                          : 'Conservar siguiente temporada'}
+                      </strong>
                       <div
                         style={{
                           fontSize: 26,
@@ -23312,20 +23601,31 @@ async function abrirGestionOperativaIntensivoDia(
                           color: '#15803d',
                         }}
                       >
-                        {resumenCierreTemporada.conservar_siguiente}
+                        {resumenCierreTemporada.activos_temporada === 0
+                          ? resumenCierreTemporada.total_alumnos_base
+                          : resumenCierreTemporada.conservar_siguiente}
                       </div>
                     </div>
                     <div style={miniTarjetaBlanca}>
-                      <strong>Eliminar por inactividad</strong>
+                      <strong>
+                        {resumenCierreTemporada.activos_temporada === 0
+                          ? 'Sin entrenar todavía'
+                          : 'Candidatos a eliminar al cierre'}
+                      </strong>
                       <div
                         style={{
                           fontSize: 26,
                           fontWeight: 900,
                           marginTop: 5,
-                          color: '#b91c1c',
+                          color:
+                            resumenCierreTemporada.activos_temporada === 0
+                              ? '#c2410c'
+                              : '#b91c1c',
                         }}
                       >
-                        {resumenCierreTemporada.eliminar_por_inactividad}
+                        {resumenCierreTemporada.activos_temporada === 0
+                          ? resumenCierreTemporada.total_alumnos_base
+                          : resumenCierreTemporada.eliminar_por_inactividad}
                       </div>
                     </div>
                   </div>
@@ -23341,8 +23641,18 @@ async function abrirGestionOperativaIntensivoDia(
                   >
                     {([
                       ['todos', 'Todos'],
-                      ['conservar', 'Conservar'],
-                      ['eliminar', 'Eliminar'],
+                      [
+                        'conservar',
+                        resumenCierreTemporada.activos_temporada === 0
+                          ? 'Con actividad'
+                          : 'Conservar',
+                      ],
+                      [
+                        'eliminar',
+                        resumenCierreTemporada.activos_temporada === 0
+                          ? 'Sin actividad todavía'
+                          : 'Eliminar',
+                      ],
                     ] as const).map(([valor, etiqueta]) => (
                       <button
                         key={`cierre-${valor}`}
@@ -23388,15 +23698,20 @@ async function abrirGestionOperativaIntensivoDia(
                     <button
                       type="button"
                       onClick={descargarCopiaMaestraTemporada}
+                      disabled={resumenCierreTemporada.activos_temporada === 0}
                       style={{
                         ...botonPrincipal,
                         width: '100%',
                         minWidth: 0,
                         minHeight: 46,
                         whiteSpace: 'normal',
+                        opacity:
+                          resumenCierreTemporada.activos_temporada === 0 ? 0.55 : 1,
                       }}
                     >
-                      Descargar copia maestra
+                      {resumenCierreTemporada.activos_temporada === 0
+                        ? 'Copia maestra disponible al final de temporada'
+                        : 'Descargar copia maestra'}
                     </button>
                   </div>
 
@@ -23527,7 +23842,11 @@ async function abrirGestionOperativaIntensivoDia(
                                     fontWeight: 900,
                                   }}
                                 >
-                                  {fila.conservar_siguiente ? 'Conservar' : 'Eliminar'}
+                                  {resumenCierreTemporada.activos_temporada === 0
+                                    ? 'Semilla · sin actividad todavía'
+                                    : fila.conservar_siguiente
+                                    ? 'Conservar'
+                                    : 'Eliminar'}
                                   <span
                                     style={{
                                       display: 'block',
@@ -23560,6 +23879,313 @@ async function abrirGestionOperativaIntensivoDia(
               marginTop: 16,
               padding: 0,
               overflow: 'hidden',
+              border: '1px solid #fecaca',
+              background: '#fff',
+            }}
+          >
+            <summary
+              style={{
+                listStyle: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '16px 18px',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p
+                  style={{
+                    ...etiquetaSuperior,
+                    color: '#b91c1c',
+                    margin: '0 0 4px',
+                  }}
+                >
+                  PASO 2 · CIERRE DEFINITIVO
+                </p>
+                <h3 style={{ margin: 0, fontSize: 20 }}>Cerrar temporada al finalizar el curso</h3>
+              </div>
+
+              <span
+                style={{
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  border: '1px solid #fecaca',
+                  background: '#fff',
+                  color: '#b91c1c',
+                  fontWeight: 900,
+                  fontSize: 20,
+                }}
+              >
+                ↕
+              </span>
+            </summary>
+
+            <div
+              style={{
+                padding: '0 18px 18px',
+                borderTop: '1px solid #fee2e2',
+              }}
+            >
+              {resumenCierreTemporada &&
+              resumenCierreTemporada.total_alumnos_base > 0 &&
+              resumenCierreTemporada.activos_temporada === 0 ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: 14,
+                    borderRadius: 14,
+                    border: '1px solid #bbf7d0',
+                    background: '#f0fdf4',
+                    color: '#166534',
+                    fontWeight: 900,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Temporada en fase de arranque · {resumenCierreTemporada.total_alumnos_base}{' '}
+                  alumnos cargados y todavía sin actividad. El cierre está desactivado
+                  porque ahora debes empezar a trabajar la temporada, no borrarla.
+                </div>
+              ) : !resumenCierreTemporada ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: 12,
+                    borderRadius: 12,
+                    border: '1px solid #e2e8f0',
+                    background: '#f8fafc',
+                    color: '#64748b',
+                    fontWeight: 800,
+                  }}
+                >
+                  Completa primero el Paso 1 para poder cerrar la temporada.
+                </div>
+              ) : (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: 14,
+                    borderRadius: 14,
+                    border: '1px solid #fecaca',
+                    background: '#fff7f7',
+                  }}
+                >
+                  <label
+                    style={{
+                      display: 'flex',
+                      gap: 9,
+                      alignItems: 'flex-start',
+                      color: '#475569',
+                      fontWeight: 800,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={confirmacionBackupCierre}
+                      onChange={(e) => setConfirmacionBackupCierre(e.target.checked)}
+                      style={{ marginTop: 3 }}
+                    />
+                    <span>Backup Supabase y copia maestra guardados.</span>
+                  </label>
+
+                  <label
+                    style={{
+                      display: 'flex',
+                      gap: 9,
+                      alignItems: 'flex-start',
+                      marginTop: 10,
+                      color: '#475569',
+                      fontWeight: 800,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={confirmacionListadoCierre}
+                      onChange={(e) => setConfirmacionListadoCierre(e.target.checked)}
+                      style={{ marginTop: 3 }}
+                    />
+                    <span>Listado “Eliminar” revisado.</span>
+                  </label>
+
+                  <label
+                    style={{
+                      ...labelCampo,
+                      display: 'block',
+                      marginTop: 14,
+                      width: '100%',
+                    }}
+                  >
+                    Escribe exactamente
+                    <strong
+                      style={{
+                        display: 'block',
+                        marginTop: 4,
+                        color: '#991b1b',
+                      }}
+                    >
+                      CERRAR {resumenCierreTemporada.temporada}
+                    </strong>
+                    <input
+                      value={confirmacionCierreTexto}
+                      onChange={(e) => setConfirmacionCierreTexto(e.target.value)}
+                      placeholder={`CERRAR ${resumenCierreTemporada.temporada}`}
+                      style={{
+                        ...inputCampo,
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
+                        marginTop: 7,
+                      }}
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={ejecutarCierreDefinitivoTemporada}
+                    disabled={cerrandoTemporada}
+                    style={{
+                      ...botonPrincipal,
+                      width: '100%',
+                      minHeight: 48,
+                      marginTop: 14,
+                      background: '#b91c1c',
+                      borderColor: '#b91c1c',
+                      opacity: cerrandoTemporada ? 0.65 : 1,
+                    }}
+                  >
+                    {cerrandoTemporada
+                      ? 'Cerrando temporada...'
+                      : 'Cerrar temporada definitivamente'}
+                  </button>
+
+                  {cierreTemporadaError && (
+                    <div style={{ ...errorCaja, marginTop: 12 }}>
+                      {cierreTemporadaError}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {resultadoCierreTemporada && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: 12,
+                    borderRadius: 12,
+                    border: '1px solid #bbf7d0',
+                    background: '#f0fdf4',
+                    color: '#166534',
+                    fontWeight: 900,
+                  }}
+                >
+                  {resultadoCierreTemporada}
+                </div>
+              )}
+
+            </div>
+          </details>
+
+          <article
+            style={{
+              ...tarjeta,
+              marginTop: 16,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid #bfdbfe',
+              background: '#fff',
+            }}
+          >
+            <div style={{ padding: '16px 18px' }}>
+              <p
+                style={{
+                  ...etiquetaSuperior,
+                  color: '#1d4ed8',
+                  margin: '0 0 4px',
+                }}
+              >
+                PASO 3 · ARRANQUE DE TEMPORADA
+              </p>
+              <h3 style={{ margin: 0, fontSize: 20 }}>Iniciar nueva temporada</h3>
+
+              {temporadaActivaCierre ===
+              nombreTemporadaAgenda(anioInicioTemporadaAgenda) ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    border: '1px solid #bbf7d0',
+                    background: '#f0fdf4',
+                    color: '#166534',
+                    fontWeight: 900,
+                  }}
+                >
+                  Temporada activa · {temporadaActivaCierre}
+                </div>
+              ) : (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(0, 1fr) auto',
+                    gap: 10,
+                    alignItems: 'end',
+                    marginTop: 14,
+                  }}
+                >
+                  <label style={{ ...labelCampo, minWidth: 0 }}>
+                    Temporada a iniciar
+                    <select
+                      value={anioInicioTemporadaAgenda}
+                      style={{ ...selectCampoAgenda, width: '100%' }}
+                      onChange={(e) => {
+                        const nuevoAnio = Number(e.target.value);
+                        setAnioInicioTemporadaAgenda(nuevoAnio);
+                        setMesAgenda(`${nuevoAnio}-09`);
+                        setSemanaAgendaInicio('');
+                        setResultadoNuevaTemporada('');
+                      }}
+                    >
+                      {opcionesTemporadaAgenda.map((anio) => (
+                        <option key={anio} value={anio}>
+                          {nombreTemporadaAgenda(anio)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={iniciarNuevaTemporadaOperativa}
+                    disabled={
+                      iniciandoNuevaTemporada || cargandoTemporadaActivaCierre
+                    }
+                    style={{
+                      ...botonPrincipal,
+                      minHeight: 44,
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {iniciandoNuevaTemporada
+                      ? 'Iniciando...'
+                      : 'Iniciar temporada'}
+                  </button>
+                </div>
+              )}
+            </div>
+          </article>
+
+          <details
+            style={{
+              ...tarjeta,
+              marginTop: 16,
+              padding: 0,
+              overflow: 'hidden',
               border: '1px solid rgba(14,116,144,.22)',
               background:
                 'linear-gradient(135deg, rgba(236,254,255,.94), #fff 58%, rgba(248,250,252,.9))',
@@ -23584,7 +24210,7 @@ async function abrirGestionOperativaIntensivoDia(
                     margin: '0 0 3px',
                   }}
                 >
-                  PASO 2 · COPIA MAESTRA Y SEMILLA
+                  PASO 4 · CARGAR SEMILLA
                 </p>
                 <h3
                   style={{
@@ -23594,7 +24220,7 @@ async function abrirGestionOperativaIntensivoDia(
                     overflowWrap: 'anywhere',
                   }}
                 >
-                  Comprobar CSV y cargar semilla
+                  Cargar alumnos de la nueva temporada
                 </h3>
               </div>
 
@@ -23627,6 +24253,22 @@ async function abrirGestionOperativaIntensivoDia(
               <div
                 style={{
                   padding: 13,
+                  border: '1px solid #bfdbfe',
+                  borderRadius: 14,
+                  background: '#eff6ff',
+                  color: '#1e40af',
+                  fontWeight: 900,
+                  lineHeight: 1.4,
+                  marginBottom: 12,
+                }}
+              >
+                Temporada activa: {temporadaActivaCierre || 'NINGUNA'}.
+                Si pone NINGUNA, vuelve al Paso 3 y activa la nueva temporada antes de importar.
+              </div>
+
+              <div
+                style={{
+                  padding: 13,
                   border: '1px solid #a5f3fc',
                   borderRadius: 14,
                   background: '#ecfeff',
@@ -23635,8 +24277,8 @@ async function abrirGestionOperativaIntensivoDia(
                   lineHeight: 1.4,
                 }}
               >
-                Este paso tampoco escribe ni modifica datos. Solo abre y valida la
-                copia maestra que acabas de descargar.
+                Primero seleccionas y validas el CSV. Solo al pulsar
+                “Cargar semilla en alumnos” se escriben los alumnos en la temporada activa.
               </div>
 
               <label
@@ -23647,7 +24289,7 @@ async function abrirGestionOperativaIntensivoDia(
                   marginTop: 14,
                 }}
               >
-                Seleccionar copia maestra CSV
+                Seleccionar CSV semilla / copia maestra
                 <input
                   type="file"
                   accept=".csv,text/csv"
@@ -23876,302 +24518,9 @@ async function abrirGestionOperativaIntensivoDia(
           </details>
 
 
-          <details
-            style={{
-              ...tarjeta,
-              marginTop: 16,
-              padding: 0,
-              overflow: 'hidden',
-              border: '1px solid #fecaca',
-              background: '#fff',
-            }}
-          >
-            <summary
-              style={{
-                listStyle: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 12,
-                padding: '16px 18px',
-              }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <p
-                  style={{
-                    ...etiquetaSuperior,
-                    color: '#b91c1c',
-                    margin: '0 0 4px',
-                  }}
-                >
-                  PASO 3 · CIERRE DEFINITIVO
-                </p>
-                <h3 style={{ margin: 0, fontSize: 20 }}>Cerrar temporada</h3>
-              </div>
+          
 
-              <span
-                style={{
-                  flex: '0 0 auto',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 34,
-                  height: 34,
-                  borderRadius: 999,
-                  border: '1px solid #fecaca',
-                  background: '#fff',
-                  color: '#b91c1c',
-                  fontWeight: 900,
-                  fontSize: 20,
-                }}
-              >
-                ↕
-              </span>
-            </summary>
-
-            <div
-              style={{
-                padding: '0 18px 18px',
-                borderTop: '1px solid #fee2e2',
-              }}
-            >
-              {!resumenCierreTemporada ? (
-                <div
-                  style={{
-                    marginTop: 14,
-                    padding: 12,
-                    borderRadius: 12,
-                    border: '1px solid #e2e8f0',
-                    background: '#f8fafc',
-                    color: '#64748b',
-                    fontWeight: 800,
-                  }}
-                >
-                  Completa primero el Paso 1 para poder cerrar la temporada.
-                </div>
-              ) : (
-                <div
-                  style={{
-                    marginTop: 14,
-                    padding: 14,
-                    borderRadius: 14,
-                    border: '1px solid #fecaca',
-                    background: '#fff7f7',
-                  }}
-                >
-                  <label
-                    style={{
-                      display: 'flex',
-                      gap: 9,
-                      alignItems: 'flex-start',
-                      color: '#475569',
-                      fontWeight: 800,
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={confirmacionBackupCierre}
-                      onChange={(e) => setConfirmacionBackupCierre(e.target.checked)}
-                      style={{ marginTop: 3 }}
-                    />
-                    <span>Backup Supabase y copia maestra guardados.</span>
-                  </label>
-
-                  <label
-                    style={{
-                      display: 'flex',
-                      gap: 9,
-                      alignItems: 'flex-start',
-                      marginTop: 10,
-                      color: '#475569',
-                      fontWeight: 800,
-                    }}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={confirmacionListadoCierre}
-                      onChange={(e) => setConfirmacionListadoCierre(e.target.checked)}
-                      style={{ marginTop: 3 }}
-                    />
-                    <span>Listado “Eliminar” revisado.</span>
-                  </label>
-
-                  <label
-                    style={{
-                      ...labelCampo,
-                      display: 'block',
-                      marginTop: 14,
-                      width: '100%',
-                    }}
-                  >
-                    Escribe exactamente
-                    <strong
-                      style={{
-                        display: 'block',
-                        marginTop: 4,
-                        color: '#991b1b',
-                      }}
-                    >
-                      CERRAR {resumenCierreTemporada.temporada}
-                    </strong>
-                    <input
-                      value={confirmacionCierreTexto}
-                      onChange={(e) => setConfirmacionCierreTexto(e.target.value)}
-                      placeholder={`CERRAR ${resumenCierreTemporada.temporada}`}
-                      style={{
-                        ...inputCampo,
-                        width: '100%',
-                        minWidth: 0,
-                        boxSizing: 'border-box',
-                        marginTop: 7,
-                      }}
-                    />
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={ejecutarCierreDefinitivoTemporada}
-                    disabled={
-                      cerrandoTemporada ||
-                      !confirmacionBackupCierre ||
-                      !confirmacionListadoCierre ||
-                      confirmacionCierreTexto.trim() !==
-                        `CERRAR ${resumenCierreTemporada.temporada}`
-                    }
-                    style={{
-                      ...botonPrincipal,
-                      width: '100%',
-                      minHeight: 48,
-                      marginTop: 14,
-                      background: '#b91c1c',
-                      borderColor: '#b91c1c',
-                      opacity:
-                        cerrandoTemporada ||
-                        !confirmacionBackupCierre ||
-                        !confirmacionListadoCierre ||
-                        confirmacionCierreTexto.trim() !==
-                          `CERRAR ${resumenCierreTemporada.temporada}`
-                          ? 0.5
-                          : 1,
-                    }}
-                  >
-                    {cerrandoTemporada
-                      ? 'Cerrando temporada...'
-                      : 'Cerrar temporada definitivamente'}
-                  </button>
-                </div>
-              )}
-
-              {resultadoCierreTemporada && (
-                <div
-                  style={{
-                    marginTop: 12,
-                    padding: 12,
-                    borderRadius: 12,
-                    border: '1px solid #bbf7d0',
-                    background: '#f0fdf4',
-                    color: '#166534',
-                    fontWeight: 900,
-                  }}
-                >
-                  {resultadoCierreTemporada}
-                </div>
-              )}
-
-            </div>
-          </details>
-
-          <article
-            style={{
-              ...tarjeta,
-              marginTop: 16,
-              padding: 0,
-              overflow: 'hidden',
-              border: '1px solid #bfdbfe',
-              background: '#fff',
-            }}
-          >
-            <div style={{ padding: '16px 18px' }}>
-              <p
-                style={{
-                  ...etiquetaSuperior,
-                  color: '#1d4ed8',
-                  margin: '0 0 4px',
-                }}
-              >
-                PASO 4 · ARRANQUE DE TEMPORADA
-              </p>
-              <h3 style={{ margin: 0, fontSize: 20 }}>Iniciar nueva temporada</h3>
-
-              {temporadaActivaCierre ===
-              nombreTemporadaAgenda(anioInicioTemporadaAgenda) ? (
-                <div
-                  style={{
-                    marginTop: 14,
-                    padding: '12px 14px',
-                    borderRadius: 12,
-                    border: '1px solid #bbf7d0',
-                    background: '#f0fdf4',
-                    color: '#166534',
-                    fontWeight: 900,
-                  }}
-                >
-                  Temporada activa · {temporadaActivaCierre}
-                </div>
-              ) : (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0, 1fr) auto',
-                    gap: 10,
-                    alignItems: 'end',
-                    marginTop: 14,
-                  }}
-                >
-                  <label style={{ ...labelCampo, minWidth: 0 }}>
-                    Temporada a iniciar
-                    <select
-                      value={anioInicioTemporadaAgenda}
-                      style={{ ...selectCampoAgenda, width: '100%' }}
-                      onChange={(e) => {
-                        const nuevoAnio = Number(e.target.value);
-                        setAnioInicioTemporadaAgenda(nuevoAnio);
-                        setMesAgenda(`${nuevoAnio}-09`);
-                        setSemanaAgendaInicio('');
-                        setResultadoNuevaTemporada('');
-                      }}
-                    >
-                      {opcionesTemporadaAgenda.map((anio) => (
-                        <option key={anio} value={anio}>
-                          {nombreTemporadaAgenda(anio)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <button
-                    type="button"
-                    onClick={iniciarNuevaTemporadaOperativa}
-                    disabled={
-                      iniciandoNuevaTemporada || cargandoTemporadaActivaCierre
-                    }
-                    style={{
-                      ...botonPrincipal,
-                      minHeight: 44,
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {iniciandoNuevaTemporada
-                      ? 'Iniciando...'
-                      : 'Iniciar temporada'}
-                  </button>
-                </div>
-              )}
-            </div>
-          </article>
-
-          <article style={{ ...tarjeta, marginTop: 16 }}>
+<article style={{ ...tarjeta, marginTop: 16 }}>
             <div
               style={{
                 display: 'flex',
@@ -25168,11 +25517,11 @@ async function abrirGestionOperativaIntensivoDia(
                       <strong>
                         {
                           agendaAlumnosSesion.filter(
-                            (a) => a.estado_en_listado === 'NUEVO'
+                            (a) => a.estado_en_listado === 'PENDIENTE_TEST'
                           ).length
                         }
                       </strong>
-                      <span>nuevos</span>
+                      <span>pendientes test</span>
                     </button>
                     <button
                       type="button"
@@ -25224,7 +25573,7 @@ async function abrirGestionOperativaIntensivoDia(
                             // Antes este panel dependía de que "Fichas" se hubiera cargado
                             // previamente, por eso Bautista no aparecía como sugerencia.
                             const data = await consultarSupabase<AlumnoResumen>(
-                              'v_resumen_alumno',
+                              'v_resumen_alumno_v2',
                               'select=*&order=alumno.asc'
                             );
                             setAlumnos(data);
@@ -25593,7 +25942,7 @@ async function abrirGestionOperativaIntensivoDia(
                         }}
                       >
                         <strong>
-                          Mostrando: {agendaFiltroAlumnos === 'NUEVO' ? 'alumnos nuevos' : 'alumnos conocidos'}
+                          Mostrando: {agendaFiltroAlumnos === 'NUEVO' ? 'nuevos pendientes de Altas/Test' : 'alumnos conocidos'}
                         </strong>
                         <button
                           type="button"
@@ -25609,7 +25958,9 @@ async function abrirGestionOperativaIntensivoDia(
                         .filter(
                           (alumno) =>
                             agendaFiltroAlumnos === 'TODOS' ||
-                            alumno.estado_en_listado === agendaFiltroAlumnos
+                            (agendaFiltroAlumnos === 'NUEVO'
+                              ? alumno.estado_en_listado === 'PENDIENTE_TEST'
+                              : alumno.estado_en_listado === agendaFiltroAlumnos)
                         )
                         .map((alumno) => (
                         <div
@@ -25637,30 +25988,49 @@ async function abrirGestionOperativaIntensivoDia(
                               maxWidth: 560,
                             }}
                           >
-                            <button
-                              onClick={() => editarNivelAlumnoAgenda(alumno)}
-                              style={botonMini}
-                            >
-                              Editar nivel
-                            </button>
-                            <button
-                              onClick={() => editarNombreAlumnoAgenda(alumno)}
-                              style={botonMini}
-                            >
-                              Editar nombre
-                            </button>
-                            <button
-                              onClick={() => quitarAlumnoAgenda(alumno)}
-                              style={botonPeligroMini}
-                            >
-                              Quitar sesión
-                            </button>
-                            <button
-                              onClick={() => borrarAlumnoBaseAgenda(alumno)}
-                              style={botonPeligroMini}
-                            >
-                              Borrar ficha
-                            </button>
+                            {alumno.estado_en_listado === 'PENDIENTE_TEST' ? (
+                              <>
+                                <button
+                                  onClick={() => abrirAltaTestDesdeAgenda(alumno)}
+                                  style={botonPrincipal}
+                                >
+                                  Crear Alta / Test
+                                </button>
+                                <button
+                                  onClick={() => quitarAlumnoAgenda(alumno)}
+                                  style={botonPeligroMini}
+                                >
+                                  Quitar sesión
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => editarNivelAlumnoAgenda(alumno)}
+                                  style={botonMini}
+                                >
+                                  Editar nivel
+                                </button>
+                                <button
+                                  onClick={() => editarNombreAlumnoAgenda(alumno)}
+                                  style={botonMini}
+                                >
+                                  Editar nombre
+                                </button>
+                                <button
+                                  onClick={() => quitarAlumnoAgenda(alumno)}
+                                  style={botonPeligroMini}
+                                >
+                                  Quitar sesión
+                                </button>
+                                <button
+                                  onClick={() => borrarAlumnoBaseAgenda(alumno)}
+                                  style={botonPeligroMini}
+                                >
+                                  Borrar ficha
+                                </button>
+                              </>
+                            )}
                           </div>
                         </div>
                       ))}
@@ -26854,6 +27224,15 @@ async function abrirGestionOperativaIntensivoDia(
                       />
                     </label>
                     <label style={labelCampo}>
+                      Teléfono familia
+                      <input
+                        inputMode="tel"
+                        value={ocioTelefono}
+                        onChange={(e) => setOcioTelefono(e.target.value)}
+                        placeholder="612345678"
+                      />
+                    </label>
+                    <label style={labelCampo}>
                       Día fijo
                       <select
                         value={ocioDiaFijo}
@@ -27033,7 +27412,11 @@ async function abrirGestionOperativaIntensivoDia(
                               Nivel {alumno.nivel_usado || '-'}
                             </span>
                           </div>
-                          <h3 style={{ margin: 0 }}>{alumno.alumno}</h3>
+                          {bloqueIdentidadFichaAlumnoApp(
+                            alumno.alumno,
+                            alumno.fecha_nacimiento,
+                            alumno.telefono
+                          )}
                           <p
                             style={{
                               margin: '8px 0 0',
@@ -27068,7 +27451,7 @@ async function abrirGestionOperativaIntensivoDia(
                             onClick={() => editarAlumnoOcio(alumno)}
                             style={botonSecundario}
                           >
-                            Editar ficha
+                            Editar ficha / Ocio
                           </button>
                           <button
                             onClick={() => abrirEvaluacionOcio(alumno)}
@@ -35417,7 +35800,11 @@ async function abrirGestionOperativaIntensivoDia(
                                   alignItems: 'center',
                                 }}
                               >
-                                <h3 style={{ margin: 0 }}>{registro.alumno}</h3>
+                                {bloqueIdentidadFichaAlumnoApp(
+                                  registro.alumno,
+                                  fichaMaestra?.fecha_nacimiento,
+                                  fichaMaestra?.telefono
+                                )}
                                 <span style={badgeNivelFicha(nivelFinal)}>
                                   {resumenFinal?.nivel_final_confirmado
                                     ? `Nivel final ${nivelFinal}`
@@ -35462,20 +35849,6 @@ async function abrirGestionOperativaIntensivoDia(
                                 {curso?.lugar ? ` · ${curso.lugar}` : ''}
                               </p>
 
-                              <p
-                                style={{
-                                  margin: '5px 0 0',
-                                  color: '#64748b',
-                                  fontWeight: 700,
-                                }}
-                              >
-                                Nacimiento:{' '}
-                                <strong>
-                                  {fichaMaestra?.fecha_nacimiento
-                                    ? formatearFecha(fichaMaestra.fecha_nacimiento)
-                                    : 'Sin registrar'}
-                                </strong>
-                              </p>
 
                               <p
                                 style={{
@@ -35751,6 +36124,19 @@ async function abrirGestionOperativaIntensivoDia(
                                       onChange={(e) =>
                                         setAlumnoEditFechaNacimiento(e.target.value)
                                       }
+                                      style={inputCampo}
+                                    />
+                                  </label>
+
+                                  <label style={labelCampo}>
+                                    Teléfono familia
+                                    <input
+                                      inputMode="tel"
+                                      value={alumnoEditTelefono}
+                                      onChange={(e) =>
+                                        setAlumnoEditTelefono(e.target.value)
+                                      }
+                                      placeholder="612345678"
                                       style={inputCampo}
                                     />
                                   </label>
@@ -36081,21 +36467,11 @@ async function abrirGestionOperativaIntensivoDia(
                             </span>
                           </div>
 
-                          <h3 style={{ margin: 0 }}>{alumno.alumno}</h3>
-                          <p
-                            style={{
-                              margin: '6px 0 0',
-                              color: '#64748b',
-                              fontWeight: 700,
-                            }}
-                          >
-                            Nacimiento:{' '}
-                            <strong>
-                              {alumno.fecha_nacimiento
-                                ? formatearFecha(alumno.fecha_nacimiento)
-                                : 'Sin registrar'}
-                            </strong>
-                          </p>
+                          {bloqueIdentidadFichaAlumnoApp(
+                            alumno.alumno,
+                            alumno.fecha_nacimiento,
+                            alumno.telefono
+                          )}
                           {!datosBasicosFichaAlumnoApp(alumno).completa && (
                             <p
                               style={{
@@ -36377,6 +36753,19 @@ async function abrirGestionOperativaIntensivoDia(
                                 onChange={(e) =>
                                   setAlumnoEditFechaNacimiento(e.target.value)
                                 }
+                                style={inputCampo}
+                              />
+                            </label>
+
+                            <label style={labelCampo}>
+                              Teléfono familia
+                              <input
+                                inputMode="tel"
+                                value={alumnoEditTelefono}
+                                onChange={(e) =>
+                                  setAlumnoEditTelefono(e.target.value)
+                                }
+                                placeholder="612345678"
                                 style={inputCampo}
                               />
                             </label>

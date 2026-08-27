@@ -398,6 +398,7 @@ export const EJERCICIOS_TECNICOS_MSZ: EjercicioTecnicoMSZ[] = [
     intensidad: 'MEDIA',
     formato: 'GRUPO',
     reto: true,
+    evitarSi: ['miedo', 'velocidad_sin_control', 'autonomia_baja'],
     instrucciones:
       'Quitar un esquí únicamente en el tramo final, con espacio y velocidad controlada. Una bajada/serie corta y volver a dos esquís.',
   },
@@ -412,6 +413,7 @@ export const EJERCICIOS_TECNICOS_MSZ: EjercicioTecnicoMSZ[] = [
     intensidad: 'BAJA',
     formato: 'GRUPO',
     reto: true,
+    evitarSi: ['miedo', 'velocidad_sin_control', 'autonomia_baja'],
     instrucciones:
       'Tramo corto, despejado y a velocidad baja. El entrenador controla espacio y final del ejercicio.',
   },
@@ -472,6 +474,7 @@ export const EJERCICIOS_TECNICOS_MSZ: EjercicioTecnicoMSZ[] = [
     formato: 'GRUPO',
     juego: true,
     reto: true,
+    evitarSi: ['miedo', 'velocidad_sin_control', 'autonomia_baja'],
     instrucciones:
       'Salida escalonada o uno a uno; no carrera simultánea ocupando toda la pista. Gana quien mantenga control y línea, no solo quien llegue antes.',
   },
@@ -835,6 +838,7 @@ export const EJERCICIOS_TECNICOS_MSZ: EjercicioTecnicoMSZ[] = [
     intensidad: 'ALTA',
     formato: 'GRUPO',
     reto: true,
+    evitarSi: ['miedo', 'velocidad_sin_control', 'autonomia_baja'],
     instrucciones:
       'Pequeño salto en la transición para cambiar apoyos, solo con niños muy fuertes y totalmente estables.',
     explicacionEntrenador:
@@ -998,6 +1002,7 @@ export const EJERCICIOS_TECNICOS_MSZ: EjercicioTecnicoMSZ[] = [
     intensidad: 'ALTA',
     formato: 'GRUPO',
     reto: true,
+    evitarSi: ['miedo', 'velocidad_sin_control', 'autonomia_baja'],
     instrucciones:
       'Hacer pequeños saltos verticales con ambos esquís, recepciones suaves y trayectoria estable.',
     explicacionEntrenador:

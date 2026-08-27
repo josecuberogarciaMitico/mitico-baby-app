@@ -1339,17 +1339,45 @@ function planInicial(input: InputTrabajoDiario) {
       perfilGrupo === 'A_PLUS_PURO' ||
       perfilGrupo === 'A_PLUS_NUMEROSO')
   ) {
-    priorizar('simulacro-fila-a-plus');
+    const preparacionAPlus = resumenPreparacionAPlusGrupo(input);
+
+    if (preparacionAPlus.mayoria) {
+      priorizar('simulacro-fila-a-plus');
+    } else {
+      priorizar('seguir-huella');
+    }
+
     priorizar('parar-profesor');
   }
 
   const ejerciciosSesion: EjercicioTecnicoMSZ[] = [];
   const idsSesion = new Set<string>();
-  [...prioritarios, ...ejercicios].forEach((ejercicio) => {
+
+  // Lo detectado en el reporte/progresión inicial manda. Después completamos
+  // con el plan base, dando preferencia a tareas no usadas recientemente.
+  const ejerciciosBaseOrdenados = [...ejercicios].sort(
+    (a, b) =>
+      penalizacionRepeticionEjercicio(b, input) -
+      penalizacionRepeticionEjercicio(a, input)
+  );
+
+  [...prioritarios, ...ejerciciosBaseOrdenados].forEach((ejercicio) => {
     if (!ejercicio || idsSesion.has(ejercicio.id)) return;
     idsSesion.add(ejercicio.id);
     ejerciciosSesion.push(ejercicio);
   });
+
+  const hayMiedoInicial = alumnos.some((alumno) =>
+    tieneRiesgo(alumno, 'miedo')
+  );
+  const consolidarInicial =
+    hayMiedoInicial ||
+    grupoConRitmoLento(input) ||
+    grupoConAtencionOCansancio(input);
+  const estadoInicial: EstadoSesionTecnicaApp = consolidarInicial
+    ? 'CONSOLIDAR'
+    : 'PROGRESAR';
+  const cantidadInicial = consolidarInicial ? 3 : 4;
 
   const hayProblemaCuna = alumnos.some((alumno) => {
     const p = alumno.progresionInicial;
@@ -1367,11 +1395,12 @@ function planInicial(input: InputTrabajoDiario) {
   const bloques = [
     'CALENTAMIENTO · 3–5 min sin esquís: movilidad, equilibrio y activación sencilla al lado de pista.',
     `OBJETIVO · ${objetivo}`,
+    `ESTADO · ${textoEstadoSesion(estadoInicial)}`,
     'PRIMERA BAJADA · Libre/observada para comprobar cómo llega cada niño hoy.',
     `ORGANIZACIÓN · ${organizacion}`,
     [
       'TRABAJO',
-      ...ejercicios.slice(0, 4).map((ejercicio) =>
+      ...ejerciciosSesion.slice(0, cantidadInicial).map((ejercicio) =>
         lineaTrabajoEjercicio(
           ejercicio,
           nivelDominante(input),
