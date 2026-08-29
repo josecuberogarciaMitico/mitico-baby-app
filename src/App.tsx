@@ -211,6 +211,75 @@ type WhatsappPreviewState = {
   mensajeGrupoCopiado?: boolean;
 };
 
+
+type ModalidadAnalisisAdminApp = 'BABY' | 'OCIO' | 'INTENSIVOS';
+
+type AnalisisAdminMensualApp = {
+  mes: string;
+  alumnos_unicos: number;
+  altas: number;
+  crecimiento_pct: number | null;
+  continuidad_pct: number | null;
+  perdida_continuidad_pct: number | null;
+  asistencia_real_pct: number | null;
+  promedio_ninos_turno: number;
+  promedio_por_grupo: number;
+  sesiones_realizadas: number;
+  ocupacion_pct: number | null;
+  evolucion_tecnica: number;
+  mejoran: number;
+  estables: number;
+  bajan: number;
+};
+
+type AnalisisAdminPayloadApp = {
+  meta: {
+    temporada_id: string;
+    temporada: string;
+    fecha_inicio: string;
+    fecha_fin: string;
+    modalidad: ModalidadAnalisisAdminApp;
+    generado_at: string;
+  };
+  resumen: {
+    alumnos_unicos: number;
+    altas: number;
+    continuidad_pct: number | null;
+    perdida_continuidad_pct: number | null;
+    asistencia_real_pct: number | null;
+    promedio_ninos_turno: number;
+    promedio_por_grupo: number;
+    sesiones_realizadas: number;
+    ocupacion_pct: number | null;
+    evolucion_tecnica: number;
+    alumnos_mejoran: number;
+    alumnos_estables: number;
+    alumnos_bajan: number;
+  };
+  mensual: AnalisisAdminMensualApp[];
+  niveles: Array<{ nivel: string; total: number }>;
+  progresiones: Array<{
+    desde: string;
+    hasta: string;
+    total: number;
+    sentido: 'SUBE' | 'BAJA' | 'IGUAL';
+  }>;
+  comparativa_temporadas: Array<{
+    temporada_id: string;
+    temporada: string;
+    activa: boolean;
+    alumnos_unicos: number;
+    sesiones_realizadas: number;
+    asistencia_real_pct: number | null;
+    evolucion_tecnica: number;
+  }>;
+  definiciones: Record<string, string>;
+};
+
+type AnalisisAdminRpcRowApp = {
+  payload: AnalisisAdminPayloadApp;
+};
+
 type AvisoJose = {
   orden: number;
   bloque: string;
@@ -1103,6 +1172,51 @@ type IntensivoRecuperacionApp = {
   grupo_destino: string | null;
   estado: string;
   created_at: string;
+  intensivo_dia_origen_id: string | null;
+  numero_dia_origen: number | null;
+  fecha_falta: string | null;
+  hora_inicio_falta: string | null;
+  hora_fin_falta: string | null;
+  estado_falta: string | null;
+  falta_genera_recuperacion: boolean | null;
+  nivel_alumno: string | null;
+  nivel_orden_alumno: number | null;
+  fecha_destino: string | null;
+  hora_inicio_destino: string | null;
+  hora_fin_destino: string | null;
+};
+
+type RecuperacionRecomendacionApp = {
+  recuperacion_id: string;
+  alumno_id: string;
+  nivel_alumno: string | null;
+  nivel_orden_alumno: number | null;
+  fecha_falta: string;
+  grupo_id: string;
+  intensivo_dia_id: string;
+  intensivo_destino_id: string;
+  intensivo_destino: string;
+  numero_dia_destino: number;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  nombre_grupo: string;
+  nivel_grupo: string | null;
+  pista: string | null;
+  publicado: boolean;
+  total_alumnos: number;
+  capacidad_max: number;
+  plazas_libres: number;
+  nivel_min_grupo: number | null;
+  nivel_max_grupo: number | null;
+  diferencia_nivel: number;
+  edad_media_grupo_meses: number | null;
+  diferencia_edad_meses: number | null;
+  dias_despues: number;
+  puntuacion: number;
+  categoria: 'IDEAL' | 'COMPATIBLE';
+  motivo: string;
+  orden_recomendacion: number;
 };
 
 type GrupoDestinoRecuperacionApp = {
@@ -1590,7 +1704,7 @@ type GrupoIntensivoFormState = {
 
 function intensivoInicial(): IntensivoFormState {
   return {
-    temporada: '2025/2026',
+    temporada: '',
     nombre: '',
     lugar: 'Madrid SnowZone',
     estado: 'Abierto',
@@ -3750,7 +3864,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     | 'disponibilidad'
     | 'reportes'
     | 'cobros'
-    | 'exportaciones'
+    | 'informes'
+    | 'temporadas'
+    | 'analisis'
     | 'intensivos'
     | 'listados'
   >(esEntrenadorApp ? 'entrenador' : 'agenda');
@@ -3827,7 +3943,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       esCoordinadorApp &&
       !esCoordinadorJefeApp &&
       (pantalla === 'cobros' ||
-        pantalla === 'exportaciones' ||
+        pantalla === 'informes' ||
+        pantalla === 'temporadas' ||
+        pantalla === 'analisis' ||
         pantalla === 'usuarios')
     ) {
       setPantalla('agenda');
@@ -4108,6 +4226,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       window.scrollTo({ top: scrollY, behavior: 'auto' });
     };
   }, [overlayEntrenadorAbierto]);
+
+  const [modalidadAnalisisAdmin, setModalidadAnalisisAdmin] =
+    useState<ModalidadAnalisisAdminApp>('BABY');
+  const [temporadaAnalisisAdminId, setTemporadaAnalisisAdminId] =
+    useState<string>('');
+  const [analisisAdmin, setAnalisisAdmin] =
+    useState<AnalisisAdminPayloadApp | null>(null);
+  const [cargandoAnalisisAdmin, setCargandoAnalisisAdmin] = useState(false);
+  const [errorAnalisisAdmin, setErrorAnalisisAdmin] = useState('');
 
   const [alumnos, setAlumnos] = useState<AlumnoResumen[]>([]);
   const [alumnosBabyFicha, setAlumnosBabyFicha] = useState<
@@ -4435,6 +4562,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [intensivoMás, setIntensivoMás] = useState<IntensivoRecuperacionApp[]>(
     []
   );
+  const [recomendacionesRecuperacion, setRecomendacionesRecuperacion] = useState<
+    RecuperacionRecomendacionApp[]
+  >([]);
   const [gruposDestinoRecuperacion, setGruposDestinoRecuperacion] = useState<
     GrupoDestinoRecuperacionApp[]
   >([]);
@@ -4578,6 +4708,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [temporadaActivaCierre, setTemporadaActivaCierre] = useState('');
   const [cargandoTemporadaActivaCierre, setCargandoTemporadaActivaCierre] =
     useState(false);
+  const [errorTemporadaActivaCierre, setErrorTemporadaActivaCierre] =
+    useState('');
   const [mostrarFlujoCierre, setMostrarFlujoCierre] = useState(false);
 
   const [agendaSesionesDirectas, setAgendaSesionesDirectas] = useState<
@@ -4828,6 +4960,274 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     );
   }
 
+  function numeroAnalisisAdminApp(valor: number | null | undefined, sufijo = '') {
+    if (valor === null || valor === undefined || Number.isNaN(Number(valor))) return '—';
+    const numero = Number(valor);
+    const texto = Number.isInteger(numero)
+      ? String(numero)
+      : numero.toLocaleString('es-ES', { maximumFractionDigits: 2 });
+    return `${texto}${sufijo}`;
+  }
+
+  function etiquetaMesAnalisisAdminApp(mes: string) {
+    const [anio, numeroMes] = String(mes || '').split('-').map(Number);
+    if (!anio || !numeroMes) return mes || '-';
+    const fecha = new Date(anio, numeroMes - 1, 1);
+    return fecha.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
+  }
+
+  async function cargarAnalisisAdminApp(
+    modalidad: ModalidadAnalisisAdminApp = modalidadAnalisisAdmin,
+    temporadaId: string = temporadaAnalisisAdminId
+  ) {
+    if (!esCoordinadorJefeApp) return;
+    setCargandoAnalisisAdmin(true);
+    setErrorAnalisisAdmin('');
+
+    try {
+      const filas = await ejecutarFuncionConRespuesta<AnalisisAdminRpcRowApp>(
+        'obtener_analisis_admin_app',
+        {
+          p_temporada_id: temporadaId || null,
+          p_modalidad_codigo: modalidad,
+        }
+      );
+
+      const payload = filas?.[0]?.payload;
+      if (!payload) throw new Error('El análisis no ha devuelto datos.');
+
+      setAnalisisAdmin(payload);
+      setModalidadAnalisisAdmin(modalidad);
+      setTemporadaAnalisisAdminId(payload.meta.temporada_id);
+    } catch (err: any) {
+      setAnalisisAdmin(null);
+      setErrorAnalisisAdmin(
+        err?.message || 'No se pudo calcular el análisis de administración.'
+      );
+    } finally {
+      setCargandoAnalisisAdmin(false);
+    }
+  }
+
+  function cambiarModalidadAnalisisAdminApp(modalidad: ModalidadAnalisisAdminApp) {
+    setModalidadAnalisisAdmin(modalidad);
+    void cargarAnalisisAdminApp(modalidad, temporadaAnalisisAdminId);
+  }
+
+  function cambiarTemporadaAnalisisAdminApp(temporadaId: string) {
+    setTemporadaAnalisisAdminId(temporadaId);
+    void cargarAnalisisAdminApp(modalidadAnalisisAdmin, temporadaId);
+  }
+
+  function filasExportacionAnalisisAdminApp(payload: AnalisisAdminPayloadApp) {
+    const filas: Array<Array<string | number | null>> = [];
+    const r = payload.resumen;
+
+    filas.push(['ANÁLISIS ADMINISTRACIÓN']);
+    filas.push(['Modalidad', payload.meta.modalidad]);
+    filas.push(['Temporada', payload.meta.temporada]);
+    filas.push(['Generado', new Date(payload.meta.generado_at).toLocaleString('es-ES')]);
+    filas.push([]);
+    filas.push(['RESUMEN']);
+    filas.push(['Alumnos únicos', r.alumnos_unicos]);
+    filas.push(['Altas', r.altas]);
+    filas.push(['Continuidad %', r.continuidad_pct]);
+    filas.push(['Pérdida continuidad %', r.perdida_continuidad_pct]);
+    filas.push(['Asistencia real %', r.asistencia_real_pct]);
+    filas.push(['Promedio niños / turno', r.promedio_ninos_turno]);
+    filas.push(['Promedio / grupo', r.promedio_por_grupo]);
+    filas.push(['Sesiones realizadas', r.sesiones_realizadas]);
+    filas.push(['Ocupación %', r.ocupacion_pct]);
+    filas.push(['Evolución técnica', r.evolucion_tecnica]);
+    filas.push(['Alumnos mejoran', r.alumnos_mejoran]);
+    filas.push(['Alumnos estables', r.alumnos_estables]);
+    filas.push(['Alumnos bajan', r.alumnos_bajan]);
+    filas.push([]);
+    filas.push([
+      'MES', 'ALUMNOS', 'ALTAS', 'CRECIMIENTO %', 'CONTINUIDAD %',
+      'PÉRDIDA %', 'ASISTENCIA %', 'NIÑOS/TURNO', 'POR GRUPO',
+      'SESIONES', 'OCUPACIÓN %', 'EVOLUCIÓN TÉCNICA', 'MEJORAN', 'ESTABLES', 'BAJAN'
+    ]);
+    payload.mensual.forEach((m) => filas.push([
+      m.mes, m.alumnos_unicos, m.altas, m.crecimiento_pct, m.continuidad_pct,
+      m.perdida_continuidad_pct, m.asistencia_real_pct, m.promedio_ninos_turno,
+      m.promedio_por_grupo, m.sesiones_realizadas, m.ocupacion_pct,
+      m.evolucion_tecnica, m.mejoran, m.estables, m.bajan
+    ]));
+    filas.push([]);
+    filas.push(['DISTRIBUCIÓN DE NIVELES']);
+    filas.push(['Nivel', 'Total']);
+    payload.niveles.forEach((n) => filas.push([n.nivel, n.total]));
+    filas.push([]);
+    filas.push(['PROGRESIÓN DE NIVELES']);
+    filas.push(['Desde', 'Hasta', 'Sentido', 'Total']);
+    payload.progresiones.forEach((p) => filas.push([p.desde, p.hasta, p.sentido, p.total]));
+    filas.push([]);
+    filas.push(['COMPARATIVA TEMPORADAS']);
+    filas.push(['Temporada', 'Alumnos únicos', 'Sesiones', 'Asistencia %', 'Evolución técnica']);
+    payload.comparativa_temporadas.forEach((t) => filas.push([
+      t.temporada, t.alumnos_unicos, t.sesiones_realizadas,
+      t.asistencia_real_pct, t.evolucion_tecnica
+    ]));
+    return filas;
+  }
+
+  function nombreArchivoAnalisisAdminApp(payload: AnalisisAdminPayloadApp, extension: string) {
+    const temporada = payload.meta.temporada.replace(/[^0-9A-Za-z_-]+/g, '_');
+    return `analisis_${payload.meta.modalidad.toLowerCase()}_${temporada}.${extension}`;
+  }
+
+  function descargarTextoAnalisisAdminApp(contenido: BlobPart, tipo: string, nombre: string) {
+    const blob = new Blob([contenido], { type: tipo });
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = nombre;
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function descargarCsvAnalisisAdminApp() {
+    if (!analisisAdmin) return;
+    const escapar = (valor: unknown) => {
+      const texto = valor === null || valor === undefined ? '' : String(valor);
+      return `"${texto.replace(/"/g, '""')}"`;
+    };
+    const csv = filasExportacionAnalisisAdminApp(analisisAdmin)
+      .map((fila) => fila.map(escapar).join(';'))
+      .join('\r\n');
+    descargarTextoAnalisisAdminApp(
+      `\uFEFF${csv}`,
+      'text/csv;charset=utf-8',
+      nombreArchivoAnalisisAdminApp(analisisAdmin, 'csv')
+    );
+  }
+
+  function descargarExcelAnalisisAdminApp() {
+    if (!analisisAdmin) return;
+    const escapar = (valor: unknown) => escaparHtml(
+      valor === null || valor === undefined ? '' : String(valor)
+    );
+    const filas = filasExportacionAnalisisAdminApp(analisisAdmin);
+    const html = `<!doctype html><html><head><meta charset="utf-8"><style>
+      body{font-family:Arial,sans-serif}table{border-collapse:collapse;width:100%}
+      td{border:1px solid #ddd;padding:6px;vertical-align:top}
+      tr:first-child td{font-weight:700;background:#eef2ff}
+    </style></head><body><table>${filas
+      .map((fila) => `<tr>${fila.map((celda) => `<td>${escapar(celda)}</td>`).join('')}</tr>`)
+      .join('')}</table></body></html>`;
+    descargarTextoAnalisisAdminApp(
+      `\uFEFF${html}`,
+      'application/vnd.ms-excel;charset=utf-8',
+      nombreArchivoAnalisisAdminApp(analisisAdmin, 'xls')
+    );
+  }
+
+  function normalizarTextoPdfAnalisisAdminApp(texto: string) {
+    return texto
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\x20-\x7E]/g, ' ')
+      .replace(/\\/g, '\\\\')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)');
+  }
+
+  function envolverLineaPdfAnalisisAdminApp(texto: string, maximo = 92) {
+    const limpia = normalizarTextoPdfAnalisisAdminApp(texto);
+    const palabras = limpia.split(/\s+/).filter(Boolean);
+    const lineas: string[] = [];
+    let actual = '';
+    palabras.forEach((palabra) => {
+      const candidato = actual ? `${actual} ${palabra}` : palabra;
+      if (candidato.length > maximo && actual) {
+        lineas.push(actual);
+        actual = palabra;
+      } else {
+        actual = candidato;
+      }
+    });
+    if (actual) lineas.push(actual);
+    return lineas.length ? lineas : [''];
+  }
+
+  function descargarPdfAnalisisAdminApp() {
+    if (!analisisAdmin) return;
+    const p = analisisAdmin;
+    const r = p.resumen;
+    const lineas: string[] = [
+      `MITICO BABY - ANALISIS ADMINISTRACION`,
+      `${p.meta.modalidad} · Temporada ${p.meta.temporada}`,
+      `Generado: ${new Date(p.meta.generado_at).toLocaleString('es-ES')}`,
+      '',
+      `RESUMEN`,
+      `Alumnos unicos: ${r.alumnos_unicos} · Altas: ${r.altas}`,
+      `Continuidad: ${numeroAnalisisAdminApp(r.continuidad_pct, '%')} · Perdida: ${numeroAnalisisAdminApp(r.perdida_continuidad_pct, '%')}`,
+      `Asistencia real: ${numeroAnalisisAdminApp(r.asistencia_real_pct, '%')} · Ocupacion: ${numeroAnalisisAdminApp(r.ocupacion_pct, '%')}`,
+      `Promedio ninos/turno: ${numeroAnalisisAdminApp(r.promedio_ninos_turno)} · Por grupo: ${numeroAnalisisAdminApp(r.promedio_por_grupo)}`,
+      `Sesiones realizadas: ${r.sesiones_realizadas}`,
+      `Evolucion tecnica: ${numeroAnalisisAdminApp(r.evolucion_tecnica)} · Mejoran ${r.alumnos_mejoran} · Estables ${r.alumnos_estables} · Bajan ${r.alumnos_bajan}`,
+      '',
+      `EVOLUCION MENSUAL`,
+      ...p.mensual.map((m) =>
+        `${m.mes} · alumnos ${m.alumnos_unicos} · altas ${m.altas} · crec ${numeroAnalisisAdminApp(m.crecimiento_pct, '%')} · cont ${numeroAnalisisAdminApp(m.continuidad_pct, '%')} · asist ${numeroAnalisisAdminApp(m.asistencia_real_pct, '%')} · ocup ${numeroAnalisisAdminApp(m.ocupacion_pct, '%')}`
+      ),
+      '',
+      `NIVELES`,
+      ...(p.niveles.length ? p.niveles.map((n) => `${n.nivel}: ${n.total}`) : ['Sin datos de nivel.']),
+      '',
+      `PROGRESION DE NIVELES`,
+      ...(p.progresiones.length ? p.progresiones.map((x) => `${x.desde} -> ${x.hasta} · ${x.sentido} · ${x.total}`) : ['Sin progresiones registradas.']),
+      '',
+      `COMPARATIVA TEMPORADAS`,
+      ...p.comparativa_temporadas.map((t) =>
+        `${t.temporada} · alumnos ${t.alumnos_unicos} · sesiones ${t.sesiones_realizadas} · asistencia ${numeroAnalisisAdminApp(t.asistencia_real_pct, '%')} · evolucion ${numeroAnalisisAdminApp(t.evolucion_tecnica)}`
+      ),
+    ].flatMap((linea) => envolverLineaPdfAnalisisAdminApp(linea));
+
+    const porPagina = 48;
+    const paginas: string[][] = [];
+    for (let i = 0; i < lineas.length; i += porPagina) paginas.push(lineas.slice(i, i + porPagina));
+    if (!paginas.length) paginas.push(['Sin datos.']);
+
+    const objetos: string[] = [];
+    const paginaIds = paginas.map((_, i) => 4 + i * 2);
+    objetos[1] = `<< /Type /Catalog /Pages 2 0 R >>`;
+    objetos[2] = `<< /Type /Pages /Kids [${paginaIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${paginas.length} >>`;
+    objetos[3] = `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>`;
+
+    paginas.forEach((pagina, i) => {
+      const pageId = 4 + i * 2;
+      const contentId = pageId + 1;
+      const contenido = `BT /F1 9 Tf 40 805 Td 14 TL\n${pagina
+        .map((linea) => `(${normalizarTextoPdfAnalisisAdminApp(linea)}) Tj T*`)
+        .join('\n')}\nET`;
+      objetos[pageId] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentId} 0 R >>`;
+      objetos[contentId] = `<< /Length ${contenido.length} >>\nstream\n${contenido}\nendstream`;
+    });
+
+    let pdf = '%PDF-1.4\n';
+    const offsets: number[] = [0];
+    for (let id = 1; id < objetos.length; id += 1) {
+      offsets[id] = pdf.length;
+      pdf += `${id} 0 obj\n${objetos[id]}\nendobj\n`;
+    }
+    const inicioXref = pdf.length;
+    pdf += `xref\n0 ${objetos.length}\n0000000000 65535 f \n`;
+    for (let id = 1; id < objetos.length; id += 1) {
+      pdf += `${String(offsets[id]).padStart(10, '0')} 00000 n \n`;
+    }
+    pdf += `trailer\n<< /Size ${objetos.length} /Root 1 0 R >>\nstartxref\n${inicioXref}\n%%EOF`;
+
+    descargarTextoAnalisisAdminApp(
+      pdf,
+      'application/pdf',
+      nombreArchivoAnalisisAdminApp(analisisAdmin, 'pdf')
+    );
+  }
+
   function detallePreguntaTestNivelApp(
     clave: string,
     respuesta: string | null
@@ -4927,7 +5327,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       );
       setIntensivosAltaNivel(
         (Array.isArray(datos) ? datos : []).filter(
-          (item) => String(item.estado || '').toLowerCase() !== 'cerrado'
+          (item) =>
+            String(item.estado || '').toLowerCase() !== 'cerrado' &&
+            (!temporadaActivaCierre || item.temporada === temporadaActivaCierre)
         )
       );
     } catch (err: any) {
@@ -10579,6 +10981,7 @@ Gracias!`;
         intensivoDiasData,
         intensivoAsistenciasData,
         intensivoMásData,
+        recomendacionesRecuperacionData,
         gruposDestinoRecuperacionData,
         gruposIntensivoDiaData,
         resumenReportesIntensivoData,
@@ -10614,6 +11017,10 @@ Gracias!`;
         consultarSupabase<IntensivoRecuperacionApp>(
           'v_intensivo_recuperaciones_app',
           'select=*&order=created_at.desc,alumno.asc'
+        ),
+        consultarSupabase<RecuperacionRecomendacionApp>(
+          'v_recuperaciones_recomendaciones_intensivo_app',
+          'select=*&order=recuperacion_id.asc,orden_recomendacion.asc'
         ),
         consultarSupabase<GrupoDestinoRecuperacionApp>(
           'v_planning_app',
@@ -10652,6 +11059,7 @@ Gracias!`;
       setIntensivoDias(intensivoDiasData);
       setIntensivoAsistencias(intensivoAsistenciasData);
       setIntensivoMás(intensivoMásData);
+      setRecomendacionesRecuperacion(recomendacionesRecuperacionData);
       setGruposDestinoRecuperacion(gruposDestinoRecuperacionData);
       setGruposIntensivoDia(gruposIntensivoDiaData);
       setResumenReportesIntensivo(resumenReportesIntensivoData);
@@ -10668,6 +11076,7 @@ Gracias!`;
       setIntensivoDias([]);
       setIntensivoAsistencias([]);
       setIntensivoMás([]);
+      setRecomendacionesRecuperacion([]);
       setGruposDestinoRecuperacion([]);
       setGruposIntensivoDia([]);
       setResumenReportesIntensivo([]);
@@ -10691,7 +11100,7 @@ Gracias!`;
     }
 
     const confirmar = window.confirm(
-      `¿Crear intensivo ${formIntensivo.nombre}?`
+      `¿Crear intensivo ${formIntensivo.nombre} en ${temporadaActivaCierre || 'la temporada activa'}?`
     );
 
     if (!confirmar) return;
@@ -10701,7 +11110,7 @@ Gracias!`;
 
     try {
       await ejecutarFuncion('crear_intensivo_app', {
-        p_temporada_nombre: formIntensivo.temporada,
+        p_temporada_nombre: '',
         p_nombre: formIntensivo.nombre.trim(),
         p_lugar: formIntensivo.lugar.trim(),
         p_estado: formIntensivo.estado,
@@ -16927,7 +17336,10 @@ async function abrirGestionOperativaIntensivoDia(
       void cargarCobrosDesdeSemanaActiva();
       cargarEntrenadores();
     }
-    if (pantalla === 'exportaciones' && esCoordinadorJefeApp) {
+    if (
+      (pantalla === 'informes' || pantalla === 'temporadas') &&
+      esCoordinadorJefeApp
+    ) {
       cargarAgendaOperativaDirecta();
       cargarIntensivos();
       cargarPlanning();
@@ -16937,6 +17349,9 @@ async function abrirGestionOperativaIntensivoDia(
       cargarOcioAlumnos();
       cargarOcioGrupos();
       cargarCobros();
+    }
+    if (pantalla === 'analisis' && esCoordinadorJefeApp && !analisisAdmin) {
+      void cargarAnalisisAdminApp('BABY', '');
     }
     if (pantalla === 'intensivos') {
       cargarWhatsappGruposApp();
@@ -16958,7 +17373,7 @@ async function abrirGestionOperativaIntensivoDia(
   }, [pantalla]);
 
   useEffect(() => {
-    if (pantalla !== 'exportaciones' || !esCoordinadorJefeApp) return;
+    if (pantalla !== 'informes' || !esCoordinadorJefeApp) return;
     cargarInformeSnowZone();
   }, [
     pantalla,
@@ -18142,10 +18557,37 @@ async function abrirGestionOperativaIntensivoDia(
 
   function recuperacionesDelIntensivo(intensivoId: string) {
     return intensivoMás.filter(
-      (registro) =>
-        registro.intensivo_origen_id === intensivoId ||
-        registro.intensivo_destino_id === intensivoId
+      (registro) => registro.intensivo_origen_id === intensivoId
     );
+  }
+
+  function recomendacionesDeRecuperacion(recuperacionId: string) {
+    return recomendacionesRecuperacion
+      .filter((item) => item.recuperacion_id === recuperacionId)
+      .sort((a, b) => a.orden_recomendacion - b.orden_recomendacion);
+  }
+
+  async function aprobarRecuperacionInteligente(
+    registro: IntensivoRecuperacionApp,
+    recomendacion: RecuperacionRecomendacionApp
+  ) {
+    const confirmar = window.confirm(
+      `¿Aprobar la recuperación de ${registro.alumno} en ${recomendacion.intensivo_destino} · ${recomendacion.nombre_grupo} · ${formatearFecha(recomendacion.fecha)}?`
+    );
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('asignar_recuperacion_grupo_intensivo_app', {
+        p_recuperacion_id: registro.recuperacion_id,
+        p_grupo_destino_id: recomendacion.grupo_id,
+      });
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error aprobando la recuperación');
+    }
+    setCargando(false);
   }
 
   function gruposNormalesDelDiaIntensivo(diaId: string) {
@@ -19997,15 +20439,47 @@ async function abrirGestionOperativaIntensivoDia(
     if (!esCoordinadorJefeApp) return;
 
     setCargandoTemporadaActivaCierre(true);
+    setErrorTemporadaActivaCierre('');
 
     try {
-      const data = await ejecutarFuncionConRespuesta<{
+      const data = await consultarSupabase<{
         nombre: string;
-      }>('obtener_temporada_activa_app');
+        activa: boolean;
+        fecha_inicio: string;
+      }>(
+        'temporadas',
+        'select=nombre,activa,fecha_inicio&order=fecha_inicio.desc&limit=4'
+      );
 
-      setTemporadaActivaCierre(data[0]?.nombre || '');
-    } catch {
+      const activas = data.filter((temporada) => temporada.activa);
+
+      if (activas.length > 1) {
+        throw new Error(
+          'Hay más de una temporada activa. Revisa el estado antes de continuar.'
+        );
+      }
+
+      const activa = activas[0];
+      setTemporadaActivaCierre(activa?.nombre || '');
+
+      // Si no hay temporada activa, el único arranque permitido es la
+      // temporada inmediatamente posterior a la última temporada real.
+      if (!activa && data[0]?.nombre) {
+        const ultimoAnio = Number(String(data[0].nombre).split('/')[0]);
+        if (Number.isFinite(ultimoAnio)) {
+          const siguienteAnio = ultimoAnio + 1;
+          setAnioInicioTemporadaAgenda(siguienteAnio);
+          setMesAgenda(`${siguienteAnio}-09`);
+          setSemanaAgendaInicio('');
+        }
+      }
+    } catch (err) {
       setTemporadaActivaCierre('');
+      setErrorTemporadaActivaCierre(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo comprobar la temporada activa.'
+      );
     } finally {
       setCargandoTemporadaActivaCierre(false);
     }
@@ -20013,6 +20487,20 @@ async function abrirGestionOperativaIntensivoDia(
 
   async function iniciarNuevaTemporadaOperativa() {
     if (!esCoordinadorJefeApp) return;
+
+    if (temporadaActivaCierre) {
+      setCierreTemporadaError(
+        `Ya hay una temporada activa: ${temporadaActivaCierre}. Ciérrala antes de iniciar otra.`
+      );
+      return;
+    }
+
+    if (errorTemporadaActivaCierre) {
+      setCierreTemporadaError(
+        'No se puede iniciar una temporada mientras no se haya podido comprobar el estado actual.'
+      );
+      return;
+    }
 
     setIniciandoNuevaTemporada(true);
     setCierreTemporadaError('');
@@ -20028,7 +20516,8 @@ async function abrirGestionOperativaIntensivoDia(
       );
 
       setTemporadaActivaCierre(temporadaIniciada);
-      setResultadoNuevaTemporada('');
+      setErrorTemporadaActivaCierre('');
+      setResultadoNuevaTemporada(`Temporada ${temporadaIniciada} iniciada correctamente.`);
 
       setCierreTemporadaAnalizado(false);
       setResumenCierreTemporada(null);
@@ -20110,7 +20599,8 @@ async function abrirGestionOperativaIntensivoDia(
         `Temporada cerrada: ${r?.temporada_cerrada || temporada} · ` +
           `${Number(r?.alumnos_conservados || 0)} alumnos conservados · ` +
           `${Number(r?.alumnos_eliminados || 0)} alumnos eliminados · ` +
-          `${Number(r?.filas_operativas_eliminadas || 0)} filas operativas limpiadas.`
+          `${Number(r?.filas_operativas_eliminadas || 0)} filas operativas limpiadas. ` +
+          `Histórico estadístico Baby/Ocio/Intensivos guardado.`
       );
 
       setConfirmacionCierreTexto('');
@@ -20119,6 +20609,15 @@ async function abrirGestionOperativaIntensivoDia(
       setCierreTemporadaAnalizado(false);
       setResumenCierreTemporada(null);
       setCierreTemporadaAlumnos([]);
+
+      const temporadaCerrada = String(r?.temporada_cerrada || temporada);
+      const anioCerrado = Number(temporadaCerrada.split('/')[0]);
+      if (Number.isFinite(anioCerrado)) {
+        const siguienteAnio = anioCerrado + 1;
+        setAnioInicioTemporadaAgenda(siguienteAnio);
+        setMesAgenda(`${siguienteAnio}-09`);
+        setSemanaAgendaInicio('');
+      }
 
       // Importante: el RPC ya ha borrado la operativa en Supabase,
       // pero las distintas pantallas conservaban sus arrays React anteriores.
@@ -21116,36 +21615,55 @@ async function abrirGestionOperativaIntensivoDia(
                 <button
                   onClick={() => abrirPantallaConScroll('cobros')}
                   style={{
-                  ...botonMenuColor(pantalla === 'cobros', '#e11d48'),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
+                    ...botonMenuColor(pantalla === 'cobros', '#e11d48'),
+                    ...(esVistaMovilApp
+                      ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                      : {}),
+                  }}
                 >
                   Cobros
                 </button>
                 <button
-                  onClick={() => abrirPantallaConScroll('exportaciones')}
+                  onClick={() => abrirPantallaConScroll('analisis')}
                   style={{
-                  ...botonMenuColor(
-                    pantalla === 'exportaciones',
-                    '#e11d48'
-                  ),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
+                    ...botonMenuColor(pantalla === 'analisis', '#e11d48'),
+                    ...(esVistaMovilApp
+                      ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                      : {}),
+                  }}
+                >
+                  Análisis
+                </button>
+                <button
+                  onClick={() => abrirPantallaConScroll('informes')}
+                  style={{
+                    ...botonMenuColor(pantalla === 'informes', '#e11d48'),
+                    ...(esVistaMovilApp
+                      ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                      : {}),
+                  }}
                 >
                   Informes y listados
                 </button>
                 <button
+                  onClick={() => abrirPantallaConScroll('temporadas')}
+                  style={{
+                    ...botonMenuColor(pantalla === 'temporadas', '#e11d48'),
+                    ...(esVistaMovilApp
+                      ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                      : {}),
+                  }}
+                >
+                  Temporadas
+                </button>
+                <button
                   onClick={() => abrirPantallaConScroll('usuarios')}
                   style={{
-                  ...botonMenuColor(pantalla === 'usuarios', '#e11d48'),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
+                    ...botonMenuColor(pantalla === 'usuarios', '#e11d48'),
+                    ...(esVistaMovilApp
+                      ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                      : {}),
+                  }}
                 >
                   Accesos equipo
                 </button>
@@ -21861,14 +22379,14 @@ async function abrirGestionOperativaIntensivoDia(
         </section>
       )}
 
-      {pantalla === 'exportaciones' && esCoordinadorJefeApp && (
+      {pantalla === 'informes' && esCoordinadorJefeApp && (
         <section>
           <div style={cabeceraPantallaMovil}>
             <div>
               <p style={etiquetaSuperior}>INFORMES Y LISTADOS</p>
               <h2 style={{ margin: 0 }}>Informes y listados</h2>
               <p style={{ margin: '8px 0 0', color: '#475569' }}>
-                Informes útiles calculados con los datos actuales. No se guardan
+                Informes operativos y listados calculados con los datos actuales. No se guardan
                 copias adicionales en Supabase.
               </p>
             </div>
@@ -23333,6 +23851,23 @@ async function abrirGestionOperativaIntensivoDia(
             </div>
           </details>
 
+        </section>
+      )}
+
+      {pantalla === 'temporadas' && esCoordinadorJefeApp && (
+        <section>
+          <div style={cabeceraPantallaMovil}>
+            <div>
+              <p style={etiquetaSuperior}>TEMPORADAS</p>
+              <h2 style={{ margin: 0 }}>Inicio y cierre de temporada</h2>
+              <p style={{ margin: '8px 0 0', color: '#475569' }}>
+                Cierre seguro, copia maestra, nueva temporada y carga de semilla en un único flujo ordenado.
+              </p>
+            </div>
+            <button onClick={actualizarTodo} style={botonSecundario}>
+              Actualizar datos
+            </button>
+          </div>
           <details
             style={{
               ...tarjeta,
@@ -24111,71 +24646,145 @@ async function abrirGestionOperativaIntensivoDia(
               >
                 PASO 3 · ARRANQUE DE TEMPORADA
               </p>
-              <h3 style={{ margin: 0, fontSize: 20 }}>Iniciar nueva temporada</h3>
+              <h3 style={{ margin: 0, fontSize: 20 }}>Estado de temporada</h3>
 
-              {temporadaActivaCierre ===
-              nombreTemporadaAgenda(anioInicioTemporadaAgenda) ? (
+              {cargandoTemporadaActivaCierre ? (
                 <div
                   style={{
                     marginTop: 14,
                     padding: '12px 14px',
                     borderRadius: 12,
-                    border: '1px solid #bbf7d0',
-                    background: '#f0fdf4',
-                    color: '#166534',
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    color: '#475569',
                     fontWeight: 900,
                   }}
                 >
-                  Temporada activa · {temporadaActivaCierre}
+                  Comprobando temporada activa...
                 </div>
-              ) : (
+              ) : errorTemporadaActivaCierre ? (
                 <div
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0, 1fr) auto',
-                    gap: 10,
-                    alignItems: 'end',
                     marginTop: 14,
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    border: '1px solid #fecaca',
+                    background: '#fef2f2',
+                    color: '#991b1b',
+                    fontWeight: 800,
+                    lineHeight: 1.45,
                   }}
                 >
-                  <label style={{ ...labelCampo, minWidth: 0 }}>
-                    Temporada a iniciar
-                    <select
-                      value={anioInicioTemporadaAgenda}
-                      style={{ ...selectCampoAgenda, width: '100%' }}
-                      onChange={(e) => {
-                        const nuevoAnio = Number(e.target.value);
-                        setAnioInicioTemporadaAgenda(nuevoAnio);
-                        setMesAgenda(`${nuevoAnio}-09`);
-                        setSemanaAgendaInicio('');
-                        setResultadoNuevaTemporada('');
-                      }}
-                    >
-                      {opcionesTemporadaAgenda.map((anio) => (
-                        <option key={anio} value={anio}>
-                          {nombreTemporadaAgenda(anio)}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-
+                  <strong>No se ha podido comprobar la temporada activa.</strong>
+                  <div style={{ marginTop: 4 }}>
+                    Por seguridad, no se habilita el inicio de una temporada hasta conocer el estado real.
+                  </div>
                   <button
                     type="button"
-                    onClick={iniciarNuevaTemporadaOperativa}
-                    disabled={
-                      iniciandoNuevaTemporada || cargandoTemporadaActivaCierre
-                    }
-                    style={{
-                      ...botonPrincipal,
-                      minHeight: 44,
-                      whiteSpace: 'nowrap',
-                    }}
+                    onClick={cargarTemporadaActivaCierre}
+                    style={{ ...botonSecundario, marginTop: 10 }}
                   >
-                    {iniciandoNuevaTemporada
-                      ? 'Iniciando...'
-                      : 'Iniciar temporada'}
+                    Reintentar
                   </button>
                 </div>
+              ) : temporadaActivaCierre ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: '13px 14px',
+                    borderRadius: 12,
+                    border: '1px solid #bbf7d0',
+                    background: '#f0fdf4',
+                    color: '#166534',
+                    fontWeight: 800,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  <strong>Temporada en curso · {temporadaActivaCierre}</strong>
+                  <div style={{ marginTop: 4 }}>
+                    No hay nada que iniciar ahora. El arranque de la siguiente temporada se habilitará cuando cierres la temporada actual.
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div
+                    style={{
+                      marginTop: 14,
+                      padding: '11px 13px',
+                      borderRadius: 12,
+                      border: '1px solid #fde68a',
+                      background: '#fffbeb',
+                      color: '#92400e',
+                      fontWeight: 800,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    No hay ninguna temporada activa. Ahora sí puedes iniciar la siguiente.
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr) auto',
+                      gap: 10,
+                      alignItems: 'end',
+                      marginTop: 14,
+                    }}
+                  >
+                    <div
+                      style={{
+                        minWidth: 0,
+                        padding: '11px 13px',
+                        borderRadius: 12,
+                        border: '1px solid #bfdbfe',
+                        background: '#eff6ff',
+                        color: '#1e3a8a',
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      <div style={{ fontSize: 12, fontWeight: 900 }}>
+                        SIGUIENTE TEMPORADA
+                      </div>
+                      <strong style={{ fontSize: 18 }}>
+                        {nombreTemporadaAgenda(anioInicioTemporadaAgenda)}
+                      </strong>
+                      <div style={{ marginTop: 3, fontSize: 12, fontWeight: 700 }}>
+                        La app solo permite iniciar la temporada inmediatamente siguiente. No tienes que elegir años manualmente.
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={iniciarNuevaTemporadaOperativa}
+                      disabled={iniciandoNuevaTemporada}
+                      style={{
+                        ...botonPrincipal,
+                        minHeight: 44,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {iniciandoNuevaTemporada
+                        ? 'Iniciando...'
+                        : `Iniciar ${nombreTemporadaAgenda(anioInicioTemporadaAgenda)}`}
+                    </button>
+                  </div>
+
+                  {resultadoNuevaTemporada && (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: 12,
+                        borderRadius: 12,
+                        border: '1px solid #bbf7d0',
+                        background: '#f0fdf4',
+                        color: '#166534',
+                        fontWeight: 900,
+                      }}
+                    >
+                      {resultadoNuevaTemporada}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </article>
@@ -24808,6 +25417,368 @@ async function abrirGestionOperativaIntensivoDia(
           </article>
         </section>
       )}
+
+      {pantalla === 'analisis' && esCoordinadorJefeApp && (
+                <article
+                  style={{
+                    ...agendaBloqueBlanco,
+                    border: '1px solid #c4b5fd',
+                    background: 'linear-gradient(135deg, #faf5ff 0%, #ffffff 58%)',
+                    display: 'grid',
+                    gap: 16,
+                    width: '100%',
+                    minWidth: 0,
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      gap: 12,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <span style={{ ...miniBadge, background: '#ede9fe', color: '#6d28d9' }}>
+                        ADMINISTRACIÓN
+                      </span>
+                      <h2 style={{ margin: '8px 0 0' }}>Análisis operativo</h2>
+                      <p style={{ margin: '6px 0 0', color: '#64748b', lineHeight: 1.45 }}>
+                        Se calcula al momento con la actividad real. No se guarda ningún informe generado en Supabase.
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        disabled={!analisisAdmin || cargandoAnalisisAdmin}
+                        onClick={descargarPdfAnalisisAdminApp}
+                        style={botonSecundario}
+                      >
+                        PDF
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!analisisAdmin || cargandoAnalisisAdmin}
+                        onClick={descargarExcelAnalisisAdminApp}
+                        style={botonSecundario}
+                      >
+                        Excel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!analisisAdmin || cargandoAnalisisAdmin}
+                        onClick={descargarCsvAnalisisAdminApp}
+                        style={botonSecundario}
+                      >
+                        CSV
+                      </button>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: esVistaMovilApp
+                        ? 'minmax(0, 1fr)'
+                        : 'minmax(0, 1fr) minmax(220px, 320px)',
+                      gap: 10,
+                      alignItems: 'end',
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {(['BABY', 'OCIO', 'INTENSIVOS'] as ModalidadAnalisisAdminApp[]).map(
+                        (modalidad) => (
+                          <button
+                            key={modalidad}
+                            type="button"
+                            disabled={cargandoAnalisisAdmin}
+                            onClick={() => cambiarModalidadAnalisisAdminApp(modalidad)}
+                            style={{
+                              ...botonSecundario,
+                              background:
+                                modalidadAnalisisAdmin === modalidad ? '#6d28d9' : '#fff',
+                              color:
+                                modalidadAnalisisAdmin === modalidad ? '#fff' : '#475569',
+                              borderColor:
+                                modalidadAnalisisAdmin === modalidad ? '#6d28d9' : '#e2e8f0',
+                              flex: esVistaMovilApp ? '1 1 95px' : undefined,
+                            }}
+                          >
+                            {modalidad === 'INTENSIVOS' ? 'Intensivos' : modalidad === 'OCIO' ? 'Ocio' : 'Baby'}
+                          </button>
+                        )
+                      )}
+                    </div>
+
+                    <label style={labelCampo}>
+                      Temporada analizada · actual + 2 anteriores
+                      <select
+                        value={temporadaAnalisisAdminId}
+                        disabled={cargandoAnalisisAdmin || !analisisAdmin}
+                        onChange={(e) => cambiarTemporadaAnalisisAdminApp(e.target.value)}
+                        style={selectCampo}
+                      >
+                        {(analisisAdmin?.comparativa_temporadas || []).map((temporada) => (
+                          <option key={temporada.temporada_id} value={temporada.temporada_id}>
+                            {temporada.temporada}{temporada.activa ? ' · actual' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  {cargandoAnalisisAdmin && (
+                    <div style={avisoNeutral}>Calculando métricas con los datos actuales…</div>
+                  )}
+
+                  {errorAnalisisAdmin && <div style={errorCaja}>{errorAnalisisAdmin}</div>}
+
+                  {analisisAdmin && !cargandoAnalisisAdmin && (
+                    <>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: 10,
+                          flexWrap: 'wrap',
+                          alignItems: 'baseline',
+                        }}
+                      >
+                        <strong style={{ fontSize: 18 }}>
+                          {analisisAdmin.meta.modalidad === 'INTENSIVOS'
+                            ? 'Intensivos'
+                            : analisisAdmin.meta.modalidad === 'OCIO'
+                            ? 'Ocio'
+                            : 'Baby'}{' '}
+                          · {analisisAdmin.meta.temporada}
+                        </strong>
+                        <span style={{ color: '#64748b', fontSize: 12, fontWeight: 700 }}>
+                          Calculado {new Date(analisisAdmin.meta.generado_at).toLocaleString('es-ES')}
+                        </span>
+                      </div>
+
+                      <section
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                          gap: 10,
+                        }}
+                      >
+                        {[
+                          ['ALUMNOS ÚNICOS', analisisAdmin.resumen.alumnos_unicos, 'identidades'],
+                          ['ALTAS', analisisAdmin.resumen.altas, 'temporada'],
+                          ['CONTINUIDAD', numeroAnalisisAdminApp(analisisAdmin.resumen.continuidad_pct, '%'), 'mes a mes'],
+                          ['PÉRDIDA', numeroAnalisisAdminApp(analisisAdmin.resumen.perdida_continuidad_pct, '%'), 'continuidad'],
+                          ['ASISTENCIA REAL', numeroAnalisisAdminApp(analisisAdmin.resumen.asistencia_real_pct, '%'), 'confirmada'],
+                          ['NIÑOS / TURNO', numeroAnalisisAdminApp(analisisAdmin.resumen.promedio_ninos_turno), 'promedio'],
+                          ['POR GRUPO', numeroAnalisisAdminApp(analisisAdmin.resumen.promedio_por_grupo), 'promedio'],
+                          ['SESIONES', analisisAdmin.resumen.sesiones_realizadas, 'realizadas'],
+                          ['OCUPACIÓN', numeroAnalisisAdminApp(analisisAdmin.resumen.ocupacion_pct, '%'), 'capacidad'],
+                        ].map(([titulo, valor, pie]) => (
+                          <div
+                            key={String(titulo)}
+                            style={{
+                              ...miniTarjetaBlanca,
+                              border: '1px solid #7c3aed33',
+                              background: '#faf5ff',
+                              minHeight: 82,
+                              display: 'grid',
+                              alignContent: 'center',
+                            }}
+                          >
+                            <span style={{ color: '#64748b', fontWeight: 850, fontSize: 11 }}>
+                              {titulo}
+                            </span>
+                            <strong style={{ fontSize: 27, overflowWrap: 'anywhere' }}>{valor}</strong>
+                            <span style={{ color: '#64748b', fontSize: 12 }}>{pie}</span>
+                          </div>
+                        ))}
+                      </section>
+
+                      <section
+                        style={{
+                          ...agendaBloqueBlanco,
+                          border: '1px solid #e2e8f0',
+                          display: 'grid',
+                          gap: 10,
+                        }}
+                      >
+                        <div>
+                          <strong>Evolución técnica</strong>
+                          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
+                            Cambio medio entre el primer y el último nivel reportado de cada alumno.
+                          </p>
+                        </div>
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                            gap: 8,
+                          }}
+                        >
+                          <div style={miniTarjetaBlanca}>
+                            <span style={{ color: '#64748b', fontSize: 12 }}>EVOLUCIÓN MEDIA</span>
+                            <strong style={{ fontSize: 25 }}>
+                              {numeroAnalisisAdminApp(analisisAdmin.resumen.evolucion_tecnica)}
+                            </strong>
+                          </div>
+                          <div style={miniTarjetaBlanca}>
+                            <span style={{ color: '#64748b', fontSize: 12 }}>MEJORAN</span>
+                            <strong style={{ fontSize: 25, color: '#15803d' }}>{analisisAdmin.resumen.alumnos_mejoran}</strong>
+                          </div>
+                          <div style={miniTarjetaBlanca}>
+                            <span style={{ color: '#64748b', fontSize: 12 }}>ESTABLES</span>
+                            <strong style={{ fontSize: 25 }}>{analisisAdmin.resumen.alumnos_estables}</strong>
+                          </div>
+                          <div style={miniTarjetaBlanca}>
+                            <span style={{ color: '#64748b', fontSize: 12 }}>BAJAN</span>
+                            <strong style={{ fontSize: 25, color: '#b91c1c' }}>{analisisAdmin.resumen.alumnos_bajan}</strong>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section style={{ display: 'grid', gap: 9 }}>
+                        <div>
+                          <strong>Evolución mensual</strong>
+                          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
+                            Crecimiento, continuidad, asistencia, ocupación y carga real por mes.
+                          </p>
+                        </div>
+                        <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
+                          <table
+                            style={{
+                              width: '100%',
+                              minWidth: 980,
+                              borderCollapse: 'collapse',
+                              fontSize: 12,
+                            }}
+                          >
+                            <thead>
+                              <tr>
+                                {['Mes','Alumnos','Altas','Crec.','Cont.','Pérdida','Asist.','Niños/turno','Por grupo','Sesiones','Ocup.','Evol.'].map((titulo) => (
+                                  <th key={titulo} style={{ padding: 8, textAlign: 'left', borderBottom: '1px solid #cbd5e1', color: '#475569', whiteSpace: 'nowrap' }}>
+                                    {titulo}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {analisisAdmin.mensual.map((m) => (
+                                <tr key={m.mes}>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9', fontWeight: 800 }}>{etiquetaMesAnalisisAdminApp(m.mes)}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{m.alumnos_unicos}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{m.altas}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.crecimiento_pct, '%')}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.continuidad_pct, '%')}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.perdida_continuidad_pct, '%')}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.asistencia_real_pct, '%')}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.promedio_ninos_turno)}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.promedio_por_grupo)}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{m.sesiones_realizadas}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.ocupacion_pct, '%')}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.evolucion_tecnica)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </section>
+
+                      <section
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: esVistaMovilApp ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))',
+                          gap: 12,
+                        }}
+                      >
+                        <div style={{ ...agendaBloqueBlanco, border: '1px solid #e2e8f0' }}>
+                          <strong>Distribución de niveles</strong>
+                          <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                            {analisisAdmin.niveles.length === 0 && <span style={{ color: '#64748b' }}>Sin datos todavía.</span>}
+                            {analisisAdmin.niveles.map((nivel) => {
+                              const maximo = Math.max(1, ...analisisAdmin.niveles.map((n) => n.total));
+                              return (
+                                <div key={nivel.nivel} style={{ display: 'grid', gap: 4 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                                    <strong>{nivel.nivel}</strong><span>{nivel.total}</span>
+                                  </div>
+                                  <div style={{ height: 8, borderRadius: 999, background: '#f1f5f9', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', width: `${Math.max(4, (nivel.total / maximo) * 100)}%`, background: '#7c3aed', borderRadius: 999 }} />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div style={{ ...agendaBloqueBlanco, border: '1px solid #e2e8f0' }}>
+                          <strong>Progresión de niveles</strong>
+                          <div style={{ display: 'grid', gap: 7, marginTop: 10 }}>
+                            {analisisAdmin.progresiones.length === 0 && <span style={{ color: '#64748b' }}>Sin progresiones todavía.</span>}
+                            {analisisAdmin.progresiones.slice(0, 12).map((progresion, indice) => (
+                              <div key={`${progresion.desde}-${progresion.hasta}-${indice}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '7px 0', borderBottom: '1px solid #f1f5f9' }}>
+                                <span><strong>{progresion.desde}</strong> → <strong>{progresion.hasta}</strong></span>
+                                <span style={{ fontWeight: 850, color: progresion.sentido === 'SUBE' ? '#15803d' : progresion.sentido === 'BAJA' ? '#b91c1c' : '#64748b' }}>
+                                  {progresion.total} · {progresion.sentido}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </section>
+
+                      <section style={{ display: 'grid', gap: 9 }}>
+                        <div>
+                          <strong>Comparación entre temporadas</strong>
+                          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
+                            Queda preparada para crecer automáticamente cuando existan nuevas temporadas.
+                          </p>
+                        </div>
+                        <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
+                          <table style={{ width: '100%', minWidth: 650, borderCollapse: 'collapse', fontSize: 13 }}>
+                            <thead>
+                              <tr>
+                                {['Temporada','Alumnos','Sesiones','Asistencia','Evolución técnica'].map((titulo) => (
+                                  <th key={titulo} style={{ padding: 8, textAlign: 'left', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>{titulo}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {analisisAdmin.comparativa_temporadas.map((temporada) => (
+                                <tr key={temporada.temporada_id}>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9', fontWeight: 800 }}>
+                                    {temporada.temporada}{temporada.activa ? ' · actual' : ''}
+                                  </td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{temporada.alumnos_unicos}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{temporada.sesiones_realizadas}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(temporada.asistencia_real_pct, '%')}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(temporada.evolucion_tecnica)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </section>
+
+                      <details style={{ ...agendaBloqueBlanco, border: '1px solid #e2e8f0', padding: 12 }}>
+                        <summary style={{ cursor: 'pointer', fontWeight: 850, color: '#475569' }}>
+                          Cómo se calcula cada métrica
+                        </summary>
+                        <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                          {Object.entries(analisisAdmin.definiciones).map(([clave, definicion]) => (
+                            <div key={clave} style={{ fontSize: 13, lineHeight: 1.45 }}>
+                              <strong>{clave.replace(/_/g, ' ')}:</strong> {definicion}
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    </>
+                  )}
+                </article>
+              )}
 
       {pantalla === 'revisionOcio' && (
         <section>
@@ -40427,6 +41398,7 @@ async function abrirGestionOperativaIntensivoDia(
           formDiaIntensivo,
           formGrupoIntensivo,
           formIntensivo,
+          temporadaActivaCierre,
           formatearAlumnoListadoOperativo,
           formatearFecha,
           formatearObservaciones,
@@ -40486,6 +41458,9 @@ async function abrirGestionOperativaIntensivoDia(
           quitarAlumnoDeIntensivo,
           recomendacionesDelDiaIntensivo,
           recuperacionesDelIntensivo,
+          recomendacionesRecuperacion,
+          recomendacionesDeRecuperacion,
+          aprobarRecuperacionInteligente,
           reportesDetalleAlumnoIntensivo,
           responsableReporteRecomendadoApp,
           responsablesReportePorGrupoRecomendado,
