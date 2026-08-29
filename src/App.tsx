@@ -2028,6 +2028,10 @@ function puedeVerAdministracionAltasApp(rol?: string) {
   );
 }
 
+function esRolAdministracionApp(rol?: string) {
+  return rol === 'administracion';
+}
+
 function limpiarUrlAuthApp() {
   if (typeof window === 'undefined') return;
   const limpia = `${window.location.origin}${window.location.pathname}`;
@@ -3815,12 +3819,65 @@ function mesesTemporadaAgenda(anioInicio: number) {
   ];
 }
 
+
+function IconoNavegacionApp({ tipo }: { tipo: string }) {
+  const comun = {
+    width: 20,
+    height: 20,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.8,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+  };
+
+  switch (tipo) {
+    case 'inicio':
+      return <svg {...comun}><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5"/><path d="M9.5 21v-6h5v6"/></svg>;
+    case 'agenda':
+      return <svg {...comun}><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/><path d="M8 14h3M13 14h3M8 17h3"/></svg>;
+    case 'cierre':
+      return <svg {...comun}><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.2 2.2L16 9"/></svg>;
+    case 'fichas':
+      return <svg {...comun}><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M6 16c.8-2 2-3 3-3s2.2 1 3 3M14 9h4M14 13h4"/></svg>;
+    case 'intensivos':
+      return <svg {...comun}><path d="m3 20 6.5-11 3.2 5L15 10l6 10Z"/><path d="m8.1 11.5 1.4 1.2 1.1-1.7"/></svg>;
+    case 'ocio':
+      return <svg {...comun}><path d="M12 2v20M4.2 6.5l15.6 11M19.8 6.5l-15.6 11"/><path d="m9.5 4 2.5 2 2.5-2M9.5 20l2.5-2 2.5 2"/></svg>;
+    case 'entrenadores':
+      return <svg {...comun}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>;
+    case 'disponibilidad':
+      return <svg {...comun}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>;
+    case 'movil':
+      return <svg {...comun}><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 18h4"/></svg>;
+    case 'altas':
+      return <svg {...comun}><path d="M15 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8" cy="7" r="4"/><path d="M19 8v6M16 11h6"/></svg>;
+    case 'cobros':
+      return <svg {...comun}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h2"/></svg>;
+    case 'analisis':
+      return <svg {...comun}><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>;
+    case 'informes':
+      return <svg {...comun}><path d="M6 2h9l4 4v16H6z"/><path d="M14 2v5h5M9 12h6M9 16h6"/></svg>;
+    case 'temporadas':
+      return <svg {...comun}><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>;
+    case 'accesos':
+      return <svg {...comun}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>;
+    default:
+      return <svg {...comun}><circle cx="12" cy="12" r="9"/></svg>;
+  }
+}
+
 function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const esCoordinadorApp =
     !perfilUsuario || esRolCoordinacionApp(perfilUsuario.rol);
   const esEntrenadorApp = Boolean(perfilUsuario && !esCoordinadorApp);
   const esCoordinadorJefeApp =
     !perfilUsuario || puedeVerDireccionApp(perfilUsuario.rol);
+  const esAdministracionApp = Boolean(
+    perfilUsuario && esRolAdministracionApp(perfilUsuario.rol)
+  );
   const puedeGestionarAccesosUsuarioApp =
     !perfilUsuario || puedeGestionarAccesosApp(perfilUsuario.rol);
   const entrenadorIdSesionApp = perfilUsuario?.entrenador_id || '';
@@ -3934,6 +3991,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   };
 
   useEffect(() => {
+    if (esAdministracionApp && pantalla !== 'administracion') {
+      setPantalla('administracion');
+      return;
+    }
+
     if (esEntrenadorApp && pantalla !== 'entrenador') {
       setPantalla('entrenador');
       return;
@@ -3951,6 +4013,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       setPantalla('agenda');
     }
   }, [
+    esAdministracionApp,
     esEntrenadorApp,
     esCoordinadorApp,
     esCoordinadorJefeApp,
@@ -20916,6 +20979,7 @@ async function abrirGestionOperativaIntensivoDia(
 
   return (
     <main
+      className={`mitico-app-shell ${esCoordinadorApp ? 'with-sidebar' : 'trainer-only'} ${esVistaMovilApp ? 'is-mobile' : ''}`}
       style={{
         ...layout,
         ...(usarCabeceraCompactaApp
@@ -20929,746 +20993,254 @@ async function abrirGestionOperativaIntensivoDia(
           : {}),
       }}
     >
-      <header
-        style={{
-          ...cabeceraAppLimpia,
-          ...(usarCabeceraCompactaApp
-            ? {
-                width: '100%',
-                maxWidth: '100%',
-                minWidth: 0,
-                boxSizing: 'border-box',
-                overflow: 'hidden',
-              }
-            : {}),
-        }}
-      >
-        <div
-          style={{
-            ...cabeceraMarcaApp,
-            ...(usarCabeceraCompactaApp
-              ? {
-                  width: '100%',
-                  maxWidth: '100%',
-                  minWidth: 0,
-                  boxSizing: 'border-box',
-                }
-              : {}),
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'flex-start',
-              justifyContent: 'flex-start',
-              gap: usarCabeceraCompactaApp ? 12 : 18,
-              flexWrap: 'wrap',
-              width: '100%',
-              minWidth: 0,
-              boxSizing: 'border-box',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'flex-start',
-                gap: 12,
-                minWidth: 0,
-                ...(usarCabeceraCompactaApp
-                  ? {
-                      width: '100%',
-                      maxWidth: '100%',
-                    }
-                  : {}),
-              }}
-            >
-              <div
-                style={{
-                  ...marcaLogoTituloApp,
-                  ...(usarCabeceraCompactaApp
-                    ? {
-                        width: '100%',
-                        maxWidth: '100%',
-                        minWidth: 0,
-                        display: 'grid',
-                        gridTemplateColumns: '64px minmax(0, 1fr)',
-                        alignItems: 'center',
-                        gap: 12,
-                        boxSizing: 'border-box',
-                      }
-                    : {}),
-                }}
-              >
-                <img
-                  src="/logo-cabecera-mitico.png"
-                  alt="Mítico Club"
-                  style={{
-                    ...logoMarcaApp,
-                    ...(usarCabeceraCompactaApp
-                      ? {
-                          width: 64,
-                          height: 64,
-                          maxWidth: '100%',
-                        }
-                      : {}),
-                  }}
-                />
-                <div style={{ minWidth: 0 }}>
-                  <p
-                    style={{
-                      ...marcaKickerApp,
-                      ...(usarCabeceraCompactaApp
-                        ? {
-                            whiteSpace: 'normal',
-                            overflowWrap: 'anywhere',
-                          }
-                        : {}),
-                    }}
-                  >
-                    Mítico Club · coordinación deportiva
-                  </p>
-                  <h1
-                    style={{
-                      ...tituloMarcaApp,
-                      ...(usarCabeceraCompactaApp
-                        ? {
-                            fontSize: 'clamp(24px, 7.2vw, 34px)',
-                            lineHeight: 0.98,
-                            whiteSpace: 'normal',
-                            overflowWrap: 'break-word',
-                            maxWidth: '100%',
-                          }
-                        : {}),
-                    }}
-                  >
-                    MITICO BABY / OCIO LOGISTICA
-                  </h1>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: usarCabeceraCompactaApp ? 'grid' : 'inline-flex',
-                  gridTemplateColumns: usarCabeceraCompactaApp
-                    ? (esVistaMovilApp ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 1.35fr)')
-                    : undefined,
-                  alignItems: 'center',
-                  gap: 10,
-                  width: usarCabeceraCompactaApp ? '100%' : undefined,
-                  maxWidth: '100%',
-                  minWidth: 0,
-                  boxSizing: 'border-box',
-                  border: '1px solid rgba(15, 118, 110, 0.22)',
-                  background: 'rgba(240, 253, 250, 0.92)',
-                  borderRadius: 14,
-                  padding: '9px 13px',
-                  boxShadow: '0 8px 22px rgba(15, 23, 42, 0.06)',
-                }}
-              >
-                <label
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 900,
-                    letterSpacing: '0.08em',
-                    textTransform: 'uppercase',
-                    color: '#0f766e',
-                    whiteSpace: 'nowrap',
-                  }}
-                  htmlFor="semana-trabajo-cabecera"
-                >
-                  Semana de trabajo
-                </label>
-                {esEntrenadorApp ? (
-                  <div
-                    id="semana-trabajo-cabecera"
-                    aria-label="Semana de trabajo actual"
-                    style={{
-                      minWidth: 0,
-                      maxWidth: '100%',
-                      color: '#134e4a',
-                      fontSize: 14,
-                      fontWeight: 900,
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    {semanaVistaEntrenadorInicio
-                      ? rangoSemanaAgenda(semanaVistaEntrenadorInicio)
-                      : '-'}
-                  </div>
-                ) : (
-                  <select
-                    id="semana-trabajo-cabecera"
-                    value={semanaAgendaActiva}
-                    onChange={(e) => cambiarSemanaTrabajoApp(e.target.value)}
-                    aria-label="Cambiar semana de trabajo"
-                    style={{
-                      minWidth: 0,
-                      maxWidth: '100%',
-                      border: 0,
-                      outline: 0,
-                      padding: '2px 24px 2px 0',
-                      margin: 0,
-                      background: 'transparent',
-                      color: '#134e4a',
-                      fontSize: 14,
-                      fontWeight: 900,
-                      lineHeight: 1.2,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {semanasAgenda.map((semana) => (
-                      <option key={semana} value={semana}>
-                        {rangoSemanaAgenda(semana)}
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-
-              {(esEntrenadorApp || esCoordinadorJefeApp) && !pwaInstalada && (
-                <div
-                  style={{
-                    width: '100%',
-                    maxWidth: '100%',
-                    minWidth: 0,
-                    boxSizing: 'border-box',
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={instalarPwaEntrenador}
-                    style={{
-                      width: '100%',
-                      minWidth: 0,
-                      minHeight: 48,
-                      border: '1px solid rgba(101, 163, 13, 0.32)',
-                      borderRadius: 14,
-                      padding: '8px 11px',
-                      display: 'grid',
-                      gridTemplateColumns: '38px minmax(0, 1fr) auto',
-                      alignItems: 'center',
-                      gap: 10,
-                      background:
-                        'linear-gradient(135deg, rgba(247, 254, 231, 0.98), rgba(236, 252, 203, 0.92))',
-                      color: '#365314',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      boxShadow: '0 8px 20px rgba(77, 124, 15, 0.08)',
-                    }}
-                    aria-expanded={mostrarAyudaInstalacionPwa}
-                  >
-                    <img
-                      src="/icon-192.png"
-                      alt=""
-                      aria-hidden="true"
-                      style={{
-                        width: 38,
-                        height: 38,
-                        borderRadius: 10,
-                        objectFit: 'cover',
-                        display: 'block',
-                      }}
-                    />
-                    <span style={{ minWidth: 0, display: 'grid', gap: 1 }}>
-                      <strong
-                        style={{
-                          fontSize: 13,
-                          lineHeight: 1.2,
-                          color: '#365314',
-                        }}
-                      >
-                        Instalar Mítico Baby
-                      </strong>
-                      <span
-                        style={{
-                          fontSize: 11,
-                          lineHeight: 1.25,
-                          color: '#4d7c0f',
-                          fontWeight: 700,
-                        }}
-                      >
-                        Acceso directo desde tu móvil
-                      </span>
-                    </span>
-                    <span
-                      aria-hidden="true"
-                      style={{
-                        fontSize: 18,
-                        fontWeight: 900,
-                        lineHeight: 1,
-                        color: '#4d7c0f',
-                      }}
-                    >
-                      {mostrarAyudaInstalacionPwa ? '−' : '＋'}
-                    </span>
-                  </button>
-
-                  {mostrarAyudaInstalacionPwa && (
-                    <div
-                      style={{
-                        marginTop: 7,
-                        padding: '10px 12px',
-                        borderRadius: 12,
-                        border: '1px solid #d9f99d',
-                        background: '#fbfff5',
-                        color: '#3f6212',
-                        fontSize: 12,
-                        lineHeight: 1.45,
-                        boxSizing: 'border-box',
-                      }}
-                    >
-                      {esDispositivoIosPwa ? (
-                        <>
-                          En iPhone/iPad: abre esta página en Safari, pulsa
-                          <strong> Compartir </strong> y después
-                          <strong> Añadir a pantalla de inicio</strong>.
-                        </>
-                      ) : (
-                        <>
-                          Si no aparece el instalador automático, abre el menú
-                          del navegador y elige
-                          <strong> Instalar aplicación </strong> o
-                          <strong> Añadir a pantalla de inicio</strong>.
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {perfilUsuario && (
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    width: usarCabeceraCompactaApp ? '100%' : 'fit-content',
-                    maxWidth: '100%',
-                    minWidth: 0,
-                    boxSizing: 'border-box',
-                    border: '1px solid #dbe3ee',
-                    background: 'rgba(255, 255, 255, 0.94)',
-                    borderRadius: 16,
-                    padding: '9px 10px 9px 9px',
-                    boxShadow: '0 10px 28px rgba(15, 23, 42, 0.08)',
-                  }}
-                >
-                  <span
-                    aria-hidden="true"
-                    style={{
-                      width: 38,
-                      height: 38,
-                      borderRadius: 12,
-                      display: 'grid',
-                      placeItems: 'center',
-                      flex: '0 0 auto',
-                      background: 'linear-gradient(145deg, #172033, #334155)',
-                      color: '#fff',
-                      fontSize: 13,
-                      fontWeight: 950,
-                      letterSpacing: '0.04em',
-                    }}
-                  >
-                    {perfilUsuario.nombre
-                      .trim()
-                      .split(/\s+/)
-                      .slice(0, 2)
-                      .map((parte) => parte.charAt(0).toUpperCase())
-                      .join('')}
-                  </span>
-
-                  <span style={{ display: 'grid', gap: 1, minWidth: 0 }}>
-                    <strong
-                      style={{
-                        color: '#172033',
-                        fontSize: 14,
-                        lineHeight: 1.2,
-                        whiteSpace: usarCabeceraCompactaApp ? 'normal' : 'nowrap',
-                        overflowWrap: usarCabeceraCompactaApp ? 'anywhere' : undefined,
-                      }}
-                    >
-                      {perfilUsuario.nombre}
-                    </strong>
-                    <span
-                      style={{
-                        color: '#64748b',
-                        fontSize: 12,
-                        fontWeight: 750,
-                        lineHeight: 1.2,
-                      }}
-                    >
-                      {rolUsuarioTextoApp(perfilUsuario.rol)}
-                    </span>
-                  </span>
-
-                  <button
-                    type="button"
-                    onClick={onLogout}
-                    onMouseEnter={() => setSalirActivoCabecera(true)}
-                    onMouseLeave={() => setSalirActivoCabecera(false)}
-                    onMouseDown={() => setSalirActivoCabecera(true)}
-                    onMouseUp={() => setSalirActivoCabecera(false)}
-                    onFocus={() => setSalirActivoCabecera(true)}
-                    onBlur={() => setSalirActivoCabecera(false)}
-                    aria-label="Cerrar sesión"
-                    title="Cerrar sesión"
-                    style={{
-                      border: salirActivoCabecera
-                        ? '1px solid #dc2626'
-                        : '1px solid rgba(220, 38, 38, 0.28)',
-                      background: salirActivoCabecera
-                        ? '#dc2626'
-                        : 'rgba(254, 226, 226, 0.72)',
-                      color: salirActivoCabecera ? '#ffffff' : '#b91c1c',
-                      borderRadius: 12,
-                      padding: '9px 12px',
-                      fontWeight: 900,
-                      lineHeight: 1,
-                      transition:
-                        'background 160ms ease, color 160ms ease, border-color 160ms ease, transform 120ms ease',
-                      transform: salirActivoCabecera ? 'translateY(-1px)' : 'none',
-                      flex: '0 0 auto',
-                      marginLeft: 'auto',
-                    }}
-                  >
-                    Salir
-                  </button>
-                </div>
-              )}
+      <header className="mitico-product-header">
+        <div className="mitico-topbar">
+          <div className="mitico-brand-block">
+            <img
+              src="/logo-cabecera-mitico.png"
+              alt="Mítico Club"
+              className="mitico-brand-logo"
+            />
+            <div className="mitico-brand-copy">
+              <strong>MÍTICO BABY</strong>
+              <span>Coordinación deportiva</span>
             </div>
+          </div>
+
+          <div className="mitico-week-control">
+            <span className="mitico-week-label">Semana de trabajo</span>
+            {esEntrenadorApp ? (
+              <strong className="mitico-week-value">
+                {semanaVistaEntrenadorInicio
+                  ? rangoSemanaAgenda(semanaVistaEntrenadorInicio)
+                  : '-'}
+              </strong>
+            ) : (
+              <select
+                value={semanaAgendaActiva}
+                onChange={(e) => cambiarSemanaTrabajoApp(e.target.value)}
+                aria-label="Cambiar semana de trabajo"
+              >
+                {semanasAgenda.map((semana) => (
+                  <option key={semana} value={semana}>
+                    {rangoSemanaAgenda(semana)}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div className="mitico-topbar-actions">
+            {(esEntrenadorApp || esCoordinadorJefeApp) && !pwaInstalada && (
+              <button
+                type="button"
+                className="mitico-install-button"
+                onClick={instalarPwaEntrenador}
+                aria-expanded={mostrarAyudaInstalacionPwa}
+                title="Instalar Mítico Baby"
+              >
+                <img src="/icon-192.png" alt="" aria-hidden="true" />
+                <span>Instalar app</span>
+              </button>
+            )}
+
+            {perfilUsuario && (
+              <div className="mitico-user-block">
+                <span className="mitico-user-avatar" aria-hidden="true">
+                  {perfilUsuario.nombre
+                    .trim()
+                    .split(/\s+/)
+                    .slice(0, 2)
+                    .map((parte) => parte.charAt(0).toUpperCase())
+                    .join('')}
+                </span>
+                <span className="mitico-user-copy">
+                  <strong>{perfilUsuario.nombre}</strong>
+                  <small>{rolUsuarioTextoApp(perfilUsuario.rol)}</small>
+                </span>
+                <button
+                  type="button"
+                  className="mitico-logout-button"
+                  onClick={onLogout}
+                  aria-label="Cerrar sesión"
+                  title="Cerrar sesión"
+                >
+                  Salir
+                </button>
+              </div>
+            )}
           </div>
         </div>
 
+        {mostrarAyudaInstalacionPwa && !pwaInstalada && (
+          <div className="mitico-install-help">
+            {esDispositivoIosPwa ? (
+              <>
+                En iPhone/iPad: abre esta página en Safari, pulsa
+                <strong> Compartir </strong> y después
+                <strong> Añadir a pantalla de inicio</strong>.
+              </>
+            ) : (
+              <>
+                Si no aparece el instalador automático, abre el menú del navegador
+                y elige <strong>Instalar aplicación</strong> o
+                <strong> Añadir a pantalla de inicio</strong>.
+              </>
+            )}
+          </div>
+        )}
+
         {esCoordinadorApp ? (
-          <nav
-            style={{
-              ...menuPrincipalApp,
-              ...(esVistaMovilApp
-                ? {
-                    width: '100%',
-                    maxWidth: '100%',
-                    minWidth: 0,
-                    display: 'grid',
-                    gridTemplateColumns: 'minmax(0, 1fr)',
-                    gap: 10,
-                    overflowX: 'hidden',
-                    boxSizing: 'border-box',
-                  }
-                : {}),
-            }}
-          >
-            <div
-              style={{
-                ...menuBloqueColor('#2563eb', '#eff6ff'),
-                ...(esVistaMovilApp
-                  ? {
-                      width: '100%',
-                      maxWidth: '100%',
-                      minWidth: 0,
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(0, 1fr)',
-                      alignItems: 'stretch',
-                      gap: 8,
-                      boxSizing: 'border-box',
-                    }
-                  : {}),
-              }}
-            >
-              <span style={menuTituloColor('#2563eb')}>Trabajo semanal</span>
-              <button
-                onClick={() => abrirPantallaConScroll('resumenDia')}
-                style={{
-                  ...botonMenuColor(pantalla === 'resumenDia', '#2563eb'),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
-              >
-                Resumen del día
-              </button>
-              <button
-                onClick={() => abrirPantallaConScroll('agenda')}
-                style={{
-                  ...botonMenuColor(pantalla === 'agenda', '#2563eb'),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
-              >
-                Días de entrenamiento
-              </button>
-              <button
-                onClick={() => abrirPantallaConScroll('reportes')}
-                style={{
-                  ...botonMenuColor(pantalla === 'reportes', '#2563eb'),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
-              >
-                Cierre semanal
-              </button>
-            </div>
+          <nav className="mitico-sidebar" aria-label="Navegación principal">
+            {!esAdministracionApp && (
+              <>
+                <div className="mitico-nav-group">
+                  <span className="mitico-nav-heading">Operativa</span>
+                  <button
+                    className={`mitico-nav-item ${pantalla === 'resumenDia' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('resumenDia')}
+                  >
+                    <IconoNavegacionApp tipo="inicio" />
+                    <span>Inicio / resumen</span>
+                  </button>
+                  <button
+                    className={`mitico-nav-item ${pantalla === 'agenda' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('agenda')}
+                  >
+                    <IconoNavegacionApp tipo="agenda" />
+                    <span>Entrenamientos</span>
+                  </button>
+                  <button
+                    className={`mitico-nav-item ${pantalla === 'ocioGrupos' || pantalla === 'ocioCambios' || pantalla === 'ocioSemana' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('ocioGrupos')}
+                  >
+                    <IconoNavegacionApp tipo="ocio" />
+                    <span>Ocio</span>
+                  </button>
+                  <button
+                    className={`mitico-nav-item ${pantalla === 'intensivos' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('intensivos')}
+                  >
+                    <IconoNavegacionApp tipo="intensivos" />
+                    <span>Intensivos</span>
+                  </button>
+                </div>
 
-            <div
-              style={{
-                ...menuBloqueColor('#7c3aed', '#f5f3ff'),
-                ...(esVistaMovilApp
-                  ? {
-                      width: '100%',
-                      maxWidth: '100%',
-                      minWidth: 0,
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(0, 1fr)',
-                      alignItems: 'stretch',
-                      gap: 8,
-                      boxSizing: 'border-box',
-                    }
-                  : {}),
-              }}
-            >
-              <span style={menuTituloColor('#7c3aed')}>Fichas</span>
-              <button
-                onClick={() => abrirPantallaConScroll('alumnos')}
-                style={{
-                  ...botonMenuColor(pantalla === 'alumnos', '#7c3aed'),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
-              >
-                Alumnos Baby
-              </button>
-            </div>
+                <div className="mitico-nav-group">
+                  <span className="mitico-nav-heading">Equipo</span>
+                  <button
+                    className={`mitico-nav-item ${pantalla === 'entrenadores' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('entrenadores')}
+                  >
+                    <IconoNavegacionApp tipo="entrenadores" />
+                    <span>Entrenadores</span>
+                  </button>
+                  <button
+                    className={`mitico-nav-item ${pantalla === 'disponibilidad' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('disponibilidad')}
+                  >
+                    <IconoNavegacionApp tipo="disponibilidad" />
+                    <span>Disponibilidad</span>
+                  </button>
+                  <button
+                    className={`mitico-nav-item ${pantalla === 'entrenador' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('entrenador')}
+                  >
+                    <IconoNavegacionApp tipo="movil" />
+                    <span>Vista entrenador</span>
+                  </button>
+                  <button
+                    className={`mitico-nav-item ${pantalla === 'reportes' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('reportes')}
+                  >
+                    <IconoNavegacionApp tipo="cierre" />
+                    <span>Cierre semanal</span>
+                  </button>
+                </div>
 
-            <div
-              style={{
-                ...menuBloqueColor('#f97316', '#fff7ed'),
-                ...(esVistaMovilApp
-                  ? {
-                      width: '100%',
-                      maxWidth: '100%',
-                      minWidth: 0,
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(0, 1fr)',
-                      alignItems: 'stretch',
-                      gap: 8,
-                      boxSizing: 'border-box',
-                    }
-                  : {}),
-              }}
-            >
-              <span style={menuTituloColor('#f97316')}>Intensivos</span>
-              <button
-                onClick={() => abrirPantallaConScroll('intensivos')}
-                style={{
-                  ...botonMenuColor(pantalla === 'intensivos', '#f97316'),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
-              >
-                Intensivos
-              </button>
-            </div>
+                <div className="mitico-nav-group">
+                  <span className="mitico-nav-heading">Gestión</span>
+                  <button
+                    className={`mitico-nav-item ${pantalla === 'alumnos' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('alumnos')}
+                  >
+                    <IconoNavegacionApp tipo="fichas" />
+                    <span>Fichas</span>
+                  </button>
+                  {puedeVerAdministracionAltasApp(perfilUsuario?.rol) && (
+                    <button
+                      className={`mitico-nav-item ${pantalla === 'administracion' ? 'is-active' : ''}`}
+                      onClick={() => abrirPantallaConScroll('administracion')}
+                    >
+                      <IconoNavegacionApp tipo="altas" />
+                      <span>Altas / Test</span>
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
 
-            <div
-              style={{
-                ...menuBloqueColor('#16a34a', '#f0fdf4'),
-                ...(esVistaMovilApp
-                  ? {
-                      width: '100%',
-                      maxWidth: '100%',
-                      minWidth: 0,
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(0, 1fr)',
-                      alignItems: 'stretch',
-                      gap: 8,
-                      boxSizing: 'border-box',
-                    }
-                  : {}),
-              }}
-            >
-              <span style={menuTituloColor('#16a34a')}>Ocio</span>
-              <button
-                onClick={() => abrirPantallaConScroll('ocioGrupos')}
-                style={{
-                  ...botonMenuColor(
-                  ['ocioGrupos', 'ocioCambios', 'ocioSemana'].includes(pantalla),
-                  '#16a34a'
-                ),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
-              >
-                Grupos estables
-              </button>
-            </div>
-
-            <div
-              style={{
-                ...menuBloqueColor('#0f766e', '#ecfdf5'),
-                ...(esVistaMovilApp
-                  ? {
-                      width: '100%',
-                      maxWidth: '100%',
-                      minWidth: 0,
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(0, 1fr)',
-                      alignItems: 'stretch',
-                      gap: 8,
-                      boxSizing: 'border-box',
-                    }
-                  : {}),
-              }}
-            >
-              <span style={menuTituloColor('#0f766e')}>Entrenadores</span>
-              <button
-                onClick={() => abrirPantallaConScroll('entrenadores')}
-                style={{
-                  ...botonMenuColor(pantalla === 'entrenadores', '#0f766e'),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
-              >
-                Gestión entrenadores
-              </button>
-              <button
-                onClick={() => abrirPantallaConScroll('disponibilidad')}
-                style={{
-                  ...botonMenuColor(pantalla === 'disponibilidad', '#0f766e'),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
-              >
-                Disponibilidad
-              </button>
-              <button
-                onClick={() => abrirPantallaConScroll('entrenador')}
-                style={{
-                  ...botonMenuColor(pantalla === 'entrenador', '#0f766e'),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
-              >
-                Vista entrenador
-              </button>
-            </div>
-
-            {puedeVerAdministracionAltasApp(perfilUsuario?.rol) && (
-              <div
-              style={{
-                ...menuBloqueColor('#0891b2', '#ecfeff'),
-                ...(esVistaMovilApp
-                  ? {
-                      width: '100%',
-                      maxWidth: '100%',
-                      minWidth: 0,
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(0, 1fr)',
-                      alignItems: 'stretch',
-                      gap: 8,
-                      boxSizing: 'border-box',
-                    }
-                  : {}),
-              }}
-            >
-                <span style={menuTituloColor('#0891b2')}>Administración</span>
+            {esAdministracionApp && puedeVerAdministracionAltasApp(perfilUsuario?.rol) && (
+              <div className="mitico-nav-group">
+                <span className="mitico-nav-heading">Administración</span>
                 <button
+                  className={`mitico-nav-item ${pantalla === 'administracion' ? 'is-active' : ''}`}
                   onClick={() => abrirPantallaConScroll('administracion')}
-                  style={{
-                  ...botonMenuColor(pantalla === 'administracion', '#0891b2'),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
                 >
-                  Altas y test de nivel
+                  <IconoNavegacionApp tipo="altas" />
+                  <span>Altas / Test de nivel</span>
                 </button>
               </div>
             )}
 
             {esCoordinadorJefeApp && (
-              <div
-              style={{
-                ...menuBloqueColor('#e11d48', '#fff1f2'),
-                ...(esVistaMovilApp
-                  ? {
-                      width: '100%',
-                      maxWidth: '100%',
-                      minWidth: 0,
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(0, 1fr)',
-                      alignItems: 'stretch',
-                      gap: 8,
-                      boxSizing: 'border-box',
-                    }
-                  : {}),
-              }}
-            >
-                <span style={menuTituloColor('#e11d48')}>Dirección</span>
+              <div className="mitico-nav-group">
+                <span className="mitico-nav-heading">Dirección</span>
                 <button
+                  className={`mitico-nav-item ${pantalla === 'cobros' ? 'is-active' : ''}`}
                   onClick={() => abrirPantallaConScroll('cobros')}
-                  style={{
-                    ...botonMenuColor(pantalla === 'cobros', '#e11d48'),
-                    ...(esVistaMovilApp
-                      ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                      : {}),
-                  }}
                 >
-                  Cobros
+                  <IconoNavegacionApp tipo="cobros" />
+                  <span>Cobros</span>
                 </button>
                 <button
+                  className={`mitico-nav-item ${pantalla === 'analisis' ? 'is-active' : ''}`}
                   onClick={() => abrirPantallaConScroll('analisis')}
-                  style={{
-                    ...botonMenuColor(pantalla === 'analisis', '#e11d48'),
-                    ...(esVistaMovilApp
-                      ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                      : {}),
-                  }}
                 >
-                  Análisis
+                  <IconoNavegacionApp tipo="analisis" />
+                  <span>Análisis</span>
                 </button>
                 <button
+                  className={`mitico-nav-item ${pantalla === 'informes' ? 'is-active' : ''}`}
                   onClick={() => abrirPantallaConScroll('informes')}
-                  style={{
-                    ...botonMenuColor(pantalla === 'informes', '#e11d48'),
-                    ...(esVistaMovilApp
-                      ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                      : {}),
-                  }}
                 >
-                  Informes y listados
+                  <IconoNavegacionApp tipo="informes" />
+                  <span>Informes y listados</span>
                 </button>
                 <button
+                  className={`mitico-nav-item ${pantalla === 'temporadas' ? 'is-active' : ''}`}
                   onClick={() => abrirPantallaConScroll('temporadas')}
-                  style={{
-                    ...botonMenuColor(pantalla === 'temporadas', '#e11d48'),
-                    ...(esVistaMovilApp
-                      ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                      : {}),
-                  }}
                 >
-                  Temporadas
+                  <IconoNavegacionApp tipo="temporadas" />
+                  <span>Temporadas</span>
                 </button>
                 <button
+                  className={`mitico-nav-item ${pantalla === 'usuarios' ? 'is-active' : ''}`}
                   onClick={() => abrirPantallaConScroll('usuarios')}
-                  style={{
-                    ...botonMenuColor(pantalla === 'usuarios', '#e11d48'),
-                    ...(esVistaMovilApp
-                      ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                      : {}),
-                  }}
                 >
-                  Accesos equipo
+                  <IconoNavegacionApp tipo="accesos" />
+                  <span>Accesos equipo</span>
                 </button>
               </div>
             )}
+
+            <div className="mitico-sidebar-footer">
+              <img src="/logo-cabecera-mitico.png" alt="" aria-hidden="true" />
+              <span>
+                <strong>Mítico Club · Madrid</strong>
+                <small>Temporada {temporadaActivaCierre || 'activa'}</small>
+              </span>
+            </div>
           </nav>
         ) : null}
       </header>
@@ -21884,6 +21456,159 @@ async function abrirGestionOperativaIntensivoDia(
       )}
 
       <style>{`
+        .mitico-app-shell {
+          --mitico-navy: #061b2d;
+          --mitico-navy-soft: #0d2b42;
+          --mitico-green: #0f9f4d;
+          --mitico-green-dark: #08783a;
+          --mitico-ink: #122033;
+          --mitico-muted: #66758a;
+          --mitico-border: #e4eaf1;
+          --mitico-surface: #ffffff;
+          --mitico-bg: #f4f7fb;
+          padding: 0 !important;
+          background: var(--mitico-bg) !important;
+          min-height: 100vh;
+          color: var(--mitico-ink);
+        }
+        .mitico-product-header { position: relative; z-index: 40; }
+        .mitico-topbar {
+          min-height: 74px;
+          display: grid;
+          grid-template-columns: minmax(230px, 1fr) minmax(330px, 0.9fr) minmax(280px, 1fr);
+          align-items: center;
+          gap: 18px;
+          padding: 10px 24px;
+          background: linear-gradient(110deg, #041724 0%, #06243a 64%, #092d43 100%);
+          color: #fff;
+          box-shadow: 0 8px 28px rgba(3, 20, 33, 0.16);
+          position: sticky;
+          top: 0;
+          z-index: 60;
+        }
+        .mitico-brand-block { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .mitico-brand-logo {
+          width: 44px; height: 44px; border-radius: 12px; object-fit: cover;
+          background: #fff; border: 1px solid rgba(255,255,255,.18);
+          box-shadow: 0 6px 20px rgba(0,0,0,.18);
+        }
+        .mitico-brand-copy { display: grid; min-width: 0; }
+        .mitico-brand-copy strong { font-size: 18px; letter-spacing: .08em; line-height: 1.05; }
+        .mitico-brand-copy span { margin-top: 4px; color: #38d277; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .12em; }
+        .mitico-week-control {
+          min-height: 46px; display: flex; align-items: center; justify-content: center; gap: 12px;
+          padding: 7px 13px; border: 1px solid rgba(255,255,255,.08); border-radius: 14px;
+          background: rgba(255,255,255,.055); min-width: 0;
+        }
+        .mitico-week-label { color: #cbd7e4; font-size: 12px; font-weight: 750; white-space: nowrap; }
+        .mitico-week-control select {
+          min-width: 0; max-width: 240px; border: 0; outline: 0; background: transparent; color: #fff;
+          font-weight: 850; font-size: 13px; padding: 4px 22px 4px 0;
+        }
+        .mitico-week-control select option { color: #172033; background: #fff; }
+        .mitico-week-value { min-width: 0; font-size: 13px; color: #fff; overflow-wrap: anywhere; }
+        .mitico-topbar-actions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; min-width: 0; }
+        .mitico-install-button {
+          height: 42px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px;
+          border-radius: 12px; border: 1px solid rgba(117,229,155,.2); background: rgba(15,159,77,.13);
+          color: #d9ffe6; font-weight: 800; font-size: 12px;
+        }
+        .mitico-install-button img { width: 28px; height: 28px; border-radius: 8px; }
+        .mitico-user-block { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .mitico-user-avatar {
+          width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
+          background: linear-gradient(145deg, #34475c, #1c3046); color: #fff; font-weight: 900; font-size: 12px;
+          border: 1px solid rgba(255,255,255,.09);
+        }
+        .mitico-user-copy { display: grid; min-width: 0; line-height: 1.15; }
+        .mitico-user-copy strong { color: #fff; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .mitico-user-copy small { color: #b8c6d5; font-size: 11px; margin-top: 3px; }
+        .mitico-logout-button {
+          min-height: 34px; padding: 7px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,.11);
+          color: #dce7f2; background: rgba(255,255,255,.06); font-size: 11px; font-weight: 800;
+        }
+        .mitico-install-help {
+          position: fixed; top: 82px; right: 24px; z-index: 70; width: min(390px, calc(100vw - 32px));
+          padding: 12px 14px; border-radius: 14px; background: #fff; color: #31503d;
+          border: 1px solid #ccebd7; box-shadow: 0 18px 55px rgba(15,23,42,.16); font-size: 12px; line-height: 1.45;
+        }
+        .mitico-sidebar {
+          position: fixed; top: 74px; left: 0; bottom: 0; width: 258px; z-index: 45;
+          display: flex; flex-direction: column; gap: 2px; overflow-y: auto; padding: 22px 14px 18px;
+          background: rgba(255,255,255,.98); border-right: 1px solid var(--mitico-border);
+          box-shadow: 8px 0 30px rgba(15,23,42,.025);
+        }
+        .mitico-nav-group { display: grid; gap: 3px; padding: 0 0 14px; margin-bottom: 10px; border-bottom: 1px solid #edf1f5; }
+        .mitico-nav-heading { padding: 0 10px 7px; color: var(--mitico-green-dark); font-size: 10px; font-weight: 950; text-transform: uppercase; letter-spacing: .13em; }
+        .mitico-nav-item {
+          width: 100%; min-height: 42px; display: grid; grid-template-columns: 24px minmax(0,1fr); align-items: center; gap: 10px;
+          padding: 9px 11px; border: 0; border-radius: 10px; background: transparent; color: #506078;
+          text-align: left; font-size: 13px; font-weight: 760; box-shadow: none !important;
+        }
+        .mitico-nav-item:hover { transform: none !important; background: #f5f8fa; color: #17324a; box-shadow: none !important; }
+        .mitico-nav-item.is-active { color: #08783a; background: linear-gradient(90deg, #eaf8ef 0%, #f7fbf8 100%); font-weight: 900; }
+        .mitico-nav-item.is-active::before { content: ''; position: absolute; left: 0; width: 3px; height: 28px; border-radius: 0 3px 3px 0; background: var(--mitico-green); }
+        .mitico-nav-item { position: relative; }
+        .mitico-nav-item svg { width: 19px; height: 19px; }
+        .mitico-sidebar-footer { margin-top: auto; padding: 14px 8px 2px; display: flex; align-items: center; gap: 9px; color: #64748b; }
+        .mitico-sidebar-footer img { width: 34px; height: 34px; object-fit: cover; border-radius: 9px; }
+        .mitico-sidebar-footer span { display: grid; min-width: 0; }
+        .mitico-sidebar-footer strong { font-size: 11px; color: #344256; }
+        .mitico-sidebar-footer small { font-size: 10px; margin-top: 2px; }
+        .mitico-content-shell {
+          margin-left: 258px; padding: 28px 32px 64px; min-width: 0; min-height: calc(100vh - 74px);
+          max-width: 1700px;
+        }
+        .mitico-app-shell.trainer-only .mitico-content-shell { margin-left: 0; max-width: 1120px; margin-right: auto; margin-left: auto; }
+        .mitico-content-anchor { scroll-margin-top: 92px; }
+
+        .mitico-agenda-screen { max-width: 1420px; margin: 0 auto; }
+        .mitico-agenda-screen .mitico-page-title { font-size: clamp(26px, 2.3vw, 34px); letter-spacing: -.035em; }
+        .mitico-agenda-screen .mitico-agenda-hero { background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 2px 0 8px !important; border-radius: 0 !important; }
+        .mitico-agenda-screen .mitico-agenda-controls { border-radius: 18px !important; border-color: #e1e7ef !important; box-shadow: 0 8px 28px rgba(20,35,55,.055) !important; }
+        .mitico-agenda-screen select { font-weight: 750; }
+
+        @media (max-width: 1080px) {
+          .mitico-topbar { grid-template-columns: minmax(200px,1fr) minmax(280px,1fr); }
+          .mitico-topbar-actions { grid-column: 1 / -1; justify-content: space-between; padding-top: 2px; }
+          .mitico-sidebar { top: 126px; }
+        }
+        @media (max-width: 900px) {
+          .mitico-topbar { position: relative; grid-template-columns: 1fr; padding: 10px 14px; gap: 8px; }
+          .mitico-brand-logo { width: 38px; height: 38px; }
+          .mitico-brand-copy strong { font-size: 16px; }
+          .mitico-week-control { justify-content: flex-start; }
+          .mitico-week-control select { max-width: 100%; flex: 1; }
+          .mitico-user-copy { flex: 1; }
+          .mitico-topbar-actions { grid-column: auto; }
+          .mitico-sidebar {
+            position: static; width: 100%; height: auto; max-height: none; padding: 10px 12px 11px;
+            flex-direction: row; align-items: flex-start; gap: 12px; overflow-x: auto; overflow-y: hidden;
+            border-right: 0; border-bottom: 1px solid var(--mitico-border); box-shadow: none;
+          }
+          .mitico-nav-group { min-width: 215px; margin: 0; padding: 0 10px 0 0; border-bottom: 0; border-right: 1px solid #edf1f5; }
+          .mitico-sidebar-footer { display: none; }
+          .mitico-content-shell, .mitico-app-shell.trainer-only .mitico-content-shell { margin-left: 0; max-width: none; padding: 18px 14px 54px; }
+          .mitico-agenda-filters-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+          .mitico-agenda-days-grid { grid-template-columns: repeat(3, minmax(125px, 1fr)) !important; }
+          .mitico-install-help { top: 12px; right: 12px; }
+        }
+        @media (max-width: 600px) {
+          .mitico-topbar-actions { align-items: center; gap: 8px; }
+          .mitico-install-button span { display: none; }
+          .mitico-user-copy strong { font-size: 12px; }
+          .mitico-user-copy small { font-size: 10px; }
+          .mitico-logout-button { padding-inline: 8px; }
+          .mitico-content-shell, .mitico-app-shell.trainer-only .mitico-content-shell { padding: 14px 10px 46px; }
+          .mitico-agenda-filters-grid { grid-template-columns: 1fr !important; }
+          .mitico-agenda-days-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+          .mitico-app-shell.trainer-only .mitico-brand-copy span,
+          .mitico-app-shell.trainer-only .mitico-week-label,
+          .mitico-app-shell.trainer-only .mitico-user-copy small { display: none; }
+          .mitico-app-shell.trainer-only .mitico-topbar { gap: 6px; }
+          .mitico-app-shell.trainer-only .mitico-week-control { min-height: 38px; padding-block: 5px; }
+        }
+
         @keyframes miticoFadeUp {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
@@ -22000,8 +21725,9 @@ async function abrirGestionOperativaIntensivoDia(
         </div>
       )}
 
-      <div ref={contenidoPantallaRef} style={{ scrollMarginTop: 24 }} />
+      <div ref={contenidoPantallaRef} className="mitico-content-anchor" style={{ scrollMarginTop: 24 }} />
 
+      <div className="mitico-content-shell">
       {error && (
         <div style={errorCaja}>
           <strong>Error:</strong>
@@ -25945,20 +25671,19 @@ async function abrirGestionOperativaIntensivoDia(
       )}
 
       {pantalla === 'agenda' && (
-        <section style={agendaShellCompacto}>
-          <article style={agendaHeroTrabajoSemanal}>
+        <section className="mitico-agenda-screen" style={agendaShellCompacto}>
+          <article className="mitico-agenda-hero" style={agendaHeroTrabajoSemanal}>
             <div>
-              <p style={etiquetaSuperior}>TRABAJO SEMANAL · AGENDA</p>
-              <h2 style={{ margin: '3px 0 0', fontSize: 28 }}>
+              <p style={etiquetaSuperior}>OPERATIVA SEMANAL</p>
+              <h2 className="mitico-page-title" style={{ margin: '3px 0 0' }}>
                 Días de entrenamiento
               </h2>
-              <p style={{ margin: '8px 0 0', color: '#475569' }}>
-                Semana compacta: eliges semana, abres un día y trabajas solo una
-                sesión. Sin bajar toda la pantalla.
+              <p style={{ margin: '8px 0 0', color: '#64748b', maxWidth: 720 }}>
+                Organiza la semana, abre el día que necesitas y gestiona sus sesiones, grupos y recursos desde un único espacio.
               </p>
             </div>
             <div style={agendaPanelRangoSemana}>
-              <span style={agendaMiniLabel}>Semana completa</span>
+              <span style={agendaMiniLabel}>Semana de trabajo</span>
               <strong>
                 {semanaAgendaActiva
                   ? rangoSemanaAgenda(semanaAgendaActiva)
@@ -25984,8 +25709,8 @@ async function abrirGestionOperativaIntensivoDia(
             </div>
           </article>
 
-          <section style={agendaPanelControles}>
-            <div style={agendaControlesGrid}>
+          <section className="mitico-agenda-controls" style={agendaPanelControles}>
+            <div className="mitico-agenda-filters-grid" style={agendaControlesGrid}>
               <label style={labelCampo}>
                 Temporada
                 <select
@@ -26070,7 +25795,7 @@ async function abrirGestionOperativaIntensivoDia(
 
                 return (
                   <div style={{ display: 'grid', gap: 14 }}>
-                    <div style={agendaDiasSelectorCompacto}>
+                    <div className="mitico-agenda-days-grid" style={agendaDiasSelectorCompacto}>
                       {diasSemanaAgenda.map((dia) => {
                         const sesionesDiaBoton = sesionesDelDiaAgenda(
                           dia.fecha
@@ -32578,8 +32303,8 @@ async function abrirGestionOperativaIntensivoDia(
                 max-width: 100% !important;
                 min-width: 0 !important;
                 display: grid !important;
-                grid-template-columns: minmax(0, 1fr) !important;
-                gap: 8px !important;
+                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                gap: 6px !important;
                 box-sizing: border-box !important;
               }
 
@@ -32587,8 +32312,10 @@ async function abrirGestionOperativaIntensivoDia(
                 width: 100% !important;
                 max-width: 100% !important;
                 min-width: 0 !important;
+                padding: 10px 7px !important;
                 white-space: normal !important;
-                line-height: 1.2 !important;
+                line-height: 1.15 !important;
+                font-size: 12px !important;
                 box-sizing: border-box !important;
               }
 
@@ -32598,13 +32325,33 @@ async function abrirGestionOperativaIntensivoDia(
                 line-height: 1.25 !important;
                 box-sizing: border-box !important;
               }
+
+              .trainer-group-card,
+              .trainer-day-accordion,
+              .trainer-shift-accordion {
+                max-width: 100% !important;
+                min-width: 0 !important;
+                box-sizing: border-box !important;
+              }
             }
+
+            .trainer-hero > div > p { color: #6ee7a1 !important; }
+            .trainer-hero h2 { color: #ffffff !important; letter-spacing: -0.02em; }
+            .trainer-hero-chips > span {
+              padding: 6px 9px;
+              border-radius: 999px;
+              border: 1px solid rgba(255,255,255,.10);
+              background: rgba(255,255,255,.075);
+            }
+            .trainer-toolbar { position: sticky; top: 8px; z-index: 12; }
+            .trainer-tab { box-shadow: none !important; }
+            .trainer-tab:hover { transform: none !important; box-shadow: none !important; }
           `}</style>
 
           <div className="trainer-hero" style={entrenadorHeroApp}>
             <div>
               <p style={etiquetaSuperior}>VISTA ENTRENADOR</p>
-              <h2 style={{ margin: 0 }}>Panel del entrenador</h2>
+              <h2 style={{ margin: 0 }}>Tu semana en pista</h2>
               {disponibilidadEditorVista?.existe ? (
 
                 <button
@@ -41721,6 +41468,8 @@ async function abrirGestionOperativaIntensivoDia(
           </div>,
           document.body
         )}
+
+      </div>
 
       {alumnoReporteActivo &&
         typeof document !== 'undefined' &&
