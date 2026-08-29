@@ -21037,10 +21037,11 @@ async function abrirGestionOperativaIntensivoDia(
                 className="mitico-install-button"
                 onClick={instalarPwaEntrenador}
                 aria-expanded={mostrarAyudaInstalacionPwa}
-                title="Instalar Mítico Baby"
+                title="Instalar Mítico Baby en este dispositivo"
+                aria-label="Instalar Mítico Baby en este dispositivo"
               >
                 <img src="/icon-192.png" alt="" aria-hidden="true" />
-                <span>Instalar app</span>
+                <span>Instalar</span>
               </button>
             )}
 
@@ -21595,13 +21596,57 @@ async function abrirGestionOperativaIntensivoDia(
         }
         @media (max-width: 600px) {
           .mitico-topbar-actions { align-items: center; gap: 8px; }
-          .mitico-install-button span { display: none; }
+          .mitico-install-button span { display: inline; }
           .mitico-user-copy strong { font-size: 12px; }
           .mitico-user-copy small { font-size: 10px; }
           .mitico-logout-button { padding-inline: 8px; }
           .mitico-content-shell, .mitico-app-shell.trainer-only .mitico-content-shell { padding: 14px 10px 46px; }
+          .mitico-sidebar {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            width: 100%;
+            padding: 10px 10px 12px;
+            gap: 10px;
+            overflow-x: hidden;
+            overflow-y: visible;
+            overscroll-behavior-x: none;
+          }
+          .mitico-nav-group {
+            min-width: 0;
+            width: 100%;
+            margin: 0;
+            padding: 0;
+            border-right: 0;
+            border-bottom: 1px solid #edf1f5;
+            animation: none !important;
+          }
+          .mitico-nav-item { min-height: 39px; padding: 8px 7px; gap: 7px; font-size: 11px; }
+          .mitico-nav-item svg { width: 17px; height: 17px; }
+          .mitico-nav-heading { padding: 0 6px 6px; font-size: 9px; }
+          .mitico-install-button { height: 36px; padding: 5px 8px; gap: 6px; font-size: 10px; white-space: nowrap; }
+          .mitico-install-button img { width: 22px; height: 22px; border-radius: 6px; }
           .mitico-agenda-filters-grid { grid-template-columns: 1fr !important; }
-          .mitico-agenda-days-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+          .mitico-agenda-days-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
+          .mitico-agenda-days-grid > button {
+            min-height: 88px !important;
+            padding: 10px 11px !important;
+            flex-direction: column !important;
+            align-items: flex-start !important;
+            justify-content: space-between !important;
+            gap: 6px !important;
+          }
+          .mitico-day-counter {
+            width: 100% !important;
+            padding: 0 !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            font-size: 10px !important;
+            line-height: 1.2 !important;
+            text-align: left !important;
+            white-space: nowrap !important;
+          }
           .mitico-app-shell.trainer-only .mitico-brand-copy span,
           .mitico-app-shell.trainer-only .mitico-week-label,
           .mitico-app-shell.trainer-only .mitico-user-copy small { display: none; }
@@ -23585,7 +23630,7 @@ async function abrirGestionOperativaIntensivoDia(
           <div style={cabeceraPantallaMovil}>
             <div>
               <p style={etiquetaSuperior}>TEMPORADAS</p>
-              <h2 style={{ margin: 0 }}>Inicio y cierre de temporada</h2>
+              <h2 style={{ margin: 0 }}>Temporadas</h2>
               <p style={{ margin: '8px 0 0', color: '#475569' }}>
                 Cierre seguro, copia maestra, nueva temporada y carga de semilla en un único flujo ordenado.
               </p>
@@ -25170,7 +25215,7 @@ async function abrirGestionOperativaIntensivoDia(
                       <span style={{ ...miniBadge, background: '#ede9fe', color: '#6d28d9' }}>
                         ADMINISTRACIÓN
                       </span>
-                      <h2 style={{ margin: '8px 0 0' }}>Análisis operativo</h2>
+                      <h2 style={{ margin: '8px 0 0' }}>Análisis</h2>
                       <p style={{ margin: '6px 0 0', color: '#64748b', lineHeight: 1.45 }}>
                         Se calcula al momento con la actividad real. No se guarda ningún informe generado en Supabase.
                       </p>
@@ -25676,10 +25721,10 @@ async function abrirGestionOperativaIntensivoDia(
             <div>
               <p style={etiquetaSuperior}>OPERATIVA SEMANAL</p>
               <h2 className="mitico-page-title" style={{ margin: '3px 0 0' }}>
-                Días de entrenamiento
+                Entrenamientos
               </h2>
               <p style={{ margin: '8px 0 0', color: '#64748b', maxWidth: 720 }}>
-                Organiza la semana, abre el día que necesitas y gestiona sus sesiones, grupos y recursos desde un único espacio.
+                Días de entrenamiento · organiza la semana, abre el día que necesitas y gestiona sus sesiones, grupos y recursos desde un único espacio.
               </p>
             </div>
             <div style={agendaPanelRangoSemana}>
@@ -25859,6 +25904,7 @@ async function abrirGestionOperativaIntensivoDia(
                               </span>
                             </span>
                             <span
+                              className="mitico-day-counter"
                               style={agendaMiniContadorDiaCompacto(
                                 activo,
                                 alumnosDiaBoton,
@@ -28518,7 +28564,8 @@ async function abrirGestionOperativaIntensivoDia(
                 >
                   Ocio · temporada
                 </span>
-                <h2 style={{ margin: '5px 0 0' }}>Grupos estables</h2>
+                <h2 style={{ margin: '5px 0 0' }}>Ocio</h2>
+                <p style={{ margin: '5px 0 0', color: '#64748b', fontWeight: 700 }}>Grupos estables de temporada</p>
               </div>
 
 
@@ -32351,7 +32398,8 @@ async function abrirGestionOperativaIntensivoDia(
           <div className="trainer-hero" style={entrenadorHeroApp}>
             <div>
               <p style={etiquetaSuperior}>VISTA ENTRENADOR</p>
-              <h2 style={{ margin: 0 }}>Tu semana en pista</h2>
+              <h2 style={{ margin: 0 }}>Vista entrenador</h2>
+              <p style={{ margin: '5px 0 0', color: '#64748b', fontWeight: 700 }}>Tu semana en pista</p>
               {disponibilidadEditorVista?.existe ? (
 
                 <button
@@ -34068,7 +34116,8 @@ async function abrirGestionOperativaIntensivoDia(
                   <p style={{ ...etiquetaSuperior, marginBottom: 6 }}>
                     CONTROL SEMANAL
                   </p>
-                  <h2 style={{ margin: 0 }}>Reportes pendientes</h2>
+                  <h2 style={{ margin: 0 }}>Cierre semanal</h2>
+                  <p style={{ margin: '5px 0 0', color: '#64748b', fontWeight: 700 }}>Reportes y asistencias pendientes</p>
                   <details style={{ marginTop: 10 }}>
                     <summary
                       style={{
@@ -34700,7 +34749,7 @@ async function abrirGestionOperativaIntensivoDia(
             <div style={cabeceraPantalla}>
               <div>
                 <p style={{ ...etiquetaSuperior, color: '#0891b2' }}>ADMINISTRACIÓN</p>
-                <h2 style={{ margin: '4px 0 6px' }}>Altas y test de nivel</h2>
+                <h2 style={{ margin: '4px 0 6px' }}>Altas / Test</h2>
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button type="button" onClick={cargarAltasNivelInicial} style={botonSecundario}>
@@ -38295,7 +38344,7 @@ async function abrirGestionOperativaIntensivoDia(
         <section>
           <div style={cabeceraPantalla}>
             <div>
-              <h2>Entrenadores / gestión</h2>
+              <h2>Entrenadores</h2>
               <p style={{ margin: '6px 0 0', color: '#555' }}>
                 Alta, contacto, especialidades, chaqueta y documentación. Los
                 cobros se gestionan en Cobros.
@@ -39104,7 +39153,7 @@ async function abrirGestionOperativaIntensivoDia(
           <div className="availability-flow-card">
             <div className="availability-flow-head">
               <div>
-                <h2>Disponibilidad semanal</h2>
+                <h2>Disponibilidad</h2>
                 <p>
                   Configura solo los días y turnos reales de la semana y publica
                   la versión que verá la Vista entrenador.
@@ -40059,7 +40108,7 @@ async function abrirGestionOperativaIntensivoDia(
                 Dirección · control mensual
               </p>
               <h2 style={{ margin: 0, color: '#172033' }}>
-                Cobros entrenadores
+                Cobros
               </h2>
               <p
                 style={{
