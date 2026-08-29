@@ -27,7 +27,7 @@ export function PantallaIntensivos(ctx: any) {
     entrenadoresPorGrupoRecomendado, error, esVistaMovilApp,
     enfocarElementoApp, estiloBadgePistaApp, estiloGrupoPorPistaApp,
     estiloValidacionPedagogicaApp, etiquetaPistaVisualApp, etiquetaSuperior, filtroIntensivos,
-    formDiaIntensivo, formGrupoIntensivo, formIntensivo, formatearAlumnoListadoOperativo, formatearFecha, formatearObservaciones,
+    formDiaIntensivo, formGrupoIntensivo, formIntensivo, temporadaActivaCierre, formatearAlumnoListadoOperativo, formatearFecha, formatearObservaciones,
     formularioCaja, generarMásDesdeAsistencias, generarRecomendacionGruposIntensivo,
     generarTrabajoDiarioAutomaticoGrupo, gestionarAlumnosIntensivoId,
     gestionarAsistenciaIntensivoId, gestionarDiplomasIntensivoId, gestionarGruposIntensivoId,
@@ -50,7 +50,7 @@ export function PantallaIntensivos(ctx: any) {
     setRevisionIntensivoDiaId, setRevisionIntensivoSugerencias,
     setRevisionIntensivoAnalizado, quitarAlumnoDeIntensivo,
     recomendacionesDelDiaIntensivo,
-    recuperacionesDelIntensivo, reportesDetalleAlumnoIntensivo, responsableReporteRecomendadoApp,
+    recuperacionesDelIntensivo, recomendacionesRecuperacion, recomendacionesDeRecuperacion, aprobarRecuperacionInteligente, reportesDetalleAlumnoIntensivo, responsableReporteRecomendadoApp,
     responsablesReportePorGrupoRecomendado, resultadoVolcadoIntensivo, resumenAlumnoIntensivo,
     resumenFinalDelIntensivo, resumenReportesDelIntensivo, selectCampo,
     setAlumnoSeleccionadoIntensivoId, setBusquedaAlumnoIntensivo, setBusquedaIntensivos,
@@ -66,6 +66,168 @@ export function PantallaIntensivos(ctx: any) {
     tarjeta, tarjetaIntensivoCurso, textoBaseDiplomaIntensivo, textoNecesidadDosEntrenadoresApp,
     textoValidacionPedagogicaGrupoApp, textoVolcadoIntensivo, trabajoDiarioPorGrupoRecomendado,
     volcarListadoAlumnosIntensivo } = ctx;
+
+  function tarjetaRecuperacionInteligente(registro: any, compacta = false) {
+    const propuestas = recomendacionesDeRecuperacion(registro.recuperacion_id).slice(
+      0,
+      compacta ? 1 : 3
+    );
+    const aprobada = registro.estado === 'Aprobada' && registro.grupo_destino_id;
+
+    return (
+      <div
+        key={`${compacta ? 'compacta' : 'gestion'}-${registro.recuperacion_id}`}
+        style={{
+          ...miniTarjetaBlanca,
+          border: aprobada
+            ? '1px solid rgba(22,163,74,.32)'
+            : '1px solid rgba(249,115,22,.42)',
+          background: aprobada
+            ? 'rgba(240,253,244,.78)'
+            : 'rgba(255,247,237,.88)',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            gap: 10,
+            flexWrap: 'wrap',
+            alignItems: 'flex-start',
+          }}
+        >
+          <div style={{ minWidth: 0 }}>
+            <strong>{registro.alumno}</strong>
+            <p style={{ margin: '5px 0 0', color: '#64748b' }}>
+              {registro.numero_dia_origen
+                ? `Falta · Día ${registro.numero_dia_origen}`
+                : 'Falta recuperable'}
+              {registro.fecha_falta
+                ? ` · ${formatearFecha(registro.fecha_falta)}`
+                : ''}
+              {registro.nivel_alumno ? ` · Nivel ${registro.nivel_alumno}` : ''}
+            </p>
+          </div>
+          <span style={agendaBadgeModalidad}>
+            {aprobada ? 'APROBADA' : registro.estado || 'Pendiente valorar'}
+          </span>
+        </div>
+
+        {aprobada ? (
+          <div style={{ ...avisoCompleto, marginTop: 10 }}>
+            <strong>Recuperación asignada</strong>
+            <p style={{ margin: '5px 0 0' }}>
+              {registro.intensivo_destino || 'Intensivo destino'}
+              {registro.grupo_destino ? ` · ${registro.grupo_destino}` : ''}
+              {registro.fecha_destino
+                ? ` · ${formatearFecha(registro.fecha_destino)}`
+                : ''}
+              {registro.hora_inicio_destino
+                ? ` · ${registro.hora_inicio_destino.slice(0, 5)}`
+                : ''}
+            </p>
+            <p style={{ margin: '5px 0 0', color: '#166534' }}>
+              Se marcará como resuelta automáticamente cuando conste como presente en ese grupo.
+            </p>
+          </div>
+        ) : propuestas.length > 0 ? (
+          <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+            {!compacta && (
+              <strong>Propuestas seguras · mejor opción primero</strong>
+            )}
+            {propuestas.map((propuesta: any) => (
+              <div
+                key={`${registro.recuperacion_id}-${propuesta.grupo_id}`}
+                style={{
+                  border: propuesta.categoria === 'IDEAL'
+                    ? '1px solid rgba(22,163,74,.30)'
+                    : '1px solid rgba(59,130,246,.28)',
+                  borderRadius: 12,
+                  padding: 10,
+                  background: '#fff',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <strong>
+                    {propuesta.intensivo_destino} · {propuesta.nombre_grupo}
+                  </strong>
+                  <span
+                    style={{
+                      ...agendaBadgeModalidad,
+                      background:
+                        propuesta.categoria === 'IDEAL' ? '#ecfdf5' : '#eff6ff',
+                      color:
+                        propuesta.categoria === 'IDEAL' ? '#047857' : '#1d4ed8',
+                    }}
+                  >
+                    {propuesta.categoria}
+                  </span>
+                </div>
+                <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                  {formatearFecha(propuesta.fecha)} · {propuesta.hora_inicio.slice(0, 5)}-
+                  {propuesta.hora_fin.slice(0, 5)} · {propuesta.pista || 'Pista pendiente'}
+                  {propuesta.nivel_grupo ? ` · Grupo ${propuesta.nivel_grupo}` : ''}
+                </p>
+                <p style={{ margin: '5px 0 0', color: '#475569' }}>
+                  {propuesta.total_alumnos}/{propuesta.capacidad_max} niños · {propuesta.plazas_libres} plaza(s) libre(s)
+                </p>
+                {!compacta && (
+                  <p style={{ margin: '5px 0 0', color: '#64748b' }}>
+                    {propuesta.motivo}
+                  </p>
+                )}
+                <button
+                  type="button"
+                  disabled={cargando}
+                  onClick={() =>
+                    aprobarRecuperacionInteligente(registro, propuesta)
+                  }
+                  style={{ ...botonPrincipal, marginTop: 8 }}
+                >
+                  Aprobar recuperación
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ ...avisoPendiente, marginTop: 10 }}>
+            <strong>Ahora mismo no hay un grupo seguro compatible.</strong>
+            <p style={{ margin: '5px 0 0' }}>
+              El recomendador volverá a calcularlo automáticamente cuando existan nuevos grupos, cambien los huecos o se actualice el nivel.
+            </p>
+          </div>
+        )}
+
+        {!compacta && registro.estado !== 'Resuelta' && registro.estado !== 'Descartada' && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              disabled={cargando}
+              onClick={() =>
+                actualizarRecuperacionIntensivo(
+                  registro,
+                  'Descartada',
+                  registro.intensivo_destino_id || '',
+                  registro.grupo_destino_id || ''
+                )
+              }
+              style={botonSecundario}
+            >
+              Descartar recuperación
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
 
   return (
         <section>
@@ -97,17 +259,27 @@ export function PantallaIntensivos(ctx: any) {
               <h3 style={{ marginTop: 0 }}>Nuevo intensivo</h3>
 
               <div style={gridFormulario}>
-                <label style={labelCampo}>
+                <div style={labelCampo}>
                   Temporada
-                  <input
-                    value={formIntensivo.temporada}
-                    onChange={(e) =>
-                      setFormIntensivo({ ...formIntensivo, temporada: e.target.value })
-                    }
-                    placeholder="2025/2026"
-                    style={inputCampo}
-                  />
-                </label>
+                  <div
+                    style={{
+                      ...inputCampo,
+                      display: 'flex',
+                      alignItems: 'center',
+                      minHeight: 42,
+                      background: '#f8fafc',
+                      color: '#0f172a',
+                      fontWeight: 800,
+                    }}
+                  >
+                    {temporadaActivaCierre
+                      ? `${temporadaActivaCierre} · activa`
+                      : 'Temporada activa · automática'}
+                  </div>
+                  <small style={{ color: '#64748b', fontWeight: 500 }}>
+                    Los Intensivos siempre se crean dentro de la temporada activa.
+                  </small>
+                </div>
 
                 <label style={labelCampo}>
                   Nombre del intensivo
@@ -116,7 +288,7 @@ export function PantallaIntensivos(ctx: any) {
                     onChange={(e) =>
                       setFormIntensivo({ ...formIntensivo, nombre: e.target.value })
                     }
-                    placeholder="Intensivo Navidad 2025"
+                    placeholder="Intensivo Navidad"
                     style={inputCampo}
                   />
                 </label>
@@ -297,7 +469,7 @@ export function PantallaIntensivos(ctx: any) {
               const recuperacionesPendientesIntensivo =
                 recuperacionesActivasIntensivo.length;
 
-              const alumnosConFaltaReal = new Set<string>();
+              const faltasRealesPorDia = new Set<string>();
               alumnosInscritosIntensivo.forEach((alumnoIntensivo) => {
                 diasIntensivo.forEach((dia) => {
                   const asistencia = asistenciasDelIntensivoDia(
@@ -312,23 +484,28 @@ export function PantallaIntensivos(ctx: any) {
                     asistencia &&
                     ['NO_PRESENTADO', 'BAJA_AVISADA'].includes(
                       asistencia.estado || ''
-                    )
+                    ) &&
+                    asistencia.falta_genera_recuperacion
                   ) {
-                    alumnosConFaltaReal.add(alumnoIntensivo.alumno_id);
+                    faltasRealesPorDia.add(
+                      `${alumnoIntensivo.alumno_id}-${dia.intensivo_dia_id}`
+                    );
                   }
                 });
               });
 
-              const alumnosConCualquierRecuperacion = new Set(
-                recuperacionesIntensivo.map(
-                  (registro) => registro.alumno_id
-                )
+              const recuperacionesRegistradasPorDia = new Set(
+                recuperacionesIntensivo
+                  .filter((registro) => registro.intensivo_dia_origen_id)
+                  .map(
+                    (registro) =>
+                      `${registro.alumno_id}-${registro.intensivo_dia_origen_id}`
+                  )
               );
               const faltasAntiguasSinRecuperacion = Array.from(
-                alumnosConFaltaReal
+                faltasRealesPorDia
               ).filter(
-                (alumnoId) =>
-                  !alumnosConCualquierRecuperacion.has(alumnoId)
+                (clave) => !recuperacionesRegistradasPorDia.has(clave)
               ).length;
 
               const gestorGruposAbierto =
@@ -1688,7 +1865,7 @@ export function PantallaIntensivos(ctx: any) {
                               asistencia: asistenciasDelIntensivoDia(intensivo.intensivo_id, dia.intensivo_dia_id).find((registro) => registro.alumno_id === alumnoIntensivo.alumno_id),
                             }));
                             const faltas = registrosAlumno.filter((item) => item.asistencia && ['NO_PRESENTADO', 'BAJA_AVISADA'].includes(item.asistencia.estado || '')).length;
-                            const presentes = registrosAlumno.filter((item) => item.asistencia?.estado === 'PRESENTE').length;
+                            const presentes = registrosAlumno.filter((item) => ['PRESENTE', 'LLEGA_TARDE'].includes(item.asistencia?.estado || '')).length;
                             const pendientes = Math.max(0, diasIntensivo.length - presentes - faltas);
                             const nivelUtil = resumenAlumno?.nivel_resumen || alumnoIntensivo.nivel_resumen || 'SIN NIVEL';
                             const pistaUtil = resumenAlumno?.pista_resumen || 'Pendiente';
@@ -1759,7 +1936,7 @@ export function PantallaIntensivos(ctx: any) {
                                   {registrosAlumno.map(({ dia, asistencia }) => {
                                     const estadoAsistencia = asistencia?.estado || 'SIN_CONFIRMAR';
                                     const ausente = estadoAsistencia === 'NO_PRESENTADO' || estadoAsistencia === 'BAJA_AVISADA';
-                                    const presente = estadoAsistencia === 'PRESENTE';
+                                    const presente = ['PRESENTE', 'LLEGA_TARDE'].includes(estadoAsistencia);
                                     return (
                                       <div key={`${alumnoIntensivo.alumno_id}-${dia.intensivo_dia_id}`} style={{ ...miniTarjetaBlanca, padding: 10 }}>
                                         <strong>Día {dia.numero_dia}</strong>
@@ -1805,8 +1982,8 @@ export function PantallaIntensivos(ctx: any) {
                               const tieneRecuperacionRegistrada =
                                 recuperacionesIntensivo.some(
                                   (recuperacion) =>
-                                    recuperacion.alumno_id ===
-                                    alumnoIntensivo.alumno_id
+                                    recuperacion.alumno_id === alumnoIntensivo.alumno_id &&
+                                    recuperacion.intensivo_dia_origen_id === dia.intensivo_dia_id
                                 );
 
                               // La falta cruda solo actúa como fallback si nunca
@@ -1856,33 +2033,9 @@ export function PantallaIntensivos(ctx: any) {
                                 </div>
                               ))}
 
-                              {recuperacionesActivasIntensivo.map((registro) => (
-                                <div key={registro.recuperacion_id} style={miniTarjetaBlanca}>
-                                  <strong>{registro.alumno}</strong>
-                                  <p style={{ margin: '6px 0' }}>Origen: {registro.intensivo_origen || intensivo.intensivo}</p>
-                                  <div style={gridFormulario}>
-                                    <CampoSelect
-                                      label="Estado recuperación"
-                                      value={registro.estado || 'Pendiente valorar'}
-                                      opciones={opcionesEstadoRecuperacionIntensivo}
-                                      onChange={(valor) => actualizarRecuperacionIntensivo(registro, valor, registro.intensivo_destino_id || '', registro.grupo_destino_id || '')}
-                                    />
-                                    <label style={labelCampo}>
-                                      Intensivo destino
-                                      <select
-                                        value={registro.intensivo_destino_id || ''}
-                                        onChange={(e) => actualizarRecuperacionIntensivo(registro, registro.estado || 'Pendiente valorar', e.target.value, registro.grupo_destino_id || '')}
-                                        style={selectCampo}
-                                      >
-                                        <option value="">Sin intensivo destino</option>
-                                        {intensivos.map((opcion) => (
-                                          <option key={opcion.intensivo_id} value={opcion.intensivo_id}>{opcion.intensivo} · {opcion.estado}</option>
-                                        ))}
-                                      </select>
-                                    </label>
-                                  </div>
-                                </div>
-                              ))}
+                              {recuperacionesActivasIntensivo.map((registro) =>
+                                tarjetaRecuperacionInteligente(registro, true)
+                              )}
                             </div>
                           </details>
                         ) : null;
@@ -2803,186 +2956,9 @@ export function PantallaIntensivos(ctx: any) {
                           marginTop: 14,
                         }}
                       >
-                        {recuperacionesActivasIntensivo.map((registro) => (
-                          <div
-                            key={registro.recuperacion_id}
-                            style={{
-                              ...miniTarjetaBlanca,
-                              border: '1px solid rgba(249,115,22,.42)',
-                              background: 'rgba(255,247,237,.88)',
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                gap: 10,
-                                flexWrap: 'wrap',
-                                alignItems: 'flex-start',
-                              }}
-                            >
-                              <div>
-                                <strong>{registro.alumno}</strong>
-                                <p
-                                  style={{
-                                    margin: '5px 0 0',
-                                    color: '#64748b',
-                                  }}
-                                >
-                                  Origen:{' '}
-                                  {registro.intensivo_origen ||
-                                    intensivo.intensivo}
-                                </p>
-                              </div>
-                              <span style={agendaBadgeModalidad}>
-                                {registro.estado || 'Pendiente valorar'}
-                              </span>
-                            </div>
-
-                            <div
-                              style={{
-                                ...gridFormulario,
-                                marginTop: 12,
-                              }}
-                            >
-                              <CampoSelect
-                                label="Estado recuperación"
-                                value={
-                                  registro.estado || 'Pendiente valorar'
-                                }
-                                opciones={opcionesEstadoRecuperacionIntensivo}
-                                onChange={(valor) =>
-                                  actualizarRecuperacionIntensivo(
-                                    registro,
-                                    valor,
-                                    registro.intensivo_destino_id || '',
-                                    registro.grupo_destino_id || ''
-                                  )
-                                }
-                              />
-
-                              <label style={labelCampo}>
-                                Intensivo destino
-                                <select
-                                  value={
-                                    registro.intensivo_destino_id || ''
-                                  }
-                                  onChange={(e) =>
-                                    actualizarRecuperacionIntensivo(
-                                      registro,
-                                      registro.estado ||
-                                        'Pendiente valorar',
-                                      e.target.value,
-                                      registro.grupo_destino_id || ''
-                                    )
-                                  }
-                                  style={selectCampo}
-                                >
-                                  <option value="">
-                                    Sin intensivo destino
-                                  </option>
-                                  {intensivos.map((opcion) => (
-                                    <option
-                                      key={opcion.intensivo_id}
-                                      value={opcion.intensivo_id}
-                                    >
-                                      {opcion.intensivo} · {opcion.estado}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
-
-                              <label style={labelCampo}>
-                                Grupo destino
-                                <select
-                                  value={registro.grupo_destino_id || ''}
-                                  onChange={(e) =>
-                                    actualizarRecuperacionIntensivo(
-                                      registro,
-                                      registro.estado ||
-                                        'Pendiente valorar',
-                                      registro.intensivo_destino_id || '',
-                                      e.target.value
-                                    )
-                                  }
-                                  style={selectCampo}
-                                >
-                                  <option value="">Sin grupo destino</option>
-                                  {gruposDestinoRecuperacion.map((grupo) => (
-                                    <option
-                                      key={grupo.grupo_id}
-                                      value={grupo.grupo_id}
-                                    >
-                                      {formatearFecha(grupo.fecha)} ·{' '}
-                                      {grupo.hora_inicio.slice(0, 5)} ·{' '}
-                                      {grupo.nombre_grupo} · {grupo.modalidad}
-                                    </option>
-                                  ))}
-                                </select>
-                              </label>
-                            </div>
-
-                            <div
-                              style={{
-                                ...avisoNeutral,
-                                marginTop: 10,
-                              }}
-                            >
-                              <strong>Destino actual:</strong>{' '}
-                              {registro.intensivo_destino ||
-                                registro.grupo_destino ||
-                                'Sin asignar'}
-                            </div>
-
-                            <div
-                              style={{
-                                display: 'flex',
-                                gap: 8,
-                                marginTop: 10,
-                                flexWrap: 'wrap',
-                              }}
-                            >
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  actualizarRecuperacionIntensivo(
-                                    registro,
-                                    'Resuelta',
-                                    registro.intensivo_destino_id || '',
-                                    registro.grupo_destino_id || ''
-                                  )
-                                }
-                                style={botonPrincipal}
-                              >
-                                Marcar como resuelta
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  actualizarRecuperacionIntensivo(
-                                    registro,
-                                    'Descartada',
-                                    registro.intensivo_destino_id || '',
-                                    registro.grupo_destino_id || ''
-                                  )
-                                }
-                                style={botonSecundario}
-                              >
-                                Descartar
-                              </button>
-
-                              <button
-                                onClick={() =>
-                                  eliminarRecuperacionIntensivo(registro)
-                                }
-                                style={botonPeligro}
-                              >
-                                Eliminar
-                              </button>
-                            </div>
-                          </div>
-                        ))}
+                        {recuperacionesActivasIntensivo.map((registro) =>
+                          tarjetaRecuperacionInteligente(registro, false)
+                        )}
                       </div>
 
                       {recuperacionesHistoricasIntensivo.length > 0 && (
