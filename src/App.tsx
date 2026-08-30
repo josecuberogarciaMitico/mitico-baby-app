@@ -21031,20 +21031,6 @@ async function abrirGestionOperativaIntensivoDia(
           </div>
 
           <div className="mitico-topbar-actions">
-            {(esEntrenadorApp || esCoordinadorJefeApp) && !pwaInstalada && (
-              <button
-                type="button"
-                className="mitico-install-button"
-                onClick={instalarPwaEntrenador}
-                aria-expanded={mostrarAyudaInstalacionPwa}
-                title="Instalar Mítico Baby en este dispositivo"
-                aria-label="Instalar Mítico Baby en este dispositivo"
-              >
-                <img src="/icon-192.png" alt="" aria-hidden="true" />
-                <span>Instalar</span>
-              </button>
-            )}
-
             {perfilUsuario && (
               <div className="mitico-user-block">
                 <span className="mitico-user-avatar" aria-hidden="true">
@@ -21069,6 +21055,20 @@ async function abrirGestionOperativaIntensivoDia(
                   Salir
                 </button>
               </div>
+            )}
+
+            {(esEntrenadorApp || esCoordinadorJefeApp) && !pwaInstalada && (
+              <button
+                type="button"
+                className="mitico-install-button"
+                onClick={instalarPwaEntrenador}
+                aria-expanded={mostrarAyudaInstalacionPwa}
+                title="Instalar Mítico Baby en este dispositivo"
+                aria-label="Instalar Mítico Baby en este dispositivo"
+              >
+                <img src="/icon-192.png" alt="" aria-hidden="true" />
+                <span>Instalar</span>
+              </button>
             )}
           </div>
         </div>
@@ -21102,7 +21102,7 @@ async function abrirGestionOperativaIntensivoDia(
                     onClick={() => abrirPantallaConScroll('resumenDia')}
                   >
                     <IconoNavegacionApp tipo="inicio" />
-                    <span>Inicio / resumen</span>
+                    <span>Trabajo en pista</span>
                   </button>
                   <button
                     className={`mitico-nav-item ${pantalla === 'agenda' ? 'is-active' : ''}`}
@@ -21508,7 +21508,7 @@ async function abrirGestionOperativaIntensivoDia(
         }
         .mitico-week-control select option { color: #172033; background: #fff; }
         .mitico-week-value { min-width: 0; font-size: 13px; color: #fff; overflow-wrap: anywhere; }
-        .mitico-topbar-actions { display: flex; justify-content: flex-end; align-items: center; gap: 10px; min-width: 0; }
+        .mitico-topbar-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-width: 0; width: 100%; }
         .mitico-install-button {
           height: 42px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px;
           border-radius: 12px; border: 1px solid rgba(117,229,155,.2); background: rgba(15,159,77,.13);
@@ -21525,8 +21525,13 @@ async function abrirGestionOperativaIntensivoDia(
         .mitico-user-copy strong { color: #fff; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .mitico-user-copy small { color: #b8c6d5; font-size: 11px; margin-top: 3px; }
         .mitico-logout-button {
-          min-height: 34px; padding: 7px 10px; border-radius: 10px; border: 1px solid rgba(255,255,255,.11);
-          color: #dce7f2; background: rgba(255,255,255,.06); font-size: 11px; font-weight: 800;
+          min-height: 34px; padding: 7px 11px; border-radius: 10px; border: 1px solid rgba(248,113,113,.42);
+          color: #fecaca; background: rgba(185,28,28,.18); font-size: 11px; font-weight: 900;
+          box-shadow: none !important;
+        }
+        .mitico-logout-button:hover {
+          color: #ffffff; background: rgba(220,38,38,.30) !important; border-color: rgba(252,165,165,.62) !important;
+          transform: none !important; box-shadow: none !important;
         }
         .mitico-install-help {
           position: fixed; top: 82px; right: 24px; z-index: 70; width: min(390px, calc(100vw - 32px));
@@ -21538,8 +21543,10 @@ async function abrirGestionOperativaIntensivoDia(
           display: flex; flex-direction: column; gap: 2px; overflow-y: auto; padding: 22px 14px 18px;
           background: rgba(255,255,255,.98); border-right: 1px solid var(--mitico-border);
           box-shadow: 8px 0 30px rgba(15,23,42,.025);
+          overscroll-behavior-y: contain;
+          scrollbar-gutter: stable;
         }
-        .mitico-nav-group { display: grid; gap: 3px; padding: 0 0 14px; margin-bottom: 10px; border-bottom: 1px solid #edf1f5; }
+        .mitico-nav-group { display: grid; gap: 3px; padding: 0 0 14px; margin-bottom: 10px; border-bottom: 1px solid #edf1f5; animation: none !important; }
         .mitico-nav-heading { padding: 0 10px 7px; color: var(--mitico-green-dark); font-size: 10px; font-weight: 950; text-transform: uppercase; letter-spacing: .13em; }
         .mitico-nav-item {
           width: 100%; min-height: 42px; display: grid; grid-template-columns: 24px minmax(0,1fr); align-items: center; gap: 10px;
@@ -21585,9 +21592,10 @@ async function abrirGestionOperativaIntensivoDia(
           .mitico-sidebar {
             position: static; width: 100%; height: auto; max-height: none; padding: 10px 12px 11px;
             flex-direction: row; align-items: flex-start; gap: 12px; overflow-x: auto; overflow-y: hidden;
+            overscroll-behavior-x: contain; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
             border-right: 0; border-bottom: 1px solid var(--mitico-border); box-shadow: none;
           }
-          .mitico-nav-group { min-width: 215px; margin: 0; padding: 0 10px 0 0; border-bottom: 0; border-right: 1px solid #edf1f5; }
+          .mitico-nav-group { min-width: 215px; margin: 0; padding: 0 10px 0 0; border-bottom: 0; border-right: 1px solid #edf1f5; scroll-snap-align: start; }
           .mitico-sidebar-footer { display: none; }
           .mitico-content-shell, .mitico-app-shell.trainer-only .mitico-content-shell { margin-left: 0; max-width: none; padding: 18px 14px 54px; }
           .mitico-agenda-filters-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
@@ -21601,28 +21609,6 @@ async function abrirGestionOperativaIntensivoDia(
           .mitico-user-copy small { font-size: 10px; }
           .mitico-logout-button { padding-inline: 8px; }
           .mitico-content-shell, .mitico-app-shell.trainer-only .mitico-content-shell { padding: 14px 10px 46px; }
-          .mitico-sidebar {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            width: 100%;
-            padding: 10px 10px 12px;
-            gap: 10px;
-            overflow-x: hidden;
-            overflow-y: visible;
-            overscroll-behavior-x: none;
-          }
-          .mitico-nav-group {
-            min-width: 0;
-            width: 100%;
-            margin: 0;
-            padding: 0;
-            border-right: 0;
-            border-bottom: 1px solid #edf1f5;
-            animation: none !important;
-          }
-          .mitico-nav-item { min-height: 39px; padding: 8px 7px; gap: 7px; font-size: 11px; }
-          .mitico-nav-item svg { width: 17px; height: 17px; }
-          .mitico-nav-heading { padding: 0 6px 6px; font-size: 9px; }
           .mitico-install-button { height: 36px; padding: 5px 8px; gap: 6px; font-size: 10px; white-space: nowrap; }
           .mitico-install-button img { width: 22px; height: 22px; border-radius: 6px; }
           .mitico-agenda-filters-grid { grid-template-columns: 1fr !important; }
@@ -21784,10 +21770,10 @@ async function abrirGestionOperativaIntensivoDia(
         <section>
           <div style={cabeceraPantallaMovil}>
             <div>
-              <p style={etiquetaSuperior}>PISTA · CONTROL DIARIO</p>
-              <h2 style={{ margin: 0 }}>Resumen del día</h2>
+              <p style={etiquetaSuperior}>RESUMEN · CONTROL EN PISTA</p>
+              <h2 style={{ margin: 0 }}>Trabajo en pista</h2>
               <p style={{ margin: '7px 0 0', color: '#64748b' }}>
-                Consulta rápida de turnos, alumnos, entrenadores y puntos de encuentro.
+                Resumen del día · turnos, alumnos, entrenadores y puntos de encuentro.
               </p>
             </div>
             <input
@@ -32398,8 +32384,7 @@ async function abrirGestionOperativaIntensivoDia(
           <div className="trainer-hero" style={entrenadorHeroApp}>
             <div>
               <p style={etiquetaSuperior}>VISTA ENTRENADOR</p>
-              <h2 style={{ margin: 0 }}>Vista entrenador</h2>
-              <p style={{ margin: '5px 0 0', color: '#64748b', fontWeight: 700 }}>Tu semana en pista</p>
+              <h2 style={{ margin: 0 }}>Tu semana en pista</h2>
               {disponibilidadEditorVista?.existe ? (
 
                 <button
