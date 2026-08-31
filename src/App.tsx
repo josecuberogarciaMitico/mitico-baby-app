@@ -1,4 +1,4 @@
-// MITICO_PRODUCTO_2026_CONSOLIDACION_GLOBAL_V2_5
+// MITICO_PRODUCTO_2026_BASE_REAL_ZZTES_V2_6
 // MITICO_PRODUCTO_2026_ENTRENADORES_REAL_UNIFICADO_V2_4
 // MITICO_PRODUCTO_2026_ENTRENADORES_V2_3
 import React, { useEffect, useRef, useState } from 'react';
@@ -6332,7 +6332,6 @@ function EntrenadoresProductListApp({
         background: '#ffffff',
         overflow: 'hidden',
         minWidth: 0,
-        maxWidth: '100%',
         boxShadow: '0 10px 26px rgba(15,23,42,.04)',
       }}
     >
@@ -7066,13 +7065,13 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [modoDemoVisual, setModoDemoVisual] = useState(false);
   const [esVistaMovilApp, setEsVistaMovilApp] = useState(() =>
     typeof window !== 'undefined'
-      ? window.matchMedia('(max-width: 1180px)').matches
+      ? window.matchMedia('(max-width: 719px)').matches
       : false
   );
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const media = window.matchMedia('(max-width: 1180px)');
+    const media = window.matchMedia('(max-width: 719px)');
     const actualizar = () => setEsVistaMovilApp(media.matches);
     actualizar();
     media.addEventListener?.('change', actualizar);
@@ -24769,240 +24768,6 @@ async function abrirGestionOperativaIntensivoDia(
         .mitico-agenda-screen .mitico-agenda-controls { border-radius: 18px !important; border-color: #e1e7ef !important; box-shadow: 0 8px 28px rgba(20,35,55,.055) !important; }
         .mitico-agenda-screen select { font-weight: 750; }
 
-
-        /* V2.5 · CONSOLIDACIÓN GLOBAL
-           El mismo lenguaje visual se aplica al render REAL de todas las pantallas ya aprobadas.
-           No cambia lógica ni fuentes de datos; solo presentación y responsive. */
-        .mitico-modern-screen {
-          width: 100%;
-          min-width: 0;
-          color: #172033;
-        }
-        .mitico-modern-screen,
-        .mitico-modern-screen * {
-          box-sizing: border-box;
-        }
-        .mitico-modern-screen > section,
-        .mitico-modern-screen > section > section,
-        .mitico-modern-screen > section > div,
-        .mitico-modern-screen article,
-        .mitico-modern-screen details {
-          min-width: 0;
-          max-width: 100%;
-        }
-        .mitico-modern-screen > section > article,
-        .mitico-modern-screen > section > section > article,
-        .mitico-modern-screen > section > div > article {
-          border-radius: 18px !important;
-        }
-        .mitico-modern-screen article {
-          transition: border-color .16s ease, box-shadow .16s ease;
-        }
-        .mitico-modern-screen article:not([style*="linear-gradient(135deg, #063b"]):not([style*="linear-gradient(135deg,#063b"]):not([style*="linear-gradient(135deg, #0"]):not([style*="linear-gradient(135deg,#0"]) {
-          border-color: #dbe3ec !important;
-        }
-        .mitico-modern-screen details {
-          border-radius: 13px !important;
-        }
-        .mitico-modern-screen input,
-        .mitico-modern-screen select,
-        .mitico-modern-screen textarea {
-          max-width: 100%;
-          min-width: 0;
-          border-radius: 11px !important;
-          border-color: #cfd9e5 !important;
-          background: #ffffff;
-        }
-        .mitico-modern-screen input:focus,
-        .mitico-modern-screen select:focus,
-        .mitico-modern-screen textarea:focus {
-          outline: 2px solid rgba(22, 163, 74, .12);
-          outline-offset: 1px;
-          border-color: #86cda0 !important;
-        }
-        .mitico-modern-screen button {
-          max-width: 100%;
-          border-radius: 11px;
-        }
-        .mitico-modern-screen button:not(:disabled):hover {
-          filter: brightness(.985);
-        }
-        .mitico-modern-screen table {
-          max-width: 100%;
-          border-collapse: separate;
-          border-spacing: 0;
-        }
-        .mitico-modern-screen th {
-          background: #f8fafc;
-          color: #475569;
-          font-size: 11px;
-          font-weight: 900;
-        }
-        .mitico-modern-screen td,
-        .mitico-modern-screen th {
-          border-color: #e5eaf0 !important;
-        }
-        .mitico-modern-screen img,
-        .mitico-modern-screen svg {
-          max-width: 100%;
-        }
-        .mitico-modern-screen pre {
-          max-width: 100%;
-          overflow-x: auto;
-          white-space: pre-wrap;
-          overflow-wrap: anywhere;
-        }
-        .mitico-modern-screen ul,
-        .mitico-modern-screen ol {
-          max-width: 100%;
-        }
-
-        /* Las pantallas operativas conservan densidad: no se transforman en dashboards gigantes. */
-        .screen-resumenDia > section,
-        .screen-ocioGrupos > section,
-        .screen-administracion > section,
-        .screen-alumnos > section,
-        .screen-cobros > section,
-        .screen-informes > section,
-        .screen-temporadas > section,
-        .screen-usuarios > section,
-        .screen-entrenadores > section,
-        .screen-entrenador > section {
-          width: 100%;
-          min-width: 0;
-        }
-
-        /* Las fichas/tarjetas reales reciben la misma profundidad que los ejemplos aprobados. */
-        .screen-ocioGrupos article,
-        .screen-administracion article,
-        .screen-alumnos article,
-        .screen-cobros article,
-        .screen-informes article,
-        .screen-temporadas article,
-        .screen-usuarios article,
-        .screen-entrenadores article {
-          box-shadow: 0 10px 28px rgba(15, 23, 42, .05);
-        }
-        .screen-ocioGrupos article article,
-        .screen-administracion article article,
-        .screen-alumnos article article,
-        .screen-cobros article article,
-        .screen-informes article article,
-        .screen-temporadas article article,
-        .screen-usuarios article article,
-        .screen-entrenadores article article {
-          box-shadow: none;
-        }
-
-
-        /* Componentes operativos que viven en archivos/ramas reales y antes no heredaban el demo. */
-        .screen-intensivos .mitico-intensivo-card,
-        .screen-entrenador .trainer-toolbar,
-        .screen-entrenador .trainer-group-sheet,
-        .screen-entrenador .trainer-availability-reminder {
-          border: 1px solid #dbe3ec !important;
-          border-radius: 17px !important;
-          background: #ffffff;
-          box-shadow: 0 10px 28px rgba(15,23,42,.05) !important;
-        }
-        .screen-intensivos .mitico-intensivo-card-head {
-          padding: 15px 16px !important;
-          border-bottom: 1px solid #edf1f5;
-          background: linear-gradient(180deg,#ffffff,#fbfcfe);
-        }
-        .screen-intensivos .mitico-intensivo-tabs,
-        .screen-entrenador .trainer-tabs {
-          border-radius: 14px !important;
-          border: 1px solid #dbe3ec;
-          background: #f8fafc;
-          padding: 5px;
-        }
-        .screen-intensivos .mitico-intensivo-tabs button,
-        .screen-entrenador .trainer-tabs button {
-          box-shadow: none !important;
-          border-radius: 10px !important;
-        }
-        .screen-entrenador .trainer-hero {
-          border-radius: 20px !important;
-          overflow: hidden;
-        }
-        .screen-entrenador .trainer-group-sheet-header {
-          min-width: 0;
-        }
-        .screen-entrenador .trainer-groups-list,
-        .screen-entrenador .trainer-turn-grid,
-        .screen-entrenador .trainer-day-grid {
-          min-width: 0;
-          max-width: 100%;
-        }
-        .screen-intensivos .mitico-intensivos-list,
-        .screen-intensivos .mitico-intensivos-toolbar,
-        .screen-intensivos .mitico-intensivos-filters {
-          min-width: 0;
-          max-width: 100%;
-        }
-
-        /* Evita cualquier corte horizontal en tarjetas reales. */
-        .screen-entrenadores,
-        .screen-cobros,
-        .screen-alumnos,
-        .screen-administracion,
-        .screen-ocioGrupos,
-        .screen-usuarios,
-        .screen-temporadas,
-        .screen-informes,
-        .screen-resumenDia,
-        .screen-entrenador {
-          overflow-x: clip;
-        }
-
-        @media (max-width: 1180px) and (min-width: 901px) {
-          .mitico-content-shell {
-            padding-left: 20px;
-            padding-right: 20px;
-          }
-          .mitico-modern-screen > section {
-            gap: 14px !important;
-          }
-          .mitico-modern-screen article {
-            max-width: 100% !important;
-          }
-          .mitico-modern-screen button {
-            white-space: normal !important;
-          }
-        }
-
-        @media (max-width: 900px) {
-          .mitico-modern-screen {
-            overflow-x: hidden;
-          }
-          .mitico-modern-screen > section > article,
-          .mitico-modern-screen > section > section > article,
-          .mitico-modern-screen > section > div > article {
-            border-radius: 16px !important;
-          }
-          .mitico-modern-screen table {
-            font-size: 11px;
-          }
-        }
-
-        @media (max-width: 600px) {
-          .mitico-modern-screen > section {
-            gap: 11px !important;
-          }
-          .mitico-modern-screen article {
-            max-width: calc(100vw - 20px) !important;
-          }
-          .mitico-modern-screen button {
-            min-height: 40px;
-          }
-          .mitico-modern-screen input,
-          .mitico-modern-screen select,
-          .mitico-modern-screen textarea {
-            font-size: 16px !important; /* evita zoom automático en iPhone */
-          }
-        }
-
         /* V1.9.1: en escritorio la cabecera completa es la referencia sticky.
            Evita que el menú lateral conserve un hueco vacío cuando se hace scroll.
            Móvil (<=900px) queda exactamente con su comportamiento anterior. */
@@ -25200,22 +24965,7 @@ async function abrirGestionOperativaIntensivoDia(
 
       <div ref={contenidoPantallaRef} className="mitico-content-anchor" style={{ scrollMarginTop: 24 }} />
 
-      <div
-        className={`mitico-content-shell screen-${pantalla} ${[
-          'resumenDia',
-          'ocioGrupos',
-          'intensivos',
-          'entrenador',
-          'administracion',
-          'alumnos',
-          'cobros',
-          'analisis',
-          'informes',
-          'temporadas',
-          'usuarios',
-          'entrenadores',
-        ].includes(pantalla) ? 'mitico-modern-screen' : ''}`}
-      >
+      <div className="mitico-content-shell">
       {error && (
         <div style={errorCaja}>
           <strong>Error:</strong>
@@ -25237,6 +24987,7 @@ async function abrirGestionOperativaIntensivoDia(
               {esCoordinadorJefeApp && (
                 <button
                   type="button"
+                  hidden
                   onClick={() => setModoDemoVisual(!modoDemoVisual)}
                   style={{
                     ...botonSecundario,
@@ -25668,6 +25419,7 @@ async function abrirGestionOperativaIntensivoDia(
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                 <button
                   type="button"
+                  hidden
                   onClick={() => setModoDemoVisual(!modoDemoVisual)}
                   style={{
                     ...botonSecundario,
@@ -27261,6 +27013,7 @@ async function abrirGestionOperativaIntensivoDia(
               >
                 <button
                   type="button"
+                  hidden
                   onClick={() => setModoDemoVisual(!modoDemoVisual)}
                   style={{
                     ...botonSecundario,
@@ -29156,6 +28909,7 @@ async function abrirGestionOperativaIntensivoDia(
               >
                 <button
                   type="button"
+                  hidden
                   onClick={() => setModoDemoVisual(!modoDemoVisual)}
                   style={{
                     ...botonSecundario,
@@ -29317,7 +29071,7 @@ async function abrirGestionOperativaIntensivoDia(
                     fontSize: 12,
                   }}
                 >
-                  Todavía no hay datos suficientes para construir el panel. Puedes usar <strong>Ver ejemplo</strong> para revisar el diseño completo.
+                  Todavía no hay datos suficientes para construir el panel con datos reales.
                 </div>
               ) : null}
             </div>
@@ -32393,7 +32147,8 @@ async function abrirGestionOperativaIntensivoDia(
                   {esCoordinadorJefeApp && (
                     <button
                       type="button"
-                      onClick={() => setModoDemoVisual(!modoDemoVisual)}
+                      hidden
+                  onClick={() => setModoDemoVisual(!modoDemoVisual)}
                       style={{
                         borderRadius: 999,
                         padding: '7px 11px',
@@ -36388,7 +36143,8 @@ async function abrirGestionOperativaIntensivoDia(
             {esCoordinadorJefeApp && (
               <button
                 type="button"
-                onClick={() => setModoDemoVisual(!modoDemoVisual)}
+                hidden
+                  onClick={() => setModoDemoVisual(!modoDemoVisual)}
                 style={{
                   ...botonSecundario,
                   background: modoDemoVisual ? '#dcfce7' : 'rgba(255,255,255,.10)',
@@ -38783,7 +38539,8 @@ async function abrirGestionOperativaIntensivoDia(
                   {esCoordinadorJefeApp && (
                     <button
                       type="button"
-                      onClick={() => setModoDemoVisual(!modoDemoVisual)}
+                      hidden
+                  onClick={() => setModoDemoVisual(!modoDemoVisual)}
                       style={{
                         ...botonSecundario,
                         background: modoDemoVisual ? '#dcfce7' : 'rgba(255,255,255,.08)',
@@ -40514,7 +40271,8 @@ async function abrirGestionOperativaIntensivoDia(
                     {esCoordinadorJefeApp && (
                       <button
                         type="button"
-                        onClick={() => setModoDemoVisual(!modoDemoVisual)}
+                        hidden
+                  onClick={() => setModoDemoVisual(!modoDemoVisual)}
                         style={{
                           ...botonSecundario,
                           borderColor: modoDemoVisual ? '#86efac' : '#cbd5e1',
@@ -42271,7 +42029,8 @@ async function abrirGestionOperativaIntensivoDia(
                 >
                   <button
                     type="button"
-                    onClick={() => setModoDemoVisual(!modoDemoVisual)}
+                    hidden
+                  onClick={() => setModoDemoVisual(!modoDemoVisual)}
                     style={{
                       ...botonSecundario,
                       borderColor: modoDemoVisual ? '#86efac' : 'rgba(255,255,255,.24)',
@@ -42475,7 +42234,7 @@ async function abrirGestionOperativaIntensivoDia(
                   <article style={{ ...tarjetaMovilVacia, marginBottom: 0 }}>
                     <h3 style={{ marginTop: 0 }}>Sin usuarios operativos</h3>
                     <p style={{ marginBottom: 0 }}>
-                      Aquí aparecerán las cuentas de coordinación y administración. Puedes usar <strong>Ver ejemplo</strong> para revisar el diseño completo.
+                      Aquí aparecerán las cuentas de coordinación y administración cuando existan datos reales.
                     </p>
                   </article>
                 )}
@@ -42707,7 +42466,8 @@ async function abrirGestionOperativaIntensivoDia(
                 {esCoordinadorJefeApp && (
                   <button
                     type="button"
-                    onClick={() => setModoDemoVisual(!modoDemoVisual)}
+                    hidden
+                  onClick={() => setModoDemoVisual(!modoDemoVisual)}
                     style={{
                       ...botonSecundario,
                       minHeight: 36,
@@ -44124,7 +43884,8 @@ async function abrirGestionOperativaIntensivoDia(
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button
                 type="button"
-                onClick={() => setModoDemoVisual(!modoDemoVisual)}
+                hidden
+                  onClick={() => setModoDemoVisual(!modoDemoVisual)}
                 style={{
                   ...botonSecundario,
                   borderColor: modoDemoVisual ? '#86efac' : '#cbd5e1',

@@ -1,3 +1,4 @@
+// MITICO_PRODUCTO_2026_BASE_REAL_ZZTES_V2_6
 import React from 'react';
 import { CampoSelect } from '../lib/appHelpers';
 export function PantallaIntensivos(ctx: any) {
@@ -857,6 +858,7 @@ export function PantallaIntensivos(ctx: any) {
               {esCoordinadorJefeApp && (
                 <button
                   type="button"
+                  hidden
                   onClick={() => setModoDemoVisual(!modoDemoVisual)}
                   style={{
                     ...botonSecundario,
