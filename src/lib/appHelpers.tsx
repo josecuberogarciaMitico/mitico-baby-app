@@ -387,11 +387,11 @@ export function grupoNivelAFormulario(nombreGrupo: string) {
 }
 
 export const layout: React.CSSProperties = {
-  padding: 0,
-  fontFamily: "'Inter', 'SF Pro Display', 'SF Pro Text', 'Aptos', 'Segoe UI', system-ui, -apple-system, sans-serif",
-  background: '#f4f7fb',
+  padding: 24,
+  fontFamily: "'SF Pro Rounded', 'Aptos', 'Inter', 'Segoe UI', system-ui, sans-serif",
+  background: 'radial-gradient(circle at top left, rgba(22,163,74,0.13), transparent 30%), radial-gradient(circle at top right, rgba(37,99,235,0.15), transparent 32%), linear-gradient(180deg, #f8fafc 0%, #eef4ff 100%)',
   minHeight: '100vh',
-  color: '#122033',
+  color: '#172033',
 };
 
 export const cabeceraPantalla: React.CSSProperties = {
@@ -1149,13 +1149,13 @@ export const tarjetaMovilVacia: React.CSSProperties = {
 };
 
 export const tarjetaEntrenadorMovil: React.CSSProperties = {
-  background: '#ffffff',
-  border: '1px solid #e2e8f0',
-  borderRadius: 18,
-  padding: 14,
+  background: 'linear-gradient(180deg, #ffffff, #f8fafc)',
+  border: '1px solid rgba(148,163,184,0.28)',
+  borderRadius: 24,
+  padding: 16,
   display: 'grid',
-  gap: 12,
-  boxShadow: '0 8px 24px rgba(15,23,42,0.045)',
+  gap: 14,
+  boxShadow: '0 14px 38px rgba(15,23,42,0.07)',
 };
 
 export const cabeceraEntrenadorMovil: React.CSSProperties = {
@@ -1186,12 +1186,12 @@ export const contadorGrandeMovil: React.CSSProperties = {
 };
 
 export const bloqueSemanaMovil: React.CSSProperties = {
-  border: '1px solid #e5eaf0',
-  borderRadius: 16,
-  padding: 10,
-  background: '#fbfcfe',
+  border: '1px solid rgba(148,163,184,0.24)',
+  borderRadius: 20,
+  padding: 12,
+  background: 'rgba(255,255,255,0.78)',
   display: 'grid',
-  gap: 9,
+  gap: 10,
 };
 
 export const cabeceraSemanaMovil: React.CSSProperties = {
@@ -1211,9 +1211,12 @@ export const resumenChipsMovil: React.CSSProperties = {
 
 export const diaEntrenadorCard: React.CSSProperties = {
   background: '#ffffff',
-  border: '1px solid #dde5ee',
-  borderRadius: 14,
-  overflow: 'hidden',
+  border: '1px solid rgba(37,99,235,0.18)',
+  borderRadius: 18,
+  padding: 12,
+  display: 'grid',
+  gap: 10,
+  boxShadow: '0 8px 20px rgba(37,99,235,0.05)',
 };
 
 export const diaEntrenadorCardLibre: React.CSSProperties = {
@@ -1284,22 +1287,22 @@ export const badgePendiente: React.CSSProperties = {
 };
 
 export const turnoEntrenadorBox: React.CSSProperties = {
-  border: '1px solid #e3e8ef',
-  borderRadius: 14,
-  padding: 10,
-  background: '#f8fafc',
+  border: '1px solid rgba(249,115,22,0.25)',
+  borderRadius: 18,
+  padding: 12,
+  background: 'linear-gradient(135deg, rgba(255,247,237,0.95), #ffffff)',
   display: 'grid',
-  gap: 9,
+  gap: 10,
 };
 
 export const grupoEntrenadorCardMovil: React.CSSProperties = {
-  border: '1px solid #e0e7ef',
-  borderRadius: 16,
-  padding: 13,
+  border: '1px solid rgba(148,163,184,0.28)',
+  borderRadius: 20,
+  padding: 14,
   background: '#ffffff',
   display: 'grid',
-  gap: 11,
-  boxShadow: '0 7px 20px rgba(15,23,42,0.04)',
+  gap: 12,
+  boxShadow: '0 10px 26px rgba(15,23,42,0.06)',
 };
 
 export const grupoEntrenadorTopMovil: React.CSSProperties = {
@@ -1346,8 +1349,8 @@ export const filaAlumnoAsistencia: React.CSSProperties = {
   alignItems: 'center',
   gap: 10,
   flexWrap: 'wrap',
-  border: '1px solid #e6ebf1',
-  borderRadius: 12,
+  border: '1px solid #eeeeee',
+  borderRadius: 14,
   padding: 10,
   background: '#ffffff',
 };
@@ -1394,8 +1397,8 @@ export const semanaTrabajoActivaApp: React.CSSProperties = {
 
 export const vistaEntrenadorShell: React.CSSProperties = {
   display: 'grid',
-  gap: 14,
-  maxWidth: 1040,
+  gap: 16,
+  maxWidth: 980,
   margin: '0 auto',
 };
 
@@ -1405,50 +1408,48 @@ export const entrenadorHeroApp: React.CSSProperties = {
   alignItems: 'center',
   gap: 14,
   flexWrap: 'wrap',
-  borderRadius: 20,
-  padding: 18,
-  background: 'linear-gradient(135deg, #082638 0%, #0b3549 70%, #0c6245 130%)',
-  color: '#ffffff',
-  border: '1px solid rgba(255,255,255,0.08)',
-  boxShadow: '0 16px 40px rgba(5,27,45,0.16)',
+  borderRadius: 24,
+  padding: 20,
+  background: 'linear-gradient(135deg, rgba(15,118,110,0.16), rgba(37,99,235,0.10) 55%, #ffffff)',
+  border: '1px solid rgba(15,118,110,0.22)',
+  boxShadow: '0 18px 50px rgba(15,23,42,0.08)',
 };
 
 export const entrenadorHeroChips: React.CSSProperties = {
   display: 'flex',
-  gap: 6,
+  gap: 8,
   flexWrap: 'wrap',
   marginTop: 10,
-  color: '#d6e4ed',
-  fontSize: 12,
+  color: '#334155',
+  fontSize: 13,
   fontWeight: 800,
 };
 
 export const panelEntrenadorFiltroApp: React.CSSProperties = {
   display: 'grid',
-  gap: 9,
-  padding: 8,
-  borderRadius: 16,
-  background: '#ffffff',
-  border: '1px solid #e2e8f0',
-  boxShadow: '0 8px 24px rgba(15,23,42,0.045)',
+  gap: 10,
+  padding: 12,
+  borderRadius: 20,
+  background: 'rgba(255,255,255,0.88)',
+  border: '1px solid rgba(148,163,184,0.28)',
+  boxShadow: '0 10px 30px rgba(15,23,42,0.05)',
 };
 
 export const inputEntrenadorBusqueda: React.CSSProperties = {
   ...buscador,
-  borderRadius: 11,
-  padding: '12px 14px',
-  background: '#f8fafc',
-  border: '1px solid #dce4ed',
+  borderRadius: 999,
+  padding: '13px 16px',
+  background: '#ffffff',
 };
 
 export const tabBarEntrenadorModerno: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-  gap: 6,
-  padding: 5,
-  borderRadius: 13,
-  background: '#f1f5f9',
-  border: '1px solid #e2e8f0',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
+  gap: 8,
+  padding: 6,
+  borderRadius: 18,
+  background: '#f8fafc',
+  border: '1px solid rgba(148,163,184,0.20)',
 };
 
 export function tabEntrenadorModerno(activo: boolean, color: string): React.CSSProperties {
@@ -2100,52 +2101,51 @@ export const agendaShellCompacto: React.CSSProperties = {
 export const agendaHeroTrabajoSemanal: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
-  gap: 22,
+  gap: 18,
   alignItems: 'center',
-  padding: '4px 0 10px',
-  borderRadius: 0,
-  background: 'transparent',
-  border: 0,
-  boxShadow: 'none',
+  padding: 22,
+  borderRadius: 24,
+  background: 'linear-gradient(135deg, rgba(37,99,235,0.10), rgba(22,163,74,0.09) 45%, #ffffff 84%)',
+  border: '1px solid rgba(37,99,235,0.18)',
+  boxShadow: '0 16px 36px rgba(15,23,42,0.07)',
   flexWrap: 'wrap',
 };
 
 export const agendaPanelRangoSemana: React.CSSProperties = {
   minWidth: 270,
-  padding: '13px 15px',
-  borderRadius: 15,
-  background: '#ffffff',
-  border: '1px solid #e2e8f0',
-  boxShadow: '0 7px 22px rgba(15,23,42,0.05)',
+  padding: '14px 16px',
+  borderRadius: 18,
+  background: 'rgba(255,255,255,0.86)',
+  border: '1px solid rgba(148,163,184,0.28)',
+  boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.85)',
   display: 'grid',
   gap: 4,
 };
 
 export const agendaPanelControles: React.CSSProperties = {
-  padding: 16,
-  borderRadius: 18,
-  background: '#ffffff',
-  border: '1px solid #e2e8f0',
-  boxShadow: '0 10px 30px rgba(15,23,42,0.05)',
+  padding: 18,
+  borderRadius: 22,
+  background: 'rgba(255,255,255,0.92)',
+  border: '1px solid rgba(148,163,184,0.24)',
+  boxShadow: '0 14px 34px rgba(15,23,42,0.06)',
   display: 'grid',
-  gap: 15,
+  gap: 14,
 };
 
 export const agendaControlesGrid: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(3, minmax(190px, 1fr))',
+  gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
   gap: 12,
   alignItems: 'end',
 };
 
 export const selectCampoAgenda: React.CSSProperties = {
   ...selectCampo,
-  minHeight: 44,
-  borderRadius: 11,
-  border: '1px solid #d8e0ea',
-  background: '#fbfcfe',
-  boxShadow: 'none',
-  fontWeight: 750,
+  minHeight: 42,
+  borderRadius: 13,
+  border: '1px solid rgba(148,163,184,0.7)',
+  background: '#ffffff',
+  boxShadow: '0 6px 16px rgba(15,23,42,0.04)',
 };
 
 export const agendaMiniLabel: React.CSSProperties = {
@@ -2164,8 +2164,8 @@ export const agendaMiniTexto: React.CSSProperties = {
 
 export const agendaDiasSelectorCompacto: React.CSSProperties = {
   display: 'grid',
-  gridTemplateColumns: 'repeat(5, minmax(135px, 1fr))',
-  gap: 9,
+  gridTemplateColumns: 'repeat(auto-fit, minmax(165px, 1fr))',
+  gap: 10,
 };
 
 export const agendaMiniContador: React.CSSProperties = {
@@ -2180,15 +2180,20 @@ export const agendaMiniContador: React.CSSProperties = {
 
 export function agendaMiniContadorDiaCompacto(activo: boolean, alumnos: number, grupos: number): React.CSSProperties {
   const tieneActividad = alumnos > 0 || grupos > 0;
+  const base = { ...agendaMiniContador };
+  if (activo) {
+    return {
+      ...base,
+      color: tieneActividad ? '#166534' : '#991b1b',
+      background: tieneActividad ? '#dcfce7' : '#fee2e2',
+      border: tieneActividad ? '1px solid rgba(22,163,74,0.28)' : '1px solid rgba(239,68,68,0.28)',
+    };
+  }
   return {
-    ...agendaMiniContador,
-    color: activo ? '#0b5f35' : tieneActividad ? '#166534' : '#66758a',
-    background: activo ? '#eaf8ef' : tieneActividad ? '#f0fdf4' : '#f4f7fa',
-    border: activo
-      ? '1px solid #b9e7c9'
-      : tieneActividad
-        ? '1px solid #c8ecd4'
-        : '1px solid #e1e7ee',
+    ...base,
+    color: tieneActividad ? '#166534' : '#991b1b',
+    background: tieneActividad ? '#f0fdf4' : '#fff1f2',
+    border: tieneActividad ? '1px solid rgba(22,163,74,0.22)' : '1px solid rgba(239,68,68,0.22)',
   };
 }
 
@@ -2196,25 +2201,27 @@ export function agendaBotonDiaCompacto(activo: boolean, alumnos: number, grupos:
   const tieneActividad = alumnos > 0 || grupos > 0;
   return {
     border: activo
-      ? '1px solid #0f9f4d'
-      : '1px solid #e1e7ee',
+      ? '2px solid #2563eb'
+      : tieneActividad
+        ? '1px solid rgba(22,163,74,0.35)'
+        : '1px solid rgba(239,68,68,0.35)',
     background: activo
-      ? 'linear-gradient(180deg, #f4fcf7 0%, #ffffff 100%)'
-      : '#ffffff',
-    color: '#122033',
-    minHeight: 72,
-    padding: '12px 13px',
-    borderRadius: 14,
+      ? tieneActividad
+        ? 'linear-gradient(135deg, #eff6ff, #f0fdf4)'
+        : 'linear-gradient(135deg, #eff6ff, #fff1f2)'
+      : tieneActividad
+        ? 'linear-gradient(135deg, rgba(240,253,244,0.95), #ffffff)'
+        : 'linear-gradient(135deg, rgba(255,241,242,0.95), #ffffff)',
+    color: '#172033',
+    minHeight: 66,
+    padding: '11px 12px',
+    borderRadius: 16,
     display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: 10,
     cursor: 'pointer',
-    boxShadow: activo
-      ? '0 8px 22px rgba(15,159,77,0.10)'
-      : tieneActividad
-        ? '0 5px 15px rgba(15,23,42,0.04)'
-        : 'none',
+    boxShadow: activo ? '0 10px 22px rgba(37,99,235,0.13)' : '0 7px 16px rgba(15,23,42,0.04)',
   };
 }
 
