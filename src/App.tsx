@@ -1,6 +1,4 @@
-// MITICO_PRODUCTO_2026_BASE_REAL_ZZTES_V2_6
-// MITICO_PRODUCTO_2026_ENTRENADORES_REAL_UNIFICADO_V2_4
-// MITICO_PRODUCTO_2026_ENTRENADORES_V2_3
+// MITICO_PRODUCTO_2026_GLOBAL_REAL_V3_0
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './App.css';
@@ -3873,264 +3871,15 @@ function IconoNavegacionApp({ tipo }: { tipo: string }) {
 }
 
 
-function DemoVisualBannerApp({
-  titulo,
-  descripcion,
-  onClose,
-}: {
-  titulo: string;
-  descripcion: string;
-  onClose: () => void;
-}) {
-  return (
-    <div
-      style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        gap: 12,
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        padding: '11px 13px',
-        borderRadius: 14,
-        background: 'linear-gradient(135deg,#0f172a,#1e293b)',
-        color: '#fff',
-        border: '1px solid rgba(255,255,255,.08)',
-        boxShadow: '0 10px 26px rgba(15,23,42,.12)',
-      }}
-    >
-      <div style={{ minWidth: 0 }}>
-        <div
-          style={{
-            display: 'flex',
-            gap: 8,
-            alignItems: 'center',
-            flexWrap: 'wrap',
-          }}
-        >
-          <span
-            style={{
-              padding: '4px 8px',
-              borderRadius: 999,
-              background: '#dcfce7',
-              color: '#166534',
-              fontSize: 10,
-              fontWeight: 950,
-              letterSpacing: .7,
-            }}
-          >
-            MODO DEMO
-          </span>
-          <strong>{titulo}</strong>
-        </div>
-        <p style={{ margin: '5px 0 0', color: '#cbd5e1', fontSize: 12 }}>
-          {descripcion} · Datos locales de ejemplo · No modifica Supabase.
-        </p>
-      </div>
-      <button
-        type="button"
-        onClick={onClose}
-        style={{
-          border: '1px solid rgba(255,255,255,.18)',
-          background: 'rgba(255,255,255,.08)',
-          color: '#fff',
-          borderRadius: 10,
-          padding: '8px 11px',
-          fontWeight: 850,
-          cursor: 'pointer',
-        }}
-      >
-        Cerrar demo
-      </button>
-    </div>
-  );
-}
-
-
-function crearAnalisisDemoApp(
-  modalidad: ModalidadAnalisisAdminApp
-): AnalisisAdminPayloadApp {
-  const configuracion = {
-    BABY: {
-      alumnos: 142,
-      altas: 36,
-      continuidad: 78.4,
-      asistencia: 91.6,
-      ocupacion: 84.2,
-      ninosTurno: 19.8,
-      porGrupo: 4.7,
-      sesiones: 96,
-      evolucion: 0.64,
-      mejoran: 89,
-      estables: 41,
-      bajan: 12,
-    },
-    OCIO: {
-      alumnos: 86,
-      altas: 18,
-      continuidad: 82.1,
-      asistencia: 94.3,
-      ocupacion: 79.5,
-      ninosTurno: 13.4,
-      porGrupo: 5.2,
-      sesiones: 61,
-      evolucion: 0.48,
-      mejoran: 49,
-      estables: 31,
-      bajan: 6,
-    },
-    INTENSIVOS: {
-      alumnos: 118,
-      altas: 44,
-      continuidad: 69.8,
-      asistencia: 89.7,
-      ocupacion: 88.6,
-      ninosTurno: 17.1,
-      porGrupo: 4.4,
-      sesiones: 48,
-      evolucion: 0.71,
-      mejoran: 76,
-      estables: 34,
-      bajan: 8,
-    },
-  } as const;
-
-  const c = configuracion[modalidad];
-  const factores = [0.66, 0.74, 0.81, 0.9, 0.96, 1, 1.04];
-  const meses = ['2026-09', '2026-10', '2026-11', '2026-12', '2027-01', '2027-02', '2027-03'];
-  const mensual: AnalisisAdminMensualApp[] = meses.map((mes, indice) => {
-    const factor = factores[indice];
-    const alumnos = Math.max(1, Math.round(c.alumnos * factor));
-    const anterior = indice === 0 ? alumnos : Math.max(1, Math.round(c.alumnos * factores[indice - 1]));
-    return {
-      mes,
-      alumnos_unicos: alumnos,
-      altas: Math.max(1, Math.round(c.altas * (indice < 2 ? 0.23 : 0.12))),
-      crecimiento_pct: indice === 0 ? null : Number((((alumnos - anterior) / anterior) * 100).toFixed(1)),
-      continuidad_pct: Number(Math.max(55, c.continuidad - 5 + indice * 0.9).toFixed(1)),
-      perdida_continuidad_pct: Number(Math.min(45, 100 - (c.continuidad - 5 + indice * 0.9)).toFixed(1)),
-      asistencia_real_pct: Number(Math.min(98, c.asistencia - 2.2 + indice * 0.55).toFixed(1)),
-      promedio_ninos_turno: Number(Math.max(4, c.ninosTurno - 2 + indice * 0.35).toFixed(1)),
-      promedio_por_grupo: Number(Math.max(3, c.porGrupo - 0.35 + indice * 0.08).toFixed(1)),
-      sesiones_realizadas: Math.max(3, Math.round((c.sesiones / meses.length) * (0.78 + indice * 0.04))),
-      ocupacion_pct: Number(Math.min(98, c.ocupacion - 5 + indice * 0.9).toFixed(1)),
-      evolucion_tecnica: Number(Math.max(0.1, c.evolucion - 0.24 + indice * 0.04).toFixed(2)),
-      mejoran: Math.round(c.mejoran * factor),
-      estables: Math.round(c.estables * factor),
-      bajan: Math.max(1, Math.round(c.bajan * factor)),
-    };
-  });
-
-  return {
-    meta: {
-      temporada_id: 'demo-2026-2027',
-      temporada: '2026/2027',
-      fecha_inicio: '2026-09-01',
-      fecha_fin: '2027-06-30',
-      modalidad,
-      generado_at: new Date('2027-03-18T13:25:00').toISOString(),
-    },
-    resumen: {
-      alumnos_unicos: c.alumnos,
-      altas: c.altas,
-      continuidad_pct: c.continuidad,
-      perdida_continuidad_pct: Number((100 - c.continuidad).toFixed(1)),
-      asistencia_real_pct: c.asistencia,
-      promedio_ninos_turno: c.ninosTurno,
-      promedio_por_grupo: c.porGrupo,
-      sesiones_realizadas: c.sesiones,
-      ocupacion_pct: c.ocupacion,
-      evolucion_tecnica: c.evolucion,
-      alumnos_mejoran: c.mejoran,
-      alumnos_estables: c.estables,
-      alumnos_bajan: c.bajan,
-    },
-    mensual,
-    niveles:
-      modalidad === 'BABY'
-        ? [
-            { nivel: 'INICIACIÓN', total: 18 },
-            { nivel: 'A', total: 25 },
-            { nivel: 'A+', total: 31 },
-            { nivel: 'B', total: 28 },
-            { nivel: 'B+', total: 21 },
-            { nivel: 'C', total: 12 },
-            { nivel: 'C+', total: 7 },
-          ]
-        : modalidad === 'OCIO'
-        ? [
-            { nivel: 'A+', total: 12 },
-            { nivel: 'B', total: 20 },
-            { nivel: 'B+', total: 24 },
-            { nivel: 'C', total: 18 },
-            { nivel: 'C+', total: 8 },
-            { nivel: 'D', total: 4 },
-          ]
-        : [
-            { nivel: 'A', total: 16 },
-            { nivel: 'A+', total: 24 },
-            { nivel: 'B', total: 29 },
-            { nivel: 'B+', total: 27 },
-            { nivel: 'C', total: 15 },
-            { nivel: 'C+', total: 7 },
-          ],
-    progresiones: [
-      { desde: 'A', hasta: 'A+', total: 24, sentido: 'SUBE' },
-      { desde: 'A+', hasta: 'B', total: 21, sentido: 'SUBE' },
-      { desde: 'B', hasta: 'B+', total: 18, sentido: 'SUBE' },
-      { desde: 'B+', hasta: 'C', total: 12, sentido: 'SUBE' },
-      { desde: 'A+', hasta: 'A+', total: 11, sentido: 'IGUAL' },
-      { desde: 'B', hasta: 'B', total: 9, sentido: 'IGUAL' },
-      { desde: 'C', hasta: 'B+', total: 3, sentido: 'BAJA' },
-    ],
-    comparativa_temporadas: [
-      {
-        temporada_id: 'demo-2024-2025',
-        temporada: '2024/2025',
-        activa: false,
-        alumnos_unicos: Math.round(c.alumnos * 0.76),
-        sesiones_realizadas: Math.round(c.sesiones * 0.79),
-        asistencia_real_pct: Number((c.asistencia - 4.8).toFixed(1)),
-        evolucion_tecnica: Number(Math.max(0.1, c.evolucion - 0.17).toFixed(2)),
-      },
-      {
-        temporada_id: 'demo-2025-2026',
-        temporada: '2025/2026',
-        activa: false,
-        alumnos_unicos: Math.round(c.alumnos * 0.89),
-        sesiones_realizadas: Math.round(c.sesiones * 0.91),
-        asistencia_real_pct: Number((c.asistencia - 2.1).toFixed(1)),
-        evolucion_tecnica: Number(Math.max(0.1, c.evolucion - 0.08).toFixed(2)),
-      },
-      {
-        temporada_id: 'demo-2026-2027',
-        temporada: '2026/2027',
-        activa: true,
-        alumnos_unicos: c.alumnos,
-        sesiones_realizadas: c.sesiones,
-        asistencia_real_pct: c.asistencia,
-        evolucion_tecnica: c.evolucion,
-      },
-    ],
-    definiciones: {
-      alumnos_unicos: 'Alumnos diferentes con actividad dentro de la temporada y modalidad seleccionadas.',
-      continuidad_pct: 'Porcentaje de alumnos que mantienen actividad entre periodos consecutivos.',
-      asistencia_real_pct: 'Asistencias confirmadas sobre plazas/alumnos esperados con control de asistencia.',
-      ocupacion_pct: 'Uso real estimado de la capacidad disponible en los grupos.',
-      evolucion_tecnica: 'Cambio medio entre el primer y el último nivel técnico reportado de cada alumno.',
-    },
-  };
-}
 
 function AnalisisPanelVisualApp({
   datos,
   esVistaMovil,
-  esDemo = false,
   numero,
   etiquetaMes,
 }: {
   datos: AnalisisAdminPayloadApp;
   esVistaMovil: boolean;
-  esDemo?: boolean;
   numero: (valor: number | null | undefined, sufijo?: string) => string;
   etiquetaMes: (mes: string) => string;
 }) {
@@ -4177,20 +3926,6 @@ function AnalisisPanelVisualApp({
             <strong style={{ fontSize: esVistaMovil ? 18 : 20, color: '#0f172a' }}>
               {modalidadNombre} · {datos.meta.temporada}
             </strong>
-            {esDemo && (
-              <span
-                style={{
-                  padding: '4px 8px',
-                  borderRadius: 999,
-                  background: '#dcfce7',
-                  color: '#166534',
-                  fontSize: 10,
-                  fontWeight: 900,
-                }}
-              >
-                EJEMPLO
-              </span>
-            )}
           </div>
           <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 12 }}>
             Vista ejecutiva de rendimiento, asistencia y evolución técnica.
@@ -4613,1588 +4348,12 @@ function AnalisisPanelVisualApp({
   );
 }
 
-function DemoTrabajoEnPistaApp({
-  esMovil,
-  onClose,
-}: {
-  esMovil: boolean;
-  onClose: () => void;
-}) {
-  const grupos = [
-    ['Grupo 1', 'A+', 'Pequeña', 'Alfonso', '4', 'Punto 1'],
-    ['Grupo 2', 'B', 'Pequeña', 'Chimeno', '4', 'Punto 2'],
-    ['Grupo 3', 'B+', 'Grande', 'Marta', '5', 'Punto 3'],
-    ['Grupo 4', 'C / C+', 'Grande', 'Álvaro', '6', 'Punto 4'],
-  ];
-
-  return (
-    <section style={{ display: 'grid', gap: 12, marginTop: 14 }}>
-      <DemoVisualBannerApp
-        titulo="Trabajo en pista"
-        descripcion="Ejemplo de una jornada real con grupos publicados"
-        onClose={onClose}
-      />
-      <article
-        style={{
-          borderRadius: 20,
-          padding: esMovil ? 14 : 18,
-          background: '#ffffff',
-          border: '1px solid #e2e8f0',
-          boxShadow: '0 12px 30px rgba(15,23,42,.055)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: 12,
-            alignItems: 'flex-start',
-            flexWrap: 'wrap',
-          }}
-        >
-          <div>
-            <span style={{ fontSize: 11, color: '#64748b', fontWeight: 900 }}>
-              SÁBADO · MADRID SNOWZONE
-            </span>
-            <h3 style={{ margin: '4px 0 0', fontSize: 22 }}>09:45–11:45</h3>
-            <p style={{ margin: '5px 0 0', color: '#64748b' }}>
-              Baby · jornada preparada y publicada
-            </p>
-          </div>
-          <span
-            style={{
-              padding: '6px 9px',
-              borderRadius: 999,
-              background: '#ecfdf5',
-              color: '#047857',
-              fontSize: 11,
-              fontWeight: 900,
-            }}
-          >
-            TODO CUBIERTO
-          </span>
-        </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: esMovil
-              ? 'repeat(2,minmax(0,1fr))'
-              : 'repeat(4,minmax(0,1fr))',
-            gap: 8,
-            marginTop: 14,
-          }}
-        >
-          {[
-            ['Alumnos', '19'],
-            ['Grupos', '4'],
-            ['Entrenadores', '4'],
-            ['Pendientes', '1'],
-          ].map(([etiqueta, valor]) => (
-            <div
-              key={etiqueta}
-              style={{
-                background: '#f8fafc',
-                border: '1px solid #e8edf3',
-                borderRadius: 14,
-                padding: '10px 11px',
-              }}
-            >
-              <span style={{ color: '#64748b', fontSize: 10, fontWeight: 850 }}>
-                {etiqueta}
-              </span>
-              <strong style={{ display: 'block', fontSize: 22, marginTop: 2 }}>
-                {valor}
-              </strong>
-            </div>
-          ))}
-        </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: esMovil ? '1fr' : 'repeat(2,minmax(0,1fr))',
-            gap: 9,
-            marginTop: 12,
-          }}
-        >
-          {grupos.map(([nombre, nivel, pista, entrenador, total, punto]) => (
-            <div
-              key={nombre}
-              style={{
-                border: '1px solid #e2e8f0',
-                borderRadius: 15,
-                padding: 12,
-                background: '#fff',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  gap: 8,
-                  alignItems: 'center',
-                }}
-              >
-                <strong>{nombre}</strong>
-                <span
-                  style={{
-                    borderRadius: 999,
-                    padding: '4px 7px',
-                    background: pista === 'Grande' ? '#eff6ff' : '#ecfdf5',
-                    color: pista === 'Grande' ? '#1d4ed8' : '#047857',
-                    fontSize: 10,
-                    fontWeight: 900,
-                  }}
-                >
-                  {nivel}
-                </span>
-              </div>
-              <p style={{ margin: '6px 0 0', color: '#475569', fontSize: 12 }}>
-                {pista} · {total} niños · {punto}
-              </p>
-              <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 12 }}>
-                {entrenador} · confirmado
-              </p>
-            </div>
-          ))}
-        </div>
-
-        <div
-          style={{
-            marginTop: 10,
-            borderRadius: 13,
-            padding: '10px 12px',
-            background: '#fffbeb',
-            border: '1px solid #fde68a',
-            color: '#854d0e',
-            fontSize: 12,
-          }}
-        >
-          <strong>Necesita atención:</strong> 1 recuperación pendiente de revisar antes del siguiente intensivo.
-        </div>
-      </article>
-    </section>
-  );
-}
-
-function DemoOcioApp({
-  esMovil,
-  onClose,
-}: {
-  esMovil: boolean;
-  onClose: () => void;
-}) {
-  const grupos = [
-    { nombre: 'Grupo S1', nivel: 'A+', pista: 'Pequeña', alumnos: ['Sofía', 'Mateo', 'Lucía', 'Pablo'], estado: '4/4' },
-    { nombre: 'Grupo S2', nivel: 'B', pista: 'Pequeña', alumnos: ['Valentina', 'Hugo', 'Alba', 'Martín'], estado: '4/4' },
-    { nombre: 'Grupo S3', nivel: 'B+', pista: 'Grande', alumnos: ['Carla', 'Leo', 'Claudia', 'Nicolás', 'Vega'], estado: '5/7' },
-  ];
-  return (
-    <section style={{ display: 'grid', gap: 12 }}>
-      <DemoVisualBannerApp
-        titulo="Ocio · Sábado"
-        descripcion="Ejemplo de grupos estables con alumnos reales de muestra"
-        onClose={onClose}
-      />
-      <article
-        style={{
-          borderRadius: 20,
-          padding: esMovil ? 13 : 17,
-          border: '1px solid #dbe9e4',
-          background: '#fff',
-          boxShadow: '0 10px 26px rgba(15,23,42,.05)',
-        }}
-      >
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: esMovil ? '1fr' : 'repeat(3,minmax(0,1fr))',
-            gap: 10,
-          }}
-        >
-          {grupos.map((grupo) => (
-            <div
-              key={grupo.nombre}
-              style={{
-                borderRadius: 16,
-                border: '1px solid #dce9e4',
-                padding: 12,
-                background: 'linear-gradient(180deg,#ffffff,#f8fffb)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  gap: 8,
-                  alignItems: 'center',
-                }}
-              >
-                <div>
-                  <span style={{ fontSize: 10, color: '#64748b', fontWeight: 900 }}>
-                    GRUPO ESTABLE
-                  </span>
-                  <h4 style={{ margin: '3px 0 0' }}>{grupo.nombre}</h4>
-                </div>
-                <span
-                  style={{
-                    padding: '5px 8px',
-                    borderRadius: 999,
-                    background: '#ecfdf5',
-                    color: '#047857',
-                    fontSize: 10,
-                    fontWeight: 900,
-                  }}
-                >
-                  {grupo.estado}
-                </span>
-              </div>
-              <p style={{ margin: '7px 0', color: '#475569', fontSize: 12 }}>
-                Nivel {grupo.nivel} · {grupo.pista}
-              </p>
-              <div style={{ display: 'grid', gap: 5 }}>
-                {grupo.alumnos.map((alumno) => (
-                  <div
-                    key={alumno}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 7,
-                      padding: '6px 8px',
-                      borderRadius: 10,
-                      background: '#f8fafc',
-                      fontSize: 12,
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 22,
-                        height: 22,
-                        borderRadius: '50%',
-                        display: 'grid',
-                        placeItems: 'center',
-                        background: '#d1fae5',
-                        color: '#065f46',
-                        fontWeight: 950,
-                        fontSize: 9,
-                      }}
-                    >
-                      {alumno.slice(0, 1)}
-                    </span>
-                    {alumno}
-                  </div>
-                ))}
-              </div>
-              <button
-                type="button"
-                disabled
-                style={{
-                  width: '100%',
-                  marginTop: 10,
-                  border: '1px solid #dce5df',
-                  background: '#f8fafc',
-                  color: '#64748b',
-                  borderRadius: 10,
-                  padding: '8px 10px',
-                  fontWeight: 850,
-                }}
-              >
-                Gestión desactivada en demo
-              </button>
-            </div>
-          ))}
-        </div>
-      </article>
-    </section>
-  );
-}
-
-function DemoEntrenadorApp({
-  esMovil,
-  onClose,
-}: {
-  esMovil: boolean;
-  onClose: () => void;
-}) {
-  const alumnos = [
-    ['Sofía Xenofontos', 'A+', 'Presente'],
-    ['Pablo Sinde', 'A+', 'Presente'],
-    ['Lucía González', 'B', 'Pendiente'],
-    ['Valentina Guijarro', 'B', 'Pendiente'],
-  ];
-  return (
-    <section style={{ display: 'grid', gap: 12 }}>
-      <DemoVisualBannerApp
-        titulo="Vista entrenador"
-        descripcion="Ejemplo mobile-first de un grupo del día"
-        onClose={onClose}
-      />
-      <article
-        className="trainer-group-card"
-        style={{
-          borderRadius: 18,
-          border: '1px solid #dfe6ee',
-          background: '#fff',
-          padding: esMovil ? 12 : 16,
-          boxShadow: '0 10px 28px rgba(15,23,42,.055)',
-          minWidth: 0,
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: 10,
-            flexWrap: 'wrap',
-            alignItems: 'flex-start',
-          }}
-        >
-          <div>
-            <span style={{ color: '#64748b', fontSize: 10, fontWeight: 900 }}>
-              SÁBADO · 09:45–11:45
-            </span>
-            <h3 style={{ margin: '4px 0 0' }}>Grupo 2 · A+ / B</h3>
-            <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: 12 }}>
-              Pista Pequeña · Punto 2 · 4 alumnos
-            </p>
-          </div>
-          <span
-            style={{
-              padding: '5px 8px',
-              borderRadius: 999,
-              background: '#ecfdf5',
-              color: '#047857',
-              fontSize: 10,
-              fontWeight: 950,
-            }}
-          >
-            CONFIRMADO
-          </span>
-        </div>
-
-        <div
-          style={{
-            marginTop: 12,
-            padding: 11,
-            borderRadius: 13,
-            background: '#eff6ff',
-            border: '1px solid #dbeafe',
-          }}
-        >
-          <strong style={{ fontSize: 12 }}>Trabajo diario</strong>
-          <p style={{ margin: '5px 0 0', color: '#334155', fontSize: 12 }}>
-            Control de velocidad en cuña, encadenar giros amplios y empezar a seguir la fila con autonomía.
-          </p>
-        </div>
-
-        <div style={{ display: 'grid', gap: 7, marginTop: 11 }}>
-          {alumnos.map(([nombre, nivel, estado]) => (
-            <div
-              key={nombre}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'minmax(0,1fr) auto',
-                gap: 8,
-                alignItems: 'center',
-                border: '1px solid #e5eaf0',
-                borderRadius: 12,
-                padding: '9px 10px',
-              }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <strong style={{ display: 'block', fontSize: 12 }}>{nombre}</strong>
-                <span style={{ color: '#64748b', fontSize: 11 }}>Nivel {nivel}</span>
-              </div>
-              <span
-                style={{
-                  padding: '5px 7px',
-                  borderRadius: 999,
-                  background: estado === 'Presente' ? '#ecfdf5' : '#fff7ed',
-                  color: estado === 'Presente' ? '#047857' : '#c2410c',
-                  fontSize: 9,
-                  fontWeight: 950,
-                }}
-              >
-                {estado.toUpperCase()}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2,minmax(0,1fr))',
-            gap: 7,
-            marginTop: 11,
-          }}
-        >
-          <button
-            type="button"
-            disabled
-            style={{
-              border: 0,
-              borderRadius: 11,
-              padding: '10px 8px',
-              background: '#e2e8f0',
-              color: '#64748b',
-              fontWeight: 900,
-            }}
-          >
-            Asistencia
-          </button>
-          <button
-            type="button"
-            disabled
-            style={{
-              border: 0,
-              borderRadius: 11,
-              padding: '10px 8px',
-              background: '#e2e8f0',
-              color: '#64748b',
-              fontWeight: 900,
-            }}
-          >
-            Reportes
-          </button>
-        </div>
-        <p style={{ margin: '8px 0 0', color: '#94a3b8', fontSize: 10 }}>
-          Las acciones están desactivadas porque este contenido es únicamente visual.
-        </p>
-      </article>
-    </section>
-  );
-}
 
 
-function DemoAltasTestApp({
-  esMovil,
-  onClose,
-}: {
-  esMovil: boolean;
-  onClose: () => void;
-}) {
-  const estados = [
-    ['Pendiente de enviar', '1', '#475569', '#f8fafc'],
-    ['Esperando respuesta', '1', '#b45309', '#fffbeb'],
-    ['Respondido · revisar', '2', '#1d4ed8', '#eff6ff'],
-    ['Listo para añadir', '1', '#047857', '#ecfdf5'],
-  ];
-
-  const respuesta = [
-    ['Experiencia', 'Varias veces'],
-    ['Frenado', 'Cuña autónoma'],
-    ['Giros', 'Enlaza giros'],
-    ['Remonte', 'Cinta solo/a'],
-    ['Pista', 'Pequeña'],
-    ['Control', 'Bueno'],
-  ];
-
-  return (
-    <section style={{ display: 'grid', gap: 12, marginTop: 14 }}>
-      <DemoVisualBannerApp
-        titulo="Altas / Test"
-        descripcion="Ejemplo completo del circuito desde el alta hasta la validación de nivel"
-        onClose={onClose}
-      />
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: esMovil
-            ? 'repeat(2, minmax(0, 1fr))'
-            : 'repeat(4, minmax(0, 1fr))',
-          gap: 8,
-        }}
-      >
-        {estados.map(([etiqueta, total, color, fondo]) => (
-          <article
-            key={etiqueta}
-            style={{
-              borderRadius: 15,
-              padding: '12px 13px',
-              border: '1px solid #e2e8f0',
-              background: fondo,
-              minWidth: 0,
-            }}
-          >
-            <span
-              style={{
-                display: 'block',
-                color,
-                fontSize: 10,
-                fontWeight: 950,
-                textTransform: 'uppercase',
-                letterSpacing: .55,
-              }}
-            >
-              {etiqueta}
-            </span>
-            <strong style={{ display: 'block', marginTop: 5, fontSize: 25, color: '#0f172a' }}>
-              {total}
-            </strong>
-          </article>
-        ))}
-      </div>
-
-      <article
-        style={{
-          borderRadius: 20,
-          border: '1px solid #bfdbfe',
-          background: '#ffffff',
-          overflow: 'hidden',
-          boxShadow: '0 12px 34px rgba(15,23,42,.07)',
-        }}
-      >
-        <div
-          style={{
-            padding: esMovil ? 14 : 17,
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'flex-start',
-            gap: 12,
-            flexWrap: 'wrap',
-            background: 'linear-gradient(135deg,#eff6ff,#ffffff 62%)',
-          }}
-        >
-          <div style={{ minWidth: 0 }}>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              <strong style={{ fontSize: esMovil ? 17 : 19, color: '#0f172a' }}>
-                Lucía García López
-              </strong>
-              <span
-                style={{
-                  padding: '5px 8px',
-                  borderRadius: 999,
-                  background: '#dbeafe',
-                  color: '#1d4ed8',
-                  border: '1px solid #bfdbfe',
-                  fontSize: 10,
-                  fontWeight: 950,
-                }}
-              >
-                RESPONDIDO · REVISAR
-              </span>
-            </div>
-            <p style={{ margin: '6px 0 0', color: '#64748b', fontSize: 13 }}>
-              BABY · 14/02/2021 · Familia: 612 345 678
-            </p>
-          </div>
-          <span
-            style={{
-              padding: '6px 9px',
-              borderRadius: 10,
-              background: '#ecfdf5',
-              color: '#047857',
-              border: '1px solid #a7f3d0',
-              fontSize: 11,
-              fontWeight: 950,
-            }}
-          >
-            Prioridad alta
-          </span>
-        </div>
-
-        <div style={{ padding: esMovil ? 14 : 17, display: 'grid', gap: 13 }}>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: esMovil ? '1fr' : 'minmax(0, 1.35fr) minmax(260px, .65fr)',
-              gap: 12,
-            }}
-          >
-            <div>
-              <span style={{ color: '#64748b', fontSize: 11, fontWeight: 900, textTransform: 'uppercase' }}>
-                Respuestas del test
-              </span>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: esMovil
-                    ? 'repeat(2, minmax(0, 1fr))'
-                    : 'repeat(3, minmax(0, 1fr))',
-                  gap: 7,
-                  marginTop: 8,
-                }}
-              >
-                {respuesta.map(([titulo, valor]) => (
-                  <div
-                    key={titulo}
-                    style={{
-                      border: '1px solid #e2e8f0',
-                      borderRadius: 12,
-                      padding: '9px 10px',
-                      background: '#f8fafc',
-                      minWidth: 0,
-                    }}
-                  >
-                    <small style={{ display: 'block', color: '#64748b', fontWeight: 800 }}>{titulo}</small>
-                    <strong style={{ display: 'block', marginTop: 3, color: '#172033', fontSize: 13 }}>
-                      {valor}
-                    </strong>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div
-              style={{
-                borderRadius: 15,
-                padding: 13,
-                border: '1px solid #a7f3d0',
-                background: '#ecfdf5',
-                alignSelf: 'stretch',
-              }}
-            >
-              <span style={{ display: 'block', color: '#047857', fontSize: 10, fontWeight: 950, textTransform: 'uppercase' }}>
-                Propuesta automática
-              </span>
-              <strong style={{ display: 'block', marginTop: 4, fontSize: 28, color: '#064e3b' }}>A+</strong>
-              <p style={{ margin: '4px 0 0', color: '#166534', fontSize: 12, fontWeight: 750 }}>
-                Confianza alta · cuña autónoma, enlaza giros y usa cinta sin ayuda.
-              </p>
-            </div>
-          </div>
-
-          <div
-            style={{
-              padding: 11,
-              borderRadius: 13,
-              border: '1px solid #fde68a',
-              background: '#fffbeb',
-              color: '#92400e',
-              fontSize: 12,
-            }}
-          >
-            <strong>Información para el profesor:</strong> le cuesta un poco separarse de la familia los primeros minutos.
-          </div>
-
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-            <button
-              type="button"
-              disabled
-              style={{
-                border: 0,
-                borderRadius: 11,
-                padding: '10px 13px',
-                background: '#16a34a',
-                color: '#ffffff',
-                fontWeight: 900,
-                opacity: .72,
-              }}
-            >
-              Validar nivel A+
-            </button>
-            <button
-              type="button"
-              disabled
-              style={{
-                border: '1px solid #cbd5e1',
-                borderRadius: 11,
-                padding: '10px 13px',
-                background: '#ffffff',
-                color: '#334155',
-                fontWeight: 900,
-                opacity: .72,
-              }}
-            >
-              Corregir propuesta
-            </button>
-            <span style={{ alignSelf: 'center', color: '#94a3b8', fontSize: 11, fontWeight: 750 }}>
-              Acciones desactivadas en demo
-            </span>
-          </div>
-        </div>
-      </article>
-
-      <div style={{ display: 'grid', gap: 8 }}>
-        {[
-          ['Hugo Serrano Martín', 'INTENSIVOS', 'ESPERANDO RESPUESTA', '#b45309', '#fffbeb', 'Test enviado ayer · WhatsApp entregado'],
-          ['Carla Mora Díaz', 'OCIO · Sábado', 'PENDIENTE DE ENVIAR', '#475569', '#f8fafc', 'Alta creada hoy · falta enviar test'],
-          ['Mateo Ruiz Alonso', 'BABY', 'REVISADO · LISTO PARA AÑADIR', '#047857', '#ecfdf5', 'Nivel validado B · listo para pasar a listados'],
-        ].map(([nombre, modalidad, estado, color, fondo, detalle]) => (
-          <article
-            key={nombre}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: esMovil ? '1fr' : 'minmax(0,1fr) auto',
-              gap: 9,
-              alignItems: 'center',
-              padding: '12px 14px',
-              borderRadius: 15,
-              border: '1px solid #e2e8f0',
-              borderLeft: `4px solid ${color}`,
-              background: '#ffffff',
-            }}
-          >
-            <div style={{ minWidth: 0 }}>
-              <div style={{ display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap' }}>
-                <strong style={{ color: '#172033' }}>{nombre}</strong>
-                <span style={{ color: '#64748b', fontSize: 11, fontWeight: 850 }}>{modalidad}</span>
-              </div>
-              <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 12 }}>{detalle}</p>
-            </div>
-            <span
-              style={{
-                justifySelf: esMovil ? 'start' : 'end',
-                padding: '5px 8px',
-                borderRadius: 999,
-                background: fondo,
-                color,
-                border: `1px solid ${color}33`,
-                fontSize: 10,
-                fontWeight: 950,
-              }}
-            >
-              {estado}
-            </span>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
 
 
-function DemoFichasApp({
-  esMovil,
-  onClose,
-}: {
-  esMovil: boolean;
-  onClose: () => void;
-}) {
-  const alumnosDemo = [
-    {
-      nombre: 'Lucía García López',
-      nivel: 'A+',
-      nacimiento: '14/02/2021',
-      telefono: '612 345 678',
-      reportes: 8,
-      entrenamientos: 11,
-      estado: 'Ficha completa',
-      detalle: 'Buen control de velocidad y cuña autónoma. Empieza a seguir la fila con seguridad.',
-      ritmo: 'Progresión positiva',
-      color: '#2563eb',
-      fondo: '#eff6ff',
-    },
-    {
-      nombre: 'Mateo Ruiz Alonso',
-      nivel: 'B',
-      nacimiento: '03/09/2020',
-      telefono: '633 208 419',
-      reportes: 0,
-      entrenamientos: 3,
-      estado: 'Pendiente reporte',
-      detalle: 'Nivel validado. Falta primer reporte técnico para consolidar ritmo y autonomía.',
-      ritmo: 'Sin tendencia todavía',
-      color: '#f97316',
-      fondo: '#fff7ed',
-    },
-    {
-      nombre: 'Claudia Martín Vega',
-      nivel: 'B+',
-      nacimiento: '22/06/2019',
-      telefono: '687 441 205',
-      reportes: 6,
-      entrenamientos: 9,
-      estado: 'Revisar ficha',
-      detalle: 'Autónoma en percha. El último reporte propone revisar paso a C por mejora técnica.',
-      ritmo: 'Evolución rápida',
-      color: '#7c3aed',
-      fondo: '#f5f3ff',
-    },
-  ];
-
-  return (
-    <section style={{ display: 'grid', gap: 12 }}>
-      <DemoVisualBannerApp
-        titulo="Fichas de alumnos"
-        descripcion="Ejemplo de directorio técnico con historial, nivel y contacto familiar"
-        onClose={onClose}
-      />
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: esMovil
-            ? 'repeat(2,minmax(0,1fr))'
-            : 'repeat(4,minmax(0,1fr))',
-          gap: 8,
-        }}
-      >
-        {[
-          ['Fichas Baby', '42', '#6d28d9', '#f5f3ff'],
-          ['Sin nivel', '3', '#dc2626', '#fef2f2'],
-          ['Sin reportes', '5', '#c2410c', '#fff7ed'],
-          ['Revisar', '2', '#1d4ed8', '#eff6ff'],
-        ].map(([etiqueta, valor, color, fondo]) => (
-          <article
-            key={etiqueta}
-            style={{
-              borderRadius: 15,
-              border: `1px solid ${color}24`,
-              background: fondo,
-              padding: '11px 12px',
-              minWidth: 0,
-            }}
-          >
-            <span
-              style={{
-                display: 'block',
-                color,
-                fontSize: 10,
-                fontWeight: 950,
-                textTransform: 'uppercase',
-                letterSpacing: .5,
-              }}
-            >
-              {etiqueta}
-            </span>
-            <strong
-              style={{
-                display: 'block',
-                marginTop: 4,
-                fontSize: 25,
-                color: '#0f172a',
-              }}
-            >
-              {valor}
-            </strong>
-          </article>
-        ))}
-      </div>
-
-      <article
-        style={{
-          borderRadius: 18,
-          border: '1px solid #e2e8f0',
-          background: '#ffffff',
-          padding: esMovil ? 12 : 14,
-          boxShadow: '0 10px 26px rgba(15,23,42,.045)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: 10,
-            alignItems: 'center',
-            flexWrap: 'wrap',
-          }}
-        >
-          <div>
-            <span style={{ color: '#64748b', fontSize: 10, fontWeight: 950, letterSpacing: .55 }}>
-              DIRECTORIO BABY
-            </span>
-            <h3 style={{ margin: '3px 0 0', color: '#0f172a' }}>Buscar y revisar fichas</h3>
-          </div>
-          <span
-            style={{
-              padding: '5px 8px',
-              borderRadius: 999,
-              background: '#f1f5f9',
-              color: '#475569',
-              fontSize: 10,
-              fontWeight: 900,
-            }}
-          >
-            42 alumnos
-          </span>
-        </div>
-        <div
-          style={{
-            marginTop: 10,
-            border: '1px solid #e2e8f0',
-            borderRadius: 12,
-            padding: '10px 11px',
-            color: '#94a3b8',
-            fontSize: 12,
-            background: '#f8fafc',
-          }}
-        >
-          Buscar por nombre, nivel o estado…
-        </div>
-        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 9 }}>
-          {['Todos', 'Sin nivel', 'Sin reportes', 'Revisar'].map((filtro, index) => (
-            <span
-              key={filtro}
-              style={{
-                padding: '6px 9px',
-                borderRadius: 10,
-                border: index === 0 ? '1px solid #a7f3d0' : '1px solid #e2e8f0',
-                background: index === 0 ? '#ecfdf5' : '#ffffff',
-                color: index === 0 ? '#047857' : '#475569',
-                fontSize: 11,
-                fontWeight: 850,
-              }}
-            >
-              {filtro}
-            </span>
-          ))}
-        </div>
-      </article>
-
-      <div style={{ display: 'grid', gap: 10 }}>
-        {alumnosDemo.map((alumno) => (
-          <article
-            key={alumno.nombre}
-            style={{
-              borderRadius: 18,
-              border: `1px solid ${alumno.color}2b`,
-              borderLeft: `4px solid ${alumno.color}`,
-              background: `linear-gradient(135deg,#ffffff,${alumno.fondo} 120%)`,
-              padding: esMovil ? 13 : 15,
-              boxShadow: '0 10px 26px rgba(15,23,42,.05)',
-            }}
-          >
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: esMovil ? '1fr' : 'minmax(0,1fr) auto',
-                gap: 12,
-                alignItems: 'start',
-              }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
-                  <strong style={{ fontSize: esMovil ? 17 : 18, color: '#0f172a' }}>{alumno.nombre}</strong>
-                  <span
-                    style={{
-                      padding: '5px 8px',
-                      borderRadius: 999,
-                      background: alumno.fondo,
-                      color: alumno.color,
-                      border: `1px solid ${alumno.color}35`,
-                      fontSize: 10,
-                      fontWeight: 950,
-                    }}
-                  >
-                    NIVEL {alumno.nivel}
-                  </span>
-                  <span
-                    style={{
-                      padding: '5px 8px',
-                      borderRadius: 999,
-                      background: alumno.reportes ? '#ecfdf5' : '#fff7ed',
-                      color: alumno.reportes ? '#047857' : '#c2410c',
-                      border: alumno.reportes ? '1px solid #a7f3d0' : '1px solid #fed7aa',
-                      fontSize: 10,
-                      fontWeight: 900,
-                    }}
-                  >
-                    {alumno.reportes ? `${alumno.reportes} REPORTES` : 'SIN REPORTES'}
-                  </span>
-                </div>
-
-                <p style={{ margin: '7px 0 0', color: '#64748b', fontSize: 12 }}>
-                  Nacimiento: {alumno.nacimiento} · {alumno.entrenamientos} entrenamientos
-                </p>
-                <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 8 }}>
-                  <span
-                    style={{
-                      padding: '6px 9px',
-                      borderRadius: 10,
-                      background: '#ecfdf5',
-                      border: '1px solid #a7f3d0',
-                      color: '#166534',
-                      fontSize: 11,
-                      fontWeight: 850,
-                    }}
-                  >
-                    WhatsApp · {alumno.telefono}
-                  </span>
-                  <span
-                    style={{
-                      padding: '6px 9px',
-                      borderRadius: 10,
-                      background: alumno.fondo,
-                      border: `1px solid ${alumno.color}2f`,
-                      color: alumno.color,
-                      fontSize: 11,
-                      fontWeight: 850,
-                    }}
-                  >
-                    {alumno.estado}
-                  </span>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 6,
-                  flexWrap: 'wrap',
-                  justifyContent: esMovil ? 'flex-start' : 'flex-end',
-                }}
-              >
-                {['Editar ficha', 'Ver evaluación', 'Historial'].map((accion) => (
-                  <button
-                    key={accion}
-                    type="button"
-                    disabled
-                    style={{
-                      border: '1px solid #dbe3ec',
-                      background: '#ffffff',
-                      color: '#475569',
-                      borderRadius: 9,
-                      padding: '7px 9px',
-                      fontSize: 10,
-                      fontWeight: 850,
-                      opacity: .72,
-                    }}
-                  >
-                    {accion}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div
-              style={{
-                marginTop: 11,
-                display: 'grid',
-                gridTemplateColumns: esMovil ? '1fr' : 'minmax(0,1fr) minmax(210px,.42fr)',
-                gap: 8,
-              }}
-            >
-              <div
-                style={{
-                  borderRadius: 12,
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
-                  padding: '9px 10px',
-                  color: '#475569',
-                  fontSize: 12,
-                  lineHeight: 1.45,
-                }}
-              >
-                <strong style={{ color: '#0f172a' }}>Último seguimiento:</strong> {alumno.detalle}
-              </div>
-              <div
-                style={{
-                  borderRadius: 12,
-                  background: alumno.fondo,
-                  border: `1px solid ${alumno.color}2f`,
-                  padding: '9px 10px',
-                  color: alumno.color,
-                  fontSize: 12,
-                  fontWeight: 850,
-                }}
-              >
-                Ritmo · {alumno.ritmo}
-              </div>
-            </div>
-          </article>
-        ))}
-      </div>
-
-      <p style={{ margin: 0, color: '#94a3b8', fontSize: 11, fontWeight: 750 }}>
-        Acciones desactivadas en demo. El ejemplo no crea ni modifica fichas reales.
-      </p>
-    </section>
-  );
-}
 
 
-function DemoInformesApp({
-  esMovil,
-  onClose,
-}: {
-  esMovil: boolean;
-  onClose: () => void;
-}) {
-  const informes = [
-    {
-      clave: 'SNOWZONE',
-      titulo: 'Uso de pistas SnowZone',
-      dato: '124',
-      unidad: 'asistencias',
-      detalle: '46 pequeña · 78 grande',
-      color: '#2563eb',
-      fondo: '#eff6ff',
-    },
-    {
-      clave: 'EQUIPO',
-      titulo: 'Candidatos a equipo',
-      dato: '3',
-      unidad: 'candidatos',
-      detalle: '2 nivel C · 1 nivel B+',
-      color: '#15803d',
-      fondo: '#f0fdf4',
-    },
-    {
-      clave: 'LISTADOS',
-      titulo: 'Alumnos de temporada',
-      dato: '148',
-      unidad: 'alumnos',
-      detalle: '64 Baby · 52 Ocio · 32 Intensivos',
-      color: '#4f46e5',
-      fondo: '#eef2ff',
-    },
-    {
-      clave: 'FAMILIAS',
-      titulo: 'Evaluación anual Ocio',
-      dato: '24',
-      unidad: 'evaluaciones',
-      detalle: '19 listas · 5 para revisar',
-      color: '#7e22ce',
-      fondo: '#faf5ff',
-    },
-  ];
-
-  const filasSnowZone = [
-    ['05/09/2026', '18', '31', '49'],
-    ['06/09/2026', '14', '28', '42'],
-    ['12/09/2026', '14', '19', '33'],
-  ];
-
-  return (
-    <div style={{ display: 'grid', gap: 12 }}>
-      <DemoVisualBannerApp
-        titulo="Informes y listados"
-        descripcion="Ejemplo de un periodo con informes ya calculados y listos para descargar"
-        onClose={onClose}
-      />
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: esMovil ? 'repeat(2,minmax(0,1fr))' : 'repeat(4,minmax(0,1fr))',
-          gap: 9,
-        }}
-      >
-        {informes.map((informe) => (
-          <article
-            key={informe.clave}
-            style={{
-              minWidth: 0,
-              border: '1px solid #e2e8f0',
-              borderRadius: 15,
-              padding: esMovil ? '11px 10px' : '13px 14px',
-              background: informe.fondo,
-              boxShadow: '0 8px 20px rgba(15,23,42,.04)',
-            }}
-          >
-            <span
-              style={{
-                color: informe.color,
-                fontSize: 9,
-                fontWeight: 950,
-                letterSpacing: .65,
-              }}
-            >
-              {informe.clave}
-            </span>
-            <div
-              style={{
-                marginTop: 5,
-                color: '#0f172a',
-                fontSize: esMovil ? 20 : 25,
-                fontWeight: 950,
-                lineHeight: 1,
-              }}
-            >
-              {informe.dato}
-            </div>
-            <div style={{ marginTop: 3, color: '#334155', fontSize: 11, fontWeight: 900 }}>
-              {informe.unidad}
-            </div>
-            <div style={{ marginTop: 7, color: '#64748b', fontSize: 10, lineHeight: 1.35 }}>
-              {informe.detalle}
-            </div>
-          </article>
-        ))}
-      </div>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: esMovil ? 'minmax(0,1fr)' : 'minmax(0,1.25fr) minmax(270px,.75fr)',
-          gap: 10,
-        }}
-      >
-        <article
-          style={{
-            border: '1px solid #dbeafe',
-            borderRadius: 16,
-            background: '#ffffff',
-            overflow: 'hidden',
-            minWidth: 0,
-          }}
-        >
-          <div
-            style={{
-              padding: '12px 13px',
-              borderBottom: '1px solid #e2e8f0',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              gap: 8,
-              flexWrap: 'wrap',
-            }}
-          >
-            <div>
-              <strong style={{ color: '#0f172a' }}>SnowZone · septiembre 2026</strong>
-              <div style={{ marginTop: 3, color: '#64748b', fontSize: 10 }}>
-                Asistencia real contabilizada por tipo de pista
-              </div>
-            </div>
-            <span
-              style={{
-                padding: '5px 8px',
-                borderRadius: 999,
-                background: '#dbeafe',
-                color: '#1d4ed8',
-                fontSize: 9,
-                fontWeight: 950,
-              }}
-            >
-              LISTO PARA EXCEL
-            </span>
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: 420, fontSize: 11 }}>
-              <thead>
-                <tr style={{ background: '#f8fafc', color: '#64748b' }}>
-                  {['Día', 'Pista pequeña', 'Pista grande', 'Total'].map((titulo) => (
-                    <th key={titulo} style={{ padding: '9px 11px', textAlign: titulo === 'Día' ? 'left' : 'center' }}>
-                      {titulo}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {filasSnowZone.map((fila) => (
-                  <tr key={fila[0]}>
-                    {fila.map((valor, indice) => (
-                      <td
-                        key={`${fila[0]}-${indice}`}
-                        style={{
-                          padding: '10px 11px',
-                          borderTop: '1px solid #f1f5f9',
-                          textAlign: indice === 0 ? 'left' : 'center',
-                          fontWeight: indice === 3 ? 950 : 750,
-                          color: '#334155',
-                        }}
-                      >
-                        {valor}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </article>
-
-        <article
-          style={{
-            border: '1px solid #e2e8f0',
-            borderRadius: 16,
-            background: '#ffffff',
-            padding: 13,
-            minWidth: 0,
-          }}
-        >
-          <span style={{ color: '#15803d', fontSize: 9, fontWeight: 950, letterSpacing: .65 }}>
-            SALIDA RÁPIDA
-          </span>
-          <h3 style={{ margin: '5px 0 10px', fontSize: 16 }}>Candidatos destacados</h3>
-          {[
-            ['Lucía Martín', 'C', 'Pista grande'],
-            ['Álvaro Sánchez', 'C', 'Pista grande'],
-            ['Mateo Ruiz', 'B+', 'Pista grande'],
-          ].map(([nombre, nivel, pista]) => (
-            <div
-              key={nombre}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'minmax(0,1fr) auto',
-                gap: 8,
-                padding: '9px 0',
-                borderTop: '1px solid #f1f5f9',
-              }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <strong style={{ display: 'block', fontSize: 11, color: '#0f172a' }}>{nombre}</strong>
-                <span style={{ fontSize: 10, color: '#64748b' }}>{pista}</span>
-              </div>
-              <span
-                style={{
-                  alignSelf: 'center',
-                  padding: '4px 7px',
-                  borderRadius: 999,
-                  background: '#dcfce7',
-                  color: '#166534',
-                  fontSize: 9,
-                  fontWeight: 950,
-                }}
-              >
-                {nivel}
-              </span>
-            </div>
-          ))}
-        </article>
-      </div>
-    </div>
-  );
-}
-
-
-function DemoAccesosEquipoApp({
-  esMovil,
-  onClose,
-}: {
-  esMovil: boolean;
-  onClose: () => void;
-}) {
-  const usuariosDemo = [
-    {
-      nombre: 'Jose Cubero',
-      iniciales: 'JC',
-      email: 'jose@miticoclub.es',
-      rol: 'Coordinador jefe',
-      estado: 'Activo',
-      estadoColor: '#166534',
-      estadoFondo: '#dcfce7',
-      rolColor: '#7f1d1d',
-      rolFondo: '#fff1f2',
-      ultimo: 'Hoy · 09:18',
-      detalle: 'Cuenta principal protegida · Dirección + operativa completa',
-      protegido: true,
-    },
-    {
-      nombre: 'Marta Rivas',
-      iniciales: 'MR',
-      email: 'marta@miticoclub.es',
-      rol: 'Sub-coordinadora',
-      estado: 'Activo',
-      estadoColor: '#166534',
-      estadoFondo: '#dcfce7',
-      rolColor: '#1d4ed8',
-      rolFondo: '#eff6ff',
-      ultimo: 'Hoy · 08:42',
-      detalle: 'Operativa, equipo y gestión · Sin acceso a Dirección',
-      protegido: false,
-    },
-    {
-      nombre: 'Laura Pérez',
-      iniciales: 'LP',
-      email: 'laura@miticoclub.es',
-      rol: 'Administración',
-      estado: 'Activo',
-      estadoColor: '#166534',
-      estadoFondo: '#dcfce7',
-      rolColor: '#7c3aed',
-      rolFondo: '#f5f3ff',
-      ultimo: 'Ayer · 17:36',
-      detalle: 'Altas / Test y tareas administrativas · Sin operativa ni Dirección',
-      protegido: false,
-    },
-    {
-      nombre: 'Álvaro Martín',
-      iniciales: 'AM',
-      email: 'alvaro@miticoclub.es',
-      rol: 'Sub-coordinador',
-      estado: 'Invitación pendiente',
-      estadoColor: '#9a3412',
-      estadoFondo: '#fff7ed',
-      rolColor: '#1d4ed8',
-      rolFondo: '#eff6ff',
-      ultimo: 'Invitado hace 2 días',
-      detalle: 'Pendiente de aceptar la invitación y completar el primer acceso',
-      protegido: false,
-    },
-  ];
-
-  const permisosDemo = [
-    ['Coordinador jefe', 'Todo', 'Dirección + operativa + gestión', '#fff1f2', '#9f1239'],
-    ['Sub-coordinador / coordinador', 'Operativa', 'Grupos, entrenadores y gestión', '#eff6ff', '#1d4ed8'],
-    ['Administración', 'Altas / Test', 'Sin coordinación operativa ni Dirección', '#f5f3ff', '#7c3aed'],
-    ['Entrenador', 'Vista entrenador', 'Su disponibilidad, grupos y reportes', '#f0fdf4', '#166534'],
-  ];
-
-  return (
-    <div style={{ display: 'grid', gap: 12, minWidth: 0 }}>
-      <DemoVisualBannerApp
-        titulo="Accesos equipo"
-        descripcion="Ejemplo completo de roles, invitaciones y estados de acceso"
-        onClose={onClose}
-      />
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: esMovil ? 'repeat(2,minmax(0,1fr))' : 'repeat(4,minmax(0,1fr))',
-          gap: 8,
-        }}
-      >
-        {[
-          ['4', 'Accesos equipo', '#0f172a'],
-          ['3', 'Activos', '#166534'],
-          ['1', 'Invitación pendiente', '#9a3412'],
-          ['1', 'Cuenta protegida', '#9f1239'],
-        ].map(([valor, etiqueta, color]) => (
-          <div
-            key={etiqueta}
-            style={{
-              padding: esMovil ? '10px 10px' : '12px 13px',
-              borderRadius: 14,
-              border: '1px solid #dbe3ec',
-              background: '#ffffff',
-              minWidth: 0,
-            }}
-          >
-            <div style={{ fontSize: esMovil ? 20 : 23, lineHeight: 1, fontWeight: 950, color }}>{valor}</div>
-            <div style={{ marginTop: 5, fontSize: 9.5, fontWeight: 900, color: '#64748b', lineHeight: 1.25 }}>{etiqueta}</div>
-          </div>
-        ))}
-      </div>
-
-      <article
-        style={{
-          border: '1px solid #dbe3ec',
-          borderRadius: 16,
-          background: '#ffffff',
-          overflow: 'hidden',
-          minWidth: 0,
-        }}
-      >
-        <div style={{ padding: '12px 14px', borderBottom: '1px solid #e2e8f0', background: '#f8fafc' }}>
-          <span style={{ fontSize: 9, fontWeight: 950, letterSpacing: .7, color: '#15803d' }}>EQUIPO OPERATIVO</span>
-          <h3 style={{ margin: '4px 0 0', fontSize: 17, color: '#0f172a' }}>Quién puede entrar y con qué rol</h3>
-        </div>
-
-        <div style={{ display: 'grid' }}>
-          {usuariosDemo.map((usuario, index) => (
-            <div
-              key={usuario.email}
-              style={{
-                display: 'grid',
-                gridTemplateColumns: esMovil ? 'auto minmax(0,1fr)' : 'auto minmax(180px,1.15fr) minmax(150px,.8fr) minmax(180px,1fr) auto',
-                gap: esMovil ? 9 : 12,
-                alignItems: 'center',
-                padding: esMovil ? '12px 12px' : '13px 14px',
-                borderTop: index === 0 ? 'none' : '1px solid #f1f5f9',
-                minWidth: 0,
-              }}
-            >
-              <div
-                style={{
-                  width: 38,
-                  height: 38,
-                  borderRadius: 12,
-                  background: 'linear-gradient(135deg,#0f172a,#334155)',
-                  color: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 11,
-                  fontWeight: 950,
-                  flex: '0 0 auto',
-                }}
-              >
-                {usuario.iniciales}
-              </div>
-
-              <div style={{ minWidth: 0 }}>
-                <strong style={{ display: 'block', color: '#0f172a', fontSize: 12 }}>{usuario.nombre}</strong>
-                <span style={{ display: 'block', marginTop: 2, color: '#64748b', fontSize: 10, overflowWrap: 'anywhere' }}>{usuario.email}</span>
-                {esMovil && (
-                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 7 }}>
-                    <span style={{ padding: '4px 7px', borderRadius: 999, background: usuario.rolFondo, color: usuario.rolColor, fontSize: 9, fontWeight: 950 }}>{usuario.rol}</span>
-                    <span style={{ padding: '4px 7px', borderRadius: 999, background: usuario.estadoFondo, color: usuario.estadoColor, fontSize: 9, fontWeight: 950 }}>{usuario.estado}</span>
-                  </div>
-                )}
-                {esMovil && <p style={{ margin: '6px 0 0', color: '#64748b', fontSize: 9.5, lineHeight: 1.35 }}>{usuario.detalle}</p>}
-              </div>
-
-              {!esMovil && (
-                <span style={{ justifySelf: 'start', padding: '5px 8px', borderRadius: 999, background: usuario.rolFondo, color: usuario.rolColor, fontSize: 9.5, fontWeight: 950 }}>{usuario.rol}</span>
-              )}
-              {!esMovil && (
-                <div style={{ minWidth: 0 }}>
-                  <span style={{ display: 'inline-flex', padding: '5px 8px', borderRadius: 999, background: usuario.estadoFondo, color: usuario.estadoColor, fontSize: 9.5, fontWeight: 950 }}>{usuario.estado}</span>
-                  <div style={{ marginTop: 5, color: '#64748b', fontSize: 9.5 }}>{usuario.ultimo}</div>
-                </div>
-              )}
-              {!esMovil && <div style={{ color: '#475569', fontSize: 10, lineHeight: 1.35 }}>{usuario.detalle}</div>}
-
-              {!esMovil && (
-                <button
-                  type="button"
-                  disabled
-                  style={{
-                    ...botonMini,
-                    opacity: .55,
-                    cursor: 'not-allowed',
-                    whiteSpace: 'nowrap',
-                  }}
-                >
-                  {usuario.protegido ? 'Protegido' : usuario.estado === 'Invitación pendiente' ? 'Reenviar' : 'Gestionar'}
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      </article>
-
-      <article
-        style={{
-          border: '1px solid #dbe3ec',
-          borderRadius: 16,
-          background: '#ffffff',
-          padding: esMovil ? 12 : 14,
-          minWidth: 0,
-        }}
-      >
-        <span style={{ fontSize: 9, fontWeight: 950, letterSpacing: .7, color: '#15803d' }}>PERMISOS</span>
-        <h3 style={{ margin: '4px 0 10px', fontSize: 16, color: '#0f172a' }}>Qué ve cada perfil</h3>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: esMovil ? '1fr' : 'repeat(4,minmax(0,1fr))',
-            gap: 8,
-          }}
-        >
-          {permisosDemo.map(([rol, acceso, detalle, fondo, color]) => (
-            <div key={rol} style={{ borderRadius: 13, border: '1px solid #e2e8f0', background: fondo, padding: 11, minWidth: 0 }}>
-              <strong style={{ display: 'block', fontSize: 10.5, color }}>{rol}</strong>
-              <div style={{ marginTop: 5, color: '#0f172a', fontSize: 12, fontWeight: 950 }}>{acceso}</div>
-              <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 9.5, lineHeight: 1.35 }}>{detalle}</p>
-            </div>
-          ))}
-        </div>
-      </article>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: esMovil ? '1fr' : 'minmax(0,1.2fr) minmax(250px,.8fr)',
-          gap: 10,
-        }}
-      >
-        <article style={{ border: '1px solid #bfdbfe', borderRadius: 16, background: 'linear-gradient(135deg,#eff6ff,#ffffff)', padding: 13 }}>
-          <span style={{ fontSize: 9, fontWeight: 950, letterSpacing: .65, color: '#1d4ed8' }}>NUEVO ACCESO</span>
-          <h3 style={{ margin: '4px 0 5px', fontSize: 15, color: '#0f172a' }}>Invitación controlada</h3>
-          <p style={{ margin: 0, color: '#64748b', fontSize: 10.5, lineHeight: 1.45 }}>
-            El coordinador jefe crea el acceso, asigna Sub-coordinador o Administración y la persona recibe su invitación por email.
-          </p>
-          <button type="button" disabled style={{ ...botonPrincipal, marginTop: 10, opacity: .55, cursor: 'not-allowed' }}>Crear acceso y enviar invitación</button>
-        </article>
-
-        <article style={{ border: '1px solid #dbe3ec', borderRadius: 16, background: '#ffffff', padding: 13 }}>
-          <span style={{ fontSize: 9, fontWeight: 950, letterSpacing: .65, color: '#64748b' }}>ENTRENADORES</span>
-          <h3 style={{ margin: '4px 0 5px', fontSize: 15, color: '#0f172a' }}>Acceso desde su ficha</h3>
-          <p style={{ margin: 0, color: '#64748b', fontSize: 10.5, lineHeight: 1.45 }}>
-            Los entrenadores no se crean aquí. Su acceso sigue vinculado a la ficha de Entrenadores y a la Vista entrenador.
-          </p>
-        </article>
-      </div>
-    </div>
-  );
-}
 
 
 
@@ -6230,7 +4389,6 @@ type EntrenadorProductItemApp = {
 function EntrenadoresProductListApp({
   esMovil,
   items,
-  modoDemo,
   puedeGestionarAccesos,
   onAcceso,
   onPedirDatos,
@@ -6239,7 +4397,6 @@ function EntrenadoresProductListApp({
 }: {
   esMovil: boolean;
   items: EntrenadorProductItemApp[];
-  modoDemo: boolean;
   puedeGestionarAccesos: boolean;
   onAcceso?: (
     item: EntrenadorProductItemApp,
@@ -6282,8 +4439,7 @@ function EntrenadoresProductListApp({
       lineHeight: 1.15,
       textAlign: 'center' as const,
       fontWeight: 900,
-      opacity: modoDemo || item.gestionando ? 0.58 : 1,
-      cursor: modoDemo ? 'not-allowed' : 'pointer',
+      opacity: item.gestionando ? 0.58 : 1,
     };
 
     if (!puedeGestionarAccesos) return null;
@@ -6292,36 +4448,26 @@ function EntrenadoresProductListApp({
     }
     if (item.accesoEstado === 'activo') {
       return (
-        <div style={{ display: 'grid', gridTemplateColumns: esMovil ? '1fr 1fr' : '1fr', gap: 6 }}>
-          <button
-            type="button"
-            disabled={modoDemo || item.gestionando}
-            onClick={() => onAcceso?.(item, 'enviar_recuperacion')}
-            style={{ ...common, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}
-          >
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 6 }}>
+          <button type="button" disabled={item.gestionando} onClick={() => onAcceso?.(item, 'enviar_recuperacion')} style={{ ...common, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>
             {item.gestionando ? 'Gestionando…' : 'Contraseña'}
           </button>
-          <button
-            type="button"
-            disabled={modoDemo || item.gestionando}
-            onClick={() => onAcceso?.(item, 'desactivar')}
-            style={{ ...common, background: '#fff1f2', color: '#be123c', border: '1px solid #fecdd3' }}
-          >
+          <button type="button" disabled={item.gestionando} onClick={() => onAcceso?.(item, 'desactivar')} style={{ ...common, background: '#fff1f2', color: '#be123c', border: '1px solid #fecdd3' }}>
             Desactivar
           </button>
         </div>
       );
     }
     if (item.accesoEstado === 'invitacion_pendiente') {
-      return <button type="button" disabled={modoDemo || item.gestionando} onClick={() => onAcceso?.(item, 'reenviar_invitacion')} style={{ ...common, background: '#fff7ed', color: '#9a3412', border: '1px solid #fed7aa' }}>Reenviar invitación</button>;
+      return <button type="button" disabled={item.gestionando} onClick={() => onAcceso?.(item, 'reenviar_invitacion')} style={{ ...common, background: '#fff7ed', color: '#9a3412', border: '1px solid #fed7aa' }}>Reenviar invitación</button>;
     }
     if (item.accesoEstado === 'desactivado') {
-      return <button type="button" disabled={modoDemo || item.gestionando} onClick={() => onAcceso?.(item, 'activar')} style={{ ...common, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>Activar acceso</button>;
+      return <button type="button" disabled={item.gestionando} onClick={() => onAcceso?.(item, 'activar')} style={{ ...common, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>Activar acceso</button>;
     }
     if (item.accesoEstado === 'revisar') {
-      return <button type="button" disabled={modoDemo} onClick={() => onAcceso?.(item, 'revisar')} style={{ ...common, background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1' }}>Revisar acceso</button>;
+      return <button type="button" onClick={() => onAcceso?.(item, 'revisar')} style={{ ...common, background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1' }}>Revisar acceso</button>;
     }
-    return <button type="button" disabled={modoDemo || item.gestionando} onClick={() => onAcceso?.(item, 'crear')} style={{ ...common, background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe' }}>{item.gestionando ? 'Creando…' : 'Crear acceso app'}</button>;
+    return <button type="button" disabled={item.gestionando} onClick={() => onAcceso?.(item, 'crear')} style={{ ...common, background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe' }}>{item.gestionando ? 'Creando…' : 'Crear acceso app'}</button>;
   };
 
   return (
@@ -6332,6 +4478,8 @@ function EntrenadoresProductListApp({
         background: '#ffffff',
         overflow: 'hidden',
         minWidth: 0,
+        maxWidth: '100%',
+        boxSizing: 'border-box',
         boxShadow: '0 10px 26px rgba(15,23,42,.04)',
       }}
     >
@@ -6357,7 +4505,7 @@ function EntrenadoresProductListApp({
         </div>
       </div>
 
-      <div style={{ display: 'grid' }}>
+      <div style={{ display: 'grid', minWidth: 0 }}>
         {items.map((item, index) => {
           const accesoStyle = estiloAcceso(item.accesoEstado);
           return (
@@ -6368,20 +4516,13 @@ function EntrenadoresProductListApp({
                 padding: esMovil ? '13px 12px' : '14px',
                 borderTop: index === 0 ? 'none' : '1px solid #eef2f7',
                 minWidth: 0,
+                maxWidth: '100%',
+                boxSizing: 'border-box',
+                overflow: 'hidden',
                 background: item.activo ? '#ffffff' : '#fbfcfd',
               }}
             >
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: esMovil
-                    ? 'auto minmax(0,1fr)'
-                    : 'auto minmax(210px,1.1fr) minmax(175px,.72fr) minmax(170px,.72fr) minmax(145px,.55fr)',
-                  gap: esMovil ? 10 : 13,
-                  alignItems: 'center',
-                  minWidth: 0,
-                }}
-              >
+              <div style={{ display: 'flex', gap: 11, alignItems: 'flex-start', minWidth: 0 }}>
                 <div
                   style={{
                     width: 42,
@@ -6399,50 +4540,51 @@ function EntrenadoresProductListApp({
                 >
                   {item.iniciales}
                 </div>
-
-                <div style={{ minWidth: 0 }}>
+                <div style={{ minWidth: 0, flex: '1 1 auto' }}>
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <strong style={{ color: '#0f172a', fontSize: 12.5 }}>{item.nombre}</strong>
+                    <strong style={{ color: '#0f172a', fontSize: 12.5, overflowWrap: 'anywhere' }}>{item.nombre}</strong>
                     <span style={{ padding: '4px 7px', borderRadius: 999, background: item.activo ? '#dcfce7' : '#f1f5f9', color: item.activo ? '#166534' : '#64748b', fontSize: 8.8, fontWeight: 950 }}>
                       {item.activo ? 'Activo' : 'Inactivo'}
                     </span>
                   </div>
                   <div style={{ marginTop: 3, color: '#64748b', fontSize: 9.5, overflowWrap: 'anywhere' }}>{item.email || 'Sin email'}</div>
                   <div style={{ marginTop: 2, color: '#475569', fontSize: 9.5 }}>{item.telefono || 'Sin teléfono'}</div>
-                  {esMovil && (
-                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 7 }}>
-                      {puedeGestionarAccesos && <span style={{ padding: '4px 7px', borderRadius: 999, background: accesoStyle.background, color: accesoStyle.color, border: `1px solid ${accesoStyle.border}`, fontSize: 8.8, fontWeight: 950 }}>{item.acceso}</span>}
-                      <span style={{ padding: '4px 7px', borderRadius: 999, background: item.docOk ? '#ecfdf5' : '#fef2f2', color: item.docOk ? '#166534' : '#b91c1c', fontSize: 8.8, fontWeight: 950 }}>{item.documentacion}</span>
-                      <span style={{ padding: '4px 7px', borderRadius: 999, background: item.chaqueta ? '#eff6ff' : '#fff7ed', color: item.chaqueta ? '#1d4ed8' : '#9a3412', fontSize: 8.8, fontWeight: 950 }}>Chaqueta {item.chaqueta ? 'OK' : 'pendiente'}</span>
-                    </div>
-                  )}
                 </div>
-
-                {!esMovil && (
-                  <div style={{ minWidth: 0 }}>
-                    {puedeGestionarAccesos && <span style={{ display: 'inline-flex', padding: '5px 8px', borderRadius: 999, background: accesoStyle.background, color: accesoStyle.color, border: `1px solid ${accesoStyle.border}`, fontSize: 9.2, fontWeight: 950 }}>{item.acceso}</span>}
-                    <div style={{ marginTop: 6, color: item.chaqueta ? '#1d4ed8' : '#9a3412', fontSize: 9.5, fontWeight: 850 }}>Chaqueta {item.chaqueta ? 'OK' : 'pendiente'}</div>
-                  </div>
-                )}
-
-                {!esMovil && (
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ color: item.docOk ? '#166534' : '#b91c1c', fontSize: 9.5, fontWeight: 950 }}>{item.documentacion}</div>
-                    <div style={{ marginTop: 5, color: '#64748b', fontSize: 9.2, lineHeight: 1.35 }}>Titulación: {item.titulacion || 'Pendiente'}</div>
-                    <div style={{ marginTop: 2, color: '#64748b', fontSize: 9.2, lineHeight: 1.35 }}>Antecedentes: {item.antecedentes || 'Pendiente'}</div>
-                  </div>
-                )}
-
-                {!esMovil && <div style={{ minWidth: 0 }}>{botonAcceso(item)}</div>}
               </div>
 
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: esMovil ? '1fr' : 'minmax(0,1.35fr) minmax(220px,.65fr)',
-                  gap: 8,
+                  gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,165px),1fr))',
+                  gap: 7,
                   marginTop: 10,
-                  marginLeft: esMovil ? 0 : 55,
+                  minWidth: 0,
+                }}
+              >
+                {puedeGestionarAccesos && (
+                  <div style={{ padding: '9px 10px', borderRadius: 12, border: `1px solid ${accesoStyle.border}`, background: accesoStyle.background, minWidth: 0 }}>
+                    <div style={{ fontSize: 8.5, fontWeight: 950, color: '#64748b', letterSpacing: .55 }}>ACCESO APP</div>
+                    <div style={{ marginTop: 5, color: accesoStyle.color, fontSize: 10, fontWeight: 950, overflowWrap: 'anywhere' }}>{item.acceso}</div>
+                  </div>
+                )}
+                <div style={{ padding: '9px 10px', borderRadius: 12, border: '1px solid #e2e8f0', background: item.docOk ? '#f0fdf4' : '#fff7ed', minWidth: 0 }}>
+                  <div style={{ fontSize: 8.5, fontWeight: 950, color: '#64748b', letterSpacing: .55 }}>DOCUMENTACIÓN</div>
+                  <div style={{ marginTop: 5, color: item.docOk ? '#166534' : '#9a3412', fontSize: 10, fontWeight: 950 }}>{item.documentacion}</div>
+                  <div style={{ marginTop: 3, color: '#64748b', fontSize: 8.9 }}>Titulación: {item.titulacion || 'Pendiente'} · Antecedentes: {item.antecedentes || 'Pendiente'}</div>
+                </div>
+                <div style={{ padding: '9px 10px', borderRadius: 12, border: '1px solid #e2e8f0', background: item.chaqueta ? '#eff6ff' : '#fff7ed', minWidth: 0 }}>
+                  <div style={{ fontSize: 8.5, fontWeight: 950, color: '#64748b', letterSpacing: .55 }}>EQUIPACIÓN</div>
+                  <div style={{ marginTop: 5, color: item.chaqueta ? '#1d4ed8' : '#9a3412', fontSize: 10, fontWeight: 950 }}>Chaqueta {item.chaqueta ? 'entregada' : 'pendiente'}</div>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,230px),1fr))',
+                  gap: 8,
+                  marginTop: 8,
+                  minWidth: 0,
                 }}
               >
                 <div style={{ padding: '9px 10px', borderRadius: 12, background: '#f8fafc', border: '1px solid #e2e8f0', minWidth: 0 }}>
@@ -6456,29 +4598,29 @@ function EntrenadoresProductListApp({
                 <div style={{ padding: '9px 10px', borderRadius: 12, background: '#f8fafc', border: '1px solid #e2e8f0', minWidth: 0 }}>
                   <div style={{ fontSize: 8.5, fontWeight: 950, color: '#64748b', letterSpacing: .55 }}>COORDINACIÓN</div>
                   <div style={{ marginTop: 5, color: '#0f172a', fontSize: 9.5, fontWeight: 850 }}>{item.tarifa} / turno</div>
-                  <div style={{ marginTop: 3, color: '#64748b', fontSize: 9.2, lineHeight: 1.35 }}>{item.nota || 'Sin observaciones internas.'}</div>
+                  <div style={{ marginTop: 3, color: '#64748b', fontSize: 9.2, lineHeight: 1.35, overflowWrap: 'anywhere' }}>{item.nota || 'Sin observaciones internas.'}</div>
                 </div>
               </div>
 
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: esMovil ? 'repeat(2,minmax(0,1fr))' : puedeGestionarAccesos ? 'minmax(150px,.8fr) repeat(3,minmax(125px,.65fr))' : 'repeat(3,minmax(125px,1fr))',
+                  gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,135px),1fr))',
                   gap: 6,
                   marginTop: 8,
-                  marginLeft: esMovil ? 0 : 55,
+                  minWidth: 0,
                 }}
               >
-                {esMovil && puedeGestionarAccesos && <div style={{ gridColumn: '1 / -1' }}>{botonAcceso(item)}</div>}
-                <button type="button" disabled={modoDemo} onClick={() => onPedirDatos?.(item)} style={{ ...botonMini, minHeight: 38, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 900, opacity: modoDemo ? .55 : 1 }}>Pedir datos</button>
-                <button type="button" disabled={modoDemo} onClick={() => onEditar?.(item)} style={{ ...botonMini, minHeight: 38, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontWeight: 900, opacity: modoDemo ? .55 : 1 }}>Editar ficha</button>
-                <button type="button" disabled={modoDemo} onClick={() => onEliminar?.(item)} style={{ ...botonMini, minHeight: 38, background: '#fff1f2', color: '#be123c', border: '1px solid #fecdd3', fontWeight: 900, opacity: modoDemo ? .55 : 1 }}>Eliminar</button>
+                {puedeGestionarAccesos && <div style={{ minWidth: 0 }}>{botonAcceso(item)}</div>}
+                <button type="button" onClick={() => onPedirDatos?.(item)} style={{ ...botonMini, minHeight: 38, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 900 }}>Pedir datos</button>
+                <button type="button" onClick={() => onEditar?.(item)} style={{ ...botonMini, minHeight: 38, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontWeight: 900 }}>Editar ficha</button>
+                <button type="button" onClick={() => onEliminar?.(item)} style={{ ...botonMini, minHeight: 38, background: '#fff1f2', color: '#be123c', border: '1px solid #fecdd3', fontWeight: 900 }}>Eliminar</button>
               </div>
 
               {item.detallesDocumentacion && item.detallesDocumentacion.some(Boolean) && (
-                <details style={{ marginTop: 8, marginLeft: esMovil ? 0 : 55, border: '1px solid #e2e8f0', borderRadius: 12, padding: '8px 10px', background: '#ffffff' }}>
+                <details style={{ marginTop: 8, border: '1px solid #e2e8f0', borderRadius: 12, padding: '8px 10px', background: '#ffffff', minWidth: 0 }}>
                   <summary style={{ cursor: 'pointer', fontWeight: 900, color: '#334155', fontSize: 9.5 }}>Ver documentos y notas</summary>
-                  <div style={{ marginTop: 8, display: 'grid', gap: 5, color: '#64748b', fontSize: 9.2, lineHeight: 1.4 }}>
+                  <div style={{ marginTop: 8, display: 'grid', gap: 5, color: '#64748b', fontSize: 9.2, lineHeight: 1.4, overflowWrap: 'anywhere' }}>
                     {item.detallesDocumentacion.filter(Boolean).map((detalle, i) => <div key={`${item.id}-detalle-${i}`}>{detalle}</div>)}
                   </div>
                 </details>
@@ -6491,559 +4633,6 @@ function EntrenadoresProductListApp({
   );
 }
 
-function DemoEntrenadoresApp({
-  esMovil,
-  onClose,
-}: {
-  esMovil: boolean;
-  onClose: () => void;
-}) {
-  const entrenadoresDemo: EntrenadorProductItemApp[] = [
-    {
-      id: 'demo-alfonso',
-      nombre: 'Alfonso Martín',
-      iniciales: 'AM',
-      telefono: '612 345 780',
-      email: 'alfonso@miticoclub.es',
-      especialidades: ['Baby', 'Ocio', 'Intensivos'],
-      tarifa: '32 €',
-      activo: true,
-      chaqueta: true,
-      documentacion: 'Documentación OK',
-      docOk: true,
-      acceso: 'Acceso activo',
-      accesoEstado: 'activo',
-      titulacion: 'Validado',
-      antecedentes: 'Validado',
-      nota: 'Perfil polivalente · Pista grande y grupos B+ / C.',
-      detallesDocumentacion: ['Titulación: Validada', 'Antecedentes: Validados', 'Notas: Perfil polivalente.'],
-    },
-    {
-      id: 'demo-chimeno',
-      nombre: 'Chimeno',
-      iniciales: 'CH',
-      telefono: '623 110 442',
-      email: 'chimeno@miticoclub.es',
-      especialidades: ['Baby', 'Ocio'],
-      tarifa: '30 €',
-      activo: true,
-      chaqueta: false,
-      documentacion: 'Documentación OK',
-      docOk: true,
-      acceso: 'Acceso activo',
-      accesoEstado: 'activo',
-      titulacion: 'Validado',
-      antecedentes: 'Validado',
-      nota: 'Muy buen perfil para iniciación y pista pequeña.',
-      detallesDocumentacion: ['Titulación: Validada', 'Antecedentes: Validados', 'Notas: Especialista en iniciación.'],
-    },
-    {
-      id: 'demo-lucia',
-      nombre: 'Lucía Ramos',
-      iniciales: 'LR',
-      telefono: '645 882 019',
-      email: 'lucia@miticoclub.es',
-      especialidades: ['Baby', 'Apoyo'],
-      tarifa: '28 €',
-      activo: true,
-      chaqueta: true,
-      documentacion: 'Revisar documentación',
-      docOk: false,
-      acceso: 'Invitación pendiente',
-      accesoEstado: 'invitacion_pendiente',
-      titulacion: 'Validado',
-      antecedentes: 'Pendiente',
-      nota: 'Nueva incorporación · pendiente de completar alta operativa.',
-      detallesDocumentacion: ['Titulación: Validada', 'Antecedentes: Pendientes', 'Notas: Nueva incorporación.'],
-    },
-    {
-      id: 'demo-mario',
-      nombre: 'Mario Gómez',
-      iniciales: 'MG',
-      telefono: '611 404 772',
-      email: 'mario@miticoclub.es',
-      especialidades: ['Intensivos'],
-      tarifa: '30 €',
-      activo: false,
-      chaqueta: true,
-      documentacion: 'Documentación OK',
-      docOk: true,
-      acceso: 'Sin acceso',
-      accesoEstado: 'sin_acceso',
-      titulacion: 'Validado',
-      antecedentes: 'Validado',
-      nota: 'No disponible esta temporada. Se conserva histórico.',
-      detallesDocumentacion: ['Titulación: Validada', 'Antecedentes: Validados', 'Notas: Inactivo esta temporada.'],
-    },
-  ];
-
-  return (
-    <div style={{ display: 'grid', gap: 12, minWidth: 0 }}>
-      <DemoVisualBannerApp
-        titulo="Entrenadores"
-        descripcion="Misma interfaz de producción · datos locales de ejemplo y acciones desactivadas"
-        onClose={onClose}
-      />
-      <EntrenadoresProductListApp
-        esMovil={esMovil}
-        items={entrenadoresDemo}
-        modoDemo
-        puedeGestionarAccesos
-      />
-    </div>
-  );
-}
-
-function DemoCobrosApp({
-  esMovil,
-  onClose,
-}: {
-  esMovil: boolean;
-  onClose: () => void;
-}) {
-  const entrenadoresDemo = [
-    {
-      nombre: 'Alfonso Martín',
-      iniciales: 'AM',
-      estado: 'pagado',
-      estadoLabel: 'PAGADO',
-      color: '#16a34a',
-      fondo: '#f0fdf4',
-      total: '608,00 €',
-      turnos: 21,
-      baby: 12,
-      intensivos: 5,
-      ocio: 4,
-      tarifa: '28,00 €',
-      subtotal: '588,00 €',
-      ajustes: '+20,00 €',
-      nota: 'Ajuste por apoyo extra en cierre de jornada.',
-      pendiente: '',
-    },
-    {
-      nombre: 'Marta Suárez',
-      iniciales: 'MS',
-      estado: 'revisado',
-      estadoLabel: 'REVISADO',
-      color: '#7c3aed',
-      fondo: '#f5f3ff',
-      total: '504,00 €',
-      turnos: 18,
-      baby: 8,
-      intensivos: 4,
-      ocio: 6,
-      tarifa: '28,00 €',
-      subtotal: '504,00 €',
-      ajustes: '0,00 €',
-      nota: '',
-      pendiente: '',
-    },
-    {
-      nombre: 'Chimeno',
-      iniciales: 'CH',
-      estado: 'abierto',
-      estadoLabel: 'ABIERTO',
-      color: '#d97706',
-      fondo: '#fffbeb',
-      total: '546,00 €',
-      turnos: 19,
-      baby: 10,
-      intensivos: 6,
-      ocio: 3,
-      tarifa: '28,00 €',
-      subtotal: '532,00 €',
-      ajustes: '+14,00 €',
-      nota: 'Pendiente confirmar una sustitución del domingo 14.',
-      pendiente: '1 turno pendiente de revisar antes del cierre.',
-    },
-    {
-      nombre: 'Álvaro Ruiz',
-      iniciales: 'AR',
-      estado: 'cerrado',
-      estadoLabel: 'CERRADO',
-      color: '#2563eb',
-      fondo: '#eff6ff',
-      total: '490,00 €',
-      turnos: 18,
-      baby: 6,
-      intensivos: 4,
-      ocio: 8,
-      tarifa: '28,00 €',
-      subtotal: '504,00 €',
-      ajustes: '-14,00 €',
-      nota: 'Corrección de un turno duplicado.',
-      pendiente: '',
-    },
-  ];
-
-  return (
-    <section style={{ display: 'grid', gap: 12 }}>
-      <DemoVisualBannerApp
-        titulo="Cobros"
-        descripcion="Ejemplo completo de un mes con distintos estados, ajustes e incidencias"
-        onClose={onClose}
-      />
-
-      <article
-        style={{
-          borderRadius: 20,
-          border: '1px solid #dbeafe',
-          background:
-            'linear-gradient(135deg, rgba(239,246,255,.95), #ffffff 50%, rgba(240,253,250,.9))',
-          padding: esMovil ? 14 : 17,
-          boxShadow: '0 12px 30px rgba(15,23,42,.05)',
-        }}
-      >
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            gap: 12,
-            alignItems: 'center',
-            flexWrap: 'wrap',
-          }}
-        >
-          <div>
-            <span
-              style={{
-                color: '#2563eb',
-                fontSize: 10,
-                fontWeight: 950,
-                letterSpacing: '.08em',
-              }}
-            >
-              CONTROL ECONÓMICO · DICIEMBRE 2026
-            </span>
-            <h3 style={{ margin: '4px 0 0', color: '#0f172a', fontSize: 20 }}>
-              Resumen de dirección
-            </h3>
-            <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: 12 }}>
-              4 entrenadores · 76 turnos computables · 1 incidencia pendiente
-            </p>
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              gap: 7,
-              flexWrap: 'wrap',
-              alignItems: 'center',
-            }}
-          >
-            <span
-              style={{
-                padding: '7px 10px',
-                borderRadius: 10,
-                background: '#ffffff',
-                border: '1px solid #cbd5e1',
-                color: '#334155',
-                fontSize: 11,
-                fontWeight: 900,
-              }}
-            >
-              Diciembre 2026
-            </span>
-            <button
-              type="button"
-              disabled
-              style={{
-                border: '1px solid #bfdbfe',
-                background: '#2563eb',
-                color: '#fff',
-                borderRadius: 10,
-                padding: '8px 10px',
-                fontSize: 11,
-                fontWeight: 900,
-                opacity: .78,
-              }}
-            >
-              PDF conjunto
-            </button>
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: esMovil
-              ? 'repeat(2, minmax(0,1fr))'
-              : 'repeat(5, minmax(0,1fr))',
-            gap: 8,
-            marginTop: 13,
-          }}
-        >
-          {[
-            ['TOTAL MES', '2.148,00 €', '#0f172a', '#ffffff'],
-            ['TURNOS', '76', '#334155', '#f8fafc'],
-            ['BABY', '36', '#2563eb', '#eff6ff'],
-            ['INTENSIVOS', '19', '#ea580c', '#fff7ed'],
-            ['OCIO', '21', '#16a34a', '#f0fdf4'],
-          ].map(([etiqueta, valor, color, fondo], index) => (
-            <div
-              key={etiqueta}
-              style={{
-                gridColumn: esMovil && index === 0 ? '1 / -1' : undefined,
-                borderRadius: 14,
-                padding: '11px 12px',
-                background: fondo,
-                border: '1px solid #e2e8f0',
-              }}
-            >
-              <span style={{ fontSize: 9, fontWeight: 950, color, letterSpacing: '.07em' }}>
-                {etiqueta}
-              </span>
-              <div style={{ marginTop: 4, fontSize: index === 0 ? 23 : 20, fontWeight: 950, color: '#0f172a' }}>
-                {valor}
-              </div>
-            </div>
-          ))}
-        </div>
-      </article>
-
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: esMovil ? '1fr' : 'minmax(0,1fr) auto',
-          gap: 9,
-          alignItems: 'center',
-          padding: '10px 12px',
-          borderRadius: 15,
-          border: '1px solid #e2e8f0',
-          background: '#ffffff',
-        }}
-      >
-        <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-          {['Todos · 4', 'Pendiente · 1', 'Revisado · 1', 'Cerrado · 1', 'Pagado · 1'].map((filtro, index) => (
-            <span
-              key={filtro}
-              style={{
-                padding: '6px 9px',
-                borderRadius: 999,
-                background: index === 0 ? '#ecfdf5' : '#f8fafc',
-                border: index === 0 ? '1px solid #a7f3d0' : '1px solid #e2e8f0',
-                color: index === 0 ? '#047857' : '#475569',
-                fontSize: 10,
-                fontWeight: 900,
-              }}
-            >
-              {filtro}
-            </span>
-          ))}
-        </div>
-        <span style={{ color: '#94a3b8', fontSize: 10, fontWeight: 800 }}>
-          Buscar entrenador, modalidad o estado…
-        </span>
-      </div>
-
-      <div style={{ display: 'grid', gap: 10 }}>
-        {entrenadoresDemo.map((entrenador) => (
-          <article
-            key={entrenador.nombre}
-            style={{
-              borderRadius: 18,
-              border: '1px solid #e2e8f0',
-              borderLeft: `4px solid ${entrenador.color}`,
-              background: '#ffffff',
-              padding: esMovil ? 13 : 15,
-              boxShadow: '0 10px 26px rgba(15,23,42,.045)',
-            }}
-          >
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: esMovil ? '1fr' : 'auto minmax(0,1fr) auto',
-                gap: esMovil ? 9 : 12,
-                alignItems: 'center',
-              }}
-            >
-              <div
-                style={{
-                  width: 40,
-                  height: 40,
-                  borderRadius: 13,
-                  display: 'grid',
-                  placeItems: 'center',
-                  background: entrenador.fondo,
-                  border: `1px solid ${entrenador.color}2f`,
-                  color: entrenador.color,
-                  fontSize: 12,
-                  fontWeight: 950,
-                }}
-              >
-                {entrenador.iniciales}
-              </div>
-              <div style={{ minWidth: 0 }}>
-                <div style={{ display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <strong style={{ color: '#0f172a', fontSize: 17 }}>{entrenador.nombre}</strong>
-                  <span
-                    style={{
-                      padding: '5px 8px',
-                      borderRadius: 999,
-                      background: entrenador.fondo,
-                      color: entrenador.color,
-                      border: `1px solid ${entrenador.color}30`,
-                      fontSize: 9,
-                      fontWeight: 950,
-                      letterSpacing: '.04em',
-                    }}
-                  >
-                    {entrenador.estadoLabel}
-                  </span>
-                </div>
-                <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 11 }}>
-                  Diciembre 2026 · Temporada 2026/2027 · {entrenador.turnos} turnos
-                </p>
-              </div>
-              <div style={{ textAlign: esMovil ? 'left' : 'right' }}>
-                <div style={{ fontSize: 23, fontWeight: 950, color: '#0f172a' }}>{entrenador.total}</div>
-                <span style={{ color: '#64748b', fontSize: 10 }}>Total del mes</span>
-              </div>
-            </div>
-
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: esMovil ? 'repeat(2,minmax(0,1fr))' : 'repeat(6,minmax(0,1fr))',
-                gap: 7,
-                marginTop: 11,
-              }}
-            >
-              {[
-                ['BABY', `${entrenador.baby} turnos`, '#2563eb', '#eff6ff'],
-                ['INTENSIVOS', `${entrenador.intensivos} turnos`, '#ea580c', '#fff7ed'],
-                ['OCIO', `${entrenador.ocio} turnos`, '#16a34a', '#f0fdf4'],
-                ['TARIFA', entrenador.tarifa, '#475569', '#f8fafc'],
-                ['SUBTOTAL', entrenador.subtotal, '#475569', '#f8fafc'],
-                ['AJUSTES', entrenador.ajustes, entrenador.ajustes === '0,00 €' ? '#64748b' : '#b45309', entrenador.ajustes === '0,00 €' ? '#f8fafc' : '#fffbeb'],
-              ].map(([label, value, color, fondo]) => (
-                <div
-                  key={label}
-                  style={{
-                    borderRadius: 11,
-                    border: '1px solid #e2e8f0',
-                    background: fondo,
-                    padding: '8px 9px',
-                    minWidth: 0,
-                  }}
-                >
-                  <span style={{ color, fontSize: 8, fontWeight: 950, letterSpacing: '.05em' }}>{label}</span>
-                  <div style={{ marginTop: 3, color: '#0f172a', fontSize: 11, fontWeight: 900 }}>{value}</div>
-                </div>
-              ))}
-            </div>
-
-            {(entrenador.nota || entrenador.pendiente) && (
-              <div
-                style={{
-                  marginTop: 9,
-                  padding: '9px 10px',
-                  borderRadius: 11,
-                  background: entrenador.pendiente ? '#fff7ed' : '#f8fafc',
-                  border: entrenador.pendiente ? '1px solid #fed7aa' : '1px solid #e2e8f0',
-                  color: entrenador.pendiente ? '#9a3412' : '#475569',
-                  fontSize: 11,
-                  lineHeight: 1.4,
-                }}
-              >
-                <strong>{entrenador.pendiente ? 'Atención: ' : 'Nota dirección: '}</strong>
-                {entrenador.pendiente || entrenador.nota}
-              </div>
-            )}
-
-            <div
-              style={{
-                marginTop: 10,
-                paddingTop: 10,
-                borderTop: '1px solid #e2e8f0',
-                display: 'flex',
-                gap: 6,
-                flexWrap: 'wrap',
-                alignItems: 'center',
-              }}
-            >
-              {['Abierto', 'Revisado', 'Cerrado', 'Pagado'].map((estado) => (
-                <button
-                  key={estado}
-                  type="button"
-                  disabled
-                  style={{
-                    border: estado.toLowerCase() === entrenador.estado ? `1px solid ${entrenador.color}55` : '1px solid #e2e8f0',
-                    background: estado.toLowerCase() === entrenador.estado ? entrenador.fondo : '#ffffff',
-                    color: estado.toLowerCase() === entrenador.estado ? entrenador.color : '#64748b',
-                    borderRadius: 9,
-                    padding: '6px 8px',
-                    fontSize: 9,
-                    fontWeight: 900,
-                    opacity: .82,
-                  }}
-                >
-                  {estado}
-                </button>
-              ))}
-              <span style={{ flex: '1 1 auto' }} />
-              {['Guardar tarifa', '+ Ajuste', 'PDF individual'].map((accion) => (
-                <button
-                  key={accion}
-                  type="button"
-                  disabled
-                  style={{
-                    border: '1px solid #dbe3ec',
-                    background: '#f8fafc',
-                    color: '#475569',
-                    borderRadius: 9,
-                    padding: '6px 8px',
-                    fontSize: 9,
-                    fontWeight: 850,
-                    opacity: .72,
-                  }}
-                >
-                  {accion}
-                </button>
-              ))}
-            </div>
-          </article>
-        ))}
-      </div>
-
-      <article
-        style={{
-          borderRadius: 16,
-          border: '1px solid #fed7aa',
-          background: '#fffaf5',
-          padding: '11px 12px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 10,
-          alignItems: 'center',
-          flexWrap: 'wrap',
-        }}
-      >
-        <div>
-          <strong style={{ color: '#9a3412', fontSize: 12 }}>+ Añadir entreno manual</strong>
-          <p style={{ margin: '3px 0 0', color: '#78716c', fontSize: 10 }}>
-            Para sesiones excepcionales que no estén registradas en Baby, Intensivos u Ocio.
-          </p>
-        </div>
-        <span
-          style={{
-            padding: '5px 8px',
-            borderRadius: 999,
-            background: '#ffffff',
-            border: '1px solid #fed7aa',
-            color: '#c2410c',
-            fontSize: 9,
-            fontWeight: 900,
-          }}
-        >
-          HERRAMIENTA SECUNDARIA
-        </span>
-      </article>
-
-      <p style={{ margin: 0, color: '#94a3b8', fontSize: 10, fontWeight: 750 }}>
-        Acciones desactivadas en demo. Este ejemplo no crea cobros, turnos, ajustes ni documentos reales.
-      </p>
-    </section>
-  );
-}
 
 function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const esCoordinadorApp =
@@ -7062,7 +4651,6 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [pwaInstallPrompt, setPwaInstallPrompt] = useState<any | null>(null);
   const [mostrarAyudaInstalacionPwa, setMostrarAyudaInstalacionPwa] =
     useState(false);
-  const [modoDemoVisual, setModoDemoVisual] = useState(false);
   const [esVistaMovilApp, setEsVistaMovilApp] = useState(() =>
     typeof window !== 'undefined'
       ? window.matchMedia('(max-width: 719px)').matches
@@ -24879,6 +22467,309 @@ async function abrirGestionOperativaIntensivoDia(
       `}</style>
 
       <style>{`
+        /* V3.0 · Capa visual de producto, aislada por pantalla.
+           No modifica shell, navegación ni breakpoints globales. */
+        .mitico-product-screen {
+          display: grid;
+          gap: 16px;
+          width: 100%;
+          min-width: 0;
+          max-width: 100%;
+        }
+        .mitico-product-screen > article:not(.mitico-product-hero),
+        .mitico-product-screen > section:not(.mitico-product-hero),
+        .mitico-product-screen > details {
+          min-width: 0;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+        .mitico-product-screen input,
+        .mitico-product-screen select,
+        .mitico-product-screen textarea {
+          min-width: 0;
+          max-width: 100%;
+          box-sizing: border-box;
+          border-radius: 12px;
+        }
+        .mitico-product-kpis {
+          display: grid;
+          grid-template-columns: repeat(4,minmax(0,1fr));
+          gap: 8px;
+          min-width: 0;
+        }
+        .mitico-product-kpi {
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
+          padding: 11px 12px;
+          background: #fff;
+          min-width: 0;
+          box-shadow: 0 8px 22px rgba(15,23,42,.035);
+        }
+        .mitico-product-kpi span {
+          display: block;
+          color: #64748b;
+          font-size: 9px;
+          font-weight: 950;
+          letter-spacing: .055em;
+          text-transform: uppercase;
+        }
+        .mitico-product-kpi strong {
+          display: block;
+          margin-top: 4px;
+          color: #0f172a;
+          font-size: 22px;
+          line-height: 1.05;
+          overflow-wrap: anywhere;
+        }
+        .mitico-product-card {
+          border: 1px solid #e2e8f0;
+          border-radius: 17px;
+          background: #fff;
+          box-shadow: 0 10px 28px rgba(15,23,42,.045);
+          min-width: 0;
+          max-width: 100%;
+          box-sizing: border-box;
+        }
+        .mitico-product-card-soft {
+          border: 1px solid #e2e8f0;
+          border-radius: 14px;
+          background: #f8fafc;
+          min-width: 0;
+          box-sizing: border-box;
+        }
+        .mitico-product-grid-2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; min-width:0; }
+        .mitico-product-grid-3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; min-width:0; }
+        .mitico-product-grid-auto { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:10px; min-width:0; }
+        .mitico-product-section-title {
+          display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-wrap:wrap;
+        }
+        .mitico-product-eyebrow {
+          color:#64748b; font-size:9px; font-weight:950; letter-spacing:.075em; text-transform:uppercase;
+        }
+        .mitico-product-badge {
+          display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:5px 8px;
+          font-size:9px; font-weight:950; white-space:nowrap;
+        }
+        .mitico-product-actions { display:flex; gap:7px; flex-wrap:wrap; align-items:center; min-width:0; }
+        .mitico-product-screen button { max-width:100%; }
+        .mitico-product-screen details { border-radius:14px; }
+        .mitico-product-screen details > summary { border-radius:14px; }
+        .mitico-product-list-row {
+          display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center;
+          padding:10px 11px; border:1px solid #e7ecf2; border-radius:12px; background:#fff; min-width:0;
+        }
+        .mitico-product-screen .mitico-no-overflow { min-width:0; max-width:100%; overflow-wrap:anywhere; }
+
+        /* Responsive local del contenido. El menú y la cabecera NO se tocan. */
+        @media (max-width: 1280px) and (min-width: 901px) {
+          .mitico-product-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); }
+          .mitico-product-grid-3 { grid-template-columns: repeat(2,minmax(0,1fr)); }
+          .mitico-product-grid-auto { grid-template-columns: repeat(2,minmax(0,1fr)); }
+        }
+        @media (max-width: 900px) {
+          .mitico-product-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); }
+          .mitico-product-grid-2, .mitico-product-grid-3, .mitico-product-grid-auto { grid-template-columns: 1fr; }
+          .mitico-product-list-row { grid-template-columns: 1fr; }
+          .mitico-product-actions { width:100%; }
+          .mitico-product-actions > button { flex:1 1 140px; min-width:0; }
+        }
+        @media (max-width: 520px) {
+          .mitico-product-screen { gap:12px; }
+          .mitico-product-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); gap:7px; }
+          .mitico-product-kpi { padding:9px 10px; }
+          .mitico-product-kpi strong { font-size:19px; }
+        }
+
+
+        /* V3.0 REAL · el contenido completo comparte el mismo lenguaje visual.
+           Todo está acotado a las pantallas de producto: no toca topbar/sidebar. */
+        .mitico-product-screen {
+          container-type: inline-size;
+          --product-accent:#2563eb;
+          --product-accent-soft:#eff6ff;
+          --product-ink:#0f172a;
+          --product-muted:#64748b;
+          --product-line:#e2e8f0;
+          --product-surface:#ffffff;
+          --product-soft:#f8fafc;
+        }
+        .mitico-product-trabajo { --product-accent:#0f766e; --product-accent-soft:#ecfdf5; }
+        .mitico-product-entrenamientos { --product-accent:#2563eb; --product-accent-soft:#eff6ff; }
+        .mitico-product-ocio { --product-accent:#0f766e; --product-accent-soft:#ecfdf5; }
+        .mitico-product-vista-entrenador { --product-accent:#0f766e; --product-accent-soft:#ecfdf5; }
+        .mitico-product-cierre { --product-accent:#2563eb; --product-accent-soft:#eff6ff; }
+        .mitico-product-altas { --product-accent:#4f46e5; --product-accent-soft:#eef2ff; }
+        .mitico-product-fichas { --product-accent:#7c3aed; --product-accent-soft:#f5f3ff; }
+        .mitico-product-entrenadores { --product-accent:#15803d; --product-accent-soft:#f0fdf4; }
+        .mitico-product-disponibilidad { --product-accent:#0f766e; --product-accent-soft:#ecfdf5; }
+        .mitico-product-cobros { --product-accent:#2563eb; --product-accent-soft:#eff6ff; }
+        .mitico-product-analisis { --product-accent:#4f46e5; --product-accent-soft:#eef2ff; }
+        .mitico-product-informes { --product-accent:#2563eb; --product-accent-soft:#eff6ff; }
+        .mitico-product-temporadas { --product-accent:#0f766e; --product-accent-soft:#ecfdf5; }
+        .mitico-product-accesos { --product-accent:#15803d; --product-accent-soft:#f0fdf4; }
+
+        .mitico-product-screen :where(article,section,details,div,form,label,nav) {
+          min-width:0;
+          max-width:100%;
+          box-sizing:border-box;
+        }
+        .mitico-product-screen :where(h1,h2,h3,h4,p,strong,span,small) {
+          overflow-wrap:anywhere;
+        }
+        .mitico-product-screen > :where(article,details),
+        .mitico-product-screen > section > :where(article,details) {
+          max-width:100%;
+        }
+        .mitico-product-screen :where(article:not(.mitico-product-hero),details) {
+          border-radius:16px;
+        }
+        .mitico-product-screen details {
+          border-color:var(--product-line);
+        }
+        .mitico-product-screen details > summary {
+          min-height:42px;
+          display:flex;
+          align-items:center;
+          gap:8px;
+          color:var(--product-ink);
+        }
+        .mitico-product-screen :where(input,select,textarea) {
+          border:1px solid #d7e0ea !important;
+          background:#fff !important;
+          color:var(--product-ink) !important;
+          min-height:42px;
+        }
+        .mitico-product-screen textarea { min-height:78px; resize:vertical; }
+        .mitico-product-screen label {
+          color:#334155;
+          font-weight:800;
+          line-height:1.35;
+        }
+        .mitico-product-screen :where(table) {
+          width:100%;
+          border-collapse:separate;
+          border-spacing:0;
+          color:#334155;
+        }
+        .mitico-product-screen :where(th) {
+          background:#f8fafc;
+          color:#475569;
+          font-size:11px;
+          font-weight:950;
+          text-transform:uppercase;
+          letter-spacing:.035em;
+        }
+        .mitico-product-screen :where(td,th) { border-color:#edf1f5 !important; }
+        .mitico-product-screen :where(tbody tr:hover) { background:#fbfdff; }
+        .mitico-product-screen button {
+          border-radius:11px;
+          line-height:1.2;
+        }
+        .mitico-product-screen button:disabled { cursor:not-allowed; }
+        .mitico-product-screen :where([style*="overflowX: 'auto'"],[style*="overflowX: \"auto\""]) {
+          max-width:100%;
+        }
+
+        /* Agenda: la zona operativa inferior deja de sentirse como formulario antiguo. */
+        .mitico-product-entrenamientos .mitico-agenda-controls {
+          border-radius:20px !important;
+          border:1px solid #dbe5f0 !important;
+          background:#ffffff !important;
+          box-shadow:0 12px 32px rgba(15,23,42,.05) !important;
+        }
+        .mitico-product-entrenamientos .mitico-agenda-days-grid > button {
+          border-radius:14px !important;
+          box-shadow:none !important;
+        }
+        .mitico-product-entrenamientos .mitico-day-counter {
+          white-space:normal !important;
+          line-height:1.15 !important;
+        }
+
+        /* Ocio: los grupos/alumnos reales mantienen exactamente el aspecto de producto. */
+        .mitico-product-ocio article {
+          box-shadow:0 10px 28px rgba(15,23,42,.045);
+        }
+        .mitico-product-ocio details > summary { background:#fbfefc; }
+
+        /* Altas y Fichas: tarjetas reales y sus interiores comparten superficie moderna. */
+        .mitico-product-altas > section article,
+        .mitico-product-fichas > section article {
+          box-shadow:0 9px 26px rgba(15,23,42,.04);
+        }
+        .mitico-product-altas article button[aria-expanded],
+        .mitico-product-fichas article button[aria-expanded] {
+          box-shadow:none !important;
+        }
+
+        /* Dirección: tablas y herramientas antiguas quedan contenidas dentro de paneles de producto. */
+        .mitico-product-informes > details,
+        .mitico-product-temporadas > details,
+        .mitico-product-cobros > details {
+          overflow:hidden;
+          background:#fff;
+          box-shadow:0 10px 28px rgba(15,23,42,.045);
+        }
+        .mitico-product-informes > details > summary,
+        .mitico-product-temporadas > details > summary,
+        .mitico-product-cobros > details > summary {
+          background:linear-gradient(180deg,#ffffff,#fbfcfe);
+        }
+
+        /* Disponibilidad: editor y resultados se leen como módulo de planificación, no CRUD. */
+        .mitico-product-disponibilidad .availability-editor-shell,
+        .mitico-product-disponibilidad .availability-trainer-week-card,
+        .mitico-product-disponibilidad .availability-response-summary {
+          border-radius:18px !important;
+          border-color:#dbe6e3 !important;
+          box-shadow:0 10px 28px rgba(15,23,42,.045) !important;
+          background:#fff !important;
+        }
+        .mitico-product-disponibilidad .availability-turn-editor,
+        .mitico-product-disponibilidad .availability-trainer-turn-card,
+        .mitico-product-disponibilidad .availability-response-turn-body {
+          border-radius:13px !important;
+        }
+
+        /* Vista entrenador: misma jerarquía del prototipo, tanto escritorio como móvil. */
+        .mitico-product-vista-entrenador .trainer-group-card,
+        .mitico-product-vista-entrenador .trainer-day-accordion,
+        .mitico-product-vista-entrenador .trainer-shift-accordion,
+        .mitico-product-vista-entrenador .trainer-week-block {
+          border-radius:16px !important;
+          border-color:#dfe6ee !important;
+          box-shadow:0 9px 26px rgba(15,23,42,.045) !important;
+          background:#fff !important;
+        }
+        .mitico-product-vista-entrenador .trainer-student-row {
+          border-radius:12px !important;
+          border-color:#e5eaf0 !important;
+          background:#fff !important;
+        }
+
+        /* Cierre semanal: paneles densos pero legibles. */
+        .mitico-product-cierre article { box-shadow:0 10px 28px rgba(15,23,42,.04); }
+
+        /* El responsive de la zona de contenido depende del ancho REAL disponible,
+           no del ancho total del navegador/iframe. */
+        @container (max-width: 820px) {
+          .mitico-product-screen .mitico-product-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
+          .mitico-product-screen .mitico-product-grid-2,
+          .mitico-product-screen .mitico-product-grid-3,
+          .mitico-product-screen .mitico-product-grid-auto { grid-template-columns:1fr; }
+          .mitico-product-entrenamientos .mitico-agenda-filters-grid { grid-template-columns:1fr !important; }
+          .mitico-product-entrenamientos .mitico-agenda-days-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+          .mitico-product-vista-entrenador .trainer-toolbar { grid-template-columns:1fr !important; }
+          .mitico-product-vista-entrenador .trainer-tabs { width:100%; }
+        }
+        @container (max-width: 560px) {
+          .mitico-product-screen .mitico-product-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
+          .mitico-product-entrenamientos .mitico-agenda-days-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
+          .mitico-product-screen button { white-space:normal; }
+        }
+      `}</style>
+
+      <style>{`
         @media print {
           body * { visibility: hidden !important; }
           #cobro-pdf-preview, #cobro-pdf-preview * { visibility: visible !important; }
@@ -24974,402 +22865,168 @@ async function abrirGestionOperativaIntensivoDia(
       )}
 
       {pantalla === 'resumenDia' && (
-        <section>
-          <div style={cabeceraPantallaMovil}>
-            <div>
-              <p style={etiquetaSuperior}>RESUMEN · CONTROL EN PISTA</p>
-              <h2 style={{ margin: 0 }}>Trabajo en pista</h2>
-              <p style={{ margin: '7px 0 0', color: '#64748b' }}>
-                Resumen del día · turnos, alumnos, entrenadores y puntos de encuentro.
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-              {esCoordinadorJefeApp && (
-                <button
-                  type="button"
-                  hidden
-                  onClick={() => setModoDemoVisual(!modoDemoVisual)}
-                  style={{
-                    ...botonSecundario,
-                    minHeight: 44,
-                    borderColor: modoDemoVisual ? '#86efac' : '#cbd5e1',
-                    background: modoDemoVisual ? '#f0fdf4' : '#fff',
-                    color: modoDemoVisual ? '#166534' : '#334155',
-                  }}
-                >
-                  {modoDemoVisual ? 'Cerrar ejemplo' : 'Ver ejemplo'}
-                </button>
-              )}
+        <section className="mitico-product-screen mitico-product-trabajo">
+          <article
+            className="mitico-product-hero"
+            style={{
+              borderRadius: esVistaMovilApp ? 18 : 22,
+              padding: esVistaMovilApp ? 15 : 19,
+              border: '1px solid #dbe3ec',
+              background: 'linear-gradient(135deg,#ffffff 0%,#f8fafc 72%,#eefbf3 120%)',
+              boxShadow: '0 14px 36px rgba(15,23,42,.06)',
+            }}
+          >
+            <div className="mitico-product-section-title">
+              <div style={{ minWidth: 0 }}>
+                <span className="mitico-product-eyebrow" style={{ color: '#15803d' }}>PISTA · CONTROL DIARIO</span>
+                <h2 style={{ margin: '5px 0 0', fontSize: esVistaMovilApp ? 24 : 29 }}>Trabajo en pista</h2>
+                <p style={{ margin: '6px 0 0', color: '#64748b', maxWidth: 720 }}>
+                  Turnos, grupos, entrenadores y alumnos publicados del día en una sola vista.
+                </p>
+              </div>
               <input
                 type="date"
                 value={fechaResumenDiaActiva}
                 onChange={(e) => setFechaResumenDia(e.target.value)}
-                style={{ ...inputCampo, minHeight: 44 }}
+                style={{ ...inputCampo, minHeight: 42, width: esVistaMovilApp ? '100%' : 170 }}
                 aria-label="Fecha del resumen operativo"
               />
             </div>
-          </div>
 
-          {modoDemoVisual && esCoordinadorJefeApp && (
-            <DemoTrabajoEnPistaApp
-              esMovil={esVistaMovilApp}
-              onClose={() => setModoDemoVisual(false)}
-            />
-          )}
+            <div className="mitico-product-kpis" style={{ marginTop: 14 }}>
+              <div className="mitico-product-kpi"><span>Turnos</span><strong>{sesionesResumenDia.length}</strong></div>
+              <div className="mitico-product-kpi"><span>Alumnos</span><strong>{totalAlumnosResumenDia}</strong></div>
+              <div className="mitico-product-kpi"><span>Grupos publicados</span><strong>{totalPublicadosResumenDia}/{totalGruposResumenDia}</strong></div>
+              <div className="mitico-product-kpi" style={{ borderColor: gruposPendientesEntrenadorResumenDia.length ? '#fed7aa' : '#bbf7d0', background: gruposPendientesEntrenadorResumenDia.length ? '#fff7ed' : '#f0fdf4' }}>
+                <span style={{ color: gruposPendientesEntrenadorResumenDia.length ? '#c2410c' : '#15803d' }}>Sin entrenador</span>
+                <strong>{gruposPendientesEntrenadorResumenDia.length}</strong>
+              </div>
+            </div>
+          </article>
 
-          <article
-            style={{
-              ...tarjeta,
-              marginTop: 14,
-              padding: 14,
-              border: '2px solid #bfdbfe',
-              background: 'linear-gradient(180deg,#eff6ff,#ffffff)',
-            }}
-          >
+          <article className="mitico-product-card" style={{ padding: esVistaMovilApp ? 12 : 14 }}>
             <label style={{ display: 'grid', gap: 7 }}>
-              <strong>Buscar alumno en los grupos publicados</strong>
+              <span className="mitico-product-eyebrow">BUSCAR EN LOS GRUPOS DEL DÍA</span>
               <input
                 type="search"
                 value={busquedaAlumnoResumenDia}
                 onChange={(e) => setBusquedaAlumnoResumenDia(e.target.value)}
                 placeholder="Nombre o apellidos del niño…"
-                style={{ ...inputCampo, width: '100%', minHeight: 48, fontSize: 16 }}
+                style={{ ...inputCampo, width: '100%', minHeight: 44 }}
               />
             </label>
-
             {textoBusquedaAlumnoResumenDia && (
-              <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+              <div style={{ display: 'grid', gap: 7, marginTop: 9 }}>
                 {resultadosBusquedaAlumnoResumenDia.length === 0 ? (
-                  <div style={avisoPendiente}>
-                    No aparece ningún alumno con ese nombre en los grupos publicados del día.
-                  </div>
-                ) : (
-                  resultadosBusquedaAlumnoResumenDia.slice(0, 8).map((resultado: any, indice: number) => (
-                    <button
-                      type="button"
-                      key={`${resultado.sesion.id}-${resultado.grupo.grupo_id || resultado.indice}-${resultado.alumno}-${indice}`}
-                      onClick={() => abrirResultadoAlumnoResumenDia(resultado)}
-                      style={{
-                        ...botonSecundario,
-                        width: '100%',
-                        textAlign: 'left',
-                        display: 'grid',
-                        gap: 3,
-                        padding: '11px 13px',
-                      }}
-                    >
-                      <strong>{resultado.alumno}</strong>
-                      <span style={{ color: '#475569', fontSize: 13 }}>
-                        {horaCorta(resultado.sesion.hora_inicio)}–{horaCorta(resultado.sesion.hora_fin)} ·{' '}
-                        {nombreGrupoVisualApp(resultado.grupo, resultado.indice)} · Punto{' '}
-                        {resultado.grupo.punto_encuentro || '-'} ·{' '}
-                        {resultado.grupo.entrenador || resultado.grupo.entrenadores || 'Sin entrenador'}
-                      </span>
-                    </button>
-                  ))
-                )}
+                  <div style={avisoPendiente}>No aparece ningún alumno con ese nombre en los grupos publicados del día.</div>
+                ) : resultadosBusquedaAlumnoResumenDia.slice(0, 8).map((resultado: any, indice: number) => (
+                  <button
+                    type="button"
+                    key={`${resultado.sesion.id}-${resultado.grupo.grupo_id || resultado.indice}-${resultado.alumno}-${indice}`}
+                    onClick={() => abrirResultadoAlumnoResumenDia(resultado)}
+                    className="mitico-product-list-row"
+                    style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}
+                  >
+                    <span style={{ minWidth: 0 }}>
+                      <strong style={{ display: 'block' }}>{resultado.alumno}</strong>
+                      <small style={{ color: '#64748b' }}>
+                        {horaCorta(resultado.sesion.hora_inicio)}–{horaCorta(resultado.sesion.hora_fin)} · {nombreGrupoVisualApp(resultado.grupo, resultado.indice)} · Punto {resultado.grupo.punto_encuentro || '-'}
+                      </small>
+                    </span>
+                    <span className="mitico-product-badge" style={{ background: '#eff6ff', color: '#1d4ed8' }}>
+                      {resultado.grupo.entrenador || resultado.grupo.entrenadores || 'Sin entrenador'}
+                    </span>
+                  </button>
+                ))}
               </div>
             )}
           </article>
 
-          <div style={gridResumenInicio}>
-            <div style={tarjetaInicioOk}>
-              <strong>Turnos</strong>
-              <br />
-              <span style={{ fontSize: 26, fontWeight: 900 }}>
-                {sesionesResumenDia.length}
-              </span>
-            </div>
-            <div style={tarjetaInicioOk}>
-              <strong>Alumnos previstos</strong>
-              <br />
-              <span style={{ fontSize: 26, fontWeight: 900 }}>
-                {totalAlumnosResumenDia}
-              </span>
-            </div>
-            <div
-              style={
-                totalPublicadosResumenDia === totalGruposResumenDia
-                  ? tarjetaInicioOk
-                  : tarjetaInicioAlerta
-              }
-            >
-              <strong>Grupos publicados</strong>
-              <br />
-              <span style={{ fontSize: 26, fontWeight: 900 }}>
-                {totalPublicadosResumenDia}/{totalGruposResumenDia}
-              </span>
-            </div>
-            <div
-              style={
-                gruposPendientesEntrenadorResumenDia.length === 0
-                  ? tarjetaInicioOk
-                  : tarjetaInicioRojo
-              }
-            >
-              <strong>Sin entrenador</strong>
-              <br />
-              <span style={{ fontSize: 26, fontWeight: 900 }}>
-                {gruposPendientesEntrenadorResumenDia.length}
-              </span>
-            </div>
-          </div>
-
           {gruposPendientesEntrenadorResumenDia.length > 0 && (
-            <div style={avisoPendiente}>
+            <div style={{ ...avisoPendiente, borderRadius: 14 }}>
               Hay {gruposPendientesEntrenadorResumenDia.length} grupo(s) sin entrenador asignado para este día.
             </div>
           )}
 
-          <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
+          <section style={{ display: 'grid', gap: 12 }}>
             {sesionesResumenDia.length === 0 ? (
-              <article style={tarjetaMovilVacia}>
+              <article className="mitico-product-card" style={{ padding: 18, color: '#64748b' }}>
                 No hay sesiones preparadas para este día.
               </article>
-            ) : (
-              sesionesResumenDia.map((sesion: any) => {
-                const turnoAbierto = turnoResumenDiaAbierto === String(sesion.id);
-                const gruposPublicados = gruposPublicadosSesionResumenDia(sesion);
+            ) : sesionesResumenDia.map((sesion: any) => {
+              const gruposPublicados = gruposPublicadosSesionResumenDia(sesion);
+              const entrenadoresCubiertos = gruposPublicados.filter((grupo: any) => Boolean(grupo.entrenador || grupo.entrenadores)).length;
+              const todoCubierto = gruposPublicados.length > 0 && entrenadoresCubiertos === gruposPublicados.length;
+              return (
+                <article key={sesion.id} className="mitico-product-card" style={{ padding: esVistaMovilApp ? 13 : 16 }}>
+                  <div className="mitico-product-section-title">
+                    <div style={{ minWidth: 0 }}>
+                      <span className="mitico-product-eyebrow">{String(sesion.modalidad || 'SESIÓN').toUpperCase()} · MADRID SNOWZONE</span>
+                      <h3 style={{ margin: '4px 0 0', fontSize: esVistaMovilApp ? 20 : 23 }}>
+                        {horaCorta(sesion.hora_inicio)}–{horaCorta(sesion.hora_fin)} · {sesion.titulo}
+                      </h3>
+                      <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: 12 }}>
+                        {sesion.totalAlumnos} alumnos · {gruposPublicados.length} grupos publicados
+                      </p>
+                    </div>
+                    <span className="mitico-product-badge" style={{ background: todoCubierto ? '#ecfdf5' : '#fff7ed', color: todoCubierto ? '#047857' : '#c2410c', border: `1px solid ${todoCubierto ? '#a7f3d0' : '#fed7aa'}` }}>
+                      {todoCubierto ? 'TODO CUBIERTO' : `${gruposPublicados.length - entrenadoresCubiertos} SIN ENTRENADOR`}
+                    </span>
+                  </div>
 
-                return (
-                  <article
-                    id={`resumen-turno-${sesion.id}`}
-                    key={sesion.id}
-                    style={{
-                      ...tarjetaEntrenadorMovil,
-                      border: turnoAbierto ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                      borderRadius: 20,
-                      overflow: 'hidden',
-                      padding: 0,
-                      background: '#ffffff',
-                      boxShadow: turnoAbierto
-                        ? '0 14px 34px rgba(37,99,235,.14)'
-                        : '0 8px 20px rgba(15,23,42,.07)',
-                      scrollMarginTop: 18,
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setTurnoResumenDiaAbierto((actual) =>
-                          actual === String(sesion.id) ? '' : String(sesion.id)
-                        )
-                      }
-                      aria-expanded={turnoAbierto}
-                      style={{
-                        width: '100%',
-                        border: 0,
-                        background: turnoAbierto
-                          ? 'linear-gradient(135deg,#0f172a,#1e3a8a)'
-                          : '#f8fafc',
-                        color: turnoAbierto ? '#ffffff' : '#172033',
-                        padding: '15px 16px',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: 12,
-                        textAlign: 'left',
-                      }}
-                    >
-                      <span style={{ display: 'grid', gap: 4 }}>
-                        <span style={{ fontSize: 12, fontWeight: 900, textTransform: 'uppercase', opacity: 0.8 }}>
-                          {sesion.modalidad}
-                        </span>
-                        <strong style={{ fontSize: 17 }}>
-                          {horaCorta(sesion.hora_inicio)}–{horaCorta(sesion.hora_fin)} · {sesion.titulo}
-                        </strong>
-                        <span style={{ fontSize: 13, opacity: 0.82 }}>
-                          {gruposPublicados.length} grupos publicados · {sesion.totalAlumnos} niños
-                        </span>
-                      </span>
-                      <span style={{ fontSize: 24, fontWeight: 900 }} aria-hidden="true">
-                        {turnoAbierto ? '−' : '+'}
-                      </span>
-                    </button>
-
-                    {turnoAbierto && (
-                      <div
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: 'repeat(auto-fit,minmax(270px,1fr))',
-                          gap: 12,
-                          padding: 12,
-                        }}
-                      >
-                        {gruposPublicados.length === 0 ? (
-                          <div style={tarjetaMovilVacia}>
-                            No hay grupos publicados en este turno.
-                          </div>
-                        ) : (
-                          gruposPublicados.map((grupo: any, indice: number) => {
-                            const alumnosGrupo = alumnosGrupoResumenDia(grupo);
-                            return (
-                              <div
-                                id={`resumen-grupo-${String(
-                                  grupo.grupo_id || `${sesion.id}-${indice}`
-                                )}`}
-                                key={grupo.grupo_id || `${sesion.id}-${indice}`}
-                                style={{
-                                  ...miniTarjetaBlanca,
-                                  border:
-                                    grupoResumenDiaDestacado ===
-                                    String(grupo.grupo_id || `${sesion.id}-${indice}`)
-                                      ? '3px solid #2563eb'
-                                      : grupo.entrenador || grupo.entrenadores
-                                      ? '1px solid #cbd5e1'
-                                      : '2px solid #f59e0b',
-                                  borderRadius: 16,
-                                  padding: 13,
-                                  background: '#ffffff',
-                                  boxShadow: '0 6px 16px rgba(15,23,42,.06)',
-                                  minWidth: 0,
-                                }}
-                              >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                                  <div>
-                                    <strong style={{ fontSize: 16 }}>{nombreGrupoVisualApp(grupo, indice)}</strong>
-                                    <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 8 }}>
-                                      <span style={{ ...miniBadge, background: '#0f172a', color: '#fff' }}>
-                                        PUNTO {grupo.punto_encuentro || '-'}
-                                      </span>
-                                      <span style={{ ...miniBadge, background: '#dbeafe', color: '#1e3a8a' }}>
-                                        {grupo.pista || 'SIN PISTA'}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div style={{ textAlign: 'right' }}>
-                                    <span style={{ display: 'block', fontSize: 11, fontWeight: 900, color: '#64748b', textTransform: 'uppercase' }}>
-                                      Entrenador
-                                    </span>
-                                    <strong style={{ color: grupo.entrenador || grupo.entrenadores ? '#0f172a' : '#b45309' }}>
-                                      {grupo.entrenador || grupo.entrenadores || 'SIN ENTRENADOR'}
-                                    </strong>
-                                    {grupo.entrenador_apoyo && (
-                                      <p style={{ margin: '4px 0 0', fontSize: 13 }}>
-                                        Apoyo: {grupo.entrenador_apoyo}
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-
-                                <div style={{ marginTop: 12 }}>
-                                  <strong style={{ display: 'block', marginBottom: 6 }}>
-                                    Alumnos ({alumnosGrupo.length})
-                                  </strong>
-                                  {alumnosGrupo.length > 0 ? (
-                                    <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4 }}>
-                                      {alumnosGrupo.map((alumno, alumnoIndice) => (
-                                        <li
-                                          id={`resumen-alumno-${String(
-                                            grupo.grupo_id || `${sesion.id}-${indice}`
-                                          )}-${claveDomAlumnoResumenDia(alumno.split('·')[0])}`}
-                                          key={`${grupo.grupo_id || indice}-${alumnoIndice}`}
-                                          style={
-                                            grupoResumenDiaDestacado ===
-                                              String(grupo.grupo_id || `${sesion.id}-${indice}`) &&
-                                            alumnoResumenDiaDestacado &&
-                                            textoSinAcentosGrupoApp(alumno.split('·')[0]) ===
-                                              alumnoResumenDiaDestacado
-                                              ? {
-                                                  background: '#fef3c7',
-                                                  border: '2px solid #f59e0b',
-                                                  borderRadius: 8,
-                                                  padding: '4px 7px',
-                                                  fontWeight: 900,
-                                                  listStylePosition: 'inside',
-                                                }
-                                              : undefined
-                                          }
-                                        >
-                                          {alumno}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  ) : (
-                                    <p style={{ margin: 0, color: '#64748b' }}>Sin listado cargado.</p>
-                                  )}
-                                </div>
-
-                                {grupo.trabajo_diario && (
-                                  <details
-                                    style={{
-                                      ...avisoNeutral,
-                                      marginTop: 12,
-                                      padding: 0,
-                                      overflow: 'hidden',
-                                    }}
-                                  >
-                                    <summary
-                                      style={{
-                                        cursor: 'pointer',
-                                        padding: '11px 12px',
-                                        fontWeight: 900,
-                                        userSelect: 'none',
-                                        listStylePosition: 'inside',
-                                      }}
-                                    >
-                                      Trabajo diario
-                                    </summary>
-                                    <div
-                                      style={{
-                                        whiteSpace: 'pre-wrap',
-                                        padding: '0 12px 12px',
-                                        borderTop: '1px solid #e2e8f0',
-                                        paddingTop: 10,
-                                      }}
-                                    >
-                                      {grupo.trabajo_diario}
-                                    </div>
-                                  </details>
-                                )}
-
-                                {grupo.observaciones_importantes && (
-                                  <details
-                                    style={{
-                                      ...avisoNeutral,
-                                      marginTop: 8,
-                                      padding: 0,
-                                      overflow: 'hidden',
-                                    }}
-                                  >
-                                    <summary
-                                      style={{
-                                        cursor: 'pointer',
-                                        padding: '11px 12px',
-                                        fontWeight: 900,
-                                        userSelect: 'none',
-                                        listStylePosition: 'inside',
-                                      }}
-                                    >
-                                      Observaciones
-                                    </summary>
-                                    <div
-                                      style={{
-                                        padding: '0 12px 12px',
-                                        borderTop: '1px solid #e2e8f0',
-                                        paddingTop: 10,
-                                      }}
-                                    >
-                                      {formatearObservaciones(grupo.observaciones_importantes)}
-                                    </div>
-                                  </details>
-                                )}
-                              </div>
-                            );
-                          })
-                        )}
+                  <div className="mitico-product-grid-2" style={{ marginTop: 12 }}>
+                    {gruposPublicados.length === 0 ? (
+                      <div className="mitico-product-card-soft" style={{ padding: 12, color: '#64748b', gridColumn: '1 / -1' }}>
+                        No hay grupos publicados en este turno.
                       </div>
-                    )}
-                  </article>
-                );
-              })
-            )}
-          </div>
+                    ) : gruposPublicados.map((grupo: any, indice: number) => {
+                      const alumnosGrupo = alumnosGrupoResumenDia(grupo);
+                      const entrenador = grupo.entrenador || grupo.entrenadores || 'Sin entrenador';
+                      return (
+                        <div key={grupo.grupo_id || `${sesion.id}-${indice}`} className="mitico-product-card-soft" style={{ padding: 12, background: '#fff' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
+                            <div style={{ minWidth: 0 }}>
+                              <strong style={{ display: 'block' }}>{nombreGrupoVisualApp(grupo, indice)}</strong>
+                              <span style={{ color: '#64748b', fontSize: 11 }}>
+                                {grupo.pista || 'Sin pista'} · Punto {grupo.punto_encuentro || '-'}
+                              </span>
+                            </div>
+                            <span className="mitico-product-badge" style={{ background: '#eff6ff', color: '#1d4ed8' }}>
+                              {grupo.nivel_grupo || 'Nivel'}
+                            </span>
+                          </div>
+                          <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                            <span className="mitico-product-badge" style={{ background: entrenador === 'Sin entrenador' ? '#fff7ed' : '#ecfdf5', color: entrenador === 'Sin entrenador' ? '#c2410c' : '#047857' }}>
+                              {entrenador}
+                            </span>
+                            {grupo.entrenador_apoyo && <span className="mitico-product-badge" style={{ background: '#f5f3ff', color: '#7c3aed' }}>Apoyo: {grupo.entrenador_apoyo}</span>}
+                            <span className="mitico-product-badge" style={{ background: '#f8fafc', color: '#475569' }}>{alumnosGrupo.length} niños</span>
+                          </div>
+                          {alumnosGrupo.length > 0 && (
+                            <div style={{ display: 'grid', gap: 5, marginTop: 9 }}>
+                              {alumnosGrupo.slice(0, 7).map((alumno: string, alumnoIndice: number) => (
+                                <div key={`${grupo.grupo_id || indice}-${alumnoIndice}`} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '6px 8px', borderRadius: 9, background: '#f8fafc', fontSize: 11 }}>
+                                  <span style={{ width: 21, height: 21, borderRadius: '50%', display: 'grid', placeItems: 'center', background: '#dcfce7', color: '#166534', fontWeight: 950, fontSize: 8 }}>
+                                    {String(alumno).trim().slice(0,1).toUpperCase()}
+                                  </span>
+                                  <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{formatearAlumnoListadoOperativo(alumno)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </article>
+              );
+            })}
+          </section>
         </section>
       )}
 
       {pantalla === 'informes' && esCoordinadorJefeApp && (
-        <section style={{ display: 'grid', gap: 13, minWidth: 0 }}>
+        <section className="mitico-product-screen mitico-product-informes" style={{ display: 'grid', gap: 13, minWidth: 0 }}>
           <article
             style={{
               borderRadius: esVistaMovilApp ? 16 : 18,
@@ -25417,20 +23074,7 @@ async function abrirGestionOperativaIntensivoDia(
               </div>
 
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  hidden
-                  onClick={() => setModoDemoVisual(!modoDemoVisual)}
-                  style={{
-                    ...botonSecundario,
-                    borderColor: modoDemoVisual ? '#86efac' : 'rgba(255,255,255,.24)',
-                    background: modoDemoVisual ? '#dcfce7' : 'rgba(255,255,255,.08)',
-                    color: modoDemoVisual ? '#166534' : '#ffffff',
-                    minHeight: 36,
-                  }}
-                >
-                  {modoDemoVisual ? 'Cerrar ejemplo' : 'Ver ejemplo'}
-                </button>
+                
                 <button
                   type="button"
                   onClick={actualizarTodo}
@@ -25485,12 +23129,7 @@ async function abrirGestionOperativaIntensivoDia(
             </div>
           </article>
 
-          {modoDemoVisual && (
-            <DemoInformesApp
-              esMovil={esVistaMovilApp}
-              onClose={() => setModoDemoVisual(false)}
-            />
-          )}
+          
 
           <details
             id="informe-snowzone"
@@ -26956,7 +24595,7 @@ async function abrirGestionOperativaIntensivoDia(
       )}
 
       {pantalla === 'temporadas' && esCoordinadorJefeApp && (
-        <section style={{ display: 'grid', gap: 14, minWidth: 0 }}>
+        <section className="mitico-product-screen mitico-product-temporadas" style={{ display: 'grid', gap: 14, minWidth: 0 }}>
           <article
             style={{
               borderRadius: esVistaMovilApp ? 16 : 18,
@@ -27011,20 +24650,7 @@ async function abrirGestionOperativaIntensivoDia(
                   justifyContent: esVistaMovilApp ? 'flex-start' : 'flex-end',
                 }}
               >
-                <button
-                  type="button"
-                  hidden
-                  onClick={() => setModoDemoVisual(!modoDemoVisual)}
-                  style={{
-                    ...botonSecundario,
-                    borderColor: modoDemoVisual ? '#86efac' : 'rgba(255,255,255,.24)',
-                    background: modoDemoVisual ? '#dcfce7' : 'rgba(255,255,255,.08)',
-                    color: modoDemoVisual ? '#166534' : '#ffffff',
-                    minHeight: 36,
-                  }}
-                >
-                  {modoDemoVisual ? 'Cerrar ejemplo' : 'Ver ejemplo'}
-                </button>
+                
                 <button
                   type="button"
                   onClick={actualizarTodo}
@@ -27063,7 +24689,7 @@ async function abrirGestionOperativaIntensivoDia(
                     TEMPORADA OPERATIVA
                   </div>
                   <div style={{ marginTop: 4, fontSize: 20, fontWeight: 950, color: '#0f172a' }}>
-                    {modoDemoVisual ? '2026/2027' : cargandoTemporadaActivaCierre ? 'Comprobando...' : temporadaActivaCierre || 'Sin temporada activa'}
+                    {cargandoTemporadaActivaCierre ? 'Comprobando...' : temporadaActivaCierre || 'Sin temporada activa'}
                   </div>
                 </div>
                 <span
@@ -27073,15 +24699,15 @@ async function abrirGestionOperativaIntensivoDia(
                     gap: 6,
                     padding: '6px 9px',
                     borderRadius: 999,
-                    border: `1px solid ${modoDemoVisual || temporadaActivaCierre ? '#bbf7d0' : '#fde68a'}`,
-                    background: modoDemoVisual || temporadaActivaCierre ? '#f0fdf4' : '#fffbeb',
-                    color: modoDemoVisual || temporadaActivaCierre ? '#166534' : '#92400e',
+                    border: `1px solid ${temporadaActivaCierre ? '#bbf7d0' : '#fde68a'}`,
+                    background: temporadaActivaCierre ? '#f0fdf4' : '#fffbeb',
+                    color: temporadaActivaCierre ? '#166534' : '#92400e',
                     fontSize: 11,
                     fontWeight: 950,
                   }}
                 >
                   <span style={{ width: 7, height: 7, borderRadius: 999, background: 'currentColor' }} />
-                  {modoDemoVisual || temporadaActivaCierre ? 'Activa' : 'Pendiente de iniciar'}
+                  {temporadaActivaCierre ? 'Activa' : 'Pendiente de iniciar'}
                 </span>
               </div>
 
@@ -27097,9 +24723,7 @@ async function abrirGestionOperativaIntensivoDia(
                   SIGUIENTE PASO SEGURO
                 </div>
                 <div style={{ marginTop: 5, fontSize: 14, fontWeight: 900, color: '#0f172a', lineHeight: 1.35 }}>
-                  {modoDemoVisual
-                    ? 'Seguir trabajando · el cierre solo se prepara al final del curso'
-                    : temporadaActivaCierre
+                  {temporadaActivaCierre
                     ? 'Trabajar la temporada activa y revisar el cierre solo cuando corresponda'
                     : `Iniciar ${nombreTemporadaAgenda(anioInicioTemporadaAgenda)}`}
                 </div>
@@ -27157,146 +24781,7 @@ async function abrirGestionOperativaIntensivoDia(
             ))}
           </div>
 
-          {modoDemoVisual ? (
-            <>
-              <article
-                style={{
-                  borderRadius: 16,
-                  border: '1px solid #bfdbfe',
-                  background: 'linear-gradient(135deg,#eff6ff,#ffffff 62%)',
-                  overflow: 'hidden',
-                }}
-              >
-                <div
-                  style={{
-                    padding: '12px 14px',
-                    background: '#172554',
-                    color: '#ffffff',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    gap: 10,
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                  }}
-                >
-                  <div>
-                    <span style={{ fontSize: 9, fontWeight: 950, letterSpacing: .7, color: '#bbf7d0' }}>MODO DEMO · DATOS LOCALES</span>
-                    <h3 style={{ margin: '4px 0 0', fontSize: 18 }}>Ciclo 2026/2027</h3>
-                  </div>
-                  <span style={{ padding: '5px 8px', borderRadius: 999, background: 'rgba(34,197,94,.16)', color: '#bbf7d0', fontSize: 10, fontWeight: 900 }}>
-                    No modifica Supabase
-                  </span>
-                </div>
-
-                <div style={{ padding: esVistaMovilApp ? 12 : 15, display: 'grid', gap: 11 }}>
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: esVistaMovilApp ? 'repeat(2,minmax(0,1fr))' : 'repeat(4,minmax(0,1fr))',
-                      gap: 8,
-                    }}
-                  >
-                    {[
-                      ['132', 'Alumnos cargados', '#0f172a'],
-                      ['124', 'Con actividad', '#15803d'],
-                      ['118', 'Conservar', '#15803d'],
-                      ['6', 'Revisar al cierre', '#b45309'],
-                    ].map(([valor, etiqueta, color]) => (
-                      <div key={etiqueta} style={{ padding: 11, borderRadius: 13, border: '1px solid #dbe3ec', background: '#ffffff' }}>
-                        <div style={{ fontSize: esVistaMovilApp ? 21 : 25, fontWeight: 950, color }}>{valor}</div>
-                        <div style={{ marginTop: 3, fontSize: 10.5, fontWeight: 800, color: '#64748b' }}>{etiqueta}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: esVistaMovilApp ? '1fr' : 'repeat(3,minmax(0,1fr))',
-                      gap: 8,
-                    }}
-                  >
-                    <div style={{ padding: 13, borderRadius: 14, border: '1px solid #bbf7d0', background: '#f0fdf4' }}>
-                      <div style={{ fontSize: 9, fontWeight: 950, color: '#15803d', letterSpacing: .65 }}>TEMPORADA ACTUAL</div>
-                      <strong style={{ display: 'block', marginTop: 4, fontSize: 17 }}>2026/2027 · Activa</strong>
-                      <p style={{ margin: '6px 0 0', fontSize: 11, lineHeight: 1.45, color: '#475569' }}>Trabajo normal en curso. No corresponde ejecutar cierre.</p>
-                    </div>
-                    <div style={{ padding: 13, borderRadius: 14, border: '1px solid #dbe3ec', background: '#ffffff' }}>
-                      <div style={{ fontSize: 9, fontWeight: 950, color: '#64748b', letterSpacing: .65 }}>HISTÓRICO</div>
-                      <strong style={{ display: 'block', marginTop: 4, fontSize: 17 }}>2025/2026 · Cerrada</strong>
-                      <p style={{ margin: '6px 0 0', fontSize: 11, lineHeight: 1.45, color: '#475569' }}>Temporada anterior conservada como histórico de Dirección.</p>
-                    </div>
-                    <div style={{ padding: 13, borderRadius: 14, border: '1px solid #bfdbfe', background: '#eff6ff' }}>
-                      <div style={{ fontSize: 9, fontWeight: 950, color: '#1d4ed8', letterSpacing: .65 }}>SIGUIENTE TEMPORADA</div>
-                      <strong style={{ display: 'block', marginTop: 4, fontSize: 17 }}>2027/2028</strong>
-                      <p style={{ margin: '6px 0 0', fontSize: 11, lineHeight: 1.45, color: '#475569' }}>Solo se habilitaría después de cerrar correctamente 2026/2027.</p>
-                    </div>
-                  </div>
-
-                  <div style={{ borderRadius: 14, border: '1px solid #dbe3ec', background: '#ffffff', overflow: 'hidden' }}>
-                    <div style={{ padding: '11px 13px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
-                      <div>
-                        <div style={{ fontSize: 9, fontWeight: 950, color: '#64748b', letterSpacing: .65 }}>EJEMPLO DE REVISIÓN FINAL</div>
-                        <strong style={{ display: 'block', marginTop: 3 }}>Alumnos a revisar antes del cierre</strong>
-                      </div>
-                      <span style={{ padding: '5px 8px', borderRadius: 999, background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', fontSize: 10, fontWeight: 900 }}>6 pendientes</span>
-                    </div>
-                    <div style={{ display: 'grid' }}>
-                      {[
-                        ['Lucía González Huerga', 'B+', '24/05/2027', 'Baby', '18', 'Conservar'],
-                        ['Pablo Sinde Andrés', 'A+', '11/04/2027', 'Ocio', '9', 'Conservar'],
-                        ['Sofía Xenofontos González', 'A+', '—', 'Baby', '0', 'Revisar'],
-                      ].map(([alumno, nivel, fecha, modalidad, entrenos, estado], index) => (
-                        <div
-                          key={alumno}
-                          style={{
-                            padding: '10px 12px',
-                            display: 'grid',
-                            gridTemplateColumns: esVistaMovilApp ? '1fr auto' : 'minmax(180px,1.4fr) 60px 105px 80px 70px 90px',
-                            gap: 8,
-                            alignItems: 'center',
-                            borderBottom: index < 2 ? '1px solid #f1f5f9' : undefined,
-                          }}
-                        >
-                          <strong style={{ fontSize: 11.5 }}>{alumno}</strong>
-                          <span style={{ fontSize: 10.5, fontWeight: 900, color: '#334155' }}>{nivel}</span>
-                          {!esVistaMovilApp && <span style={{ fontSize: 10.5, color: '#64748b' }}>{fecha}</span>}
-                          {!esVistaMovilApp && <span style={{ fontSize: 10.5, color: '#64748b' }}>{modalidad}</span>}
-                          {!esVistaMovilApp && <span style={{ fontSize: 10.5, fontWeight: 900 }}>{entrenos}</span>}
-                          {!esVistaMovilApp && (
-                            <span style={{ fontSize: 10, fontWeight: 900, color: estado === 'Conservar' ? '#15803d' : '#b45309' }}>{estado}</span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div
-                    style={{
-                      padding: 13,
-                      borderRadius: 14,
-                      border: '1px solid #a5f3fc',
-                      background: '#ecfeff',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      gap: 10,
-                      flexWrap: 'wrap',
-                      alignItems: 'center',
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontSize: 9, fontWeight: 950, color: '#0e7490', letterSpacing: .65 }}>EJEMPLO DE SEMILLA VALIDADA</div>
-                      <strong style={{ display: 'block', marginTop: 3 }}>copia_maestra_2027_2028.csv</strong>
-                      <span style={{ fontSize: 10.5, color: '#475569' }}>118 alumnos correctos · 0 errores</span>
-                    </div>
-                    <button type="button" disabled style={{ ...botonSecundario, opacity: .55, cursor: 'not-allowed' }}>
-                      Acción desactivada en demo
-                    </button>
-                  </div>
-                </div>
-              </article>
-            </>
-          ) : (
+          {(
             <>
           <details
             style={{
@@ -28852,7 +26337,7 @@ async function abrirGestionOperativaIntensivoDia(
       )}
 
       {pantalla === 'analisis' && esCoordinadorJefeApp && (
-        <section style={{ display: 'grid', gap: 13, minWidth: 0 }}>
+        <section className="mitico-product-screen mitico-product-analisis" style={{ display: 'grid', gap: 13, minWidth: 0 }}>
           <article
             style={{
               borderRadius: esVistaMovilApp ? 16 : 18,
@@ -28907,23 +26392,10 @@ async function abrirGestionOperativaIntensivoDia(
                   justifyContent: esVistaMovilApp ? 'flex-start' : 'flex-end',
                 }}
               >
+                
                 <button
                   type="button"
-                  hidden
-                  onClick={() => setModoDemoVisual(!modoDemoVisual)}
-                  style={{
-                    ...botonSecundario,
-                    borderColor: modoDemoVisual ? '#86efac' : 'rgba(255,255,255,.24)',
-                    background: modoDemoVisual ? '#dcfce7' : 'rgba(255,255,255,.08)',
-                    color: modoDemoVisual ? '#166534' : '#ffffff',
-                    minHeight: 36,
-                  }}
-                >
-                  {modoDemoVisual ? 'Cerrar ejemplo' : 'Ver ejemplo'}
-                </button>
-                <button
-                  type="button"
-                  disabled={!analisisAdmin || cargandoAnalisisAdmin || modoDemoVisual}
+                  disabled={!analisisAdmin || cargandoAnalisisAdmin}
                   onClick={descargarPdfAnalisisAdminApp}
                   style={{ ...botonSecundario, minHeight: 36, background: '#ffffff', color: '#0f172a' }}
                 >
@@ -28931,7 +26403,7 @@ async function abrirGestionOperativaIntensivoDia(
                 </button>
                 <button
                   type="button"
-                  disabled={!analisisAdmin || cargandoAnalisisAdmin || modoDemoVisual}
+                  disabled={!analisisAdmin || cargandoAnalisisAdmin}
                   onClick={descargarExcelAnalisisAdminApp}
                   style={{ ...botonSecundario, minHeight: 36, background: '#ffffff', color: '#0f172a' }}
                 >
@@ -28939,7 +26411,7 @@ async function abrirGestionOperativaIntensivoDia(
                 </button>
                 <button
                   type="button"
-                  disabled={!analisisAdmin || cargandoAnalisisAdmin || modoDemoVisual}
+                  disabled={!analisisAdmin || cargandoAnalisisAdmin}
                   onClick={descargarCsvAnalisisAdminApp}
                   style={{ ...botonSecundario, minHeight: 36, background: '#ffffff', color: '#0f172a' }}
                 >
@@ -28978,14 +26450,8 @@ async function abrirGestionOperativaIntensivoDia(
                     <button
                       key={modalidad}
                       type="button"
-                      disabled={cargandoAnalisisAdmin && !modoDemoVisual}
-                      onClick={() => {
-                        if (modoDemoVisual) {
-                          setModalidadAnalisisAdmin(modalidad);
-                        } else {
-                          cambiarModalidadAnalisisAdminApp(modalidad);
-                        }
-                      }}
+                      disabled={cargandoAnalisisAdmin}
+                      onClick={() => cambiarModalidadAnalisisAdminApp(modalidad)}
                       style={{
                         border: activa ? '1px solid #cbd5e1' : '1px solid transparent',
                         borderRadius: 9,
@@ -29009,14 +26475,12 @@ async function abrirGestionOperativaIntensivoDia(
               <label style={{ ...labelCampo, fontSize: 10, color: '#64748b' }}>
                 Temporada analizada
                 <select
-                  value={modoDemoVisual ? 'demo-2026-2027' : temporadaAnalisisAdminId}
-                  disabled={modoDemoVisual || cargandoAnalisisAdmin || !analisisAdmin}
+                  value={temporadaAnalisisAdminId}
+                  disabled={cargandoAnalisisAdmin || !analisisAdmin}
                   onChange={(e) => cambiarTemporadaAnalisisAdminApp(e.target.value)}
                   style={{ ...selectCampo, minHeight: 38, background: '#ffffff' }}
                 >
-                  {modoDemoVisual ? (
-                    <option value="demo-2026-2027">2026/2027 · actual · ejemplo</option>
-                  ) : (
+                  {(
                     (analisisAdmin?.comparativa_temporadas || []).map((temporada) => (
                       <option key={temporada.temporada_id} value={temporada.temporada_id}>
                         {temporada.temporada}{temporada.activa ? ' · actual' : ''}
@@ -29028,31 +26492,13 @@ async function abrirGestionOperativaIntensivoDia(
             </div>
 
             <div style={{ padding: esVistaMovilApp ? 12 : 16, minWidth: 0 }}>
-              {modoDemoVisual && (
-                <div style={{ marginBottom: 13 }}>
-                  <DemoVisualBannerApp
-                    titulo="Panel de Dirección completo"
-                    descripcion="Ejemplo de una temporada con actividad, evolución mensual y comparación histórica"
-                    onClose={() => setModoDemoVisual(false)}
-                  />
-                </div>
-              )}
-
-              {!modoDemoVisual && cargandoAnalisisAdmin && (
+              {cargandoAnalisisAdmin && (
                 <div style={avisoNeutral}>Calculando métricas con los datos actuales…</div>
               )}
 
-              {!modoDemoVisual && errorAnalisisAdmin && <div style={errorCaja}>{errorAnalisisAdmin}</div>}
+              {errorAnalisisAdmin && <div style={errorCaja}>{errorAnalisisAdmin}</div>}
 
-              {modoDemoVisual ? (
-                <AnalisisPanelVisualApp
-                  datos={crearAnalisisDemoApp(modalidadAnalisisAdmin)}
-                  esVistaMovil={esVistaMovilApp}
-                  esDemo
-                  numero={numeroAnalisisAdminApp}
-                  etiquetaMes={etiquetaMesAnalisisAdminApp}
-                />
-              ) : analisisAdmin && !cargandoAnalisisAdmin ? (
+              {analisisAdmin && !cargandoAnalisisAdmin ? (
                 <AnalisisPanelVisualApp
                   datos={analisisAdmin}
                   esVistaMovil={esVistaMovilApp}
@@ -29071,7 +26517,7 @@ async function abrirGestionOperativaIntensivoDia(
                     fontSize: 12,
                   }}
                 >
-                  Todavía no hay datos suficientes para construir el panel con datos reales.
+                  Todavía no hay datos suficientes para construir el panel con datos reales de esta temporada.
                 </div>
               ) : null}
             </div>
@@ -29244,7 +26690,7 @@ async function abrirGestionOperativaIntensivoDia(
       )}
 
       {pantalla === 'agenda' && (
-        <section className="mitico-agenda-screen" style={agendaShellCompacto}>
+        <section className="mitico-agenda-screen mitico-product-screen mitico-product-entrenamientos" style={agendaShellCompacto}>
           <article className="mitico-agenda-hero" style={agendaHeroTrabajoSemanal}>
             <div>
               <p style={etiquetaSuperior}>OPERATIVA SEMANAL</p>
@@ -29269,7 +26715,7 @@ async function abrirGestionOperativaIntensivoDia(
                   : '-'}
               </span>
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => { cargarAgendaOperativaDirecta(); cargarDisponibilidad(); cargarEntrenadores(); }}
                 style={{
                   ...botonSecundario,
                   marginTop: 8,
@@ -32048,7 +29494,7 @@ async function abrirGestionOperativaIntensivoDia(
 
 
         return (
-          <section style={{ display: 'grid', gap: 18 }}>
+          <section className="mitico-product-screen mitico-product-ocio" style={{ display: 'grid', gap: 18 }}>
             <article
               style={{
                 borderRadius: esVistaMovilApp ? 20 : 26,
@@ -32144,26 +29590,7 @@ async function abrirGestionOperativaIntensivoDia(
                   >
                     Temporada {temporadaActivaCierre || 'activa'}
                   </span>
-                  {esCoordinadorJefeApp && (
-                    <button
-                      type="button"
-                      hidden
-                  onClick={() => setModoDemoVisual(!modoDemoVisual)}
-                      style={{
-                        borderRadius: 999,
-                        padding: '7px 11px',
-                        border: '1px solid rgba(255,255,255,0.28)',
-                        background: modoDemoVisual ? '#ffffff' : 'rgba(255,255,255,0.10)',
-                        color: modoDemoVisual ? '#065f46' : '#ffffff',
-                        fontSize: 12,
-                        fontWeight: 900,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {modoDemoVisual ? 'Cerrar ejemplo' : 'Ver ejemplo'}
-                    </button>
-                  )}
-                </div>
+                                  </div>
               </div>
 
               <div
@@ -32348,12 +29775,7 @@ async function abrirGestionOperativaIntensivoDia(
               </div>
             </article>
 
-            {modoDemoVisual && esCoordinadorJefeApp && (
-              <DemoOcioApp
-                esMovil={esVistaMovilApp}
-                onClose={() => setModoDemoVisual(false)}
-              />
-            )}
+            
 
             {mostrarFormularioOcioGrupo && ocioGrupoForm.id && (
               <article
@@ -33339,43 +30761,48 @@ async function abrirGestionOperativaIntensivoDia(
                       </div>
 
                       {miembrosGrupo.length > 0 ? (
-                        <ul
-                          style={{
-                            margin: '12px 0 0 18px',
-                            padding: 0,
-                            lineHeight: 1.55,
-                          }}
-                        >
+                        <div style={{ display: 'grid', gap: 6, marginTop: 12 }}>
                           {miembrosGrupo.map((alumno) => (
-                            <li key={alumno.alumno_id}>
-                              {formatearAlumnoListadoOperativo(
-                                `${alumno.alumno} · ${
-                                  alumno.nivel_usado || alumno.nivel || ''
-                                }`
-                              )}
-                            </li>
+                            <div
+                              key={alumno.alumno_id}
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'auto minmax(0,1fr) auto',
+                                gap: 8,
+                                alignItems: 'center',
+                                padding: '7px 9px',
+                                borderRadius: 11,
+                                background: '#f8fafc',
+                                border: '1px solid #edf2f7',
+                              }}
+                            >
+                              <span style={{ width: 24, height: 24, borderRadius: '50%', display: 'grid', placeItems: 'center', background: '#d1fae5', color: '#065f46', fontSize: 9, fontWeight: 950 }}>
+                                {String(alumno.alumno || '?').slice(0,1).toUpperCase()}
+                              </span>
+                              <span style={{ minWidth: 0, fontSize: 11, fontWeight: 800, color: '#334155', overflowWrap: 'anywhere' }}>
+                                {alumno.alumno}
+                              </span>
+                              <span className="mitico-product-badge" style={{ background: '#ffffff', color: '#475569', border: '1px solid #dbe3ec' }}>
+                                {alumno.nivel_usado || alumno.nivel || '—'}
+                              </span>
+                            </div>
                           ))}
-                        </ul>
+                        </div>
                       ) : grupo.alumnos_lista ? (
-                        <ul
-                          style={{
-                            margin: '12px 0 0 18px',
-                            padding: 0,
-                            lineHeight: 1.55,
-                          }}
-                        >
-                          {grupo.alumnos_lista
-                            .split(' || ')
-                            .map((alumno, indice) => (
-                              <li key={`${grupo.grupo_id}-${indice}`}>
-                                {formatearAlumnoListadoOperativo(alumno)}
-                              </li>
-                            ))}
-                        </ul>
+                        <div style={{ display: 'grid', gap: 6, marginTop: 12 }}>
+                          {grupo.alumnos_lista.split(' || ').map((alumno, indice) => (
+                            <div key={`${grupo.grupo_id}-${indice}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 9px', borderRadius: 11, background: '#f8fafc', border: '1px solid #edf2f7', fontSize: 11, fontWeight: 800, color: '#334155' }}>
+                              <span style={{ width: 24, height: 24, borderRadius: '50%', display: 'grid', placeItems: 'center', background: '#d1fae5', color: '#065f46', fontSize: 9, fontWeight: 950 }}>
+                                {String(alumno || '?').trim().slice(0,1).toUpperCase()}
+                              </span>
+                              <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{formatearAlumnoListadoOperativo(alumno)}</span>
+                            </div>
+                          ))}
+                        </div>
                       ) : (
-                        <p style={{ margin: '12px 0 0', color: '#64748b' }}>
+                        <div className="mitico-product-card-soft" style={{ marginTop: 12, padding: 10, color: '#64748b' }}>
                           Sin alumnos asignados.
-                        </p>
+                        </div>
                       )}
 
                       {avisosEvolucion.length > 0 && (
@@ -35942,7 +33369,7 @@ async function abrirGestionOperativaIntensivoDia(
       )}
 
       {pantalla === 'entrenador' && (
-        <section className="trainer-view" style={vistaEntrenadorShell}>
+        <section className="trainer-view mitico-product-screen mitico-product-vista-entrenador" style={vistaEntrenadorShell}>
           <style>{`
             @media (max-width: 600px) {
               .trainer-view {
@@ -36140,22 +33567,7 @@ async function abrirGestionOperativaIntensivoDia(
                 </span>
               </div>
             </div>
-            {esCoordinadorJefeApp && (
-              <button
-                type="button"
-                hidden
-                  onClick={() => setModoDemoVisual(!modoDemoVisual)}
-                style={{
-                  ...botonSecundario,
-                  background: modoDemoVisual ? '#dcfce7' : 'rgba(255,255,255,.10)',
-                  color: modoDemoVisual ? '#166534' : '#ffffff',
-                  borderColor: modoDemoVisual ? '#86efac' : 'rgba(255,255,255,.24)',
-                }}
-              >
-                {modoDemoVisual ? 'Cerrar ejemplo' : 'Ver ejemplo'}
-              </button>
-            )}
-            <button
+                        <button
               onClick={() => {
                 cargarGruposEntrenador();
                 cargarDisponibilidad();
@@ -36206,12 +33618,7 @@ async function abrirGestionOperativaIntensivoDia(
             </div>
           </article>
 
-          {modoDemoVisual && esCoordinadorJefeApp && (
-            <DemoEntrenadorApp
-              esMovil={esVistaMovilApp}
-              onClose={() => setModoDemoVisual(false)}
-            />
-          )}
+          
 
           {cargando && <p>Cargando vista entrenador...</p>}
 
@@ -37659,10 +35066,7 @@ async function abrirGestionOperativaIntensivoDia(
                                             const mostrarGrupoEnPortal =
                                               esGrupoActivo &&
                                               typeof document !== 'undefined' &&
-                                              typeof window !== 'undefined' &&
-                                              window.matchMedia(
-                                                '(max-width: 719px)'
-                                              ).matches;
+                                              esVistaMovilApp;
 
                                             if (mostrarGrupoEnPortal) {
                                               return createPortal(
@@ -37801,7 +35205,7 @@ async function abrirGestionOperativaIntensivoDia(
           ];
 
           return (
-            <section>
+            <section className="mitico-product-screen mitico-product-cierre">
               <div
                 style={{
                   ...cabeceraPantalla,
@@ -38446,7 +35850,7 @@ async function abrirGestionOperativaIntensivoDia(
 
       {pantalla === 'administracion' &&
         puedeVerAdministracionAltasApp(perfilUsuario?.rol) && (
-          <section style={{ display: 'grid', gap: 16, minWidth: 0 }}>
+          <section className="mitico-product-screen mitico-product-altas" style={{ display: 'grid', gap: 16, minWidth: 0 }}>
             <article
               style={{
                 borderRadius: esVistaMovilApp ? 19 : 24,
@@ -38536,22 +35940,7 @@ async function abrirGestionOperativaIntensivoDia(
                   >
                     Actualizar
                   </button>
-                  {esCoordinadorJefeApp && (
-                    <button
-                      type="button"
-                      hidden
-                  onClick={() => setModoDemoVisual(!modoDemoVisual)}
-                      style={{
-                        ...botonSecundario,
-                        background: modoDemoVisual ? '#dcfce7' : 'rgba(255,255,255,.08)',
-                        color: modoDemoVisual ? '#166534' : '#ffffff',
-                        borderColor: modoDemoVisual ? '#86efac' : 'rgba(255,255,255,.22)',
-                      }}
-                    >
-                      {modoDemoVisual ? 'Cerrar ejemplo' : 'Ver ejemplo'}
-                    </button>
-                  )}
-                  <button
+                                    <button
                     type="button"
                     onClick={() => setMostrarFormularioAltaNivel(!mostrarFormularioAltaNivel)}
                     style={{
@@ -38613,12 +36002,7 @@ async function abrirGestionOperativaIntensivoDia(
               </div>
             </article>
 
-            {modoDemoVisual && esCoordinadorJefeApp && (
-              <DemoAltasTestApp
-                esMovil={esVistaMovilApp}
-                onClose={() => setModoDemoVisual(false)}
-              />
-            )}
+            
 
             <details
               style={{
@@ -40140,6 +37524,7 @@ async function abrirGestionOperativaIntensivoDia(
 
           return (
             <section
+              className="mitico-product-screen mitico-product-fichas"
               style={{
                 display: 'grid',
                 gap: 16,
@@ -40268,26 +37653,7 @@ async function abrirGestionOperativaIntensivoDia(
                       justifyContent: esVistaMovilApp ? 'stretch' : 'flex-end',
                     }}
                   >
-                    {esCoordinadorJefeApp && (
-                      <button
-                        type="button"
-                        hidden
-                  onClick={() => setModoDemoVisual(!modoDemoVisual)}
-                        style={{
-                          ...botonSecundario,
-                          borderColor: modoDemoVisual ? '#86efac' : '#cbd5e1',
-                          background: modoDemoVisual ? '#ecfdf5' : '#ffffff',
-                          color: modoDemoVisual ? '#166534' : '#334155',
-                          boxShadow: 'none',
-                          ...(esVistaMovilApp
-                            ? { flex: '1 1 120px', minWidth: 0 }
-                            : {}),
-                        }}
-                      >
-                        {modoDemoVisual ? 'Cerrar ejemplo' : 'Ver ejemplo'}
-                      </button>
-                    )}
-
+                    
                     <button
                       type="button"
                       onClick={() => {
@@ -40310,12 +37676,7 @@ async function abrirGestionOperativaIntensivoDia(
                 </div>
               </article>
 
-              {modoDemoVisual && esCoordinadorJefeApp && (
-                <DemoFichasApp
-                  esMovil={esVistaMovilApp}
-                  onClose={() => setModoDemoVisual(false)}
-                />
-              )}
+              
 
               {vistaFichasAlumnos === 'intensivos' && (
                 <>
@@ -41176,7 +38537,7 @@ async function abrirGestionOperativaIntensivoDia(
                           flexWrap: 'wrap',
                         }}
                       >
-                        <div style={{ minWidth: 260, flex: 1 }}>
+                        <div style={{ minWidth: 0, flex: '1 1 260px' }}>
                           <div
                             style={{
                               display: 'flex',
@@ -41972,7 +39333,7 @@ async function abrirGestionOperativaIntensivoDia(
         const accesosDesactivados = usuariosOperativos.filter((usuario) => usuario.estado_acceso === 'desactivado').length;
 
         return (
-          <section style={{ display: 'grid', gap: 14, minWidth: 0 }}>
+          <section className="mitico-product-screen mitico-product-accesos" style={{ display: 'grid', gap: 14, minWidth: 0 }}>
             <article
               style={{
                 borderRadius: esVistaMovilApp ? 16 : 18,
@@ -42027,22 +39388,9 @@ async function abrirGestionOperativaIntensivoDia(
                     justifyContent: esVistaMovilApp ? 'flex-start' : 'flex-end',
                   }}
                 >
-                  <button
-                    type="button"
-                    hidden
-                  onClick={() => setModoDemoVisual(!modoDemoVisual)}
-                    style={{
-                      ...botonSecundario,
-                      borderColor: modoDemoVisual ? '#86efac' : 'rgba(255,255,255,.24)',
-                      background: modoDemoVisual ? '#dcfce7' : 'rgba(255,255,255,.08)',
-                      color: modoDemoVisual ? '#166534' : '#ffffff',
-                      minHeight: 36,
-                    }}
-                  >
-                    {modoDemoVisual ? 'Cerrar ejemplo' : 'Ver ejemplo'}
-                  </button>
+                  
 
-                  {!modoDemoVisual && (
+                  {(
                     <>
                       <button
                         type="button"
@@ -42073,10 +39421,10 @@ async function abrirGestionOperativaIntensivoDia(
                 }}
               >
                 {[
-                  [modoDemoVisual ? '4' : String(usuariosOperativos.length), 'Accesos equipo', '#0f172a'],
-                  [modoDemoVisual ? '3' : String(usuariosActivos), 'Activos', '#166534'],
-                  [modoDemoVisual ? '1' : String(invitacionesPendientes), 'Invitaciones', '#9a3412'],
-                  [modoDemoVisual ? '0' : String(accesosDesactivados), 'Desactivados', '#b91c1c'],
+                  [String(usuariosOperativos.length), 'Accesos equipo', '#0f172a'],
+                  [String(usuariosActivos), 'Activos', '#166534'],
+                  [String(invitacionesPendientes), 'Invitaciones', '#9a3412'],
+                  [String(accesosDesactivados), 'Desactivados', '#b91c1c'],
                 ].map(([valor, etiqueta, color]) => (
                   <div
                     key={etiqueta}
@@ -42095,12 +39443,7 @@ async function abrirGestionOperativaIntensivoDia(
               </div>
             </article>
 
-            {modoDemoVisual ? (
-              <DemoAccesosEquipoApp
-                esMovil={esVistaMovilApp}
-                onClose={() => setModoDemoVisual(false)}
-              />
-            ) : (
+            {(
               <>
                 <article
                   style={{
@@ -42234,7 +39577,7 @@ async function abrirGestionOperativaIntensivoDia(
                   <article style={{ ...tarjetaMovilVacia, marginBottom: 0 }}>
                     <h3 style={{ marginTop: 0 }}>Sin usuarios operativos</h3>
                     <p style={{ marginBottom: 0 }}>
-                      Aquí aparecerán las cuentas de coordinación y administración cuando existan datos reales.
+                      Aquí aparecerán las cuentas de coordinación y administración cuando existan accesos creados.
                     </p>
                   </article>
                 )}
@@ -42433,7 +39776,7 @@ async function abrirGestionOperativaIntensivoDia(
       })()}
 
       {pantalla === 'entrenadores' && (
-        <section>
+        <section className="mitico-product-screen mitico-product-entrenadores">
           <article
             style={{
               borderRadius: 20,
@@ -42463,23 +39806,7 @@ async function abrirGestionOperativaIntensivoDia(
               </div>
 
               <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
-                {esCoordinadorJefeApp && (
-                  <button
-                    type="button"
-                    hidden
-                  onClick={() => setModoDemoVisual(!modoDemoVisual)}
-                    style={{
-                      ...botonSecundario,
-                      minHeight: 36,
-                      borderColor: modoDemoVisual ? '#86efac' : '#cbd5e1',
-                      background: modoDemoVisual ? '#f0fdf4' : '#ffffff',
-                      color: modoDemoVisual ? '#166534' : '#334155',
-                    }}
-                  >
-                    {modoDemoVisual ? 'Cerrar ejemplo' : 'Ver ejemplo'}
-                  </button>
-                )}
-                {!modoDemoVisual && (
+                                {(
                   <>
                     <button type="button" onClick={abrirNuevoEntrenador} style={{ ...botonPrincipal, minHeight: 36 }}>
                       + Añadir entrenador
@@ -42503,10 +39830,10 @@ async function abrirGestionOperativaIntensivoDia(
               }}
             >
               {[
-                [modoDemoVisual ? '4' : String(entrenadores.length), 'Entrenadores', '#0f172a', '#ffffff'],
-                [modoDemoVisual ? '3' : String(totalEntrenadoresActivosApp), 'Activos', '#166534', '#f0fdf4'],
-                [modoDemoVisual ? '1' : String(totalEntrenadoresDocumentacionPendienteApp), 'Documentación pendiente', '#b45309', '#fffbeb'],
-                [modoDemoVisual ? '1' : String(totalEntrenadoresSinChaquetaApp), 'Sin chaqueta', '#1d4ed8', '#eff6ff'],
+                [String(entrenadores.length), 'Entrenadores', '#0f172a', '#ffffff'],
+                [String(totalEntrenadoresActivosApp), 'Activos', '#166534', '#f0fdf4'],
+                [String(totalEntrenadoresDocumentacionPendienteApp), 'Documentación pendiente', '#b45309', '#fffbeb'],
+                [String(totalEntrenadoresSinChaquetaApp), 'Sin chaqueta', '#1d4ed8', '#eff6ff'],
               ].map(([valor, etiqueta, color, fondo]) => (
                 <div key={etiqueta} style={{ padding: esVistaMovilApp ? '10px' : '11px 12px', borderRadius: 13, border: '1px solid #dbe3ec', background: fondo, minWidth: 0 }}>
                   <div style={{ fontSize: esVistaMovilApp ? 20 : 23, lineHeight: 1, fontWeight: 950, color }}>{valor}</div>
@@ -42516,12 +39843,7 @@ async function abrirGestionOperativaIntensivoDia(
             </div>
           </article>
 
-          {modoDemoVisual && esCoordinadorJefeApp ? (
-            <DemoEntrenadoresApp
-              esMovil={esVistaMovilApp}
-              onClose={() => setModoDemoVisual(false)}
-            />
-          ) : (
+          {(
             <>
 
           {mostrarFormularioEntrenador && (
@@ -42820,7 +40142,6 @@ async function abrirGestionOperativaIntensivoDia(
 
           <EntrenadoresProductListApp
             esMovil={esVistaMovilApp}
-            modoDemo={false}
             puedeGestionarAccesos={puedeGestionarAccesosUsuarioApp}
             items={entrenadoresFiltrados.map((entrenador) => {
               const documentacionOk =
@@ -42908,56 +40229,54 @@ async function abrirGestionOperativaIntensivoDia(
       )}
 
       {pantalla === 'disponibilidad' && (
-        <section style={{ display: 'grid', gap: 16 }}>
-          <div className="availability-flow-card">
-            <div className="availability-flow-head">
-              <div>
-                <h2>Disponibilidad</h2>
-                <p>
-                  Configura solo los días y turnos reales de la semana y publica
-                  la versión que verá la Vista entrenador.
+        <section className="mitico-product-screen mitico-product-disponibilidad" style={{ display: 'grid', gap: 16 }}>
+          <article
+            className="mitico-product-hero"
+            style={{
+              borderRadius: esVistaMovilApp ? 18 : 22,
+              padding: esVistaMovilApp ? 15 : 19,
+              background: 'linear-gradient(135deg,#063b36 0%,#0f766e 58%,#0b5f57 100%)',
+              color: '#fff',
+              boxShadow: '0 16px 38px rgba(6,59,54,.16)',
+              overflow: 'hidden',
+            }}
+          >
+            <div className="mitico-product-section-title">
+              <div style={{ minWidth: 0 }}>
+                <span className="mitico-product-eyebrow" style={{ color: '#a7f3d0' }}>EQUIPO · PLANIFICACIÓN</span>
+                <h2 style={{ margin: '5px 0 0', color: '#fff', fontSize: esVistaMovilApp ? 24 : 29 }}>Disponibilidad</h2>
+                <p style={{ margin: '6px 0 0', color: '#d1fae5', maxWidth: 720 }}>
+                  Configura solo los días y turnos reales de la semana, publícalos y revisa quién puede trabajar en cada turno.
                 </p>
               </div>
-
-              <div className="availability-editor-hero-status">
-                <strong>
-                  {estadoServidorDisponibilidadEditor === 'publicado'
-                    ? 'Semana publicada'
-                    : estadoServidorDisponibilidadEditor === 'borrador'
-                    ? 'Borrador'
-                    : 'Sin preparar'}
-                </strong>
-                {estadoServidorDisponibilidadEditor === 'publicado' && (
-                  <span className="availability-editor-published-week">
-                    {borradorDisponibilidadEditor?.semana_inicio
-                      ? rangoSemanaAgenda(borradorDisponibilidadEditor.semana_inicio)
-                      : '-'}
-                  </span>
-                )}
-                <span>
-                  {resumenBorradorDisponibilidadEditor.dias} días ·{' '}
-                  {resumenBorradorDisponibilidadEditor.turnos} turnos
-                </span>
-              </div>
+              <span className="mitico-product-badge" style={{ background: 'rgba(255,255,255,.10)', color: '#ecfdf5', border: '1px solid rgba(255,255,255,.18)' }}>
+                {estadoServidorDisponibilidadEditor === 'publicado' ? 'SEMANA PUBLICADA' : estadoServidorDisponibilidadEditor === 'borrador' ? 'BORRADOR' : 'SIN PREPARAR'}
+              </span>
             </div>
 
-            <details className="availability-flow-details">
-              <summary>Chuleta rápida del flujo</summary>
-              <ol>
-                <li>Selecciona la semana que vas a preparar.</li>
-                <li>Activa solo los días reales y ajusta sus turnos.</li>
-                <li>Guarda borrador mientras estés revisando.</li>
-                <li>Publica cuando la semana ya esté correcta.</li>
-                <li>
-                  Revisa después las respuestas en “Disponibilidad recibida por
-                  turno”.
-                </li>
-                <li>
-                  La Vista entrenador usará siempre la última versión publicada.
-                </li>
+            <div className="mitico-product-kpis" style={{ marginTop: 14 }}>
+              <div className="mitico-product-kpi" style={{ background: 'rgba(255,255,255,.10)', borderColor: 'rgba(255,255,255,.16)' }}><span style={{ color: '#a7f3d0' }}>Días activos</span><strong style={{ color: '#fff' }}>{resumenBorradorDisponibilidadEditor.dias}</strong></div>
+              <div className="mitico-product-kpi" style={{ background: 'rgba(255,255,255,.10)', borderColor: 'rgba(255,255,255,.16)' }}><span style={{ color: '#a7f3d0' }}>Turnos</span><strong style={{ color: '#fff' }}>{resumenBorradorDisponibilidadEditor.turnos}</strong></div>
+              <div className="mitico-product-kpi" style={{ background: 'rgba(255,255,255,.10)', borderColor: 'rgba(255,255,255,.16)' }}><span style={{ color: '#a7f3d0' }}>Disponibles</span><strong style={{ color: '#fff' }}>{disponibilidadPorTurno.reduce((total, turno) => total + turno.disponibles.length, 0)}</strong></div>
+              <div className="mitico-product-kpi" style={{ background: 'rgba(255,255,255,.10)', borderColor: 'rgba(255,255,255,.16)' }}><span style={{ color: '#a7f3d0' }}>Pendientes</span><strong style={{ color: '#fff' }}>{disponibilidadPorTurno.reduce((total, turno) => total + turno.pendientes.length, 0)}</strong></div>
+            </div>
+
+            {estadoServidorDisponibilidadEditor === 'publicado' && borradorDisponibilidadEditor?.semana_inicio && (
+              <div style={{ marginTop: 10, color: '#d1fae5', fontSize: 11, fontWeight: 850 }}>
+                Publicada para {rangoSemanaAgenda(borradorDisponibilidadEditor.semana_inicio)}
+              </div>
+            )}
+
+            <details style={{ marginTop: 12, border: '1px solid rgba(255,255,255,.16)', borderRadius: 12, padding: '8px 10px', background: 'rgba(255,255,255,.07)' }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 900, color: '#fff' }}>Flujo de trabajo</summary>
+              <ol style={{ marginBottom: 0, color: '#d1fae5', lineHeight: 1.55 }}>
+                <li>Selecciona la semana y activa solo los días reales.</li>
+                <li>Ajusta los turnos y guarda borrador mientras revisas.</li>
+                <li>Publica cuando esté correcto.</li>
+                <li>Revisa las respuestas por turno y asigna entrenadores.</li>
               </ol>
             </details>
-          </div>
+          </article>
 
           <section className="availability-response-summary">
             <header className="availability-response-summary-header">
@@ -43838,6 +41157,7 @@ async function abrirGestionOperativaIntensivoDia(
 
       {pantalla === 'cobros' && esCoordinadorJefeApp && (
         <section
+          className="mitico-product-screen mitico-product-cobros"
           style={{
             display: 'grid',
             gap: 16,
@@ -43882,19 +41202,7 @@ async function abrirGestionOperativaIntensivoDia(
               </p>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                hidden
-                  onClick={() => setModoDemoVisual(!modoDemoVisual)}
-                style={{
-                  ...botonSecundario,
-                  borderColor: modoDemoVisual ? '#86efac' : '#cbd5e1',
-                  background: modoDemoVisual ? '#ecfdf5' : '#ffffff',
-                  color: modoDemoVisual ? '#166534' : '#334155',
-                }}
-              >
-                {modoDemoVisual ? 'Cerrar ejemplo' : 'Ver ejemplo'}
-              </button>
+              
               <button
                 onClick={() => void cargarCobrosDesdeSemanaActiva()}
                 style={botonSecundario}
@@ -43908,14 +41216,9 @@ async function abrirGestionOperativaIntensivoDia(
             </div>
           </article>
 
-          {modoDemoVisual && esCoordinadorJefeApp && (
-            <DemoCobrosApp
-              esMovil={esVistaMovilApp}
-              onClose={() => setModoDemoVisual(false)}
-            />
-          )}
+          
 
-          {!modoDemoVisual && (
+          {(
             <>
           <article
             style={{
@@ -44997,8 +42300,6 @@ async function abrirGestionOperativaIntensivoDia(
           error,
           esVistaMovilApp,
           esCoordinadorJefeApp,
-          modoDemoVisual,
-          setModoDemoVisual,
           enfocarElementoApp,
           estiloBadgePistaApp,
           estiloGrupoPorPistaApp,
