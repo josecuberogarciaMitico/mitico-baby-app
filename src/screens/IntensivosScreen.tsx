@@ -1,4 +1,3 @@
-// MITICO_PRODUCTO_2026_GLOBAL_REAL_V3_0
 import React from 'react';
 import { CampoSelect } from '../lib/appHelpers';
 export function PantallaIntensivos(ctx: any) {
@@ -25,7 +24,7 @@ export function PantallaIntensivos(ctx: any) {
     diaAsistenciaSeleccionadoId, diaEditandoIntensivoId, diaGrupoSeleccionadoId,
     diaIntensivoInicial, diasDelIntensivo, eliminarRecuperacionIntensivo, entrenadores,
     entrenadoresApoyoPorGrupoRecomendado, entrenadoresDisponiblesDiaIntensivo,
-    entrenadoresPorGrupoRecomendado, error, esVistaMovilApp, esCoordinadorJefeApp,
+    entrenadoresPorGrupoRecomendado, error, esVistaMovilApp,
     enfocarElementoApp, estiloBadgePistaApp, estiloGrupoPorPistaApp,
     estiloValidacionPedagogicaApp, etiquetaPistaVisualApp, etiquetaSuperior, filtroIntensivos,
     formDiaIntensivo, formGrupoIntensivo, formIntensivo, temporadaActivaCierre, formatearAlumnoListadoOperativo, formatearFecha, formatearObservaciones,
@@ -230,286 +229,13 @@ export function PantallaIntensivos(ctx: any) {
   }
 
 
-  const estilosIntensivosProducto = `
-    .mitico-intensivos-screen {
-      --int-orange: #f97316;
-      --int-orange-soft: #fff7ed;
-      --int-ink: #152033;
-      --int-muted: #667085;
-      --int-border: #e4eaf1;
-      display: grid;
-      gap: 18px;
-      width: 100%;
-      min-width: 0;
-      max-width: 100%;
-      container-type: inline-size;
-    }
-    .mitico-intensivos-screen * { box-sizing: border-box; min-width: 0; }
-    .mitico-intensivos-screen :where(h2,h3,h4,p,strong,span,small) { overflow-wrap:anywhere; }
-    .mitico-intensivos-screen :where(input,select,textarea) { max-width:100%; }
-    .mitico-intensivos-hero {
-      border: 0 !important;
-      background: linear-gradient(125deg, #fff 0%, #fffaf5 65%, #fff4e9 100%) !important;
-      box-shadow: 0 14px 38px rgba(15,23,42,.065) !important;
-      border-radius: 22px !important;
-      padding: 22px 24px !important;
-      position: relative;
-      overflow: hidden;
-    }
-    .mitico-intensivos-hero::after {
-      content: '';
-      position: absolute;
-      width: 180px;
-      height: 180px;
-      right: -70px;
-      top: -90px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(249,115,22,.14), rgba(249,115,22,0) 68%);
-      pointer-events: none;
-    }
-    .mitico-intensivos-hero h2 {
-      color: var(--int-ink);
-      font-size: clamp(27px, 2.4vw, 36px);
-      letter-spacing: -.035em;
-      line-height: 1.05;
-    }
-    .mitico-intensivos-hero-copy {
-      margin: 0;
-      max-width: 720px;
-      color: var(--int-muted);
-      font-size: 14px;
-      line-height: 1.5;
-    }
-    .mitico-intensivos-hero-actions {
-      display: flex;
-      gap: 9px;
-      flex-wrap: wrap;
-      align-items: center;
-      position: relative;
-      z-index: 1;
-    }
-    .mitico-intensivos-hero-actions > button {
-      min-height: 42px;
-      border-radius: 12px !important;
-      font-weight: 850 !important;
-    }
-    .mitico-intensivo-create {
-      border: 1px solid #fed7aa !important;
-      background: #fff !important;
-      box-shadow: 0 12px 32px rgba(15,23,42,.055) !important;
-      border-radius: 20px !important;
-      padding: 20px !important;
-      margin: 0 !important;
-    }
-    .mitico-intensivo-create h3 { color: var(--int-ink); font-size: 19px; }
-    .mitico-intensivos-toolbar {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr);
-      gap: 12px;
-      align-items: center;
-      padding: 12px;
-      border: 1px solid var(--int-border);
-      border-radius: 18px;
-      background: rgba(255,255,255,.92);
-      box-shadow: 0 9px 28px rgba(15,23,42,.045);
-    }
-    .mitico-intensivos-toolbar > input {
-      margin: 0 !important;
-      min-height: 44px;
-      border-radius: 12px !important;
-      border-color: #dce4ed !important;
-      background: #f8fafc !important;
-    }
-    .mitico-intensivos-filters {
-      display: flex !important;
-      gap: 6px !important;
-      flex-wrap: wrap !important;
-      margin: 0 !important;
-      justify-content: flex-start;
-      min-width: 0;
-      max-width: 100%;
-    }
-    .mitico-intensivos-filters > button {
-      min-height: 38px;
-      border-radius: 999px !important;
-      padding: 7px 13px !important;
-      box-shadow: none !important;
-      white-space: nowrap;
-    }
-    .mitico-intensivos-list { display: grid !important; gap: 16px !important; }
-    .mitico-intensivo-card {
-      border: 1px solid var(--int-border) !important;
-      border-left: 4px solid var(--int-orange) !important;
-      border-radius: 22px !important;
-      background: #fff !important;
-      box-shadow: 0 14px 40px rgba(15,23,42,.065) !important;
-      padding: 20px !important;
-      transition: box-shadow .18s ease, border-color .18s ease;
-    }
-    .mitico-intensivo-card:hover {
-      border-color: #d7dee8 !important;
-      border-left-color: var(--int-orange) !important;
-      box-shadow: 0 18px 48px rgba(15,23,42,.085) !important;
-    }
-    .mitico-intensivo-card-head {
-      display: flex !important;
-      flex-wrap: wrap !important;
-      gap: 18px !important;
-      align-items: flex-start !important;
-      min-width: 0;
-    }
-    .mitico-intensivo-card-head > .mitico-intensivo-card-title { flex: 1 1 420px; }
-    .mitico-intensivo-card-head > .mitico-intensivo-card-actions { flex: 0 1 470px; }
-    .mitico-intensivo-card-title { min-width: 0; }
-    .mitico-intensivo-card-title h3 {
-      color: var(--int-ink);
-      font-size: 22px;
-      letter-spacing: -.025em;
-      line-height: 1.12;
-      margin-bottom: 7px !important;
-    }
-    .mitico-intensivo-card-title > p:last-of-type { font-size: 13px; line-height: 1.45; }
-    .mitico-intensivo-stats {
-      display: grid !important;
-      grid-template-columns: repeat(5,minmax(0,1fr));
-      gap: 7px !important;
-      margin-top: 12px !important;
-    }
-    .mitico-intensivo-stats > div { min-width: 0; }
-    .mitico-intensivo-card-actions {
-      display: flex !important;
-      gap: 7px !important;
-      flex-wrap: wrap !important;
-      justify-content: flex-end !important;
-      align-items: center;
-      max-width: 470px;
-    }
-    .mitico-intensivo-card-actions > button {
-      min-height: 38px;
-      border-radius: 11px !important;
-      font-size: 11px !important;
-      white-space: nowrap;
-    }
-    .mitico-intensivo-days-summary {
-      margin-top: 16px;
-      border: 1px solid #e8edf3 !important;
-      border-radius: 15px !important;
-      background: #fafbfc !important;
-      overflow: hidden;
-    }
-    .mitico-intensivo-days-summary > summary {
-      padding: 12px 14px;
-      cursor: pointer;
-      color: #344054;
-      font-weight: 850;
-      font-size: 12px;
-    }
-    .mitico-intensivo-tabs {
-      margin-top: 14px;
-      display: flex !important;
-      flex-wrap: nowrap !important;
-      gap: 4px !important;
-      width: 100%;
-      padding: 5px !important;
-      border: 1px solid #e3e9f0 !important;
-      border-radius: 15px !important;
-      background: #f5f7fa !important;
-      overflow-x: auto !important;
-      scrollbar-width: thin;
-    }
-    .mitico-intensivo-tabs > button {
-      flex: 0 0 auto;
-      min-height: 40px !important;
-      padding: 8px 12px !important;
-      border: 0 !important;
-      border-radius: 10px !important;
-      background: transparent !important;
-      color: #667085 !important;
-      box-shadow: none !important;
-      font-size: 11px !important;
-      font-weight: 800 !important;
-      white-space: nowrap;
-    }
-    .mitico-intensivo-tabs > button:hover { color: #1f2937 !important; background: #fff !important; }
-    .mitico-intensivo-tabs > button.is-active {
-      color: #9a3412 !important;
-      background: #fff !important;
-      box-shadow: 0 3px 11px rgba(15,23,42,.08) !important;
-    }
-    .mitico-intensivos-screen [id^='intensivo-panel-activo-'] {
-      margin-top: 12px !important;
-      border: 1px solid #e3e9f0 !important;
-      border-radius: 18px !important;
-      background: #fff !important;
-      box-shadow: 0 10px 30px rgba(15,23,42,.045) !important;
-      padding: 18px !important;
-    }
-    .mitico-intensivos-screen [id^='intensivo-panel-activo-'] h4 {
-      color: var(--int-ink);
-      font-size: 17px;
-      letter-spacing: -.015em;
-    }
-    .mitico-intensivos-empty {
-      border: 1px dashed #d6dde6 !important;
-      border-radius: 18px !important;
-      background: #fbfcfd !important;
-      box-shadow: none !important;
-    }
-    @container (max-width: 880px) {
-      .mitico-intensivo-card-head { flex-direction: column !important; }
-      .mitico-intensivo-card-head > .mitico-intensivo-card-title,
-      .mitico-intensivo-card-head > .mitico-intensivo-card-actions { flex: 1 1 auto; width:100%; max-width:100%; }
-      .mitico-intensivo-card-actions { justify-content:flex-start !important; max-width:none !important; }
-      .mitico-intensivo-stats { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
-      .mitico-intensivo-tabs { flex-wrap:nowrap !important; overflow-x:auto !important; }
-    }
-    @container (max-width: 560px) {
-      .mitico-intensivo-card { padding:14px !important; border-radius:17px !important; }
-      .mitico-intensivo-card-actions { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)); width:100%; }
-      .mitico-intensivo-card-actions > button { width:100%; white-space:normal; }
-      .mitico-intensivo-card-actions > button:last-child { grid-column:1 / -1; }
-      .mitico-intensivos-hero-actions { width:100%; }
-      .mitico-intensivos-hero-actions > button { flex:1 1 140px; }
-    }
-
-    @media (max-width: 980px) {
-      .mitico-intensivos-toolbar { grid-template-columns: 1fr; }
-      .mitico-intensivos-filters { justify-content: flex-start; }
-      .mitico-intensivo-card-head { grid-template-columns: 1fr; }
-      .mitico-intensivo-card-actions { justify-content: flex-start !important; max-width: none; }
-    }
-    @media (max-width: 600px) {
-      .mitico-intensivos-screen { gap: 12px; }
-      .mitico-intensivos-hero { padding: 17px 15px !important; border-radius: 17px !important; }
-      .mitico-intensivos-hero h2 { font-size: 26px; }
-      .mitico-intensivos-hero-copy { font-size: 12px; }
-      .mitico-intensivos-hero-actions { width: 100%; }
-      .mitico-intensivos-hero-actions > button { flex: 1 1 auto; min-height: 40px; }
-      .mitico-intensivos-toolbar { padding: 9px; border-radius: 15px; }
-      .mitico-intensivos-filters { flex-wrap: nowrap !important; overflow-x: auto; padding-bottom: 2px; }
-      .mitico-intensivo-card { padding: 15px !important; border-radius: 17px !important; border-left-width: 3px !important; }
-      .mitico-intensivo-card-title h3 { font-size: 19px; }
-      .mitico-intensivo-stats { display: grid !important; grid-template-columns: repeat(2,minmax(0,1fr)); }
-      .mitico-intensivo-stats > div { text-align: left; }
-      .mitico-intensivo-card-actions { display: grid !important; grid-template-columns: 1fr 1fr; width: 100%; }
-      .mitico-intensivo-card-actions > button { width: 100%; white-space: normal; }
-      .mitico-intensivo-card-actions > button:last-child { grid-column: 1 / -1; }
-      .mitico-intensivo-tabs { margin-inline: 0; }
-      .mitico-intensivos-screen [id^='intensivo-panel-activo-'] { padding: 13px !important; border-radius: 15px !important; }
-    }
-  `;
-
   return (
-        <section className="mitico-intensivos-screen">
-          <style>{estilosIntensivosProducto}</style>
-          <div className="mitico-intensivos-hero" style={cabeceraPantalla}>
+        <section>
+          <div style={cabeceraPantalla}>
             <div>
               <p style={etiquetaSuperior}>INTENSIVOS</p>
               <h2 style={{ margin: '4px 0 6px' }}>Intensivos</h2>
-              <p className="mitico-intensivos-hero-copy">
-                Programas, alumnos, grupos, asistencia y evaluación final en un único flujo operativo.
-              </p>
-              <details style={{ ...ayudaDesplegableCompacta, marginTop: 10 }}>
+              <details style={{ ...ayudaDesplegableCompacta, marginTop: 8 }}>
                 <summary>Ayuda rápida</summary>
                 <p style={{ margin: '8px 0 0', color: '#475569' }}>
                   Crea el curso, recibe alumnos desde Administración, prepara grupos por día y termina la evaluación final con los reportes reales.
@@ -517,8 +243,8 @@ export function PantallaIntensivos(ctx: any) {
               </details>
             </div>
 
-            <div className="mitico-intensivos-hero-actions">
-              <button onClick={cargarIntensivos} style={botonSecundario}>Actualizar</button>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button onClick={cargarIntensivos}>Actualizar intensivos</button>
               <button
                 onClick={() => setMostrarFormularioIntensivo(!mostrarFormularioIntensivo)}
                 style={botonPrincipal}
@@ -529,7 +255,7 @@ export function PantallaIntensivos(ctx: any) {
           </div>
 
           {mostrarFormularioIntensivo && (
-            <article className="mitico-intensivo-create" style={{ ...tarjeta, border: '2px solid #111', marginBottom: 16 }}>
+            <article style={{ ...tarjeta, border: '2px solid #111', marginBottom: 16 }}>
               <h3 style={{ marginTop: 0 }}>Nuevo intensivo</h3>
 
               <div style={gridFormulario}>
@@ -606,7 +332,6 @@ export function PantallaIntensivos(ctx: any) {
             </article>
           )}
 
-          <div className="mitico-intensivos-toolbar">
           <input
             value={busquedaIntensivos}
             onChange={(e) => setBusquedaIntensivos(e.target.value)}
@@ -615,7 +340,6 @@ export function PantallaIntensivos(ctx: any) {
           />
 
           <div
-            className="mitico-intensivos-filters"
             style={{
               display: 'flex',
               gap: 8,
@@ -658,14 +382,11 @@ export function PantallaIntensivos(ctx: any) {
               Próximos
             </button>
           </div>
-          </div>
 
           {cargando && <p>Cargando intensivos...</p>}
 
-          
-
           {!cargando && intensivosFiltrados.length === 0 && !error && (
-            <article className="mitico-intensivos-empty" style={tarjeta}>
+            <article style={tarjeta}>
               <h3 style={{ marginTop: 0 }}>Sin intensivos</h3>
               <p style={{ marginBottom: 0 }}>
                 No hay intensivos que coincidan con el filtro actual. Puedes crear uno desde el botón “Crear intensivo”.
@@ -673,7 +394,7 @@ export function PantallaIntensivos(ctx: any) {
             </article>
           )}
 
-          <section className="mitico-intensivos-list" style={{ display: 'grid', gap: 12 }}>
+          <section style={{ display: 'grid', gap: 12 }}>
             {intensivosFiltrados.map((intensivo) => {
               const estado = String(intensivo.estado || '').toLowerCase();
               const totalAlumnos = Number(intensivo.total_alumnos || 0);
@@ -831,24 +552,11 @@ export function PantallaIntensivos(ctx: any) {
               const intensivoCursoAbierto = intensivoCursoAbiertoId === intensivo.intensivo_id;
               const enlaceWhatsappIntensivo =
                 enlaceWhatsappIntensivoApp(intensivo);
-              const totalGruposIntensivo = diasIntensivo.reduce(
-                (total, dia) =>
-                  total + gruposNormalesDelDiaIntensivo(dia.intensivo_dia_id).length,
-                0
-              );
-              const diaResumenIntensivo = diaSeleccionadoGrupo || diasIntensivo[0];
-              const gruposResumenIntensivo = diaResumenIntensivo
-                ? gruposNormalesDelDiaIntensivo(diaResumenIntensivo.intensivo_dia_id)
-                : [];
-              const evaluacionesRevisadas = resumenFinal.filter(
-                (registro) => registro.estado_diploma === 'Revisado'
-              ).length;
 
               return (
                 <article
                   id={`intensivo-curso-${intensivo.intensivo_id}`}
                   key={intensivo.intensivo_id}
-                  className="mitico-intensivo-card"
                   style={{
                     ...tarjetaIntensivoCurso,
                     width: '100%',
@@ -859,7 +567,6 @@ export function PantallaIntensivos(ctx: any) {
                   }}
                 >
                   <div
-                    className="mitico-intensivo-card-head"
                     style={{
                       display: 'flex',
                       justifyContent: 'space-between',
@@ -868,52 +575,21 @@ export function PantallaIntensivos(ctx: any) {
                       alignItems: 'center',
                     }}
                   >
-                    <div className="mitico-intensivo-card-title" style={{ flex: '1 1 420px' }}>
-                      <p style={{ ...etiquetaSuperior, color: '#c2410c' }}>PROGRAMA INTENSIVO</p>
+                    <div style={{ flex: '1 1 420px' }}>
+                      <p style={{ ...etiquetaSuperior, color: '#c2410c' }}>CURSO INTENSIVO</p>
                       <h3 style={{ margin: '2px 0 8px' }}>{intensivo.intensivo}</h3>
                       <p style={{ margin: 0, color: '#475569' }}>
                         {intensivo.temporada} · {intensivo.lugar} · {intensivo.fecha_inicio ? formatearFecha(intensivo.fecha_inicio) : '-'} → {intensivo.fecha_fin ? formatearFecha(intensivo.fecha_fin) : '-'}
                       </p>
-                      <div
-                        className="mitico-intensivo-stats"
-                        style={{
-                          display: 'grid',
-                          gridTemplateColumns: esVistaMovilApp
-                            ? 'repeat(2,minmax(0,1fr))'
-                            : 'repeat(5,minmax(0,1fr))',
-                          gap: 7,
-                          marginTop: 12,
-                        }}
-                      >
-                        {[
-                          ['Alumnos', String(alumnosInscritosIntensivo.length)],
-                          ['Días', `${diasIntensivo.length}/4`],
-                          ['Grupos', String(totalGruposIntensivo)],
-                          ['Recuperaciones', String(recuperacionesPendientesIntensivo)],
-                          ['Evaluaciones', diplomasPendientes > 0 ? `${diplomasPendientes} pendientes` : `${evaluacionesRevisadas} revisadas`],
-                        ].map(([etiqueta, valor]) => (
-                          <div
-                            key={`${intensivo.intensivo_id}-${etiqueta}`}
-                            style={{
-                              padding: '9px 10px',
-                              borderRadius: 12,
-                              border: '1px solid #e8edf3',
-                              background: '#f8fafc',
-                              minWidth: 0,
-                            }}
-                          >
-                            <span style={{ display: 'block', color: '#64748b', fontSize: 9, fontWeight: 900 }}>
-                              {etiqueta}
-                            </span>
-                            <strong style={{ display: 'block', marginTop: 3, fontSize: 15, overflowWrap: 'anywhere' }}>
-                              {valor}
-                            </strong>
-                          </div>
-                        ))}
+                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
+                        <span style={chipResumenCursoIntensivo}><strong>{totalAlumnos}</strong> alumnos</span>
+                        <span style={chipResumenCursoIntensivo}><strong>{diasIntensivo.length}/4</strong> días</span>
+                        <span style={chipResumenCursoIntensivo}><strong>{diasIntensivo.reduce((total, dia) => total + gruposNormalesDelDiaIntensivo(dia.intensivo_dia_id).length, 0)}</strong> grupos</span>
+                        <span style={chipResumenCursoIntensivo}><strong>{intensivo.estado}</strong></span>
                       </div>
                     </div>
 
-                    <div className="mitico-intensivo-card-actions" style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                       <button
                         type="button"
                         onClick={() =>
@@ -970,26 +646,57 @@ export function PantallaIntensivos(ctx: any) {
                   {intensivoCursoAbierto && (
                     <>
 
+                  <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
+                    <details style={ayudaDesplegableCompacta}>
+                      <summary>Resumen por días</summary>
+                      <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                        {diasIntensivo.length === 0 && <div style={avisoPendiente}>Sin días creados todavía.</div>}
+                        {diasIntensivo.map((dia) => {
+                          const gruposDia = gruposNormalesDelDiaIntensivo(dia.intensivo_dia_id);
+                          const alumnosColocadosDia = gruposDia.reduce((total, grupo) => total + (grupo.total_alumnos || 0), 0);
+                          const diaPreparado = gruposDia.length > 0 && alumnosColocadosDia >= alumnosInscritosIntensivo.length;
+                          return (
+                            <button
+                              key={`${intensivo.intensivo_id}-resumen-dia-${dia.intensivo_dia_id}`}
+                              type="button"
+                              onClick={() => {
+                                abrirPanelIntensivo(intensivo, 'grupos');
+                                setDiaGrupoSeleccionadoId(dia.intensivo_dia_id);
+                              }}
+                              style={{
+                                ...miniTarjetaBlanca,
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                                border: diaPreparado ? '1px solid rgba(22,163,74,.35)' : '1px solid rgba(249,115,22,.35)',
+                                background: diaPreparado ? 'rgba(240,253,244,.92)' : 'rgba(255,247,237,.92)',
+                              }}
+                            >
+                              <strong>Día {dia.numero_dia} · {formatearFecha(dia.fecha)}</strong>
+                              <p style={{ margin: '4px 0 0', color: '#475569' }}>
+                                {dia.hora_inicio.slice(0, 5)}–{dia.hora_fin.slice(0, 5)} · {gruposDia.length} grupos · {alumnosColocadosDia}/{alumnosInscritosIntensivo.length} alumnos colocados
+                              </p>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </details>
+                  </div>
+
                   <div
                     id={`intensivo-opciones-${intensivo.intensivo_id}`}
-                    className="mitico-intensivo-tabs"
                     style={{
                       ...barraPasosIntensivo,
                       scrollMarginTop: 16,
                       display: 'flex',
-                      flexWrap: esVistaMovilApp ? 'nowrap' : 'wrap',
-                      gap: 6,
+                      flexWrap: 'wrap',
+                      gap: 8,
                       width: '100%',
                       maxWidth: '100%',
                       minWidth: 0,
-                      overflowX: esVistaMovilApp ? 'auto' : 'visible',
-                      overflowY: 'hidden',
-                      paddingBottom: esVistaMovilApp ? 3 : 0,
-                      marginTop: 13,
+                      overflow: 'visible',
                     }}
                   >
                     <button
-                      className={formularioDiaAbierto ? 'is-active' : ''}
                       onClick={() => abrirPanelIntensivo(intensivo, 'dias')}
                       style={botonPasoIntensivo(formularioDiaAbierto)}
                     >
@@ -997,367 +704,41 @@ export function PantallaIntensivos(ctx: any) {
                     </button>
 
                     <button
-                      className={gestorAlumnosAbierto ? 'is-active' : ''}
                       onClick={() => abrirPanelIntensivo(intensivo, 'alumnos')}
                       style={botonPasoIntensivo(gestorAlumnosAbierto)}
                     >
-                      2 · Alumnos
+                      2 · Alumnos inscritos
                     </button>
 
                     <button
-                      className={gestorGruposAbierto ? 'is-active' : ''}
                       onClick={() => abrirPanelIntensivo(intensivo, 'grupos')}
                       style={botonPasoIntensivo(gestorGruposAbierto)}
                     >
-                      3 · Grupos
+                      3 · Grupos por día
                     </button>
 
                     <button
-                      className={gestorRevisionAbierto ? 'is-active' : ''}
                       onClick={() => abrirPanelIntensivo(intensivo, 'revision')}
                       style={botonPasoIntensivo(gestorRevisionAbierto)}
                     >
-                      4 · Revisión
+                      4 · Revisión entre sesiones
                     </button>
 
                     <button
-                      className={gestorAsistenciaAbierto ? 'is-active' : ''}
                       onClick={() => abrirPanelIntensivo(intensivo, 'asistencia')}
                       style={botonPasoIntensivo(gestorAsistenciaAbierto)}
                     >
-                      5 · Recuperaciones
+                      5 · Faltas / recuperaciones
                     </button>
 
                     <button
-                      className={gestorDiplomasAbierto ? 'is-active' : ''}
                       onClick={() => abrirPanelIntensivo(intensivo, 'diplomas')}
                       style={botonPasoIntensivo(gestorDiplomasAbierto)}
                     >
-                      6 · Evaluación
+                      6 · Evaluación final
                     </button>
 
                   </div>
-
-
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: esVistaMovilApp
-                        ? '1fr'
-                        : 'minmax(0,1.05fr) minmax(0,.95fr)',
-                      gap: 10,
-                      marginTop: 14,
-                    }}
-                  >
-                    <div style={{ display: 'grid', gap: 8 }}>
-                      <div
-                        style={{
-                          border: '1px solid #e2e8f0',
-                          borderRadius: 14,
-                          padding: 11,
-                          background: '#fff',
-                        }}
-                      >
-                        <strong style={{ fontSize: 12 }}>Resumen por días</strong>
-                        <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
-                          {diasIntensivo.length === 0 && (
-                            <div style={avisoPendiente}>Sin días creados todavía.</div>
-                          )}
-                          {diasIntensivo.map((dia) => {
-                            const gruposDia = gruposNormalesDelDiaIntensivo(dia.intensivo_dia_id);
-                            const alumnosColocadosDia = gruposDia.reduce(
-                              (total, grupo) => total + (grupo.total_alumnos || 0),
-                              0
-                            );
-                            return (
-                              <button
-                                key={`${intensivo.intensivo_id}-resumen-real-${dia.intensivo_dia_id}`}
-                                type="button"
-                                onClick={() => {
-                                  abrirPanelIntensivo(intensivo, 'grupos');
-                                  setDiaGrupoSeleccionadoId(dia.intensivo_dia_id);
-                                }}
-                                style={{
-                                  display: 'grid',
-                                  gridTemplateColumns: 'auto minmax(0,1fr) auto',
-                                  gap: 8,
-                                  alignItems: 'center',
-                                  padding: '8px 9px',
-                                  borderRadius: 10,
-                                  border: '0',
-                                  background: '#f8fafc',
-                                  textAlign: 'left',
-                                  cursor: 'pointer',
-                                  width: '100%',
-                                }}
-                              >
-                                <span
-                                  style={{
-                                    width: 27,
-                                    height: 27,
-                                    borderRadius: 9,
-                                    display: 'grid',
-                                    placeItems: 'center',
-                                    background: '#ffedd5',
-                                    color: '#c2410c',
-                                    fontWeight: 950,
-                                    fontSize: 11,
-                                  }}
-                                >
-                                  D{dia.numero_dia}
-                                </span>
-                                <div style={{ minWidth: 0 }}>
-                                  <strong style={{ display: 'block', fontSize: 11 }}>
-                                    {formatearFecha(dia.fecha)}
-                                  </strong>
-                                  <span style={{ color: '#64748b', fontSize: 10 }}>
-                                    {dia.hora_inicio.slice(0, 5)}–{dia.hora_fin.slice(0, 5)} · {gruposDia.length} grupos
-                                  </span>
-                                </div>
-                                <span
-                                  style={{
-                                    color:
-                                      alumnosColocadosDia >= alumnosInscritosIntensivo.length
-                                        ? '#047857'
-                                        : '#c2410c',
-                                    fontSize: 10,
-                                    fontWeight: 900,
-                                  }}
-                                >
-                                  {alumnosColocadosDia}/{alumnosInscritosIntensivo.length}
-                                </span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      <div
-                        style={{
-                          border: '1px solid #e2e8f0',
-                          borderRadius: 14,
-                          padding: 11,
-                          background: '#fff',
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            gap: 8,
-                            alignItems: 'center',
-                            flexWrap: 'wrap',
-                          }}
-                        >
-                          <strong style={{ fontSize: 12 }}>
-                            Grupos{diaResumenIntensivo ? ` · Día ${diaResumenIntensivo.numero_dia}` : ''}
-                          </strong>
-                          {diaResumenIntensivo && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                abrirPanelIntensivo(intensivo, 'grupos');
-                                setDiaGrupoSeleccionadoId(diaResumenIntensivo.intensivo_dia_id);
-                              }}
-                              style={{
-                                border: 0,
-                                background: 'transparent',
-                                color: '#1d4ed8',
-                                fontSize: 10,
-                                fontWeight: 900,
-                                cursor: 'pointer',
-                              }}
-                            >
-                              Gestionar grupos
-                            </button>
-                          )}
-                        </div>
-                        <div style={{ display: 'grid', gap: 6, marginTop: 8 }}>
-                          {gruposResumenIntensivo.length === 0 && (
-                            <div style={avisoNeutral}>Todavía no hay grupos en este día.</div>
-                          )}
-                          {gruposResumenIntensivo.map((grupo, indiceGrupo) => (
-                            <button
-                              key={`${intensivo.intensivo_id}-grupo-resumen-${grupo.grupo_id || indiceGrupo}`}
-                              type="button"
-                              onClick={() => {
-                                if (diaResumenIntensivo) {
-                                  abrirPanelIntensivo(intensivo, 'grupos');
-                                  setDiaGrupoSeleccionadoId(diaResumenIntensivo.intensivo_dia_id);
-                                }
-                              }}
-                              style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                gap: 8,
-                                alignItems: 'center',
-                                padding: '8px 9px',
-                                borderRadius: 10,
-                                border: '1px solid #edf1f5',
-                                background: '#fff',
-                                textAlign: 'left',
-                                cursor: 'pointer',
-                                width: '100%',
-                              }}
-                            >
-                              <div style={{ minWidth: 0 }}>
-                                <strong style={{ display: 'block', fontSize: 11 }}>
-                                  {nombreGrupoVisualApp(grupo, indiceGrupo)}
-                                  {grupo.nivel_grupo ? ` · ${grupo.nivel_grupo}` : ''}
-                                </strong>
-                                <span style={{ color: '#64748b', fontSize: 10 }}>
-                                  {etiquetaPistaVisualApp(grupo.pista)} · {grupo.entrenador || 'Sin entrenador'}
-                                </span>
-                              </div>
-                              <span style={{ fontSize: 10, fontWeight: 950, color: '#334155' }}>
-                                {grupo.total_alumnos || 0}/{String(grupo.pista || '').toLowerCase().includes('peque') ? 4 : 7}
-                              </span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'grid', gap: 8, alignContent: 'start' }}>
-                      <div
-                        style={{
-                          borderRadius: 14,
-                          border: recuperacionesPendientesIntensivo > 0
-                            ? '1px solid #fed7aa'
-                            : '1px solid #bbf7d0',
-                          background: recuperacionesPendientesIntensivo > 0
-                            ? '#fff7ed'
-                            : '#f0fdf4',
-                          padding: 11,
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            gap: 8,
-                            alignItems: 'center',
-                            flexWrap: 'wrap',
-                          }}
-                        >
-                          <strong style={{ fontSize: 12 }}>Recuperaciones</strong>
-                          <button
-                            type="button"
-                            onClick={() => abrirPanelIntensivo(intensivo, 'asistencia')}
-                            style={{
-                              border: 0,
-                              background: 'transparent',
-                              color: recuperacionesPendientesIntensivo > 0 ? '#c2410c' : '#047857',
-                              fontSize: 10,
-                              fontWeight: 900,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            {recuperacionesPendientesIntensivo > 0
-                              ? `${recuperacionesPendientesIntensivo} pendiente(s)`
-                              : 'Todo al día'}
-                          </button>
-                        </div>
-                        {recuperacionesActivasIntensivo.length > 0 ? (
-                          <div style={{ marginTop: 8 }}>
-                            {tarjetaRecuperacionInteligente(recuperacionesActivasIntensivo[0], true)}
-                          </div>
-                        ) : (
-                          <p style={{ margin: '8px 0 0', color: '#166534', fontSize: 11 }}>
-                            No hay recuperaciones pendientes en este Intensivo.
-                          </p>
-                        )}
-                      </div>
-
-                      <div
-                        style={{
-                          borderRadius: 14,
-                          border: '1px solid #bfdbfe',
-                          background: '#eff6ff',
-                          padding: 11,
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            gap: 8,
-                            alignItems: 'center',
-                            flexWrap: 'wrap',
-                          }}
-                        >
-                          <strong style={{ fontSize: 12 }}>Evaluación final</strong>
-                          <button
-                            type="button"
-                            onClick={() => abrirPanelIntensivo(intensivo, 'diplomas')}
-                            style={{
-                              border: 0,
-                              background: 'transparent',
-                              color: '#1d4ed8',
-                              fontSize: 10,
-                              fontWeight: 900,
-                              cursor: 'pointer',
-                            }}
-                          >
-                            Revisar evaluación
-                          </button>
-                        </div>
-                        <p style={{ margin: '6px 0 0', color: '#475569', fontSize: 10 }}>
-                          {evaluacionesRevisadas} revisadas · {diplomasPendientes} pendientes · {resumenFinal.length} alumnos totales
-                        </p>
-                        <div style={{ display: 'grid', gap: 5, marginTop: 8 }}>
-                          {resumenFinal.slice(0, 3).map((registro) => {
-                            const nivelFinal =
-                              registro.nivel_final_confirmado ||
-                              registro.nivel_final_propuesto ||
-                              registro.nivel_ultimo_reporte ||
-                              '-';
-                            const revisado = registro.estado_diploma === 'Revisado';
-                            return (
-                              <button
-                                key={`${intensivo.intensivo_id}-eval-resumen-${registro.intensivo_alumno_id}`}
-                                type="button"
-                                onClick={() => abrirPanelIntensivo(intensivo, 'diplomas')}
-                                style={{
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  gap: 8,
-                                  alignItems: 'center',
-                                  border: 0,
-                                  borderRadius: 9,
-                                  padding: '7px 8px',
-                                  background: '#fff',
-                                  textAlign: 'left',
-                                  cursor: 'pointer',
-                                  width: '100%',
-                                }}
-                              >
-                                <span style={{ fontSize: 10, color: '#334155' }}>
-                                  {registro.alumno} · {nivelFinal}
-                                </span>
-                                <span
-                                  style={{
-                                    fontSize: 9,
-                                    fontWeight: 900,
-                                    color: revisado ? '#047857' : '#c2410c',
-                                  }}
-                                >
-                                  {revisado ? 'Revisado' : 'Pendiente'}
-                                </span>
-                              </button>
-                            );
-                          })}
-                          {resumenFinal.length === 0 && (
-                            <div style={{ fontSize: 10, color: '#64748b' }}>
-                              Todavía no hay evaluación disponible.
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-
 
                   {gestorPanelControlAbierto && (
                     <div
@@ -3352,6 +2733,7 @@ export function PantallaIntensivos(ctx: any) {
                                       registro.comentarios_recomendacion,
                                     ]
                                       .filter(Boolean)
+                                      .filter((comentario) => !String(comentario).toLowerCase().includes('reporte demo septiembre'))
                                       .join(' || ') || 'Sin comentarios útiles todavía'}
                                   </p>
                                 </div>

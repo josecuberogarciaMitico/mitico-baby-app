@@ -1,4 +1,3 @@
-// MITICO_PRODUCTO_2026_GLOBAL_REAL_V3_0
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './App.css';
@@ -2029,10 +2028,6 @@ function puedeVerAdministracionAltasApp(rol?: string) {
   );
 }
 
-function esRolAdministracionApp(rol?: string) {
-  return rol === 'administracion';
-}
-
 function limpiarUrlAuthApp() {
   if (typeof window === 'undefined') return;
   const limpia = `${window.location.origin}${window.location.pathname}`;
@@ -3820,829 +3815,12 @@ function mesesTemporadaAgenda(anioInicio: number) {
   ];
 }
 
-
-function IconoNavegacionApp({ tipo }: { tipo: string }) {
-  const comun = {
-    width: 20,
-    height: 20,
-    viewBox: '0 0 24 24',
-    fill: 'none',
-    stroke: 'currentColor',
-    strokeWidth: 1.8,
-    strokeLinecap: 'round' as const,
-    strokeLinejoin: 'round' as const,
-    'aria-hidden': true,
-  };
-
-  switch (tipo) {
-    case 'inicio':
-      return <svg {...comun}><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5"/><path d="M9.5 21v-6h5v6"/></svg>;
-    case 'agenda':
-      return <svg {...comun}><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/><path d="M8 14h3M13 14h3M8 17h3"/></svg>;
-    case 'cierre':
-      return <svg {...comun}><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.2 2.2L16 9"/></svg>;
-    case 'fichas':
-      return <svg {...comun}><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M6 16c.8-2 2-3 3-3s2.2 1 3 3M14 9h4M14 13h4"/></svg>;
-    case 'intensivos':
-      return <svg {...comun}><path d="m3 20 6.5-11 3.2 5L15 10l6 10Z"/><path d="m8.1 11.5 1.4 1.2 1.1-1.7"/></svg>;
-    case 'ocio':
-      return <svg {...comun}><path d="M12 2v20M4.2 6.5l15.6 11M19.8 6.5l-15.6 11"/><path d="m9.5 4 2.5 2 2.5-2M9.5 20l2.5-2 2.5 2"/></svg>;
-    case 'entrenadores':
-      return <svg {...comun}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>;
-    case 'disponibilidad':
-      return <svg {...comun}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>;
-    case 'movil':
-      return <svg {...comun}><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 18h4"/></svg>;
-    case 'altas':
-      return <svg {...comun}><path d="M15 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8" cy="7" r="4"/><path d="M19 8v6M16 11h6"/></svg>;
-    case 'cobros':
-      return <svg {...comun}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h2"/></svg>;
-    case 'analisis':
-      return <svg {...comun}><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>;
-    case 'informes':
-      return <svg {...comun}><path d="M6 2h9l4 4v16H6z"/><path d="M14 2v5h5M9 12h6M9 16h6"/></svg>;
-    case 'temporadas':
-      return <svg {...comun}><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>;
-    case 'accesos':
-      return <svg {...comun}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>;
-    default:
-      return <svg {...comun}><circle cx="12" cy="12" r="9"/></svg>;
-  }
-}
-
-
-
-function AnalisisPanelVisualApp({
-  datos,
-  esVistaMovil,
-  numero,
-  etiquetaMes,
-}: {
-  datos: AnalisisAdminPayloadApp;
-  esVistaMovil: boolean;
-  numero: (valor: number | null | undefined, sufijo?: string) => string;
-  etiquetaMes: (mes: string) => string;
-}) {
-  const modalidadNombre =
-    datos.meta.modalidad === 'INTENSIVOS'
-      ? 'Intensivos'
-      : datos.meta.modalidad === 'OCIO'
-      ? 'Ocio'
-      : 'Baby';
-  const maxAlumnosMes = Math.max(1, ...datos.mensual.map((mes) => mes.alumnos_unicos));
-  const maxNivel = Math.max(1, ...datos.niveles.map((nivel) => nivel.total));
-  const ultimoMes = datos.mensual[datos.mensual.length - 1];
-  const primeraTemporada = datos.comparativa_temporadas[0];
-  const actualTemporada = datos.comparativa_temporadas[datos.comparativa_temporadas.length - 1];
-  const crecimientoTemporadas =
-    primeraTemporada && actualTemporada && primeraTemporada.alumnos_unicos > 0
-      ? ((actualTemporada.alumnos_unicos - primeraTemporada.alumnos_unicos) /
-          primeraTemporada.alumnos_unicos) *
-        100
-      : null;
-
-  const cardBase: React.CSSProperties = {
-    border: '1px solid #e2e8f0',
-    borderRadius: 16,
-    background: '#ffffff',
-    boxShadow: '0 8px 24px rgba(15,23,42,.045)',
-    minWidth: 0,
-  };
-
-  return (
-    <div style={{ display: 'grid', gap: 14, minWidth: 0 }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: esVistaMovil ? 'flex-start' : 'center',
-          flexDirection: esVistaMovil ? 'column' : 'row',
-          gap: 10,
-          padding: esVistaMovil ? '2px 0 0' : '0 2px',
-        }}
-      >
-        <div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <strong style={{ fontSize: esVistaMovil ? 18 : 20, color: '#0f172a' }}>
-              {modalidadNombre} · {datos.meta.temporada}
-            </strong>
-          </div>
-          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 12 }}>
-            Vista ejecutiva de rendimiento, asistencia y evolución técnica.
-          </p>
-        </div>
-        <span style={{ color: '#64748b', fontSize: 11, fontWeight: 750 }}>
-          Calculado {new Date(datos.meta.generado_at).toLocaleString('es-ES')}
-        </span>
-      </div>
-
-      <section
-        style={{
-          display: 'grid',
-          gridTemplateColumns: esVistaMovil
-            ? 'repeat(2, minmax(0, 1fr))'
-            : 'repeat(4, minmax(0, 1fr))',
-          gap: 10,
-        }}
-      >
-        {[
-          {
-            etiqueta: 'ALUMNOS',
-            valor: datos.resumen.alumnos_unicos,
-            detalle: `${datos.resumen.altas} altas`,
-            acento: '#16a34a',
-          },
-          {
-            etiqueta: 'ASISTENCIA REAL',
-            valor: numero(datos.resumen.asistencia_real_pct, '%'),
-            detalle: 'confirmada',
-            acento: '#0f766e',
-          },
-          {
-            etiqueta: 'CONTINUIDAD',
-            valor: numero(datos.resumen.continuidad_pct, '%'),
-            detalle: `${numero(datos.resumen.perdida_continuidad_pct, '%')} pérdida`,
-            acento: '#2563eb',
-          },
-          {
-            etiqueta: 'EVOLUCIÓN TÉCNICA',
-            valor: numero(datos.resumen.evolucion_tecnica),
-            detalle: `${datos.resumen.alumnos_mejoran} mejoran`,
-            acento: '#7c3aed',
-          },
-        ].map((item) => (
-          <div
-            key={item.etiqueta}
-            style={{
-              ...cardBase,
-              padding: esVistaMovil ? 12 : 15,
-              position: 'relative',
-              overflow: 'hidden',
-              minHeight: esVistaMovil ? 104 : 118,
-              display: 'grid',
-              alignContent: 'space-between',
-            }}
-          >
-            <span
-              style={{
-                position: 'absolute',
-                left: 0,
-                top: 0,
-                bottom: 0,
-                width: 4,
-                background: item.acento,
-              }}
-            />
-            <span style={{ color: '#64748b', fontSize: 10, fontWeight: 900, letterSpacing: 0.45 }}>
-              {item.etiqueta}
-            </span>
-            <strong
-              style={{
-                fontSize: esVistaMovil ? 24 : 30,
-                lineHeight: 1.05,
-                color: '#0f172a',
-                overflowWrap: 'anywhere',
-              }}
-            >
-              {item.valor}
-            </strong>
-            <span style={{ color: '#64748b', fontSize: 11, fontWeight: 650 }}>{item.detalle}</span>
-          </div>
-        ))}
-      </section>
-
-      <section
-        style={{
-          display: 'grid',
-          gridTemplateColumns: esVistaMovil
-            ? 'repeat(2, minmax(0, 1fr))'
-            : 'repeat(5, minmax(0, 1fr))',
-          gap: 8,
-        }}
-      >
-        {[
-          ['SESIONES', datos.resumen.sesiones_realizadas, 'realizadas'],
-          ['OCUPACIÓN', numero(datos.resumen.ocupacion_pct, '%'), 'capacidad'],
-          ['NIÑOS / TURNO', numero(datos.resumen.promedio_ninos_turno), 'promedio'],
-          ['POR GRUPO', numero(datos.resumen.promedio_por_grupo), 'promedio'],
-          ['ALTAS', datos.resumen.altas, 'temporada'],
-        ].map(([etiqueta, valor, detalle], indice) => (
-          <div
-            key={String(etiqueta)}
-            style={{
-              ...cardBase,
-              padding: '11px 12px',
-              gridColumn: esVistaMovil && indice === 4 ? '1 / -1' : undefined,
-            }}
-          >
-            <span style={{ display: 'block', color: '#94a3b8', fontSize: 9, fontWeight: 900 }}>
-              {etiqueta}
-            </span>
-            <strong style={{ display: 'block', marginTop: 3, color: '#0f172a', fontSize: 20 }}>
-              {valor}
-            </strong>
-            <span style={{ color: '#64748b', fontSize: 10 }}>{detalle}</span>
-          </div>
-        ))}
-      </section>
-
-      <section
-        style={{
-          display: 'grid',
-          gridTemplateColumns: esVistaMovil ? 'minmax(0,1fr)' : 'minmax(0,1.7fr) minmax(260px,.85fr)',
-          gap: 12,
-        }}
-      >
-        <div style={{ ...cardBase, padding: esVistaMovil ? 13 : 16, minWidth: 0 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-            <div>
-              <strong style={{ color: '#0f172a' }}>Evolución mensual</strong>
-              <p style={{ margin: '3px 0 0', color: '#64748b', fontSize: 11 }}>
-                Alumnos únicos por mes y asistencia real.
-              </p>
-            </div>
-            {ultimoMes && (
-              <span
-                style={{
-                  borderRadius: 999,
-                  padding: '5px 8px',
-                  background: '#f0fdf4',
-                  color: '#166534',
-                  fontSize: 10,
-                  fontWeight: 850,
-                }}
-              >
-                {etiquetaMes(ultimoMes.mes)} · {numero(ultimoMes.asistencia_real_pct, '%')} asistencia
-              </span>
-            )}
-          </div>
-
-          {datos.mensual.length === 0 ? (
-            <div style={{ padding: '24px 0 4px', color: '#64748b', fontSize: 12 }}>
-              Sin evolución mensual todavía.
-            </div>
-          ) : (
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: `repeat(${datos.mensual.length}, minmax(${esVistaMovil ? 44 : 54}px, 1fr))`,
-                gap: esVistaMovil ? 6 : 9,
-                alignItems: 'end',
-                overflowX: 'auto',
-                padding: '18px 1px 2px',
-                minHeight: 210,
-              }}
-            >
-              {datos.mensual.map((mes) => {
-                const altura = Math.max(24, Math.round((mes.alumnos_unicos / maxAlumnosMes) * 125));
-                return (
-                  <div key={mes.mes} style={{ minWidth: 0, display: 'grid', gap: 6, alignItems: 'end' }}>
-                    <div style={{ textAlign: 'center', color: '#475569', fontSize: 9, fontWeight: 800 }}>
-                      {mes.alumnos_unicos}
-                    </div>
-                    <div
-                      title={`${mes.alumnos_unicos} alumnos · ${numero(mes.asistencia_real_pct, '%')} asistencia`}
-                      style={{
-                        height: altura,
-                        borderRadius: '8px 8px 4px 4px',
-                        background: 'linear-gradient(180deg,#22c55e,#15803d)',
-                        boxShadow: 'inset 0 1px 0 rgba(255,255,255,.18)',
-                      }}
-                    />
-                    <div style={{ textAlign: 'center', minWidth: 0 }}>
-                      <strong style={{ display: 'block', color: '#475569', fontSize: 9 }}>
-                        {etiquetaMes(mes.mes).split(' ')[0]}
-                      </strong>
-                      <span style={{ color: '#94a3b8', fontSize: 8 }}>
-                        {numero(mes.asistencia_real_pct, '%')}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        <div style={{ ...cardBase, padding: esVistaMovil ? 13 : 16 }}>
-          <strong style={{ color: '#0f172a' }}>Lectura rápida</strong>
-          <p style={{ margin: '3px 0 12px', color: '#64748b', fontSize: 11 }}>
-            Indicadores para Dirección.
-          </p>
-          <div style={{ display: 'grid', gap: 9 }}>
-            <div style={{ padding: 10, borderRadius: 12, background: '#f8fafc' }}>
-              <span style={{ display: 'block', color: '#64748b', fontSize: 9, fontWeight: 900 }}>
-                CRECIMIENTO VS. PRIMERA TEMPORADA
-              </span>
-              <strong style={{ color: crecimientoTemporadas !== null && crecimientoTemporadas >= 0 ? '#15803d' : '#b91c1c', fontSize: 22 }}>
-                {crecimientoTemporadas === null ? '—' : `${crecimientoTemporadas >= 0 ? '+' : ''}${numero(crecimientoTemporadas, '%')}`}
-              </strong>
-            </div>
-            <div style={{ padding: 10, borderRadius: 12, background: '#f8fafc' }}>
-              <span style={{ display: 'block', color: '#64748b', fontSize: 9, fontWeight: 900 }}>
-                ALUMNOS QUE MEJORAN
-              </span>
-              <strong style={{ color: '#15803d', fontSize: 22 }}>{datos.resumen.alumnos_mejoran}</strong>
-              <span style={{ display: 'block', color: '#64748b', fontSize: 10 }}>
-                {datos.resumen.alumnos_estables} estables · {datos.resumen.alumnos_bajan} bajan
-              </span>
-            </div>
-            <div style={{ padding: 10, borderRadius: 12, background: '#f8fafc' }}>
-              <span style={{ display: 'block', color: '#64748b', fontSize: 9, fontWeight: 900 }}>
-                PÉRDIDA DE CONTINUIDAD
-              </span>
-              <strong style={{ color: '#0f172a', fontSize: 22 }}>
-                {numero(datos.resumen.perdida_continuidad_pct, '%')}
-              </strong>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <section
-        style={{
-          display: 'grid',
-          gridTemplateColumns: esVistaMovil ? 'minmax(0,1fr)' : 'repeat(2,minmax(0,1fr))',
-          gap: 12,
-        }}
-      >
-        <div style={{ ...cardBase, padding: esVistaMovil ? 13 : 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline' }}>
-            <div>
-              <strong style={{ color: '#0f172a' }}>Distribución de niveles</strong>
-              <p style={{ margin: '3px 0 0', color: '#64748b', fontSize: 11 }}>Foto técnica actual.</p>
-            </div>
-            <span style={{ color: '#94a3b8', fontSize: 10 }}>{datos.niveles.reduce((suma, nivel) => suma + nivel.total, 0)} registros</span>
-          </div>
-          <div style={{ display: 'grid', gap: 9, marginTop: 14 }}>
-            {datos.niveles.length === 0 && <span style={{ color: '#64748b' }}>Sin datos todavía.</span>}
-            {datos.niveles.map((nivel) => (
-              <div key={nivel.nivel} style={{ display: 'grid', gridTemplateColumns: '42px minmax(0,1fr) 28px', gap: 8, alignItems: 'center' }}>
-                <strong style={{ color: '#334155', fontSize: 11 }}>{nivel.nivel}</strong>
-                <div style={{ height: 8, borderRadius: 999, background: '#f1f5f9', overflow: 'hidden' }}>
-                  <div
-                    style={{
-                      height: '100%',
-                      width: `${Math.max(4, (nivel.total / maxNivel) * 100)}%`,
-                      background: 'linear-gradient(90deg,#22c55e,#16a34a)',
-                      borderRadius: 999,
-                    }}
-                  />
-                </div>
-                <span style={{ color: '#475569', fontSize: 11, textAlign: 'right' }}>{nivel.total}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div style={{ ...cardBase, padding: esVistaMovil ? 13 : 16 }}>
-          <strong style={{ color: '#0f172a' }}>Progresión técnica</strong>
-          <p style={{ margin: '3px 0 0', color: '#64748b', fontSize: 11 }}>
-            Cambios de nivel más frecuentes.
-          </p>
-          <div style={{ display: 'grid', gap: 2, marginTop: 10 }}>
-            {datos.progresiones.length === 0 && <span style={{ color: '#64748b' }}>Sin progresiones todavía.</span>}
-            {datos.progresiones.slice(0, 8).map((progresion, indice) => (
-              <div
-                key={`${progresion.desde}-${progresion.hasta}-${indice}`}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'minmax(0,1fr) auto',
-                  gap: 10,
-                  alignItems: 'center',
-                  padding: '9px 0',
-                  borderBottom: indice === Math.min(7, datos.progresiones.length - 1) ? 'none' : '1px solid #f1f5f9',
-                }}
-              >
-                <span style={{ color: '#334155', fontSize: 12 }}>
-                  <strong>{progresion.desde}</strong> → <strong>{progresion.hasta}</strong>
-                </span>
-                <span
-                  style={{
-                    padding: '4px 7px',
-                    borderRadius: 999,
-                    background:
-                      progresion.sentido === 'SUBE'
-                        ? '#dcfce7'
-                        : progresion.sentido === 'BAJA'
-                        ? '#fee2e2'
-                        : '#f1f5f9',
-                    color:
-                      progresion.sentido === 'SUBE'
-                        ? '#166534'
-                        : progresion.sentido === 'BAJA'
-                        ? '#991b1b'
-                        : '#475569',
-                    fontSize: 9,
-                    fontWeight: 900,
-                  }}
-                >
-                  {progresion.total} · {progresion.sentido}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section style={{ ...cardBase, padding: esVistaMovil ? 13 : 16 }}>
-        <div>
-          <strong style={{ color: '#0f172a' }}>Comparación entre temporadas</strong>
-          <p style={{ margin: '3px 0 0', color: '#64748b', fontSize: 11 }}>
-            Evolución histórica de la modalidad seleccionada.
-          </p>
-        </div>
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: esVistaMovil ? 'minmax(0,1fr)' : 'repeat(3,minmax(0,1fr))',
-            gap: 9,
-            marginTop: 12,
-          }}
-        >
-          {datos.comparativa_temporadas.map((temporada) => (
-            <div
-              key={temporada.temporada_id}
-              style={{
-                padding: 12,
-                borderRadius: 13,
-                border: temporada.activa ? '1px solid #86efac' : '1px solid #e2e8f0',
-                background: temporada.activa ? '#f0fdf4' : '#f8fafc',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
-                <strong style={{ color: '#0f172a', fontSize: 12 }}>{temporada.temporada}</strong>
-                {temporada.activa && (
-                  <span style={{ color: '#166534', fontSize: 8, fontWeight: 950 }}>ACTUAL</span>
-                )}
-              </div>
-              <strong style={{ display: 'block', marginTop: 8, color: '#0f172a', fontSize: 24 }}>
-                {temporada.alumnos_unicos}
-              </strong>
-              <span style={{ color: '#64748b', fontSize: 9 }}>alumnos únicos</span>
-              <div style={{ marginTop: 9, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                <div>
-                  <span style={{ display: 'block', color: '#94a3b8', fontSize: 8 }}>ASISTENCIA</span>
-                  <strong style={{ color: '#334155', fontSize: 11 }}>{numero(temporada.asistencia_real_pct, '%')}</strong>
-                </div>
-                <div>
-                  <span style={{ display: 'block', color: '#94a3b8', fontSize: 8 }}>EVOLUCIÓN</span>
-                  <strong style={{ color: '#334155', fontSize: 11 }}>{numero(temporada.evolucion_tecnica)}</strong>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <details style={{ ...cardBase, padding: esVistaMovil ? 12 : 14 }}>
-        <summary style={{ cursor: 'pointer', fontWeight: 850, color: '#334155', fontSize: 12 }}>
-          Ver detalle mensual completo
-        </summary>
-        <div style={{ overflowX: 'auto', maxWidth: '100%', marginTop: 12 }}>
-          <table style={{ width: '100%', minWidth: 980, borderCollapse: 'collapse', fontSize: 11 }}>
-            <thead>
-              <tr>
-                {['Mes','Alumnos','Altas','Crec.','Cont.','Pérdida','Asist.','Niños/turno','Por grupo','Sesiones','Ocup.','Evol.'].map((titulo) => (
-                  <th key={titulo} style={{ padding: 8, textAlign: 'left', borderBottom: '1px solid #cbd5e1', color: '#64748b', whiteSpace: 'nowrap' }}>
-                    {titulo}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {datos.mensual.map((m) => (
-                <tr key={m.mes}>
-                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9', fontWeight: 800 }}>{etiquetaMes(m.mes)}</td>
-                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{m.alumnos_unicos}</td>
-                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{m.altas}</td>
-                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numero(m.crecimiento_pct, '%')}</td>
-                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numero(m.continuidad_pct, '%')}</td>
-                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numero(m.perdida_continuidad_pct, '%')}</td>
-                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numero(m.asistencia_real_pct, '%')}</td>
-                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numero(m.promedio_ninos_turno)}</td>
-                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numero(m.promedio_por_grupo)}</td>
-                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{m.sesiones_realizadas}</td>
-                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numero(m.ocupacion_pct, '%')}</td>
-                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numero(m.evolucion_tecnica)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </details>
-
-      <details style={{ ...cardBase, padding: esVistaMovil ? 12 : 14 }}>
-        <summary style={{ cursor: 'pointer', fontWeight: 850, color: '#334155', fontSize: 12 }}>
-          Cómo se calcula cada métrica
-        </summary>
-        <div style={{ display: 'grid', gap: 8, marginTop: 11 }}>
-          {Object.entries(datos.definiciones).map(([clave, definicion]) => (
-            <div key={clave} style={{ fontSize: 11, lineHeight: 1.5, color: '#475569' }}>
-              <strong style={{ color: '#334155' }}>{clave.replace(/_/g, ' ')}:</strong> {definicion}
-            </div>
-          ))}
-        </div>
-      </details>
-    </div>
-  );
-}
-
-
-
-
-
-
-
-
-
-
-
-type EntrenadorProductItemApp = {
-  id: string;
-  nombre: string;
-  iniciales: string;
-  telefono: string;
-  email: string;
-  especialidades: string[];
-  tarifa: string;
-  activo: boolean;
-  chaqueta: boolean;
-  documentacion: string;
-  docOk: boolean;
-  acceso: string;
-  accesoEstado:
-    | 'activo'
-    | 'invitacion_pendiente'
-    | 'desactivado'
-    | 'revisar'
-    | 'sin_acceso'
-    | 'cargando';
-  nota: string;
-  titulacion?: string;
-  antecedentes?: string;
-  detallesDocumentacion?: string[];
-  gestionando?: boolean;
-  original?: EntrenadorResumen;
-};
-
-function EntrenadoresProductListApp({
-  esMovil,
-  items,
-  puedeGestionarAccesos,
-  onAcceso,
-  onPedirDatos,
-  onEditar,
-  onEliminar,
-}: {
-  esMovil: boolean;
-  items: EntrenadorProductItemApp[];
-  puedeGestionarAccesos: boolean;
-  onAcceso?: (
-    item: EntrenadorProductItemApp,
-    accion:
-      | 'crear'
-      | 'desactivar'
-      | 'enviar_recuperacion'
-      | 'reenviar_invitacion'
-      | 'activar'
-      | 'revisar'
-  ) => void;
-  onPedirDatos?: (item: EntrenadorProductItemApp) => void;
-  onEditar?: (item: EntrenadorProductItemApp) => void;
-  onEliminar?: (item: EntrenadorProductItemApp) => void;
-}) {
-  const activos = items.filter((item) => item.activo).length;
-  const requierenAtencion = items.filter(
-    (item) =>
-      !item.docOk ||
-      !item.chaqueta ||
-      item.accesoEstado === 'invitacion_pendiente' ||
-      item.accesoEstado === 'revisar'
-  ).length;
-
-  const estiloAcceso = (estado: EntrenadorProductItemApp['accesoEstado']) => {
-    if (estado === 'activo') return { background: '#ecfdf5', color: '#166534', border: '#a7f3d0' };
-    if (estado === 'invitacion_pendiente') return { background: '#fff7ed', color: '#9a3412', border: '#fed7aa' };
-    if (estado === 'desactivado') return { background: '#fef2f2', color: '#b91c1c', border: '#fecaca' };
-    if (estado === 'revisar') return { background: '#fff7ed', color: '#9a3412', border: '#fed7aa' };
-    if (estado === 'cargando') return { background: '#f8fafc', color: '#64748b', border: '#cbd5e1' };
-    return { background: '#f8fafc', color: '#64748b', border: '#cbd5e1' };
-  };
-
-  const botonAcceso = (item: EntrenadorProductItemApp) => {
-    const common = {
-      ...botonMini,
-      width: '100%',
-      minHeight: 38,
-      whiteSpace: 'normal' as const,
-      lineHeight: 1.15,
-      textAlign: 'center' as const,
-      fontWeight: 900,
-      opacity: item.gestionando ? 0.58 : 1,
-    };
-
-    if (!puedeGestionarAccesos) return null;
-    if (item.accesoEstado === 'cargando') {
-      return <button type="button" disabled style={{ ...common, background: '#f8fafc', color: '#64748b', border: '1px solid #cbd5e1' }}>Comprobando acceso…</button>;
-    }
-    if (item.accesoEstado === 'activo') {
-      return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,minmax(0,1fr))', gap: 6 }}>
-          <button type="button" disabled={item.gestionando} onClick={() => onAcceso?.(item, 'enviar_recuperacion')} style={{ ...common, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe' }}>
-            {item.gestionando ? 'Gestionando…' : 'Contraseña'}
-          </button>
-          <button type="button" disabled={item.gestionando} onClick={() => onAcceso?.(item, 'desactivar')} style={{ ...common, background: '#fff1f2', color: '#be123c', border: '1px solid #fecdd3' }}>
-            Desactivar
-          </button>
-        </div>
-      );
-    }
-    if (item.accesoEstado === 'invitacion_pendiente') {
-      return <button type="button" disabled={item.gestionando} onClick={() => onAcceso?.(item, 'reenviar_invitacion')} style={{ ...common, background: '#fff7ed', color: '#9a3412', border: '1px solid #fed7aa' }}>Reenviar invitación</button>;
-    }
-    if (item.accesoEstado === 'desactivado') {
-      return <button type="button" disabled={item.gestionando} onClick={() => onAcceso?.(item, 'activar')} style={{ ...common, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0' }}>Activar acceso</button>;
-    }
-    if (item.accesoEstado === 'revisar') {
-      return <button type="button" onClick={() => onAcceso?.(item, 'revisar')} style={{ ...common, background: '#f8fafc', color: '#475569', border: '1px solid #cbd5e1' }}>Revisar acceso</button>;
-    }
-    return <button type="button" disabled={item.gestionando} onClick={() => onAcceso?.(item, 'crear')} style={{ ...common, background: '#f5f3ff', color: '#6d28d9', border: '1px solid #ddd6fe' }}>{item.gestionando ? 'Creando…' : 'Crear acceso app'}</button>;
-  };
-
-  return (
-    <article
-      style={{
-        border: '1px solid #dbe3ec',
-        borderRadius: 17,
-        background: '#ffffff',
-        overflow: 'hidden',
-        minWidth: 0,
-        maxWidth: '100%',
-        boxSizing: 'border-box',
-        boxShadow: '0 10px 26px rgba(15,23,42,.04)',
-      }}
-    >
-      <div
-        style={{
-          padding: esMovil ? '11px 12px' : '12px 14px',
-          borderBottom: '1px solid #e2e8f0',
-          background: '#f8fafc',
-          display: 'flex',
-          justifyContent: 'space-between',
-          gap: 10,
-          alignItems: 'center',
-          flexWrap: 'wrap',
-        }}
-      >
-        <div>
-          <span style={{ fontSize: 9, fontWeight: 950, letterSpacing: .7, color: '#15803d' }}>PLANTILLA TÉCNICA</span>
-          <h3 style={{ margin: '4px 0 0', fontSize: 17, color: '#0f172a' }}>Equipo operativo</h3>
-        </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-          <span style={{ padding: '5px 8px', borderRadius: 999, background: '#ecfdf5', color: '#166534', fontSize: 9.5, fontWeight: 950 }}>{activos} activos</span>
-          <span style={{ padding: '5px 8px', borderRadius: 999, background: requierenAtencion ? '#fff7ed' : '#f8fafc', color: requierenAtencion ? '#9a3412' : '#64748b', fontSize: 9.5, fontWeight: 950 }}>{requierenAtencion} requieren atención</span>
-        </div>
-      </div>
-
-      <div style={{ display: 'grid', minWidth: 0 }}>
-        {items.map((item, index) => {
-          const accesoStyle = estiloAcceso(item.accesoEstado);
-          return (
-            <div
-              id={`entrenador-${item.id}`}
-              key={item.id}
-              style={{
-                padding: esMovil ? '13px 12px' : '14px',
-                borderTop: index === 0 ? 'none' : '1px solid #eef2f7',
-                minWidth: 0,
-                maxWidth: '100%',
-                boxSizing: 'border-box',
-                overflow: 'hidden',
-                background: item.activo ? '#ffffff' : '#fbfcfd',
-              }}
-            >
-              <div style={{ display: 'flex', gap: 11, alignItems: 'flex-start', minWidth: 0 }}>
-                <div
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 13,
-                    background: item.activo ? 'linear-gradient(135deg,#063b32,#0f766e)' : 'linear-gradient(135deg,#64748b,#94a3b8)',
-                    color: '#ffffff',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 11,
-                    fontWeight: 950,
-                    flex: '0 0 auto',
-                  }}
-                >
-                  {item.iniciales}
-                </div>
-                <div style={{ minWidth: 0, flex: '1 1 auto' }}>
-                  <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <strong style={{ color: '#0f172a', fontSize: 12.5, overflowWrap: 'anywhere' }}>{item.nombre}</strong>
-                    <span style={{ padding: '4px 7px', borderRadius: 999, background: item.activo ? '#dcfce7' : '#f1f5f9', color: item.activo ? '#166534' : '#64748b', fontSize: 8.8, fontWeight: 950 }}>
-                      {item.activo ? 'Activo' : 'Inactivo'}
-                    </span>
-                  </div>
-                  <div style={{ marginTop: 3, color: '#64748b', fontSize: 9.5, overflowWrap: 'anywhere' }}>{item.email || 'Sin email'}</div>
-                  <div style={{ marginTop: 2, color: '#475569', fontSize: 9.5 }}>{item.telefono || 'Sin teléfono'}</div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,165px),1fr))',
-                  gap: 7,
-                  marginTop: 10,
-                  minWidth: 0,
-                }}
-              >
-                {puedeGestionarAccesos && (
-                  <div style={{ padding: '9px 10px', borderRadius: 12, border: `1px solid ${accesoStyle.border}`, background: accesoStyle.background, minWidth: 0 }}>
-                    <div style={{ fontSize: 8.5, fontWeight: 950, color: '#64748b', letterSpacing: .55 }}>ACCESO APP</div>
-                    <div style={{ marginTop: 5, color: accesoStyle.color, fontSize: 10, fontWeight: 950, overflowWrap: 'anywhere' }}>{item.acceso}</div>
-                  </div>
-                )}
-                <div style={{ padding: '9px 10px', borderRadius: 12, border: '1px solid #e2e8f0', background: item.docOk ? '#f0fdf4' : '#fff7ed', minWidth: 0 }}>
-                  <div style={{ fontSize: 8.5, fontWeight: 950, color: '#64748b', letterSpacing: .55 }}>DOCUMENTACIÓN</div>
-                  <div style={{ marginTop: 5, color: item.docOk ? '#166534' : '#9a3412', fontSize: 10, fontWeight: 950 }}>{item.documentacion}</div>
-                  <div style={{ marginTop: 3, color: '#64748b', fontSize: 8.9 }}>Titulación: {item.titulacion || 'Pendiente'} · Antecedentes: {item.antecedentes || 'Pendiente'}</div>
-                </div>
-                <div style={{ padding: '9px 10px', borderRadius: 12, border: '1px solid #e2e8f0', background: item.chaqueta ? '#eff6ff' : '#fff7ed', minWidth: 0 }}>
-                  <div style={{ fontSize: 8.5, fontWeight: 950, color: '#64748b', letterSpacing: .55 }}>EQUIPACIÓN</div>
-                  <div style={{ marginTop: 5, color: item.chaqueta ? '#1d4ed8' : '#9a3412', fontSize: 10, fontWeight: 950 }}>Chaqueta {item.chaqueta ? 'entregada' : 'pendiente'}</div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,230px),1fr))',
-                  gap: 8,
-                  marginTop: 8,
-                  minWidth: 0,
-                }}
-              >
-                <div style={{ padding: '9px 10px', borderRadius: 12, background: '#f8fafc', border: '1px solid #e2e8f0', minWidth: 0 }}>
-                  <div style={{ fontSize: 8.5, fontWeight: 950, color: '#64748b', letterSpacing: .55 }}>ESPECIALIDADES</div>
-                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 6 }}>
-                    {(item.especialidades.length ? item.especialidades : ['Sin marcar']).map((esp) => (
-                      <span key={esp} style={{ padding: '4px 7px', borderRadius: 999, background: '#ffffff', border: '1px solid #dbe3ec', color: '#334155', fontSize: 8.8, fontWeight: 900 }}>{esp}</span>
-                    ))}
-                  </div>
-                </div>
-                <div style={{ padding: '9px 10px', borderRadius: 12, background: '#f8fafc', border: '1px solid #e2e8f0', minWidth: 0 }}>
-                  <div style={{ fontSize: 8.5, fontWeight: 950, color: '#64748b', letterSpacing: .55 }}>COORDINACIÓN</div>
-                  <div style={{ marginTop: 5, color: '#0f172a', fontSize: 9.5, fontWeight: 850 }}>{item.tarifa} / turno</div>
-                  <div style={{ marginTop: 3, color: '#64748b', fontSize: 9.2, lineHeight: 1.35, overflowWrap: 'anywhere' }}>{item.nota || 'Sin observaciones internas.'}</div>
-                </div>
-              </div>
-
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit,minmax(min(100%,135px),1fr))',
-                  gap: 6,
-                  marginTop: 8,
-                  minWidth: 0,
-                }}
-              >
-                {puedeGestionarAccesos && <div style={{ minWidth: 0 }}>{botonAcceso(item)}</div>}
-                <button type="button" onClick={() => onPedirDatos?.(item)} style={{ ...botonMini, minHeight: 38, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 900 }}>Pedir datos</button>
-                <button type="button" onClick={() => onEditar?.(item)} style={{ ...botonMini, minHeight: 38, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontWeight: 900 }}>Editar ficha</button>
-                <button type="button" onClick={() => onEliminar?.(item)} style={{ ...botonMini, minHeight: 38, background: '#fff1f2', color: '#be123c', border: '1px solid #fecdd3', fontWeight: 900 }}>Eliminar</button>
-              </div>
-
-              {item.detallesDocumentacion && item.detallesDocumentacion.some(Boolean) && (
-                <details style={{ marginTop: 8, border: '1px solid #e2e8f0', borderRadius: 12, padding: '8px 10px', background: '#ffffff', minWidth: 0 }}>
-                  <summary style={{ cursor: 'pointer', fontWeight: 900, color: '#334155', fontSize: 9.5 }}>Ver documentos y notas</summary>
-                  <div style={{ marginTop: 8, display: 'grid', gap: 5, color: '#64748b', fontSize: 9.2, lineHeight: 1.4, overflowWrap: 'anywhere' }}>
-                    {item.detallesDocumentacion.filter(Boolean).map((detalle, i) => <div key={`${item.id}-detalle-${i}`}>{detalle}</div>)}
-                  </div>
-                </details>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </article>
-  );
-}
-
-
 function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const esCoordinadorApp =
     !perfilUsuario || esRolCoordinacionApp(perfilUsuario.rol);
   const esEntrenadorApp = Boolean(perfilUsuario && !esCoordinadorApp);
   const esCoordinadorJefeApp =
     !perfilUsuario || puedeVerDireccionApp(perfilUsuario.rol);
-  const esAdministracionApp = Boolean(
-    perfilUsuario && esRolAdministracionApp(perfilUsuario.rol)
-  );
   const puedeGestionarAccesosUsuarioApp =
     !perfilUsuario || puedeGestionarAccesosApp(perfilUsuario.rol);
   const entrenadorIdSesionApp = perfilUsuario?.entrenador_id || '';
@@ -4756,11 +3934,6 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   };
 
   useEffect(() => {
-    if (esAdministracionApp && pantalla !== 'administracion') {
-      setPantalla('administracion');
-      return;
-    }
-
     if (esEntrenadorApp && pantalla !== 'entrenador') {
       setPantalla('entrenador');
       return;
@@ -4778,7 +3951,6 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       setPantalla('agenda');
     }
   }, [
-    esAdministracionApp,
     esEntrenadorApp,
     esCoordinadorApp,
     esCoordinadorJefeApp,
@@ -18611,16 +17783,6 @@ async function abrirGestionOperativaIntensivoDia(
     return coincideBusqueda && coincideFiltro;
   });
 
-  const totalEntrenadoresActivosApp = entrenadores.filter((entrenador) => entrenador.activo).length;
-  const totalEntrenadoresSinChaquetaApp = entrenadores.filter(
-    (entrenador) => entrenador.activo && !entrenador.chaqueta_entregada
-  ).length;
-  const totalEntrenadoresDocumentacionPendienteApp = entrenadores.filter(
-    (entrenador) =>
-      entrenador.activo &&
-      ((entrenador.titulacion_estado || 'Pendiente') !== 'Validado' ||
-        (entrenador.antecedentes_estado || 'Pendiente') !== 'Validado')
-  ).length;
   const disponibilidadFiltrada = disponibilidad.filter((item) => {
     if (
       !esCoordinadorApp &&
@@ -21754,7 +20916,6 @@ async function abrirGestionOperativaIntensivoDia(
 
   return (
     <main
-      className={`mitico-app-shell ${esCoordinadorApp ? 'with-sidebar' : 'trainer-only'} ${esVistaMovilApp ? 'is-mobile' : ''}`}
       style={{
         ...layout,
         ...(usarCabeceraCompactaApp
@@ -21768,260 +20929,746 @@ async function abrirGestionOperativaIntensivoDia(
           : {}),
       }}
     >
-      <header className="mitico-product-header">
-        <div className="mitico-topbar">
-          <div className="mitico-brand-block">
-            <img
-              src="/logo-cabecera-mitico.png"
-              alt="Mítico Club"
-              className="mitico-brand-logo"
-            />
-            <div className="mitico-brand-copy">
-              <strong>MÍTICO BABY</strong>
-              <span>Coordinación deportiva</span>
-            </div>
-          </div>
-
-          <div className="mitico-week-control">
-            <span className="mitico-week-label">Semana de trabajo</span>
-            {esEntrenadorApp ? (
-              <strong className="mitico-week-value">
-                {semanaVistaEntrenadorInicio
-                  ? rangoSemanaAgenda(semanaVistaEntrenadorInicio)
-                  : '-'}
-              </strong>
-            ) : (
-              <select
-                value={semanaAgendaActiva}
-                onChange={(e) => cambiarSemanaTrabajoApp(e.target.value)}
-                aria-label="Cambiar semana de trabajo"
+      <header
+        style={{
+          ...cabeceraAppLimpia,
+          ...(usarCabeceraCompactaApp
+            ? {
+                width: '100%',
+                maxWidth: '100%',
+                minWidth: 0,
+                boxSizing: 'border-box',
+                overflow: 'hidden',
+              }
+            : {}),
+        }}
+      >
+        <div
+          style={{
+            ...cabeceraMarcaApp,
+            ...(usarCabeceraCompactaApp
+              ? {
+                  width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
+                  boxSizing: 'border-box',
+                }
+              : {}),
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'flex-start',
+              gap: usarCabeceraCompactaApp ? 12 : 18,
+              flexWrap: 'wrap',
+              width: '100%',
+              minWidth: 0,
+              boxSizing: 'border-box',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-start',
+                gap: 12,
+                minWidth: 0,
+                ...(usarCabeceraCompactaApp
+                  ? {
+                      width: '100%',
+                      maxWidth: '100%',
+                    }
+                  : {}),
+              }}
+            >
+              <div
+                style={{
+                  ...marcaLogoTituloApp,
+                  ...(usarCabeceraCompactaApp
+                    ? {
+                        width: '100%',
+                        maxWidth: '100%',
+                        minWidth: 0,
+                        display: 'grid',
+                        gridTemplateColumns: '64px minmax(0, 1fr)',
+                        alignItems: 'center',
+                        gap: 12,
+                        boxSizing: 'border-box',
+                      }
+                    : {}),
+                }}
               >
-                {semanasAgenda.map((semana) => (
-                  <option key={semana} value={semana}>
-                    {rangoSemanaAgenda(semana)}
-                  </option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          <div className="mitico-topbar-actions">
-            {perfilUsuario && (
-              <div className="mitico-user-block">
-                <span className="mitico-user-avatar" aria-hidden="true">
-                  {perfilUsuario.nombre
-                    .trim()
-                    .split(/\s+/)
-                    .slice(0, 2)
-                    .map((parte) => parte.charAt(0).toUpperCase())
-                    .join('')}
-                </span>
-                <span className="mitico-user-copy">
-                  <strong>{perfilUsuario.nombre}</strong>
-                  <small>{rolUsuarioTextoApp(perfilUsuario.rol)}</small>
-                </span>
-                <button
-                  type="button"
-                  className="mitico-logout-button"
-                  onClick={onLogout}
-                  aria-label="Cerrar sesión"
-                  title="Cerrar sesión"
-                >
-                  Salir
-                </button>
+                <img
+                  src="/logo-cabecera-mitico.png"
+                  alt="Mítico Club"
+                  style={{
+                    ...logoMarcaApp,
+                    ...(usarCabeceraCompactaApp
+                      ? {
+                          width: 64,
+                          height: 64,
+                          maxWidth: '100%',
+                        }
+                      : {}),
+                  }}
+                />
+                <div style={{ minWidth: 0 }}>
+                  <p
+                    style={{
+                      ...marcaKickerApp,
+                      ...(usarCabeceraCompactaApp
+                        ? {
+                            whiteSpace: 'normal',
+                            overflowWrap: 'anywhere',
+                          }
+                        : {}),
+                    }}
+                  >
+                    Mítico Club · coordinación deportiva
+                  </p>
+                  <h1
+                    style={{
+                      ...tituloMarcaApp,
+                      ...(usarCabeceraCompactaApp
+                        ? {
+                            fontSize: 'clamp(24px, 7.2vw, 34px)',
+                            lineHeight: 0.98,
+                            whiteSpace: 'normal',
+                            overflowWrap: 'break-word',
+                            maxWidth: '100%',
+                          }
+                        : {}),
+                    }}
+                  >
+                    MITICO BABY / OCIO LOGISTICA
+                  </h1>
+                </div>
               </div>
-            )}
 
-            {(esEntrenadorApp || esCoordinadorJefeApp) && !pwaInstalada && (
-              <button
-                type="button"
-                className="mitico-install-button"
-                onClick={instalarPwaEntrenador}
-                aria-expanded={mostrarAyudaInstalacionPwa}
-                title={pwaInstallPrompt
-                  ? 'Instalar Mítico Baby en este dispositivo'
-                  : 'Ver cómo instalar Mítico Baby en este dispositivo'}
-                aria-label={pwaInstallPrompt
-                  ? 'Instalar Mítico Baby en este dispositivo'
-                  : 'Ver cómo instalar Mítico Baby en este dispositivo'}
+              <div
+                style={{
+                  display: usarCabeceraCompactaApp ? 'grid' : 'inline-flex',
+                  gridTemplateColumns: usarCabeceraCompactaApp
+                    ? (esVistaMovilApp ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) minmax(0, 1.35fr)')
+                    : undefined,
+                  alignItems: 'center',
+                  gap: 10,
+                  width: usarCabeceraCompactaApp ? '100%' : undefined,
+                  maxWidth: '100%',
+                  minWidth: 0,
+                  boxSizing: 'border-box',
+                  border: '1px solid rgba(15, 118, 110, 0.22)',
+                  background: 'rgba(240, 253, 250, 0.92)',
+                  borderRadius: 14,
+                  padding: '9px 13px',
+                  boxShadow: '0 8px 22px rgba(15, 23, 42, 0.06)',
+                }}
               >
-                <img src="/icon-192.png" alt="" aria-hidden="true" />
-                <span>{pwaInstallPrompt ? 'Instalar' : 'Cómo instalar'}</span>
-              </button>
-            )}
+                <label
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 900,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    color: '#0f766e',
+                    whiteSpace: 'nowrap',
+                  }}
+                  htmlFor="semana-trabajo-cabecera"
+                >
+                  Semana de trabajo
+                </label>
+                {esEntrenadorApp ? (
+                  <div
+                    id="semana-trabajo-cabecera"
+                    aria-label="Semana de trabajo actual"
+                    style={{
+                      minWidth: 0,
+                      maxWidth: '100%',
+                      color: '#134e4a',
+                      fontSize: 14,
+                      fontWeight: 900,
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    {semanaVistaEntrenadorInicio
+                      ? rangoSemanaAgenda(semanaVistaEntrenadorInicio)
+                      : '-'}
+                  </div>
+                ) : (
+                  <select
+                    id="semana-trabajo-cabecera"
+                    value={semanaAgendaActiva}
+                    onChange={(e) => cambiarSemanaTrabajoApp(e.target.value)}
+                    aria-label="Cambiar semana de trabajo"
+                    style={{
+                      minWidth: 0,
+                      maxWidth: '100%',
+                      border: 0,
+                      outline: 0,
+                      padding: '2px 24px 2px 0',
+                      margin: 0,
+                      background: 'transparent',
+                      color: '#134e4a',
+                      fontSize: 14,
+                      fontWeight: 900,
+                      lineHeight: 1.2,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {semanasAgenda.map((semana) => (
+                      <option key={semana} value={semana}>
+                        {rangoSemanaAgenda(semana)}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {(esEntrenadorApp || esCoordinadorJefeApp) && !pwaInstalada && (
+                <div
+                  style={{
+                    width: '100%',
+                    maxWidth: '100%',
+                    minWidth: 0,
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={instalarPwaEntrenador}
+                    style={{
+                      width: '100%',
+                      minWidth: 0,
+                      minHeight: 48,
+                      border: '1px solid rgba(101, 163, 13, 0.32)',
+                      borderRadius: 14,
+                      padding: '8px 11px',
+                      display: 'grid',
+                      gridTemplateColumns: '38px minmax(0, 1fr) auto',
+                      alignItems: 'center',
+                      gap: 10,
+                      background:
+                        'linear-gradient(135deg, rgba(247, 254, 231, 0.98), rgba(236, 252, 203, 0.92))',
+                      color: '#365314',
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                      boxShadow: '0 8px 20px rgba(77, 124, 15, 0.08)',
+                    }}
+                    aria-expanded={mostrarAyudaInstalacionPwa}
+                  >
+                    <img
+                      src="/icon-192.png"
+                      alt=""
+                      aria-hidden="true"
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: 10,
+                        objectFit: 'cover',
+                        display: 'block',
+                      }}
+                    />
+                    <span style={{ minWidth: 0, display: 'grid', gap: 1 }}>
+                      <strong
+                        style={{
+                          fontSize: 13,
+                          lineHeight: 1.2,
+                          color: '#365314',
+                        }}
+                      >
+                        Instalar Mítico Baby
+                      </strong>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          lineHeight: 1.25,
+                          color: '#4d7c0f',
+                          fontWeight: 700,
+                        }}
+                      >
+                        Acceso directo desde tu móvil
+                      </span>
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        fontSize: 18,
+                        fontWeight: 900,
+                        lineHeight: 1,
+                        color: '#4d7c0f',
+                      }}
+                    >
+                      {mostrarAyudaInstalacionPwa ? '−' : '＋'}
+                    </span>
+                  </button>
+
+                  {mostrarAyudaInstalacionPwa && (
+                    <div
+                      style={{
+                        marginTop: 7,
+                        padding: '10px 12px',
+                        borderRadius: 12,
+                        border: '1px solid #d9f99d',
+                        background: '#fbfff5',
+                        color: '#3f6212',
+                        fontSize: 12,
+                        lineHeight: 1.45,
+                        boxSizing: 'border-box',
+                      }}
+                    >
+                      {esDispositivoIosPwa ? (
+                        <>
+                          En iPhone/iPad: abre esta página en Safari, pulsa
+                          <strong> Compartir </strong> y después
+                          <strong> Añadir a pantalla de inicio</strong>.
+                        </>
+                      ) : (
+                        <>
+                          Si no aparece el instalador automático, abre el menú
+                          del navegador y elige
+                          <strong> Instalar aplicación </strong> o
+                          <strong> Añadir a pantalla de inicio</strong>.
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {perfilUsuario && (
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 12,
+                    width: usarCabeceraCompactaApp ? '100%' : 'fit-content',
+                    maxWidth: '100%',
+                    minWidth: 0,
+                    boxSizing: 'border-box',
+                    border: '1px solid #dbe3ee',
+                    background: 'rgba(255, 255, 255, 0.94)',
+                    borderRadius: 16,
+                    padding: '9px 10px 9px 9px',
+                    boxShadow: '0 10px 28px rgba(15, 23, 42, 0.08)',
+                  }}
+                >
+                  <span
+                    aria-hidden="true"
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 12,
+                      display: 'grid',
+                      placeItems: 'center',
+                      flex: '0 0 auto',
+                      background: 'linear-gradient(145deg, #172033, #334155)',
+                      color: '#fff',
+                      fontSize: 13,
+                      fontWeight: 950,
+                      letterSpacing: '0.04em',
+                    }}
+                  >
+                    {perfilUsuario.nombre
+                      .trim()
+                      .split(/\s+/)
+                      .slice(0, 2)
+                      .map((parte) => parte.charAt(0).toUpperCase())
+                      .join('')}
+                  </span>
+
+                  <span style={{ display: 'grid', gap: 1, minWidth: 0 }}>
+                    <strong
+                      style={{
+                        color: '#172033',
+                        fontSize: 14,
+                        lineHeight: 1.2,
+                        whiteSpace: usarCabeceraCompactaApp ? 'normal' : 'nowrap',
+                        overflowWrap: usarCabeceraCompactaApp ? 'anywhere' : undefined,
+                      }}
+                    >
+                      {perfilUsuario.nombre}
+                    </strong>
+                    <span
+                      style={{
+                        color: '#64748b',
+                        fontSize: 12,
+                        fontWeight: 750,
+                        lineHeight: 1.2,
+                      }}
+                    >
+                      {rolUsuarioTextoApp(perfilUsuario.rol)}
+                    </span>
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={onLogout}
+                    onMouseEnter={() => setSalirActivoCabecera(true)}
+                    onMouseLeave={() => setSalirActivoCabecera(false)}
+                    onMouseDown={() => setSalirActivoCabecera(true)}
+                    onMouseUp={() => setSalirActivoCabecera(false)}
+                    onFocus={() => setSalirActivoCabecera(true)}
+                    onBlur={() => setSalirActivoCabecera(false)}
+                    aria-label="Cerrar sesión"
+                    title="Cerrar sesión"
+                    style={{
+                      border: salirActivoCabecera
+                        ? '1px solid #dc2626'
+                        : '1px solid rgba(220, 38, 38, 0.28)',
+                      background: salirActivoCabecera
+                        ? '#dc2626'
+                        : 'rgba(254, 226, 226, 0.72)',
+                      color: salirActivoCabecera ? '#ffffff' : '#b91c1c',
+                      borderRadius: 12,
+                      padding: '9px 12px',
+                      fontWeight: 900,
+                      lineHeight: 1,
+                      transition:
+                        'background 160ms ease, color 160ms ease, border-color 160ms ease, transform 120ms ease',
+                      transform: salirActivoCabecera ? 'translateY(-1px)' : 'none',
+                      flex: '0 0 auto',
+                      marginLeft: 'auto',
+                    }}
+                  >
+                    Salir
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        {mostrarAyudaInstalacionPwa && !pwaInstalada && (
-          <div className="mitico-install-help">
-            {esDispositivoIosPwa ? (
-              <>
-                En iPhone/iPad: abre esta página en Safari, pulsa
-                <strong> Compartir </strong> y después
-                <strong> Añadir a pantalla de inicio</strong>.
-              </>
-            ) : (
-              <>
-                Este navegador no ha ofrecido el instalador automático. En Chrome de escritorio,
-                usa el icono de instalación de la barra de direcciones o abre el menú del navegador
-                y elige <strong>Instalar aplicación</strong>. En otros navegadores puede aparecer como
-                <strong> Añadir a pantalla de inicio</strong>.
-              </>
-            )}
-          </div>
-        )}
-
         {esCoordinadorApp ? (
-          <nav className="mitico-sidebar" aria-label="Navegación principal">
-            {!esAdministracionApp && (
-              <>
-                <div className="mitico-nav-group">
-                  <span className="mitico-nav-heading">Operativa</span>
-                  <button
-                    className={`mitico-nav-item ${pantalla === 'resumenDia' ? 'is-active' : ''}`}
-                    onClick={() => abrirPantallaConScroll('resumenDia')}
-                  >
-                    <IconoNavegacionApp tipo="inicio" />
-                    <span>Trabajo en pista</span>
-                  </button>
-                  <button
-                    className={`mitico-nav-item ${pantalla === 'agenda' ? 'is-active' : ''}`}
-                    onClick={() => abrirPantallaConScroll('agenda')}
-                  >
-                    <IconoNavegacionApp tipo="agenda" />
-                    <span>Entrenamientos</span>
-                  </button>
-                  <button
-                    className={`mitico-nav-item ${pantalla === 'ocioGrupos' || pantalla === 'ocioCambios' || pantalla === 'ocioSemana' ? 'is-active' : ''}`}
-                    onClick={() => abrirPantallaConScroll('ocioGrupos')}
-                  >
-                    <IconoNavegacionApp tipo="ocio" />
-                    <span>Ocio</span>
-                  </button>
-                  <button
-                    className={`mitico-nav-item ${pantalla === 'intensivos' ? 'is-active' : ''}`}
-                    onClick={() => abrirPantallaConScroll('intensivos')}
-                  >
-                    <IconoNavegacionApp tipo="intensivos" />
-                    <span>Intensivos</span>
-                  </button>
-                </div>
+          <nav
+            style={{
+              ...menuPrincipalApp,
+              ...(esVistaMovilApp
+                ? {
+                    width: '100%',
+                    maxWidth: '100%',
+                    minWidth: 0,
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(0, 1fr)',
+                    gap: 10,
+                    overflowX: 'hidden',
+                    boxSizing: 'border-box',
+                  }
+                : {}),
+            }}
+          >
+            <div
+              style={{
+                ...menuBloqueColor('#2563eb', '#eff6ff'),
+                ...(esVistaMovilApp
+                  ? {
+                      width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr)',
+                      alignItems: 'stretch',
+                      gap: 8,
+                      boxSizing: 'border-box',
+                    }
+                  : {}),
+              }}
+            >
+              <span style={menuTituloColor('#2563eb')}>Trabajo semanal</span>
+              <button
+                onClick={() => abrirPantallaConScroll('resumenDia')}
+                style={{
+                  ...botonMenuColor(pantalla === 'resumenDia', '#2563eb'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
+              >
+                Resumen del día
+              </button>
+              <button
+                onClick={() => abrirPantallaConScroll('agenda')}
+                style={{
+                  ...botonMenuColor(pantalla === 'agenda', '#2563eb'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
+              >
+                Días de entrenamiento
+              </button>
+              <button
+                onClick={() => abrirPantallaConScroll('reportes')}
+                style={{
+                  ...botonMenuColor(pantalla === 'reportes', '#2563eb'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
+              >
+                Cierre semanal
+              </button>
+            </div>
 
-                <div className="mitico-nav-group">
-                  <span className="mitico-nav-heading">Equipo</span>
-                  <button
-                    className={`mitico-nav-item ${pantalla === 'entrenadores' ? 'is-active' : ''}`}
-                    onClick={() => abrirPantallaConScroll('entrenadores')}
-                  >
-                    <IconoNavegacionApp tipo="entrenadores" />
-                    <span>Entrenadores</span>
-                  </button>
-                  <button
-                    className={`mitico-nav-item ${pantalla === 'disponibilidad' ? 'is-active' : ''}`}
-                    onClick={() => abrirPantallaConScroll('disponibilidad')}
-                  >
-                    <IconoNavegacionApp tipo="disponibilidad" />
-                    <span>Disponibilidad</span>
-                  </button>
-                  <button
-                    className={`mitico-nav-item ${pantalla === 'entrenador' ? 'is-active' : ''}`}
-                    onClick={() => abrirPantallaConScroll('entrenador')}
-                  >
-                    <IconoNavegacionApp tipo="movil" />
-                    <span>Vista entrenador</span>
-                  </button>
-                  <button
-                    className={`mitico-nav-item ${pantalla === 'reportes' ? 'is-active' : ''}`}
-                    onClick={() => abrirPantallaConScroll('reportes')}
-                  >
-                    <IconoNavegacionApp tipo="cierre" />
-                    <span>Cierre semanal</span>
-                  </button>
-                </div>
+            <div
+              style={{
+                ...menuBloqueColor('#7c3aed', '#f5f3ff'),
+                ...(esVistaMovilApp
+                  ? {
+                      width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr)',
+                      alignItems: 'stretch',
+                      gap: 8,
+                      boxSizing: 'border-box',
+                    }
+                  : {}),
+              }}
+            >
+              <span style={menuTituloColor('#7c3aed')}>Fichas</span>
+              <button
+                onClick={() => abrirPantallaConScroll('alumnos')}
+                style={{
+                  ...botonMenuColor(pantalla === 'alumnos', '#7c3aed'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
+              >
+                Alumnos Baby
+              </button>
+            </div>
 
-                <div className="mitico-nav-group">
-                  <span className="mitico-nav-heading">Gestión</span>
-                  <button
-                    className={`mitico-nav-item ${pantalla === 'alumnos' ? 'is-active' : ''}`}
-                    onClick={() => abrirPantallaConScroll('alumnos')}
-                  >
-                    <IconoNavegacionApp tipo="fichas" />
-                    <span>Fichas</span>
-                  </button>
-                  {puedeVerAdministracionAltasApp(perfilUsuario?.rol) && (
-                    <button
-                      className={`mitico-nav-item ${pantalla === 'administracion' ? 'is-active' : ''}`}
-                      onClick={() => abrirPantallaConScroll('administracion')}
-                    >
-                      <IconoNavegacionApp tipo="altas" />
-                      <span>Altas / Test</span>
-                    </button>
-                  )}
-                </div>
-              </>
-            )}
+            <div
+              style={{
+                ...menuBloqueColor('#f97316', '#fff7ed'),
+                ...(esVistaMovilApp
+                  ? {
+                      width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr)',
+                      alignItems: 'stretch',
+                      gap: 8,
+                      boxSizing: 'border-box',
+                    }
+                  : {}),
+              }}
+            >
+              <span style={menuTituloColor('#f97316')}>Intensivos</span>
+              <button
+                onClick={() => abrirPantallaConScroll('intensivos')}
+                style={{
+                  ...botonMenuColor(pantalla === 'intensivos', '#f97316'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
+              >
+                Intensivos
+              </button>
+            </div>
 
-            {esAdministracionApp && puedeVerAdministracionAltasApp(perfilUsuario?.rol) && (
-              <div className="mitico-nav-group">
-                <span className="mitico-nav-heading">Administración</span>
+            <div
+              style={{
+                ...menuBloqueColor('#16a34a', '#f0fdf4'),
+                ...(esVistaMovilApp
+                  ? {
+                      width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr)',
+                      alignItems: 'stretch',
+                      gap: 8,
+                      boxSizing: 'border-box',
+                    }
+                  : {}),
+              }}
+            >
+              <span style={menuTituloColor('#16a34a')}>Ocio</span>
+              <button
+                onClick={() => abrirPantallaConScroll('ocioGrupos')}
+                style={{
+                  ...botonMenuColor(
+                  ['ocioGrupos', 'ocioCambios', 'ocioSemana'].includes(pantalla),
+                  '#16a34a'
+                ),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
+              >
+                Grupos estables
+              </button>
+            </div>
+
+            <div
+              style={{
+                ...menuBloqueColor('#0f766e', '#ecfdf5'),
+                ...(esVistaMovilApp
+                  ? {
+                      width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr)',
+                      alignItems: 'stretch',
+                      gap: 8,
+                      boxSizing: 'border-box',
+                    }
+                  : {}),
+              }}
+            >
+              <span style={menuTituloColor('#0f766e')}>Entrenadores</span>
+              <button
+                onClick={() => abrirPantallaConScroll('entrenadores')}
+                style={{
+                  ...botonMenuColor(pantalla === 'entrenadores', '#0f766e'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
+              >
+                Gestión entrenadores
+              </button>
+              <button
+                onClick={() => abrirPantallaConScroll('disponibilidad')}
+                style={{
+                  ...botonMenuColor(pantalla === 'disponibilidad', '#0f766e'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
+              >
+                Disponibilidad
+              </button>
+              <button
+                onClick={() => abrirPantallaConScroll('entrenador')}
+                style={{
+                  ...botonMenuColor(pantalla === 'entrenador', '#0f766e'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
+              >
+                Vista entrenador
+              </button>
+            </div>
+
+            {puedeVerAdministracionAltasApp(perfilUsuario?.rol) && (
+              <div
+              style={{
+                ...menuBloqueColor('#0891b2', '#ecfeff'),
+                ...(esVistaMovilApp
+                  ? {
+                      width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr)',
+                      alignItems: 'stretch',
+                      gap: 8,
+                      boxSizing: 'border-box',
+                    }
+                  : {}),
+              }}
+            >
+                <span style={menuTituloColor('#0891b2')}>Administración</span>
                 <button
-                  className={`mitico-nav-item ${pantalla === 'administracion' ? 'is-active' : ''}`}
                   onClick={() => abrirPantallaConScroll('administracion')}
+                  style={{
+                  ...botonMenuColor(pantalla === 'administracion', '#0891b2'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
                 >
-                  <IconoNavegacionApp tipo="altas" />
-                  <span>Altas / Test de nivel</span>
+                  Altas y test de nivel
                 </button>
               </div>
             )}
 
             {esCoordinadorJefeApp && (
-              <div className="mitico-nav-group">
-                <span className="mitico-nav-heading">Dirección</span>
+              <div
+              style={{
+                ...menuBloqueColor('#e11d48', '#fff1f2'),
+                ...(esVistaMovilApp
+                  ? {
+                      width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr)',
+                      alignItems: 'stretch',
+                      gap: 8,
+                      boxSizing: 'border-box',
+                    }
+                  : {}),
+              }}
+            >
+                <span style={menuTituloColor('#e11d48')}>Dirección</span>
                 <button
-                  className={`mitico-nav-item ${pantalla === 'cobros' ? 'is-active' : ''}`}
                   onClick={() => abrirPantallaConScroll('cobros')}
+                  style={{
+                    ...botonMenuColor(pantalla === 'cobros', '#e11d48'),
+                    ...(esVistaMovilApp
+                      ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                      : {}),
+                  }}
                 >
-                  <IconoNavegacionApp tipo="cobros" />
-                  <span>Cobros</span>
+                  Cobros
                 </button>
                 <button
-                  className={`mitico-nav-item ${pantalla === 'analisis' ? 'is-active' : ''}`}
                   onClick={() => abrirPantallaConScroll('analisis')}
+                  style={{
+                    ...botonMenuColor(pantalla === 'analisis', '#e11d48'),
+                    ...(esVistaMovilApp
+                      ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                      : {}),
+                  }}
                 >
-                  <IconoNavegacionApp tipo="analisis" />
-                  <span>Análisis</span>
+                  Análisis
                 </button>
                 <button
-                  className={`mitico-nav-item ${pantalla === 'informes' ? 'is-active' : ''}`}
                   onClick={() => abrirPantallaConScroll('informes')}
+                  style={{
+                    ...botonMenuColor(pantalla === 'informes', '#e11d48'),
+                    ...(esVistaMovilApp
+                      ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                      : {}),
+                  }}
                 >
-                  <IconoNavegacionApp tipo="informes" />
-                  <span>Informes y listados</span>
+                  Informes y listados
                 </button>
                 <button
-                  className={`mitico-nav-item ${pantalla === 'temporadas' ? 'is-active' : ''}`}
                   onClick={() => abrirPantallaConScroll('temporadas')}
+                  style={{
+                    ...botonMenuColor(pantalla === 'temporadas', '#e11d48'),
+                    ...(esVistaMovilApp
+                      ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                      : {}),
+                  }}
                 >
-                  <IconoNavegacionApp tipo="temporadas" />
-                  <span>Temporadas</span>
+                  Temporadas
                 </button>
                 <button
-                  className={`mitico-nav-item ${pantalla === 'usuarios' ? 'is-active' : ''}`}
                   onClick={() => abrirPantallaConScroll('usuarios')}
+                  style={{
+                    ...botonMenuColor(pantalla === 'usuarios', '#e11d48'),
+                    ...(esVistaMovilApp
+                      ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                      : {}),
+                  }}
                 >
-                  <IconoNavegacionApp tipo="accesos" />
-                  <span>Accesos equipo</span>
+                  Accesos equipo
                 </button>
               </div>
             )}
-
-            <div className="mitico-sidebar-footer">
-              <img src="/logo-cabecera-mitico.png" alt="" aria-hidden="true" />
-              <span>
-                <strong>Mítico Club · Madrid</strong>
-                <small>Temporada {temporadaActivaCierre || 'activa'}</small>
-              </span>
-            </div>
           </nav>
         ) : null}
       </header>
@@ -22237,204 +21884,6 @@ async function abrirGestionOperativaIntensivoDia(
       )}
 
       <style>{`
-        .mitico-app-shell {
-          --mitico-navy: #061b2d;
-          --mitico-navy-soft: #0d2b42;
-          --mitico-green: #0f9f4d;
-          --mitico-green-dark: #08783a;
-          --mitico-ink: #122033;
-          --mitico-muted: #66758a;
-          --mitico-border: #e4eaf1;
-          --mitico-surface: #ffffff;
-          --mitico-bg: #f4f7fb;
-          padding: 0 !important;
-          background: var(--mitico-bg) !important;
-          min-height: 100vh;
-          color: var(--mitico-ink);
-        }
-        .mitico-product-header { position: relative; z-index: 40; }
-        .mitico-topbar {
-          min-height: 74px;
-          display: grid;
-          grid-template-columns: minmax(230px, 1fr) minmax(330px, 0.9fr) minmax(280px, 1fr);
-          align-items: center;
-          gap: 18px;
-          padding: 10px 24px;
-          background: linear-gradient(110deg, #041724 0%, #06243a 64%, #092d43 100%);
-          color: #fff;
-          box-shadow: 0 8px 28px rgba(3, 20, 33, 0.16);
-          position: sticky;
-          top: 0;
-          z-index: 60;
-        }
-        .mitico-brand-block { display: flex; align-items: center; gap: 12px; min-width: 0; }
-        .mitico-brand-logo {
-          width: 44px; height: 44px; border-radius: 12px; object-fit: cover;
-          background: #fff; border: 1px solid rgba(255,255,255,.18);
-          box-shadow: 0 6px 20px rgba(0,0,0,.18);
-        }
-        .mitico-brand-copy { display: grid; min-width: 0; }
-        .mitico-brand-copy strong { font-size: 18px; letter-spacing: .08em; line-height: 1.05; }
-        .mitico-brand-copy span { margin-top: 4px; color: #38d277; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .12em; }
-        .mitico-week-control {
-          min-height: 46px; display: flex; align-items: center; justify-content: center; gap: 12px;
-          padding: 7px 13px; border: 1px solid rgba(255,255,255,.08); border-radius: 14px;
-          background: rgba(255,255,255,.055); min-width: 0;
-        }
-        .mitico-week-label { color: #cbd7e4; font-size: 12px; font-weight: 750; white-space: nowrap; }
-        .mitico-week-control select {
-          min-width: 0; max-width: 240px; border: 0; outline: 0; background: transparent; color: #fff;
-          font-weight: 850; font-size: 13px; padding: 4px 22px 4px 0;
-        }
-        .mitico-week-control select option { color: #172033; background: #fff; }
-        .mitico-week-value { min-width: 0; font-size: 13px; color: #fff; overflow-wrap: anywhere; }
-        .mitico-topbar-actions { display: flex; justify-content: space-between; align-items: center; gap: 12px; min-width: 0; width: 100%; }
-        .mitico-install-button {
-          height: 42px; display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px;
-          border-radius: 12px; border: 1px solid rgba(117,229,155,.2); background: rgba(15,159,77,.13);
-          color: #d9ffe6; font-weight: 800; font-size: 12px;
-        }
-        .mitico-install-button img { width: 28px; height: 28px; border-radius: 8px; }
-        .mitico-user-block { display: flex; align-items: center; gap: 10px; min-width: 0; }
-        .mitico-user-avatar {
-          width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center;
-          background: linear-gradient(145deg, #34475c, #1c3046); color: #fff; font-weight: 900; font-size: 12px;
-          border: 1px solid rgba(255,255,255,.09);
-        }
-        .mitico-user-copy { display: grid; min-width: 0; line-height: 1.15; }
-        .mitico-user-copy strong { color: #fff; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .mitico-user-copy small { color: #b8c6d5; font-size: 11px; margin-top: 3px; }
-        .mitico-logout-button {
-          min-height: 34px; padding: 7px 11px; border-radius: 10px; border: 1px solid rgba(248,113,113,.42);
-          color: #fecaca; background: rgba(185,28,28,.18); font-size: 11px; font-weight: 900;
-          box-shadow: none !important;
-        }
-        .mitico-logout-button:hover {
-          color: #ffffff; background: rgba(220,38,38,.30) !important; border-color: rgba(252,165,165,.62) !important;
-          transform: none !important; box-shadow: none !important;
-        }
-        .mitico-install-help {
-          position: fixed; top: 82px; right: 24px; z-index: 70; width: min(390px, calc(100vw - 32px));
-          padding: 12px 14px; border-radius: 14px; background: #fff; color: #31503d;
-          border: 1px solid #ccebd7; box-shadow: 0 18px 55px rgba(15,23,42,.16); font-size: 12px; line-height: 1.45;
-        }
-        .mitico-sidebar {
-          position: fixed; top: 74px; left: 0; bottom: 0; width: 258px; z-index: 45;
-          display: flex; flex-direction: column; gap: 2px; overflow-y: auto; padding: 22px 14px 18px;
-          background: rgba(255,255,255,.98); border-right: 1px solid var(--mitico-border);
-          box-shadow: 8px 0 30px rgba(15,23,42,.025);
-          overscroll-behavior-y: contain;
-          scrollbar-gutter: stable;
-        }
-        .mitico-nav-group { display: grid; gap: 3px; padding: 0 0 14px; margin-bottom: 10px; border-bottom: 1px solid #edf1f5; animation: none !important; }
-        .mitico-nav-heading { padding: 0 10px 7px; color: var(--mitico-green-dark); font-size: 10px; font-weight: 950; text-transform: uppercase; letter-spacing: .13em; }
-        .mitico-nav-item {
-          width: 100%; min-height: 42px; display: grid; grid-template-columns: 24px minmax(0,1fr); align-items: center; gap: 10px;
-          padding: 9px 11px; border: 0; border-radius: 10px; background: transparent; color: #506078;
-          text-align: left; font-size: 13px; font-weight: 760; box-shadow: none !important;
-        }
-        .mitico-nav-item:hover { transform: none !important; background: #f5f8fa; color: #17324a; box-shadow: none !important; }
-        .mitico-nav-item.is-active { color: #08783a; background: linear-gradient(90deg, #eaf8ef 0%, #f7fbf8 100%); font-weight: 900; }
-        .mitico-nav-item.is-active::before { content: ''; position: absolute; left: 0; width: 3px; height: 28px; border-radius: 0 3px 3px 0; background: var(--mitico-green); }
-        .mitico-nav-item { position: relative; }
-        .mitico-nav-item svg { width: 19px; height: 19px; }
-        .mitico-sidebar-footer { margin-top: auto; padding: 14px 8px 2px; display: flex; align-items: center; gap: 9px; color: #64748b; }
-        .mitico-sidebar-footer img { width: 34px; height: 34px; object-fit: cover; border-radius: 9px; }
-        .mitico-sidebar-footer span { display: grid; min-width: 0; }
-        .mitico-sidebar-footer strong { font-size: 11px; color: #344256; }
-        .mitico-sidebar-footer small { font-size: 10px; margin-top: 2px; }
-        .mitico-content-shell {
-          margin-left: 258px; padding: 28px 32px 64px; min-width: 0; min-height: calc(100vh - 74px);
-          max-width: 1700px;
-        }
-        .mitico-app-shell.trainer-only .mitico-content-shell { margin-left: 0; max-width: 1120px; margin-right: auto; margin-left: auto; }
-        .mitico-content-anchor { scroll-margin-top: 92px; }
-
-        .mitico-agenda-screen { max-width: 1420px; margin: 0 auto; }
-        .mitico-agenda-screen .mitico-page-title { font-size: clamp(26px, 2.3vw, 34px); letter-spacing: -.035em; }
-        .mitico-agenda-screen .mitico-agenda-hero { background: transparent !important; border: 0 !important; box-shadow: none !important; padding: 2px 0 8px !important; border-radius: 0 !important; }
-        .mitico-agenda-screen .mitico-agenda-controls { border-radius: 18px !important; border-color: #e1e7ef !important; box-shadow: 0 8px 28px rgba(20,35,55,.055) !important; }
-        .mitico-agenda-screen select { font-weight: 750; }
-
-        /* V1.9.1: en escritorio la cabecera completa es la referencia sticky.
-           Evita que el menú lateral conserve un hueco vacío cuando se hace scroll.
-           Móvil (<=900px) queda exactamente con su comportamiento anterior. */
-        @media (min-width: 901px) {
-          .mitico-product-header {
-            position: sticky;
-            top: 0;
-            z-index: 60;
-          }
-          .mitico-topbar {
-            position: relative;
-            top: auto;
-          }
-        }
-
-        @media (max-width: 1080px) {
-          .mitico-topbar { grid-template-columns: minmax(200px,1fr) minmax(280px,1fr); }
-          .mitico-topbar-actions { grid-column: 1 / -1; justify-content: space-between; padding-top: 2px; }
-          .mitico-sidebar { top: 126px; }
-        }
-        @media (max-width: 900px) {
-          .mitico-topbar { position: relative; grid-template-columns: 1fr; padding: 10px 14px; gap: 8px; }
-          .mitico-brand-logo { width: 38px; height: 38px; }
-          .mitico-brand-copy strong { font-size: 16px; }
-          .mitico-week-control { justify-content: flex-start; }
-          .mitico-week-control select { max-width: 100%; flex: 1; }
-          .mitico-user-copy { flex: 1; }
-          .mitico-topbar-actions { grid-column: auto; }
-          .mitico-sidebar {
-            position: static; width: 100%; height: auto; max-height: none; padding: 10px 12px 11px;
-            flex-direction: row; align-items: flex-start; gap: 12px; overflow-x: auto; overflow-y: hidden;
-            overscroll-behavior-x: contain; scroll-snap-type: x proximity; -webkit-overflow-scrolling: touch;
-            border-right: 0; border-bottom: 1px solid var(--mitico-border); box-shadow: none;
-          }
-          .mitico-nav-group { min-width: 215px; margin: 0; padding: 0 10px 0 0; border-bottom: 0; border-right: 1px solid #edf1f5; scroll-snap-align: start; }
-          .mitico-sidebar-footer { display: none; }
-          .mitico-content-shell, .mitico-app-shell.trainer-only .mitico-content-shell { margin-left: 0; max-width: none; padding: 18px 14px 54px; }
-          .mitico-agenda-filters-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-          .mitico-agenda-days-grid { grid-template-columns: repeat(3, minmax(125px, 1fr)) !important; }
-          .mitico-install-help { top: 12px; right: 12px; }
-        }
-        @media (max-width: 600px) {
-          .mitico-topbar-actions { align-items: center; gap: 8px; }
-          .mitico-install-button span { display: inline; }
-          .mitico-user-copy strong { font-size: 12px; }
-          .mitico-user-copy small { font-size: 10px; }
-          .mitico-logout-button { padding-inline: 8px; }
-          .mitico-content-shell, .mitico-app-shell.trainer-only .mitico-content-shell { padding: 14px 10px 46px; }
-          .mitico-install-button { height: 36px; padding: 5px 8px; gap: 6px; font-size: 10px; white-space: nowrap; }
-          .mitico-install-button img { width: 22px; height: 22px; border-radius: 6px; }
-          .mitico-agenda-filters-grid { grid-template-columns: 1fr !important; }
-          .mitico-agenda-days-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 8px !important; }
-          .mitico-agenda-days-grid > button {
-            min-height: 88px !important;
-            padding: 10px 11px !important;
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            justify-content: space-between !important;
-            gap: 6px !important;
-          }
-          .mitico-day-counter {
-            width: 100% !important;
-            padding: 0 !important;
-            border: 0 !important;
-            border-radius: 0 !important;
-            background: transparent !important;
-            box-shadow: none !important;
-            font-size: 10px !important;
-            line-height: 1.2 !important;
-            text-align: left !important;
-            white-space: nowrap !important;
-          }
-          .mitico-app-shell.trainer-only .mitico-brand-copy span,
-          .mitico-app-shell.trainer-only .mitico-week-label,
-          .mitico-app-shell.trainer-only .mitico-user-copy small { display: none; }
-          .mitico-app-shell.trainer-only .mitico-topbar { gap: 6px; }
-          .mitico-app-shell.trainer-only .mitico-week-control { min-height: 38px; padding-block: 5px; }
-        }
-
         @keyframes miticoFadeUp {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
@@ -22463,309 +21912,6 @@ async function abrirGestionOperativaIntensivoDia(
             transition: none !important;
             animation: none !important;
           }
-        }
-      `}</style>
-
-      <style>{`
-        /* V3.0 · Capa visual de producto, aislada por pantalla.
-           No modifica shell, navegación ni breakpoints globales. */
-        .mitico-product-screen {
-          display: grid;
-          gap: 16px;
-          width: 100%;
-          min-width: 0;
-          max-width: 100%;
-        }
-        .mitico-product-screen > article:not(.mitico-product-hero),
-        .mitico-product-screen > section:not(.mitico-product-hero),
-        .mitico-product-screen > details {
-          min-width: 0;
-          max-width: 100%;
-          box-sizing: border-box;
-        }
-        .mitico-product-screen input,
-        .mitico-product-screen select,
-        .mitico-product-screen textarea {
-          min-width: 0;
-          max-width: 100%;
-          box-sizing: border-box;
-          border-radius: 12px;
-        }
-        .mitico-product-kpis {
-          display: grid;
-          grid-template-columns: repeat(4,minmax(0,1fr));
-          gap: 8px;
-          min-width: 0;
-        }
-        .mitico-product-kpi {
-          border: 1px solid #e2e8f0;
-          border-radius: 14px;
-          padding: 11px 12px;
-          background: #fff;
-          min-width: 0;
-          box-shadow: 0 8px 22px rgba(15,23,42,.035);
-        }
-        .mitico-product-kpi span {
-          display: block;
-          color: #64748b;
-          font-size: 9px;
-          font-weight: 950;
-          letter-spacing: .055em;
-          text-transform: uppercase;
-        }
-        .mitico-product-kpi strong {
-          display: block;
-          margin-top: 4px;
-          color: #0f172a;
-          font-size: 22px;
-          line-height: 1.05;
-          overflow-wrap: anywhere;
-        }
-        .mitico-product-card {
-          border: 1px solid #e2e8f0;
-          border-radius: 17px;
-          background: #fff;
-          box-shadow: 0 10px 28px rgba(15,23,42,.045);
-          min-width: 0;
-          max-width: 100%;
-          box-sizing: border-box;
-        }
-        .mitico-product-card-soft {
-          border: 1px solid #e2e8f0;
-          border-radius: 14px;
-          background: #f8fafc;
-          min-width: 0;
-          box-sizing: border-box;
-        }
-        .mitico-product-grid-2 { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; min-width:0; }
-        .mitico-product-grid-3 { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; min-width:0; }
-        .mitico-product-grid-auto { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:10px; min-width:0; }
-        .mitico-product-section-title {
-          display:flex; align-items:flex-start; justify-content:space-between; gap:10px; flex-wrap:wrap;
-        }
-        .mitico-product-eyebrow {
-          color:#64748b; font-size:9px; font-weight:950; letter-spacing:.075em; text-transform:uppercase;
-        }
-        .mitico-product-badge {
-          display:inline-flex; align-items:center; gap:5px; border-radius:999px; padding:5px 8px;
-          font-size:9px; font-weight:950; white-space:nowrap;
-        }
-        .mitico-product-actions { display:flex; gap:7px; flex-wrap:wrap; align-items:center; min-width:0; }
-        .mitico-product-screen button { max-width:100%; }
-        .mitico-product-screen details { border-radius:14px; }
-        .mitico-product-screen details > summary { border-radius:14px; }
-        .mitico-product-list-row {
-          display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px; align-items:center;
-          padding:10px 11px; border:1px solid #e7ecf2; border-radius:12px; background:#fff; min-width:0;
-        }
-        .mitico-product-screen .mitico-no-overflow { min-width:0; max-width:100%; overflow-wrap:anywhere; }
-
-        /* Responsive local del contenido. El menú y la cabecera NO se tocan. */
-        @media (max-width: 1280px) and (min-width: 901px) {
-          .mitico-product-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); }
-          .mitico-product-grid-3 { grid-template-columns: repeat(2,minmax(0,1fr)); }
-          .mitico-product-grid-auto { grid-template-columns: repeat(2,minmax(0,1fr)); }
-        }
-        @media (max-width: 900px) {
-          .mitico-product-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); }
-          .mitico-product-grid-2, .mitico-product-grid-3, .mitico-product-grid-auto { grid-template-columns: 1fr; }
-          .mitico-product-list-row { grid-template-columns: 1fr; }
-          .mitico-product-actions { width:100%; }
-          .mitico-product-actions > button { flex:1 1 140px; min-width:0; }
-        }
-        @media (max-width: 520px) {
-          .mitico-product-screen { gap:12px; }
-          .mitico-product-kpis { grid-template-columns: repeat(2,minmax(0,1fr)); gap:7px; }
-          .mitico-product-kpi { padding:9px 10px; }
-          .mitico-product-kpi strong { font-size:19px; }
-        }
-
-
-        /* V3.0 REAL · el contenido completo comparte el mismo lenguaje visual.
-           Todo está acotado a las pantallas de producto: no toca topbar/sidebar. */
-        .mitico-product-screen {
-          container-type: inline-size;
-          --product-accent:#2563eb;
-          --product-accent-soft:#eff6ff;
-          --product-ink:#0f172a;
-          --product-muted:#64748b;
-          --product-line:#e2e8f0;
-          --product-surface:#ffffff;
-          --product-soft:#f8fafc;
-        }
-        .mitico-product-trabajo { --product-accent:#0f766e; --product-accent-soft:#ecfdf5; }
-        .mitico-product-entrenamientos { --product-accent:#2563eb; --product-accent-soft:#eff6ff; }
-        .mitico-product-ocio { --product-accent:#0f766e; --product-accent-soft:#ecfdf5; }
-        .mitico-product-vista-entrenador { --product-accent:#0f766e; --product-accent-soft:#ecfdf5; }
-        .mitico-product-cierre { --product-accent:#2563eb; --product-accent-soft:#eff6ff; }
-        .mitico-product-altas { --product-accent:#4f46e5; --product-accent-soft:#eef2ff; }
-        .mitico-product-fichas { --product-accent:#7c3aed; --product-accent-soft:#f5f3ff; }
-        .mitico-product-entrenadores { --product-accent:#15803d; --product-accent-soft:#f0fdf4; }
-        .mitico-product-disponibilidad { --product-accent:#0f766e; --product-accent-soft:#ecfdf5; }
-        .mitico-product-cobros { --product-accent:#2563eb; --product-accent-soft:#eff6ff; }
-        .mitico-product-analisis { --product-accent:#4f46e5; --product-accent-soft:#eef2ff; }
-        .mitico-product-informes { --product-accent:#2563eb; --product-accent-soft:#eff6ff; }
-        .mitico-product-temporadas { --product-accent:#0f766e; --product-accent-soft:#ecfdf5; }
-        .mitico-product-accesos { --product-accent:#15803d; --product-accent-soft:#f0fdf4; }
-
-        .mitico-product-screen :where(article,section,details,div,form,label,nav) {
-          min-width:0;
-          max-width:100%;
-          box-sizing:border-box;
-        }
-        .mitico-product-screen :where(h1,h2,h3,h4,p,strong,span,small) {
-          overflow-wrap:anywhere;
-        }
-        .mitico-product-screen > :where(article,details),
-        .mitico-product-screen > section > :where(article,details) {
-          max-width:100%;
-        }
-        .mitico-product-screen :where(article:not(.mitico-product-hero),details) {
-          border-radius:16px;
-        }
-        .mitico-product-screen details {
-          border-color:var(--product-line);
-        }
-        .mitico-product-screen details > summary {
-          min-height:42px;
-          display:flex;
-          align-items:center;
-          gap:8px;
-          color:var(--product-ink);
-        }
-        .mitico-product-screen :where(input,select,textarea) {
-          border:1px solid #d7e0ea !important;
-          background:#fff !important;
-          color:var(--product-ink) !important;
-          min-height:42px;
-        }
-        .mitico-product-screen textarea { min-height:78px; resize:vertical; }
-        .mitico-product-screen label {
-          color:#334155;
-          font-weight:800;
-          line-height:1.35;
-        }
-        .mitico-product-screen :where(table) {
-          width:100%;
-          border-collapse:separate;
-          border-spacing:0;
-          color:#334155;
-        }
-        .mitico-product-screen :where(th) {
-          background:#f8fafc;
-          color:#475569;
-          font-size:11px;
-          font-weight:950;
-          text-transform:uppercase;
-          letter-spacing:.035em;
-        }
-        .mitico-product-screen :where(td,th) { border-color:#edf1f5 !important; }
-        .mitico-product-screen :where(tbody tr:hover) { background:#fbfdff; }
-        .mitico-product-screen button {
-          border-radius:11px;
-          line-height:1.2;
-        }
-        .mitico-product-screen button:disabled { cursor:not-allowed; }
-        .mitico-product-screen :where([style*="overflowX: 'auto'"],[style*="overflowX: \"auto\""]) {
-          max-width:100%;
-        }
-
-        /* Agenda: la zona operativa inferior deja de sentirse como formulario antiguo. */
-        .mitico-product-entrenamientos .mitico-agenda-controls {
-          border-radius:20px !important;
-          border:1px solid #dbe5f0 !important;
-          background:#ffffff !important;
-          box-shadow:0 12px 32px rgba(15,23,42,.05) !important;
-        }
-        .mitico-product-entrenamientos .mitico-agenda-days-grid > button {
-          border-radius:14px !important;
-          box-shadow:none !important;
-        }
-        .mitico-product-entrenamientos .mitico-day-counter {
-          white-space:normal !important;
-          line-height:1.15 !important;
-        }
-
-        /* Ocio: los grupos/alumnos reales mantienen exactamente el aspecto de producto. */
-        .mitico-product-ocio article {
-          box-shadow:0 10px 28px rgba(15,23,42,.045);
-        }
-        .mitico-product-ocio details > summary { background:#fbfefc; }
-
-        /* Altas y Fichas: tarjetas reales y sus interiores comparten superficie moderna. */
-        .mitico-product-altas > section article,
-        .mitico-product-fichas > section article {
-          box-shadow:0 9px 26px rgba(15,23,42,.04);
-        }
-        .mitico-product-altas article button[aria-expanded],
-        .mitico-product-fichas article button[aria-expanded] {
-          box-shadow:none !important;
-        }
-
-        /* Dirección: tablas y herramientas antiguas quedan contenidas dentro de paneles de producto. */
-        .mitico-product-informes > details,
-        .mitico-product-temporadas > details,
-        .mitico-product-cobros > details {
-          overflow:hidden;
-          background:#fff;
-          box-shadow:0 10px 28px rgba(15,23,42,.045);
-        }
-        .mitico-product-informes > details > summary,
-        .mitico-product-temporadas > details > summary,
-        .mitico-product-cobros > details > summary {
-          background:linear-gradient(180deg,#ffffff,#fbfcfe);
-        }
-
-        /* Disponibilidad: editor y resultados se leen como módulo de planificación, no CRUD. */
-        .mitico-product-disponibilidad .availability-editor-shell,
-        .mitico-product-disponibilidad .availability-trainer-week-card,
-        .mitico-product-disponibilidad .availability-response-summary {
-          border-radius:18px !important;
-          border-color:#dbe6e3 !important;
-          box-shadow:0 10px 28px rgba(15,23,42,.045) !important;
-          background:#fff !important;
-        }
-        .mitico-product-disponibilidad .availability-turn-editor,
-        .mitico-product-disponibilidad .availability-trainer-turn-card,
-        .mitico-product-disponibilidad .availability-response-turn-body {
-          border-radius:13px !important;
-        }
-
-        /* Vista entrenador: misma jerarquía del prototipo, tanto escritorio como móvil. */
-        .mitico-product-vista-entrenador .trainer-group-card,
-        .mitico-product-vista-entrenador .trainer-day-accordion,
-        .mitico-product-vista-entrenador .trainer-shift-accordion,
-        .mitico-product-vista-entrenador .trainer-week-block {
-          border-radius:16px !important;
-          border-color:#dfe6ee !important;
-          box-shadow:0 9px 26px rgba(15,23,42,.045) !important;
-          background:#fff !important;
-        }
-        .mitico-product-vista-entrenador .trainer-student-row {
-          border-radius:12px !important;
-          border-color:#e5eaf0 !important;
-          background:#fff !important;
-        }
-
-        /* Cierre semanal: paneles densos pero legibles. */
-        .mitico-product-cierre article { box-shadow:0 10px 28px rgba(15,23,42,.04); }
-
-        /* El responsive de la zona de contenido depende del ancho REAL disponible,
-           no del ancho total del navegador/iframe. */
-        @container (max-width: 820px) {
-          .mitico-product-screen .mitico-product-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
-          .mitico-product-screen .mitico-product-grid-2,
-          .mitico-product-screen .mitico-product-grid-3,
-          .mitico-product-screen .mitico-product-grid-auto { grid-template-columns:1fr; }
-          .mitico-product-entrenamientos .mitico-agenda-filters-grid { grid-template-columns:1fr !important; }
-          .mitico-product-entrenamientos .mitico-agenda-days-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
-          .mitico-product-vista-entrenador .trainer-toolbar { grid-template-columns:1fr !important; }
-          .mitico-product-vista-entrenador .trainer-tabs { width:100%; }
-        }
-        @container (max-width: 560px) {
-          .mitico-product-screen .mitico-product-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); }
-          .mitico-product-entrenamientos .mitico-agenda-days-grid { grid-template-columns:repeat(2,minmax(0,1fr)) !important; }
-          .mitico-product-screen button { white-space:normal; }
         }
       `}</style>
 
@@ -22854,9 +22000,8 @@ async function abrirGestionOperativaIntensivoDia(
         </div>
       )}
 
-      <div ref={contenidoPantallaRef} className="mitico-content-anchor" style={{ scrollMarginTop: 24 }} />
+      <div ref={contenidoPantallaRef} style={{ scrollMarginTop: 24 }} />
 
-      <div className="mitico-content-shell">
       {error && (
         <div style={errorCaja}>
           <strong>Error:</strong>
@@ -22865,274 +22010,392 @@ async function abrirGestionOperativaIntensivoDia(
       )}
 
       {pantalla === 'resumenDia' && (
-        <section className="mitico-product-screen mitico-product-trabajo">
+        <section>
+          <div style={cabeceraPantallaMovil}>
+            <div>
+              <p style={etiquetaSuperior}>PISTA · CONTROL DIARIO</p>
+              <h2 style={{ margin: 0 }}>Resumen del día</h2>
+              <p style={{ margin: '7px 0 0', color: '#64748b' }}>
+                Consulta rápida de turnos, alumnos, entrenadores y puntos de encuentro.
+              </p>
+            </div>
+            <input
+              type="date"
+              value={fechaResumenDiaActiva}
+              onChange={(e) => setFechaResumenDia(e.target.value)}
+              style={{ ...inputCampo, minHeight: 44 }}
+              aria-label="Fecha del resumen operativo"
+            />
+          </div>
+
           <article
-            className="mitico-product-hero"
             style={{
-              borderRadius: esVistaMovilApp ? 18 : 22,
-              padding: esVistaMovilApp ? 15 : 19,
-              border: '1px solid #dbe3ec',
-              background: 'linear-gradient(135deg,#ffffff 0%,#f8fafc 72%,#eefbf3 120%)',
-              boxShadow: '0 14px 36px rgba(15,23,42,.06)',
+              ...tarjeta,
+              marginTop: 14,
+              padding: 14,
+              border: '2px solid #bfdbfe',
+              background: 'linear-gradient(180deg,#eff6ff,#ffffff)',
             }}
           >
-            <div className="mitico-product-section-title">
-              <div style={{ minWidth: 0 }}>
-                <span className="mitico-product-eyebrow" style={{ color: '#15803d' }}>PISTA · CONTROL DIARIO</span>
-                <h2 style={{ margin: '5px 0 0', fontSize: esVistaMovilApp ? 24 : 29 }}>Trabajo en pista</h2>
-                <p style={{ margin: '6px 0 0', color: '#64748b', maxWidth: 720 }}>
-                  Turnos, grupos, entrenadores y alumnos publicados del día en una sola vista.
-                </p>
-              </div>
-              <input
-                type="date"
-                value={fechaResumenDiaActiva}
-                onChange={(e) => setFechaResumenDia(e.target.value)}
-                style={{ ...inputCampo, minHeight: 42, width: esVistaMovilApp ? '100%' : 170 }}
-                aria-label="Fecha del resumen operativo"
-              />
-            </div>
-
-            <div className="mitico-product-kpis" style={{ marginTop: 14 }}>
-              <div className="mitico-product-kpi"><span>Turnos</span><strong>{sesionesResumenDia.length}</strong></div>
-              <div className="mitico-product-kpi"><span>Alumnos</span><strong>{totalAlumnosResumenDia}</strong></div>
-              <div className="mitico-product-kpi"><span>Grupos publicados</span><strong>{totalPublicadosResumenDia}/{totalGruposResumenDia}</strong></div>
-              <div className="mitico-product-kpi" style={{ borderColor: gruposPendientesEntrenadorResumenDia.length ? '#fed7aa' : '#bbf7d0', background: gruposPendientesEntrenadorResumenDia.length ? '#fff7ed' : '#f0fdf4' }}>
-                <span style={{ color: gruposPendientesEntrenadorResumenDia.length ? '#c2410c' : '#15803d' }}>Sin entrenador</span>
-                <strong>{gruposPendientesEntrenadorResumenDia.length}</strong>
-              </div>
-            </div>
-          </article>
-
-          <article className="mitico-product-card" style={{ padding: esVistaMovilApp ? 12 : 14 }}>
             <label style={{ display: 'grid', gap: 7 }}>
-              <span className="mitico-product-eyebrow">BUSCAR EN LOS GRUPOS DEL DÍA</span>
+              <strong>Buscar alumno en los grupos publicados</strong>
               <input
                 type="search"
                 value={busquedaAlumnoResumenDia}
                 onChange={(e) => setBusquedaAlumnoResumenDia(e.target.value)}
                 placeholder="Nombre o apellidos del niño…"
-                style={{ ...inputCampo, width: '100%', minHeight: 44 }}
+                style={{ ...inputCampo, width: '100%', minHeight: 48, fontSize: 16 }}
               />
             </label>
+
             {textoBusquedaAlumnoResumenDia && (
-              <div style={{ display: 'grid', gap: 7, marginTop: 9 }}>
+              <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
                 {resultadosBusquedaAlumnoResumenDia.length === 0 ? (
-                  <div style={avisoPendiente}>No aparece ningún alumno con ese nombre en los grupos publicados del día.</div>
-                ) : resultadosBusquedaAlumnoResumenDia.slice(0, 8).map((resultado: any, indice: number) => (
-                  <button
-                    type="button"
-                    key={`${resultado.sesion.id}-${resultado.grupo.grupo_id || resultado.indice}-${resultado.alumno}-${indice}`}
-                    onClick={() => abrirResultadoAlumnoResumenDia(resultado)}
-                    className="mitico-product-list-row"
-                    style={{ width: '100%', textAlign: 'left', cursor: 'pointer' }}
-                  >
-                    <span style={{ minWidth: 0 }}>
-                      <strong style={{ display: 'block' }}>{resultado.alumno}</strong>
-                      <small style={{ color: '#64748b' }}>
-                        {horaCorta(resultado.sesion.hora_inicio)}–{horaCorta(resultado.sesion.hora_fin)} · {nombreGrupoVisualApp(resultado.grupo, resultado.indice)} · Punto {resultado.grupo.punto_encuentro || '-'}
-                      </small>
-                    </span>
-                    <span className="mitico-product-badge" style={{ background: '#eff6ff', color: '#1d4ed8' }}>
-                      {resultado.grupo.entrenador || resultado.grupo.entrenadores || 'Sin entrenador'}
-                    </span>
-                  </button>
-                ))}
+                  <div style={avisoPendiente}>
+                    No aparece ningún alumno con ese nombre en los grupos publicados del día.
+                  </div>
+                ) : (
+                  resultadosBusquedaAlumnoResumenDia.slice(0, 8).map((resultado: any, indice: number) => (
+                    <button
+                      type="button"
+                      key={`${resultado.sesion.id}-${resultado.grupo.grupo_id || resultado.indice}-${resultado.alumno}-${indice}`}
+                      onClick={() => abrirResultadoAlumnoResumenDia(resultado)}
+                      style={{
+                        ...botonSecundario,
+                        width: '100%',
+                        textAlign: 'left',
+                        display: 'grid',
+                        gap: 3,
+                        padding: '11px 13px',
+                      }}
+                    >
+                      <strong>{resultado.alumno}</strong>
+                      <span style={{ color: '#475569', fontSize: 13 }}>
+                        {horaCorta(resultado.sesion.hora_inicio)}–{horaCorta(resultado.sesion.hora_fin)} ·{' '}
+                        {nombreGrupoVisualApp(resultado.grupo, resultado.indice)} · Punto{' '}
+                        {resultado.grupo.punto_encuentro || '-'} ·{' '}
+                        {resultado.grupo.entrenador || resultado.grupo.entrenadores || 'Sin entrenador'}
+                      </span>
+                    </button>
+                  ))
+                )}
               </div>
             )}
           </article>
 
+          <div style={gridResumenInicio}>
+            <div style={tarjetaInicioOk}>
+              <strong>Turnos</strong>
+              <br />
+              <span style={{ fontSize: 26, fontWeight: 900 }}>
+                {sesionesResumenDia.length}
+              </span>
+            </div>
+            <div style={tarjetaInicioOk}>
+              <strong>Alumnos previstos</strong>
+              <br />
+              <span style={{ fontSize: 26, fontWeight: 900 }}>
+                {totalAlumnosResumenDia}
+              </span>
+            </div>
+            <div
+              style={
+                totalPublicadosResumenDia === totalGruposResumenDia
+                  ? tarjetaInicioOk
+                  : tarjetaInicioAlerta
+              }
+            >
+              <strong>Grupos publicados</strong>
+              <br />
+              <span style={{ fontSize: 26, fontWeight: 900 }}>
+                {totalPublicadosResumenDia}/{totalGruposResumenDia}
+              </span>
+            </div>
+            <div
+              style={
+                gruposPendientesEntrenadorResumenDia.length === 0
+                  ? tarjetaInicioOk
+                  : tarjetaInicioRojo
+              }
+            >
+              <strong>Sin entrenador</strong>
+              <br />
+              <span style={{ fontSize: 26, fontWeight: 900 }}>
+                {gruposPendientesEntrenadorResumenDia.length}
+              </span>
+            </div>
+          </div>
+
           {gruposPendientesEntrenadorResumenDia.length > 0 && (
-            <div style={{ ...avisoPendiente, borderRadius: 14 }}>
+            <div style={avisoPendiente}>
               Hay {gruposPendientesEntrenadorResumenDia.length} grupo(s) sin entrenador asignado para este día.
             </div>
           )}
 
-          <section style={{ display: 'grid', gap: 12 }}>
+          <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
             {sesionesResumenDia.length === 0 ? (
-              <article className="mitico-product-card" style={{ padding: 18, color: '#64748b' }}>
+              <article style={tarjetaMovilVacia}>
                 No hay sesiones preparadas para este día.
               </article>
-            ) : sesionesResumenDia.map((sesion: any) => {
-              const gruposPublicados = gruposPublicadosSesionResumenDia(sesion);
-              const entrenadoresCubiertos = gruposPublicados.filter((grupo: any) => Boolean(grupo.entrenador || grupo.entrenadores)).length;
-              const todoCubierto = gruposPublicados.length > 0 && entrenadoresCubiertos === gruposPublicados.length;
-              return (
-                <article key={sesion.id} className="mitico-product-card" style={{ padding: esVistaMovilApp ? 13 : 16 }}>
-                  <div className="mitico-product-section-title">
-                    <div style={{ minWidth: 0 }}>
-                      <span className="mitico-product-eyebrow">{String(sesion.modalidad || 'SESIÓN').toUpperCase()} · MADRID SNOWZONE</span>
-                      <h3 style={{ margin: '4px 0 0', fontSize: esVistaMovilApp ? 20 : 23 }}>
-                        {horaCorta(sesion.hora_inicio)}–{horaCorta(sesion.hora_fin)} · {sesion.titulo}
-                      </h3>
-                      <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: 12 }}>
-                        {sesion.totalAlumnos} alumnos · {gruposPublicados.length} grupos publicados
-                      </p>
-                    </div>
-                    <span className="mitico-product-badge" style={{ background: todoCubierto ? '#ecfdf5' : '#fff7ed', color: todoCubierto ? '#047857' : '#c2410c', border: `1px solid ${todoCubierto ? '#a7f3d0' : '#fed7aa'}` }}>
-                      {todoCubierto ? 'TODO CUBIERTO' : `${gruposPublicados.length - entrenadoresCubiertos} SIN ENTRENADOR`}
-                    </span>
-                  </div>
+            ) : (
+              sesionesResumenDia.map((sesion: any) => {
+                const turnoAbierto = turnoResumenDiaAbierto === String(sesion.id);
+                const gruposPublicados = gruposPublicadosSesionResumenDia(sesion);
 
-                  <div className="mitico-product-grid-2" style={{ marginTop: 12 }}>
-                    {gruposPublicados.length === 0 ? (
-                      <div className="mitico-product-card-soft" style={{ padding: 12, color: '#64748b', gridColumn: '1 / -1' }}>
-                        No hay grupos publicados en este turno.
-                      </div>
-                    ) : gruposPublicados.map((grupo: any, indice: number) => {
-                      const alumnosGrupo = alumnosGrupoResumenDia(grupo);
-                      const entrenador = grupo.entrenador || grupo.entrenadores || 'Sin entrenador';
-                      return (
-                        <div key={grupo.grupo_id || `${sesion.id}-${indice}`} className="mitico-product-card-soft" style={{ padding: 12, background: '#fff' }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
-                            <div style={{ minWidth: 0 }}>
-                              <strong style={{ display: 'block' }}>{nombreGrupoVisualApp(grupo, indice)}</strong>
-                              <span style={{ color: '#64748b', fontSize: 11 }}>
-                                {grupo.pista || 'Sin pista'} · Punto {grupo.punto_encuentro || '-'}
-                              </span>
-                            </div>
-                            <span className="mitico-product-badge" style={{ background: '#eff6ff', color: '#1d4ed8' }}>
-                              {grupo.nivel_grupo || 'Nivel'}
-                            </span>
+                return (
+                  <article
+                    id={`resumen-turno-${sesion.id}`}
+                    key={sesion.id}
+                    style={{
+                      ...tarjetaEntrenadorMovil,
+                      border: turnoAbierto ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                      borderRadius: 20,
+                      overflow: 'hidden',
+                      padding: 0,
+                      background: '#ffffff',
+                      boxShadow: turnoAbierto
+                        ? '0 14px 34px rgba(37,99,235,.14)'
+                        : '0 8px 20px rgba(15,23,42,.07)',
+                      scrollMarginTop: 18,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTurnoResumenDiaAbierto((actual) =>
+                          actual === String(sesion.id) ? '' : String(sesion.id)
+                        )
+                      }
+                      aria-expanded={turnoAbierto}
+                      style={{
+                        width: '100%',
+                        border: 0,
+                        background: turnoAbierto
+                          ? 'linear-gradient(135deg,#0f172a,#1e3a8a)'
+                          : '#f8fafc',
+                        color: turnoAbierto ? '#ffffff' : '#172033',
+                        padding: '15px 16px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: 12,
+                        textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ display: 'grid', gap: 4 }}>
+                        <span style={{ fontSize: 12, fontWeight: 900, textTransform: 'uppercase', opacity: 0.8 }}>
+                          {sesion.modalidad}
+                        </span>
+                        <strong style={{ fontSize: 17 }}>
+                          {horaCorta(sesion.hora_inicio)}–{horaCorta(sesion.hora_fin)} · {sesion.titulo}
+                        </strong>
+                        <span style={{ fontSize: 13, opacity: 0.82 }}>
+                          {gruposPublicados.length} grupos publicados · {sesion.totalAlumnos} niños
+                        </span>
+                      </span>
+                      <span style={{ fontSize: 24, fontWeight: 900 }} aria-hidden="true">
+                        {turnoAbierto ? '−' : '+'}
+                      </span>
+                    </button>
+
+                    {turnoAbierto && (
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit,minmax(270px,1fr))',
+                          gap: 12,
+                          padding: 12,
+                        }}
+                      >
+                        {gruposPublicados.length === 0 ? (
+                          <div style={tarjetaMovilVacia}>
+                            No hay grupos publicados en este turno.
                           </div>
-                          <div style={{ marginTop: 8, display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                            <span className="mitico-product-badge" style={{ background: entrenador === 'Sin entrenador' ? '#fff7ed' : '#ecfdf5', color: entrenador === 'Sin entrenador' ? '#c2410c' : '#047857' }}>
-                              {entrenador}
-                            </span>
-                            {grupo.entrenador_apoyo && <span className="mitico-product-badge" style={{ background: '#f5f3ff', color: '#7c3aed' }}>Apoyo: {grupo.entrenador_apoyo}</span>}
-                            <span className="mitico-product-badge" style={{ background: '#f8fafc', color: '#475569' }}>{alumnosGrupo.length} niños</span>
-                          </div>
-                          {alumnosGrupo.length > 0 && (
-                            <div style={{ display: 'grid', gap: 5, marginTop: 9 }}>
-                              {alumnosGrupo.slice(0, 7).map((alumno: string, alumnoIndice: number) => (
-                                <div key={`${grupo.grupo_id || indice}-${alumnoIndice}`} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '6px 8px', borderRadius: 9, background: '#f8fafc', fontSize: 11 }}>
-                                  <span style={{ width: 21, height: 21, borderRadius: '50%', display: 'grid', placeItems: 'center', background: '#dcfce7', color: '#166534', fontWeight: 950, fontSize: 8 }}>
-                                    {String(alumno).trim().slice(0,1).toUpperCase()}
-                                  </span>
-                                  <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{formatearAlumnoListadoOperativo(alumno)}</span>
+                        ) : (
+                          gruposPublicados.map((grupo: any, indice: number) => {
+                            const alumnosGrupo = alumnosGrupoResumenDia(grupo);
+                            return (
+                              <div
+                                id={`resumen-grupo-${String(
+                                  grupo.grupo_id || `${sesion.id}-${indice}`
+                                )}`}
+                                key={grupo.grupo_id || `${sesion.id}-${indice}`}
+                                style={{
+                                  ...miniTarjetaBlanca,
+                                  border:
+                                    grupoResumenDiaDestacado ===
+                                    String(grupo.grupo_id || `${sesion.id}-${indice}`)
+                                      ? '3px solid #2563eb'
+                                      : grupo.entrenador || grupo.entrenadores
+                                      ? '1px solid #cbd5e1'
+                                      : '2px solid #f59e0b',
+                                  borderRadius: 16,
+                                  padding: 13,
+                                  background: '#ffffff',
+                                  boxShadow: '0 6px 16px rgba(15,23,42,.06)',
+                                  minWidth: 0,
+                                }}
+                              >
+                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                                  <div>
+                                    <strong style={{ fontSize: 16 }}>{nombreGrupoVisualApp(grupo, indice)}</strong>
+                                    <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 8 }}>
+                                      <span style={{ ...miniBadge, background: '#0f172a', color: '#fff' }}>
+                                        PUNTO {grupo.punto_encuentro || '-'}
+                                      </span>
+                                      <span style={{ ...miniBadge, background: '#dbeafe', color: '#1e3a8a' }}>
+                                        {grupo.pista || 'SIN PISTA'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div style={{ textAlign: 'right' }}>
+                                    <span style={{ display: 'block', fontSize: 11, fontWeight: 900, color: '#64748b', textTransform: 'uppercase' }}>
+                                      Entrenador
+                                    </span>
+                                    <strong style={{ color: grupo.entrenador || grupo.entrenadores ? '#0f172a' : '#b45309' }}>
+                                      {grupo.entrenador || grupo.entrenadores || 'SIN ENTRENADOR'}
+                                    </strong>
+                                    {grupo.entrenador_apoyo && (
+                                      <p style={{ margin: '4px 0 0', fontSize: 13 }}>
+                                        Apoyo: {grupo.entrenador_apoyo}
+                                      </p>
+                                    )}
+                                  </div>
                                 </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </article>
-              );
-            })}
-          </section>
+
+                                <div style={{ marginTop: 12 }}>
+                                  <strong style={{ display: 'block', marginBottom: 6 }}>
+                                    Alumnos ({alumnosGrupo.length})
+                                  </strong>
+                                  {alumnosGrupo.length > 0 ? (
+                                    <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4 }}>
+                                      {alumnosGrupo.map((alumno, alumnoIndice) => (
+                                        <li
+                                          id={`resumen-alumno-${String(
+                                            grupo.grupo_id || `${sesion.id}-${indice}`
+                                          )}-${claveDomAlumnoResumenDia(alumno.split('·')[0])}`}
+                                          key={`${grupo.grupo_id || indice}-${alumnoIndice}`}
+                                          style={
+                                            grupoResumenDiaDestacado ===
+                                              String(grupo.grupo_id || `${sesion.id}-${indice}`) &&
+                                            alumnoResumenDiaDestacado &&
+                                            textoSinAcentosGrupoApp(alumno.split('·')[0]) ===
+                                              alumnoResumenDiaDestacado
+                                              ? {
+                                                  background: '#fef3c7',
+                                                  border: '2px solid #f59e0b',
+                                                  borderRadius: 8,
+                                                  padding: '4px 7px',
+                                                  fontWeight: 900,
+                                                  listStylePosition: 'inside',
+                                                }
+                                              : undefined
+                                          }
+                                        >
+                                          {alumno}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  ) : (
+                                    <p style={{ margin: 0, color: '#64748b' }}>Sin listado cargado.</p>
+                                  )}
+                                </div>
+
+                                {grupo.trabajo_diario && (
+                                  <details
+                                    style={{
+                                      ...avisoNeutral,
+                                      marginTop: 12,
+                                      padding: 0,
+                                      overflow: 'hidden',
+                                    }}
+                                  >
+                                    <summary
+                                      style={{
+                                        cursor: 'pointer',
+                                        padding: '11px 12px',
+                                        fontWeight: 900,
+                                        userSelect: 'none',
+                                        listStylePosition: 'inside',
+                                      }}
+                                    >
+                                      Trabajo diario
+                                    </summary>
+                                    <div
+                                      style={{
+                                        whiteSpace: 'pre-wrap',
+                                        padding: '0 12px 12px',
+                                        borderTop: '1px solid #e2e8f0',
+                                        paddingTop: 10,
+                                      }}
+                                    >
+                                      {grupo.trabajo_diario}
+                                    </div>
+                                  </details>
+                                )}
+
+                                {grupo.observaciones_importantes && (
+                                  <details
+                                    style={{
+                                      ...avisoNeutral,
+                                      marginTop: 8,
+                                      padding: 0,
+                                      overflow: 'hidden',
+                                    }}
+                                  >
+                                    <summary
+                                      style={{
+                                        cursor: 'pointer',
+                                        padding: '11px 12px',
+                                        fontWeight: 900,
+                                        userSelect: 'none',
+                                        listStylePosition: 'inside',
+                                      }}
+                                    >
+                                      Observaciones
+                                    </summary>
+                                    <div
+                                      style={{
+                                        padding: '0 12px 12px',
+                                        borderTop: '1px solid #e2e8f0',
+                                        paddingTop: 10,
+                                      }}
+                                    >
+                                      {formatearObservaciones(grupo.observaciones_importantes)}
+                                    </div>
+                                  </details>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </article>
+                );
+              })
+            )}
+          </div>
         </section>
       )}
 
       {pantalla === 'informes' && esCoordinadorJefeApp && (
-        <section className="mitico-product-screen mitico-product-informes" style={{ display: 'grid', gap: 13, minWidth: 0 }}>
-          <article
-            style={{
-              borderRadius: esVistaMovilApp ? 16 : 18,
-              overflow: 'hidden',
-              border: '1px solid #dbe3ec',
-              background: '#ffffff',
-              boxShadow: '0 12px 34px rgba(15,23,42,.055)',
-              minWidth: 0,
-            }}
-          >
-            <div
-              style={{
-                padding: esVistaMovilApp ? '14px 13px' : '17px 18px',
-                background: 'linear-gradient(135deg,#0f172a 0%,#172554 58%,#0f5132 128%)',
-                color: '#ffffff',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                gap: 12,
-                flexWrap: 'wrap',
-              }}
-            >
-              <div style={{ minWidth: 0, maxWidth: 720 }}>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    padding: '4px 8px',
-                    borderRadius: 999,
-                    background: 'rgba(34,197,94,.16)',
-                    border: '1px solid rgba(134,239,172,.26)',
-                    color: '#bbf7d0',
-                    fontSize: 9,
-                    fontWeight: 950,
-                    letterSpacing: .7,
-                  }}
-                >
-                  DIRECCIÓN · INFORMES
-                </span>
-                <h2 style={{ margin: '8px 0 0', fontSize: esVistaMovilApp ? 23 : 27, lineHeight: 1.05 }}>
-                  Informes y listados
-                </h2>
-                <p style={{ margin: '6px 0 0', color: '#cbd5e1', fontSize: 12, lineHeight: 1.5 }}>
-                  Genera salidas operativas con los datos actuales: uso de pistas, candidatos, listados de alumnos y evaluación anual. No guarda copias adicionales en Supabase.
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-                
-                <button
-                  type="button"
-                  onClick={actualizarTodo}
-                  style={{ ...botonSecundario, minHeight: 36, background: '#ffffff', color: '#0f172a' }}
-                >
-                  Actualizar datos
-                </button>
-              </div>
+        <section>
+          <div style={cabeceraPantallaMovil}>
+            <div>
+              <p style={etiquetaSuperior}>INFORMES Y LISTADOS</p>
+              <h2 style={{ margin: 0 }}>Informes y listados</h2>
+              <p style={{ margin: '8px 0 0', color: '#475569' }}>
+                Informes operativos y listados calculados con los datos actuales. No se guardan
+                copias adicionales en Supabase.
+              </p>
             </div>
-
-            <div
-              style={{
-                padding: esVistaMovilApp ? 11 : 13,
-                background: '#f8fafc',
-                borderTop: '1px solid rgba(255,255,255,.08)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: esVistaMovilApp ? 'repeat(2,minmax(0,1fr))' : 'repeat(4,minmax(0,1fr))',
-                  gap: 8,
-                }}
-              >
-                {[
-                  ['informe-snowzone', 'SnowZone', 'Uso real de pistas', '#2563eb', '#eff6ff'],
-                  ['informe-equipo', 'Equipo', 'Candidatos Baby', '#15803d', '#f0fdf4'],
-                  ['informe-alumnos', 'Alumnos', 'Listados de temporada', '#4f46e5', '#eef2ff'],
-                  ['informe-ocio-anual', 'Familias', 'Evaluación anual Ocio', '#7e22ce', '#faf5ff'],
-                ].map(([id, titulo, subtitulo, color, fondo]) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-                    style={{
-                      border: '1px solid #e2e8f0',
-                      borderRadius: 13,
-                      padding: '10px 11px',
-                      background: fondo,
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      minWidth: 0,
-                    }}
-                  >
-                    <strong style={{ display: 'block', color, fontSize: 12 }}>{titulo}</strong>
-                    <span style={{ display: 'block', marginTop: 3, color: '#64748b', fontSize: 10, lineHeight: 1.3 }}>
-                      {subtitulo}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </article>
-
-          
+            <button onClick={actualizarTodo} style={botonSecundario}>
+              Actualizar datos
+            </button>
+          </div>
 
           <details
-            id="informe-snowzone"
             open
             style={{
               ...tarjeta,
@@ -23544,7 +22807,6 @@ async function abrirGestionOperativaIntensivoDia(
           </details>
 
           <details
-            id="informe-equipo"
             style={{
               ...tarjeta,
               marginTop: 16,
@@ -23885,7 +23147,6 @@ async function abrirGestionOperativaIntensivoDia(
           </details>
 
           <details
-            id="informe-alumnos"
             style={{
               ...tarjeta,
               marginTop: 16,
@@ -24242,7 +23503,6 @@ async function abrirGestionOperativaIntensivoDia(
           </details>
 
           <details
-            id="informe-ocio-anual"
             style={{
               ...tarjeta,
               marginTop: 16,
@@ -24595,194 +23855,19 @@ async function abrirGestionOperativaIntensivoDia(
       )}
 
       {pantalla === 'temporadas' && esCoordinadorJefeApp && (
-        <section className="mitico-product-screen mitico-product-temporadas" style={{ display: 'grid', gap: 14, minWidth: 0 }}>
-          <article
-            style={{
-              borderRadius: esVistaMovilApp ? 16 : 18,
-              overflow: 'hidden',
-              border: '1px solid #dbe3ec',
-              background: '#ffffff',
-              boxShadow: '0 12px 34px rgba(15,23,42,.055)',
-              minWidth: 0,
-            }}
-          >
-            <div
-              style={{
-                padding: esVistaMovilApp ? '14px 13px' : '18px 19px',
-                background: 'linear-gradient(135deg,#0f172a 0%,#17324a 58%,#164e3d 125%)',
-                color: '#ffffff',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                gap: 12,
-                flexWrap: 'wrap',
-              }}
-            >
-              <div style={{ minWidth: 0, maxWidth: 760 }}>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    padding: '4px 8px',
-                    borderRadius: 999,
-                    background: 'rgba(34,197,94,.16)',
-                    border: '1px solid rgba(134,239,172,.26)',
-                    color: '#bbf7d0',
-                    fontSize: 9,
-                    fontWeight: 950,
-                    letterSpacing: 0.7,
-                  }}
-                >
-                  DIRECCIÓN · CICLO DE TEMPORADA
-                </span>
-                <h2 style={{ margin: '8px 0 0', fontSize: esVistaMovilApp ? 23 : 27, lineHeight: 1.05 }}>
-                  Temporadas
-                </h2>
-                <p style={{ margin: '6px 0 0', color: '#cbd5e1', fontSize: 12, lineHeight: 1.5 }}>
-                  Cierre seguro, copia maestra, nueva temporada y carga de semilla. Las acciones críticas permanecen separadas y requieren sus confirmaciones actuales.
-                </p>
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 7,
-                  flexWrap: 'wrap',
-                  justifyContent: esVistaMovilApp ? 'flex-start' : 'flex-end',
-                }}
-              >
-                
-                <button
-                  type="button"
-                  onClick={actualizarTodo}
-                  style={{ ...botonSecundario, minHeight: 36, background: '#ffffff', color: '#0f172a' }}
-                >
-                  Actualizar
-                </button>
-              </div>
+        <section>
+          <div style={cabeceraPantallaMovil}>
+            <div>
+              <p style={etiquetaSuperior}>TEMPORADAS</p>
+              <h2 style={{ margin: 0 }}>Inicio y cierre de temporada</h2>
+              <p style={{ margin: '8px 0 0', color: '#475569' }}>
+                Cierre seguro, copia maestra, nueva temporada y carga de semilla en un único flujo ordenado.
+              </p>
             </div>
-
-            <div
-              style={{
-                padding: esVistaMovilApp ? 12 : 15,
-                display: 'grid',
-                gridTemplateColumns: esVistaMovilApp ? '1fr' : 'minmax(0,1.3fr) minmax(250px,.7fr)',
-                gap: 10,
-                alignItems: 'stretch',
-                background: '#f8fafc',
-              }}
-            >
-              <div
-                style={{
-                  padding: '13px 14px',
-                  borderRadius: 14,
-                  border: '1px solid #dbe3ec',
-                  background: '#ffffff',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <div>
-                  <div style={{ fontSize: 10, fontWeight: 950, letterSpacing: .65, color: '#64748b' }}>
-                    TEMPORADA OPERATIVA
-                  </div>
-                  <div style={{ marginTop: 4, fontSize: 20, fontWeight: 950, color: '#0f172a' }}>
-                    {cargandoTemporadaActivaCierre ? 'Comprobando...' : temporadaActivaCierre || 'Sin temporada activa'}
-                  </div>
-                </div>
-                <span
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: 6,
-                    padding: '6px 9px',
-                    borderRadius: 999,
-                    border: `1px solid ${temporadaActivaCierre ? '#bbf7d0' : '#fde68a'}`,
-                    background: temporadaActivaCierre ? '#f0fdf4' : '#fffbeb',
-                    color: temporadaActivaCierre ? '#166534' : '#92400e',
-                    fontSize: 11,
-                    fontWeight: 950,
-                  }}
-                >
-                  <span style={{ width: 7, height: 7, borderRadius: 999, background: 'currentColor' }} />
-                  {temporadaActivaCierre ? 'Activa' : 'Pendiente de iniciar'}
-                </span>
-              </div>
-
-              <div
-                style={{
-                  padding: '13px 14px',
-                  borderRadius: 14,
-                  border: '1px solid #dbe3ec',
-                  background: '#ffffff',
-                }}
-              >
-                <div style={{ fontSize: 10, fontWeight: 950, letterSpacing: .65, color: '#64748b' }}>
-                  SIGUIENTE PASO SEGURO
-                </div>
-                <div style={{ marginTop: 5, fontSize: 14, fontWeight: 900, color: '#0f172a', lineHeight: 1.35 }}>
-                  {temporadaActivaCierre
-                    ? 'Trabajar la temporada activa y revisar el cierre solo cuando corresponda'
-                    : `Iniciar ${nombreTemporadaAgenda(anioInicioTemporadaAgenda)}`}
-                </div>
-              </div>
-            </div>
-          </article>
-
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: esVistaMovilApp ? 'repeat(2,minmax(0,1fr))' : 'repeat(4,minmax(0,1fr))',
-              gap: 8,
-              minWidth: 0,
-            }}
-          >
-            {[
-              ['1', 'Revisar', 'Analizar alumnos y descargar copia maestra'],
-              ['2', 'Cerrar', 'Backup y cierre definitivo con confirmación'],
-              ['3', 'Iniciar', 'Activar únicamente la temporada siguiente'],
-              ['4', 'Semilla', 'Validar CSV antes de cargar alumnos'],
-            ].map(([numeroPaso, tituloPaso, textoPaso]) => (
-              <div
-                key={`temporada-paso-${numeroPaso}`}
-                style={{
-                  padding: esVistaMovilApp ? '10px 9px' : '12px 12px',
-                  borderRadius: 14,
-                  border: '1px solid #dbe3ec',
-                  background: '#ffffff',
-                  minWidth: 0,
-                  boxShadow: '0 6px 18px rgba(15,23,42,.035)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <span
-                    style={{
-                      flex: '0 0 auto',
-                      width: 25,
-                      height: 25,
-                      borderRadius: 999,
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: numeroPaso === '2' ? '#fef2f2' : numeroPaso === '3' ? '#eff6ff' : '#f0fdf4',
-                      color: numeroPaso === '2' ? '#b91c1c' : numeroPaso === '3' ? '#1d4ed8' : '#15803d',
-                      fontSize: 11,
-                      fontWeight: 950,
-                    }}
-                  >
-                    {numeroPaso}
-                  </span>
-                  <strong style={{ fontSize: 12, color: '#0f172a' }}>{tituloPaso}</strong>
-                </div>
-                <p style={{ margin: '7px 0 0', fontSize: 10.5, lineHeight: 1.4, color: '#64748b' }}>{textoPaso}</p>
-              </div>
-            ))}
+            <button onClick={actualizarTodo} style={botonSecundario}>
+              Actualizar datos
+            </button>
           </div>
-
-          {(
-            <>
           <details
             style={{
               ...tarjeta,
@@ -26330,200 +25415,370 @@ async function abrirGestionOperativaIntensivoDia(
               </div>
             </details>
           </article>
-
-            </>
-          )}
         </section>
       )}
 
       {pantalla === 'analisis' && esCoordinadorJefeApp && (
-        <section className="mitico-product-screen mitico-product-analisis" style={{ display: 'grid', gap: 13, minWidth: 0 }}>
-          <article
-            style={{
-              borderRadius: esVistaMovilApp ? 16 : 18,
-              overflow: 'hidden',
-              border: '1px solid #dbe3ec',
-              background: '#ffffff',
-              boxShadow: '0 12px 34px rgba(15,23,42,.055)',
-              minWidth: 0,
-            }}
-          >
-            <div
-              style={{
-                padding: esVistaMovilApp ? '14px 13px' : '17px 18px',
-                background: 'linear-gradient(135deg,#0f172a 0%,#172554 60%,#123524 125%)',
-                color: '#ffffff',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'flex-start',
-                gap: 12,
-                flexWrap: 'wrap',
-              }}
-            >
-              <div style={{ minWidth: 0, maxWidth: 720 }}>
-                <span
+                <article
                   style={{
-                    display: 'inline-flex',
-                    padding: '4px 8px',
-                    borderRadius: 999,
-                    background: 'rgba(34,197,94,.16)',
-                    border: '1px solid rgba(134,239,172,.26)',
-                    color: '#bbf7d0',
-                    fontSize: 9,
-                    fontWeight: 950,
-                    letterSpacing: 0.7,
+                    ...agendaBloqueBlanco,
+                    border: '1px solid #c4b5fd',
+                    background: 'linear-gradient(135deg, #faf5ff 0%, #ffffff 58%)',
+                    display: 'grid',
+                    gap: 16,
+                    width: '100%',
+                    minWidth: 0,
+                    boxSizing: 'border-box',
                   }}
                 >
-                  DIRECCIÓN · DATOS
-                </span>
-                <h2 style={{ margin: '8px 0 0', fontSize: esVistaMovilApp ? 23 : 27, lineHeight: 1.05 }}>
-                  Análisis
-                </h2>
-                <p style={{ margin: '6px 0 0', color: '#cbd5e1', fontSize: 12, lineHeight: 1.5 }}>
-                  Lectura ejecutiva de crecimiento, continuidad, asistencia y evolución técnica. Se calcula al momento y no guarda informes generados en Supabase.
-                </p>
-              </div>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      gap: 12,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <span style={{ ...miniBadge, background: '#ede9fe', color: '#6d28d9' }}>
+                        ADMINISTRACIÓN
+                      </span>
+                      <h2 style={{ margin: '8px 0 0' }}>Análisis operativo</h2>
+                      <p style={{ margin: '6px 0 0', color: '#64748b', lineHeight: 1.45 }}>
+                        Se calcula al momento con la actividad real. No se guarda ningún informe generado en Supabase.
+                      </p>
+                    </div>
 
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 7,
-                  flexWrap: 'wrap',
-                  justifyContent: esVistaMovilApp ? 'flex-start' : 'flex-end',
-                }}
-              >
-                
-                <button
-                  type="button"
-                  disabled={!analisisAdmin || cargandoAnalisisAdmin}
-                  onClick={descargarPdfAnalisisAdminApp}
-                  style={{ ...botonSecundario, minHeight: 36, background: '#ffffff', color: '#0f172a' }}
-                >
-                  PDF
-                </button>
-                <button
-                  type="button"
-                  disabled={!analisisAdmin || cargandoAnalisisAdmin}
-                  onClick={descargarExcelAnalisisAdminApp}
-                  style={{ ...botonSecundario, minHeight: 36, background: '#ffffff', color: '#0f172a' }}
-                >
-                  Excel
-                </button>
-                <button
-                  type="button"
-                  disabled={!analisisAdmin || cargandoAnalisisAdmin}
-                  onClick={descargarCsvAnalisisAdminApp}
-                  style={{ ...botonSecundario, minHeight: 36, background: '#ffffff', color: '#0f172a' }}
-                >
-                  CSV
-                </button>
-              </div>
-            </div>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        disabled={!analisisAdmin || cargandoAnalisisAdmin}
+                        onClick={descargarPdfAnalisisAdminApp}
+                        style={botonSecundario}
+                      >
+                        PDF
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!analisisAdmin || cargandoAnalisisAdmin}
+                        onClick={descargarExcelAnalisisAdminApp}
+                        style={botonSecundario}
+                      >
+                        Excel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!analisisAdmin || cargandoAnalisisAdmin}
+                        onClick={descargarCsvAnalisisAdminApp}
+                        style={botonSecundario}
+                      >
+                        CSV
+                      </button>
+                    </div>
+                  </div>
 
-            <div
-              style={{
-                padding: esVistaMovilApp ? 12 : 15,
-                borderBottom: '1px solid #e2e8f0',
-                background: '#f8fafc',
-                display: 'grid',
-                gridTemplateColumns: esVistaMovilApp
-                  ? 'minmax(0,1fr)'
-                  : 'minmax(0,1fr) minmax(250px,330px)',
-                gap: 10,
-                alignItems: 'end',
-              }}
-            >
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3,minmax(0,1fr))',
-                  gap: 6,
-                  padding: 4,
-                  borderRadius: 12,
-                  background: '#e9eef5',
-                  minWidth: 0,
-                }}
-              >
-                {(['BABY', 'OCIO', 'INTENSIVOS'] as ModalidadAnalisisAdminApp[]).map((modalidad) => {
-                  const activa = modalidadAnalisisAdmin === modalidad;
-                  return (
-                    <button
-                      key={modalidad}
-                      type="button"
-                      disabled={cargandoAnalisisAdmin}
-                      onClick={() => cambiarModalidadAnalisisAdminApp(modalidad)}
-                      style={{
-                        border: activa ? '1px solid #cbd5e1' : '1px solid transparent',
-                        borderRadius: 9,
-                        background: activa ? '#ffffff' : 'transparent',
-                        color: activa ? '#0f172a' : '#64748b',
-                        boxShadow: activa ? '0 3px 10px rgba(15,23,42,.07)' : 'none',
-                        minHeight: 34,
-                        padding: '7px 8px',
-                        fontWeight: 850,
-                        fontSize: esVistaMovilApp ? 10 : 11,
-                        cursor: 'pointer',
-                        minWidth: 0,
-                      }}
-                    >
-                      {modalidad === 'INTENSIVOS' ? 'Intensivos' : modalidad === 'OCIO' ? 'Ocio' : 'Baby'}
-                    </button>
-                  );
-                })}
-              </div>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: esVistaMovilApp
+                        ? 'minmax(0, 1fr)'
+                        : 'minmax(0, 1fr) minmax(220px, 320px)',
+                      gap: 10,
+                      alignItems: 'end',
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {(['BABY', 'OCIO', 'INTENSIVOS'] as ModalidadAnalisisAdminApp[]).map(
+                        (modalidad) => (
+                          <button
+                            key={modalidad}
+                            type="button"
+                            disabled={cargandoAnalisisAdmin}
+                            onClick={() => cambiarModalidadAnalisisAdminApp(modalidad)}
+                            style={{
+                              ...botonSecundario,
+                              background:
+                                modalidadAnalisisAdmin === modalidad ? '#6d28d9' : '#fff',
+                              color:
+                                modalidadAnalisisAdmin === modalidad ? '#fff' : '#475569',
+                              borderColor:
+                                modalidadAnalisisAdmin === modalidad ? '#6d28d9' : '#e2e8f0',
+                              flex: esVistaMovilApp ? '1 1 95px' : undefined,
+                            }}
+                          >
+                            {modalidad === 'INTENSIVOS' ? 'Intensivos' : modalidad === 'OCIO' ? 'Ocio' : 'Baby'}
+                          </button>
+                        )
+                      )}
+                    </div>
 
-              <label style={{ ...labelCampo, fontSize: 10, color: '#64748b' }}>
-                Temporada analizada
-                <select
-                  value={temporadaAnalisisAdminId}
-                  disabled={cargandoAnalisisAdmin || !analisisAdmin}
-                  onChange={(e) => cambiarTemporadaAnalisisAdminApp(e.target.value)}
-                  style={{ ...selectCampo, minHeight: 38, background: '#ffffff' }}
-                >
-                  {(
-                    (analisisAdmin?.comparativa_temporadas || []).map((temporada) => (
-                      <option key={temporada.temporada_id} value={temporada.temporada_id}>
-                        {temporada.temporada}{temporada.activa ? ' · actual' : ''}
-                      </option>
-                    ))
+                    <label style={labelCampo}>
+                      Temporada analizada · actual + 2 anteriores
+                      <select
+                        value={temporadaAnalisisAdminId}
+                        disabled={cargandoAnalisisAdmin || !analisisAdmin}
+                        onChange={(e) => cambiarTemporadaAnalisisAdminApp(e.target.value)}
+                        style={selectCampo}
+                      >
+                        {(analisisAdmin?.comparativa_temporadas || []).map((temporada) => (
+                          <option key={temporada.temporada_id} value={temporada.temporada_id}>
+                            {temporada.temporada}{temporada.activa ? ' · actual' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  {cargandoAnalisisAdmin && (
+                    <div style={avisoNeutral}>Calculando métricas con los datos actuales…</div>
                   )}
-                </select>
-              </label>
-            </div>
 
-            <div style={{ padding: esVistaMovilApp ? 12 : 16, minWidth: 0 }}>
-              {cargandoAnalisisAdmin && (
-                <div style={avisoNeutral}>Calculando métricas con los datos actuales…</div>
+                  {errorAnalisisAdmin && <div style={errorCaja}>{errorAnalisisAdmin}</div>}
+
+                  {analisisAdmin && !cargandoAnalisisAdmin && (
+                    <>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: 10,
+                          flexWrap: 'wrap',
+                          alignItems: 'baseline',
+                        }}
+                      >
+                        <strong style={{ fontSize: 18 }}>
+                          {analisisAdmin.meta.modalidad === 'INTENSIVOS'
+                            ? 'Intensivos'
+                            : analisisAdmin.meta.modalidad === 'OCIO'
+                            ? 'Ocio'
+                            : 'Baby'}{' '}
+                          · {analisisAdmin.meta.temporada}
+                        </strong>
+                        <span style={{ color: '#64748b', fontSize: 12, fontWeight: 700 }}>
+                          Calculado {new Date(analisisAdmin.meta.generado_at).toLocaleString('es-ES')}
+                        </span>
+                      </div>
+
+                      <section
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                          gap: 10,
+                        }}
+                      >
+                        {[
+                          ['ALUMNOS ÚNICOS', analisisAdmin.resumen.alumnos_unicos, 'identidades'],
+                          ['ALTAS', analisisAdmin.resumen.altas, 'temporada'],
+                          ['CONTINUIDAD', numeroAnalisisAdminApp(analisisAdmin.resumen.continuidad_pct, '%'), 'mes a mes'],
+                          ['PÉRDIDA', numeroAnalisisAdminApp(analisisAdmin.resumen.perdida_continuidad_pct, '%'), 'continuidad'],
+                          ['ASISTENCIA REAL', numeroAnalisisAdminApp(analisisAdmin.resumen.asistencia_real_pct, '%'), 'confirmada'],
+                          ['NIÑOS / TURNO', numeroAnalisisAdminApp(analisisAdmin.resumen.promedio_ninos_turno), 'promedio'],
+                          ['POR GRUPO', numeroAnalisisAdminApp(analisisAdmin.resumen.promedio_por_grupo), 'promedio'],
+                          ['SESIONES', analisisAdmin.resumen.sesiones_realizadas, 'realizadas'],
+                          ['OCUPACIÓN', numeroAnalisisAdminApp(analisisAdmin.resumen.ocupacion_pct, '%'), 'capacidad'],
+                        ].map(([titulo, valor, pie]) => (
+                          <div
+                            key={String(titulo)}
+                            style={{
+                              ...miniTarjetaBlanca,
+                              border: '1px solid #7c3aed33',
+                              background: '#faf5ff',
+                              minHeight: 82,
+                              display: 'grid',
+                              alignContent: 'center',
+                            }}
+                          >
+                            <span style={{ color: '#64748b', fontWeight: 850, fontSize: 11 }}>
+                              {titulo}
+                            </span>
+                            <strong style={{ fontSize: 27, overflowWrap: 'anywhere' }}>{valor}</strong>
+                            <span style={{ color: '#64748b', fontSize: 12 }}>{pie}</span>
+                          </div>
+                        ))}
+                      </section>
+
+                      <section
+                        style={{
+                          ...agendaBloqueBlanco,
+                          border: '1px solid #e2e8f0',
+                          display: 'grid',
+                          gap: 10,
+                        }}
+                      >
+                        <div>
+                          <strong>Evolución técnica</strong>
+                          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
+                            Cambio medio entre el primer y el último nivel reportado de cada alumno.
+                          </p>
+                        </div>
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                            gap: 8,
+                          }}
+                        >
+                          <div style={miniTarjetaBlanca}>
+                            <span style={{ color: '#64748b', fontSize: 12 }}>EVOLUCIÓN MEDIA</span>
+                            <strong style={{ fontSize: 25 }}>
+                              {numeroAnalisisAdminApp(analisisAdmin.resumen.evolucion_tecnica)}
+                            </strong>
+                          </div>
+                          <div style={miniTarjetaBlanca}>
+                            <span style={{ color: '#64748b', fontSize: 12 }}>MEJORAN</span>
+                            <strong style={{ fontSize: 25, color: '#15803d' }}>{analisisAdmin.resumen.alumnos_mejoran}</strong>
+                          </div>
+                          <div style={miniTarjetaBlanca}>
+                            <span style={{ color: '#64748b', fontSize: 12 }}>ESTABLES</span>
+                            <strong style={{ fontSize: 25 }}>{analisisAdmin.resumen.alumnos_estables}</strong>
+                          </div>
+                          <div style={miniTarjetaBlanca}>
+                            <span style={{ color: '#64748b', fontSize: 12 }}>BAJAN</span>
+                            <strong style={{ fontSize: 25, color: '#b91c1c' }}>{analisisAdmin.resumen.alumnos_bajan}</strong>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section style={{ display: 'grid', gap: 9 }}>
+                        <div>
+                          <strong>Evolución mensual</strong>
+                          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
+                            Crecimiento, continuidad, asistencia, ocupación y carga real por mes.
+                          </p>
+                        </div>
+                        <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
+                          <table
+                            style={{
+                              width: '100%',
+                              minWidth: 980,
+                              borderCollapse: 'collapse',
+                              fontSize: 12,
+                            }}
+                          >
+                            <thead>
+                              <tr>
+                                {['Mes','Alumnos','Altas','Crec.','Cont.','Pérdida','Asist.','Niños/turno','Por grupo','Sesiones','Ocup.','Evol.'].map((titulo) => (
+                                  <th key={titulo} style={{ padding: 8, textAlign: 'left', borderBottom: '1px solid #cbd5e1', color: '#475569', whiteSpace: 'nowrap' }}>
+                                    {titulo}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {analisisAdmin.mensual.map((m) => (
+                                <tr key={m.mes}>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9', fontWeight: 800 }}>{etiquetaMesAnalisisAdminApp(m.mes)}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{m.alumnos_unicos}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{m.altas}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.crecimiento_pct, '%')}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.continuidad_pct, '%')}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.perdida_continuidad_pct, '%')}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.asistencia_real_pct, '%')}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.promedio_ninos_turno)}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.promedio_por_grupo)}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{m.sesiones_realizadas}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.ocupacion_pct, '%')}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.evolucion_tecnica)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </section>
+
+                      <section
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: esVistaMovilApp ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))',
+                          gap: 12,
+                        }}
+                      >
+                        <div style={{ ...agendaBloqueBlanco, border: '1px solid #e2e8f0' }}>
+                          <strong>Distribución de niveles</strong>
+                          <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                            {analisisAdmin.niveles.length === 0 && <span style={{ color: '#64748b' }}>Sin datos todavía.</span>}
+                            {analisisAdmin.niveles.map((nivel) => {
+                              const maximo = Math.max(1, ...analisisAdmin.niveles.map((n) => n.total));
+                              return (
+                                <div key={nivel.nivel} style={{ display: 'grid', gap: 4 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                                    <strong>{nivel.nivel}</strong><span>{nivel.total}</span>
+                                  </div>
+                                  <div style={{ height: 8, borderRadius: 999, background: '#f1f5f9', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', width: `${Math.max(4, (nivel.total / maximo) * 100)}%`, background: '#7c3aed', borderRadius: 999 }} />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div style={{ ...agendaBloqueBlanco, border: '1px solid #e2e8f0' }}>
+                          <strong>Progresión de niveles</strong>
+                          <div style={{ display: 'grid', gap: 7, marginTop: 10 }}>
+                            {analisisAdmin.progresiones.length === 0 && <span style={{ color: '#64748b' }}>Sin progresiones todavía.</span>}
+                            {analisisAdmin.progresiones.slice(0, 12).map((progresion, indice) => (
+                              <div key={`${progresion.desde}-${progresion.hasta}-${indice}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '7px 0', borderBottom: '1px solid #f1f5f9' }}>
+                                <span><strong>{progresion.desde}</strong> → <strong>{progresion.hasta}</strong></span>
+                                <span style={{ fontWeight: 850, color: progresion.sentido === 'SUBE' ? '#15803d' : progresion.sentido === 'BAJA' ? '#b91c1c' : '#64748b' }}>
+                                  {progresion.total} · {progresion.sentido}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </section>
+
+                      <section style={{ display: 'grid', gap: 9 }}>
+                        <div>
+                          <strong>Comparación entre temporadas</strong>
+                          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
+                            Queda preparada para crecer automáticamente cuando existan nuevas temporadas.
+                          </p>
+                        </div>
+                        <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
+                          <table style={{ width: '100%', minWidth: 650, borderCollapse: 'collapse', fontSize: 13 }}>
+                            <thead>
+                              <tr>
+                                {['Temporada','Alumnos','Sesiones','Asistencia','Evolución técnica'].map((titulo) => (
+                                  <th key={titulo} style={{ padding: 8, textAlign: 'left', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>{titulo}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {analisisAdmin.comparativa_temporadas.map((temporada) => (
+                                <tr key={temporada.temporada_id}>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9', fontWeight: 800 }}>
+                                    {temporada.temporada}{temporada.activa ? ' · actual' : ''}
+                                  </td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{temporada.alumnos_unicos}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{temporada.sesiones_realizadas}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(temporada.asistencia_real_pct, '%')}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(temporada.evolucion_tecnica)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </section>
+
+                      <details style={{ ...agendaBloqueBlanco, border: '1px solid #e2e8f0', padding: 12 }}>
+                        <summary style={{ cursor: 'pointer', fontWeight: 850, color: '#475569' }}>
+                          Cómo se calcula cada métrica
+                        </summary>
+                        <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                          {Object.entries(analisisAdmin.definiciones).map(([clave, definicion]) => (
+                            <div key={clave} style={{ fontSize: 13, lineHeight: 1.45 }}>
+                              <strong>{clave.replace(/_/g, ' ')}:</strong> {definicion}
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    </>
+                  )}
+                </article>
               )}
-
-              {errorAnalisisAdmin && <div style={errorCaja}>{errorAnalisisAdmin}</div>}
-
-              {analisisAdmin && !cargandoAnalisisAdmin ? (
-                <AnalisisPanelVisualApp
-                  datos={analisisAdmin}
-                  esVistaMovil={esVistaMovilApp}
-                  numero={numeroAnalisisAdminApp}
-                  etiquetaMes={etiquetaMesAnalisisAdminApp}
-                />
-              ) : !cargandoAnalisisAdmin && !errorAnalisisAdmin ? (
-                <div
-                  style={{
-                    border: '1px dashed #cbd5e1',
-                    borderRadius: 14,
-                    padding: '28px 16px',
-                    textAlign: 'center',
-                    color: '#64748b',
-                    background: '#f8fafc',
-                    fontSize: 12,
-                  }}
-                >
-                  Todavía no hay datos suficientes para construir el panel con datos reales de esta temporada.
-                </div>
-              ) : null}
-            </div>
-          </article>
-        </section>
-      )}
 
       {pantalla === 'revisionOcio' && (
         <section>
@@ -26690,19 +25945,20 @@ async function abrirGestionOperativaIntensivoDia(
       )}
 
       {pantalla === 'agenda' && (
-        <section className="mitico-agenda-screen mitico-product-screen mitico-product-entrenamientos" style={agendaShellCompacto}>
-          <article className="mitico-agenda-hero" style={agendaHeroTrabajoSemanal}>
+        <section style={agendaShellCompacto}>
+          <article style={agendaHeroTrabajoSemanal}>
             <div>
-              <p style={etiquetaSuperior}>OPERATIVA SEMANAL</p>
-              <h2 className="mitico-page-title" style={{ margin: '3px 0 0' }}>
-                Entrenamientos
+              <p style={etiquetaSuperior}>TRABAJO SEMANAL · AGENDA</p>
+              <h2 style={{ margin: '3px 0 0', fontSize: 28 }}>
+                Días de entrenamiento
               </h2>
-              <p style={{ margin: '8px 0 0', color: '#64748b', maxWidth: 720 }}>
-                Días de entrenamiento · organiza la semana, abre el día que necesitas y gestiona sus sesiones, grupos y recursos desde un único espacio.
+              <p style={{ margin: '8px 0 0', color: '#475569' }}>
+                Semana compacta: eliges semana, abres un día y trabajas solo una
+                sesión. Sin bajar toda la pantalla.
               </p>
             </div>
             <div style={agendaPanelRangoSemana}>
-              <span style={agendaMiniLabel}>Semana de trabajo</span>
+              <span style={agendaMiniLabel}>Semana completa</span>
               <strong>
                 {semanaAgendaActiva
                   ? rangoSemanaAgenda(semanaAgendaActiva)
@@ -26715,7 +25971,7 @@ async function abrirGestionOperativaIntensivoDia(
                   : '-'}
               </span>
               <button
-                onClick={() => { cargarAgendaOperativaDirecta(); cargarDisponibilidad(); cargarEntrenadores(); }}
+                onClick={() => window.location.reload()}
                 style={{
                   ...botonSecundario,
                   marginTop: 8,
@@ -26728,8 +25984,8 @@ async function abrirGestionOperativaIntensivoDia(
             </div>
           </article>
 
-          <section className="mitico-agenda-controls" style={agendaPanelControles}>
-            <div className="mitico-agenda-filters-grid" style={agendaControlesGrid}>
+          <section style={agendaPanelControles}>
+            <div style={agendaControlesGrid}>
               <label style={labelCampo}>
                 Temporada
                 <select
@@ -26814,7 +26070,7 @@ async function abrirGestionOperativaIntensivoDia(
 
                 return (
                   <div style={{ display: 'grid', gap: 14 }}>
-                    <div className="mitico-agenda-days-grid" style={agendaDiasSelectorCompacto}>
+                    <div style={agendaDiasSelectorCompacto}>
                       {diasSemanaAgenda.map((dia) => {
                         const sesionesDiaBoton = sesionesDelDiaAgenda(
                           dia.fecha
@@ -26878,7 +26134,6 @@ async function abrirGestionOperativaIntensivoDia(
                               </span>
                             </span>
                             <span
-                              className="mitico-day-counter"
                               style={agendaMiniContadorDiaCompacto(
                                 activo,
                                 alumnosDiaBoton,
@@ -29415,6 +28670,18 @@ async function abrirGestionOperativaIntensivoDia(
           (alumno) => !alumno.grupo_id
         );
 
+        const tarjetaMetricaOcioTurno = (
+          color: string,
+          fondo: string
+        ): React.CSSProperties => ({
+          ...miniTarjetaBlanca,
+          border: `1px solid ${color}33`,
+          background: fondo,
+          minHeight: 82,
+          display: 'grid',
+          alignContent: 'center',
+        });
+
         const alumnosPorGrupoOcio = new Map<string, OcioAlumnoApp[]>();
         ocioAlumnos.forEach((alumno) => {
           if (!alumno.grupo_id) return;
@@ -29491,128 +28758,59 @@ async function abrirGestionOperativaIntensivoDia(
           }
         });
 
-
+        const estiloTurno = (activo: boolean): React.CSSProperties => ({
+          border: activo ? '1px solid #16a34a' : '1px solid #bbf7d0',
+          background: activo ? '#16a34a' : '#f0fdf4',
+          color: activo ? '#ffffff' : '#166534',
+          borderRadius: 16,
+          padding: '12px 14px',
+          cursor: 'pointer',
+          fontWeight: 900,
+          textAlign: 'left',
+          boxShadow: activo ? '0 8px 22px rgba(22,163,74,0.18)' : 'none',
+          transition: 'all 160ms ease',
+          minWidth: 0,
+        });
 
         return (
-          <section className="mitico-product-screen mitico-product-ocio" style={{ display: 'grid', gap: 18 }}>
+          <section style={{ display: 'grid', gap: 16 }}>
             <article
               style={{
-                borderRadius: esVistaMovilApp ? 20 : 26,
-                padding: esVistaMovilApp ? 18 : 24,
+                ...agendaHero,
                 background:
-                  'linear-gradient(135deg, #063b36 0%, #0f766e 58%, #15916f 100%)',
-                color: '#ffffff',
-                boxShadow: '0 18px 46px rgba(6,59,54,0.18)',
-                overflow: 'hidden',
-                position: 'relative',
+                  'linear-gradient(135deg, rgba(240,253,244,0.98), rgba(255,255,255,0.98))',
               }}
             >
-              <div
-                style={{
-                  position: 'absolute',
-                  width: 260,
-                  height: 260,
-                  borderRadius: '50%',
-                  right: -100,
-                  top: -120,
-                  background: 'rgba(255,255,255,0.07)',
-                  pointerEvents: 'none',
-                }}
-              />
-
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: esVistaMovilApp
-                    ? 'minmax(0, 1fr)'
-                    : 'minmax(0, 1fr) auto',
-                  gap: 16,
-                  alignItems: 'start',
-                  position: 'relative',
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 7,
-                      fontSize: 11,
-                      fontWeight: 900,
-                      letterSpacing: 1.15,
-                      textTransform: 'uppercase',
-                      color: '#a7f3d0',
-                    }}
-                  >
-                    OCIO · GRUPOS ESTABLES
-                  </span>
-                  <h2
-                    style={{
-                      margin: '6px 0 0',
-                      fontSize: esVistaMovilApp ? 27 : 34,
-                      lineHeight: 1.05,
-                      color: '#ffffff',
-                    }}
-                  >
-                    Ocio
-                  </h2>
-                  <p
-                    style={{
-                      margin: '8px 0 0',
-                      color: '#d1fae5',
-                      fontWeight: 700,
-                      maxWidth: 620,
-                    }}
-                  >
-                    Organiza los grupos fijos de temporada y prepara cada semana
-                    sin perder la estructura estable.
-                  </p>
-                </div>
-
-                <div
+              <div>
+                <span
                   style={{
-                    display: 'flex',
-                    gap: 8,
-                    flexWrap: 'wrap',
-                    justifyContent: esVistaMovilApp ? 'flex-start' : 'flex-end',
+                    color: '#16a34a',
+                    fontWeight: 900,
+                    fontSize: 12,
+                    letterSpacing: 1.2,
+                    textTransform: 'uppercase',
                   }}
                 >
-                  <span
-                    style={{
-                      borderRadius: 999,
-                      padding: '7px 11px',
-                      background: 'rgba(255,255,255,0.12)',
-                      border: '1px solid rgba(255,255,255,0.16)',
-                      color: '#ecfdf5',
-                      fontSize: 12,
-                      fontWeight: 900,
-                    }}
-                  >
-                    Temporada {temporadaActivaCierre || 'activa'}
-                  </span>
-                                  </div>
+                  Ocio · temporada
+                </span>
+                <h2 style={{ margin: '5px 0 0' }}>Grupos estables</h2>
               </div>
 
+
+            </article>
+
+            <article style={agendaBloqueBlanco}>
               <div
                 style={{
                   display: 'grid',
                   gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-                  gap: esVistaMovilApp ? 7 : 10,
-                  marginTop: 20,
-                  position: 'relative',
+                  gap: 10,
                 }}
               >
                 {(Object.keys(configuracionTurnos) as Array<
                   keyof typeof configuracionTurnos
                 >).map((dia) => {
                   const activo = ocioTurnoVista === dia;
-                  const totalDia = alumnosTurnoOcio(dia).length;
-                  const gruposDia = ocioGrupos.filter(
-                    (grupo) =>
-                      textoSinAcentosGrupoApp(grupo.dia_semana || '') ===
-                      textoSinAcentosGrupoApp(dia)
-                  ).length;
-
                   return (
                     <button
                       key={dia}
@@ -29622,160 +28820,89 @@ async function abrirGestionOperativaIntensivoDia(
                         setOcioGrupoGestionAbiertoId('');
                         setOcioBusquedaGestionGrupo('');
                         setOcioPropuestaGrupos([]);
+                        window.setTimeout(() => {
+                          document
+                            .getElementById('ocio-grupos-turno-activo')
+                            ?.scrollIntoView({
+                              behavior: 'smooth',
+                              block: 'start',
+                            });
+                        }, 60);
                       }}
-                      style={{
-                        border: activo
-                          ? '1px solid rgba(255,255,255,0.9)'
-                          : '1px solid rgba(255,255,255,0.14)',
-                        background: activo
-                          ? '#ffffff'
-                          : 'rgba(255,255,255,0.08)',
-                        color: activo ? '#064e3b' : '#ffffff',
-                        borderRadius: esVistaMovilApp ? 14 : 16,
-                        padding: esVistaMovilApp ? '10px 8px' : '12px 14px',
-                        cursor: 'pointer',
-                        textAlign: 'left',
-                        boxShadow: activo
-                          ? '0 10px 28px rgba(0,0,0,0.12)'
-                          : 'none',
-                        minWidth: 0,
-                      }}
+                      style={estiloTurno(activo)}
                     >
-                      <strong
-                        style={{
-                          display: 'block',
-                          fontSize: esVistaMovilApp ? 13 : 15,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
+                      <span style={{ display: 'block', fontSize: 15 }}>
                         {configuracionTurnos[dia].etiqueta}
-                      </strong>
-                      <span
-                        style={{
-                          display: 'block',
-                          marginTop: 3,
-                          fontSize: esVistaMovilApp ? 10 : 12,
-                          opacity: activo ? 0.72 : 0.82,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {configuracionTurnos[dia].hora}
                       </span>
                       <span
                         style={{
                           display: 'block',
-                          marginTop: 7,
-                          fontSize: esVistaMovilApp ? 10 : 11,
-                          fontWeight: 900,
-                          opacity: activo ? 0.82 : 0.88,
+                          marginTop: 3,
+                          fontSize: 13,
+                          opacity: activo ? 0.9 : 0.8,
                         }}
                       >
-                        {totalDia} alumnos · {gruposDia} grupos
+                        {configuracionTurnos[dia].hora}
                       </span>
                     </button>
                   );
                 })}
               </div>
-
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: esVistaMovilApp
-                    ? 'repeat(2, minmax(0, 1fr))'
-                    : 'repeat(4, minmax(0, 1fr))',
-                  gap: 8,
-                  marginTop: 14,
-                  position: 'relative',
-                }}
-              >
-                {[
-                  ['Alumnos', String(totalAlumnosTurno)],
-                  ['Grupos', String(gruposTurno.length)],
-                  ['Sin grupo', String(alumnosSinGrupoTurno.length)],
-                  ['Turno', configuracionTurnos[ocioTurnoVista].hora],
-                ].map(([etiqueta, valor]) => (
-                  <div
-                    key={etiqueta}
-                    style={{
-                      borderRadius: 14,
-                      padding: esVistaMovilApp ? '10px 11px' : '11px 13px',
-                      background: 'rgba(255,255,255,0.09)',
-                      border: '1px solid rgba(255,255,255,0.12)',
-                      minWidth: 0,
-                    }}
-                  >
-                    <span
-                      style={{
-                        display: 'block',
-                        color: '#a7f3d0',
-                        fontSize: 10,
-                        fontWeight: 900,
-                        textTransform: 'uppercase',
-                        letterSpacing: 0.6,
-                      }}
-                    >
-                      {etiqueta}
-                    </span>
-                    <strong
-                      style={{
-                        display: 'block',
-                        marginTop: 3,
-                        color: '#ffffff',
-                        fontSize: etiqueta === 'Turno' ? 14 : 21,
-                        overflowWrap: 'anywhere',
-                      }}
-                    >
-                      {valor}
-                    </strong>
-                  </div>
-                ))}
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 8,
-                  flexWrap: 'wrap',
-                  marginTop: 14,
-                  position: 'relative',
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBusquedaOcio('');
-                    setFiltroDiaFichasOcio(ocioTurnoVista);
-                    abrirPantallaConScroll('ocioAlumnos');
-                  }}
-                  style={{
-                    ...botonSecundario,
-                    background: '#ffffff',
-                    color: '#065f46',
-                    borderColor: '#ffffff',
-                  }}
-                >
-                  Ver fichas del turno
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    document
-                      .getElementById('ocio-grupos-turno-activo')
-                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                  }
-                  style={{
-                    ...botonSecundario,
-                    background: 'rgba(255,255,255,0.10)',
-                    color: '#ffffff',
-                    borderColor: 'rgba(255,255,255,0.28)',
-                  }}
-                >
-                  Ver grupos
-                </button>
-              </div>
             </article>
 
-            
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                gap: 10,
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => {
+                  setBusquedaOcio('');
+                  setFiltroDiaFichasOcio(ocioTurnoVista);
+                  abrirPantallaConScroll('ocioAlumnos');
+                }}
+                style={{
+                  ...tarjetaMetricaOcioTurno('#16a34a', '#f0fdf4'),
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  color: 'inherit',
+                }}
+              >
+                <span
+                  style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
+                >
+                  ALUMNOS DEL TURNO
+                </span>
+                <strong style={{ fontSize: 28 }}>{totalAlumnosTurno}</strong>
+                <span>{ocioTurnoVista} · Abrir fichas</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() =>
+                  document
+                    .getElementById('ocio-grupos-turno-activo')
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
+                style={{
+                  ...tarjetaMetricaOcioTurno('#16a34a', '#f0fdf4'),
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  color: 'inherit',
+                }}
+              >
+                <span
+                  style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
+                >
+                  GRUPOS ESTABLES
+                </span>
+                <strong style={{ fontSize: 28 }}>{gruposTurno.length}</strong>
+                <span>{configuracionTurnos[ocioTurnoVista].hora}</span>
+              </button>
+            </div>
 
             {mostrarFormularioOcioGrupo && ocioGrupoForm.id && (
               <article
@@ -29964,10 +29091,10 @@ async function abrirGestionOperativaIntensivoDia(
                       textTransform: 'uppercase',
                     }}
                   >
-                    ALUMNOS · {ocioTurnoVista}
+                    Alumnos del turno
                   </span>
-                  <h3 style={{ margin: '3px 0 0', fontSize: 21 }}>
-                    {totalAlumnosTurno} alumnos · {configuracionTurnos[ocioTurnoVista].hora}
+                  <h3 style={{ margin: '3px 0 0' }}>
+                    {ocioTurnoVista} · {configuracionTurnos[ocioTurnoVista].hora}
                   </h3>
                   <p style={{ margin: '5px 0 0', color: '#64748b' }}>
                     {totalAlumnosTurno} alumnos · {alumnosSinGrupoTurno.length}{' '}
@@ -30603,17 +29730,16 @@ async function abrirGestionOperativaIntensivoDia(
                 <div>
                   <span
                     style={{
-                      color: '#0f766e',
+                      color: '#16a34a',
                       fontWeight: 900,
-                      fontSize: 11,
-                      letterSpacing: 0.8,
+                      fontSize: 12,
                       textTransform: 'uppercase',
                     }}
                   >
-                    GRUPOS ESTABLES · {ocioTurnoVista}
+                    {ocioTurnoVista}
                   </span>
-                  <h3 style={{ margin: '4px 0 0', fontSize: 22 }}>
-                    {gruposTurno.length} {gruposTurno.length === 1 ? 'grupo' : 'grupos'} · {configuracionTurnos[ocioTurnoVista].hora}
+                  <h3 style={{ margin: '3px 0 0' }}>
+                    {configuracionTurnos[ocioTurnoVista].hora}
                   </h3>
                 </div>
 
@@ -30674,35 +29800,41 @@ async function abrirGestionOperativaIntensivoDia(
               </div>
 
               {gruposTurno.length === 0 ? (
-                <div
-                  style={{
-                    ...agendaVacio,
-                    marginTop: 14,
-                    borderRadius: 16,
-                    padding: 18,
-                    border: '1px dashed #a7f3d0',
-                    background: '#f7fffb',
-                  }}
-                >
-                  <strong style={{ display: 'block', color: '#065f46' }}>
-                    Todavía no hay grupos estables para este turno
-                  </strong>
-                  <span style={{ display: 'block', marginTop: 5 }}>
-                    Revisa los alumnos y usa “Recomendar grupos” para crear la
-                    estructura inicial.
-                  </span>
+                <div style={{ ...agendaVacio, marginTop: 12 }}>
+                  Aún no hay grupos estables. Revisa los alumnos del turno y usa
+                  “Recomendar grupos” para crear la estructura inicial.
                 </div>
               ) : (
-                <div
+                <details
                   style={{
-                    display: 'grid',
-                    gridTemplateColumns: esVistaMovilApp
-                      ? 'minmax(0, 1fr)'
-                      : 'repeat(auto-fit, minmax(290px, 1fr))',
-                    gap: 12,
-                    marginTop: 14,
+                    marginTop: 12,
+                    border: '1px solid #dcfce7',
+                    borderRadius: 14,
+                    background: '#f8fffb',
+                    overflow: 'hidden',
                   }}
                 >
+                  <summary
+                    style={{
+                      cursor: 'pointer',
+                      padding: '12px 14px',
+                      fontWeight: 900,
+                      color: '#166534',
+                      userSelect: 'none',
+                    }}
+                  >
+                    Ver grupos estables · {gruposTurno.length}
+                  </summary>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns:
+                        'repeat(auto-fit, minmax(280px, 1fr))',
+                      gap: 12,
+                      padding: '0 12px 12px',
+                    }}
+                  >
                   {gruposTurno.map((grupo) => {
                     const miembrosGrupo =
                       alumnosPorGrupoOcio.get(grupo.grupo_id) || [];
@@ -30719,16 +29851,9 @@ async function abrirGestionOperativaIntensivoDia(
                       style={{
                         ...agendaGrupoResumen,
                         border: gestionAbierta
-                          ? '2px solid #0f766e'
-                          : '1px solid #dbe7e3',
-                        borderTop: gestionAbierta
-                          ? '5px solid #0f766e'
-                          : '5px solid #34d399',
-                        borderRadius: 18,
+                          ? '2px solid #16a34a'
+                          : '1px solid #bbf7d0',
                         background: '#ffffff',
-                        boxShadow: gestionAbierta
-                          ? '0 14px 34px rgba(15,118,110,0.14)'
-                          : '0 8px 24px rgba(15,23,42,0.06)',
                       }}
                     >
                       <div style={agendaGrupoLinea}>
@@ -30751,8 +29876,8 @@ async function abrirGestionOperativaIntensivoDia(
                             minWidth: 42,
                             textAlign: 'center',
                             borderRadius: 12,
-                            background: '#ecfdf5',
-                            color: '#047857',
+                            background: '#f0fdf4',
+                            color: '#166534',
                             padding: '7px 9px',
                           }}
                         >
@@ -30761,48 +29886,43 @@ async function abrirGestionOperativaIntensivoDia(
                       </div>
 
                       {miembrosGrupo.length > 0 ? (
-                        <div style={{ display: 'grid', gap: 6, marginTop: 12 }}>
+                        <ul
+                          style={{
+                            margin: '12px 0 0 18px',
+                            padding: 0,
+                            lineHeight: 1.55,
+                          }}
+                        >
                           {miembrosGrupo.map((alumno) => (
-                            <div
-                              key={alumno.alumno_id}
-                              style={{
-                                display: 'grid',
-                                gridTemplateColumns: 'auto minmax(0,1fr) auto',
-                                gap: 8,
-                                alignItems: 'center',
-                                padding: '7px 9px',
-                                borderRadius: 11,
-                                background: '#f8fafc',
-                                border: '1px solid #edf2f7',
-                              }}
-                            >
-                              <span style={{ width: 24, height: 24, borderRadius: '50%', display: 'grid', placeItems: 'center', background: '#d1fae5', color: '#065f46', fontSize: 9, fontWeight: 950 }}>
-                                {String(alumno.alumno || '?').slice(0,1).toUpperCase()}
-                              </span>
-                              <span style={{ minWidth: 0, fontSize: 11, fontWeight: 800, color: '#334155', overflowWrap: 'anywhere' }}>
-                                {alumno.alumno}
-                              </span>
-                              <span className="mitico-product-badge" style={{ background: '#ffffff', color: '#475569', border: '1px solid #dbe3ec' }}>
-                                {alumno.nivel_usado || alumno.nivel || '—'}
-                              </span>
-                            </div>
+                            <li key={alumno.alumno_id}>
+                              {formatearAlumnoListadoOperativo(
+                                `${alumno.alumno} · ${
+                                  alumno.nivel_usado || alumno.nivel || ''
+                                }`
+                              )}
+                            </li>
                           ))}
-                        </div>
+                        </ul>
                       ) : grupo.alumnos_lista ? (
-                        <div style={{ display: 'grid', gap: 6, marginTop: 12 }}>
-                          {grupo.alumnos_lista.split(' || ').map((alumno, indice) => (
-                            <div key={`${grupo.grupo_id}-${indice}`} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 9px', borderRadius: 11, background: '#f8fafc', border: '1px solid #edf2f7', fontSize: 11, fontWeight: 800, color: '#334155' }}>
-                              <span style={{ width: 24, height: 24, borderRadius: '50%', display: 'grid', placeItems: 'center', background: '#d1fae5', color: '#065f46', fontSize: 9, fontWeight: 950 }}>
-                                {String(alumno || '?').trim().slice(0,1).toUpperCase()}
-                              </span>
-                              <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{formatearAlumnoListadoOperativo(alumno)}</span>
-                            </div>
-                          ))}
-                        </div>
+                        <ul
+                          style={{
+                            margin: '12px 0 0 18px',
+                            padding: 0,
+                            lineHeight: 1.55,
+                          }}
+                        >
+                          {grupo.alumnos_lista
+                            .split(' || ')
+                            .map((alumno, indice) => (
+                              <li key={`${grupo.grupo_id}-${indice}`}>
+                                {formatearAlumnoListadoOperativo(alumno)}
+                              </li>
+                            ))}
+                        </ul>
                       ) : (
-                        <div className="mitico-product-card-soft" style={{ marginTop: 12, padding: 10, color: '#64748b' }}>
+                        <p style={{ margin: '12px 0 0', color: '#64748b' }}>
                           Sin alumnos asignados.
-                        </div>
+                        </p>
                       )}
 
                       {avisosEvolucion.length > 0 && (
@@ -31073,7 +30193,8 @@ async function abrirGestionOperativaIntensivoDia(
                     </article>
                     );
                   })}
-                </div>
+                  </div>
+                </details>
               )}
             </article>
 
@@ -33369,7 +32490,7 @@ async function abrirGestionOperativaIntensivoDia(
       )}
 
       {pantalla === 'entrenador' && (
-        <section className="trainer-view mitico-product-screen mitico-product-vista-entrenador" style={vistaEntrenadorShell}>
+        <section className="trainer-view" style={vistaEntrenadorShell}>
           <style>{`
             @media (max-width: 600px) {
               .trainer-view {
@@ -33457,8 +32578,8 @@ async function abrirGestionOperativaIntensivoDia(
                 max-width: 100% !important;
                 min-width: 0 !important;
                 display: grid !important;
-                grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-                gap: 6px !important;
+                grid-template-columns: minmax(0, 1fr) !important;
+                gap: 8px !important;
                 box-sizing: border-box !important;
               }
 
@@ -33466,10 +32587,8 @@ async function abrirGestionOperativaIntensivoDia(
                 width: 100% !important;
                 max-width: 100% !important;
                 min-width: 0 !important;
-                padding: 10px 7px !important;
                 white-space: normal !important;
-                line-height: 1.15 !important;
-                font-size: 12px !important;
+                line-height: 1.2 !important;
                 box-sizing: border-box !important;
               }
 
@@ -33479,33 +32598,13 @@ async function abrirGestionOperativaIntensivoDia(
                 line-height: 1.25 !important;
                 box-sizing: border-box !important;
               }
-
-              .trainer-group-card,
-              .trainer-day-accordion,
-              .trainer-shift-accordion {
-                max-width: 100% !important;
-                min-width: 0 !important;
-                box-sizing: border-box !important;
-              }
             }
-
-            .trainer-hero > div > p { color: #6ee7a1 !important; }
-            .trainer-hero h2 { color: #ffffff !important; letter-spacing: -0.02em; }
-            .trainer-hero-chips > span {
-              padding: 6px 9px;
-              border-radius: 999px;
-              border: 1px solid rgba(255,255,255,.10);
-              background: rgba(255,255,255,.075);
-            }
-            .trainer-toolbar { position: sticky; top: 8px; z-index: 12; }
-            .trainer-tab { box-shadow: none !important; }
-            .trainer-tab:hover { transform: none !important; box-shadow: none !important; }
           `}</style>
 
           <div className="trainer-hero" style={entrenadorHeroApp}>
             <div>
               <p style={etiquetaSuperior}>VISTA ENTRENADOR</p>
-              <h2 style={{ margin: 0 }}>Tu semana en pista</h2>
+              <h2 style={{ margin: 0 }}>Panel del entrenador</h2>
               {disponibilidadEditorVista?.existe ? (
 
                 <button
@@ -33567,7 +32666,7 @@ async function abrirGestionOperativaIntensivoDia(
                 </span>
               </div>
             </div>
-                        <button
+            <button
               onClick={() => {
                 cargarGruposEntrenador();
                 cargarDisponibilidad();
@@ -33617,8 +32716,6 @@ async function abrirGestionOperativaIntensivoDia(
               </button>
             </div>
           </article>
-
-          
 
           {cargando && <p>Cargando vista entrenador...</p>}
 
@@ -35066,7 +34163,10 @@ async function abrirGestionOperativaIntensivoDia(
                                             const mostrarGrupoEnPortal =
                                               esGrupoActivo &&
                                               typeof document !== 'undefined' &&
-                                              esVistaMovilApp;
+                                              typeof window !== 'undefined' &&
+                                              window.matchMedia(
+                                                '(max-width: 719px)'
+                                              ).matches;
 
                                             if (mostrarGrupoEnPortal) {
                                               return createPortal(
@@ -35205,7 +34305,7 @@ async function abrirGestionOperativaIntensivoDia(
           ];
 
           return (
-            <section className="mitico-product-screen mitico-product-cierre">
+            <section>
               <div
                 style={{
                   ...cabeceraPantalla,
@@ -35221,8 +34321,7 @@ async function abrirGestionOperativaIntensivoDia(
                   <p style={{ ...etiquetaSuperior, marginBottom: 6 }}>
                     CONTROL SEMANAL
                   </p>
-                  <h2 style={{ margin: 0 }}>Cierre semanal</h2>
-                  <p style={{ margin: '5px 0 0', color: '#64748b', fontWeight: 700 }}>Reportes y asistencias pendientes</p>
+                  <h2 style={{ margin: 0 }}>Reportes pendientes</h2>
                   <details style={{ marginTop: 10 }}>
                     <summary
                       style={{
@@ -35850,159 +34949,25 @@ async function abrirGestionOperativaIntensivoDia(
 
       {pantalla === 'administracion' &&
         puedeVerAdministracionAltasApp(perfilUsuario?.rol) && (
-          <section className="mitico-product-screen mitico-product-altas" style={{ display: 'grid', gap: 16, minWidth: 0 }}>
-            <article
-              style={{
-                borderRadius: esVistaMovilApp ? 19 : 24,
-                padding: esVistaMovilApp ? 16 : 22,
-                overflow: 'hidden',
-                position: 'relative',
-                background: 'linear-gradient(135deg,#0f172a 0%,#172554 52%,#0f766e 135%)',
-                boxShadow: '0 18px 46px rgba(15,23,42,.16)',
-                color: '#ffffff',
-              }}
-            >
-              <div
-                aria-hidden="true"
-                style={{
-                  position: 'absolute',
-                  width: 260,
-                  height: 260,
-                  borderRadius: '50%',
-                  right: -90,
-                  top: -140,
-                  background: 'rgba(45,212,191,.13)',
-                  pointerEvents: 'none',
-                }}
-              />
-
-              <div
-                style={{
-                  position: 'relative',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  gap: 14,
-                  alignItems: 'flex-start',
-                  flexWrap: 'wrap',
-                }}
-              >
-                <div style={{ minWidth: 0 }}>
-                  <span
-                    style={{
-                      fontSize: 11,
-                      fontWeight: 950,
-                      letterSpacing: 1.1,
-                      color: '#99f6e4',
-                      textTransform: 'uppercase',
-                    }}
-                  >
-                    GESTIÓN · ALTAS Y NIVEL INICIAL
-                  </span>
-                  <h2
-                    style={{
-                      margin: '6px 0 0',
-                      fontSize: esVistaMovilApp ? 27 : 34,
-                      lineHeight: 1.04,
-                      color: '#ffffff',
-                    }}
-                  >
-                    Altas / Test
-                  </h2>
-                  <p
-                    style={{
-                      margin: '8px 0 0',
-                      maxWidth: 650,
-                      color: '#cbd5e1',
-                      fontWeight: 700,
-                    }}
-                  >
-                    Controla el alta desde el primer contacto con la familia hasta la validación del nivel y su incorporación a la operativa.
-                  </p>
-                </div>
-
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 8,
-                    flexWrap: 'wrap',
-                    justifyContent: esVistaMovilApp ? 'flex-start' : 'flex-end',
-                  }}
+          <section style={{ display: 'grid', gap: 16, minWidth: 0 }}>
+            <div style={cabeceraPantalla}>
+              <div>
+                <p style={{ ...etiquetaSuperior, color: '#0891b2' }}>ADMINISTRACIÓN</p>
+                <h2 style={{ margin: '4px 0 6px' }}>Altas y test de nivel</h2>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button type="button" onClick={cargarAltasNivelInicial} style={botonSecundario}>
+                  Actualizar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMostrarFormularioAltaNivel(!mostrarFormularioAltaNivel)}
+                  style={botonPrincipal}
                 >
-                  <button
-                    type="button"
-                    onClick={cargarAltasNivelInicial}
-                    style={{
-                      ...botonSecundario,
-                      background: 'rgba(255,255,255,.08)',
-                      color: '#ffffff',
-                      borderColor: 'rgba(255,255,255,.22)',
-                    }}
-                  >
-                    Actualizar
-                  </button>
-                                    <button
-                    type="button"
-                    onClick={() => setMostrarFormularioAltaNivel(!mostrarFormularioAltaNivel)}
-                    style={{
-                      ...botonPrincipal,
-                      background: '#22c55e',
-                      borderColor: '#22c55e',
-                      boxShadow: '0 8px 20px rgba(34,197,94,.22)',
-                    }}
-                  >
-                    {mostrarFormularioAltaNivel ? 'Cerrar alta' : '+ Nueva alta'}
-                  </button>
-                </div>
+                  {mostrarFormularioAltaNivel ? 'Cerrar alta' : '+ Nueva alta'}
+                </button>
               </div>
-
-              <div
-                style={{
-                  position: 'relative',
-                  display: 'grid',
-                  gridTemplateColumns: esVistaMovilApp
-                    ? 'repeat(2, minmax(0, 1fr))'
-                    : 'repeat(4, minmax(0, 1fr))',
-                  gap: 8,
-                  marginTop: 18,
-                }}
-              >
-                {[
-                  ['Pendiente envío', altasNivelInicial.filter((a) => a.estado === 'PENDIENTE_ENVIO').length],
-                  ['Esperando', altasNivelInicial.filter((a) => a.estado === 'ENVIADO').length],
-                  ['Para revisar', altasNivelInicial.filter((a) => a.estado === 'RESPONDIDO' || a.estado === 'VALIDADO').length],
-                  ['Añadidos', altasNivelInicial.filter((a) => a.estado === 'ANADIDO').length],
-                ].map(([etiqueta, total]) => (
-                  <div
-                    key={String(etiqueta)}
-                    style={{
-                      borderRadius: 14,
-                      padding: esVistaMovilApp ? '10px 11px' : '11px 13px',
-                      background: 'rgba(255,255,255,.08)',
-                      border: '1px solid rgba(255,255,255,.12)',
-                      minWidth: 0,
-                    }}
-                  >
-                    <span
-                      style={{
-                        display: 'block',
-                        color: '#99f6e4',
-                        fontSize: 9,
-                        fontWeight: 950,
-                        letterSpacing: .55,
-                        textTransform: 'uppercase',
-                      }}
-                    >
-                      {String(etiqueta)}
-                    </span>
-                    <strong style={{ display: 'block', marginTop: 3, color: '#ffffff', fontSize: 22 }}>
-                      {String(total)}
-                    </strong>
-                  </div>
-                ))}
-              </div>
-            </article>
-
-            
+            </div>
 
             <details
               style={{
@@ -36231,38 +35196,27 @@ async function abrirGestionOperativaIntensivoDia(
 
             <section
               style={{
-                borderRadius: 18,
-                border: '1px solid #e2e8f0',
-                background: '#ffffff',
-                padding: esVistaMovilApp ? 12 : 15,
+                ...tarjeta,
+                padding: 14,
                 display: 'grid',
-                gap: 11,
-                boxShadow: '0 8px 24px rgba(15,23,42,.04)',
+                gap: 12,
               }}
             >
               <div>
-                <strong style={{ fontSize: 16, color: '#172033' }}>Bandeja de altas</strong>
+                <strong style={{ fontSize: 16 }}>Filtrar altas</strong>
                 <p style={{ margin: '3px 0 0', color: '#64748b', fontSize: 13 }}>
-                  Filtra por el siguiente paso que necesita cada familia.
+                  Ve directamente a lo que tienes pendiente.
                 </p>
               </div>
 
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: esVistaMovilApp
-                    ? 'repeat(2, minmax(0, 1fr))'
-                    : 'repeat(6, minmax(0, 1fr))',
-                  gap: 7,
-                }}
-              >
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {[
                   ['TODOS', 'Todos', altasNivelInicial.length, '#4f46e5', '#eef2ff'],
-                  ['PENDIENTE_ENVIO', 'Por enviar', altasNivelInicial.filter((a) => a.estado === 'PENDIENTE_ENVIO').length, '#64748b', '#f8fafc'],
-                  ['ENVIADO', 'Esperando', altasNivelInicial.filter((a) => a.estado === 'ENVIADO').length, '#d97706', '#fffbeb'],
+                  ['PENDIENTE_ENVIO', 'Pendiente de enviar', altasNivelInicial.filter((a) => a.estado === 'PENDIENTE_ENVIO').length, '#64748b', '#f8fafc'],
+                  ['ENVIADO', 'Esperando respuesta', altasNivelInicial.filter((a) => a.estado === 'ENVIADO').length, '#d97706', '#fffbeb'],
                   [
                     'RESPONDIDO',
-                    'Revisar',
+                    'Respondido · revisar',
                     altasNivelInicial.filter(
                       (a) => a.estado === 'RESPONDIDO' || a.estado === 'VALIDADO'
                     ).length,
@@ -36270,7 +35224,7 @@ async function abrirGestionOperativaIntensivoDia(
                     '#eff6ff',
                   ],
                   ['ANADIDO', 'Añadidos', altasNivelInicial.filter((a) => a.estado === 'ANADIDO').length, '#0f766e', '#f0fdfa'],
-                  ['DESCARTADO', 'Descartados', altasNivelInicial.filter((a) => a.estado === 'DESCARTADO').length, '#dc2626', '#fef2f2'],
+                  ['DESCARTADO', 'Descartado', altasNivelInicial.filter((a) => a.estado === 'DESCARTADO').length, '#dc2626', '#fef2f2'],
                 ].map(([valor, etiqueta, cantidad, color, fondo]) => {
                   const activo = filtroAltasNivel === valor;
                   return (
@@ -36283,33 +35237,17 @@ async function abrirGestionOperativaIntensivoDia(
                         setDetalleRespuestaAlta('');
                       }}
                       style={{
-                        border: activo ? `1px solid ${String(color)}` : '1px solid #e2e8f0',
-                        borderRadius: 13,
+                        ...botonSecundario,
                         background: activo ? String(color) : String(fondo),
-                        color: activo ? '#ffffff' : '#334155',
-                        padding: esVistaMovilApp ? '9px 8px' : '10px 9px',
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                        minWidth: 0,
-                        boxShadow: activo ? `0 8px 18px ${String(color)}22` : 'none',
+                        color: activo ? '#ffffff' : String(color),
+                        borderColor: String(color),
+                        fontWeight: 900,
+                        boxShadow: activo
+                          ? `0 8px 18px ${String(color)}28`
+                          : 'none',
                       }}
                     >
-                      <span
-                        style={{
-                          display: 'block',
-                          fontSize: 10,
-                          fontWeight: 900,
-                          color: activo ? '#ffffff' : String(color),
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                        }}
-                      >
-                        {String(etiqueta)}
-                      </span>
-                      <strong style={{ display: 'block', marginTop: 3, fontSize: 19 }}>
-                        {String(cantidad)}
-                      </strong>
+                      {String(etiqueta)} ({String(cantidad)})
                     </button>
                   );
                 })}
@@ -37524,7 +36462,6 @@ async function abrirGestionOperativaIntensivoDia(
 
           return (
             <section
-              className="mitico-product-screen mitico-product-fichas"
               style={{
                 display: 'grid',
                 gap: 16,
@@ -37535,7 +36472,7 @@ async function abrirGestionOperativaIntensivoDia(
               }}
             >
               <article style={estiloFichaHero}>
-                <div style={{ minWidth: 0 }}>
+                <div>
                   <span
                     style={{
                       ...agendaBadgeModalidad,
@@ -37544,139 +36481,130 @@ async function abrirGestionOperativaIntensivoDia(
                       borderColor: '#ddd6fe',
                     }}
                   >
-                    GESTIÓN DE ALUMNOS
+                    FICHAS
                   </span>
-                  <h2 style={{ margin: '10px 0 0' }}>Fichas</h2>
+                  <h2 style={{ margin: '10px 0 0' }}>
+                    {vistaFichasAlumnos === 'intensivos'
+                      ? 'Alumnos Intensivos'
+                      : 'Alumnos Baby'}
+                  </h2>
                   <p
                     style={{
                       margin: '8px 0 0',
                       color: '#475569',
                       fontWeight: 650,
                       minWidth: 0,
-                      maxWidth: 720,
+                      maxWidth: '100%',
                       whiteSpace: 'normal',
                       overflowWrap: 'anywhere',
-                      lineHeight: 1.4,
+                      lineHeight: 1.35,
                     }}
                   >
                     {vistaFichasAlumnos === 'intensivos'
-                      ? 'Seguimiento técnico global de alumnos de Intensivos, asistencia, evolución y recuperaciones.'
-                      : 'Ficha maestra, nivel real, contacto familiar, historial y seguimiento técnico de cada alumno Baby.'}
+                      ? 'Seguimiento global de los alumnos que están o han estado en Intensivos.'
+                      : 'Fichas maestras de alumnos Baby y seguimiento de su nivel real.'}
                   </p>
                 </div>
 
                 <div
                   style={{
-                    display: 'grid',
-                    gap: 9,
-                    justifyItems: esVistaMovilApp ? 'stretch' : 'end',
+                    display: 'flex',
+                    gap: 10,
+                    flexWrap: 'wrap',
+                    justifyContent: esVistaMovilApp ? 'stretch' : 'flex-end',
                     width: esVistaMovilApp ? '100%' : undefined,
                     maxWidth: '100%',
                     minWidth: 0,
                   }}
                 >
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: 7,
-                      flexWrap: 'wrap',
-                      justifyContent: esVistaMovilApp ? 'stretch' : 'flex-end',
-                    }}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => setVistaFichasAlumnos('general')}
-                      style={{
-                        ...botonSecundario,
-                        borderColor:
-                          vistaFichasAlumnos === 'general' ? '#c4b5fd' : '#e2e8f0',
-                        color:
-                          vistaFichasAlumnos === 'general' ? '#6d28d9' : '#475569',
-                        background:
-                          vistaFichasAlumnos === 'general' ? '#f5f3ff' : '#ffffff',
-                        boxShadow: 'none',
-                        ...(esVistaMovilApp
-                          ? { flex: '1 1 90px', minWidth: 0 }
-                          : {}),
-                      }}
-                    >
-                      Baby · {totalFichas}
-                    </button>
-
+                  {vistaFichasAlumnos === 'general' ? (
                     <button
                       type="button"
                       onClick={() => setVistaFichasAlumnos('intensivos')}
                       style={{
                         ...botonSecundario,
-                        borderColor:
-                          vistaFichasAlumnos === 'intensivos' ? '#fdba74' : '#e2e8f0',
-                        color:
-                          vistaFichasAlumnos === 'intensivos' ? '#c2410c' : '#475569',
-                        background:
-                          vistaFichasAlumnos === 'intensivos' ? '#fff7ed' : '#ffffff',
-                        boxShadow: 'none',
+                        borderColor: '#fed7aa',
+                        color: '#c2410c',
+                        background: '#fff7ed',
                         ...(esVistaMovilApp
-                          ? { flex: '1 1 120px', minWidth: 0 }
+                          ? {
+                              flex: '1 1 150px',
+                              minWidth: 0,
+                              whiteSpace: 'normal',
+                            }
                           : {}),
                       }}
                     >
-                      Intensivos · {totalFichasIntensivos}
+                      Ver alumnos Intensivos ({totalFichasIntensivos})
                     </button>
-
+                  ) : (
                     <button
                       type="button"
-                      onClick={() => {
-                        setFiltroDiaFichasOcio('');
-                        setBusquedaOcio('');
-                        setPantalla('ocioAlumnos');
-                      }}
+                      onClick={() => setVistaFichasAlumnos('general')}
                       style={{
                         ...botonSecundario,
-                        borderColor: '#bbf7d0',
-                        color: '#166534',
-                        background: '#f0fdf4',
-                        boxShadow: 'none',
+                        borderColor: '#ddd6fe',
+                        color: '#6d28d9',
+                        background: '#f5f3ff',
                         ...(esVistaMovilApp
-                          ? { flex: '1 1 90px', minWidth: 0 }
+                          ? {
+                              flex: '1 1 150px',
+                              minWidth: 0,
+                              whiteSpace: 'normal',
+                            }
                           : {}),
                       }}
                     >
-                      Ocio · {ocioAlumnos.length}
+                      Ver alumnos Baby
                     </button>
-                  </div>
+                  )}
 
-                  <div
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFiltroDiaFichasOcio('');
+                      setBusquedaOcio('');
+                      setPantalla('ocioAlumnos');
+                    }}
                     style={{
-                      display: 'flex',
-                      gap: 7,
-                      flexWrap: 'wrap',
-                      justifyContent: esVistaMovilApp ? 'stretch' : 'flex-end',
+                      ...botonSecundario,
+                      borderColor: '#bbf7d0',
+                      color: '#166534',
+                      background: '#f0fdf4',
+                      ...(esVistaMovilApp
+                        ? {
+                            flex: '1 1 150px',
+                            minWidth: 0,
+                            whiteSpace: 'normal',
+                          }
+                        : {}),
                     }}
                   >
-                    
-                    <button
-                      type="button"
-                      onClick={() => {
-                        cargarAlumnos();
-                        if (vistaFichasAlumnos === 'intensivos') {
-                          cargarIntensivos();
-                        }
-                      }}
-                      style={{
-                        ...botonSecundario,
-                        boxShadow: 'none',
-                        ...(esVistaMovilApp
-                          ? { flex: '1 1 100px', minWidth: 0 }
-                          : {}),
-                      }}
-                    >
-                      Actualizar
-                    </button>
-                  </div>
+                    Ver alumnos Ocio ({ocioAlumnos.length})
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      cargarAlumnos();
+                      if (vistaFichasAlumnos === 'intensivos') {
+                        cargarIntensivos();
+                      }
+                    }}
+                    style={{
+                      ...botonSecundario,
+                      ...(esVistaMovilApp
+                        ? {
+                            flex: '1 1 120px',
+                            minWidth: 0,
+                            whiteSpace: 'normal',
+                          }
+                        : {}),
+                    }}
+                  >
+                    Refrescar
+                  </button>
                 </div>
               </article>
-
-              
 
               {vistaFichasAlumnos === 'intensivos' && (
                 <>
@@ -38413,50 +37341,9 @@ async function abrirGestionOperativaIntensivoDia(
                   width: '100%',
                   maxWidth: '100%',
                   minWidth: 0,
-                  boxSizing: 'border-box',
-                  scrollMarginTop: 18,
-                  border: '1px solid #e2e8f0',
-                  boxShadow: '0 10px 28px rgba(15,23,42,.045)',
-                }}
+                  boxSizing: 'border-box', scrollMarginTop: 18 }}
               >
-                <div
-                  style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    gap: 10,
-                    alignItems: 'flex-end',
-                    flexWrap: 'wrap',
-                    marginBottom: 12,
-                  }}
-                >
-                  <div>
-                    <span
-                      style={{
-                        color: '#7c3aed',
-                        fontSize: 10,
-                        fontWeight: 950,
-                        letterSpacing: .65,
-                      }}
-                    >
-                      DIRECTORIO BABY
-                    </span>
-                    <h3 style={{ margin: '4px 0 0' }}>Buscar y revisar fichas</h3>
-                  </div>
-                  <span
-                    style={{
-                      padding: '5px 9px',
-                      borderRadius: 999,
-                      background: '#f1f5f9',
-                      color: '#475569',
-                      fontSize: 11,
-                      fontWeight: 900,
-                    }}
-                  >
-                    {alumnosFiltrados.length} resultado(s)
-                  </span>
-                </div>
-
-                <div style={{ display: 'grid', gap: 10 }}>
+                <div style={{ display: 'grid', gap: 12 }}>
                   <input
                     value={busquedaAlumno}
                     onChange={(e) => setBusquedaAlumno(e.target.value)}
@@ -38464,7 +37351,7 @@ async function abrirGestionOperativaIntensivoDia(
                     style={{ ...buscador, margin: 0 }}
                   />
 
-                  <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button
                       onClick={() => setFiltroAlumnos('todos')}
                       style={botonMenu(filtroAlumnos === 'todos')}
@@ -38537,7 +37424,7 @@ async function abrirGestionOperativaIntensivoDia(
                           flexWrap: 'wrap',
                         }}
                       >
-                        <div style={{ minWidth: 0, flex: '1 1 260px' }}>
+                        <div style={{ minWidth: 260, flex: 1 }}>
                           <div
                             style={{
                               display: 'flex',
@@ -38563,28 +37450,6 @@ async function abrirGestionOperativaIntensivoDia(
                               {sinReportes
                                 ? 'Sin reportes'
                                 : `${alumno.total_reportes || 0} reportes`}
-                            </span>
-                            <span
-                              style={{
-                                ...agendaBadgeModalidad,
-                                background: String(alumno.estado_ficha || '')
-                                  .toLowerCase()
-                                  .includes('revis')
-                                  ? '#eff6ff'
-                                  : '#f8fafc',
-                                color: String(alumno.estado_ficha || '')
-                                  .toLowerCase()
-                                  .includes('revis')
-                                  ? '#1d4ed8'
-                                  : '#475569',
-                                borderColor: String(alumno.estado_ficha || '')
-                                  .toLowerCase()
-                                  .includes('revis')
-                                  ? '#bfdbfe'
-                                  : '#e2e8f0',
-                              }}
-                            >
-                              {alumno.estado_ficha || 'Ficha activa'}
                             </span>
                           </div>
 
@@ -39327,524 +38192,381 @@ async function abrirGestionOperativaIntensivoDia(
           );
         })()}
 
-      {pantalla === 'usuarios' && esCoordinadorJefeApp && (() => {
-        const usuariosActivos = usuariosOperativos.filter((usuario) => usuario.estado_acceso === 'activo').length;
-        const invitacionesPendientes = usuariosOperativos.filter((usuario) => usuario.estado_acceso === 'invitacion_pendiente').length;
-        const accesosDesactivados = usuariosOperativos.filter((usuario) => usuario.estado_acceso === 'desactivado').length;
+      {pantalla === 'usuarios' && esCoordinadorJefeApp && (
+        <section>
+          <div style={cabeceraPantalla}>
+            <div>
+              <h2>Accesos equipo</h2>
+              <p style={{ margin: '6px 0 0', color: '#555' }}>
+                Cuentas de coordinación y administración. Los entrenadores se
+                gestionan desde su propia ficha.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => setMostrarAltaUsuarioOperativo(true)}
+                style={botonPrincipal}
+              >
+                + Crear acceso
+              </button>
+              <button
+                type="button"
+                onClick={cargarUsuariosOperativos}
+                style={botonSecundario}
+              >
+                Actualizar
+              </button>
+            </div>
+          </div>
 
-        return (
-          <section className="mitico-product-screen mitico-product-accesos" style={{ display: 'grid', gap: 14, minWidth: 0 }}>
+          {mostrarAltaUsuarioOperativo && (
             <article
               style={{
-                borderRadius: esVistaMovilApp ? 16 : 18,
-                overflow: 'hidden',
-                border: '1px solid #dbe3ec',
-                background: '#ffffff',
-                boxShadow: '0 12px 34px rgba(15,23,42,.055)',
-                minWidth: 0,
+                ...agendaBloqueBlanco,
+                border: '1px solid #fecdd3',
+                background:
+                  'linear-gradient(135deg, rgba(255,241,242,0.95), rgba(255,255,255,0.98))',
               }}
             >
-              <div
-                style={{
-                  padding: esVistaMovilApp ? '14px 13px' : '18px 19px',
-                  background: 'linear-gradient(135deg,#0f172a 0%,#17324a 58%,#164e3d 125%)',
-                  color: '#ffffff',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'flex-start',
-                  gap: 12,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <div style={{ minWidth: 0, maxWidth: 760 }}>
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      padding: '4px 8px',
-                      borderRadius: 999,
-                      background: 'rgba(34,197,94,.16)',
-                      border: '1px solid rgba(134,239,172,.26)',
-                      color: '#bbf7d0',
-                      fontSize: 9,
-                      fontWeight: 950,
-                      letterSpacing: 0.7,
-                    }}
+              <h3 style={{ marginTop: 0 }}>Nuevo acceso de equipo</h3>
+
+              <div style={gridFormulario}>
+                <label style={labelCampo}>
+                  Nombre completo
+                  <input
+                    value={formUsuarioOperativo.nombre}
+                    onChange={(e) =>
+                      setFormUsuarioOperativo({
+                        ...formUsuarioOperativo,
+                        nombre: e.target.value,
+                      })
+                    }
+                    placeholder="Nombre y apellidos"
+                    style={inputCampo}
+                  />
+                </label>
+
+                <label style={labelCampo}>
+                  Email
+                  <input
+                    value={formUsuarioOperativo.email}
+                    onChange={(e) =>
+                      setFormUsuarioOperativo({
+                        ...formUsuarioOperativo,
+                        email: e.target.value,
+                      })
+                    }
+                    placeholder="correo@ejemplo.com"
+                    style={inputCampo}
+                  />
+                </label>
+
+                <label style={labelCampo}>
+                  Rol
+                  <select
+                    value={formUsuarioOperativo.rol}
+                    onChange={(e) =>
+                      setFormUsuarioOperativo({
+                        ...formUsuarioOperativo,
+                        rol: e.target.value as
+                          | 'sub_coordinador'
+                          | 'administracion',
+                      })
+                    }
+                    style={selectCampo}
                   >
-                    DIRECCIÓN · ACCESOS
-                  </span>
-                  <h2 style={{ margin: '8px 0 0', fontSize: esVistaMovilApp ? 23 : 27, lineHeight: 1.05 }}>
-                    Accesos equipo
-                  </h2>
-                  <p style={{ margin: '6px 0 0', color: '#cbd5e1', fontSize: 12, lineHeight: 1.5 }}>
-                    Invitaciones, estado de las cuentas y roles de coordinación. Los entrenadores continúan gestionándose desde su propia ficha.
-                  </p>
-                </div>
-
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 7,
-                    flexWrap: 'wrap',
-                    justifyContent: esVistaMovilApp ? 'flex-start' : 'flex-end',
-                  }}
-                >
-                  
-
-                  {(
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setMostrarAltaUsuarioOperativo(true)}
-                        style={{ ...botonPrincipal, minHeight: 36 }}
-                      >
-                        + Crear acceso
-                      </button>
-                      <button
-                        type="button"
-                        onClick={cargarUsuariosOperativos}
-                        style={{ ...botonSecundario, minHeight: 36, background: '#ffffff', color: '#0f172a' }}
-                      >
-                        Actualizar
-                      </button>
-                    </>
-                  )}
-                </div>
+                    <option value="sub_coordinador">Sub-coordinador</option>
+                    <option value="administracion">Administración</option>
+                  </select>
+                </label>
               </div>
 
               <div
                 style={{
-                  padding: esVistaMovilApp ? 12 : 15,
-                  display: 'grid',
-                  gridTemplateColumns: esVistaMovilApp ? 'repeat(2,minmax(0,1fr))' : 'repeat(4,minmax(0,1fr))',
+                  display: 'flex',
                   gap: 8,
-                  background: '#f8fafc',
+                  flexWrap: 'wrap',
+                  marginTop: 14,
                 }}
               >
-                {[
-                  [String(usuariosOperativos.length), 'Accesos equipo', '#0f172a'],
-                  [String(usuariosActivos), 'Activos', '#166534'],
-                  [String(invitacionesPendientes), 'Invitaciones', '#9a3412'],
-                  [String(accesosDesactivados), 'Desactivados', '#b91c1c'],
-                ].map(([valor, etiqueta, color]) => (
-                  <div
-                    key={etiqueta}
-                    style={{
-                      padding: esVistaMovilApp ? '10px 10px' : '12px 13px',
-                      borderRadius: 14,
-                      border: '1px solid #dbe3ec',
-                      background: '#ffffff',
-                      minWidth: 0,
-                    }}
-                  >
-                    <div style={{ fontSize: esVistaMovilApp ? 20 : 23, lineHeight: 1, fontWeight: 950, color }}>{valor}</div>
-                    <div style={{ marginTop: 5, fontSize: 9.5, fontWeight: 900, color: '#64748b', lineHeight: 1.25 }}>{etiqueta}</div>
-                  </div>
-                ))}
+                <button
+                  type="button"
+                  disabled={gestionandoUsuarioOperativoId === 'nuevo'}
+                  onClick={crearUsuarioOperativo}
+                  style={botonPrincipal}
+                >
+                  {gestionandoUsuarioOperativoId === 'nuevo'
+                    ? 'Enviando invitación…'
+                    : 'Crear acceso y enviar invitación'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMostrarAltaUsuarioOperativo(false)}
+                  style={botonSecundario}
+                >
+                  Cancelar
+                </button>
               </div>
             </article>
+          )}
 
-            {(
-              <>
+          {cargandoUsuariosOperativos && <p>Cargando accesos…</p>}
+
+          {!cargandoUsuariosOperativos &&
+            usuariosOperativos.length === 0 &&
+            !error && (
+              <article style={tarjetaMovilVacia}>
+                <h3 style={{ marginTop: 0 }}>Sin usuarios operativos</h3>
+                <p style={{ marginBottom: 0 }}>
+                  Aquí aparecerán los accesos de coordinación y administración.
+                </p>
+              </article>
+            )}
+
+          <div style={{ display: 'grid', gap: 12 }}>
+            {usuariosOperativos.map((usuario) => {
+              const esJefe = usuario.rol === 'coordinador_jefe';
+              const gestionando =
+                gestionandoUsuarioOperativoId === usuario.id;
+
+              const textoEstado =
+                usuario.estado_acceso === 'activo'
+                  ? 'Acceso activo'
+                  : usuario.estado_acceso === 'invitacion_pendiente'
+                  ? 'Invitación pendiente'
+                  : usuario.estado_acceso === 'desactivado'
+                  ? 'Acceso desactivado'
+                  : 'Revisar acceso';
+
+              const colorEstado =
+                usuario.estado_acceso === 'activo'
+                  ? {
+                      background: '#ecfdf5',
+                      color: '#047857',
+                      borderColor: '#a7f3d0',
+                    }
+                  : usuario.estado_acceso === 'invitacion_pendiente'
+                  ? {
+                      background: '#fff7ed',
+                      color: '#9a3412',
+                      borderColor: '#fed7aa',
+                    }
+                  : usuario.estado_acceso === 'desactivado'
+                  ? {
+                      background: '#fef2f2',
+                      color: '#b91c1c',
+                      borderColor: '#fecaca',
+                    }
+                  : {
+                      background: '#f8fafc',
+                      color: '#64748b',
+                      borderColor: '#cbd5e1',
+                    };
+
+              return (
                 <article
+                  key={usuario.id}
                   style={{
-                    border: '1px solid #dbe3ec',
-                    borderRadius: 16,
-                    background: '#ffffff',
-                    padding: esVistaMovilApp ? 12 : 14,
-                    minWidth: 0,
+                    ...agendaBloqueBlanco,
+                    border: '1px solid #e2e8f0',
+                    marginBottom: 0,
                   }}
                 >
                   <div
                     style={{
                       display: 'flex',
                       justifyContent: 'space-between',
-                      gap: 10,
-                      alignItems: 'flex-start',
+                      gap: 12,
                       flexWrap: 'wrap',
+                      alignItems: 'flex-start',
                     }}
                   >
                     <div>
-                      <span style={{ fontSize: 9, fontWeight: 950, letterSpacing: .7, color: '#15803d' }}>ROLES Y SEGURIDAD</span>
-                      <h3 style={{ margin: '4px 0 0', fontSize: 16, color: '#0f172a' }}>Acceso según responsabilidad</h3>
-                    </div>
-                    <span style={{ padding: '5px 8px', borderRadius: 999, background: '#f0fdf4', color: '#166534', fontSize: 9.5, fontWeight: 950 }}>
-                      Coordinador jefe protegido
-                    </span>
-                  </div>
-
-                  <div
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: esVistaMovilApp ? '1fr' : 'repeat(4,minmax(0,1fr))',
-                      gap: 8,
-                      marginTop: 11,
-                    }}
-                  >
-                    {[
-                      ['Coordinador jefe', 'Todo', 'Dirección + operativa + gestión', '#fff1f2', '#9f1239'],
-                      ['Sub-coordinador / coordinador', 'Operativa', 'Grupos, equipo y gestión', '#eff6ff', '#1d4ed8'],
-                      ['Administración', 'Altas / Test', 'Sin operativa ni Dirección', '#f5f3ff', '#7c3aed'],
-                      ['Entrenador', 'Vista entrenador', 'Acceso vinculado desde su ficha', '#f0fdf4', '#166534'],
-                    ].map(([rol, acceso, detalleRol, fondo, color]) => (
-                      <div key={rol} style={{ borderRadius: 13, border: '1px solid #e2e8f0', background: fondo, padding: 10, minWidth: 0 }}>
-                        <strong style={{ display: 'block', fontSize: 10, color }}>{rol}</strong>
-                        <div style={{ marginTop: 5, color: '#0f172a', fontSize: 12, fontWeight: 950 }}>{acceso}</div>
-                        <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 9.5, lineHeight: 1.35 }}>{detalleRol}</p>
-                      </div>
-                    ))}
-                  </div>
-                </article>
-
-                {mostrarAltaUsuarioOperativo && (
-                  <article
-                    style={{
-                      borderRadius: 16,
-                      border: '1px solid #bfdbfe',
-                      background: 'linear-gradient(135deg,#eff6ff,#ffffff 62%)',
-                      padding: esVistaMovilApp ? 12 : 15,
-                      boxShadow: '0 10px 28px rgba(37,99,235,.06)',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                      <div>
-                        <span style={{ fontSize: 9, fontWeight: 950, letterSpacing: .7, color: '#1d4ed8' }}>NUEVO ACCESO</span>
-                        <h3 style={{ margin: '4px 0 0', color: '#0f172a' }}>Invitar a una persona del equipo</h3>
-                        <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: 11 }}>
-                          Crea la cuenta con el rol correcto. La invitación se enviará al email indicado.
-                        </p>
-                      </div>
-                      <button type="button" onClick={() => setMostrarAltaUsuarioOperativo(false)} style={botonSecundario}>Cerrar</button>
-                    </div>
-
-                    <div style={{ ...gridFormulario, marginTop: 13 }}>
-                      <label style={labelCampo}>
-                        Nombre completo
-                        <input
-                          value={formUsuarioOperativo.nombre}
-                          onChange={(e) => setFormUsuarioOperativo({ ...formUsuarioOperativo, nombre: e.target.value })}
-                          placeholder="Nombre y apellidos"
-                          style={inputCampo}
-                        />
-                      </label>
-
-                      <label style={labelCampo}>
-                        Email
-                        <input
-                          value={formUsuarioOperativo.email}
-                          onChange={(e) => setFormUsuarioOperativo({ ...formUsuarioOperativo, email: e.target.value })}
-                          placeholder="correo@ejemplo.com"
-                          style={inputCampo}
-                        />
-                      </label>
-
-                      <label style={labelCampo}>
-                        Rol
-                        <select
-                          value={formUsuarioOperativo.rol}
-                          onChange={(e) => setFormUsuarioOperativo({
-                            ...formUsuarioOperativo,
-                            rol: e.target.value as 'sub_coordinador' | 'administracion',
-                          })}
-                          style={selectCampo}
-                        >
-                          <option value="sub_coordinador">Sub-coordinador</option>
-                          <option value="administracion">Administración</option>
-                        </select>
-                      </label>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 14 }}>
-                      <button
-                        type="button"
-                        disabled={gestionandoUsuarioOperativoId === 'nuevo'}
-                        onClick={crearUsuarioOperativo}
-                        style={botonPrincipal}
-                      >
-                        {gestionandoUsuarioOperativoId === 'nuevo' ? 'Enviando invitación…' : 'Crear acceso y enviar invitación'}
-                      </button>
-                      <button type="button" onClick={() => setMostrarAltaUsuarioOperativo(false)} style={botonSecundario}>Cancelar</button>
-                    </div>
-                  </article>
-                )}
-
-                {cargandoUsuariosOperativos && (
-                  <article style={{ ...tarjetaMovilVacia, marginBottom: 0 }}>
-                    <strong>Cargando accesos…</strong>
-                  </article>
-                )}
-
-                {!cargandoUsuariosOperativos && usuariosOperativos.length === 0 && !error && (
-                  <article style={{ ...tarjetaMovilVacia, marginBottom: 0 }}>
-                    <h3 style={{ marginTop: 0 }}>Sin usuarios operativos</h3>
-                    <p style={{ marginBottom: 0 }}>
-                      Aquí aparecerán las cuentas de coordinación y administración cuando existan accesos creados.
-                    </p>
-                  </article>
-                )}
-
-                <div style={{ display: 'grid', gap: 9, minWidth: 0 }}>
-                  {usuariosOperativos.map((usuario) => {
-                    const esJefe = usuario.rol === 'coordinador_jefe';
-                    const gestionando = gestionandoUsuarioOperativoId === usuario.id;
-                    const inicialesUsuario = usuario.nombre
-                      .split(/\s+/)
-                      .filter(Boolean)
-                      .slice(0, 2)
-                      .map((parte) => parte[0]?.toUpperCase())
-                      .join('') || 'U';
-
-                    const textoEstado =
-                      usuario.estado_acceso === 'activo'
-                        ? 'Acceso activo'
-                        : usuario.estado_acceso === 'invitacion_pendiente'
-                        ? 'Invitación pendiente'
-                        : usuario.estado_acceso === 'desactivado'
-                        ? 'Acceso desactivado'
-                        : 'Revisar acceso';
-
-                    const colorEstado =
-                      usuario.estado_acceso === 'activo'
-                        ? { background: '#ecfdf5', color: '#047857', borderColor: '#a7f3d0' }
-                        : usuario.estado_acceso === 'invitacion_pendiente'
-                        ? { background: '#fff7ed', color: '#9a3412', borderColor: '#fed7aa' }
-                        : usuario.estado_acceso === 'desactivado'
-                        ? { background: '#fef2f2', color: '#b91c1c', borderColor: '#fecaca' }
-                        : { background: '#f8fafc', color: '#64748b', borderColor: '#cbd5e1' };
-
-                    const ultimoAcceso = usuario.ultimo_acceso_at
-                      ? new Date(usuario.ultimo_acceso_at).toLocaleString('es-ES', {
-                          day: '2-digit',
-                          month: '2-digit',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
-                      : usuario.estado_acceso === 'invitacion_pendiente'
-                      ? 'Pendiente del primer acceso'
-                      : 'Sin acceso registrado';
-
-                    return (
-                      <article
-                        key={usuario.id}
+                      <h3 style={{ margin: 0 }}>{usuario.nombre}</h3>
+                      <p
                         style={{
-                          border: '1px solid #dbe3ec',
-                          borderRadius: 16,
-                          background: '#ffffff',
-                          overflow: 'hidden',
-                          minWidth: 0,
-                          boxShadow: '0 7px 22px rgba(15,23,42,.035)',
+                          margin: '5px 0 0',
+                          color: '#475569',
+                          overflowWrap: 'anywhere',
                         }}
                       >
-                        <div
-                          style={{
-                            padding: esVistaMovilApp ? '12px 11px' : '13px 14px',
-                            display: 'grid',
-                            gridTemplateColumns: esVistaMovilApp ? 'auto minmax(0,1fr)' : 'auto minmax(210px,1fr) auto',
-                            gap: 10,
-                            alignItems: 'center',
-                            minWidth: 0,
-                          }}
-                        >
-                          <div
+                        {usuario.email}
+                      </p>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 6,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      <span
+                        style={{
+                          ...agendaBadgeModalidad,
+                          background: esJefe ? '#fff1f2' : '#eff6ff',
+                          color: esJefe ? '#be123c' : '#1d4ed8',
+                          borderColor: esJefe ? '#fecdd3' : '#bfdbfe',
+                        }}
+                      >
+                        {rolUsuarioTextoApp(usuario.rol)}
+                      </span>
+                      <span
+                        style={{
+                          ...agendaBadgeModalidad,
+                          ...colorEstado,
+                        }}
+                      >
+                        {textoEstado}
+                      </span>
+                    </div>
+                  </div>
+
+                  {esJefe ? (
+                    <p
+                      style={{
+                        marginBottom: 0,
+                        color: '#64748b',
+                        fontWeight: 700,
+                      }}
+                    >
+                      Cuenta principal protegida. No se puede modificar desde
+                      esta pantalla.
+                    </p>
+                  ) : (
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fit, minmax(160px, 1fr))',
+                        gap: 8,
+                        marginTop: 14,
+                      }}
+                    >
+                      {usuario.estado_acceso === 'activo' && (
+                        <>
+                          <button
+                            type="button"
+                            disabled={gestionando}
+                            onClick={() =>
+                              gestionarUsuarioOperativo(
+                                usuario,
+                                'enviar_recuperacion'
+                              )
+                            }
                             style={{
-                              width: 40,
-                              height: 40,
-                              borderRadius: 12,
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              background: esJefe ? 'linear-gradient(135deg,#7f1d1d,#be123c)' : 'linear-gradient(135deg,#0f172a,#334155)',
-                              color: '#ffffff',
-                              fontSize: 11,
-                              fontWeight: 950,
-                              flex: '0 0 auto',
+                              ...botonMini,
+                              width: '100%',
+                              minHeight: 42,
+                              background: '#eff6ff',
+                              color: '#1d4ed8',
+                              border: '1px solid #bfdbfe',
+                              fontWeight: 900,
                             }}
                           >
-                            {inicialesUsuario}
-                          </div>
+                            Recuperar contraseña
+                          </button>
+                          <button
+                            type="button"
+                            disabled={gestionando}
+                            onClick={() =>
+                              gestionarUsuarioOperativo(
+                                usuario,
+                                'desactivar'
+                              )
+                            }
+                            style={{
+                              ...botonMini,
+                              width: '100%',
+                              minHeight: 42,
+                              background: '#fff1f2',
+                              color: '#be123c',
+                              border: '1px solid #fecdd3',
+                              fontWeight: 900,
+                            }}
+                          >
+                            Desactivar acceso
+                          </button>
+                        </>
+                      )}
 
-                          <div style={{ minWidth: 0 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-                              <h3 style={{ margin: 0, color: '#0f172a', fontSize: esVistaMovilApp ? 14 : 15 }}>{usuario.nombre}</h3>
-                              <span
-                                style={{
-                                  ...agendaBadgeModalidad,
-                                  background: esJefe ? '#fff1f2' : usuario.rol === 'administracion' ? '#f5f3ff' : '#eff6ff',
-                                  color: esJefe ? '#be123c' : usuario.rol === 'administracion' ? '#7c3aed' : '#1d4ed8',
-                                  borderColor: esJefe ? '#fecdd3' : usuario.rol === 'administracion' ? '#ddd6fe' : '#bfdbfe',
-                                }}
-                              >
-                                {rolUsuarioTextoApp(usuario.rol)}
-                              </span>
-                              <span style={{ ...agendaBadgeModalidad, ...colorEstado }}>{textoEstado}</span>
-                            </div>
-                            <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 10.5, overflowWrap: 'anywhere' }}>{usuario.email}</p>
-                            <p style={{ margin: '4px 0 0', color: '#94a3b8', fontSize: 9.5 }}>Último acceso: {ultimoAcceso}</p>
-                          </div>
+                      {usuario.estado_acceso === 'invitacion_pendiente' && (
+                        <button
+                          type="button"
+                          disabled={gestionando}
+                          onClick={() =>
+                            gestionarUsuarioOperativo(
+                              usuario,
+                              'reenviar_invitacion'
+                            )
+                          }
+                          style={{
+                            ...botonMini,
+                            width: '100%',
+                            minHeight: 42,
+                            background: '#fff7ed',
+                            color: '#9a3412',
+                            border: '1px solid #fed7aa',
+                            fontWeight: 900,
+                          }}
+                        >
+                          Reenviar invitación
+                        </button>
+                      )}
 
-                          {!esVistaMovilApp && (
-                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                              {esJefe ? (
-                                <span style={{ padding: '7px 9px', borderRadius: 10, background: '#f8fafc', border: '1px solid #e2e8f0', color: '#64748b', fontSize: 10, fontWeight: 900 }}>
-                                  Cuenta protegida
-                                </span>
-                              ) : (
-                                <>
-                                  {usuario.estado_acceso === 'activo' && (
-                                    <>
-                                      <button
-                                        type="button"
-                                        disabled={gestionando}
-                                        onClick={() => gestionarUsuarioOperativo(usuario, 'enviar_recuperacion')}
-                                        style={{ ...botonMini, background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontWeight: 900 }}
-                                      >
-                                        Recuperar contraseña
-                                      </button>
-                                      <button
-                                        type="button"
-                                        disabled={gestionando}
-                                        onClick={() => gestionarUsuarioOperativo(usuario, 'desactivar')}
-                                        style={{ ...botonMini, background: '#fff1f2', color: '#be123c', border: '1px solid #fecdd3', fontWeight: 900 }}
-                                      >
-                                        Desactivar
-                                      </button>
-                                    </>
-                                  )}
-                                  {usuario.estado_acceso === 'invitacion_pendiente' && (
-                                    <button
-                                      type="button"
-                                      disabled={gestionando}
-                                      onClick={() => gestionarUsuarioOperativo(usuario, 'reenviar_invitacion')}
-                                      style={{ ...botonMini, background: '#fff7ed', color: '#9a3412', border: '1px solid #fed7aa', fontWeight: 900 }}
-                                    >
-                                      Reenviar invitación
-                                    </button>
-                                  )}
-                                  {usuario.estado_acceso === 'desactivado' && (
-                                    <button
-                                      type="button"
-                                      disabled={gestionando}
-                                      onClick={() => gestionarUsuarioOperativo(usuario, 'activar')}
-                                      style={{ ...botonMini, background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 900 }}
-                                    >
-                                      Activar acceso
-                                    </button>
-                                  )}
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-
-                        {esVistaMovilApp && (
-                          <div style={{ borderTop: '1px solid #f1f5f9', padding: '9px 11px', background: '#f8fafc' }}>
-                            {esJefe ? (
-                              <div style={{ color: '#64748b', fontSize: 10, fontWeight: 850 }}>Cuenta principal protegida · no se modifica desde esta pantalla.</div>
-                            ) : (
-                              <div style={{ display: 'grid', gridTemplateColumns: usuario.estado_acceso === 'activo' ? '1fr 1fr' : '1fr', gap: 7 }}>
-                                {usuario.estado_acceso === 'activo' && (
-                                  <>
-                                    <button type="button" disabled={gestionando} onClick={() => gestionarUsuarioOperativo(usuario, 'enviar_recuperacion')} style={{ ...botonMini, width: '100%', background: '#eff6ff', color: '#1d4ed8', border: '1px solid #bfdbfe', fontWeight: 900 }}>
-                                      Contraseña
-                                    </button>
-                                    <button type="button" disabled={gestionando} onClick={() => gestionarUsuarioOperativo(usuario, 'desactivar')} style={{ ...botonMini, width: '100%', background: '#fff1f2', color: '#be123c', border: '1px solid #fecdd3', fontWeight: 900 }}>
-                                      Desactivar
-                                    </button>
-                                  </>
-                                )}
-                                {usuario.estado_acceso === 'invitacion_pendiente' && (
-                                  <button type="button" disabled={gestionando} onClick={() => gestionarUsuarioOperativo(usuario, 'reenviar_invitacion')} style={{ ...botonMini, width: '100%', background: '#fff7ed', color: '#9a3412', border: '1px solid #fed7aa', fontWeight: 900 }}>
-                                    Reenviar invitación
-                                  </button>
-                                )}
-                                {usuario.estado_acceso === 'desactivado' && (
-                                  <button type="button" disabled={gestionando} onClick={() => gestionarUsuarioOperativo(usuario, 'activar')} style={{ ...botonMini, width: '100%', background: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0', fontWeight: 900 }}>
-                                    Activar acceso
-                                  </button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </article>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </section>
-        );
-      })()}
+                      {usuario.estado_acceso === 'desactivado' && (
+                        <button
+                          type="button"
+                          disabled={gestionando}
+                          onClick={() =>
+                            gestionarUsuarioOperativo(usuario, 'activar')
+                          }
+                          style={{
+                            ...botonMini,
+                            width: '100%',
+                            minHeight: 42,
+                            background: '#ecfdf5',
+                            color: '#047857',
+                            border: '1px solid #a7f3d0',
+                            fontWeight: 900,
+                          }}
+                        >
+                          Activar acceso
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {pantalla === 'entrenadores' && (
-        <section className="mitico-product-screen mitico-product-entrenadores">
-          <article
-            style={{
-              borderRadius: 20,
-              border: '1px solid #cbd5e1',
-              background: 'linear-gradient(135deg,#ffffff 0%,#f8fafc 62%,#ecfdf5 100%)',
-              overflow: 'hidden',
-              boxShadow: '0 14px 34px rgba(15,23,42,.055)',
-              marginBottom: 14,
-            }}
-          >
-            <div
-              style={{
-                padding: esVistaMovilApp ? 13 : 17,
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: 14,
-                alignItems: 'flex-start',
-                flexWrap: 'wrap',
-              }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 9, fontWeight: 950, letterSpacing: .9, color: '#15803d' }}>EQUIPO · PLANTILLA TÉCNICA</div>
-                <h2 style={{ margin: '4px 0 0', color: '#0f172a', fontSize: esVistaMovilApp ? 23 : 27 }}>Entrenadores</h2>
-                <p style={{ margin: '6px 0 0', color: '#64748b', fontSize: esVistaMovilApp ? 11 : 12.5, maxWidth: 720, lineHeight: 1.45 }}>
-                  Contacto, especialidades, documentación, acceso app y estado operativo del equipo. Los cobros siguen gestionándose desde Cobros.
-                </p>
-              </div>
-
-              <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', alignItems: 'center' }}>
-                                {(
-                  <>
-                    <button type="button" onClick={abrirNuevoEntrenador} style={{ ...botonPrincipal, minHeight: 36 }}>
-                      + Añadir entrenador
-                    </button>
-                    <button onClick={cargarEntrenadores} style={{ ...botonSecundario, minHeight: 36, background: '#ffffff' }}>
-                      Actualizar
-                    </button>
-                  </>
-                )}
-              </div>
+        <section>
+          <div style={cabeceraPantalla}>
+            <div>
+              <h2>Entrenadores / gestión</h2>
+              <p style={{ margin: '6px 0 0', color: '#555' }}>
+                Alta, contacto, especialidades, chaqueta y documentación. Los
+                cobros se gestionan en Cobros.
+              </p>
             </div>
-
-            <div
-              style={{
-                padding: esVistaMovilApp ? 12 : 14,
-                display: 'grid',
-                gridTemplateColumns: esVistaMovilApp ? 'repeat(2,minmax(0,1fr))' : 'repeat(4,minmax(0,1fr))',
-                gap: 8,
-                background: '#f8fafc',
-                borderTop: '1px solid #e2e8f0',
-              }}
-            >
-              {[
-                [String(entrenadores.length), 'Entrenadores', '#0f172a', '#ffffff'],
-                [String(totalEntrenadoresActivosApp), 'Activos', '#166534', '#f0fdf4'],
-                [String(totalEntrenadoresDocumentacionPendienteApp), 'Documentación pendiente', '#b45309', '#fffbeb'],
-                [String(totalEntrenadoresSinChaquetaApp), 'Sin chaqueta', '#1d4ed8', '#eff6ff'],
-              ].map(([valor, etiqueta, color, fondo]) => (
-                <div key={etiqueta} style={{ padding: esVistaMovilApp ? '10px' : '11px 12px', borderRadius: 13, border: '1px solid #dbe3ec', background: fondo, minWidth: 0 }}>
-                  <div style={{ fontSize: esVistaMovilApp ? 20 : 23, lineHeight: 1, fontWeight: 950, color }}>{valor}</div>
-                  <div style={{ marginTop: 5, color: '#64748b', fontSize: 9.2, fontWeight: 900, lineHeight: 1.25 }}>{etiqueta}</div>
-                </div>
-              ))}
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={abrirNuevoEntrenador}
+                style={botonPrincipal}
+              >
+                + Añadir entrenador
+              </button>
+              <button onClick={cargarEntrenadores} style={botonSecundario}>
+                Refrescar
+              </button>
             </div>
-          </article>
-
-          {(
-            <>
+          </div>
 
           {mostrarFormularioEntrenador && (
             <article
@@ -40103,31 +38825,54 @@ async function abrirGestionOperativaIntensivoDia(
             </article>
           )}
 
-          <article
+          <input
+            value={busquedaEntrenador}
+            onChange={(e) => setBusquedaEntrenador(e.target.value)}
+            placeholder="Buscar entrenador, teléfono, email o especialidad..."
+            style={buscador}
+          />
+
+          <nav
             style={{
-              border: '1px solid #dbe3ec',
-              borderRadius: 16,
-              background: '#ffffff',
-              padding: esVistaMovilApp ? 10 : 12,
-              marginBottom: 14,
-              boxShadow: '0 8px 22px rgba(15,23,42,.035)',
+              display: 'flex',
+              gap: 8,
+              flexWrap: 'wrap',
+              marginBottom: 16,
             }}
           >
-            <input
-              value={busquedaEntrenador}
-              onChange={(e) => setBusquedaEntrenador(e.target.value)}
-              placeholder="Buscar entrenador, teléfono, email o especialidad..."
-              style={{ ...buscador, marginBottom: 9 }}
-            />
-
-            <nav style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
-              <button onClick={() => setFiltroEntrenadores('todos')} style={botonMenu(filtroEntrenadores === 'todos')}>Todos</button>
-              <button onClick={() => setFiltroEntrenadores('activos')} style={botonMenu(filtroEntrenadores === 'activos')}>Activos</button>
-              <button onClick={() => setFiltroEntrenadores('inactivos')} style={botonMenu(filtroEntrenadores === 'inactivos')}>Inactivos</button>
-              <button onClick={() => setFiltroEntrenadores('sin_chaqueta')} style={botonMenu(filtroEntrenadores === 'sin_chaqueta')}>Sin chaqueta</button>
-              <button onClick={() => setFiltroEntrenadores('documentacion_pendiente')} style={botonMenu(filtroEntrenadores === 'documentacion_pendiente')}>Documentación pendiente</button>
-            </nav>
-          </article>
+            <button
+              onClick={() => setFiltroEntrenadores('todos')}
+              style={botonMenu(filtroEntrenadores === 'todos')}
+            >
+              Todos
+            </button>
+            <button
+              onClick={() => setFiltroEntrenadores('activos')}
+              style={botonMenu(filtroEntrenadores === 'activos')}
+            >
+              Activos
+            </button>
+            <button
+              onClick={() => setFiltroEntrenadores('inactivos')}
+              style={botonMenu(filtroEntrenadores === 'inactivos')}
+            >
+              Inactivos
+            </button>
+            <button
+              onClick={() => setFiltroEntrenadores('sin_chaqueta')}
+              style={botonMenu(filtroEntrenadores === 'sin_chaqueta')}
+            >
+              Sin chaqueta
+            </button>
+            <button
+              onClick={() => setFiltroEntrenadores('documentacion_pendiente')}
+              style={botonMenu(
+                filtroEntrenadores === 'documentacion_pendiente'
+              )}
+            >
+              Documentación pendiente
+            </button>
+          </nav>
 
           {cargando && <p>Cargando entrenadores...</p>}
 
@@ -40140,143 +38885,524 @@ async function abrirGestionOperativaIntensivoDia(
             </article>
           )}
 
-          <EntrenadoresProductListApp
-            esMovil={esVistaMovilApp}
-            puedeGestionarAccesos={puedeGestionarAccesosUsuarioApp}
-            items={entrenadoresFiltrados.map((entrenador) => {
+          <section style={{ display: 'grid', gap: 12 }}>
+            {entrenadoresFiltrados.map((entrenador) => {
               const documentacionOk =
                 (entrenador.titulacion_estado || 'Pendiente') === 'Validado' &&
                 (entrenador.antecedentes_estado || 'Pendiente') === 'Validado';
-              const acceso = estadosAccesoEntrenadores[entrenador.entrenador_id] || null;
+
+              const acceso =
+                estadosAccesoEntrenadores[entrenador.entrenador_id] || null;
               const gestionandoAcceso =
                 creandoAccesoEntrenadorId === entrenador.entrenador_id ||
                 gestionandoAccesoEntrenadorId === entrenador.entrenador_id;
-              const accesoEstado: EntrenadorProductItemApp['accesoEstado'] =
-                cargandoEstadosAccesoEntrenadores && !acceso
-                  ? 'cargando'
-                  : acceso?.estado || 'sin_acceso';
-              const accesoTexto =
-                accesoEstado === 'activo'
+
+              const textoEstadoAcceso =
+                acceso?.estado === 'activo'
                   ? 'Acceso activo'
-                  : accesoEstado === 'invitacion_pendiente'
+                  : acceso?.estado === 'invitacion_pendiente'
                   ? 'Invitación pendiente'
-                  : accesoEstado === 'desactivado'
+                  : acceso?.estado === 'desactivado'
                   ? 'Acceso desactivado'
-                  : accesoEstado === 'revisar'
+                  : acceso?.estado === 'revisar'
                   ? 'Revisar acceso'
-                  : accesoEstado === 'cargando'
-                  ? 'Comprobando acceso…'
                   : 'Sin acceso';
-              const iniciales = entrenador.nombre_completo
-                .split(' ')
-                .filter(Boolean)
-                .slice(0, 2)
-                .map((parte) => parte[0])
-                .join('')
-                .toUpperCase();
-              return {
-                id: entrenador.entrenador_id,
-                nombre: entrenador.nombre_completo,
-                iniciales,
-                telefono: entrenador.telefono || '',
-                email: entrenador.email || '',
-                especialidades: entrenador.especialidades || [],
-                tarifa: `${entrenador.tarifa_por_turno || 0} €`,
-                activo: Boolean(entrenador.activo),
-                chaqueta: Boolean(entrenador.chaqueta_entregada),
-                documentacion: documentacionOk ? 'Documentación OK' : 'Revisar documentación',
-                docOk: documentacionOk,
-                acceso: accesoTexto,
-                accesoEstado,
-                titulacion: entrenador.titulacion_estado || 'Pendiente',
-                antecedentes: entrenador.antecedentes_estado || 'Pendiente',
-                nota: entrenador.observaciones_internas || 'Sin observaciones internas.',
-                detallesDocumentacion: [
-                  `Titulación: ${entrenador.titulacion_estado || 'Pendiente'}${entrenador.titulacion_url ? ` · ${entrenador.titulacion_url}` : ''}${entrenador.titulacion_observaciones ? ` · ${entrenador.titulacion_observaciones}` : ''}`,
-                  `Antecedentes: ${entrenador.antecedentes_estado || 'Pendiente'}${entrenador.antecedentes_url ? ` · ${entrenador.antecedentes_url}` : ''}${entrenador.antecedentes_observaciones ? ` · ${entrenador.antecedentes_observaciones}` : ''}`,
-                  entrenador.observaciones_internas ? `Notas: ${entrenador.observaciones_internas}` : '',
-                ],
-                gestionando: gestionandoAcceso,
-                original: entrenador,
-              };
+
+              const estiloEstadoAcceso =
+                acceso?.estado === 'activo'
+                  ? {
+                      background: '#ecfdf5',
+                      color: '#047857',
+                      borderColor: '#a7f3d0',
+                    }
+                  : acceso?.estado === 'invitacion_pendiente'
+                  ? {
+                      background: '#fff7ed',
+                      color: '#9a3412',
+                      borderColor: '#fed7aa',
+                    }
+                  : acceso?.estado === 'desactivado'
+                  ? {
+                      background: '#fef2f2',
+                      color: '#b91c1c',
+                      borderColor: '#fecaca',
+                    }
+                  : {
+                      background: '#f8fafc',
+                      color: '#64748b',
+                      borderColor: '#cbd5e1',
+                    };
+
+              return (
+                <article
+                  id={`entrenador-${entrenador.entrenador_id}`}
+                  key={entrenador.entrenador_id}
+                  style={{
+                    ...tarjeta,
+                    border: '1px solid #dbeafe',
+                    background:
+                      'linear-gradient(135deg, rgba(255,255,255,0.99), rgba(248,250,252,0.98))',
+                    boxShadow: '0 10px 28px rgba(15,23,42,0.06)',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      flexWrap: 'wrap',
+                      alignItems: 'flex-start',
+                    }}
+                  >
+                    <div>
+                      <p style={etiquetaSuperior}>ENTRENADOR</p>
+                      <h3 style={{ margin: 0 }}>
+                        {entrenador.nombre_completo}
+                      </h3>
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 7,
+                          flexWrap: 'wrap',
+                          marginTop: 8,
+                        }}
+                      >
+                        <span
+                          style={{
+                            ...agendaBadgeModalidad,
+                            background: entrenador.activo
+                              ? '#ecfdf5'
+                              : '#f8fafc',
+                            color: entrenador.activo ? '#047857' : '#64748b',
+                            borderColor: entrenador.activo
+                              ? '#a7f3d0'
+                              : '#cbd5e1',
+                          }}
+                        >
+                          {entrenador.activo ? 'Activo' : 'Inactivo'}
+                        </span>
+                        <span
+                          style={{
+                            ...agendaBadgeModalidad,
+                            background: entrenador.chaqueta_entregada
+                              ? '#eff6ff'
+                              : '#fff7ed',
+                            color: entrenador.chaqueta_entregada
+                              ? '#1d4ed8'
+                              : '#9a3412',
+                            borderColor: entrenador.chaqueta_entregada
+                              ? '#bfdbfe'
+                              : '#fed7aa',
+                          }}
+                        >
+                          Chaqueta {entrenador.chaqueta_entregada ? 'OK' : 'pendiente'}
+                        </span>
+
+                        {puedeGestionarAccesosUsuarioApp && (
+                          <span
+                            style={{
+                              ...agendaBadgeModalidad,
+                              ...estiloEstadoAcceso,
+                            }}
+                          >
+                            {cargandoEstadosAccesoEntrenadores && !acceso
+                              ? 'Comprobando acceso…'
+                              : textoEstadoAcceso}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fit, minmax(150px, 1fr))',
+                        gap: 8,
+                        width: '100%',
+                        minWidth: 0,
+                      }}
+                    >
+                      {puedeGestionarAccesosUsuarioApp &&
+                        (cargandoEstadosAccesoEntrenadores && !acceso ? (
+                          <button
+                            type="button"
+                            disabled
+                            style={{
+                              ...botonMini,
+                              width: '100%',
+                              minHeight: 42,
+                              background: '#f8fafc',
+                              color: '#64748b',
+                              border: '1px solid #cbd5e1',
+                              opacity: 0.7,
+                            }}
+                          >
+                            Comprobando acceso…
+                          </button>
+                        ) : acceso?.estado === 'activo' ? (
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns:
+                                'repeat(auto-fit, minmax(140px, 1fr))',
+                              gap: 8,
+                              width: '100%',
+                            }}
+                          >
+                            <button
+                              type="button"
+                              disabled={gestionandoAcceso}
+                              onClick={() =>
+                                gestionarAccesoEntrenador(
+                                  entrenador,
+                                  'desactivar'
+                                )
+                              }
+                              style={{
+                                ...botonMini,
+                                width: '100%',
+                                minHeight: 42,
+                                whiteSpace: 'normal',
+                                background: '#fff1f2',
+                                color: '#be123c',
+                                border: '1px solid #fecdd3',
+                                fontWeight: 900,
+                                opacity: gestionandoAcceso ? 0.65 : 1,
+                              }}
+                            >
+                              {gestionandoAcceso
+                                ? 'Gestionando…'
+                                : 'Desactivar acceso'}
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={gestionandoAcceso}
+                              onClick={() =>
+                                gestionarAccesoEntrenador(
+                                  entrenador,
+                                  'enviar_recuperacion'
+                                )
+                              }
+                              style={{
+                                ...botonMini,
+                                width: '100%',
+                                minHeight: 42,
+                                whiteSpace: 'normal',
+                                background: '#eff6ff',
+                                color: '#1d4ed8',
+                                border: '1px solid #bfdbfe',
+                                fontWeight: 900,
+                                opacity: gestionandoAcceso ? 0.65 : 1,
+                              }}
+                            >
+                              {gestionandoAcceso
+                                ? 'Enviando…'
+                                : 'Recuperar contraseña'}
+                            </button>
+                          </div>
+                        ) : acceso?.estado === 'invitacion_pendiente' ? (
+                          <button
+                            type="button"
+                            disabled={gestionandoAcceso}
+                            onClick={() =>
+                              gestionarAccesoEntrenador(
+                                entrenador,
+                                'reenviar_invitacion'
+                              )
+                            }
+                            style={{
+                              ...botonMini,
+                              width: '100%',
+                              minHeight: 42,
+                              whiteSpace: 'normal',
+                              background: '#fff7ed',
+                              color: '#9a3412',
+                              border: '1px solid #fed7aa',
+                              fontWeight: 900,
+                              opacity: gestionandoAcceso ? 0.65 : 1,
+                            }}
+                          >
+                            {gestionandoAcceso
+                              ? 'Reenviando…'
+                              : 'Reenviar invitación'}
+                          </button>
+                        ) : acceso?.estado === 'desactivado' ? (
+                          <button
+                            type="button"
+                            disabled={gestionandoAcceso}
+                            onClick={() =>
+                              gestionarAccesoEntrenador(entrenador, 'activar')
+                            }
+                            style={{
+                              ...botonMini,
+                              width: '100%',
+                              minHeight: 42,
+                              whiteSpace: 'normal',
+                              background: '#ecfdf5',
+                              color: '#047857',
+                              border: '1px solid #a7f3d0',
+                              fontWeight: 900,
+                              opacity: gestionandoAcceso ? 0.65 : 1,
+                            }}
+                          >
+                            {gestionandoAcceso
+                              ? 'Activando…'
+                              : 'Activar acceso'}
+                          </button>
+                        ) : acceso?.estado === 'revisar' ? (
+                          <button
+                            type="button"
+                            onClick={() => cargarEstadosAccesoEntrenadores()}
+                            style={{
+                              ...botonMini,
+                              width: '100%',
+                              minHeight: 42,
+                              background: '#f8fafc',
+                              color: '#475569',
+                              border: '1px solid #cbd5e1',
+                              fontWeight: 900,
+                            }}
+                          >
+                            Revisar acceso
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={gestionandoAcceso}
+                            onClick={() => crearAccesoAppEntrenador(entrenador)}
+                            style={{
+                              ...botonMini,
+                              width: '100%',
+                              minWidth: 0,
+                              minHeight: 42,
+                              whiteSpace: 'normal',
+                              lineHeight: 1.15,
+                              overflowWrap: 'break-word',
+                              textAlign: 'center',
+                              background: '#f5f3ff',
+                              color: '#6d28d9',
+                              border: '1px solid #ddd6fe',
+                              fontWeight: 900,
+                              opacity: gestionandoAcceso ? 0.65 : 1,
+                            }}
+                          >
+                            {gestionandoAcceso
+                              ? 'Creando acceso…'
+                              : 'Crear acceso app'}
+                          </button>
+                        ))}
+                      <button
+                        type="button"
+                        onClick={() => pedirDatosAltaEntrenadorWhatsapp(entrenador)}
+                        style={{
+                          ...botonMini,
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 42,
+                          whiteSpace: 'normal',
+                          lineHeight: 1.15,
+                          overflowWrap: 'break-word',
+                          textAlign: 'center',
+                          background: '#ecfdf5',
+                          color: '#047857',
+                          border: '1px solid #a7f3d0',
+                          fontWeight: 900,
+                        }}
+                      >
+                        Pedir datos
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => abrirEditarEntrenador(entrenador)}
+                        style={{
+                          ...botonMini,
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 42,
+                          whiteSpace: 'normal',
+                          lineHeight: 1.15,
+                          overflowWrap: 'break-word',
+                          textAlign: 'center',
+                          background: '#eff6ff',
+                          color: '#1d4ed8',
+                          border: '1px solid #bfdbfe',
+                          fontWeight: 900,
+                        }}
+                      >
+                        Editar ficha
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => eliminarEntrenadorGestion(entrenador)}
+                        style={{
+                          ...botonPeligro,
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 42,
+                          whiteSpace: 'normal',
+                          lineHeight: 1.15,
+                          overflowWrap: 'break-word',
+                          textAlign: 'center',
+                          background: '#fff1f2',
+                          color: '#be123c',
+                          borderColor: '#fecdd3',
+                        }}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ ...gridMiniMetricas, marginTop: 14 }}>
+                    <div
+                      style={{
+                        ...miniMetrica,
+                        background: '#f8fafc',
+                        borderColor: '#e2e8f0',
+                      }}
+                    >
+                      <strong>Contacto</strong>
+                      <span>Email: {entrenador.email || '-'}</span>
+                      <span>WhatsApp: {entrenador.telefono || '-'}</span>
+                    </div>
+                    <div
+                      style={{
+                        ...miniMetrica,
+                        background: '#f0fdf4',
+                        borderColor: '#bbf7d0',
+                      }}
+                    >
+                      <strong>Especialidades</strong>
+                      <span>
+                        {(entrenador.especialidades || []).length > 0
+                          ? (entrenador.especialidades || []).join(' · ')
+                          : 'Sin marcar'}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        ...miniMetrica,
+                        background: '#fff7ed',
+                        borderColor: '#fed7aa',
+                      }}
+                    >
+                      <strong>Documentación</strong>
+                      <span>
+                        Titulación:{' '}
+                        {entrenador.titulacion_estado || 'Pendiente'}
+                      </span>
+                      <span>
+                        Antecedentes:{' '}
+                        {entrenador.antecedentes_estado || 'Pendiente'}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        ...miniMetrica,
+                        background: documentacionOk ? '#ecfdf5' : '#fef2f2',
+                        borderColor: documentacionOk ? '#a7f3d0' : '#fecaca',
+                      }}
+                    >
+                      <strong>Estado operativo</strong>
+                      <span>
+                        {documentacionOk
+                          ? 'Documentación OK'
+                          : 'Revisar documentación'}
+                      </span>
+                      <span>
+                        Tarifa: {entrenador.tarifa_por_turno || 0} € / turno
+                      </span>
+                    </div>
+                  </div>
+
+                  {(entrenador.titulacion_url ||
+                    entrenador.antecedentes_url ||
+                    entrenador.observaciones_internas) && (
+                    <details>
+                      <summary style={{ cursor: 'pointer', fontWeight: 900 }}>
+                        Ver documentos y notas
+                      </summary>
+                      <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
+                        <p style={{ margin: 0 }}>
+                          <strong>Titulación:</strong>{' '}
+                          {entrenador.titulacion_url || '-'}{' '}
+                          {entrenador.titulacion_observaciones
+                            ? `· ${entrenador.titulacion_observaciones}`
+                            : ''}
+                        </p>
+                        <p style={{ margin: 0 }}>
+                          <strong>Antecedentes:</strong>{' '}
+                          {entrenador.antecedentes_url || '-'}{' '}
+                          {entrenador.antecedentes_observaciones
+                            ? `· ${entrenador.antecedentes_observaciones}`
+                            : ''}
+                        </p>
+                        <p style={{ margin: 0 }}>
+                          <strong>Notas:</strong>{' '}
+                          {entrenador.observaciones_internas || '-'}
+                        </p>
+                      </div>
+                    </details>
+                  )}
+                </article>
+              );
             })}
-            onAcceso={(item, accion) => {
-              const entrenador = item.original;
-              if (!entrenador) return;
-              if (accion === 'crear') {
-                crearAccesoAppEntrenador(entrenador);
-                return;
-              }
-              if (accion === 'revisar') {
-                cargarEstadosAccesoEntrenadores();
-                return;
-              }
-              gestionarAccesoEntrenador(entrenador, accion);
-            }}
-            onPedirDatos={(item) => {
-              if (item.original) pedirDatosAltaEntrenadorWhatsapp(item.original);
-            }}
-            onEditar={(item) => {
-              if (item.original) abrirEditarEntrenador(item.original);
-            }}
-            onEliminar={(item) => {
-              if (item.original) eliminarEntrenadorGestion(item.original);
-            }}
-          />
-            </>
-          )}
+          </section>
         </section>
       )}
 
       {pantalla === 'disponibilidad' && (
-        <section className="mitico-product-screen mitico-product-disponibilidad" style={{ display: 'grid', gap: 16 }}>
-          <article
-            className="mitico-product-hero"
-            style={{
-              borderRadius: esVistaMovilApp ? 18 : 22,
-              padding: esVistaMovilApp ? 15 : 19,
-              background: 'linear-gradient(135deg,#063b36 0%,#0f766e 58%,#0b5f57 100%)',
-              color: '#fff',
-              boxShadow: '0 16px 38px rgba(6,59,54,.16)',
-              overflow: 'hidden',
-            }}
-          >
-            <div className="mitico-product-section-title">
-              <div style={{ minWidth: 0 }}>
-                <span className="mitico-product-eyebrow" style={{ color: '#a7f3d0' }}>EQUIPO · PLANIFICACIÓN</span>
-                <h2 style={{ margin: '5px 0 0', color: '#fff', fontSize: esVistaMovilApp ? 24 : 29 }}>Disponibilidad</h2>
-                <p style={{ margin: '6px 0 0', color: '#d1fae5', maxWidth: 720 }}>
-                  Configura solo los días y turnos reales de la semana, publícalos y revisa quién puede trabajar en cada turno.
+        <section style={{ display: 'grid', gap: 16 }}>
+          <div className="availability-flow-card">
+            <div className="availability-flow-head">
+              <div>
+                <h2>Disponibilidad semanal</h2>
+                <p>
+                  Configura solo los días y turnos reales de la semana y publica
+                  la versión que verá la Vista entrenador.
                 </p>
               </div>
-              <span className="mitico-product-badge" style={{ background: 'rgba(255,255,255,.10)', color: '#ecfdf5', border: '1px solid rgba(255,255,255,.18)' }}>
-                {estadoServidorDisponibilidadEditor === 'publicado' ? 'SEMANA PUBLICADA' : estadoServidorDisponibilidadEditor === 'borrador' ? 'BORRADOR' : 'SIN PREPARAR'}
-              </span>
-            </div>
 
-            <div className="mitico-product-kpis" style={{ marginTop: 14 }}>
-              <div className="mitico-product-kpi" style={{ background: 'rgba(255,255,255,.10)', borderColor: 'rgba(255,255,255,.16)' }}><span style={{ color: '#a7f3d0' }}>Días activos</span><strong style={{ color: '#fff' }}>{resumenBorradorDisponibilidadEditor.dias}</strong></div>
-              <div className="mitico-product-kpi" style={{ background: 'rgba(255,255,255,.10)', borderColor: 'rgba(255,255,255,.16)' }}><span style={{ color: '#a7f3d0' }}>Turnos</span><strong style={{ color: '#fff' }}>{resumenBorradorDisponibilidadEditor.turnos}</strong></div>
-              <div className="mitico-product-kpi" style={{ background: 'rgba(255,255,255,.10)', borderColor: 'rgba(255,255,255,.16)' }}><span style={{ color: '#a7f3d0' }}>Disponibles</span><strong style={{ color: '#fff' }}>{disponibilidadPorTurno.reduce((total, turno) => total + turno.disponibles.length, 0)}</strong></div>
-              <div className="mitico-product-kpi" style={{ background: 'rgba(255,255,255,.10)', borderColor: 'rgba(255,255,255,.16)' }}><span style={{ color: '#a7f3d0' }}>Pendientes</span><strong style={{ color: '#fff' }}>{disponibilidadPorTurno.reduce((total, turno) => total + turno.pendientes.length, 0)}</strong></div>
-            </div>
-
-            {estadoServidorDisponibilidadEditor === 'publicado' && borradorDisponibilidadEditor?.semana_inicio && (
-              <div style={{ marginTop: 10, color: '#d1fae5', fontSize: 11, fontWeight: 850 }}>
-                Publicada para {rangoSemanaAgenda(borradorDisponibilidadEditor.semana_inicio)}
+              <div className="availability-editor-hero-status">
+                <strong>
+                  {estadoServidorDisponibilidadEditor === 'publicado'
+                    ? 'Semana publicada'
+                    : estadoServidorDisponibilidadEditor === 'borrador'
+                    ? 'Borrador'
+                    : 'Sin preparar'}
+                </strong>
+                {estadoServidorDisponibilidadEditor === 'publicado' && (
+                  <span className="availability-editor-published-week">
+                    {borradorDisponibilidadEditor?.semana_inicio
+                      ? rangoSemanaAgenda(borradorDisponibilidadEditor.semana_inicio)
+                      : '-'}
+                  </span>
+                )}
+                <span>
+                  {resumenBorradorDisponibilidadEditor.dias} días ·{' '}
+                  {resumenBorradorDisponibilidadEditor.turnos} turnos
+                </span>
               </div>
-            )}
+            </div>
 
-            <details style={{ marginTop: 12, border: '1px solid rgba(255,255,255,.16)', borderRadius: 12, padding: '8px 10px', background: 'rgba(255,255,255,.07)' }}>
-              <summary style={{ cursor: 'pointer', fontWeight: 900, color: '#fff' }}>Flujo de trabajo</summary>
-              <ol style={{ marginBottom: 0, color: '#d1fae5', lineHeight: 1.55 }}>
-                <li>Selecciona la semana y activa solo los días reales.</li>
-                <li>Ajusta los turnos y guarda borrador mientras revisas.</li>
-                <li>Publica cuando esté correcto.</li>
-                <li>Revisa las respuestas por turno y asigna entrenadores.</li>
+            <details className="availability-flow-details">
+              <summary>Chuleta rápida del flujo</summary>
+              <ol>
+                <li>Selecciona la semana que vas a preparar.</li>
+                <li>Activa solo los días reales y ajusta sus turnos.</li>
+                <li>Guarda borrador mientras estés revisando.</li>
+                <li>Publica cuando la semana ya esté correcta.</li>
+                <li>
+                  Revisa después las respuestas en “Disponibilidad recibida por
+                  turno”.
+                </li>
+                <li>
+                  La Vista entrenador usará siempre la última versión publicada.
+                </li>
               </ol>
             </details>
-          </article>
+          </div>
 
           <section className="availability-response-summary">
             <header className="availability-response-summary-header">
@@ -41157,7 +40283,6 @@ async function abrirGestionOperativaIntensivoDia(
 
       {pantalla === 'cobros' && esCoordinadorJefeApp && (
         <section
-          className="mitico-product-screen mitico-product-cobros"
           style={{
             display: 'grid',
             gap: 16,
@@ -41187,7 +40312,7 @@ async function abrirGestionOperativaIntensivoDia(
                 Dirección · control mensual
               </p>
               <h2 style={{ margin: 0, color: '#172033' }}>
-                Cobros
+                Cobros entrenadores
               </h2>
               <p
                 style={{
@@ -41202,7 +40327,6 @@ async function abrirGestionOperativaIntensivoDia(
               </p>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              
               <button
                 onClick={() => void cargarCobrosDesdeSemanaActiva()}
                 style={botonSecundario}
@@ -41216,10 +40340,6 @@ async function abrirGestionOperativaIntensivoDia(
             </div>
           </article>
 
-          
-
-          {(
-            <>
           <article
             style={{
               ...agendaBloqueBlanco,
@@ -41227,7 +40347,6 @@ async function abrirGestionOperativaIntensivoDia(
               background:
                 'linear-gradient(180deg, rgba(255,255,255,0.99), rgba(248,250,252,0.98))',
               boxShadow: '0 10px 28px rgba(15, 23, 42, 0.05)',
-              padding: esVistaMovilApp ? 13 : 15,
             }}
           >
             <div
@@ -41565,16 +40684,13 @@ async function abrirGestionOperativaIntensivoDia(
           <section
             style={{
               display: 'grid',
-              gridTemplateColumns: esVistaMovilApp
-                ? 'repeat(2, minmax(0, 1fr))'
-                : 'repeat(5, minmax(0, 1fr))',
-              gap: 9,
+              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+              gap: 10,
             }}
           >
             <article
               style={{
                 ...miniTarjetaBlanca,
-                gridColumn: esVistaMovilApp ? '1 / -1' : undefined,
                 border: '1px solid #bfdbfe',
                 background:
                   'linear-gradient(135deg, #eff6ff, rgba(255,255,255,0.98))',
@@ -41811,35 +40927,11 @@ async function abrirGestionOperativaIntensivoDia(
                 >
                   <div
                     style={{
-                      display: 'grid',
-                      gridTemplateColumns: esVistaMovilApp
-                        ? '1fr'
-                        : 'auto minmax(0, 1fr) auto',
-                      gap: esVistaMovilApp ? 9 : 12,
-                      alignItems: 'center',
+                      ...agendaCabeceraLinea,
+                      gap: 14,
+                      alignItems: 'flex-start',
                     }}
                   >
-                    <div
-                      style={{
-                        width: 42,
-                        height: 42,
-                        borderRadius: 13,
-                        display: 'grid',
-                        placeItems: 'center',
-                        background: fondoEstado,
-                        border: `1px solid ${colorEstado}2f`,
-                        color: colorEstado,
-                        fontSize: 12,
-                        fontWeight: 950,
-                      }}
-                    >
-                      {String(cobro.entrenador || 'E')
-                        .split(/\s+/)
-                        .filter(Boolean)
-                        .slice(0, 2)
-                        .map((parte) => parte.charAt(0).toUpperCase())
-                        .join('') || 'E'}
-                    </div>
                     <div style={{ minWidth: 0 }}>
                       <div
                         style={{
@@ -41859,7 +40951,7 @@ async function abrirGestionOperativaIntensivoDia(
                             background: fondoEstado,
                             border: `1px solid ${colorEstado}33`,
                             color: colorEstado,
-                            fontSize: 10,
+                            fontSize: 11,
                             fontWeight: 950,
                             textTransform: 'uppercase',
                             letterSpacing: '0.04em',
@@ -41868,15 +40960,14 @@ async function abrirGestionOperativaIntensivoDia(
                           {cobro.estado_mes}
                         </span>
                       </div>
-                      <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: 12 }}>
-                        {nombreMes(cobro.mes)} {cobro.anio} · {cobro.temporada} ·{' '}
-                        {cobro.total_turnos_computables} turnos
+                      <p style={{ margin: '6px 0 0', color: '#64748b' }}>
+                        {nombreMes(cobro.mes)} {cobro.anio} · {cobro.temporada}
                       </p>
                     </div>
-                    <div style={{ textAlign: esVistaMovilApp ? 'left' : 'right', flex: '0 0 auto' }}>
+                    <div style={{ textAlign: 'right', flex: '0 0 auto' }}>
                       <p
                         style={{
-                          fontSize: 27,
+                          fontSize: 28,
                           fontWeight: 950,
                           margin: 0,
                           color: '#172033',
@@ -41884,8 +40975,8 @@ async function abrirGestionOperativaIntensivoDia(
                       >
                         {formatearEuros(cobro.total_mes)}
                       </p>
-                      <p style={{ margin: '3px 0 0', color: '#64748b', fontSize: 11 }}>
-                        Total del mes
+                      <p style={{ margin: '4px 0 0', color: '#64748b' }}>
+                        {cobro.total_turnos_computables} turnos
                       </p>
                     </div>
                   </div>
@@ -42222,8 +41313,6 @@ async function abrirGestionOperativaIntensivoDia(
               );
             })}
           </section>
-            </>
-          )}
         </section>
       )}
 
@@ -42299,7 +41388,6 @@ async function abrirGestionOperativaIntensivoDia(
           entrenadoresPorGrupoRecomendado,
           error,
           esVistaMovilApp,
-          esCoordinadorJefeApp,
           enfocarElementoApp,
           estiloBadgePistaApp,
           estiloGrupoPorPistaApp,
@@ -42633,8 +41721,6 @@ async function abrirGestionOperativaIntensivoDia(
           </div>,
           document.body
         )}
-
-      </div>
 
       {alumnoReporteActivo &&
         typeof document !== 'undefined' &&
