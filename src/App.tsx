@@ -3920,7 +3920,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     | 'analisis'
     | 'intensivos'
     | 'listados'
-  >(esEntrenadorApp ? 'entrenador' : 'agenda');
+  >(esEntrenadorApp ? 'entrenador' : 'inicio');
 
   const contenidoPantallaRef = useRef<HTMLDivElement | null>(null);
 
@@ -5793,27 +5793,42 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
       const planningData = await consultarSupabase<GrupoPlanning>(
         'v_planning_app',
-        'select=grupo_id,publicado'
+        'select=grupo_id,fecha,publicado'
       );
 
       const gruposEntrenadorData = await consultarSupabase<GrupoEntrenadorApp>(
         'v_grupos_entrenador_app_dos_entrenadores',
-        'select=grupo_id,entrenador_id,estado_confirmacion,publicado'
+        'select=grupo_id,entrenador_id,fecha,estado_confirmacion,publicado'
       );
+
+      const finSemanaInicioResumen = semanaAgendaActiva
+        ? claveFechaAgenda(
+            new Date(
+              crearFechaAgenda(semanaAgendaActiva).getTime() +
+                6 * 24 * 60 * 60 * 1000
+            )
+          )
+        : '';
+      const dentroSemanaInicio = (fecha?: string | null) =>
+        !semanaAgendaActiva ||
+        Boolean(fecha && fecha >= semanaAgendaActiva && fecha <= finSemanaInicioResumen);
+      const reportesSemanaInicio = reportesData.filter((reporte) => dentroSemanaInicio(reporte.fecha));
+      const planningSemanaInicio = planningData.filter((grupo) => dentroSemanaInicio(grupo.fecha));
+      const gruposEntrenadorSemanaInicio = gruposEntrenadorData.filter((grupo) => dentroSemanaInicio(grupo.fecha));
 
       setAvisos(avisosData);
       setResumenInicio({
-        reportesPendientes: reportesData.filter(
+        reportesPendientes: reportesSemanaInicio.filter(
           (reporte) => reporte.estado_reporte === 'Falta reporte'
         ).length,
-        asistenciasSinConfirmar: reportesData.filter(
-          (reporte) => reporte.estado_reporte === 'Asistencia sin confirmar'
+        asistenciasSinConfirmar: reportesSemanaInicio.filter(
+          (reporte) =>
+            reporte.estado_reporte === 'Asistencia sin confirmar' ||
+            reporte.estado_asistencia === 'Pendiente'
         ).length,
-        gruposSinPublicar: planningData.filter((grupo) => !grupo.publicado)
-          .length,
-        entrenadoresSinConfirmar: gruposEntrenadorData.filter(
-          (grupo) =>
-            grupo.publicado && grupo.estado_confirmacion !== 'Confirmado'
+        gruposSinPublicar: planningSemanaInicio.filter((grupo) => !grupo.publicado).length,
+        entrenadoresSinConfirmar: gruposEntrenadorSemanaInicio.filter(
+          (grupo) => grupo.publicado && grupo.estado_confirmacion !== 'Confirmado'
         ).length,
       });
     } catch (err) {
@@ -5871,18 +5886,33 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       setGruposEntrenador(gruposEntrenadorData);
       setAlumnosReporteEntrenador(alumnosEstadoData);
 
+      const finSemanaInicioResumen = semanaAgendaActiva
+        ? claveFechaAgenda(
+            new Date(
+              crearFechaAgenda(semanaAgendaActiva).getTime() +
+                6 * 24 * 60 * 60 * 1000
+            )
+          )
+        : '';
+      const dentroSemanaInicio = (fecha?: string | null) =>
+        !semanaAgendaActiva ||
+        Boolean(fecha && fecha >= semanaAgendaActiva && fecha <= finSemanaInicioResumen);
+      const reportesSemanaInicio = reportesData.filter((reporte) => dentroSemanaInicio(reporte.fecha));
+      const planningSemanaInicio = planningData.filter((grupo) => dentroSemanaInicio(grupo.fecha));
+      const gruposEntrenadorSemanaInicio = gruposEntrenadorData.filter((grupo) => dentroSemanaInicio(grupo.fecha));
+
       setResumenInicio({
-        reportesPendientes: reportesData.filter(
+        reportesPendientes: reportesSemanaInicio.filter(
           (reporte) => reporte.estado_reporte === 'Falta reporte'
         ).length,
-        asistenciasSinConfirmar: reportesData.filter(
-          (reporte) => reporte.estado_reporte === 'Asistencia sin confirmar'
+        asistenciasSinConfirmar: reportesSemanaInicio.filter(
+          (reporte) =>
+            reporte.estado_reporte === 'Asistencia sin confirmar' ||
+            reporte.estado_asistencia === 'Pendiente'
         ).length,
-        gruposSinPublicar: planningData.filter((grupo) => !grupo.publicado)
-          .length,
-        entrenadoresSinConfirmar: gruposEntrenadorData.filter(
-          (grupo) =>
-            grupo.publicado && grupo.estado_confirmacion !== 'Confirmado'
+        gruposSinPublicar: planningSemanaInicio.filter((grupo) => !grupo.publicado).length,
+        entrenadoresSinConfirmar: gruposEntrenadorSemanaInicio.filter(
+          (grupo) => grupo.publicado && grupo.estado_confirmacion !== 'Confirmado'
         ).length,
       });
     } catch (err) {
@@ -17574,6 +17604,61 @@ async function abrirGestionOperativaIntensivoDia(
     );
   }
 
+  function fichaAlumnoResumenDiaDesdeTexto(valor: string) {
+    const textoCompleto = textoSinAcentosGrupoApp(String(valor || ''));
+
+    const coincidencias = alumnos
+      .filter((item) => {
+        const nombreFicha = textoSinAcentosGrupoApp(item.alumno || '');
+        return nombreFicha.length >= 4 && textoCompleto.includes(nombreFicha);
+      })
+      .sort(
+        (a, b) =>
+          textoSinAcentosGrupoApp(b.alumno || '').length -
+          textoSinAcentosGrupoApp(a.alumno || '').length
+      );
+
+    if (coincidencias.length > 0) return coincidencias[0];
+
+    const nombreDirecto = String(valor || '')
+      .split('·')
+      .slice(0, -1)
+      .join('·')
+      .trim();
+
+    return (
+      alumnos.find(
+        (item) =>
+          textoSinAcentosGrupoApp(item.alumno || '') ===
+          textoSinAcentosGrupoApp(nombreDirecto)
+      ) || null
+    );
+  }
+
+  function telefonoAlumnoResumenDia(nombre: string) {
+    const alumnoFicha = fichaAlumnoResumenDiaDesdeTexto(nombre);
+    return String(alumnoFicha?.telefono || '').trim();
+  }
+
+  function hrefTelefonoAlumnoResumenDia(telefono: string) {
+    const limpio = String(telefono || '').replace(/[^+\d]/g, '');
+    return limpio ? `tel:${limpio}` : '';
+  }
+
+  function hrefWhatsappAlumnoResumenDia(telefono: string) {
+    const limpio = normalizarTelefonoWhatsappApp(telefono);
+    return limpio ? `https://wa.me/${limpio}` : '';
+  }
+
+  function copiarTelefonoAlumnoResumenDia(telefono: string) {
+    if (!telefono) return;
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(telefono);
+      return;
+    }
+    window.prompt('Copia el teléfono', telefono);
+  }
+
   function alumnosGrupoResumenDia(grupo: any) {
     // MISMA fuente y MISMO formato que "Días de entrenamiento".
     // No reconstruimos nombres desde observaciones ni desde fichas paralelas.
@@ -17585,7 +17670,25 @@ async function abrirGestionOperativaIntensivoDia(
       .split(' || ')
       .map((alumnoGrupo) => String(alumnoGrupo || '').trim())
       .filter(Boolean)
-      .map((alumnoGrupo) => formatearAlumnoListadoOperativo(alumnoGrupo));
+      .map((alumnoGrupo) => {
+        const ficha = fichaAlumnoResumenDiaDesdeTexto(alumnoGrupo);
+        if (!ficha) return formatearAlumnoListadoOperativo(alumnoGrupo);
+
+        const nivelEnListado = alumnoGrupo
+          .split('·')
+          .map((parte) => parte.trim())
+          .find((parte) =>
+            /^(INICIACI[ÓO]N|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)$/i.test(parte)
+          );
+        const nivel =
+          nivelEnListado ||
+          ficha.nivel_actual ||
+          ficha.ultimo_nivel_reportado ||
+          ficha.nivel_estimado ||
+          '';
+
+        return `${ficha.alumno}${nivel ? ` · ${String(nivel).toUpperCase()}` : ''}`;
+      });
   }
 
   function claveDomAlumnoResumenDia(nombre: string) {
@@ -21079,6 +21182,13 @@ async function abrirGestionOperativaIntensivoDia(
                 <div className="mitico-nav-group">
                   <span className="mitico-nav-heading">Operativa</span>
                   <button
+                    className={`mitico-nav-item ${pantalla === 'inicio' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('inicio')}
+                  >
+                    <IconoNavegacionApp tipo="inicio" />
+                    <span>Inicio</span>
+                  </button>
+                  <button
                     className={`mitico-nav-item ${pantalla === 'resumenDia' ? 'is-active' : ''}`}
                     onClick={() => abrirPantallaConScroll('resumenDia')}
                   >
@@ -21249,10 +21359,10 @@ async function abrirGestionOperativaIntensivoDia(
         .mitico-user-copy small { color:#b8c6d5; font-size:11px; margin-top:3px; }
         .mitico-logout-button { min-height:34px; padding:7px 11px; border-radius:10px; border:1px solid rgba(248,113,113,.42); color:#fecaca; background:rgba(185,28,28,.18); font-size:11px; font-weight:900; box-shadow:none; }
         .mitico-install-help { position:fixed; top:82px; right:24px; z-index:70; width:min(390px,calc(100vw - 32px)); padding:12px 14px; border-radius:14px; background:#fff; color:#31503d; border:1px solid #ccebd7; box-shadow:0 18px 55px rgba(15,23,42,.16); font-size:12px; line-height:1.45; }
-        .mitico-sidebar { position:fixed; top:74px; left:0; bottom:0; width:258px; z-index:45; display:flex; flex-direction:column; gap:2px; overflow-y:auto; padding:22px 14px 18px; background:rgba(255,255,255,.98); border-right:1px solid var(--mitico-border); box-shadow:8px 0 30px rgba(15,23,42,.025); overscroll-behavior-y:contain; scrollbar-gutter:stable; }
+        .mitico-sidebar { position:fixed; top:74px; left:0; bottom:0; width:222px; z-index:45; display:flex; flex-direction:column; gap:2px; overflow-y:auto; padding:20px 8px 16px; background:rgba(255,255,255,.98); border-right:1px solid var(--mitico-border); box-shadow:8px 0 30px rgba(15,23,42,.025); overscroll-behavior-y:contain; scrollbar-gutter:stable; }
         .mitico-nav-group { display:grid; gap:3px; padding:0 0 14px; margin-bottom:10px; border-bottom:1px solid #edf1f5; }
-        .mitico-nav-heading { padding:0 10px 7px; color:var(--mitico-green-dark); font-size:10px; font-weight:950; text-transform:uppercase; letter-spacing:.13em; }
-        .mitico-nav-item { position:relative; width:100%; min-height:42px; display:grid; grid-template-columns:24px minmax(0,1fr); align-items:center; gap:10px; padding:9px 11px; border:0; border-radius:10px; background:transparent; color:#506078; text-align:left; font-size:13px; font-weight:760; box-shadow:none; cursor:pointer; }
+        .mitico-nav-heading { padding:0 8px 7px; color:var(--mitico-green-dark); font-size:10px; font-weight:950; text-transform:uppercase; letter-spacing:.13em; }
+        .mitico-nav-item { position:relative; width:100%; min-height:42px; display:grid; grid-template-columns:22px minmax(0,1fr); align-items:center; gap:8px; padding:9px 8px; border:0; border-radius:10px; background:transparent; color:#506078; text-align:left; font-size:13px; font-weight:760; box-shadow:none; cursor:pointer; }
         .mitico-nav-item:hover { background:#f5f8fa; color:#17324a; }
         .mitico-nav-item.is-active { color:#08783a; background:linear-gradient(90deg,#eaf8ef 0%,#f7fbf8 100%); font-weight:900; }
         .mitico-nav-item.is-active::before { content:''; position:absolute; left:0; width:3px; height:28px; border-radius:0 3px 3px 0; background:var(--mitico-green); }
@@ -21262,7 +21372,7 @@ async function abrirGestionOperativaIntensivoDia(
         .mitico-sidebar-footer span { display:grid; min-width:0; }
         .mitico-sidebar-footer strong { font-size:11px; color:#344256; }
         .mitico-sidebar-footer small { font-size:10px; margin-top:2px; }
-        .mitico-content-shell { margin-left:258px; padding:28px 32px 64px; min-width:0; min-height:calc(100vh - 74px); max-width:1700px; }
+        .mitico-content-shell { margin-left:222px; padding:28px 32px 64px; min-width:0; min-height:calc(100vh - 74px); max-width:1700px; }
         .mitico-app-shell.trainer-only .mitico-content-shell { margin-left:auto; margin-right:auto; max-width:1120px; }
         @media (min-width:901px) {
           .mitico-product-header { position:sticky; top:0; z-index:60; }
@@ -21642,47 +21752,125 @@ async function abrirGestionOperativaIntensivoDia(
 
       {pantalla === 'resumenDia' && (
         <section>
-          <div style={cabeceraPantallaMovil}>
-            <div>
-              <p style={etiquetaSuperior}>PISTA · CONTROL DIARIO</p>
-              <h2 style={{ margin: 0 }}>Resumen del día</h2>
-              <p style={{ margin: '7px 0 0', color: '#64748b' }}>
-                Consulta rápida de turnos, alumnos, entrenadores y puntos de encuentro.
-              </p>
-            </div>
-            <input
-              type="date"
-              value={fechaResumenDiaActiva}
-              onChange={(e) => setFechaResumenDia(e.target.value)}
-              style={{ ...inputCampo, minHeight: 44 }}
-              aria-label="Fecha del resumen operativo"
-            />
-          </div>
-
-          <article
+          <div
             style={{
-              ...tarjeta,
-              marginTop: 14,
-              padding: 14,
-              border: '2px solid #bfdbfe',
-              background: 'linear-gradient(180deg,#eff6ff,#ffffff)',
+              position: 'relative',
+              overflow: 'hidden',
+              padding: 20,
+              borderRadius: 24,
+              border: '1px solid rgba(15,118,110,.42)',
+              background:
+                'linear-gradient(135deg, #06283b 0%, #08384b 52%, #0f5c4d 100%)',
+              boxShadow: '0 16px 36px rgba(6,40,59,.18)',
+              color: '#ffffff',
+              display: 'grid',
+              gap: 16,
             }}
           >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 16,
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ minWidth: 0, flex: '1 1 420px' }}>
+                <p
+                  style={{
+                    margin: 0,
+                    color: '#6ee7b7',
+                    fontSize: 11,
+                    fontWeight: 950,
+                    letterSpacing: '.12em',
+                  }}
+                >
+                  TRABAJO EN PISTA
+                </p>
+                <h2
+                  style={{
+                    margin: '4px 0 0',
+                    fontSize: 28,
+                    letterSpacing: '-.025em',
+                    color: '#ffffff',
+                  }}
+                >
+                  Control del día
+                </h2>
+                <p
+                  style={{
+                    margin: '7px 0 0',
+                    color: '#cbd5e1',
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Turnos, grupos, alumnos, entrenadores y puntos de encuentro del día.
+                </p>
+              </div>
+
+              <label
+                style={{
+                  display: 'grid',
+                  gap: 5,
+                  minWidth: 190,
+                  color: '#cbd5e1',
+                  fontSize: 11,
+                  fontWeight: 900,
+                  letterSpacing: '.08em',
+                }}
+              >
+                FECHA
+                <input
+                  type="date"
+                  value={fechaResumenDiaActiva}
+                  onChange={(e) => setFechaResumenDia(e.target.value)}
+                  style={{
+                    ...inputCampo,
+                    minHeight: 44,
+                    borderRadius: 13,
+                    border: '1px solid rgba(255,255,255,.24)',
+                    background: 'rgba(255,255,255,.96)',
+                  }}
+                  aria-label="Fecha del resumen operativo"
+                />
+              </label>
+            </div>
+
             <label style={{ display: 'grid', gap: 7 }}>
-              <strong>Buscar alumno en los grupos publicados</strong>
+              <strong style={{ color: '#e2e8f0', fontSize: 13 }}>
+                Buscar alumno en los grupos publicados
+              </strong>
               <input
                 type="search"
                 value={busquedaAlumnoResumenDia}
                 onChange={(e) => setBusquedaAlumnoResumenDia(e.target.value)}
                 placeholder="Nombre o apellidos del niño…"
-                style={{ ...inputCampo, width: '100%', minHeight: 48, fontSize: 16 }}
+                style={{
+                  ...inputCampo,
+                  width: '100%',
+                  minHeight: 48,
+                  fontSize: 16,
+                  borderRadius: 14,
+                  border: '1px solid rgba(255,255,255,.22)',
+                  background: 'rgba(255,255,255,.98)',
+                }}
               />
             </label>
 
             {textoBusquedaAlumnoResumenDia && (
-              <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+              <div style={{ display: 'grid', gap: 8 }}>
                 {resultadosBusquedaAlumnoResumenDia.length === 0 ? (
-                  <div style={avisoPendiente}>
+                  <div
+                    style={{
+                      padding: 12,
+                      borderRadius: 14,
+                      background: 'rgba(255,247,237,.96)',
+                      border: '1px solid rgba(251,146,60,.38)',
+                      color: '#9a3412',
+                      fontWeight: 800,
+                    }}
+                  >
                     No aparece ningún alumno con ese nombre en los grupos publicados del día.
                   </div>
                 ) : (
@@ -21712,48 +21900,59 @@ async function abrirGestionOperativaIntensivoDia(
                 )}
               </div>
             )}
-          </article>
 
-          <div style={gridResumenInicio}>
-            <div style={tarjetaInicioOk}>
-              <strong>Turnos</strong>
-              <br />
-              <span style={{ fontSize: 26, fontWeight: 900 }}>
-                {sesionesResumenDia.length}
-              </span>
-            </div>
-            <div style={tarjetaInicioOk}>
-              <strong>Alumnos previstos</strong>
-              <br />
-              <span style={{ fontSize: 26, fontWeight: 900 }}>
-                {totalAlumnosResumenDia}
-              </span>
-            </div>
             <div
-              style={
-                totalPublicadosResumenDia === totalGruposResumenDia
-                  ? tarjetaInicioOk
-                  : tarjetaInicioAlerta
-              }
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))',
+                gap: 10,
+              }}
             >
-              <strong>Grupos publicados</strong>
-              <br />
-              <span style={{ fontSize: 26, fontWeight: 900 }}>
-                {totalPublicadosResumenDia}/{totalGruposResumenDia}
-              </span>
-            </div>
-            <div
-              style={
-                gruposPendientesEntrenadorResumenDia.length === 0
-                  ? tarjetaInicioOk
-                  : tarjetaInicioRojo
-              }
-            >
-              <strong>Sin entrenador</strong>
-              <br />
-              <span style={{ fontSize: 26, fontWeight: 900 }}>
-                {gruposPendientesEntrenadorResumenDia.length}
-              </span>
+              {[
+                ['Turnos', String(sesionesResumenDia.length), sesionesResumenDia.length > 0],
+                ['Alumnos previstos', String(totalAlumnosResumenDia), totalAlumnosResumenDia > 0],
+                ['Grupos publicados', `${totalPublicadosResumenDia}/${totalGruposResumenDia}`, totalPublicadosResumenDia === totalGruposResumenDia],
+                ['Sin entrenador', String(gruposPendientesEntrenadorResumenDia.length), gruposPendientesEntrenadorResumenDia.length === 0],
+              ].map(([etiqueta, valor, ok]) => (
+                <div
+                  key={String(etiqueta)}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 16,
+                    background: ok
+                      ? 'rgba(255,255,255,.10)'
+                      : 'rgba(255,247,237,.13)',
+                    border: ok
+                      ? '1px solid rgba(255,255,255,.18)'
+                      : '1px solid rgba(251,146,60,.38)',
+                    minWidth: 0,
+                  }}
+                >
+                  <strong
+                    style={{
+                      display: 'block',
+                      color: '#cbd5e1',
+                      fontSize: 10,
+                      textTransform: 'uppercase',
+                      letterSpacing: '.06em',
+                    }}
+                  >
+                    {etiqueta}
+                  </strong>
+                  <span
+                    style={{
+                      display: 'block',
+                      marginTop: 4,
+                      color: '#ffffff',
+                      fontSize: 25,
+                      lineHeight: 1,
+                      fontWeight: 950,
+                    }}
+                  >
+                    {valor}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
 
@@ -21779,13 +21978,13 @@ async function abrirGestionOperativaIntensivoDia(
                     key={sesion.id}
                     style={{
                       ...tarjetaEntrenadorMovil,
-                      border: turnoAbierto ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                      border: turnoAbierto ? '2px solid #0f766e' : '1px solid #cbd5e1',
                       borderRadius: 20,
                       overflow: 'hidden',
                       padding: 0,
                       background: '#ffffff',
                       boxShadow: turnoAbierto
-                        ? '0 14px 34px rgba(37,99,235,.14)'
+                        ? '0 14px 34px rgba(4,23,36,.14)'
                         : '0 8px 20px rgba(15,23,42,.07)',
                       scrollMarginTop: 18,
                     }}
@@ -21802,8 +22001,8 @@ async function abrirGestionOperativaIntensivoDia(
                         width: '100%',
                         border: 0,
                         background: turnoAbierto
-                          ? 'linear-gradient(135deg,#0f172a,#1e3a8a)'
-                          : '#f8fafc',
+                          ? 'linear-gradient(110deg,#041724 0%,#06243a 68%,#0b3a43 100%)'
+                          : 'linear-gradient(135deg,#f8fafc,#ffffff)',
                         color: turnoAbierto ? '#ffffff' : '#172033',
                         padding: '15px 16px',
                         display: 'flex',
@@ -21856,19 +22055,26 @@ async function abrirGestionOperativaIntensivoDia(
                                   border:
                                     grupoResumenDiaDestacado ===
                                     String(grupo.grupo_id || `${sesion.id}-${indice}`)
-                                      ? '3px solid #2563eb'
+                                      ? '3px solid #16a34a'
                                       : grupo.entrenador || grupo.entrenadores
                                       ? '1px solid #cbd5e1'
                                       : '2px solid #f59e0b',
-                                  borderRadius: 16,
-                                  padding: 13,
-                                  background: '#ffffff',
-                                  boxShadow: '0 6px 16px rgba(15,23,42,.06)',
+                                  borderRadius: 18,
+                                  padding: 14,
+                                  background: 'linear-gradient(180deg,#ffffff,#fbfdff)',
+                                  boxShadow: '0 10px 24px rgba(15,23,42,.06)',
                                   minWidth: 0,
                                 }}
                               >
-                                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                                  <div>
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'minmax(0, 1fr) auto',
+                                    alignItems: 'start',
+                                    gap: 12,
+                                  }}
+                                >
+                                  <div style={{ minWidth: 0 }}>
                                     <strong style={{ fontSize: 16 }}>{nombreGrupoVisualApp(grupo, indice)}</strong>
                                     <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 8 }}>
                                       <span style={{ ...miniBadge, background: '#0f172a', color: '#fff' }}>
@@ -21879,7 +22085,7 @@ async function abrirGestionOperativaIntensivoDia(
                                       </span>
                                     </div>
                                   </div>
-                                  <div style={{ textAlign: 'right' }}>
+                                  <div style={{ textAlign: 'right', minWidth: 138, alignSelf: 'start' }}>
                                     <span style={{ display: 'block', fontSize: 11, fontWeight: 900, color: '#64748b', textTransform: 'uppercase' }}>
                                       Entrenador
                                     </span>
@@ -21923,7 +22129,108 @@ async function abrirGestionOperativaIntensivoDia(
                                               : undefined
                                           }
                                         >
-                                          {alumno}
+                                          {(() => {
+                                            const telefono = telefonoAlumnoResumenDia(alumno);
+                                            const whatsapp = hrefWhatsappAlumnoResumenDia(telefono);
+                                            const llamada = hrefTelefonoAlumnoResumenDia(telefono);
+
+                                            return (
+                                              <div
+                                                style={{
+                                                  display: 'grid',
+                                                  gridTemplateColumns: telefono ? 'minmax(0, 1fr) auto' : 'minmax(0, 1fr)',
+                                                  alignItems: 'center',
+                                                  gap: 8,
+                                                  minWidth: 0,
+                                                  width: '100%',
+                                                }}
+                                              >
+                                                <div style={{ minWidth: 0 }}>
+                                                  <strong style={{ color: '#172033' }}>{alumno}</strong>
+                                                  {telefono && (
+                                                    <button
+                                                      type="button"
+                                                      onClick={() => copiarTelefonoAlumnoResumenDia(telefono)}
+                                                      title="Toca para copiar el teléfono"
+                                                      style={{
+                                                        display: 'block',
+                                                        marginTop: 3,
+                                                        padding: 0,
+                                                        border: 0,
+                                                        background: 'transparent',
+                                                        color: '#2563eb',
+                                                        fontSize: 13,
+                                                        fontWeight: 850,
+                                                        cursor: 'copy',
+                                                        textAlign: 'left',
+                                                      }}
+                                                    >
+                                                      {telefono}
+                                                    </button>
+                                                  )}
+                                                </div>
+
+                                                {telefono && (
+                                                  <div
+                                                    style={{
+                                                      display: 'flex',
+                                                      gap: 5,
+                                                      flexWrap: 'nowrap',
+                                                      justifyContent: 'flex-end',
+                                                      alignItems: 'center',
+                                                    }}
+                                                  >
+                                                    {whatsapp && (
+                                                      <a
+                                                        href={whatsapp}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        style={{
+                                                          display: 'inline-flex',
+                                                          alignItems: 'center',
+                                                          justifyContent: 'center',
+                                                          minHeight: 32,
+                                                          padding: '5px 8px',
+                                                          borderRadius: 10,
+                                                          border: '1px solid #bbf7d0',
+                                                          background: '#f0fdf4',
+                                                          color: '#15803d',
+                                                          fontSize: 11,
+                                                          fontWeight: 900,
+                                                          textDecoration: 'none',
+                                                          whiteSpace: 'nowrap',
+                                                        }}
+                                                      >
+                                                        WhatsApp
+                                                      </a>
+                                                    )}
+                                                    {llamada && (
+                                                      <a
+                                                        href={llamada}
+                                                        style={{
+                                                          display: 'inline-flex',
+                                                          alignItems: 'center',
+                                                          justifyContent: 'center',
+                                                          minHeight: 32,
+                                                          padding: '5px 8px',
+                                                          borderRadius: 10,
+                                                          border: '1px solid #bfdbfe',
+                                                          background: '#eff6ff',
+                                                          color: '#1d4ed8',
+                                                          fontSize: 11,
+                                                          fontWeight: 900,
+                                                          textDecoration: 'none',
+                                                          whiteSpace: 'nowrap',
+                                                        }}
+                                                      >
+                                                        Llamar
+                                                      </a>
+                                                    )}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          })()}
                                         </li>
                                       ))}
                                     </ul>
@@ -31658,131 +31965,311 @@ async function abrirGestionOperativaIntensivoDia(
         </section>
       )}
 
-      {pantalla === 'inicio' && (
-        <section>
-          <div style={cabeceraPantalla}>
-            <h2>Inicio · Jose</h2>
-            <button onClick={actualizarTodo}>Actualizar todo</button>
-          </div>
+      {pantalla === 'inicio' && (() => {
+        const sesionesSemanaInicio = agendaSesionesDirectas
+          .filter((sesion) => !semanaAgendaActiva || sesion.semana_inicio === semanaAgendaActiva)
+          .sort((a, b) => `${a.fecha} ${a.hora_inicio}`.localeCompare(`${b.fecha} ${b.hora_inicio}`));
+        const totalAlumnosSemanaInicio = sesionesSemanaInicio.reduce(
+          (total, sesion) => total + Number(sesion.total_alumnos || 0),
+          0
+        );
+        const totalGruposSemanaInicio = sesionesSemanaInicio.reduce(
+          (total, sesion) => total + Number(sesion.total_grupos || 0),
+          0
+        );
+        const entrenadoresActivosInicio = entrenadores.filter((entrenador) => entrenador.activo).length;
+        const incidenciasInicio =
+          Number(resumenInicio.reportesPendientes || 0) +
+          Number(resumenInicio.asistenciasSinConfirmar || 0) +
+          Number(resumenInicio.gruposSinPublicar || 0) +
+          Number(resumenInicio.entrenadoresSinConfirmar || 0);
+        const proximasSesionesInicio = sesionesSemanaInicio.slice(0, 5);
+        const alumnosPorModalidadInicio = ['BABY', 'OCIO', 'INTENSIVOS'].map((modalidad) => ({
+          modalidad,
+          total: sesionesSemanaInicio
+            .filter((sesion) => normalizarModalidadAgenda(sesion.modalidad || sesion.modalidad_codigo) === modalidad)
+            .reduce((total, sesion) => total + Number(sesion.total_alumnos || 0), 0),
+        }));
+        const horaSaludoInicio = new Date().getHours();
+        const saludoInicio =
+          horaSaludoInicio < 6 || horaSaludoInicio >= 21
+            ? 'Buenas noches'
+            : horaSaludoInicio < 14
+              ? 'Buenos días'
+              : 'Buenas tardes';
 
-          {cargando && <p>Cargando panel de control...</p>}
+        async function abrirSesionDesdeInicio(sesion: AgendaSesionDirectaApp) {
+          const [anioDia, mesDia] = sesion.fecha.split('-').map(Number);
+          const mesObjetivo = `${anioDia}-${String(mesDia).padStart(2, '0')}`;
+          const semanaObjetivo = inicioSemanaAgenda(sesion.fecha);
 
-          <section
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
-              gap: 12,
-              marginBottom: 18,
-            }}
-          >
-            <article
-              style={tarjetaInicioEstado(resumenInicio.reportesPendientes)}
-            >
-              <h3 style={{ margin: 0, fontSize: 16 }}>Reportes pendientes</h3>
-              <p style={{ fontSize: 34, margin: '8px 0', fontWeight: 'bold' }}>
-                {resumenInicio.reportesPendientes}
-              </p>
-              <p style={{ margin: 0 }}>Alumnos presentes sin reporte.</p>
+          setAnioInicioTemporadaAgenda(mesDia >= 9 ? anioDia : anioDia - 1);
+          setMesAgenda(mesObjetivo);
+          setSemanaAgendaInicio(semanaObjetivo);
+          setAgendaDiaCompactoActivo(sesion.fecha);
+          setAgendaFormularioAbierto(false);
+          setAgendaSesionActivaId(sesion.sesion_id);
+          setPantalla('agenda');
 
-              {resumenInicio.reportesPendientes > 0 && (
-                <button
-                  onClick={() => setPantalla('reportes')}
-                  style={{ ...botonPrincipal, marginTop: 12 }}
-                >
-                  Ver pendientes
+          try {
+            await cargarDetalleSesionAgenda(sesion.sesion_id, { preservarScroll: true });
+          } catch (err) {
+            setError(
+              err instanceof Error
+                ? err.message
+                : 'No se pudo abrir el turno seleccionado.'
+            );
+            return;
+          }
+
+          window.setTimeout(() => {
+            const objetivo =
+              document.getElementById('agenda-sesion-trabajo') ||
+              document.getElementById('agenda-dia-seleccionado');
+            objetivo?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 220);
+        }
+
+        function abrirIncidenciasInicio() {
+          const categoriasActivas = [
+            resumenInicio.reportesPendientes > 0 ? 'reportes' : '',
+            resumenInicio.asistenciasSinConfirmar > 0 ? 'asistencia' : '',
+            resumenInicio.gruposSinPublicar > 0 ? 'grupos' : '',
+            resumenInicio.entrenadoresSinConfirmar > 0 ? 'entrenadores' : '',
+          ].filter(Boolean);
+
+          if (categoriasActivas.length === 1) {
+            const categoria = categoriasActivas[0];
+            if (categoria === 'reportes') {
+              setFiltroReportes('faltan_reportes');
+              setBusquedaReportes('');
+              abrirPantallaConScroll('reportes');
+              return;
+            }
+            if (categoria === 'asistencia') {
+              setFiltroReportes('asistencias_sin_confirmar');
+              setBusquedaReportes('');
+              abrirPantallaConScroll('reportes');
+              return;
+            }
+            if (categoria === 'grupos') {
+              abrirPantallaConScroll('agenda');
+              return;
+            }
+            abrirPantallaConScroll('entrenador');
+            return;
+          }
+
+          document.getElementById('inicio-necesita-atencion')?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+          });
+        }
+
+        function destinoAvisoInicio(aviso: AvisoJose) {
+          const bloque = String(aviso.bloque || '').toLowerCase();
+          if (bloque.includes('disponibil')) return () => abrirPantallaConScroll('disponibilidad');
+          if (bloque.includes('sin asignar')) return () => abrirPantallaConScroll('disponibilidad');
+          if (bloque.includes('sin publicar') || bloque.includes('grupos pendientes')) return () => abrirPantallaConScroll('agenda');
+          if (bloque.includes('confirmar') && bloque.includes('entrenador')) return () => abrirPantallaConScroll('entrenador');
+          if (bloque.includes('asistencia') || bloque.includes('niños sin confirmar')) {
+            return () => {
+              setFiltroReportes('asistencias_sin_confirmar');
+              setBusquedaReportes('');
+              abrirPantallaConScroll('reportes');
+            };
+          }
+          if (bloque.includes('reporte')) {
+            return () => {
+              setFiltroReportes('faltan_reportes');
+              setBusquedaReportes('');
+              abrirPantallaConScroll('reportes');
+            };
+          }
+          if (bloque.includes('intensiv') || bloque.includes('diploma')) return () => abrirPantallaConScroll('intensivos');
+          if (bloque.includes('cobro')) return () => abrirPantallaConScroll('cobros');
+          return () => abrirPantallaConScroll('agenda');
+        }
+
+        return (
+          <section className="mitico-home-screen">
+            <style>{`
+              .mitico-home-screen{display:grid;gap:18px;color:#122033;min-width:0}
+              .mitico-home-hero{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap;padding:4px 2px 6px}
+              .mitico-home-hero h2{margin:0;font-size:clamp(26px,3vw,36px);letter-spacing:-.035em;line-height:1.08}
+              .mitico-home-hero p{margin:7px 0 0;color:#718096;font-size:14px}
+              .mitico-home-actions{display:flex;gap:10px;flex-wrap:wrap}
+              .mitico-home-action{min-height:42px;padding:10px 14px;border-radius:12px;border:1px solid #dce4ee;background:#fff;color:#24364b;font-weight:850;box-shadow:0 6px 18px rgba(15,23,42,.04)}
+              .mitico-home-action.primary{background:#0f9f4d;border-color:#0f9f4d;color:#fff;box-shadow:0 9px 22px rgba(15,159,77,.18)}
+              .mitico-home-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
+              .mitico-home-metric{min-width:0;padding:16px;border:1px solid #e5eaf1;border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.045)}
+              .mitico-home-metric.is-clickable{cursor:pointer;text-align:left;font:inherit;transition:transform .14s ease,box-shadow .14s ease}.mitico-home-metric.is-clickable:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(15,23,42,.08)}
+              .mitico-home-metric-head{display:flex;align-items:center;gap:9px;color:#667085;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+              .mitico-home-metric-icon{width:34px;height:34px;border-radius:11px;display:grid;place-items:center;font-size:17px;font-weight:900}
+              .mitico-home-metric strong{display:block;margin-top:8px;font-size:29px;letter-spacing:-.04em;color:#172033}
+              .mitico-home-metric small{display:block;margin-top:4px;color:#718096;font-size:11px;line-height:1.35}
+              .mitico-home-grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(300px,.9fr);gap:14px;align-items:start}
+              .mitico-home-panel{border:1px solid #e5eaf1;border-radius:18px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.04);overflow:hidden;min-width:0}
+              .mitico-home-panel-head{display:flex;justify-content:space-between;gap:12px;align-items:center;padding:15px 17px;border-bottom:1px solid #edf1f5}
+              .mitico-home-panel-head h3{margin:0;font-size:16px;letter-spacing:-.01em}
+              .mitico-home-link{border:0;background:transparent;color:#52657b;font-weight:800;font-size:11px;padding:6px;cursor:pointer}
+              .mitico-home-session{display:grid;grid-template-columns:58px minmax(0,1fr) repeat(3,58px) auto;gap:11px;align-items:center;padding:12px 16px;border-bottom:1px solid #eef2f6;min-width:0}
+              .mitico-home-session:last-child{border-bottom:0}
+              .mitico-home-date{display:grid;place-items:center;border:1px solid #e5eaf1;border-radius:12px;padding:6px;background:#fbfcfe;text-align:center}
+              .mitico-home-date strong{font-size:18px;line-height:1}.mitico-home-date small{margin-top:3px;font-size:8px;color:#718096;font-weight:900;text-transform:uppercase}
+              .mitico-home-session-main{min-width:0}.mitico-home-session-main strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:13px}.mitico-home-session-main small{display:block;margin-top:4px;color:#7a8898;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+              .mitico-home-session-stat{text-align:center}.mitico-home-session-stat strong{display:block;font-size:13px}.mitico-home-session-stat small{font-size:8px;color:#7a8898}
+              .mitico-home-status{padding:6px 10px;border-radius:999px;background:#ecfdf3;color:#16854a;font-size:9px;font-weight:900;white-space:nowrap;border:1px solid #d1fadf}
+              .mitico-home-stack{display:grid;gap:14px}
+              .mitico-home-alerts{padding:11px 14px 14px;display:grid;gap:8px}
+              .mitico-home-alert{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:11px 12px;border-radius:12px;border:1px solid #fde8a8;background:#fffaf0;color:#7a5700;font-size:11px;font-weight:800;cursor:pointer;text-align:left}
+              .mitico-home-alert.red{border-color:#fecaca;background:#fff5f5;color:#a61b1b}.mitico-home-alert.blue{border-color:#cfe1ff;background:#f4f8ff;color:#2456a6}
+              .mitico-home-op-card{appearance:none;width:100%;min-width:0;padding:12px;border:1px solid #edf1f5;border-radius:13px;background:#fbfcfe;color:#172033;text-align:left;font:inherit;cursor:pointer;transition:transform .14s ease,box-shadow .14s ease,border-color .14s ease}.mitico-home-op-card:hover{transform:translateY(-1px);border-color:#d7e1ee;box-shadow:0 9px 20px rgba(15,23,42,.06)}.mitico-home-op-card strong{display:block;font-size:12px}.mitico-home-op-card .mitico-home-op-count{display:block;margin-top:5px;font-size:24px;font-weight:900}.mitico-home-op-card small{display:block;color:#718096;line-height:1.35}.mitico-home-op-open{display:block;margin-top:8px;color:#2563eb;font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+              .mitico-home-modality{padding:14px 16px 16px;display:grid;gap:10px}.mitico-home-modality-row{display:grid;grid-template-columns:82px minmax(0,1fr) 70px;gap:9px;align-items:center;font-size:11px}.mitico-home-bar{height:8px;border-radius:999px;background:#edf1f5;overflow:hidden}.mitico-home-bar span{display:block;height:100%;border-radius:999px;background:#0f9f4d}.mitico-home-modality-row:nth-child(2) .mitico-home-bar span{background:#3b82f6}.mitico-home-modality-row:nth-child(3) .mitico-home-bar span{background:#f59e0b}
+              .mitico-home-empty{padding:24px;color:#718096;font-size:13px;text-align:center}
+              @media(max-width:1200px){.mitico-home-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.mitico-home-grid{grid-template-columns:1fr}.mitico-home-session{grid-template-columns:54px minmax(0,1fr) repeat(2,54px) auto}.mitico-home-session-stat:nth-of-type(4){display:none}}
+              @media(max-width:720px){.mitico-home-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.mitico-home-metric:last-child{grid-column:1/-1}.mitico-home-actions{width:100%}.mitico-home-action{flex:1 1 140px}.mitico-home-session{grid-template-columns:50px minmax(0,1fr) auto}.mitico-home-session-stat{display:none}.mitico-home-status{font-size:8px;padding:5px 8px}}
+            `}</style>
+
+            <div className="mitico-home-hero">
+              <div>
+                <h2>{saludoInicio}, {perfilUsuario?.nombre?.split(' ')[0] || 'Jose'} 👋</h2>
+                <p>Aquí tienes la visión general de esta semana.</p>
+              </div>
+              <div className="mitico-home-actions">
+                <button type="button" className="mitico-home-action" onClick={() => abrirPantallaConScroll('agenda')}>
+                  Ver calendario semanal
                 </button>
-              )}
-            </article>
-
-            <article
-              style={tarjetaInicioEstado(resumenInicio.asistenciasSinConfirmar)}
-            >
-              <h3 style={{ margin: 0, fontSize: 16 }}>
-                Asistencias sin confirmar
-              </h3>
-              <p style={{ fontSize: 34, margin: '8px 0', fontWeight: 'bold' }}>
-                {resumenInicio.asistenciasSinConfirmar}
-              </p>
-              <p style={{ margin: 0 }}>
-                Alumnos pendientes de Presente/Ausente.
-              </p>
-
-              {resumenInicio.asistenciasSinConfirmar > 0 && (
-                <button
-                  onClick={() => setPantalla('reportes')}
-                  style={{ ...botonPrincipal, marginTop: 12 }}
-                >
-                  Ver pendientes
+                <button type="button" className="mitico-home-action primary" onClick={() => abrirPantallaConScroll('agenda')}>
+                  + Nueva sesión
                 </button>
-              )}
-            </article>
+              </div>
+            </div>
 
-            <article
-              style={tarjetaInicioEstado(resumenInicio.gruposSinPublicar)}
-            >
-              <h3 style={{ margin: 0, fontSize: 16 }}>Grupos sin publicar</h3>
-              <p style={{ fontSize: 34, margin: '8px 0', fontWeight: 'bold' }}>
-                {resumenInicio.gruposSinPublicar}
-              </p>
-              <p style={{ margin: 0 }}>
-                Grupos preparados que aún no ve el entrenador.
-              </p>
+            {cargando && <p style={{ margin: 0, color: '#64748b' }}>Actualizando panel...</p>}
 
-              {resumenInicio.gruposSinPublicar > 0 && (
-                <button
-                  onClick={() => {
-                    setPantalla('agenda');
-                  }}
-                  style={{ ...botonPrincipal, marginTop: 12 }}
-                >
-                  Ver días
+            <div className="mitico-home-metrics">
+              {[
+                ['Sesiones esta semana', sesionesSemanaInicio.length, `${sesionesSemanaInicio.filter((s) => normalizarModalidadAgenda(s.modalidad || s.modalidad_codigo) === 'BABY').length} Baby · ${sesionesSemanaInicio.filter((s) => normalizarModalidadAgenda(s.modalidad || s.modalidad_codigo) === 'OCIO').length} Ocio · ${sesionesSemanaInicio.filter((s) => normalizarModalidadAgenda(s.modalidad || s.modalidad_codigo) === 'INTENSIVOS').length} Intensivos`, '📅', '#ecfdf3', () => abrirPantallaConScroll('agenda')],
+                ['Alumnos inscritos', totalAlumnosSemanaInicio, 'Suma prevista en las sesiones de la semana', '👥', '#eff6ff', () => abrirPantallaConScroll('agenda')],
+                ['Grupos activos', totalGruposSemanaInicio, `${resumenInicio.gruposSinPublicar} sin publicar`, '◈', '#f5f3ff', () => abrirPantallaConScroll('agenda')],
+                ['Entrenadores', entrenadoresActivosInicio, `${resumenInicio.entrenadoresSinConfirmar} pendientes de confirmar`, '♙', '#fff7ed', () => abrirPantallaConScroll('entrenador')],
+                ['Incidencias', incidenciasInicio, incidenciasInicio > 0 ? `${resumenInicio.reportesPendientes} reportes · ${resumenInicio.asistenciasSinConfirmar} asistencias · ${resumenInicio.gruposSinPublicar} grupos · ${resumenInicio.entrenadoresSinConfirmar} entrenadores` : 'Todo al día esta semana', '!', '#fff1f2', abrirIncidenciasInicio],
+              ].map(([titulo, valor, detalle, icono, fondo, accion]) => (
+                <button type="button" className="mitico-home-metric is-clickable" key={String(titulo)} onClick={accion as () => void}>
+                  <div className="mitico-home-metric-head">
+                    <span className="mitico-home-metric-icon" style={{ background: String(fondo) }}>{icono}</span>
+                    <span>{titulo}</span>
+                  </div>
+                  <strong>{valor}</strong>
+                  <small>{detalle}</small>
                 </button>
-              )}
-            </article>
+              ))}
+            </div>
 
-            <article
-              style={tarjetaInicioEstado(
-                resumenInicio.entrenadoresSinConfirmar
-              )}
-            >
-              <h3 style={{ margin: 0, fontSize: 16 }}>
-                Entrenadores sin confirmar
-              </h3>
-              <p style={{ fontSize: 34, margin: '8px 0', fontWeight: 'bold' }}>
-                {resumenInicio.entrenadoresSinConfirmar}
-              </p>
-              <p style={{ margin: 0 }}>
-                Asignaciones publicadas pendientes de confirmar.
-              </p>
-
-              {resumenInicio.entrenadoresSinConfirmar > 0 && (
-                <button
-                  onClick={() => {
-                    setPantalla('agenda');
-                  }}
-                  style={{ ...botonPrincipal, marginTop: 12 }}
-                >
-                  Ver días
-                </button>
-              )}
-            </article>
-          </section>
-
-          <section style={{ display: 'grid', gap: 12 }}>
-            {avisos.map((aviso) => (
-              <article key={aviso.orden} style={tarjeta}>
-                <h3 style={{ margin: 0, fontSize: 18 }}>{aviso.bloque}</h3>
-                <p
-                  style={{ fontSize: 34, margin: '8px 0', fontWeight: 'bold' }}
-                >
-                  {aviso.contador}
-                </p>
-                <p style={{ margin: 0 }}>{aviso.descripcion}</p>
+            <div className="mitico-home-grid">
+              <article className="mitico-home-panel">
+                <div className="mitico-home-panel-head">
+                  <h3>Próximas sesiones</h3>
+                  <button type="button" className="mitico-home-link" onClick={() => abrirPantallaConScroll('agenda')}>Ver todas</button>
+                </div>
+                {proximasSesionesInicio.length === 0 ? (
+                  <div className="mitico-home-empty">No hay sesiones cargadas en la semana seleccionada.</div>
+                ) : (
+                  proximasSesionesInicio.map((sesion) => {
+                    const fecha = crearFechaAgenda(sesion.fecha);
+                    const modalidad = normalizarModalidadAgenda(sesion.modalidad || sesion.modalidad_codigo);
+                    return (
+                      <button
+                        type="button"
+                        key={sesion.sesion_id}
+                        onClick={() => void abrirSesionDesdeInicio(sesion)}
+                        className="mitico-home-session"
+                        style={{ width: '100%', borderTop: 0, borderLeft: 0, borderRight: 0, background: '#fff', textAlign: 'left', cursor: 'pointer' }}
+                      >
+                        <span className="mitico-home-date">
+                          <strong>{String(fecha.getDate()).padStart(2, '0')}</strong>
+                          <small>{fecha.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '')}</small>
+                        </span>
+                        <span className="mitico-home-session-main">
+                          <strong>{sesion.modalidad || modalidad} · {sesion.hora_inicio?.slice(0, 5)}–{sesion.hora_fin?.slice(0, 5)}</strong>
+                          <small>{sesion.lugar || 'Madrid SnowZone'} · {sesion.estado_sesion || 'Preparada'}</small>
+                        </span>
+                        <span className="mitico-home-session-stat"><strong>{sesion.total_grupos}</strong><small>Grupos</small></span>
+                        <span className="mitico-home-session-stat"><strong>{sesion.total_alumnos}</strong><small>Alumnos</small></span>
+                        <span className="mitico-home-session-stat"><strong>{sesion.grupos_publicados}</strong><small>Publicados</small></span>
+                        <span className="mitico-home-status">{Number(sesion.grupos_publicados || 0) >= Number(sesion.total_grupos || 0) ? '✓ Todo OK' : 'Revisar'}</span>
+                      </button>
+                    );
+                  })
+                )}
               </article>
-            ))}
+
+              <div className="mitico-home-stack">
+                {incidenciasInicio > 0 && (
+                  <article id="inicio-necesita-atencion" className="mitico-home-panel">
+                    <div className="mitico-home-panel-head"><h3>Necesita tu atención</h3><span className="mitico-home-status">{incidenciasInicio}</span></div>
+                    <div className="mitico-home-alerts">
+                      {resumenInicio.reportesPendientes > 0 && (
+                        <button type="button" className="mitico-home-alert" onClick={() => { setFiltroReportes('faltan_reportes'); setBusquedaReportes(''); abrirPantallaConScroll('reportes'); }}><span>{resumenInicio.reportesPendientes} reportes pendientes</span><span>›</span></button>
+                      )}
+                      {resumenInicio.asistenciasSinConfirmar > 0 && (
+                        <button type="button" className="mitico-home-alert red" onClick={() => { setFiltroReportes('asistencias_sin_confirmar'); setBusquedaReportes(''); abrirPantallaConScroll('reportes'); }}><span>{resumenInicio.asistenciasSinConfirmar} asistencias sin confirmar</span><span>›</span></button>
+                      )}
+                      {resumenInicio.gruposSinPublicar > 0 && (
+                        <button type="button" className="mitico-home-alert blue" onClick={() => abrirPantallaConScroll('agenda')}><span>{resumenInicio.gruposSinPublicar} grupos sin publicar</span><span>›</span></button>
+                      )}
+                      {resumenInicio.entrenadoresSinConfirmar > 0 && (
+                        <button type="button" className="mitico-home-alert blue" onClick={() => abrirPantallaConScroll('entrenador')}><span>{resumenInicio.entrenadoresSinConfirmar} entrenadores sin confirmar</span><span>›</span></button>
+                      )}
+                    </div>
+                  </article>
+                )}
+
+                <article className="mitico-home-panel">
+                  <div className="mitico-home-panel-head"><h3>Resumen por modalidad</h3></div>
+                  <div className="mitico-home-modality">
+                    {alumnosPorModalidadInicio.map((registro) => {
+                      const porcentaje = totalAlumnosSemanaInicio > 0 ? Math.round((registro.total / totalAlumnosSemanaInicio) * 100) : 0;
+                      return (
+                        <div className="mitico-home-modality-row" key={registro.modalidad}>
+                          <strong>{registro.modalidad === 'INTENSIVOS' ? 'Intensivos' : capitalizarPrimera(registro.modalidad.toLowerCase())}</strong>
+                          <span className="mitico-home-bar"><span style={{ width: `${porcentaje}%` }} /></span>
+                          <span>{registro.total} · {porcentaje}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </article>
+              </div>
+            </div>
+
+            {avisos.length > 0 && (
+              <article className="mitico-home-panel">
+                <div className="mitico-home-panel-head">
+                  <h3>Resumen operativo</h3>
+                  <button type="button" className="mitico-home-link" onClick={actualizarTodo}>Actualizar</button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10, padding: 14 }}>
+                  {avisos.map((aviso) => (
+                    <button
+                      type="button"
+                      key={aviso.orden}
+                      className="mitico-home-op-card"
+                      onClick={destinoAvisoInicio(aviso)}
+                    >
+                      <strong>{aviso.bloque}</strong>
+                      <span className="mitico-home-op-count">{aviso.contador}</span>
+                      <small>{aviso.descripcion}</small>
+                      <span className="mitico-home-op-open">Abrir y revisar →</span>
+                    </button>
+                  ))}
+                </div>
+              </article>
+            )}
           </section>
-        </section>
-      )}
+        );
+      })()}
 
       {pantalla === 'planning' && (
         <section>
