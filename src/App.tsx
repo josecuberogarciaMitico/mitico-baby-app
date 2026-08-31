@@ -21375,7 +21375,7 @@ async function abrirGestionOperativaIntensivoDia(
                   : {}),
               }}
             >
-              <span style={menuTituloColor('#2563eb')}>Trabajo semanal</span>
+              <span style={menuTituloColor('#2563eb')}>Operativa</span>
               <button
                 onClick={() => abrirPantallaConScroll('resumenDia')}
                 style={{
@@ -21385,7 +21385,7 @@ async function abrirGestionOperativaIntensivoDia(
                     : {}),
                 }}
               >
-                Resumen del día
+                Trabajo en pista
               </button>
               <button
                 onClick={() => abrirPantallaConScroll('agenda')}
@@ -21396,12 +21396,90 @@ async function abrirGestionOperativaIntensivoDia(
                     : {}),
                 }}
               >
-                Días de entrenamiento
+                Entrenamientos
+              </button>
+              <button
+                onClick={() => abrirPantallaConScroll('ocioGrupos')}
+                style={{
+                  ...botonMenuColor(
+                    ['ocioGrupos', 'ocioCambios', 'ocioSemana'].includes(pantalla),
+                    '#2563eb'
+                  ),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
+              >
+                Ocio
+              </button>
+              <button
+                onClick={() => abrirPantallaConScroll('intensivos')}
+                style={{
+                  ...botonMenuColor(pantalla === 'intensivos', '#2563eb'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
+              >
+                Intensivos
+              </button>
+            </div>
+
+            <div
+              style={{
+                ...menuBloqueColor('#0f766e', '#ecfdf5'),
+                ...(esVistaMovilApp
+                  ? {
+                      width: '100%',
+                      maxWidth: '100%',
+                      minWidth: 0,
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr)',
+                      alignItems: 'stretch',
+                      gap: 8,
+                      boxSizing: 'border-box',
+                    }
+                  : {}),
+              }}
+            >
+              <span style={menuTituloColor('#0f766e')}>Equipo</span>
+              <button
+                onClick={() => abrirPantallaConScroll('entrenadores')}
+                style={{
+                  ...botonMenuColor(pantalla === 'entrenadores', '#0f766e'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
+              >
+                Entrenadores
+              </button>
+              <button
+                onClick={() => abrirPantallaConScroll('disponibilidad')}
+                style={{
+                  ...botonMenuColor(pantalla === 'disponibilidad', '#0f766e'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
+              >
+                Disponibilidad
+              </button>
+              <button
+                onClick={() => abrirPantallaConScroll('entrenador')}
+                style={{
+                  ...botonMenuColor(pantalla === 'entrenador', '#0f766e'),
+                  ...(esVistaMovilApp
+                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                    : {}),
+                }}
+              >
+                Vista entrenador
               </button>
               <button
                 onClick={() => abrirPantallaConScroll('reportes')}
                 style={{
-                  ...botonMenuColor(pantalla === 'reportes', '#2563eb'),
+                  ...botonMenuColor(pantalla === 'reportes', '#0f766e'),
                   ...(esVistaMovilApp
                     ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
                     : {}),
@@ -21428,7 +21506,7 @@ async function abrirGestionOperativaIntensivoDia(
                   : {}),
               }}
             >
-              <span style={menuTituloColor('#7c3aed')}>Fichas</span>
+              <span style={menuTituloColor('#7c3aed')}>Gestión</span>
               <button
                 onClick={() => abrirPantallaConScroll('alumnos')}
                 style={{
@@ -21438,179 +21516,41 @@ async function abrirGestionOperativaIntensivoDia(
                     : {}),
                 }}
               >
-                Alumnos Baby
+                Fichas
               </button>
-            </div>
-
-            <div
-              style={{
-                ...menuBloqueColor('#f97316', '#fff7ed'),
-                ...(esVistaMovilApp
-                  ? {
-                      width: '100%',
-                      maxWidth: '100%',
-                      minWidth: 0,
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(0, 1fr)',
-                      alignItems: 'stretch',
-                      gap: 8,
-                      boxSizing: 'border-box',
-                    }
-                  : {}),
-              }}
-            >
-              <span style={menuTituloColor('#f97316')}>Intensivos</span>
-              <button
-                onClick={() => abrirPantallaConScroll('intensivos')}
-                style={{
-                  ...botonMenuColor(pantalla === 'intensivos', '#f97316'),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
-              >
-                Intensivos
-              </button>
-            </div>
-
-            <div
-              style={{
-                ...menuBloqueColor('#16a34a', '#f0fdf4'),
-                ...(esVistaMovilApp
-                  ? {
-                      width: '100%',
-                      maxWidth: '100%',
-                      minWidth: 0,
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(0, 1fr)',
-                      alignItems: 'stretch',
-                      gap: 8,
-                      boxSizing: 'border-box',
-                    }
-                  : {}),
-              }}
-            >
-              <span style={menuTituloColor('#16a34a')}>Ocio</span>
-              <button
-                onClick={() => abrirPantallaConScroll('ocioGrupos')}
-                style={{
-                  ...botonMenuColor(
-                  ['ocioGrupos', 'ocioCambios', 'ocioSemana'].includes(pantalla),
-                  '#16a34a'
-                ),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
-              >
-                Grupos estables
-              </button>
-            </div>
-
-            <div
-              style={{
-                ...menuBloqueColor('#0f766e', '#ecfdf5'),
-                ...(esVistaMovilApp
-                  ? {
-                      width: '100%',
-                      maxWidth: '100%',
-                      minWidth: 0,
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(0, 1fr)',
-                      alignItems: 'stretch',
-                      gap: 8,
-                      boxSizing: 'border-box',
-                    }
-                  : {}),
-              }}
-            >
-              <span style={menuTituloColor('#0f766e')}>Entrenadores</span>
-              <button
-                onClick={() => abrirPantallaConScroll('entrenadores')}
-                style={{
-                  ...botonMenuColor(pantalla === 'entrenadores', '#0f766e'),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
-              >
-                Gestión entrenadores
-              </button>
-              <button
-                onClick={() => abrirPantallaConScroll('disponibilidad')}
-                style={{
-                  ...botonMenuColor(pantalla === 'disponibilidad', '#0f766e'),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
-              >
-                Disponibilidad
-              </button>
-              <button
-                onClick={() => abrirPantallaConScroll('entrenador')}
-                style={{
-                  ...botonMenuColor(pantalla === 'entrenador', '#0f766e'),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
-              >
-                Vista entrenador
-              </button>
-            </div>
-
-            {puedeVerAdministracionAltasApp(perfilUsuario?.rol) && (
-              <div
-              style={{
-                ...menuBloqueColor('#0891b2', '#ecfeff'),
-                ...(esVistaMovilApp
-                  ? {
-                      width: '100%',
-                      maxWidth: '100%',
-                      minWidth: 0,
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(0, 1fr)',
-                      alignItems: 'stretch',
-                      gap: 8,
-                      boxSizing: 'border-box',
-                    }
-                  : {}),
-              }}
-            >
-                <span style={menuTituloColor('#0891b2')}>Administración</span>
+              {puedeVerAdministracionAltasApp(perfilUsuario?.rol) && (
                 <button
                   onClick={() => abrirPantallaConScroll('administracion')}
                   style={{
-                  ...botonMenuColor(pantalla === 'administracion', '#0891b2'),
-                  ...(esVistaMovilApp
-                    ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
-                    : {}),
-                }}
+                    ...botonMenuColor(pantalla === 'administracion', '#7c3aed'),
+                    ...(esVistaMovilApp
+                      ? { width: '100%', maxWidth: '100%', minWidth: 0, whiteSpace: 'normal', textAlign: 'left', boxSizing: 'border-box' }
+                      : {}),
+                  }}
                 >
-                  Altas y test de nivel
+                  Altas / Test
                 </button>
-              </div>
-            )}
+              )}
+            </div>
 
             {esCoordinadorJefeApp && (
               <div
-              style={{
-                ...menuBloqueColor('#e11d48', '#fff1f2'),
-                ...(esVistaMovilApp
-                  ? {
-                      width: '100%',
-                      maxWidth: '100%',
-                      minWidth: 0,
-                      display: 'grid',
-                      gridTemplateColumns: 'minmax(0, 1fr)',
-                      alignItems: 'stretch',
-                      gap: 8,
-                      boxSizing: 'border-box',
-                    }
-                  : {}),
-              }}
-            >
+                style={{
+                  ...menuBloqueColor('#e11d48', '#fff1f2'),
+                  ...(esVistaMovilApp
+                    ? {
+                        width: '100%',
+                        maxWidth: '100%',
+                        minWidth: 0,
+                        display: 'grid',
+                        gridTemplateColumns: 'minmax(0, 1fr)',
+                        alignItems: 'stretch',
+                        gap: 8,
+                        boxSizing: 'border-box',
+                      }
+                    : {}),
+                }}
+              >
                 <span style={menuTituloColor('#e11d48')}>Dirección</span>
                 <button
                   onClick={() => abrirPantallaConScroll('cobros')}
