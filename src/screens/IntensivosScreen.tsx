@@ -11,7 +11,7 @@ export function PantallaIntensivos(ctx: any) {
     borrarDiaIntensivoDesdeApp, borrarGrupoIntensivo, borrarIntensivoCompleto, botonMenu,
     botonPasoIntensivo, botonPeligro, botonPeligroMini, botonPrincipal, botonSecundario, buscador,
     busquedaAlumnoIntensivo, busquedaIntensivos, cabeceraPantalla,
-    calcularFechasCuatroSesionesIntensivo, cargando, cargarIntensivos, cerrarPanelesIntensivo,
+    calcularFechasCuatroSesionesIntensivo, cargando, cargarIntensivos, cambiarEstadoIntensivoCurso, cerrarPanelesIntensivo,
     chipResumenCursoIntensivo, claveAlumnoRecomendado, claveGrupoRecomendado, codigoNivelPorId,
     crearCuatroSesionesIntensivo, crearGrupoDesdeRecomendacion,
     crearTodosGruposDesdeRecomendacionIntensivo, crearGrupoNormalIntensivo,
@@ -34,7 +34,7 @@ export function PantallaIntensivos(ctx: any) {
     gestionarMásIntensivoId, gestionarPanelControlIntensivoId, gridFormulario,
     gruposDestinoRecuperacion, gruposNormalesDelDiaIntensivo, guardarDiaIntensivo, inputCampo,
     intensivoCursoAbiertoId, intensivoInicial, intensivos, intensivosFiltrados, labelCampo,
-    marcarAsistenciaIntensivo, miniTarjetaBlanca, mostrarFormularioIntensivo,
+    marcarAsistenciaIntensivo, reiniciarGruposDiaIntensivoDesdeApp, mesIntensivos, miniTarjetaBlanca, mostrarFormularioIntensivo,
     mostrarPlantillaCuatroSesionesIntensivoId, mostrarVolcadoIntensivoId,
     necesitaDosEntrenadoresGrupoApp, nivelesDiplomaIntensivo, nombreGrupoVisualApp,
     nombresGruposBaseRecomendados, observacionesAutomaticasGrupoIntensivo,
@@ -43,7 +43,6 @@ export function PantallaIntensivos(ctx: any) {
     opcionesOrigenNivelAlumno, opcionesPistaGrupoIntensivo, opcionesRecomendacionIntensivo,
     panelControlDelIntensivo, plantillaCuatroSesionesInicial, plantillaCuatroSesionesIntensivo,
     prepararEdicionDiaIntensivo, prepararCambioRevisionIntensivo,
-    moverAlumnoManualRevisionIntensivo,
     analizarRevisionEntreSesionesIntensivo, revisionIntensivoId,
     revisionIntensivoDiaId, revisionIntensivoSugerencias,
     revisionIntensivoAnalizando, revisionIntensivoAnalizado,
@@ -56,7 +55,7 @@ export function PantallaIntensivos(ctx: any) {
     setAlumnoSeleccionadoIntensivoId, setBusquedaAlumnoIntensivo, setBusquedaIntensivos,
     setDestinoAlumnoRecomendado, setDiaEditandoIntensivoId, setDiaGrupoSeleccionadoId,
     setEntrenadoresApoyoPorGrupoRecomendado, setEntrenadoresPorGrupoRecomendado,
-    setFiltroIntensivos, setFormDiaIntensivo, setFormGrupoIntensivo, setFormIntensivo,
+    setFiltroIntensivos, setMesIntensivos, setFormDiaIntensivo, setFormGrupoIntensivo, setFormIntensivo,
     setGestionarAlumnosIntensivoId, setGestionarDiplomasIntensivoId, setGestionarMásIntensivoId,
     setIntensivoCursoAbiertoId, setMostrarFormularioIntensivo,
     setMostrarPlantillaCuatroSesionesIntensivoId, setMostrarVolcadoIntensivoId,
@@ -66,6 +65,38 @@ export function PantallaIntensivos(ctx: any) {
     tarjeta, tarjetaIntensivoCurso, textoBaseDiplomaIntensivo, textoNecesidadDosEntrenadoresApp,
     textoValidacionPedagogicaGrupoApp, textoVolcadoIntensivo, trabajoDiarioPorGrupoRecomendado,
     volcarListadoAlumnosIntensivo } = ctx;
+
+  function formatearAlumnoIntensivoVisible(valor: string | null | undefined) {
+    const partes = String(valor || '')
+      .split('·')
+      .map((parte) => parte.trim())
+      .filter(Boolean);
+
+    if (partes.length === 0) return '-';
+
+    const esPrefijoTest = (parte: string) =>
+      /^(ZZZS|TEST(?:\s+NUEVO)?|\[TEST[^\]]*\])$/i.test(parte);
+    const esNivel = (parte: string) =>
+      /^(?:Nivel\s*:?\s*)?(INICIACI[ÓO]N|DEBUT|A\+?|B\+?|C\+?|D\+?)$/i.test(parte);
+
+    let indiceNombre = 0;
+    if (partes.length > 1 && esPrefijoTest(partes[0]) && !esNivel(partes[1])) {
+      indiceNombre = 1;
+    }
+
+    const nombre = partes[indiceNombre]
+      .replace(/^\d+[.)-]?\s*/, '')
+      .trim();
+    const prefijo = indiceNombre === 1 ? `${partes[0]} · ` : '';
+    const nivelParte = partes.find((parte, indice) =>
+      indice !== indiceNombre && esNivel(parte)
+    );
+    const nivel = nivelParte
+      ? nivelParte.replace(/^Nivel\s*:?\s*/i, '').toUpperCase()
+      : '';
+
+    return `${prefijo}${nombre}${nivel ? ` · ${nivel}` : ''}`;
+  }
 
   function tarjetaRecuperacionInteligente(registro: any, compacta = false) {
     const propuestas = recomendacionesDeRecuperacion(registro.recuperacion_id).slice(
@@ -231,26 +262,199 @@ export function PantallaIntensivos(ctx: any) {
 
   return (
         <section>
-          <div style={cabeceraPantalla}>
-            <div>
-              <p style={etiquetaSuperior}>INTENSIVOS</p>
-              <h2 style={{ margin: '4px 0 6px' }}>Intensivos</h2>
-              <details style={{ ...ayudaDesplegableCompacta, marginTop: 8 }}>
-                <summary>Ayuda rápida</summary>
-                <p style={{ margin: '8px 0 0', color: '#475569' }}>
-                  Crea el curso, recibe alumnos desde Administración, prepara grupos por día y termina la evaluación final con los reportes reales.
+          <div
+            style={{
+              background: 'linear-gradient(135deg, #062d3f 0%, #083b4d 58%, #0b5d4f 100%)',
+              borderRadius: 18,
+              padding: esVistaMovilApp ? 16 : 20,
+              marginBottom: 16,
+              boxShadow: '0 14px 34px rgba(15,23,42,.14)',
+              color: '#fff',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                gap: 16,
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ minWidth: 220 }}>
+                <p style={{ ...etiquetaSuperior, color: '#86efac', margin: 0 }}>
+                  INTENSIVOS
                 </p>
-              </details>
+                <h2
+                  style={{
+                    margin: '5px 0 4px',
+                    color: '#fff',
+                    fontSize: esVistaMovilApp ? 24 : 30,
+                  }}
+                >
+                  Gestión de intensivos
+                </h2>
+                <p
+                  style={{
+                    margin: 0,
+                    color: '#cbd5e1',
+                    fontSize: 13,
+                    maxWidth: 720,
+                  }}
+                >
+                  Crea el curso, prepara los grupos base y gestiona cada jornada desde Días de entrenamiento.
+                </p>
+              </div>
+
+              <button
+                onClick={() =>
+                  setMostrarFormularioIntensivo(!mostrarFormularioIntensivo)
+                }
+                style={{
+                  ...botonPrincipal,
+                  background: '#16a34a',
+                  borderColor: '#16a34a',
+                  color: '#fff',
+                }}
+              >
+                {mostrarFormularioIntensivo
+                  ? 'Cerrar formulario'
+                  : '+ Crear intensivo'}
+              </button>
             </div>
 
-            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-              <button onClick={cargarIntensivos}>Actualizar intensivos</button>
-              <button
-                onClick={() => setMostrarFormularioIntensivo(!mostrarFormularioIntensivo)}
-                style={botonPrincipal}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: esVistaMovilApp
+                  ? '1fr'
+                  : 'minmax(280px, 320px) minmax(0, 1fr)',
+                gap: 10,
+                marginTop: 18,
+              }}
+            >
+              <label
+                style={{
+                  display: 'grid',
+                  gap: 6,
+                  fontSize: 12,
+                  fontWeight: 900,
+                  color: '#cbd5e1',
+                }}
               >
-                {mostrarFormularioIntensivo ? 'Cerrar formulario' : 'Crear intensivo'}
-              </button>
+                Mes
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'minmax(0, 1fr)',
+                    gap: 7,
+                  }}
+                >
+                  <input
+                    type="month"
+                    value={mesIntensivos}
+                    onChange={(e) => setMesIntensivos(e.target.value)}
+                    style={{
+                      ...inputCampo,
+                      width: '100%',
+                      minWidth: 0,
+                      fontSize: 15,
+                      fontWeight: 800,
+                      background: '#fff',
+                      color: '#0f172a',
+                    }}
+                  />
+                </div>
+              </label>
+
+              <label
+                style={{
+                  display: 'grid',
+                  gap: 6,
+                  fontSize: 12,
+                  fontWeight: 900,
+                  color: '#d9f4ef',
+                }}
+              >
+                Buscar
+                <input
+                  value={busquedaIntensivos}
+                  onChange={(e) => setBusquedaIntensivos(e.target.value)}
+                  placeholder="Nombre, temporada, estado o lugar…"
+                  style={{
+                    ...buscador,
+                    margin: 0,
+                    width: '100%',
+                    background: '#fff',
+                    color: '#0f172a',
+                  }}
+                />
+              </label>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: esVistaMovilApp
+                  ? 'repeat(2, minmax(0, 1fr))'
+                  : 'repeat(5, minmax(0, max-content)) minmax(120px, 1fr)',
+                gap: 8,
+                marginTop: 12,
+                alignItems: 'center',
+              }}
+            >
+              {[
+                ['todos', 'Todos'],
+                ['activos', 'Abiertos'],
+                ['cerrados', 'Cerrados'],
+                ['sin_alumnos', 'Sin alumnos'],
+                ['proximos', 'Próximos'],
+              ].map(([valor, etiqueta]) => (
+                <button
+                  key={valor}
+                  type="button"
+                  onClick={() => setFiltroIntensivos(valor as any)}
+                  style={{
+                    ...botonMenu(filtroIntensivos === valor),
+                    width: '100%',
+                    minWidth: 0,
+                    whiteSpace: 'nowrap',
+                    background:
+                      filtroIntensivos === valor
+                        ? '#fff'
+                        : 'rgba(255,255,255,.08)',
+                    color:
+                      filtroIntensivos === valor ? '#0f172a' : '#e2e8f0',
+                    borderColor: 'rgba(255,255,255,.20)',
+                  }}
+                >
+                  {etiqueta}
+                </button>
+              ))}
+
+              <details
+                style={{
+                  color: '#dbeafe',
+                  fontSize: 12,
+                  alignSelf: 'center',
+                  justifySelf: esVistaMovilApp ? 'stretch' : 'end',
+                  minWidth: 0,
+                }}
+              >
+                <summary style={{ cursor: 'pointer', fontWeight: 900 }}>
+                  Ayuda rápida
+                </summary>
+                <p
+                  style={{
+                    margin: '8px 0 0',
+                    maxWidth: 620,
+                    lineHeight: 1.45,
+                    color: '#cbd5e1',
+                  }}
+                >
+                  Configuración → Alumnos → Grupos base → Días de entrenamiento → Revisión → Recuperaciones → Evaluación final.
+                </p>
+              </details>
             </div>
           </div>
 
@@ -331,57 +535,6 @@ export function PantallaIntensivos(ctx: any) {
               </div>
             </article>
           )}
-
-          <input
-            value={busquedaIntensivos}
-            onChange={(e) => setBusquedaIntensivos(e.target.value)}
-            placeholder="Buscar intensivo, temporada, estado o lugar..."
-            style={buscador}
-          />
-
-          <div
-            style={{
-              display: 'flex',
-              gap: 8,
-              flexWrap: 'wrap',
-              marginBottom: 16,
-            }}
-          >
-            <button
-              onClick={() => setFiltroIntensivos('todos')}
-              style={botonMenu(filtroIntensivos === 'todos')}
-            >
-              Todos
-            </button>
-
-            <button
-              onClick={() => setFiltroIntensivos('activos')}
-              style={botonMenu(filtroIntensivos === 'activos')}
-            >
-              Abiertos
-            </button>
-
-            <button
-              onClick={() => setFiltroIntensivos('cerrados')}
-              style={botonMenu(filtroIntensivos === 'cerrados')}
-            >
-              Cerrados
-            </button>
-
-            <button
-              onClick={() => setFiltroIntensivos('sin_alumnos')}
-              style={botonMenu(filtroIntensivos === 'sin_alumnos')}
-            >
-              Sin alumnos
-            </button>
-
-            <button
-              onClick={() => setFiltroIntensivos('proximos')}
-              style={botonMenu(filtroIntensivos === 'proximos')}
-            >
-              Próximos
-            </button>
-          </div>
 
           {cargando && <p>Cargando intensivos...</p>}
 
@@ -519,6 +672,11 @@ export function PantallaIntensivos(ctx: any) {
               const gruposDiaSeleccionado = diaSeleccionadoGrupo
                 ? gruposNormalesDelDiaIntensivo(diaSeleccionadoGrupo.intensivo_dia_id)
                 : [];
+              const gruposBaseCursoIntensivo = diasIntensivo[0]
+                ? gruposNormalesDelDiaIntensivo(
+                    diasIntensivo[0].intensivo_dia_id
+                  ).length
+                : 0;
               const gruposRecomendadosDia = diaSeleccionadoGrupo
                 ? agruparRecomendacionesDia(diaSeleccionadoGrupo.intensivo_dia_id)
                 : [];
@@ -547,11 +705,13 @@ export function PantallaIntensivos(ctx: any) {
                 (registro) => registro.estado_diploma !== 'Revisado'
               ).length;
               const estadoRealIntensivo =
-                resumenFinal.length > 0
-                  ? diplomasPendientes === 0
-                    ? `✓ Evaluación completa · ${resumenFinal.length}/${resumenFinal.length}`
-                    : `${diplomasPendientes} evaluación${diplomasPendientes === 1 ? '' : 'es'} pendiente${diplomasPendientes === 1 ? '' : 's'}`
-                  : String(intensivo.estado || 'En preparación');
+                esCerrado
+                  ? '✓ Intensivo finalizado'
+                  : resumenFinal.length > 0
+                    ? diplomasPendientes === 0
+                      ? `✓ Evaluación completa · ${resumenFinal.length}/${resumenFinal.length}`
+                      : `${diplomasPendientes} evaluación${diplomasPendientes === 1 ? '' : 'es'} pendiente${diplomasPendientes === 1 ? '' : 's'}`
+                    : String(intensivo.estado || 'En preparación');
               const gestorPanelControlAbierto =
                 gestionarPanelControlIntensivoId === intensivo.intensivo_id;
               const panelControl = panelControlDelIntensivo(intensivo.intensivo_id);
@@ -590,7 +750,7 @@ export function PantallaIntensivos(ctx: any) {
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 10 }}>
                         <span style={chipResumenCursoIntensivo}><strong>{totalAlumnos}</strong> alumnos</span>
                         <span style={chipResumenCursoIntensivo}><strong>{diasIntensivo.length}/4</strong> días</span>
-                        <span style={chipResumenCursoIntensivo}><strong>{diasIntensivo.reduce((total, dia) => total + gruposNormalesDelDiaIntensivo(dia.intensivo_dia_id).length, 0)}</strong> grupos</span>
+                        <span style={chipResumenCursoIntensivo}><strong>{gruposBaseCursoIntensivo}</strong> grupos base</span>
                         <span
                           style={{
                             ...chipResumenCursoIntensivo,
@@ -648,7 +808,7 @@ export function PantallaIntensivos(ctx: any) {
                         }}
                         style={intensivoCursoAbierto ? botonSecundario : botonPrincipal}
                       >
-                        {intensivoCursoAbierto ? 'Cerrar intensivo' : 'Abrir intensivo'}
+                        {intensivoCursoAbierto ? 'Ocultar gestión' : 'Gestionar intensivo'}
                       </button>
                       <button
                         type="button"
@@ -704,12 +864,7 @@ export function PantallaIntensivos(ctx: any) {
                           GRUPOS
                         </span>
                         <div style={{ marginTop: 3, fontSize: 20, fontWeight: 950, color: '#0f172a' }}>
-                          {diasIntensivo.reduce(
-                            (total, dia) =>
-                              total +
-                              gruposNormalesDelDiaIntensivo(dia.intensivo_dia_id).length,
-                            0
-                          )}
+                          {gruposBaseCursoIntensivo}
                         </div>
                       </div>
 
@@ -988,15 +1143,8 @@ export function PantallaIntensivos(ctx: any) {
                         </div>
 
                         <div style={miniTarjetaBlanca}>
-                          <strong>
-                            {diasIntensivo.reduce(
-                              (total, dia) =>
-                                total +
-                                gruposNormalesDelDiaIntensivo(dia.intensivo_dia_id).length,
-                              0
-                            )}
-                          </strong>
-                          <p style={{ margin: '6px 0 0' }}>grupos creados</p>
+                          <strong>{gruposBaseCursoIntensivo}</strong>
+                          <p style={{ margin: '6px 0 0' }}>grupos base</p>
                         </div>
 
                         <div style={miniTarjetaBlanca}>
@@ -1098,13 +1246,13 @@ export function PantallaIntensivos(ctx: any) {
                                       <ol style={{ margin: '8px 0 0 20px', padding: 0 }}>
                                         {grupo.alumnos_lista.split(' || ').map((alumnoGrupo, indiceAlumnoGrupo) => (
                                           <li key={`${grupo.grupo_id}-mapa-${indiceAlumnoGrupo}`}>
-                                            {formatearAlumnoListadoOperativo(alumnoGrupo)}
+                                            {formatearAlumnoIntensivoVisible(alumnoGrupo)}
                                           </li>
                                         ))}
                                       </ol>
                                     ) : (
                                       <div style={{ ...avisoNeutral, marginTop: 8 }}>
-                                        No hay listado de niños cargado. Pulsa “Actualizar intensivos”.
+                                        No hay listado de niños cargado en este grupo.
                                       </div>
                                     )}
 
@@ -1248,6 +1396,10 @@ export function PantallaIntensivos(ctx: any) {
                           </div>
                         )}
                       </article>
+
+                      <div style={{ ...avisoNeutral, marginBottom: 12 }}>
+                        Los días se numeran siempre por orden cronológico. Si cambias una fecha, Día 1/2/3/4 se renumera automáticamente y la sesión de Días de entrenamiento conserva sus grupos e histórico.
+                      </div>
 
                       <h4>Días creados</h4>
 
@@ -1895,20 +2047,6 @@ export function PantallaIntensivos(ctx: any) {
                                 ? 'Analizando...'
                                 : 'Revisar grupos'}
                             </button>
-
-                            <button
-                              type="button"
-                              onClick={() =>
-                                void moverAlumnoManualRevisionIntensivo()
-                              }
-                              disabled={
-                                !revisionIntensivoDiaId ||
-                                revisionIntensivoAnalizando
-                              }
-                              style={botonSecundario}
-                            >
-                              Mover alumno manualmente
-                            </button>
                           </div>
 
                           {revisionIntensivoSugerencias.length > 0 && (
@@ -2058,7 +2196,7 @@ export function PantallaIntensivos(ctx: any) {
                         <details style={ayudaDesplegableCompacta}>
                           <summary>Ayuda rápida</summary>
                           <div style={{ marginTop: 8, color: '#475569' }}>
-                            La asistencia se marca una sola vez en Vista entrenador / Días de entrenamiento. Aquí solo la consultas y gestionas recuperaciones.
+                            La asistencia se marca una sola vez en Vista entrenador / Días de entrenamiento. Si coordinación marca “No viene” o el entrenador marca “Ausente” el mismo día, la falta del Intensivo genera recuperación automáticamente. Aquí solo consultas y gestionas esas recuperaciones.
                           </div>
                         </details>
                       </div>
@@ -2279,6 +2417,10 @@ export function PantallaIntensivos(ctx: any) {
                       <h4 style={{ marginTop: 0 }}>
                         Preparar grupos por día · {intensivo.intensivo}
                       </h4>
+                      <p style={{ margin: '-4px 0 12px', color: '#64748b', lineHeight: 1.45 }}>
+                        Si el día todavía no tiene grupos, aquí se genera y ajusta la propuesta inicial.
+                        En cuanto los grupos existen, la gestión real del día se hace en Días de entrenamiento: alumnos, ausencias, entrenadores, punto y publicación. El Trabajo diario y las Observaciones se generan automáticamente al abrir cada jornada y se recalculan si cambia la composición.
+                      </p>
 
                       {diasIntensivo.length === 0 && (
                         <div style={avisoPendiente}>
@@ -2313,11 +2455,37 @@ export function PantallaIntensivos(ctx: any) {
                                 <button
                                   key={`int-dia-${dia.intensivo_dia_id}`}
                                   type="button"
-                                  onClick={() =>
+                                  onClick={async () => {
                                     setDiaGrupoSeleccionadoId(
                                       dia.intensivo_dia_id
-                                    )
-                                  }
+                                    );
+
+                                    const gruposDelDia =
+                                      gruposNormalesDelDiaIntensivo(
+                                        dia.intensivo_dia_id
+                                      );
+
+                                    if (gruposDelDia.length === 0) {
+                                      await generarRecomendacionGruposIntensivo(dia);
+                                    } else {
+                                      // Una vez creados los grupos, no mantenemos
+                                      // dos editores compitiendo. La operativa
+                                      // real vive siempre en Días de entrenamiento.
+                                      await abrirGestionOperativaIntensivoDia(dia);
+                                      return;
+                                    }
+
+                                    window.setTimeout(() => {
+                                      document
+                                        .getElementById(
+                                          `intensivo-editor-grupos-${dia.intensivo_dia_id}`
+                                        )
+                                        ?.scrollIntoView({
+                                          behavior: 'smooth',
+                                          block: 'start',
+                                        });
+                                    }, 180);
+                                  }}
                                   style={{
                                     ...(seleccionado
                                       ? botonPrincipal
@@ -2384,26 +2552,113 @@ export function PantallaIntensivos(ctx: any) {
                             id="intensivo-recomendador-activo"
                             style={{ ...miniTarjetaBlanca, marginTop: 12 }}
                           >
-                            <h4 style={{ marginTop: 0 }}>Recomendador</h4>
+                            <h4 style={{ marginTop: 0 }}>
+                              {gruposDiaSeleccionado.length > 0
+                                ? 'Día ya preparado'
+                                : 'Recomendador inicial'}
+                            </h4>
+
+                            {gruposDiaSeleccionado.length > 0 &&
+                              gruposRecomendadosDia.length === 0 &&
+                              diaSeleccionadoGrupo && (
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gap: 10,
+                                    padding: 12,
+                                    marginBottom: 10,
+                                    borderRadius: 12,
+                                    border: '1px solid #dbe3ec',
+                                    background: '#f8fafc',
+                                  }}
+                                >
+                                  <p style={{ margin: 0, color: '#475569' }}>
+                                    Este día ya tiene {gruposDiaSeleccionado.length}{' '}
+                                    grupos creados. La operativa real se gestiona
+                                    en Días de entrenamiento.
+                                  </p>
+
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      gap: 8,
+                                      flexWrap: 'wrap',
+                                    }}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        void abrirGestionOperativaIntensivoDia(
+                                          diaSeleccionadoGrupo
+                                        )
+                                      }
+                                      style={botonPrincipal}
+                                    >
+                                      Abrir en Días de entrenamiento
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        void reiniciarGruposDiaIntensivoDesdeApp(
+                                          diaSeleccionadoGrupo
+                                        )
+                                      }
+                                      style={botonPeligro}
+                                    >
+                                      Rehacer grupos de este día
+                                    </button>
+                                  </div>
+
+                                  <small style={{ color: '#64748b' }}>
+                                    “Rehacer” conserva la fecha y los alumnos del
+                                    Intensivo. Por seguridad se bloquea si el día
+                                    ya tiene reportes, asistencia real o
+                                    recuperaciones.
+                                  </small>
+                                </div>
+                              )}
+
                             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                               {diasIntensivo.every(
                                 (dia) =>
                                   gruposNormalesDelDiaIntensivo(
                                     dia.intensivo_dia_id
                                   ).length === 0
-                              ) && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    generarPlantillaCuatroDiasIntensivo(
-                                      intensivo
-                                    )
-                                  }
-                                  style={botonPrincipal}
-                                >
-                                  Generar plantilla 4 días
-                                </button>
-                              )}
+                              ) &&
+                                gruposRecomendadosDia.length === 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      generarPlantillaCuatroDiasIntensivo(
+                                        intensivo
+                                      )
+                                    }
+                                    style={botonPrincipal}
+                                  >
+                                    Generar propuesta inicial
+                                  </button>
+                                )}
+
+                              {diasIntensivo.every(
+                                (dia) =>
+                                  gruposNormalesDelDiaIntensivo(
+                                    dia.intensivo_dia_id
+                                  ).length === 0
+                              ) &&
+                                gruposRecomendadosDia.length > 0 && (
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      generarPlantillaCuatroDiasIntensivo(
+                                        intensivo
+                                      )
+                                    }
+                                    style={botonSecundario}
+                                  >
+                                    Regenerar recomendación
+                                  </button>
+                                )}
 
                               {gruposRecomendadosDia.length > 0 && (
                                 <button
@@ -2436,22 +2691,7 @@ export function PantallaIntensivos(ctx: any) {
                                     }
                                     style={botonPrincipal}
                                   >
-                                    Crear esta plantilla en los 4 días
-                                  </button>
-                                )}
-
-                              {gruposDiaSeleccionado.length > 0 &&
-                                gruposRecomendadosDia.length === 0 && (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      abrirGestionOperativaIntensivoDia(
-                                        diaSeleccionadoGrupo || undefined
-                                      )
-                                    }
-                                    style={botonPrincipal}
-                                  >
-                                    Ver / editar grupos del día
+                                    Confirmar grupos para los 4 días
                                   </button>
                                 )}
 
@@ -2490,7 +2730,7 @@ export function PantallaIntensivos(ctx: any) {
                                   }}
                                   style={botonSecundario}
                                 >
-                                  Limpiar cambios de este día
+                                  Cancelar edición de este día
                                 </button>
                               )}
                             </div>
@@ -2780,36 +3020,6 @@ export function PantallaIntensivos(ctx: any) {
                               </div>
                             )}
                           </div>
-
-                          <label style={{ ...labelCampo, marginTop: 10 }}>
-                            Trabajo diario manual
-                            <textarea
-                              value={formGrupoIntensivo.trabajo_diario}
-                              onChange={(e) =>
-                                setFormGrupoIntensivo({
-                                  ...formGrupoIntensivo,
-                                  trabajo_diario: e.target.value,
-                                })
-                              }
-                              placeholder="Opcional"
-                              style={{ ...inputCampo, minHeight: 80 }}
-                            />
-                          </label>
-
-                          <label style={{ ...labelCampo, marginTop: 10 }}>
-                            Observaciones importantes visibles para entrenador
-                            <textarea
-                              value={formGrupoIntensivo.observaciones_importantes}
-                              onChange={(e) =>
-                                setFormGrupoIntensivo({
-                                  ...formGrupoIntensivo,
-                                  observaciones_importantes: e.target.value,
-                                })
-                              }
-                              placeholder="Se sumará a las observaciones automáticas. Solo añade avisos tuyos si hace falta."
-                              style={{ ...inputCampo, minHeight: 70 }}
-                            />
-                          </label>
                         </>
                       )}
                     </div>
@@ -2833,7 +3043,7 @@ export function PantallaIntensivos(ctx: any) {
                       </h4>
 
                       <p style={{ marginTop: 0, color: '#475569' }}>
-                        Revisión por niño desde el resumen de los 4 días. La app da más peso al último reporte, pero tú confirmas el nivel final.
+                        Revisión por niño desde el resumen de los 4 días. La app da más peso al último reporte, pero tú confirmas el nivel final. Cuando todos estén Revisados aparecerá “Finalizar intensivo”; cerrar el curso no elimina recuperaciones pendientes.
                       </p>
 
                       <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -2850,6 +3060,29 @@ export function PantallaIntensivos(ctx: any) {
                         >
                           Cerrar evaluación
                         </button>
+
+                        {esCerrado ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              cambiarEstadoIntensivoCurso(intensivo, 'Abierto')
+                            }
+                            style={botonSecundario}
+                          >
+                            Reabrir intensivo
+                          </button>
+                        ) : diplomasPendientes === 0 &&
+                          resumenFinal.length > 0 ? (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              cambiarEstadoIntensivoCurso(intensivo, 'Cerrado')
+                            }
+                            style={botonPrincipal}
+                          >
+                            Finalizar intensivo
+                          </button>
+                        ) : null}
                       </div>
 
                       {resumenFinal.length === 0 && (

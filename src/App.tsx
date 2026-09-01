@@ -1738,11 +1738,46 @@ function sumarDiasIso(fechaIso: string, dias: number) {
   return `${yyyy}-${mm}-${dd}`;
 }
 
-function formatearAlumnoListadoOperativo(valor: string | null | undefined) {
-  const partes = String(valor || '').split('·').map((parte) => parte.trim()).filter(Boolean).filter((parte) => !/^test nuevo$/i.test(parte));
+function partesAlumnoListadoOperativoApp(valor: string | null | undefined) {
+  const partes = String(valor || '')
+    .split('·')
+    .map((parte) => parte.trim())
+    .filter(Boolean)
+    .filter((parte) => !/^test nuevo$/i.test(parte));
+
+  if (/^(ZZZS|TEST(?:\s|$)|\[TEST)/i.test(partes[0] || '') && partes.length > 1) {
+    partes.shift();
+  }
+
+  return partes;
+}
+
+function nombreRealAlumnoListadoOperativo(valor: string | null | undefined) {
+  const partes = partesAlumnoListadoOperativoApp(valor);
   if (partes.length === 0) return '-';
-  const nombre = partes[0].replace(/^\d+[.)-]?\s*/, '').trim();
-  const nivel = partes.find((parte, indice) => indice > 0 && /^(INICIACI[ÓO]N|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)$/i.test(parte));
+
+  // Un nombre de pruebas puede venir como:
+  // "ZZZS · Paula Rey · A+ · Pequeña".
+  // Antes se cogía solo la primera pieza ("ZZZS"), lo que rompía nombres,
+  // movimiento de alumnos y el motor de trabajo diario.
+  const partesNombre = partes.filter(
+    (parte) =>
+      !/^(?:NIVEL\s*:?)?(?:INICIACI[ÓO]N|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)$/i.test(parte) &&
+      !/^(PEQUEÑA|GRANDE|PEQUEÑA\/GRANDE)$/i.test(parte)
+  );
+
+  const nombre = partesNombre.join(' · ').trim() || partes[0];
+  return nombre.replace(/^\d+[.)-]?\s*/, '').trim();
+}
+
+function formatearAlumnoListadoOperativo(valor: string | null | undefined) {
+  const partes = partesAlumnoListadoOperativoApp(valor);
+  if (partes.length === 0) return '-';
+  const nombre = nombreRealAlumnoListadoOperativo(valor);
+  const nivelParte = partes.find((parte) =>
+    /^(?:NIVEL\s*:?)?(INICIACI[ÓO]N|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)$/i.test(parte)
+  );
+  const nivel = nivelParte?.replace(/^NIVEL\s*:?\s*/i, '').trim();
   return nivel ? `${nombre} · ${nivel.toUpperCase()}` : nombre;
 }
 
@@ -4578,6 +4613,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [filtroIntensivos, setFiltroIntensivos] = useState<
     'todos' | 'activos' | 'cerrados' | 'sin_alumnos' | 'proximos'
   >('todos');
+  const [mesIntensivos, setMesIntensivos] = useState(() => {
+    const ahora = new Date();
+    return `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
+  });
   const [
     gestionarPanelControlIntensivoId,
     setGestionarPanelControlIntensivoId,
@@ -6107,6 +6146,23 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       });
 
       await cargarGruposEntrenador();
+
+      // En Intensivos, una ausencia marcada por el entrenador genera la
+      // recuperación en backend. Refrescamos también la sección Intensivos
+      // para que coordinación la vea sin tener que pulsar ningún actualizar.
+      if (
+        intensivoDias.some((dia) =>
+          gruposEntrenador.some(
+            (grupo) =>
+              grupo.grupo_id === grupoId &&
+              grupo.fecha === dia.fecha &&
+              String(grupo.modalidad || '').toUpperCase() === 'INTENSIVOS'
+          )
+        )
+      ) {
+        await cargarIntensivos();
+      }
+
       if (pantalla === 'reportes') await cargarReportesPendientes();
       setTimeout(
         () => window.scrollTo({ top: scrollActual, behavior: 'auto' }),
@@ -11379,7 +11435,15 @@ Gracias!`;
 
       setDiaEditandoIntensivoId(null);
       setFormDiaIntensivo(diaIntensivoInicial());
+
+      // El backend renumera cronológicamente. Mantenemos seleccionado el mismo
+      // día por ID, pero recargamos todo antes de volver a pintar etiquetas
+      // Día 1/2/3/4 y sesiones operativas.
+      setDiaGrupoSeleccionadoId(dia.intensivo_dia_id);
+      setDiaAsistenciaSeleccionadoId(dia.intensivo_dia_id);
       await cargarIntensivos();
+      await cargarAgendaOperativaDirecta();
+      await cargarPlanning();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     }
@@ -11598,6 +11662,59 @@ Gracias!`;
     }
 
     setCargando(false);
+  }
+
+  async function reiniciarGruposDiaIntensivoDesdeApp(
+    dia: IntensivoDiaApp
+  ) {
+    const gruposDia = gruposNormalesDelDiaIntensivo(dia.intensivo_dia_id);
+
+    if (gruposDia.length === 0) {
+      setError('Este día todavía no tiene grupos que rehacer.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿REHACER LOS GRUPOS DEL DÍA ${dia.numero_dia} · ${formatearFecha(
+        dia.fecha
+      )}?\n\nSe eliminarán los grupos, entrenadores asignados, Trabajo diario y Observaciones de ESTE DÍA, pero se conservarán la fecha, el Intensivo y sus alumnos inscritos.\n\nPor seguridad, Supabase bloqueará la operación si ya existen reportes, asistencia real o recuperaciones relacionadas.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('reiniciar_grupos_intensivo_dia_app', {
+        p_intensivo_dia_id: dia.intensivo_dia_id,
+      });
+
+      setRecomendacionesGrupoIntensivo((anteriores) =>
+        anteriores.filter(
+          (registro) => registro.intensivo_dia_id !== dia.intensivo_dia_id
+        )
+      );
+      setDestinoAlumnoRecomendado({});
+      setTrabajoDiarioPorGrupoRecomendado({});
+      setObservacionesPorGrupoRecomendado({});
+
+      await cargarIntensivos();
+      await cargarAgendaOperativaDirecta();
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+
+      setDiaGrupoSeleccionadoId(dia.intensivo_dia_id);
+      await generarRecomendacionGruposIntensivo(dia);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudieron rehacer los grupos de este día.'
+      );
+    } finally {
+      setCargando(false);
+    }
   }
 
   async function borrarGrupoIntensivo(grupo: GrupoIntensivoDiaApp) {
@@ -13494,10 +13611,10 @@ async function abrirGestionOperativaIntensivoDia(
       return;
     }
 
-    const diaPlantilla =
-      dias.find(
-        (dia) => dia.intensivo_dia_id === diaGrupoSeleccionadoId
-      ) || dias[0];
+    // La composición inicial del intensivo siempre nace del Día 1.
+    // Los días siguientes parten de esa base, pero evolucionan después
+    // con sus propios reportes y ajustes operativos.
+    const diaPlantilla = dias[0];
 
     const gruposPlantilla = agruparRecomendacionesDia(
       diaPlantilla.intensivo_dia_id
@@ -13534,7 +13651,7 @@ async function abrirGestionOperativaIntensivoDia(
     }
 
     const confirmar = window.confirm(
-      `¿Crear los 4 días usando exactamente la composición que ves ahora en el Día ${diaPlantilla.numero_dia}?\n\nLos movimientos de niños, grupos nuevos, trabajo diario y observaciones de esta plantilla se copiarán a los 4 días. Después podrás cambiar Día 2, 3 o 4 por separado según evolucionen.`
+      `¿Crear los 4 días usando la composición inicial del Día 1?\n\nSe copiarán únicamente los grupos y los alumnos. El Trabajo diario y las Observaciones NO se copiarán a los días 2, 3 y 4: quedarán pendientes para generarse con el motor nuevo cuando prepares cada jornada con la evolución y los reportes disponibles.`
     );
     if (!confirmar) return;
 
@@ -13551,33 +13668,38 @@ async function abrirGestionOperativaIntensivoDia(
               clonarRecomendacionIntensivoParaDia(alumno, dia)
             );
 
+          const esDiaInicial = dia.numero_dia === 1;
           const clavePlantilla = claveGrupoRecomendado(
             diaPlantilla.intensivo_dia_id,
             grupoPlantilla.nombreGrupo
           );
 
-          const trabajoPlantilla =
-            trabajoDiarioPorGrupoRecomendado[clavePlantilla] ||
-            generarTrabajoDiarioAutomaticoGrupo(
-              grupoPlantilla.nombreGrupo,
-              grupoPlantilla.alumnosGrupo
-            );
+          // Día 1 sí nace con el trabajo/observaciones del motor común.
+          // Días 2-4 solo copian composición. Se dejan vacíos a propósito
+          // para que la preparación de cada jornada los regenere con la
+          // evolución real y los reportes acumulados hasta ese momento.
+          const trabajoDia = esDiaInicial
+            ? trabajoDiarioPorGrupoRecomendado[clavePlantilla] ||
+              generarTrabajoDiarioAutomaticoGrupo(
+                grupoPlantilla.nombreGrupo,
+                alumnosClonados
+              )
+            : '';
 
-          const observacionesPlantilla =
-            combinarObservacionesGrupoApp(
-              observacionesAutomaticasGrupoIntensivo(
-                grupoPlantilla.alumnosGrupo
-              ),
-              observacionesPorGrupoRecomendado[clavePlantilla] || ''
-            );
+          const observacionesDia = esDiaInicial
+            ? combinarObservacionesGrupoApp(
+                observacionesAutomaticasGrupoIntensivo(alumnosClonados),
+                observacionesPorGrupoRecomendado[clavePlantilla] || ''
+              )
+            : '';
 
           const id = await crearGrupoIntensivoPropuestaPersistida(
             dia,
             grupoPlantilla.nombreGrupo,
             alumnosClonados,
             {
-              trabajoDiario: trabajoPlantilla,
-              observaciones: observacionesPlantilla,
+              trabajoDiario: trabajoDia,
+              observaciones: observacionesDia,
             }
           );
 
@@ -14146,6 +14268,44 @@ async function abrirGestionOperativaIntensivoDia(
     setCargando(false);
   }
 
+  async function cambiarEstadoIntensivoCurso(
+    intensivo: IntensivoApp,
+    estado: 'Abierto' | 'Cerrado'
+  ) {
+    const cerrar = estado === 'Cerrado';
+    const confirmar = window.confirm(
+      cerrar
+        ? `¿FINALIZAR ${intensivo.intensivo}?\n\nSolo se puede cerrar cuando todas las evaluaciones estén revisadas. Las recuperaciones pendientes se conservan y pueden seguir gestionándose.`
+        : `¿REABRIR ${intensivo.intensivo}?\n\nVolverá a aparecer como curso abierto para coordinación.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('cambiar_estado_intensivo_app', {
+        p_intensivo_id: intensivo.intensivo_id,
+        p_estado: estado,
+      });
+
+      await cargarIntensivos();
+      await cargarAgendaOperativaDirecta();
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+      await cargarCobrosDesdeSemanaActiva();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo cambiar el estado del Intensivo.'
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
   async function autoproponerNivelesDiploma(intensivo: IntensivoApp) {
     const confirmar = window.confirm(
       `¿Autoproponer niveles finales para ${intensivo.intensivo} según los reportes de los entrenadores?`
@@ -14399,10 +14559,78 @@ async function abrirGestionOperativaIntensivoDia(
         `select=*&sesion_id=${filtroSesion}&order=orden.asc`
       );
 
-      const gruposData = await consultarSupabase<AgendaGrupoSesionApp>(
+      let gruposData = await consultarSupabase<AgendaGrupoSesionApp>(
         'v_grupos_sesion_operativa_app',
         `select=*&sesion_id=${filtroSesion}&order=nombre_grupo.asc`
       );
+
+      const diaIntensivoActual = intensivoDias.find(
+        (dia) => dia.sesion_id === sesionId
+      );
+
+      if (
+        diaIntensivoActual &&
+        gruposData.length > 0 &&
+        alumnosData.length === 0
+      ) {
+        throw new Error(
+          'El día de Intensivos tiene grupos pero no tiene alumnos sincronizados con Días de entrenamiento.'
+        );
+      }
+
+      // INTENSIVOS: al abrir una jornada, cada grupo debe llegar ya con su
+      // Trabajo diario/Observaciones del motor nuevo. Si está vacío, se genera
+      // automáticamente con la composición real de ESE día y el historial
+      // disponible hasta ese momento. No se copia el texto del día anterior.
+      if (diaIntensivoActual && gruposData.length > 0) {
+        let huboGeneracionAutomatica = false;
+
+        for (const grupo of gruposData) {
+          const sinTrabajo = !String(grupo.trabajo_diario || '').trim();
+          const sinObservaciones = !String(
+            grupo.observaciones_importantes || ''
+          ).trim();
+
+          if (!sinTrabajo && !sinObservaciones) continue;
+
+          const alumnosGrupo = alumnosDelGrupoCreadoAgenda(
+            grupo,
+            alumnosData
+          );
+
+          if (alumnosGrupo.length === 0) {
+            throw new Error(
+              `No se han podido resolver los alumnos de ${grupo.nombre_grupo}. No se genera un trabajo vacío.`
+            );
+          }
+
+          const manuales = observacionesManualesGrupoAgendaPersistentesApp(
+            grupo.observaciones_importantes,
+            alumnosGrupo
+          );
+
+          const contenido = contenidoTrabajoGrupoCreadoAgendaApp(
+            grupo,
+            alumnosGrupo,
+            manuales
+          );
+
+          await ejecutarFuncion('actualizar_trabajo_observaciones_grupo_app', {
+            p_grupo_id: grupo.grupo_id,
+            p_trabajo_diario: contenido.trabajo,
+            p_observaciones_importantes: contenido.observaciones,
+          });
+
+          huboGeneracionAutomatica = true;
+        }
+
+        if (huboGeneracionAutomatica) {
+          gruposData = await consultarSupabase<AgendaGrupoSesionApp>(
+            'v_grupos_sesion_operativa_app',
+            `select=*&sesion_id=${filtroSesion}&order=nombre_grupo.asc`
+          );
+        }
+      }
 
       setAgendaAlumnosSesion(alumnosData);
       setAgendaGruposSesion(gruposData);
@@ -16990,6 +17218,482 @@ async function abrirGestionOperativaIntensivoDia(
     setCargando(false);
   }
 
+  function normalizarNombreAlumnoAgendaApp(valor: string | null | undefined) {
+    return nombreRealAlumnoListadoOperativo(valor)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+  }
+
+  function alumnosDelGrupoCreadoAgenda(
+    grupo: AgendaGrupoSesionApp,
+    fuente: AgendaAlumnoSesionApp[] = agendaAlumnosSesion
+  ) {
+    const nombresGrupo = (grupo.alumnos_lista || '')
+      .split(' || ')
+      .map((valor) => normalizarNombreAlumnoAgendaApp(valor))
+      .filter(Boolean);
+
+    return fuente.filter((alumno) => {
+      const nombreAlumno = normalizarNombreAlumnoAgendaApp(alumno.alumno);
+      return nombresGrupo.includes(nombreAlumno);
+    });
+  }
+
+  function alumnoAgendaComoRecomendacionGrupoCreadoApp(
+    alumno: AgendaAlumnoSesionApp,
+    grupo: AgendaGrupoSesionApp
+  ): AgendaRecomendacionSesionApp {
+    return {
+      sesion_id: alumno.sesion_id,
+      grupo_recomendado: grupo.nombre_grupo,
+      bloque_tecnico: grupo.nivel_grupo || alumno.nivel_usado || '',
+      pista_recomendada:
+        grupo.pista || alumno.pista_recomendada || 'Pequeña/Grande',
+      alumno_id: alumno.alumno_id,
+      alumno: alumno.alumno,
+      nivel_resumen: alumno.nivel_usado || '',
+      pista_alumno:
+        alumno.pista_recomendada || grupo.pista || 'Pequeña/Grande',
+      orden_en_grupo: alumno.orden || 0,
+      alertas: alumno.observacion || null,
+      fuente_nivel: alumno.origen_nivel || null,
+      estado_ficha: alumno.estado_ficha || null,
+    };
+  }
+
+  function observacionesManualesGrupoAgendaPersistentesApp(
+    textoActual: string | null | undefined,
+    alumnosAntes: AgendaAlumnoSesionApp[]
+  ) {
+    const lineas = String(textoActual || '')
+      .split(/\r?\n/)
+      .map((linea) => linea.trim())
+      .filter(Boolean);
+
+    if (lineas.length === 0) return '';
+
+    const nombres = alumnosAntes
+      .map((alumno) => nombreLimpioObservacionesGrupoApp(alumno.alumno))
+      .map((nombre) => textoSinAcentosGrupoApp(nombre))
+      .filter(Boolean);
+
+    const manuales = lineas.filter((linea) => {
+      const normalizada = textoSinAcentosGrupoApp(linea);
+      return !nombres.some(
+        (nombre) =>
+          normalizada === nombre ||
+          normalizada.startsWith(`${nombre}:`) ||
+          normalizada.startsWith(`${nombre} ·`)
+      );
+    });
+
+    return normalizarLineasObservacionesGrupoApp(manuales.join('\n'), 6);
+  }
+
+  function contenidoTrabajoGrupoCreadoAgendaApp(
+    grupo: AgendaGrupoSesionApp,
+    alumnosGrupoSesion: AgendaAlumnoSesionApp[],
+    observacionesManuales = ''
+  ) {
+    if (alumnosGrupoSesion.length === 0) {
+      return {
+        trabajo: '',
+        observaciones: observacionesManuales,
+      };
+    }
+
+    const alumnosGrupo = alumnosGrupoSesion.map((alumno) =>
+      alumnoAgendaComoRecomendacionGrupoCreadoApp(alumno, grupo)
+    );
+
+    const niveles = alumnosGrupo
+      .map((alumno) => alumno.nivel_resumen || '')
+      .filter(Boolean);
+
+    const observacionesAutomaticas =
+      observacionesAutomaticasGrupoAgenda(alumnosGrupo);
+
+    const alumnosContexto = alumnosGrupo.map((alumno) =>
+      contextoAlumnoTrabajoDiarioApp(
+        alumno.alumno_id,
+        alumno.alumno,
+        alumno.nivel_resumen || ''
+      )
+    );
+
+    const sesion = agendaSesionesDirectas.find(
+      (item) => item.sesion_id === grupo.sesion_id
+    );
+
+    const trabajosRecientes = trabajosRecientesParaGrupoApp(
+      alumnosGrupo.map((alumno) => alumno.alumno),
+      sesion?.fecha
+    );
+
+    const trabajo = trabajoDiarioMSZApp(
+      grupo.nombre_grupo,
+      niveles,
+      grupo.pista || alumnosGrupo[0]?.pista_recomendada || 'Pequeña/Grande',
+      observacionesAutomaticas,
+      alumnosContexto,
+      sesion?.modalidad || 'INTENSIVOS',
+      trabajosRecientes
+    );
+
+    return {
+      trabajo,
+      observaciones: combinarObservacionesGrupoApp(
+        observacionesAutomaticas,
+        observacionesManuales
+      ),
+    };
+  }
+
+  function contextoIntensivoSesionAgenda(
+    sesionId: string | null | undefined
+  ) {
+    if (!sesionId) return null;
+
+    const dia = intensivoDias.find((item) => item.sesion_id === sesionId);
+    if (!dia) return null;
+
+    const intensivo = intensivos.find(
+      (item) => item.intensivo_id === dia.intensivo_id
+    );
+
+    return {
+      dia,
+      intensivo,
+    };
+  }
+
+  function asistenciaAlumnoIntensivoAgenda(
+    grupo: AgendaGrupoSesionApp,
+    alumnoId: string
+  ) {
+    const contexto = contextoIntensivoSesionAgenda(grupo.sesion_id);
+    if (!contexto) return null;
+
+    return (
+      intensivoAsistencias.find(
+        (item) =>
+          item.intensivo_id === contexto.dia.intensivo_id &&
+          item.intensivo_dia_id === contexto.dia.intensivo_dia_id &&
+          item.alumno_id === alumnoId
+      ) || null
+    );
+  }
+
+  function alumnoCuentaParaTrabajoIntensivoAgenda(
+    grupo: AgendaGrupoSesionApp,
+    alumnoId: string
+  ) {
+    const asistencia = asistenciaAlumnoIntensivoAgenda(grupo, alumnoId);
+    return !['NO_PRESENTADO', 'BAJA_AVISADA'].includes(
+      asistencia?.estado || ''
+    );
+  }
+
+  function alumnosEfectivosDelGrupoIntensivoAgenda(
+    grupo: AgendaGrupoSesionApp,
+    base?: AgendaAlumnoSesionApp[]
+  ) {
+    return (base || alumnosDelGrupoCreadoAgenda(grupo)).filter((alumno) =>
+      alumnoCuentaParaTrabajoIntensivoAgenda(grupo, alumno.alumno_id)
+    );
+  }
+
+  async function guardarTrabajoRegeneradoGrupoIntensivoAgenda(
+    grupo: AgendaGrupoSesionApp,
+    alumnosBase?: AgendaAlumnoSesionApp[]
+  ) {
+    const alumnosAntes = alumnosDelGrupoCreadoAgenda(grupo);
+    const alumnosEfectivos = alumnosEfectivosDelGrupoIntensivoAgenda(
+      grupo,
+      alumnosBase
+    );
+    const manuales = observacionesManualesGrupoAgendaPersistentesApp(
+      observacionesGrupoCreadoEditando[grupo.grupo_id] ??
+        grupo.observaciones_importantes,
+      alumnosAntes
+    );
+
+    const contenido = contenidoTrabajoGrupoCreadoAgendaApp(
+      grupo,
+      alumnosEfectivos,
+      manuales
+    );
+
+    await ejecutarFuncion('actualizar_trabajo_observaciones_grupo_app', {
+      p_grupo_id: grupo.grupo_id,
+      p_trabajo_diario: contenido.trabajo,
+      p_observaciones_importantes: contenido.observaciones,
+    });
+  }
+
+  async function regenerarTrabajoGrupoIntensivoAgenda(
+    grupo: AgendaGrupoSesionApp
+  ) {
+    if (!contextoIntensivoSesionAgenda(grupo.sesion_id)) return;
+
+    const alumnosGrupo = alumnosDelGrupoCreadoAgenda(grupo);
+    if (alumnosGrupo.length === 0) {
+      setError(
+        'No se han podido resolver los alumnos reales de este grupo. La sesión de Intensivos no está sincronizada con Días de entrenamiento.'
+      );
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await guardarTrabajoRegeneradoGrupoIntensivoAgenda(grupo);
+      if (agendaSesionActivaId) {
+        await cargarDetalleSesionAgenda(agendaSesionActivaId, {
+          preservarScroll: true,
+        });
+      }
+      await cargarIntensivos();
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo regenerar el trabajo del grupo.'
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function marcarNoVieneIntensivoDesdeAgenda(
+    alumno: AgendaAlumnoSesionApp,
+    grupo: AgendaGrupoSesionApp
+  ) {
+    const contexto = contextoIntensivoSesionAgenda(grupo.sesion_id);
+    if (!contexto) return;
+
+    const confirmar = window.confirm(
+      `¿Marcar que ${alumno.alumno} NO VIENE el Día ${contexto.dia.numero_dia}?\n\nSe mantendrá en el intensivo y en su histórico, se marcará la falta para recuperación y el Trabajo diario del grupo se recalculará sin contar con este niño.`
+    );
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('marcar_asistencia_intensivo_app', {
+        p_intensivo_id: contexto.dia.intensivo_id,
+        p_intensivo_dia_id: contexto.dia.intensivo_dia_id,
+        p_alumno_id: alumno.alumno_id,
+        p_estado: 'BAJA_AVISADA',
+        p_falta_genera_recuperacion: true,
+      });
+
+      await guardarTrabajoRegeneradoGrupoIntensivoAgenda(
+        grupo,
+        alumnosDelGrupoCreadoAgenda(grupo).filter(
+          (item) => item.alumno_id !== alumno.alumno_id
+        )
+      );
+
+      await cargarIntensivos();
+      if (agendaSesionActivaId) {
+        await cargarDetalleSesionAgenda(agendaSesionActivaId, {
+          preservarScroll: true,
+        });
+      }
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo marcar la falta del intensivo.'
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function restaurarVieneIntensivoDesdeAgenda(
+    alumno: AgendaAlumnoSesionApp,
+    grupo: AgendaGrupoSesionApp
+  ) {
+    const contexto = contextoIntensivoSesionAgenda(grupo.sesion_id);
+    if (!contexto) return;
+
+    const confirmar = window.confirm(
+      `¿Volver a dejar a ${alumno.alumno} como previsto para este día?\n\nLa asistencia volverá a pendiente. Si la recuperación aún no estaba gestionada, se retirará automáticamente.`
+    );
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('reset_asistencia_intensivo_app', {
+        p_intensivo_id: contexto.dia.intensivo_id,
+        p_intensivo_dia_id: contexto.dia.intensivo_dia_id,
+        p_alumno_id: alumno.alumno_id,
+      });
+
+      // reset_asistencia_intensivo_app devuelve la asistencia a pendiente.
+      // La función de asistencia del backend conserva/elimina recuperaciones
+      // según su estado; regeneramos con el alumno otra vez dentro del grupo.
+      await ejecutarFuncion('marcar_asistencia_intensivo_app', {
+        p_intensivo_id: contexto.dia.intensivo_id,
+        p_intensivo_dia_id: contexto.dia.intensivo_dia_id,
+        p_alumno_id: alumno.alumno_id,
+        p_estado: 'SIN_CONFIRMAR',
+        p_falta_genera_recuperacion: false,
+      });
+
+      await guardarTrabajoRegeneradoGrupoIntensivoAgenda(grupo);
+
+      await cargarIntensivos();
+      if (agendaSesionActivaId) {
+        await cargarDetalleSesionAgenda(agendaSesionActivaId, {
+          preservarScroll: true,
+        });
+      }
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo restaurar la asistencia del alumno.'
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function moverAlumnoEntreGruposAgenda(
+    alumno: AgendaAlumnoSesionApp,
+    grupoOrigen: AgendaGrupoSesionApp,
+    grupoDestinoId: string
+  ) {
+    if (!alumno?.alumno_id || !grupoOrigen?.grupo_id || !grupoDestinoId) return;
+    if (grupoOrigen.grupo_id === grupoDestinoId) return;
+
+    const grupoDestino = agendaGruposSesion.find(
+      (grupo) => grupo.grupo_id === grupoDestinoId
+    );
+    if (!grupoDestino) {
+      setError('No encuentro el grupo de destino. Actualiza la sesión y vuelve a intentarlo.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Mover a ${alumno.alumno} de ${nombreGrupoVisualApp(grupoOrigen)} a ${nombreGrupoVisualApp(grupoDestino)}?\n\nEl cambio es solo de composición: no cambia el entrenador ni su confirmación.`
+    );
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      const sesionActiva = agendaSesionesDirectas.find(
+        (item) => item.sesion_id === grupoOrigen.sesion_id
+      );
+      const esIntensivo =
+        `${sesionActiva?.modalidad || ''}`.trim().toUpperCase() ===
+        'INTENSIVOS';
+
+      const alumnosOrigenAntes = alumnosDelGrupoCreadoAgenda(grupoOrigen);
+      const alumnosDestinoAntes = alumnosDelGrupoCreadoAgenda(grupoDestino);
+
+      const alumnosOrigenDespues = alumnosOrigenAntes.filter(
+        (item) => item.alumno_id !== alumno.alumno_id
+      );
+      const alumnosDestinoDespues = [
+        ...alumnosDestinoAntes.filter(
+          (item) => item.alumno_id !== alumno.alumno_id
+        ),
+        alumno,
+      ];
+
+      const manualesOrigen = esIntensivo
+        ? observacionesManualesGrupoAgendaPersistentesApp(
+            grupoOrigen.observaciones_importantes,
+            alumnosOrigenAntes
+          )
+        : '';
+      const manualesDestino = esIntensivo
+        ? observacionesManualesGrupoAgendaPersistentesApp(
+            grupoDestino.observaciones_importantes,
+            alumnosDestinoAntes
+          )
+        : '';
+
+      // La RPC mueve únicamente la composición y conserva entrenador,
+      // segundo entrenador, punto y confirmación.
+      await ejecutarFuncion('mover_alumno_grupo_intensivo_dia_app', {
+        p_alumno_id: alumno.alumno_id,
+        p_grupo_origen_id: grupoOrigen.grupo_id,
+        p_grupo_destino_id: grupoDestinoId,
+      });
+
+      // INTENSIVOS: al cambiar la composición, origen y destino dejan de usar
+      // el Trabajo diario calculado para la composición anterior.
+      // Se vuelve a ejecutar el motor común NUEVO de la app para ambos grupos.
+      if (esIntensivo) {
+        const contenidoOrigen = contenidoTrabajoGrupoCreadoAgendaApp(
+          grupoOrigen,
+          alumnosEfectivosDelGrupoIntensivoAgenda(
+            grupoOrigen,
+            alumnosOrigenDespues
+          ),
+          manualesOrigen
+        );
+        const contenidoDestino = contenidoTrabajoGrupoCreadoAgendaApp(
+          grupoDestino,
+          alumnosEfectivosDelGrupoIntensivoAgenda(
+            grupoDestino,
+            alumnosDestinoDespues
+          ),
+          manualesDestino
+        );
+
+        await ejecutarFuncion('actualizar_trabajo_observaciones_grupo_app', {
+          p_grupo_id: grupoOrigen.grupo_id,
+          p_trabajo_diario: contenidoOrigen.trabajo,
+          p_observaciones_importantes: contenidoOrigen.observaciones,
+        });
+
+        await ejecutarFuncion('actualizar_trabajo_observaciones_grupo_app', {
+          p_grupo_id: grupoDestino.grupo_id,
+          p_trabajo_diario: contenidoDestino.trabajo,
+          p_observaciones_importantes: contenidoDestino.observaciones,
+        });
+      }
+
+      if (agendaSesionActivaId) {
+        await cargarDetalleSesionAgenda(agendaSesionActivaId, {
+          preservarScroll: true,
+        });
+      }
+      await cargarAgendaOperativaDirecta();
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo mover el alumno entre grupos.'
+      );
+    }
+
+    setCargando(false);
+  }
+
   async function cambiarEntrenadorGrupoAgenda(
     grupo: AgendaGrupoSesionApp,
     nuevoEntrenadorId: string
@@ -17925,6 +18629,10 @@ async function abrirGestionOperativaIntensivoDia(
   });
 
   const gruposEntrenadorFiltrados = gruposEntrenador.filter((grupo) => {
+    // El entrenador solo recibe grupos PUBLICADOS.
+    // Coordinación sí puede inspeccionar borradores desde su vista.
+    if (!esCoordinadorApp && !grupo.publicado) return false;
+
     if (
       !esCoordinadorApp &&
       entrenadorIdSesionApp &&
@@ -18146,7 +18854,32 @@ async function abrirGestionOperativaIntensivoDia(
       (filtroIntensivos === 'sin_alumnos' && totalAlumnos === 0) ||
       (filtroIntensivos === 'proximos' && esProximo);
 
-    return coincideBusqueda && coincideFiltro;
+    let coincideMes = true;
+    if (mesIntensivos) {
+      const [anioMes, numeroMes] = mesIntensivos
+        .split('-')
+        .map((valor) => Number(valor));
+
+      if (anioMes && numeroMes) {
+        const inicioMes = new Date(anioMes, numeroMes - 1, 1, 0, 0, 0, 0);
+        const finMes = new Date(anioMes, numeroMes, 0, 23, 59, 59, 999);
+        const inicioCurso = intensivo.fecha_inicio
+          ? new Date(`${intensivo.fecha_inicio}T00:00:00`)
+          : null;
+        const finCurso = intensivo.fecha_fin
+          ? new Date(`${intensivo.fecha_fin}T23:59:59`)
+          : inicioCurso;
+
+        coincideMes = Boolean(
+          inicioCurso &&
+            finCurso &&
+            inicioCurso <= finMes &&
+            finCurso >= inicioMes
+        );
+      }
+    }
+
+    return coincideBusqueda && coincideFiltro && coincideMes;
   });
 
   const listadosFiltrados = listados.filter((listado) => {
@@ -18726,7 +19459,15 @@ async function abrirGestionOperativaIntensivoDia(
   }
 
   function diasDelIntensivo(intensivoId: string) {
-    return intensivoDias.filter((dia) => dia.intensivo_id === intensivoId);
+    return intensivoDias
+      .filter((dia) => dia.intensivo_id === intensivoId)
+      .slice()
+      .sort(
+        (a, b) =>
+          Number(a.numero_dia || 0) - Number(b.numero_dia || 0) ||
+          String(a.fecha || '').localeCompare(String(b.fecha || '')) ||
+          String(a.hora_inicio || '').localeCompare(String(b.hora_inicio || ''))
+      );
   }
 
   function asistenciasDelIntensivoDia(intensivoId: string, diaId: string) {
@@ -27726,15 +28467,196 @@ async function abrirGestionOperativaIntensivoDia(
                               · Punto {grupo.punto_encuentro || '-'}
                             </p>
                             {grupo.alumnos_lista && (
-                              <ul style={{ margin: '8px 0 0', paddingLeft: 22, display: 'grid', gap: 4 }}>
+                              <div style={{ display: 'grid', gap: 7, marginTop: 10 }}>
                                 {grupo.alumnos_lista
                                   .split(' || ')
-                                  .map((alumnoGrupo, indice) => (
-                                    <li key={`${grupo.grupo_id}-${indice}`}>
-                                      {formatearAlumnoListadoOperativo(alumnoGrupo)}
-                                    </li>
-                                  ))}
-                              </ul>
+                                  .map((alumnoGrupo, indice) => {
+                                    const nombreNormalizado = normalizarNombreAlumnoAgendaApp(alumnoGrupo);
+                                    const alumnoSesion = agendaAlumnosSesion.find(
+                                      (alumno) =>
+                                        normalizarNombreAlumnoAgendaApp(alumno.alumno) === nombreNormalizado
+                                    );
+
+                                    const contextoIntensivo =
+                                      contextoIntensivoSesionAgenda(grupo.sesion_id);
+                                    const asistenciaIntensivo = alumnoSesion
+                                      ? asistenciaAlumnoIntensivoAgenda(
+                                          grupo,
+                                          alumnoSesion.alumno_id
+                                        )
+                                      : null;
+                                    const noVieneIntensivo = [
+                                      'NO_PRESENTADO',
+                                      'BAJA_AVISADA',
+                                    ].includes(
+                                      asistenciaIntensivo?.estado || ''
+                                    );
+
+                                    return (
+                                      <div
+                                        key={`${grupo.grupo_id}-${indice}`}
+                                        style={{
+                                          display: 'grid',
+                                          gridTemplateColumns: esVistaMovilApp
+                                            ? 'minmax(0, 1fr)'
+                                            : 'minmax(0, 1fr) minmax(250px, 360px)',
+                                          gap: 8,
+                                          alignItems: 'center',
+                                          padding: '8px 10px',
+                                          border: '1px solid #e2e8f0',
+                                          borderRadius: 11,
+                                          background: '#fff',
+                                          minWidth: 0,
+                                        }}
+                                      >
+                                        <strong style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                                          {formatearAlumnoListadoOperativo(alumnoGrupo)}
+                                        </strong>
+
+                                        {alumnoSesion && (
+                                          <div
+                                            style={{
+                                              display: 'grid',
+                                              gap: 7,
+                                              minWidth: 0,
+                                            }}
+                                          >
+                                            {contextoIntensivo && (
+                                              <div
+                                                style={{
+                                                  display: 'flex',
+                                                  gap: 6,
+                                                  flexWrap: 'wrap',
+                                                  alignItems: 'center',
+                                                }}
+                                              >
+                                                <span
+                                                  style={{
+                                                    fontSize: 12,
+                                                    fontWeight: 900,
+                                                    color: noVieneIntensivo
+                                                      ? '#b91c1c'
+                                                      : asistenciaIntensivo?.estado ===
+                                                        'PRESENTE'
+                                                      ? '#166534'
+                                                      : '#475569',
+                                                  }}
+                                                >
+                                                  {noVieneIntensivo
+                                                    ? 'No viene · recuperación'
+                                                    : asistenciaIntensivo?.estado ===
+                                                      'PRESENTE'
+                                                    ? 'Presente'
+                                                    : asistenciaIntensivo?.estado ===
+                                                      'LLEGA_TARDE'
+                                                    ? 'Llega tarde'
+                                                    : 'Previsto · asistencia pendiente'}
+                                                </span>
+
+                                                {asistenciaIntensivo?.estado !==
+                                                  'PRESENTE' &&
+                                                  asistenciaIntensivo?.estado !==
+                                                    'LLEGA_TARDE' && (
+                                                    <button
+                                                      type="button"
+                                                      disabled={cargando}
+                                                      onClick={() =>
+                                                        noVieneIntensivo
+                                                          ? void restaurarVieneIntensivoDesdeAgenda(
+                                                              alumnoSesion,
+                                                              grupo
+                                                            )
+                                                          : void marcarNoVieneIntensivoDesdeAgenda(
+                                                              alumnoSesion,
+                                                              grupo
+                                                            )
+                                                      }
+                                                      style={
+                                                        noVieneIntensivo
+                                                          ? botonSecundario
+                                                          : botonPeligro
+                                                      }
+                                                    >
+                                                      {noVieneIntensivo
+                                                        ? 'Vuelve a venir'
+                                                        : 'No viene'}
+                                                    </button>
+                                                  )}
+                                              </div>
+                                            )}
+
+                                            {agendaGruposSesion.length > 1 && (
+                                              <label
+                                                style={{
+                                                  ...labelCampo,
+                                                  margin: 0,
+                                                  minWidth: 0,
+                                                  fontSize: 12,
+                                                }}
+                                              >
+                                                Cambiar de grupo
+                                                <select
+                                                  value=""
+                                                  disabled={cargando}
+                                                  onChange={(e) => {
+                                                    const destino =
+                                                      e.target.value;
+                                                    if (destino) {
+                                                      void moverAlumnoEntreGruposAgenda(
+                                                        alumnoSesion,
+                                                        grupo,
+                                                        destino
+                                                      );
+                                                    }
+                                                  }}
+                                                  style={{
+                                                    ...selectCampo,
+                                                    width: '100%',
+                                                    minWidth: 0,
+                                                    padding: '7px 9px',
+                                                  }}
+                                                >
+                                                  <option value="">
+                                                    Elegir grupo destino…
+                                                  </option>
+                                                  {agendaGruposSesion
+                                                    .filter(
+                                                      (destino) =>
+                                                        destino.grupo_id !==
+                                                        grupo.grupo_id
+                                                    )
+                                                    .map(
+                                                      (
+                                                        destino,
+                                                        indiceDestino
+                                                      ) => (
+                                                        <option
+                                                          key={`${grupo.grupo_id}-${alumnoSesion.alumno_id}-destino-${destino.grupo_id}`}
+                                                          value={
+                                                            destino.grupo_id
+                                                          }
+                                                        >
+                                                          {nombreGrupoVisualApp(
+                                                            destino,
+                                                            indiceDestino
+                                                          )}{' '}
+                                                          ·{' '}
+                                                          {
+                                                            destino.total_alumnos
+                                                          }{' '}
+                                                          niños
+                                                        </option>
+                                                      )
+                                                    )}
+                                                </select>
+                                              </label>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                              </div>
                             )}
                             <details
                               id={`agenda-trabajo-grupo-${grupo.grupo_id}`}
@@ -27759,6 +28681,48 @@ async function abrirGestionOperativaIntensivoDia(
                                   marginTop: 12,
                                 }}
                               >
+                                {contextoIntensivoSesionAgenda(
+                                  grupo.sesion_id
+                                ) && (
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      gap: 8,
+                                      flexWrap: 'wrap',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      padding: '9px 10px',
+                                      border: '1px solid #dbeafe',
+                                      borderRadius: 11,
+                                      background: '#f8fbff',
+                                    }}
+                                  >
+                                    <span
+                                      style={{
+                                        fontSize: 12,
+                                        color: '#475569',
+                                        fontWeight: 700,
+                                      }}
+                                    >
+                                      Motor nuevo · composición real de este día + evolución
+                                      y reportes anteriores. Si estaba vacío, se genera al abrir la jornada.
+                                    </span>
+                                    <button
+                                      type="button"
+                                      disabled={cargando}
+                                      onClick={() =>
+                                        void regenerarTrabajoGrupoIntensivoAgenda(
+                                          grupo
+                                        )
+                                      }
+                                      style={botonSecundario}
+                                    >
+                                      {grupo.trabajo_diario
+                                        ? 'Regenerar con evolución actual'
+                                        : 'Generar ahora'}
+                                    </button>
+                                  </div>
+                                )}
                                 <label style={labelCampo}>
                                   Trabajo diario visible para entrenador
                                   <textarea
@@ -41679,6 +42643,7 @@ async function abrirGestionOperativaIntensivoDia(
           alumnosDisponiblesParaIntensivo,
           asistenciasDelIntensivoDia,
           autoproponerNivelesDiploma,
+          cambiarEstadoIntensivoCurso,
           avisoCompleto,
           avisoDisponibilidadDiaIntensivo,
           avisoNeutral,
@@ -41769,6 +42734,8 @@ async function abrirGestionOperativaIntensivoDia(
           intensivosFiltrados,
           labelCampo,
           marcarAsistenciaIntensivo,
+          reiniciarGruposDiaIntensivoDesdeApp,
+          mesIntensivos,
           miniTarjetaBlanca,
           mostrarFormularioIntensivo,
           mostrarPlantillaCuatroSesionesIntensivoId,
@@ -41824,6 +42791,7 @@ async function abrirGestionOperativaIntensivoDia(
           setEntrenadoresApoyoPorGrupoRecomendado,
           setEntrenadoresPorGrupoRecomendado,
           setFiltroIntensivos,
+          setMesIntensivos,
           setFormDiaIntensivo,
           setFormGrupoIntensivo,
           setFormIntensivo,
