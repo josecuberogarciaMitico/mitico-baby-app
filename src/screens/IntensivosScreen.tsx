@@ -546,6 +546,12 @@ export function PantallaIntensivos(ctx: any) {
               const diplomasPendientes = resumenFinal.filter(
                 (registro) => registro.estado_diploma !== 'Revisado'
               ).length;
+              const estadoRealIntensivo =
+                resumenFinal.length > 0
+                  ? diplomasPendientes === 0
+                    ? `✓ Evaluación completa · ${resumenFinal.length}/${resumenFinal.length}`
+                    : `${diplomasPendientes} evaluación${diplomasPendientes === 1 ? '' : 'es'} pendiente${diplomasPendientes === 1 ? '' : 's'}`
+                  : String(intensivo.estado || 'En preparación');
               const gestorPanelControlAbierto =
                 gestionarPanelControlIntensivoId === intensivo.intensivo_id;
               const panelControl = panelControlDelIntensivo(intensivo.intensivo_id);
@@ -585,7 +591,18 @@ export function PantallaIntensivos(ctx: any) {
                         <span style={chipResumenCursoIntensivo}><strong>{totalAlumnos}</strong> alumnos</span>
                         <span style={chipResumenCursoIntensivo}><strong>{diasIntensivo.length}/4</strong> días</span>
                         <span style={chipResumenCursoIntensivo}><strong>{diasIntensivo.reduce((total, dia) => total + gruposNormalesDelDiaIntensivo(dia.intensivo_dia_id).length, 0)}</strong> grupos</span>
-                        <span style={chipResumenCursoIntensivo}><strong>{intensivo.estado}</strong></span>
+                        <span
+                          style={{
+                            ...chipResumenCursoIntensivo,
+                            ...(resumenFinal.length > 0 && diplomasPendientes === 0
+                              ? { background: '#ecfdf5', borderColor: '#bbf7d0', color: '#166534' }
+                              : diplomasPendientes > 0
+                                ? { background: '#fff7ed', borderColor: '#fed7aa', color: '#9a3412' }
+                                : {}),
+                          }}
+                        >
+                          <strong>{estadoRealIntensivo}</strong>
+                        </span>
                       </div>
                     </div>
 
@@ -646,15 +663,248 @@ export function PantallaIntensivos(ctx: any) {
                   {intensivoCursoAbierto && (
                     <>
 
-                  <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
-                    <details style={ayudaDesplegableCompacta}>
-                      <summary>Resumen por días</summary>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gap: 10,
+                      marginTop: 14,
+                      width: '100%',
+                      minWidth: 0,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: esVistaMovilApp
+                          ? 'repeat(2, minmax(0, 1fr))'
+                          : 'repeat(4, minmax(0, 1fr))',
+                        gap: 8,
+                      }}
+                    >
+                      <div style={{ ...miniTarjetaBlanca, padding: 10 }}>
+                        <span style={{ color: '#64748b', fontSize: 11, fontWeight: 850 }}>
+                          ALUMNOS
+                        </span>
+                        <div style={{ marginTop: 3, fontSize: 20, fontWeight: 950, color: '#0f172a' }}>
+                          {alumnosInscritosIntensivo.length}
+                        </div>
+                      </div>
+
+                      <div style={{ ...miniTarjetaBlanca, padding: 10 }}>
+                        <span style={{ color: '#64748b', fontSize: 11, fontWeight: 850 }}>
+                          DÍAS
+                        </span>
+                        <div style={{ marginTop: 3, fontSize: 20, fontWeight: 950, color: '#0f172a' }}>
+                          {diasIntensivo.length}/4
+                        </div>
+                      </div>
+
+                      <div style={{ ...miniTarjetaBlanca, padding: 10 }}>
+                        <span style={{ color: '#64748b', fontSize: 11, fontWeight: 850 }}>
+                          GRUPOS
+                        </span>
+                        <div style={{ marginTop: 3, fontSize: 20, fontWeight: 950, color: '#0f172a' }}>
+                          {diasIntensivo.reduce(
+                            (total, dia) =>
+                              total +
+                              gruposNormalesDelDiaIntensivo(dia.intensivo_dia_id).length,
+                            0
+                          )}
+                        </div>
+                      </div>
+
+                      <div
+                        style={{
+                          ...miniTarjetaBlanca,
+                          padding: 10,
+                          border:
+                            recuperacionesPendientesIntensivo > 0 || diplomasPendientes > 0
+                              ? '1px solid rgba(249,115,22,.35)'
+                              : '1px solid rgba(22,163,74,.28)',
+                          background:
+                            recuperacionesPendientesIntensivo > 0 || diplomasPendientes > 0
+                              ? 'rgba(255,247,237,.82)'
+                              : 'rgba(240,253,244,.72)',
+                        }}
+                      >
+                        <span style={{ color: '#64748b', fontSize: 11, fontWeight: 850 }}>
+                          PENDIENTES
+                        </span>
+                        <div
+                          style={{
+                            marginTop: 3,
+                            fontSize: 20,
+                            fontWeight: 950,
+                            color:
+                              recuperacionesPendientesIntensivo > 0 || diplomasPendientes > 0
+                                ? '#c2410c'
+                                : '#15803d',
+                          }}
+                        >
+                          {recuperacionesPendientesIntensivo + diplomasPendientes}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      id={`intensivo-opciones-${intensivo.intensivo_id}`}
+                      style={{
+                        ...barraPasosIntensivo,
+                        scrollMarginTop: 16,
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 8,
+                        width: '100%',
+                        maxWidth: '100%',
+                        minWidth: 0,
+                        overflow: 'visible',
+                        marginTop: 0,
+                      }}
+                    >
+                      <button
+                        onClick={() => abrirPanelIntensivo(intensivo, 'dias')}
+                        style={botonPasoIntensivo(formularioDiaAbierto)}
+                      >
+                        1 · Configuración
+                      </button>
+
+                      <button
+                        onClick={() => abrirPanelIntensivo(intensivo, 'alumnos')}
+                        style={botonPasoIntensivo(gestorAlumnosAbierto)}
+                      >
+                        2 · Alumnos
+                      </button>
+
+                      <button
+                        onClick={() => abrirPanelIntensivo(intensivo, 'grupos')}
+                        style={botonPasoIntensivo(gestorGruposAbierto)}
+                      >
+                        3 · Grupos
+                      </button>
+
+                      <button
+                        onClick={() => abrirPanelIntensivo(intensivo, 'revision')}
+                        style={botonPasoIntensivo(gestorRevisionAbierto)}
+                      >
+                        4 · Revisión
+                      </button>
+
+                      <button
+                        onClick={() => abrirPanelIntensivo(intensivo, 'asistencia')}
+                        style={botonPasoIntensivo(gestorAsistenciaAbierto)}
+                      >
+                        5 · Recuperaciones
+                      </button>
+
+                      <button
+                        onClick={() => abrirPanelIntensivo(intensivo, 'diplomas')}
+                        style={botonPasoIntensivo(gestorDiplomasAbierto)}
+                      >
+                        6 · Evaluación
+                      </button>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                      }}
+                    >
+                      {recuperacionesPendientesIntensivo > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => abrirPanelIntensivo(intensivo, 'asistencia')}
+                          style={{
+                            ...botonSecundario,
+                            padding: '7px 10px',
+                            borderColor: '#fed7aa',
+                            background: '#fff7ed',
+                            color: '#9a3412',
+                          }}
+                        >
+                          {recuperacionesPendientesIntensivo} recuperación{recuperacionesPendientesIntensivo === 1 ? '' : 'es'} pendiente{recuperacionesPendientesIntensivo === 1 ? '' : 's'}
+                        </button>
+                      ) : (
+                        <span
+                          style={{
+                            ...agendaBadgeModalidad,
+                            background: '#ecfdf5',
+                            color: '#166534',
+                            borderColor: '#bbf7d0',
+                          }}
+                        >
+                          ✓ Recuperaciones al día
+                        </span>
+                      )}
+
+                      {resumenFinal.length > 0 && diplomasPendientes > 0 ? (
+                        <button
+                          type="button"
+                          onClick={() => abrirPanelIntensivo(intensivo, 'diplomas')}
+                          style={{
+                            ...botonSecundario,
+                            padding: '7px 10px',
+                            borderColor: '#fed7aa',
+                            background: '#fff7ed',
+                            color: '#9a3412',
+                          }}
+                        >
+                          Evaluación · {Math.max(resumenFinal.length - diplomasPendientes, 0)}/{resumenFinal.length} revisadas
+                        </button>
+                      ) : resumenFinal.length > 0 ? (
+                        <span
+                          style={{
+                            ...agendaBadgeModalidad,
+                            background: '#ecfdf5',
+                            color: '#166534',
+                            borderColor: '#bbf7d0',
+                          }}
+                        >
+                          ✓ Evaluación {resumenFinal.length}/{resumenFinal.length}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    <details
+                      style={{
+                        ...ayudaDesplegableCompacta,
+                        marginTop: 0,
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 14,
+                        background: '#fff',
+                      }}
+                    >
+                      <summary style={{ fontWeight: 900 }}>
+                        Resumen del intensivo · {diasIntensivo.length} día{diasIntensivo.length === 1 ? '' : 's'}
+                      </summary>
+
                       <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-                        {diasIntensivo.length === 0 && <div style={avisoPendiente}>Sin días creados todavía.</div>}
+                        {diasIntensivo.length === 0 && (
+                          <div style={avisoPendiente}>Sin días creados todavía.</div>
+                        )}
+
                         {diasIntensivo.map((dia) => {
-                          const gruposDia = gruposNormalesDelDiaIntensivo(dia.intensivo_dia_id);
-                          const alumnosColocadosDia = gruposDia.reduce((total, grupo) => total + (grupo.total_alumnos || 0), 0);
-                          const diaPreparado = gruposDia.length > 0 && alumnosColocadosDia >= alumnosInscritosIntensivo.length;
+                          const gruposDia = gruposNormalesDelDiaIntensivo(
+                            dia.intensivo_dia_id
+                          );
+                          const alumnosEnGruposDia = gruposDia.reduce(
+                            (total, grupo) => total + Number(grupo.total_alumnos || 0),
+                            0
+                          );
+                          const recuperacionesExternasDia = Math.max(
+                            0,
+                            alumnosEnGruposDia - alumnosInscritosIntensivo.length
+                          );
+                          const propiosColocadosDia = Math.min(
+                            alumnosEnGruposDia,
+                            alumnosInscritosIntensivo.length
+                          );
+                          const diaPreparado =
+                            gruposDia.length > 0 &&
+                            propiosColocadosDia >= alumnosInscritosIntensivo.length;
+
                           return (
                             <button
                               key={`${intensivo.intensivo_id}-resumen-dia-${dia.intensivo_dia_id}`}
@@ -665,79 +915,48 @@ export function PantallaIntensivos(ctx: any) {
                               }}
                               style={{
                                 ...miniTarjetaBlanca,
+                                display: 'grid',
+                                gridTemplateColumns: esVistaMovilApp
+                                  ? 'minmax(0,1fr)'
+                                  : 'minmax(0,1fr) auto',
+                                gap: 8,
+                                alignItems: 'center',
                                 textAlign: 'left',
                                 cursor: 'pointer',
-                                border: diaPreparado ? '1px solid rgba(22,163,74,.35)' : '1px solid rgba(249,115,22,.35)',
-                                background: diaPreparado ? 'rgba(240,253,244,.92)' : 'rgba(255,247,237,.92)',
+                                border: diaPreparado
+                                  ? '1px solid rgba(22,163,74,.28)'
+                                  : '1px solid rgba(249,115,22,.32)',
+                                background: diaPreparado
+                                  ? 'rgba(240,253,244,.68)'
+                                  : 'rgba(255,247,237,.76)',
                               }}
                             >
-                              <strong>Día {dia.numero_dia} · {formatearFecha(dia.fecha)}</strong>
-                              <p style={{ margin: '4px 0 0', color: '#475569' }}>
-                                {dia.hora_inicio.slice(0, 5)}–{dia.hora_fin.slice(0, 5)} · {gruposDia.length} grupos · {alumnosColocadosDia}/{alumnosInscritosIntensivo.length} alumnos colocados
-                              </p>
+                              <div style={{ minWidth: 0 }}>
+                                <strong>
+                                  Día {dia.numero_dia} · {formatearFecha(dia.fecha)}
+                                </strong>
+                                <p style={{ margin: '4px 0 0', color: '#64748b' }}>
+                                  {dia.hora_inicio.slice(0, 5)}–{dia.hora_fin.slice(0, 5)} · {gruposDia.length} grupo{gruposDia.length === 1 ? '' : 's'}
+                                </p>
+                              </div>
+
+                              <div
+                                style={{
+                                  textAlign: esVistaMovilApp ? 'left' : 'right',
+                                  color: diaPreparado ? '#166534' : '#9a3412',
+                                  fontSize: 13,
+                                  fontWeight: 900,
+                                }}
+                              >
+                                {recuperacionesExternasDia > 0
+                                  ? `${alumnosEnGruposDia} en pista · ${alumnosInscritosIntensivo.length} propios + ${recuperacionesExternasDia} recuperación${recuperacionesExternasDia === 1 ? '' : 'es'}`
+                                  : `${propiosColocadosDia}/${alumnosInscritosIntensivo.length} inscritos colocados`}
+                              </div>
                             </button>
                           );
                         })}
                       </div>
                     </details>
-                  </div>
-
-                  <div
-                    id={`intensivo-opciones-${intensivo.intensivo_id}`}
-                    style={{
-                      ...barraPasosIntensivo,
-                      scrollMarginTop: 16,
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                      gap: 8,
-                      width: '100%',
-                      maxWidth: '100%',
-                      minWidth: 0,
-                      overflow: 'visible',
-                    }}
-                  >
-                    <button
-                      onClick={() => abrirPanelIntensivo(intensivo, 'dias')}
-                      style={botonPasoIntensivo(formularioDiaAbierto)}
-                    >
-                      1 · Configuración
-                    </button>
-
-                    <button
-                      onClick={() => abrirPanelIntensivo(intensivo, 'alumnos')}
-                      style={botonPasoIntensivo(gestorAlumnosAbierto)}
-                    >
-                      2 · Alumnos inscritos
-                    </button>
-
-                    <button
-                      onClick={() => abrirPanelIntensivo(intensivo, 'grupos')}
-                      style={botonPasoIntensivo(gestorGruposAbierto)}
-                    >
-                      3 · Grupos por día
-                    </button>
-
-                    <button
-                      onClick={() => abrirPanelIntensivo(intensivo, 'revision')}
-                      style={botonPasoIntensivo(gestorRevisionAbierto)}
-                    >
-                      4 · Revisión entre sesiones
-                    </button>
-
-                    <button
-                      onClick={() => abrirPanelIntensivo(intensivo, 'asistencia')}
-                      style={botonPasoIntensivo(gestorAsistenciaAbierto)}
-                    >
-                      5 · Faltas / recuperaciones
-                    </button>
-
-                    <button
-                      onClick={() => abrirPanelIntensivo(intensivo, 'diplomas')}
-                      style={botonPasoIntensivo(gestorDiplomasAbierto)}
-                    >
-                      6 · Evaluación final
-                    </button>
-
                   </div>
 
                   {gestorPanelControlAbierto && (
@@ -2061,8 +2280,6 @@ export function PantallaIntensivos(ctx: any) {
                         Preparar grupos por día · {intensivo.intensivo}
                       </h4>
 
-
-
                       {diasIntensivo.length === 0 && (
                         <div style={avisoPendiente}>
                           Primero añade al menos un día al intensivo.
@@ -2071,7 +2288,7 @@ export function PantallaIntensivos(ctx: any) {
 
                       {diasIntensivo.length > 0 && (
                         <>
-                                                    <div
+                          <div
                             style={{
                               display: 'grid',
                               gridTemplateColumns: esVistaMovilApp
@@ -2124,46 +2341,46 @@ export function PantallaIntensivos(ctx: any) {
                           </div>
 
                           {resumenReportes.length > 0 && (
-<details style={{ ...ayudaDesplegableCompacta, marginTop: 14 }}>
-                            <summary>
-                              Reportes del intensivo ({resumenReportes.length})
-                            </summary>
-                            <div style={{ marginTop: 10 }}>
-                              <div style={{ display: 'grid', gap: 10 }}>
-                                {resumenReportes.map((registro) => (
-                                  <div key={registro.alumno_id} style={miniTarjetaBlanca}>
-                                    <p style={{ marginTop: 0, fontWeight: 'bold' }}>
-                                      {registro.alumno}
-                                    </p>
-                                    <p>
-                                      <strong>Reportes:</strong>{' '}
-                                      {registro.total_reportes || 0} /{' '}
-                                      {registro.total_dias_intensivo || 0}
-                                    </p>
-                                    <p>
-                                      <strong>Actitud:</strong>{' '}
-                                      {registro.actitudes_reportadas || '-'}
-                                    </p>
-                                    <p>
-                                      <strong>Técnica:</strong>{' '}
-                                      {registro.tecnicas_reportadas || '-'}
-                                    </p>
-                                    <p>
-                                      <strong>Autonomía:</strong>{' '}
-                                      {registro.autonomias_reportadas || '-'}
-                                    </p>
-                                    <p style={{ marginBottom: 0 }}>
-                                      <strong>Recomendación:</strong>{' '}
-                                      {registro.recomendaciones_reportadas || '-'}
-                                    </p>
-                                  </div>
-                                ))}
+                            <details style={{ ...ayudaDesplegableCompacta, marginTop: 14 }}>
+                              <summary>
+                                Reportes del intensivo ({resumenReportes.length})
+                              </summary>
+                              <div style={{ marginTop: 10 }}>
+                                <div style={{ display: 'grid', gap: 10 }}>
+                                  {resumenReportes.map((registro) => (
+                                    <div key={registro.alumno_id} style={miniTarjetaBlanca}>
+                                      <p style={{ marginTop: 0, fontWeight: 'bold' }}>
+                                        {registro.alumno}
+                                      </p>
+                                      <p>
+                                        <strong>Reportes:</strong>{' '}
+                                        {registro.total_reportes || 0} /{' '}
+                                        {registro.total_dias_intensivo || 0}
+                                      </p>
+                                      <p>
+                                        <strong>Actitud:</strong>{' '}
+                                        {registro.actitudes_reportadas || '-'}
+                                      </p>
+                                      <p>
+                                        <strong>Técnica:</strong>{' '}
+                                        {registro.tecnicas_reportadas || '-'}
+                                      </p>
+                                      <p>
+                                        <strong>Autonomía:</strong>{' '}
+                                        {registro.autonomias_reportadas || '-'}
+                                      </p>
+                                      <p style={{ marginBottom: 0 }}>
+                                        <strong>Recomendación:</strong>{' '}
+                                        {registro.recomendaciones_reportadas || '-'}
+                                      </p>
+                                    </div>
+                                  ))}
+                                </div>
                               </div>
-                            </div>
-                          </details>
+                            </details>
                           )}
 
-<div
+                          <div
                             id="intensivo-recomendador-activo"
                             style={{ ...miniTarjetaBlanca, marginTop: 12 }}
                           >
@@ -2593,12 +2810,6 @@ export function PantallaIntensivos(ctx: any) {
                               style={{ ...inputCampo, minHeight: 70 }}
                             />
                           </label>
-
-                          
-
-                          
-
-                          
                         </>
                       )}
                     </div>
