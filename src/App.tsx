@@ -1746,6 +1746,34 @@ function formatearAlumnoListadoOperativo(valor: string | null | undefined) {
   return nivel ? `${nombre} · ${nivel.toUpperCase()}` : nombre;
 }
 
+function nombreAlumnoOcioTarjetaApp(valor: string | null | undefined) {
+  const partes = String(valor || '')
+    .split('·')
+    .map((parte) => parte.trim())
+    .filter(Boolean);
+
+  if (partes.length === 0) return '-';
+
+  // Los datos TEST pueden llevar una etiqueta delante del nombre real.
+  // Solo se elimina en la presentación de Ocio; el dato guardado no cambia.
+  if (/^(ZZZS|TEST(?:\s|$)|\[TEST)/i.test(partes[0]) && partes.length > 1) {
+    partes.shift();
+  }
+
+  const nivel = partes.find((parte) =>
+    /^(?:NIVEL\s+)?(?:INICIACI[ÓO]N|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)$/i.test(parte)
+  );
+  const nombre = partes
+    .filter((parte) =>
+      !/^(?:NIVEL\s+)?(?:INICIACI[ÓO]N|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)$/i.test(parte)
+    )
+    .join(' · ')
+    .trim();
+
+  const nivelLimpio = nivel ? nivel.replace(/^NIVEL\s+/i, '').toUpperCase() : '';
+  return `${nombre || partes[0] || '-'}${nivelLimpio ? ` · ${nivelLimpio}` : ''}`;
+}
+
 function nombreAlumnoWhatsappPapis(valor: string | null | undefined) {
   const operativo = formatearAlumnoListadoOperativo(valor);
   return operativo
@@ -22147,27 +22175,6 @@ async function abrirGestionOperativaIntensivoDia(
                                               >
                                                 <div style={{ minWidth: 0 }}>
                                                   <strong style={{ color: '#172033' }}>{alumno}</strong>
-                                                  {telefono && (
-                                                    <button
-                                                      type="button"
-                                                      onClick={() => copiarTelefonoAlumnoResumenDia(telefono)}
-                                                      title="Toca para copiar el teléfono"
-                                                      style={{
-                                                        display: 'block',
-                                                        marginTop: 3,
-                                                        padding: 0,
-                                                        border: 0,
-                                                        background: 'transparent',
-                                                        color: '#2563eb',
-                                                        fontSize: 13,
-                                                        fontWeight: 850,
-                                                        cursor: 'copy',
-                                                        textAlign: 'left',
-                                                      }}
-                                                    >
-                                                      {telefono}
-                                                    </button>
-                                                  )}
                                                 </div>
 
                                                 {telefono && (
@@ -23650,7 +23657,7 @@ async function abrirGestionOperativaIntensivoDia(
                       </span>
                     </div>
 
-                    <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+                    <div style={{ display: 'grid', gap: 10, padding: '12px 16px 16px' }}>
                       {filasVisibles.map((fila) => (
                         <details
                           key={`evaluacion-anual-ocio-${fila.alumno_id}`}
@@ -25884,51 +25891,117 @@ async function abrirGestionOperativaIntensivoDia(
 
       {pantalla === 'agenda' && (
         <section style={agendaShellCompacto}>
-          <article style={agendaHeroTrabajoSemanal}>
-            <div>
-              <p style={etiquetaSuperior}>TRABAJO SEMANAL · AGENDA</p>
-              <h2 style={{ margin: '3px 0 0', fontSize: 28 }}>
-                Días de entrenamiento
-              </h2>
-              <p style={{ margin: '8px 0 0', color: '#475569' }}>
-                Semana compacta: eliges semana, abres un día y trabajas solo una
-                sesión. Sin bajar toda la pantalla.
-              </p>
-            </div>
-            <div style={agendaPanelRangoSemana}>
-              <span style={agendaMiniLabel}>Semana completa</span>
-              <strong>
-                {semanaAgendaActiva
-                  ? rangoSemanaAgenda(semanaAgendaActiva)
-                  : 'Sin semana'}
-              </strong>
-              <span style={agendaMiniTexto}>
-                Entrenos:{' '}
-                {semanaAgendaActiva
-                  ? rangoEntrenosSemanaAgenda(semanaAgendaActiva)
-                  : '-'}
-              </span>
-              <button
-                onClick={() => window.location.reload()}
+          <article
+            style={{
+              borderRadius: 24,
+              padding: 20,
+              background:
+                'linear-gradient(135deg, #062d3f 0%, #083b4d 58%, #0b5d4f 100%)',
+              border: '1px solid rgba(16,185,129,0.28)',
+              boxShadow: '0 18px 44px rgba(15,23,42,0.16)',
+              color: '#ffffff',
+              display: 'grid',
+              gap: 16,
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 16,
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ minWidth: 0, flex: '1 1 420px' }}>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 11,
+                    fontWeight: 900,
+                    letterSpacing: 1.15,
+                    color: '#86efac',
+                  }}
+                >
+                  TRABAJO SEMANAL · AGENDA
+                </p>
+                <h2 style={{ margin: '4px 0 0', fontSize: 30, color: '#fff' }}>
+                  Días de entrenamiento
+                </h2>
+                <p
+                  style={{
+                    margin: '7px 0 0',
+                    color: '#cbd5e1',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Semana compacta: eliges semana, abres un día y trabajas solo una
+                  sesión. Sin bajar toda la pantalla.
+                </p>
+              </div>
+
+              <div
                 style={{
-                  ...botonSecundario,
-                  marginTop: 8,
-                  width: '100%',
-                  justifyContent: 'center',
+                  minWidth: 250,
+                  padding: '11px 13px',
+                  borderRadius: 16,
+                  background: 'rgba(255,255,255,0.10)',
+                  border: '1px solid rgba(255,255,255,0.16)',
+                  display: 'grid',
+                  gap: 4,
                 }}
               >
-                Actualizar
-              </button>
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 900,
+                    letterSpacing: 0.8,
+                    color: '#a7f3d0',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Semana completa
+                </span>
+                <strong style={{ fontSize: 16 }}>
+                  {semanaAgendaActiva
+                    ? rangoSemanaAgenda(semanaAgendaActiva)
+                    : 'Sin semana'}
+                </strong>
+                <span style={{ color: '#cbd5e1', fontSize: 13 }}>
+                  Entrenos:{' '}
+                  {semanaAgendaActiva
+                    ? rangoEntrenosSemanaAgenda(semanaAgendaActiva)
+                    : '-'}
+                </span>
+                <button
+                  onClick={() => { cargarAgendaOperativaDirecta(); cargarIntensivos(); cargarPlanning(); cargarListados(); cargarEntrenadores(); }}
+                  style={{
+                    ...botonSecundario,
+                    marginTop: 6,
+                    minHeight: 36,
+                    width: '100%',
+                    justifyContent: 'center',
+                    background: 'rgba(255,255,255,0.96)',
+                  }}
+                >
+                  Actualizar
+                </button>
+              </div>
             </div>
-          </article>
 
-          <section style={agendaPanelControles}>
-            <div style={agendaControlesGrid}>
-              <label style={labelCampo}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+                gap: 10,
+                paddingTop: 4,
+              }}
+            >
+              <label style={{ ...labelCampo, color: '#e2e8f0' }}>
                 Temporada
                 <select
                   value={anioInicioTemporadaAgenda}
-                  style={selectCampoAgenda}
+                  style={{ ...selectCampoAgenda, width: '100%', color: '#0f172a', background: '#ffffff' }}
                   onChange={(e) => {
                     const nuevoAnio = Number(e.target.value);
                     setAnioInicioTemporadaAgenda(nuevoAnio);
@@ -25947,11 +26020,11 @@ async function abrirGestionOperativaIntensivoDia(
                 </select>
               </label>
 
-              <label style={labelCampo}>
+              <label style={{ ...labelCampo, color: '#e2e8f0' }}>
                 Mes
                 <select
                   value={mesAgendaActivo}
-                  style={selectCampoAgenda}
+                  style={{ ...selectCampoAgenda, width: '100%', color: '#0f172a', background: '#ffffff' }}
                   onChange={(e) => {
                     setMesAgenda(e.target.value);
                     setSemanaAgendaInicio('');
@@ -25968,11 +26041,11 @@ async function abrirGestionOperativaIntensivoDia(
                 </select>
               </label>
 
-              <label style={labelCampo}>
+              <label style={{ ...labelCampo, color: '#e2e8f0' }}>
                 Semana
                 <select
                   value={semanaAgendaActiva}
-                  style={selectCampoAgenda}
+                  style={{ ...selectCampoAgenda, width: '100%', color: '#0f172a', background: '#ffffff' }}
                   onChange={(e) => cambiarSemanaTrabajoApp(e.target.value)}
                 >
                   {semanasAgenda.map((semana) => (
@@ -25983,6 +26056,15 @@ async function abrirGestionOperativaIntensivoDia(
                 </select>
               </label>
             </div>
+          </article>
+
+          <section
+            style={{
+              ...agendaPanelControles,
+              padding: 14,
+              gap: 12,
+            }}
+          >
 
             {diasSemanaAgenda.length === 0 ? (
               <div style={agendaVacio}>
@@ -26086,8 +26168,26 @@ async function abrirGestionOperativaIntensivoDia(
                       })}
                     </div>
 
-                    <article id="agenda-dia-seleccionado" style={agendaDiaCard}>
-                      <header style={agendaDiaHeader}>
+                    <article
+                      id="agenda-dia-seleccionado"
+                      style={{
+                        ...agendaDiaCard,
+                        padding: 0,
+                        overflow: 'hidden',
+                        border: '1px solid rgba(15,118,110,0.24)',
+                        boxShadow: '0 12px 30px rgba(15,23,42,0.06)',
+                      }}
+                    >
+                      <header
+                        style={{
+                          ...agendaDiaHeader,
+                          marginBottom: 0,
+                          padding: '15px 16px',
+                          background:
+                            'linear-gradient(135deg, rgba(236,253,245,0.98), #ffffff)',
+                          borderBottom: '1px solid rgba(15,118,110,0.16)',
+                        }}
+                      >
                         <div>
                           <p style={agendaMiniLabel}>Día seleccionado</p>
                           <h3
@@ -26116,7 +26216,7 @@ async function abrirGestionOperativaIntensivoDia(
                         </span>
                       </header>
 
-                      <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+                      <div style={{ display: 'grid', gap: 8, padding: '14px 16px 0' }}>
                         {turnosTrabajoDiaAgenda(diaActivo.fecha).map(
                           (turno) => (
                             <div
@@ -26151,7 +26251,7 @@ async function abrirGestionOperativaIntensivoDia(
                       </div>
 
                       {sesionesDia.length === 0 ? (
-                        <div style={{ ...agendaVacioMini, marginTop: 12 }}>
+                        <div style={{ ...agendaVacioMini, margin: '12px 16px 16px' }}>
                           <strong>Sin sesiones en este día.</strong>
                           <p style={{ margin: '6px 0 10px' }}>
                             Para Baby, elige un turno y pulsa “+ Baby”.
@@ -26166,9 +26266,11 @@ async function abrirGestionOperativaIntensivoDia(
                           {sesionesDia.map((sesion) => (
                             <article
                               key={sesion.id}
-                              style={agendaSesionCardModalidad(
-                                sesion.modalidad
-                              )}
+                              style={{
+                                ...agendaSesionCardModalidad(sesion.modalidad),
+                                borderRadius: 16,
+                                boxShadow: '0 8px 20px rgba(15,23,42,0.05)',
+                              }}
                             >
                               <div style={agendaSesionTop}>
                                 <div>
@@ -28714,30 +28816,53 @@ async function abrirGestionOperativaIntensivoDia(
           <section style={{ display: 'grid', gap: 16 }}>
             <article
               style={{
-                ...agendaHero,
+                position: 'relative',
+                overflow: 'hidden',
+                padding: 20,
+                borderRadius: 24,
+                border: '1px solid rgba(15,118,110,.42)',
                 background:
-                  'linear-gradient(135deg, rgba(240,253,244,0.98), rgba(255,255,255,0.98))',
+                  'linear-gradient(135deg, #06283b 0%, #08384b 52%, #0f5c4d 100%)',
+                boxShadow: '0 16px 36px rgba(6,40,59,.18)',
+                color: '#ffffff',
+                display: 'grid',
+                gap: 16,
               }}
             >
               <div>
-                <span
+                <p
                   style={{
-                    color: '#16a34a',
-                    fontWeight: 900,
-                    fontSize: 12,
-                    letterSpacing: 1.2,
+                    margin: 0,
+                    color: '#6ee7b7',
+                    fontSize: 11,
+                    fontWeight: 950,
+                    letterSpacing: '.12em',
                     textTransform: 'uppercase',
                   }}
                 >
-                  Ocio · temporada
-                </span>
-                <h2 style={{ margin: '5px 0 0' }}>Grupos estables</h2>
+                  OCIO · TEMPORADA
+                </p>
+                <h2
+                  style={{
+                    margin: '4px 0 0',
+                    fontSize: 28,
+                    letterSpacing: '-.025em',
+                    color: '#ffffff',
+                  }}
+                >
+                  Grupos estables
+                </h2>
+                <p
+                  style={{
+                    margin: '7px 0 0',
+                    color: '#cbd5e1',
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Selecciona el día de Ocio y trabaja con sus alumnos y grupos estables.
+                </p>
               </div>
 
-
-            </article>
-
-            <article style={agendaBloqueBlanco}>
               <div
                 style={{
                   display: 'grid',
@@ -28767,7 +28892,25 @@ async function abrirGestionOperativaIntensivoDia(
                             });
                         }, 60);
                       }}
-                      style={estiloTurno(activo)}
+                      style={{
+                        border: activo
+                          ? '1px solid rgba(110,231,183,.95)'
+                          : '1px solid rgba(255,255,255,.22)',
+                        background: activo
+                          ? 'rgba(16,185,129,.22)'
+                          : 'rgba(255,255,255,.09)',
+                        color: '#ffffff',
+                        borderRadius: 16,
+                        padding: '12px 14px',
+                        cursor: 'pointer',
+                        fontWeight: 900,
+                        textAlign: 'left',
+                        boxShadow: activo
+                          ? '0 8px 22px rgba(0,0,0,.14)'
+                          : 'none',
+                        transition: 'all 160ms ease',
+                        minWidth: 0,
+                      }}
                     >
                       <span style={{ display: 'block', fontSize: 15 }}>
                         {configuracionTurnos[dia].etiqueta}
@@ -28777,7 +28920,7 @@ async function abrirGestionOperativaIntensivoDia(
                           display: 'block',
                           marginTop: 3,
                           fontSize: 13,
-                          opacity: activo ? 0.9 : 0.8,
+                          color: activo ? '#d1fae5' : '#cbd5e1',
                         }}
                       >
                         {configuracionTurnos[dia].hora}
@@ -28786,61 +28929,121 @@ async function abrirGestionOperativaIntensivoDia(
                   );
                 })}
               </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                  gap: 10,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBusquedaOcio('');
+                    setFiltroDiaFichasOcio(ocioTurnoVista);
+                    abrirPantallaConScroll('ocioAlumnos');
+                  }}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 16,
+                    background: 'rgba(255,255,255,.10)',
+                    border: '1px solid rgba(255,255,255,.18)',
+                    minWidth: 0,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    color: '#ffffff',
+                  }}
+                >
+                  <span
+                    style={{
+                      display: 'block',
+                      color: '#cbd5e1',
+                      fontWeight: 800,
+                      fontSize: 10,
+                      textTransform: 'uppercase',
+                      letterSpacing: '.06em',
+                    }}
+                  >
+                    ALUMNOS DEL TURNO
+                  </span>
+                  <strong
+                    style={{
+                      display: 'block',
+                      marginTop: 4,
+                      fontSize: 25,
+                      lineHeight: 1,
+                      fontWeight: 950,
+                    }}
+                  >
+                    {totalAlumnosTurno}
+                  </strong>
+                  <span
+                    style={{
+                      display: 'block',
+                      marginTop: 5,
+                      color: '#d1fae5',
+                      fontSize: 12,
+                    }}
+                  >
+                    {ocioTurnoVista} · Abrir fichas
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    document
+                      .getElementById('ocio-grupos-turno-activo')
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 16,
+                    background: 'rgba(255,255,255,.10)',
+                    border: '1px solid rgba(255,255,255,.18)',
+                    minWidth: 0,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    color: '#ffffff',
+                  }}
+                >
+                  <span
+                    style={{
+                      display: 'block',
+                      color: '#cbd5e1',
+                      fontWeight: 800,
+                      fontSize: 10,
+                      textTransform: 'uppercase',
+                      letterSpacing: '.06em',
+                    }}
+                  >
+                    GRUPOS ESTABLES
+                  </span>
+                  <strong
+                    style={{
+                      display: 'block',
+                      marginTop: 4,
+                      fontSize: 25,
+                      lineHeight: 1,
+                      fontWeight: 950,
+                    }}
+                  >
+                    {gruposTurno.length}
+                  </strong>
+                  <span
+                    style={{
+                      display: 'block',
+                      marginTop: 5,
+                      color: '#d1fae5',
+                      fontSize: 12,
+                    }}
+                  >
+                    {configuracionTurnos[ocioTurnoVista].hora}
+                  </span>
+                </button>
+              </div>
             </article>
-
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                gap: 10,
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => {
-                  setBusquedaOcio('');
-                  setFiltroDiaFichasOcio(ocioTurnoVista);
-                  abrirPantallaConScroll('ocioAlumnos');
-                }}
-                style={{
-                  ...tarjetaMetricaOcioTurno('#16a34a', '#f0fdf4'),
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  color: 'inherit',
-                }}
-              >
-                <span
-                  style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
-                >
-                  ALUMNOS DEL TURNO
-                </span>
-                <strong style={{ fontSize: 28 }}>{totalAlumnosTurno}</strong>
-                <span>{ocioTurnoVista} · Abrir fichas</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() =>
-                  document
-                    .getElementById('ocio-grupos-turno-activo')
-                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                }
-                style={{
-                  ...tarjetaMetricaOcioTurno('#16a34a', '#f0fdf4'),
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                  color: 'inherit',
-                }}
-              >
-                <span
-                  style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
-                >
-                  GRUPOS ESTABLES
-                </span>
-                <strong style={{ fontSize: 28 }}>{gruposTurno.length}</strong>
-                <span>{configuracionTurnos[ocioTurnoVista].hora}</span>
-              </button>
-            </div>
 
             {mostrarFormularioOcioGrupo && ocioGrupoForm.id && (
               <article
@@ -29833,7 +30036,7 @@ async function abrirGestionOperativaIntensivoDia(
                         >
                           {miembrosGrupo.map((alumno) => (
                             <li key={alumno.alumno_id}>
-                              {formatearAlumnoListadoOperativo(
+                              {nombreAlumnoOcioTarjetaApp(
                                 `${alumno.alumno} · ${
                                   alumno.nivel_usado || alumno.nivel || ''
                                 }`
@@ -29853,7 +30056,7 @@ async function abrirGestionOperativaIntensivoDia(
                             .split(' || ')
                             .map((alumno, indice) => (
                               <li key={`${grupo.grupo_id}-${indice}`}>
-                                {formatearAlumnoListadoOperativo(alumno)}
+                                {nombreAlumnoOcioTarjetaApp(alumno)}
                               </li>
                             ))}
                         </ul>
@@ -29930,7 +30133,7 @@ async function abrirGestionOperativaIntensivoDia(
                         </details>
                       )}
 
-                      {grupo.observaciones && (
+                      {trabajoDiarioOcioSemana(grupo) && (
                         <details
                           style={{
                             ...avisoNeutral,
@@ -29941,10 +30144,35 @@ async function abrirGestionOperativaIntensivoDia(
                           <summary
                             style={{ cursor: 'pointer', fontWeight: 800 }}
                           >
-                            Observaciones
+                            Trabajo diario previsto
+                          </summary>
+                          <div
+                            style={{
+                              marginTop: 8,
+                              whiteSpace: 'pre-wrap',
+                              lineHeight: 1.5,
+                            }}
+                          >
+                            {trabajoDiarioOcioSemana(grupo)}
+                          </div>
+                        </details>
+                      )}
+
+                      {observacionesOcioSemana(grupo) && (
+                        <details
+                          style={{
+                            ...avisoNeutral,
+                            marginTop: 8,
+                            padding: '9px 11px',
+                          }}
+                        >
+                          <summary
+                            style={{ cursor: 'pointer', fontWeight: 800 }}
+                          >
+                            Observaciones operativas
                           </summary>
                           <div style={{ marginTop: 8 }}>
-                            {grupo.observaciones}
+                            {formatearObservaciones(observacionesOcioSemana(grupo))}
                           </div>
                         </details>
                       )}
