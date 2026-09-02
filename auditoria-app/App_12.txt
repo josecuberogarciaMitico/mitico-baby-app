@@ -1,0 +1,2500 @@
+                  style={{
+                    margin: '4px 0 0',
+                    fontSize: 28,
+                    letterSpacing: '-.025em',
+                    color: '#ffffff',
+                  }}
+                >
+                  Grupos estables
+                </h2>
+                <p
+                  style={{
+                    margin: '7px 0 0',
+                    color: '#cbd5e1',
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Selecciona el día de Ocio y trabaja con sus alumnos y grupos estables.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                  gap: 10,
+                }}
+              >
+                {(Object.keys(configuracionTurnos) as Array<
+                  keyof typeof configuracionTurnos
+                >).map((dia) => {
+                  const activo = ocioTurnoVista === dia;
+                  return (
+                    <button
+                      key={dia}
+                      type="button"
+                      onClick={() => {
+                        setOcioTurnoVista(dia);
+                        setOcioGrupoGestionAbiertoId('');
+                        setOcioBusquedaGestionGrupo('');
+                        setOcioPropuestaGrupos([]);
+                        window.setTimeout(() => {
+                          document
+                            .getElementById('ocio-grupos-turno-activo')
+                            ?.scrollIntoView({
+                              behavior: 'smooth',
+                              block: 'start',
+                            });
+                        }, 60);
+                      }}
+                      style={{
+                        border: activo
+                          ? '1px solid rgba(110,231,183,.95)'
+                          : '1px solid rgba(255,255,255,.22)',
+                        background: activo
+                          ? 'rgba(16,185,129,.22)'
+                          : 'rgba(255,255,255,.09)',
+                        color: '#ffffff',
+                        borderRadius: 16,
+                        padding: '12px 14px',
+                        cursor: 'pointer',
+                        fontWeight: 900,
+                        textAlign: 'left',
+                        boxShadow: activo
+                          ? '0 8px 22px rgba(0,0,0,.14)'
+                          : 'none',
+                        transition: 'all 160ms ease',
+                        minWidth: 0,
+                      }}
+                    >
+                      <span style={{ display: 'block', fontSize: 15 }}>
+                        {configuracionTurnos[dia].etiqueta}
+                      </span>
+                      <span
+                        style={{
+                          display: 'block',
+                          marginTop: 3,
+                          fontSize: 13,
+                          color: activo ? '#d1fae5' : '#cbd5e1',
+                        }}
+                      >
+                        {configuracionTurnos[dia].hora}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                  gap: 10,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBusquedaOcio('');
+                    setFiltroDiaFichasOcio(ocioTurnoVista);
+                    abrirPantallaConScroll('ocioAlumnos');
+                  }}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 16,
+                    background: 'rgba(255,255,255,.10)',
+                    border: '1px solid rgba(255,255,255,.18)',
+                    minWidth: 0,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    color: '#ffffff',
+                  }}
+                >
+                  <span
+                    style={{
+                      display: 'block',
+                      color: '#cbd5e1',
+                      fontWeight: 800,
+                      fontSize: 10,
+                      textTransform: 'uppercase',
+                      letterSpacing: '.06em',
+                    }}
+                  >
+                    ALUMNOS DEL TURNO
+                  </span>
+                  <strong
+                    style={{
+                      display: 'block',
+                      marginTop: 4,
+                      fontSize: 25,
+                      lineHeight: 1,
+                      fontWeight: 950,
+                    }}
+                  >
+                    {totalAlumnosTurno}
+                  </strong>
+                  <span
+                    style={{
+                      display: 'block',
+                      marginTop: 5,
+                      color: '#d1fae5',
+                      fontSize: 12,
+                    }}
+                  >
+                    {ocioTurnoVista} · Abrir fichas
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    document
+                      .getElementById('ocio-grupos-turno-activo')
+                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                  }
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 16,
+                    background: 'rgba(255,255,255,.10)',
+                    border: '1px solid rgba(255,255,255,.18)',
+                    minWidth: 0,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    color: '#ffffff',
+                  }}
+                >
+                  <span
+                    style={{
+                      display: 'block',
+                      color: '#cbd5e1',
+                      fontWeight: 800,
+                      fontSize: 10,
+                      textTransform: 'uppercase',
+                      letterSpacing: '.06em',
+                    }}
+                  >
+                    GRUPOS ESTABLES
+                  </span>
+                  <strong
+                    style={{
+                      display: 'block',
+                      marginTop: 4,
+                      fontSize: 25,
+                      lineHeight: 1,
+                      fontWeight: 950,
+                    }}
+                  >
+                    {gruposTurno.length}
+                  </strong>
+                  <span
+                    style={{
+                      display: 'block',
+                      marginTop: 5,
+                      color: '#d1fae5',
+                      fontSize: 12,
+                    }}
+                  >
+                    {configuracionTurnos[ocioTurnoVista].hora}
+                  </span>
+                </button>
+              </div>
+            </article>
+
+            {mostrarFormularioOcioGrupo && ocioGrupoForm.id && (
+              <article
+                id="ocio-formulario-grupo-estable"
+                style={{ ...tarjetaResaltada, scrollMarginTop: 18 }}
+              >
+                <div style={agendaCabeceraLinea}>
+                  <div>
+                    <h3 style={{ margin: 0 }}>
+                      {ocioGrupoForm.id
+                        ? 'Editar grupo estable'
+                        : 'Crear grupo estable'}
+                    </h3>
+                    <p style={{ margin: '5px 0 0', color: '#64748b' }}>
+                      La ficha estable será la base de las semanas de Ocio.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMostrarFormularioOcioGrupo(false);
+                      setOcioGrupoForm(ocioGrupoFormInicial());
+                    }}
+                    style={botonSecundario}
+                  >
+                    Cerrar
+                  </button>
+                </div>
+
+                <div style={{ ...gridFormulario, marginTop: 14 }}>
+                  <label style={labelCampo}>
+                    Nombre grupo
+                    <input
+                      value={ocioGrupoForm.nombre}
+                      onChange={(e) =>
+                        setOcioGrupoForm({
+                          ...ocioGrupoForm,
+                          nombre: e.target.value,
+                        })
+                      }
+                      placeholder="Grupo 1"
+                    />
+                  </label>
+
+                  <label style={labelCampo}>
+                    Día
+                    <select
+                      value={ocioGrupoForm.dia}
+                      onChange={(e) =>
+                        setOcioGrupoForm({
+                          ...ocioGrupoForm,
+                          dia: e.target.value,
+                        })
+                      }
+                    >
+                      <option>Jueves</option>
+                      <option>Sábado</option>
+                      <option>Domingo</option>
+                    </select>
+                  </label>
+
+                  <label style={labelCampo}>
+                    Hora inicio
+                    <input
+                      type="time"
+                      value={ocioGrupoForm.horaInicio}
+                      onChange={(e) =>
+                        setOcioGrupoForm({
+                          ...ocioGrupoForm,
+                          horaInicio: e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+
+                  <label style={labelCampo}>
+                    Hora fin
+                    <input
+                      type="time"
+                      value={ocioGrupoForm.horaFin}
+                      onChange={(e) =>
+                        setOcioGrupoForm({
+                          ...ocioGrupoForm,
+                          horaFin: e.target.value,
+                        })
+                      }
+                    />
+                  </label>
+
+                  <label style={labelCampo}>
+                    Nivel grupo
+                    <select
+                      value={ocioGrupoForm.nivel}
+                      onChange={(e) =>
+                        setOcioGrupoForm({
+                          ...ocioGrupoForm,
+                          nivel: e.target.value,
+                        })
+                      }
+                    >
+                      {opcionesNivel.map((nivel) => (
+                        <option key={nivel} value={nivel}>
+                          {nivel}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label style={labelCampo}>
+                    Pista
+                    <select
+                      value={ocioGrupoForm.pista}
+                      onChange={(e) =>
+                        setOcioGrupoForm({
+                          ...ocioGrupoForm,
+                          pista: e.target.value,
+                        })
+                      }
+                    >
+                      {opcionesPista.map((pista) => (
+                        <option key={pista} value={pista}>
+                          {pista}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                </div>
+
+                <label style={{ ...labelCampo, marginTop: 12 }}>
+                  Observaciones de grupo
+                  <textarea
+                    value={ocioGrupoForm.observaciones}
+                    onChange={(e) =>
+                      setOcioGrupoForm({
+                        ...ocioGrupoForm,
+                        observaciones: e.target.value,
+                      })
+                    }
+                    rows={3}
+                  />
+                </label>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    marginTop: 12,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <button onClick={guardarGrupoOcio} style={botonPrincipal}>
+                    Guardar grupo
+                  </button>
+                  <button
+                    onClick={() => {
+                      setMostrarFormularioOcioGrupo(false);
+                      setOcioGrupoForm(ocioGrupoFormInicial());
+                    }}
+                    style={botonSecundario}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </article>
+            )}
+
+            <article
+              id="ocio-alumnos-turno"
+              style={{
+                ...agendaBloqueBlanco,
+                scrollMarginTop: 18,
+                width: '100%',
+                maxWidth: '100%',
+                minWidth: 0,
+                boxSizing: 'border-box',
+              }}
+            >
+              <div style={agendaCabeceraLinea}>
+                <div style={{ minWidth: 0 }}>
+                  <span
+                    style={{
+                      color: '#16a34a',
+                      fontWeight: 900,
+                      fontSize: 12,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    Alumnos del turno
+                  </span>
+                  <h3 style={{ margin: '3px 0 0' }}>
+                    {ocioTurnoVista} · {configuracionTurnos[ocioTurnoVista].hora}
+                  </h3>
+                  <p style={{ margin: '5px 0 0', color: '#64748b' }}>
+                    {totalAlumnosTurno} alumnos · {alumnosSinGrupoTurno.length}{' '}
+                    sin grupo estable
+                  </p>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                    justifyContent: 'flex-end',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setOcioAlumnosTurnoAbierto((abierto) => !abierto)
+                    }
+                    style={botonSecundario}
+                  >
+                    {ocioAlumnosTurnoAbierto
+                      ? 'Ocultar listado rápido'
+                      : 'Ver listado rápido'}
+                  </button>
+
+                  {gruposTurno.length === 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOcioAlumnosTurnoAbierto(true);
+                        generarPropuestaGruposOcio();
+                      }}
+                      disabled={
+                        ocioGenerandoPropuesta ||
+                        ocioGuardandoPropuesta ||
+                        totalAlumnosTurno === 0
+                      }
+                      style={botonPrincipal}
+                    >
+                      {ocioGenerandoPropuesta
+                        ? 'Calculando...'
+                        : 'Recomendar grupos'}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {ocioAlumnosTurnoAbierto &&
+                (alumnosDelTurno.length === 0 ? (
+                  <div style={{ ...agendaVacio, marginTop: 12 }}>
+                    No hay alumnos cargados para este día de Ocio.
+                  </div>
+                ) : (
+                <div
+                  style={{
+                    display: 'grid',
+                    gap: 7,
+                    marginTop: 12,
+                    maxHeight: 360,
+                    overflowY: 'auto',
+                    overflowX: 'hidden',
+                    paddingRight: 2,
+                  }}
+                >
+                  {alumnosDelTurno.map((alumno) => {
+                    const edad = edadAproximadaOcio(alumno.fecha_nacimiento);
+                    const nivel =
+                      alumno.nivel_usado || alumno.nivel || 'Sin nivel';
+                    const puedeRecomendar =
+                      !alumno.grupo_id && gruposTurno.length > 0;
+                    const recomendadorAbierto =
+                      ocioAlumnoRecomendandoId === alumno.alumno_id;
+                    const recomendaciones = recomendadorAbierto
+                      ? recomendacionesAlumnoSinGrupoOcio(
+                          alumno,
+                          gruposTurno
+                        )
+                      : [];
+
+                    return (
+                      <article
+                        key={`ocio-turno-alumno-${alumno.alumno_id}`}
+                        style={{
+                          padding: '9px 10px',
+                          border: puedeRecomendar
+                            ? '1px solid #86efac'
+                            : '1px solid #dcfce7',
+                          borderRadius: 12,
+                          background: alumno.grupo_id
+                            ? '#f8fafc'
+                            : '#f0fdf4',
+                          minWidth: 0,
+                        }}
+                      >
+                        <div
+                          role={puedeRecomendar ? 'button' : undefined}
+                          tabIndex={puedeRecomendar ? 0 : undefined}
+                          onClick={() => {
+                            if (!puedeRecomendar) return;
+                            setOcioAlumnoRecomendandoId((actual) =>
+                              actual === alumno.alumno_id
+                                ? ''
+                                : alumno.alumno_id
+                            );
+                          }}
+                          onKeyDown={(e) => {
+                            if (
+                              puedeRecomendar &&
+                              (e.key === 'Enter' || e.key === ' ')
+                            ) {
+                              e.preventDefault();
+                              setOcioAlumnoRecomendandoId((actual) =>
+                                actual === alumno.alumno_id
+                                  ? ''
+                                  : alumno.alumno_id
+                              );
+                            }
+                          }}
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: esVistaMovilApp
+                              ? 'minmax(0, 1fr)'
+                              : 'minmax(0, 1fr) auto',
+                            gap: 8,
+                            alignItems: 'center',
+                            cursor: puedeRecomendar
+                              ? 'pointer'
+                              : 'default',
+                          }}
+                        >
+                          <div style={{ minWidth: 0 }}>
+                            <strong
+                              style={{
+                                display: 'block',
+                                overflowWrap: 'anywhere',
+                              }}
+                            >
+                              {alumno.alumno}
+                            </strong>
+                            <span
+                              style={{
+                                display: 'block',
+                                marginTop: 3,
+                                color: '#64748b',
+                                fontSize: 13,
+                              }}
+                            >
+                              Nivel {nivel}
+                              {alumno.fecha_nacimiento
+                                ? ` · ${formatearFecha(
+                                    alumno.fecha_nacimiento
+                                  )}`
+                                : ''}
+                              {edad !== null ? ` · ${edad} años` : ''}
+                            </span>
+                          </div>
+
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 7,
+                              alignItems: 'center',
+                              flexWrap: 'wrap',
+                              justifyContent: esVistaMovilApp
+                                ? 'flex-start'
+                                : 'flex-end',
+                            }}
+                          >
+                            <span
+                              style={{
+                                borderRadius: 999,
+                                padding: '4px 8px',
+                                fontSize: 11,
+                                fontWeight: 900,
+                                background: alumno.grupo_id
+                                  ? '#e2e8f0'
+                                  : '#dcfce7',
+                                color: alumno.grupo_id
+                                  ? '#475569'
+                                  : '#166534',
+                              }}
+                            >
+                              {alumno.grupo_id
+                                ? alumno.grupo_estable || 'Con grupo'
+                                : 'Sin grupo'}
+                            </span>
+
+                            {puedeRecomendar && (
+                              <span
+                                style={{
+                                  borderRadius: 999,
+                                  padding: '4px 8px',
+                                  fontSize: 11,
+                                  fontWeight: 900,
+                                  background: '#dbeafe',
+                                  color: '#1d4ed8',
+                                }}
+                              >
+                                {recomendadorAbierto
+                                  ? 'Cerrar recomendador'
+                                  : 'Recomendar grupo'}
+                              </span>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFiltroDiaFichasOcio(ocioTurnoVista);
+                                setBusquedaOcio(alumno.alumno);
+                                abrirPantallaConScroll('ocioAlumnos');
+                              }}
+                              style={botonMini}
+                            >
+                              Ficha
+                            </button>
+                          </div>
+                        </div>
+
+                        {recomendadorAbierto && (
+                          <div
+                            style={{
+                              display: 'grid',
+                              gap: 8,
+                              marginTop: 10,
+                            }}
+                          >
+                            {recomendaciones.length === 0 ? (
+                              <div style={avisoNeutral}>
+                                No hay grupos estables activos en este turno.
+                              </div>
+                            ) : (
+                              recomendaciones.map((opcion) => (
+                                <div
+                                  key={`recomendar-${alumno.alumno_id}-${opcion.grupo.grupo_id}`}
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: esVistaMovilApp
+                                      ? 'minmax(0, 1fr)'
+                                      : 'minmax(0, 1fr) auto',
+                                    gap: 8,
+                                    alignItems: 'center',
+                                    padding: 10,
+                                    borderRadius: 12,
+                                    border:
+                                      opcion.estado === 'RECOMENDADO'
+                                        ? '1px solid #93c5fd'
+                                        : opcion.estado === 'REVISAR'
+                                        ? '1px solid #fdba74'
+                                        : '1px solid #fecaca',
+                                    background:
+                                      opcion.estado === 'RECOMENDADO'
+                                        ? '#eff6ff'
+                                        : opcion.estado === 'REVISAR'
+                                        ? '#fff7ed'
+                                        : '#fff1f2',
+                                  }}
+                                >
+                                  <div style={{ minWidth: 0 }}>
+                                    <strong>
+                                      {opcion.estado === 'RECOMENDADO'
+                                        ? 'Recomendado'
+                                        : opcion.estado === 'REVISAR'
+                                        ? 'Revisar'
+                                        : 'No encaja'}{' '}
+                                      · {opcion.grupo.nombre_grupo}
+                                    </strong>
+                                    <div
+                                      style={{
+                                        marginTop: 3,
+                                        color: '#64748b',
+                                        fontSize: 13,
+                                      }}
+                                    >
+                                      Nivel{' '}
+                                      {opcion.grupo.nivel_grupo || '-'} ·{' '}
+                                      {opcion.grupo.pista || '-'} ·{' '}
+                                      {opcion.totalActual} →{' '}
+                                      {opcion.totalFinal} niños
+                                    </div>
+                                    <div
+                                      style={{
+                                        marginTop: 3,
+                                        color: '#64748b',
+                                        fontSize: 12,
+                                      }}
+                                    >
+                                      {opcion.motivo}
+                                    </div>
+                                  </div>
+
+                                  {opcion.estado !== 'NO_ENCAJA' && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        asignarRecomendacionAlumnoSinGrupoOcio(
+                                          alumno,
+                                          opcion.grupo
+                                        )
+                                      }
+                                      style={
+                                        opcion.estado === 'RECOMENDADO'
+                                          ? botonPrincipal
+                                          : botonSecundario
+                                      }
+                                    >
+                                      Asignar a este grupo
+                                    </button>
+                                  )}
+                                </div>
+                              ))
+                            )}
+
+                            {recomendaciones.every(
+                              (opcion) =>
+                                opcion.estado === 'NO_ENCAJA'
+                            ) && (
+                              <div style={avisoPendiente}>
+                                Ningún grupo actual encaja por nivel/ratio.
+                                Revisa si necesitas crear otro grupo estable.
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </article>
+                    );
+                  })}
+                </div>
+              ))}
+
+            </article>
+
+            {ocioPropuestaGrupos.length > 0 && gruposTurno.length === 0 && (
+              <article
+                id="ocio-propuesta-grupos"
+                style={{
+                  ...tarjetaResaltada,
+                  scrollMarginTop: 18,
+                  width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
+                  boxSizing: 'border-box',
+                }}
+              >
+                <div style={agendaCabeceraLinea}>
+                  <div style={{ minWidth: 0 }}>
+                    <span
+                      style={{
+                        color: '#2563eb',
+                        fontWeight: 900,
+                        fontSize: 12,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Propuesta editable
+                    </span>
+                    <h3 style={{ margin: '3px 0 0' }}>
+                      Grupos recomendados · {ocioTurnoVista}
+                    </h3>
+                    <p style={{ margin: '5px 0 0', color: '#64748b' }}>
+                      Nivel primero, edad después. A/A+ juntos en pequeña; B y
+                      superiores en grande.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setOcioPropuestaGrupos([])}
+                    style={botonSecundario}
+                    disabled={ocioGuardandoPropuesta}
+                  >
+                    Descartar
+                  </button>
+                </div>
+
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: esVistaMovilApp
+                      ? 'minmax(0, 1fr)'
+                      : 'repeat(auto-fit, minmax(min(100%, 390px), 1fr))',
+                    gap: 12,
+                    width: '100%',
+                    minWidth: 0,
+                    marginTop: 14,
+                  }}
+                >
+                  {ocioPropuestaGrupos.map((grupo) => {
+                    const miembros = grupo.alumnoIds
+                      .map((id) =>
+                        ocioAlumnos.find((alumno) => alumno.alumno_id === id)
+                      )
+                      .filter(Boolean) as OcioAlumnoApp[];
+
+                    const maximo = grupo.pista === 'Pequeña' ? 4 : 7;
+
+                    return (
+                      <article
+                        key={grupo.propuesta_id}
+                        style={{
+                          ...agendaGrupoPropuesta,
+                          ...estiloGrupoPorPistaApp({
+                            pista: grupo.pista,
+                            nivel_grupo: grupo.nivelObjetivo,
+                          }),
+                          minWidth: 0,
+                          width: '100%',
+                          maxWidth: '100%',
+                          boxSizing: 'border-box',
+                          overflow: 'hidden',
+                        }}
+                      >
+                        <div style={agendaGrupoLinea}>
+                          <h3 style={{ margin: 0 }}>{grupo.nombre}</h3>
+                          <span>{miembros.length} niños</span>
+                        </div>
+
+                        <p>
+                          <strong>Nivel:</strong> {grupo.nivelObjetivo} ·{' '}
+                          <strong>Pista:</strong> {grupo.pista} ·{' '}
+                          <strong>Ratio:</strong> {miembros.length}/{maximo}
+                        </p>
+
+                        <div style={{ ...gridFormulario, marginBottom: 10 }}>
+                          <label style={labelCampo}>
+                            Pista
+                            <select
+                              value={grupo.pista}
+                              onChange={(e) =>
+                                cambiarPistaPropuestaOcio(
+                                  grupo.propuesta_id,
+                                  e.target.value as 'Pequeña' | 'Grande'
+                                )
+                              }
+                            >
+                              <option value="Pequeña">Pequeña</option>
+                              <option value="Grande">Grande</option>
+                            </select>
+                          </label>
+                        </div>
+
+                        {grupo.alumnoIds.length === 0 && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              eliminarGrupoVacioPropuestaOcio(grupo.propuesta_id)
+                            }
+                            style={{ ...botonPeligroMini, marginTop: 8 }}
+                          >
+                            Eliminar grupo vacío
+                          </button>
+                        )}
+
+                        <div
+                          style={{
+                            ...estiloValidacionPedagogicaApp(
+                              grupo.aviso ? 'REVISAR' : 'OK'
+                            ),
+                            marginBottom: 10,
+                          }}
+                        >
+                          <strong>
+                            {grupo.aviso ? 'REVISIÓN NECESARIA' : 'GRUPO CORRECTO'}
+                          </strong>
+                          {grupo.aviso && (
+                            <p style={{ margin: '6px 0 0' }}>{grupo.aviso}</p>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'grid', gap: 7, marginTop: 10 }}>
+                          {miembros.map((alumno) => {
+                            const destinos = ocioPropuestaGrupos.filter(
+                              (opcion) =>
+                                opcion.propuesta_id !== grupo.propuesta_id &&
+                                opcion.pista === grupo.pista
+                            );
+                            const edad = edadAproximadaOcio(alumno.fecha_nacimiento);
+
+                            return (
+                              <div
+                                key={`propuesta-${grupo.propuesta_id}-${alumno.alumno_id}`}
+                                style={{
+                                  ...agendaAlumnoLinea,
+                                  display: 'grid',
+                                  gridTemplateColumns:
+                                    esVistaMovilApp || destinos.length === 0
+                                      ? 'minmax(0, 1fr)'
+                                      : 'minmax(0, 1fr) minmax(170px, 210px)',
+                                  gap: 10,
+                                  alignItems: 'center',
+                                  width: '100%',
+                                  minWidth: 0,
+                                  boxSizing: 'border-box',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    minWidth: 0,
+                                    overflowWrap: 'anywhere',
+                                  }}
+                                >
+                                  <strong>{alumno.alumno}</strong>
+                                  <p
+                                    style={{
+                                      margin: '4px 0 0',
+                                      overflowWrap: 'anywhere',
+                                    }}
+                                  >
+                                    {alumno.nivel_usado || alumno.nivel || '-'} · {grupo.pista}
+                                    {edad !== null ? ` · ${edad} años` : ''}
+                                  </p>
+                                  {explicacionCompactaPropuestaOcioApp(
+                                    alumno,
+                                    grupo,
+                                    miembros
+                                  ) && (
+                                    <p
+                                      style={{
+                                        margin: '3px 0 0',
+                                        fontSize: 11,
+                                        lineHeight: 1.25,
+                                        color: '#64748b',
+                                        fontWeight: 700,
+                                        overflowWrap: 'anywhere',
+                                      }}
+                                    >
+                                      {explicacionCompactaPropuestaOcioApp(
+                                        alumno,
+                                        grupo,
+                                        miembros
+                                      )}
+                                    </p>
+                                  )}
+                                </div>
+
+                                {destinos.length > 0 && (
+                                  <label
+                                    style={{
+                                      ...labelCampo,
+                                      width: '100%',
+                                      minWidth: 0,
+                                      maxWidth: '100%',
+                                    }}
+                                  >
+                                    Mover a
+                                    <select
+                                      value=""
+                                      style={{
+                                        width: '100%',
+                                        minWidth: 0,
+                                        maxWidth: '100%',
+                                        boxSizing: 'border-box',
+                                      }}
+                                      onChange={(e) => {
+                                        moverAlumnoEntrePropuestasOcio(
+                                          alumno.alumno_id,
+                                          grupo.propuesta_id,
+                                          e.target.value
+                                        );
+                                        e.currentTarget.value = '';
+                                      }}
+                                    >
+                                      <option value="">Mantener aquí</option>
+                                      {destinos.map((destino) => (
+                                        <option
+                                          key={destino.propuesta_id}
+                                          value={destino.propuesta_id}
+                                        >
+                                          {destino.nombre}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                    marginTop: 14,
+                    justifyContent: 'flex-end',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={crearGrupoVacioPropuestaOcio}
+                    disabled={ocioGuardandoPropuesta}
+                    style={botonSecundario}
+                  >
+                    + Crear grupo vacío
+                  </button>
+                  <button
+                    type="button"
+                    onClick={generarPropuestaGruposOcio}
+                    disabled={ocioGuardandoPropuesta}
+                    style={botonSecundario}
+                  >
+                    Recalcular propuesta
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void crearGruposEstablesDesdePropuestaOcio()}
+                    disabled={
+                      ocioGuardandoPropuesta ||
+                      ocioPropuestaGrupos.some((grupo) => Boolean(grupo.aviso))
+                    }
+                    style={botonPrincipal}
+                  >
+                    {ocioGuardandoPropuesta
+                      ? 'Creando grupos...'
+                      : 'Crear grupos estables'}
+                  </button>
+                </div>
+              </article>
+            )}
+
+            <article
+              id="ocio-grupos-turno-activo"
+              style={{ ...agendaBloqueBlanco, scrollMarginTop: 18 }}
+            >
+              <div style={agendaCabeceraLinea}>
+                <div>
+                  <span
+                    style={{
+                      color: '#16a34a',
+                      fontWeight: 900,
+                      fontSize: 12,
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {ocioTurnoVista}
+                  </span>
+                  <h3 style={{ margin: '3px 0 0' }}>
+                    {configuracionTurnos[ocioTurnoVista].hora}
+                  </h3>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                    justifyContent: 'flex-end',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOcioPanelOperativo(
+                        ocioPanelOperativo === 'cambios' ? 'ninguno' : 'cambios'
+                      );
+                      cargarOcioCambios();
+                      window.setTimeout(() => {
+                        document
+                          .getElementById('ocio-panel-operativo')
+                          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }, 70);
+                    }}
+                    style={
+                      ocioPanelOperativo === 'cambios'
+                        ? botonPrincipal
+                        : botonSecundario
+                    }
+                  >
+                    Cambios esta semana
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOcioPanelOperativo(
+                        ocioPanelOperativo === 'semana' ? 'ninguno' : 'semana'
+                      );
+                      cargarOcioCambios();
+                      cargarEntrenadores();
+                      cargarDisponibilidad();
+                      cargarAgendaOperativaDirecta();
+                      window.setTimeout(() => {
+                        document
+                          .getElementById('ocio-panel-operativo')
+                          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }, 70);
+                    }}
+                    style={
+                      ocioPanelOperativo === 'semana'
+                        ? botonPrincipal
+                        : botonSecundario
+                    }
+                  >
+                    Preparar semana
+                  </button>
+                </div>
+              </div>
+
+              {gruposTurno.length === 0 ? (
+                <div style={{ ...agendaVacio, marginTop: 12 }}>
+                  Aún no hay grupos estables. Revisa los alumnos del turno y usa
+                  “Recomendar grupos” para crear la estructura inicial.
+                </div>
+              ) : (
+                <details
+                  style={{
+                    marginTop: 12,
+                    border: '1px solid #dcfce7',
+                    borderRadius: 14,
+                    background: '#f8fffb',
+                    overflow: 'hidden',
+                  }}
+                >
+                  <summary
+                    style={{
+                      cursor: 'pointer',
+                      padding: '12px 14px',
+                      fontWeight: 900,
+                      color: '#166534',
+                      userSelect: 'none',
+                    }}
+                  >
+                    Ver grupos estables · {gruposTurno.length}
+                  </summary>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns:
+                        'repeat(auto-fit, minmax(280px, 1fr))',
+                      gap: 12,
+                      padding: '0 12px 12px',
+                    }}
+                  >
+                  {gruposTurno.map((grupo) => {
+                    const miembrosGrupo =
+                      alumnosPorGrupoOcio.get(grupo.grupo_id) || [];
+                    const gestionAbierta =
+                      ocioGrupoGestionAbiertoId === grupo.grupo_id;
+                    const disponibles =
+                      alumnosDisponiblesParaGrupoOcio(grupo);
+                    const avisosEvolucion =
+                      avisosEvolucionPorGrupo.get(grupo.grupo_id) || [];
+
+                    return (
+                    <article
+                      key={grupo.grupo_id}
+                      style={{
+                        ...agendaGrupoResumen,
+                        border: gestionAbierta
+                          ? '2px solid #16a34a'
+                          : '1px solid #bbf7d0',
+                        background: '#ffffff',
+                      }}
+                    >
+                      <div style={agendaGrupoLinea}>
+                        <div>
+                          <strong style={{ fontSize: 17 }}>
+                            {grupo.nombre_grupo}
+                          </strong>
+                          <div
+                            style={{
+                              marginTop: 5,
+                              color: '#64748b',
+                              fontSize: 14,
+                            }}
+                          >
+                            {grupo.nivel_grupo || '-'} · {grupo.pista || '-'}
+                          </div>
+                        </div>
+                        <strong
+                          style={{
+                            minWidth: 42,
+                            textAlign: 'center',
+                            borderRadius: 12,
+                            background: '#f0fdf4',
+                            color: '#166534',
+                            padding: '7px 9px',
+                          }}
+                        >
+                          {miembrosGrupo.length || grupo.total_alumnos}
+                        </strong>
+                      </div>
+
+                      {miembrosGrupo.length > 0 ? (
+                        <ul
+                          style={{
+                            margin: '12px 0 0 18px',
+                            padding: 0,
+                            lineHeight: 1.55,
+                          }}
+                        >
+                          {miembrosGrupo.map((alumno) => (
+                            <li key={alumno.alumno_id}>
+                              {nombreAlumnoOcioTarjetaApp(
+                                `${alumno.alumno} · ${
+                                  alumno.nivel_usado || alumno.nivel || ''
+                                }`
+                              )}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : grupo.alumnos_lista ? (
+                        <ul
+                          style={{
+                            margin: '12px 0 0 18px',
+                            padding: 0,
+                            lineHeight: 1.55,
+                          }}
+                        >
+                          {grupo.alumnos_lista
+                            .split(' || ')
+                            .map((alumno, indice) => (
+                              <li key={`${grupo.grupo_id}-${indice}`}>
+                                {nombreAlumnoOcioTarjetaApp(alumno)}
+                              </li>
+                            ))}
+                        </ul>
+                      ) : (
+                        <p style={{ margin: '12px 0 0', color: '#64748b' }}>
+                          Sin alumnos asignados.
+                        </p>
+                      )}
+
+                      {avisosEvolucion.length > 0 && (
+                        <details
+                          style={{
+                            ...avisoNeutral,
+                            marginTop: 12,
+                            padding: '9px 11px',
+                            borderColor: '#fdba74',
+                            background: '#fff7ed',
+                          }}
+                        >
+                          <summary
+                            style={{
+                              cursor: 'pointer',
+                              fontWeight: 900,
+                              color: '#9a3412',
+                            }}
+                          >
+                            Revisar grupo estable · {avisosEvolucion.length}
+                          </summary>
+
+                          <div
+                            style={{
+                              display: 'grid',
+                              gap: 8,
+                              marginTop: 9,
+                            }}
+                          >
+                            {avisosEvolucion.map((aviso) => (
+                              <div
+                                key={`evolucion-${grupo.grupo_id}-${aviso.alumno}`}
+                                style={{
+                                  paddingTop: 7,
+                                  borderTop: '1px solid #fed7aa',
+                                }}
+                              >
+                                <strong>{aviso.alumno}</strong> · Nivel{' '}
+                                {aviso.nivelActual}
+                                {aviso.grupoSugerido ? (
+                                  <div
+                                    style={{
+                                      marginTop: 4,
+                                      color: '#7c2d12',
+                                    }}
+                                  >
+                                    Mejor encaje posible:{' '}
+                                    {aviso.grupoSugerido.dia_semana} ·{' '}
+                                    {horaCorta(
+                                      aviso.grupoSugerido.hora_inicio
+                                    )} ·{' '}
+                                    {aviso.grupoSugerido.nombre_grupo}
+                                  </div>
+                                ) : (
+                                  <div
+                                    style={{
+                                      marginTop: 4,
+                                      color: '#7c2d12',
+                                    }}
+                                  >
+                                    Revisar manualmente su grupo estable.
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </details>
+                      )}
+
+                      {trabajoDiarioOcioSemana(grupo) && (
+                        <details
+                          style={{
+                            ...avisoNeutral,
+                            marginTop: 12,
+                            padding: '9px 11px',
+                          }}
+                        >
+                          <summary
+                            style={{ cursor: 'pointer', fontWeight: 800 }}
+                          >
+                            Trabajo diario previsto
+                          </summary>
+                          <div
+                            style={{
+                              marginTop: 8,
+                              whiteSpace: 'pre-wrap',
+                              lineHeight: 1.5,
+                            }}
+                          >
+                            {trabajoDiarioOcioSemana(grupo)}
+                          </div>
+                        </details>
+                      )}
+
+                      {observacionesOcioSemana(grupo) && (
+                        <details
+                          style={{
+                            ...avisoNeutral,
+                            marginTop: 8,
+                            padding: '9px 11px',
+                          }}
+                        >
+                          <summary
+                            style={{ cursor: 'pointer', fontWeight: 800 }}
+                          >
+                            Observaciones operativas
+                          </summary>
+                          <div style={{ marginTop: 8 }}>
+                            {formatearObservaciones(observacionesOcioSemana(grupo))}
+                          </div>
+                        </details>
+                      )}
+
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 8,
+                          marginTop: 13,
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const nuevoId = gestionAbierta
+                              ? ''
+                              : grupo.grupo_id;
+                            setOcioGrupoGestionAbiertoId(nuevoId);
+                            setOcioBusquedaGestionGrupo('');
+                            if (nuevoId) {
+                              window.setTimeout(() => {
+                                document
+                                  .getElementById(
+                                    `ocio-gestion-grupo-${grupo.grupo_id}`
+                                  )
+                                  ?.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'nearest',
+                                  });
+                              }, 70);
+                            }
+                          }}
+                          style={
+                            gestionAbierta ? botonPrincipal : botonSecundario
+                          }
+                        >
+                          {gestionAbierta
+                            ? 'Cerrar gestión'
+                            : 'Gestionar alumnos'}
+                        </button>
+                        <button
+                          onClick={() => editarGrupoOcio(grupo)}
+                          style={botonSecundario}
+                        >
+                          Editar grupo
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => eliminarGrupoOcio(grupo)}
+                          style={{
+                            ...botonSecundario,
+                            color: '#b91c1c',
+                            borderColor: '#fecaca',
+                          }}
+                        >
+                          Borrar grupo estable
+                        </button>
+                      </div>
+
+                      {gestionAbierta && (
+                        <div
+                          id={`ocio-gestion-grupo-${grupo.grupo_id}`}
+                          style={{
+                            ...avisoNeutral,
+                            marginTop: 12,
+                            padding: 12,
+                            scrollMarginTop: 18,
+                          }}
+                        >
+                          <strong>Grupo estable · alumnos</strong>
+
+                          <div style={{ display: 'grid', gap: 7, marginTop: 10 }}>
+                            {miembrosGrupo.length === 0 ? (
+                              <span style={{ color: '#64748b' }}>
+                                Todavía no hay alumnos en este grupo.
+                              </span>
+                            ) : (
+                              miembrosGrupo.map((alumno) => (
+                                <div
+                                  key={`gestion-${grupo.grupo_id}-${alumno.alumno_id}`}
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    gap: 10,
+                                    padding: '8px 0',
+                                    borderBottom: '1px solid #e2e8f0',
+                                  }}
+                                >
+                                  <div style={{ minWidth: 0 }}>
+                                    <strong>{alumno.alumno}</strong>
+                                    <div
+                                      style={{
+                                        color: '#64748b',
+                                        fontSize: 13,
+                                        marginTop: 2,
+                                      }}
+                                    >
+                                      Nivel {alumno.nivel_usado || alumno.nivel || '-'}
+                                    </div>
+                                  </div>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      quitarAlumnoGrupoOcio(
+                                        alumno.alumno_id,
+                                        grupo.grupo_id
+                                      )
+                                    }
+                                    style={{
+                                      ...botonSecundario,
+                                      color: '#b91c1c',
+                                      borderColor: '#fecaca',
+                                    }}
+                                  >
+                                    Quitar
+                                  </button>
+                                </div>
+                              ))
+                            )}
+                          </div>
+
+                          <div
+                            style={{
+                              marginTop: 14,
+                              paddingTop: 12,
+                              borderTop: '1px solid #e2e8f0',
+                            }}
+                          >
+                            <strong>Añadir alumno al grupo estable</strong>
+                            <input
+                              value={ocioBusquedaGestionGrupo}
+                              onChange={(e) =>
+                                setOcioBusquedaGestionGrupo(e.target.value)
+                              }
+                              placeholder="Buscar alumno del mismo turno..."
+                              style={{ ...inputCampo, marginTop: 8 }}
+                            />
+
+                            <div
+                              style={{
+                                display: 'grid',
+                                gap: 7,
+                                marginTop: 9,
+                                maxHeight: 230,
+                                overflowY: 'auto',
+                              }}
+                            >
+                              {disponibles.length === 0 ? (
+                                <span style={{ color: '#64748b' }}>
+                                  No hay alumnos disponibles de este turno.
+                                </span>
+                              ) : (
+                                disponibles.slice(0, 20).map((alumno) => (
+                                  <button
+                                    type="button"
+                                    key={`disponible-${grupo.grupo_id}-${alumno.alumno_id}`}
+                                    onClick={() =>
+                                      asignarAlumnoGrupoOcio(
+                                        alumno.alumno_id,
+                                        grupo.grupo_id
+                                      )
+                                    }
+                                    style={{
+                                      ...botonSecundario,
+                                      textAlign: 'left',
+                                      justifyContent: 'space-between',
+                                      display: 'flex',
+                                      gap: 10,
+                                    }}
+                                  >
+                                    <span>{alumno.alumno}</span>
+                                    <span style={{ color: '#64748b' }}>
+                                      {alumno.nivel_usado || alumno.nivel || '-'}
+                                    </span>
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </article>
+                    );
+                  })}
+                  </div>
+                </details>
+              )}
+            </article>
+
+            {ocioPanelOperativo !== 'ninguno' && (
+              <section
+                id="ocio-panel-operativo"
+                style={{
+                  display: 'grid',
+                  gap: 14,
+                  scrollMarginTop: 18,
+                }}
+              >
+                <article style={agendaBloqueBlanco}>
+                  <div style={agendaCabeceraLinea}>
+                    <div>
+                      <span
+                        style={{
+                          color: '#16a34a',
+                          fontWeight: 900,
+                          fontSize: 12,
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        Ocio · semana operativa
+                      </span>
+                      <h3 style={{ margin: '3px 0 0' }}>
+                        {ocioPanelOperativo === 'cambios'
+                          ? 'Cambios puntuales'
+                          : ocioPanelOperativo === 'nuevo'
+                          ? 'Nuevo alumno'
+                          : 'Preparar semana'}
+                      </h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setOcioPanelOperativo('ninguno')}
+                      style={botonSecundario}
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+
+                  {ocioPanelOperativo !== 'nuevo' && (
+                  <div style={{ ...gridFormulario, marginTop: 12 }}>
+                    <label style={labelCampo}>
+                      Temporada
+                      <select
+                        value={anioInicioTemporadaAgenda}
+                        onChange={(e) => {
+                          setAnioInicioTemporadaAgenda(Number(e.target.value));
+                          setSemanaAgendaInicio('');
+                        }}
+                      >
+                        {opcionesTemporadaAgenda.map((anio) => (
+                          <option key={anio} value={anio}>
+                            {anio}/{anio + 1}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label style={labelCampo}>
+                      Mes
+                      <select
+                        value={mesAgendaActivo}
+                        onChange={(e) => {
+                          setMesAgenda(e.target.value);
+                          setSemanaAgendaInicio('');
+                        }}
+                      >
+                        {mesesAgenda.map((mes) => (
+                          <option key={mes} value={mes}>
+                            {capitalizarPrimera(
+                              nombreMesAgendaDesdeClave(mes)
+                            )}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label style={labelCampo}>
+                      Semana lunes-domingo
+                      <select
+                        value={semanaAgendaActiva}
+                        onChange={(e) => setSemanaAgendaInicio(e.target.value)}
+                      >
+                        {semanasAgenda.map((semana) => (
+                          <option key={semana} value={semana}>
+                            Semana {rangoSemanaAgenda(semana)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  )}
+                </article>
+
+                {ocioPanelOperativo === 'nuevo' && (() => {
+                  const turno = horarioTurnoOcio(ocioTurnoVista);
+                  const turnoActual = ocioNuevoRecomendaciones.filter(
+                    (opcion) =>
+                      opcion.esTurnoActual &&
+                      opcion.estado !== 'NO_ENCAJA'
+                  );
+                  const recomendadoActual = turnoActual.filter(
+                    (opcion) => opcion.estado === 'RECOMENDADO'
+                  );
+                  const revisarActual = turnoActual.filter(
+                    (opcion) => opcion.estado === 'REVISAR'
+                  );
+
+                  const alternativas = ocioNuevoRecomendaciones
+                    .filter(
+                      (opcion) =>
+                        !opcion.esTurnoActual &&
+                        opcion.estado !== 'NO_ENCAJA' &&
+                        esTurnoOficialOcio(opcion.grupo)
+                    )
+                    .sort((a, b) => {
+                      if (a.estado !== b.estado) {
+                        return a.estado === 'RECOMENDADO' ? -1 : 1;
+                      }
+                      return b.score - a.score;
+                    })
+                    .slice(0, 6);
+
+                  return (
+                    <article style={agendaBloqueBlanco}>
+                      <div>
+                        <span
+                          style={{
+                            color: '#16a34a',
+                            fontWeight: 900,
+                            fontSize: 12,
+                            textTransform: 'uppercase',
+                          }}
+                        >
+                          Turno solicitado
+                        </span>
+                        <h3 style={{ margin: '3px 0 0' }}>
+                          {ocioTurnoVista} · {turno.inicio}–{turno.fin}
+                        </h3>
+                      </div>
+
+                      <div
+                        style={{
+                          ...gridFormulario,
+                          marginTop: 14,
+                          alignItems: 'end',
+                        }}
+                      >
+                        <label style={{ ...labelCampo, position: 'relative' }}>
+                          Nombre y apellidos
+                          <input
+                            value={ocioNuevoNombre}
+                            onChange={(e) =>
+                              buscarFichaNuevoOcio(e.target.value)
+                            }
+                            placeholder="Empieza a escribir el nombre..."
+                            autoComplete="off"
+                          />
+
+                          {ocioNuevoSugerencias.length > 0 && (
+                            <div
+                              style={{
+                                position: 'absolute',
+                                zIndex: 20,
+                                left: 0,
+                                right: 0,
+                                top: '100%',
+                                marginTop: 4,
+                                background: '#ffffff',
+                                border: '1px solid #cbd5e1',
+                                borderRadius: 12,
+                                boxShadow:
+                                  '0 14px 30px rgba(15,23,42,0.14)',
+                                overflow: 'hidden',
+                              }}
+                            >
+                              {ocioNuevoSugerencias.map((alumno) => (
+                                <button
+                                  type="button"
+                                  key={`ocio-sugerencia-${alumno.alumno_id}`}
+                                  onClick={() =>
+                                    seleccionarFichaNuevoOcio(alumno)
+                                  }
+                                  style={{
+                                    width: '100%',
+                                    border: 0,
+                                    borderBottom: '1px solid #e2e8f0',
+                                    background: '#ffffff',
+                                    padding: '10px 12px',
+                                    textAlign: 'left',
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  <strong>{alumno.alumno}</strong>
+                                  <span
+                                    style={{
+                                      marginLeft: 8,
+                                      color: '#64748b',
+                                    }}
+                                  >
+                                    {alumno.nivel_actual ||
+                                      alumno.ultimo_nivel_reportado ||
+                                      alumno.nivel_estimado ||
+                                      'Sin nivel'}
+                                  </span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </label>
+
+                        <label style={labelCampo}>
+                          Nivel
+                          <select
+                            value={ocioNuevoNivel}
+                            onChange={(e) => {
+                              setOcioNuevoNivel(e.target.value);
+                              setOcioNuevoRecomendaciones([]);
+                            }}
+                          >
+                            <option value="">
+                              Automático / INICIACIÓN si es nuevo
+                            </option>
+                            {opcionesNivel.map((nivel) => (
+                              <option key={`ocio-nuevo-${nivel}`} value={nivel}>
+                                {nivel}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={analizarNuevoAlumnoOcio}
+                        disabled={ocioNuevoAnalizando}
+                        style={{ ...botonPrincipal, marginTop: 12 }}
+                      >
+                        {ocioNuevoAnalizando
+                          ? 'Analizando…'
+                          : 'Analizar encaje'}
+                      </button>
+
+                      {ocioNuevoRecomendaciones.length > 0 && (
+                        <div style={{ display: 'grid', gap: 12, marginTop: 14 }}>
+                          {recomendadoActual.length > 0 && (
+                            <div>
+                              <strong
+                                style={{
+                                  display: 'block',
+                                  marginBottom: 8,
+                                  color: '#166534',
+                                }}
+                              >
+                                Encaja en el turno solicitado
+                              </strong>
+                              <div style={{ display: 'grid', gap: 8 }}>
+                                {recomendadoActual.map((opcion) => (
+                                  <article
+                                    key={`ocio-rec-actual-${opcion.grupo.grupo_id}`}
+                                    style={{
+                                      ...avisoCompleto,
+                                      background: '#f0fdf4',
+                                      borderColor: '#86efac',
+                                    }}
+                                  >
+                                    <div style={agendaCabeceraLinea}>
+                                      <div>
+                                        <strong>
+                                          {opcion.grupo.nombre_grupo} · Nivel{' '}
+                                          {opcion.grupo.nivel_grupo || '-'}
+                                        </strong>
+                                        <div style={{ marginTop: 4 }}>
+                                          {opcion.grupo.pista || '-'} · Punto{' '}
+                                          {opcion.grupo.punto_encuentro || '-'} ·{' '}
+                                          {opcion.totalActual} →{' '}
+                                          {opcion.totalFinal} niños
+                                        </div>
+                                        <div
+                                          style={{
+                                            color: '#475569',
+                                            marginTop: 4,
+                                          }}
+                                        >
+                                          {opcion.motivo}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      disabled={
+                                        ocioNuevoGuardandoGrupoId ===
+                                        opcion.grupo.grupo_id
+                                      }
+                                      onClick={() =>
+                                        incorporarNuevoAlumnoOcio(opcion)
+                                      }
+                                      style={{
+                                        ...botonPrincipal,
+                                        width: '100%',
+                                        marginTop: 9,
+                                      }}
+                                    >
+                                      {ocioNuevoGuardandoGrupoId ===
+                                      opcion.grupo.grupo_id
+                                        ? 'Añadiendo…'
+                                        : 'Añadir al grupo estable'}
+                                    </button>
+                                  </article>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {revisarActual.length > 0 && (
+                            <div>
+                              <strong
+                                style={{
+                                  display: 'block',
+                                  marginBottom: 8,
+                                  color: '#9a3412',
+                                }}
+                              >
+                                Este turno requiere revisión
+                              </strong>
+                              <div style={{ display: 'grid', gap: 8 }}>
+                                {revisarActual.map((opcion) => (
+                                  <article
+                                    key={`ocio-rec-revisar-${opcion.grupo.grupo_id}`}
+                                    style={{
+                                      ...avisoNeutral,
+                                      borderColor: '#fdba74',
+                                      background: '#fff7ed',
+                                    }}
+                                  >
+                                    <strong>
+                                      {opcion.grupo.nombre_grupo} · Nivel{' '}
+                                      {opcion.grupo.nivel_grupo || '-'}
+                                    </strong>
+                                    <div style={{ marginTop: 4 }}>
+                                      {opcion.totalActual} → {opcion.totalFinal}{' '}
+                                      niños · {opcion.motivo}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      disabled={
+                                        ocioNuevoGuardandoGrupoId ===
+                                        opcion.grupo.grupo_id
+                                      }
+                                      onClick={() =>
+                                        incorporarNuevoAlumnoOcio(opcion)
+                                      }
+                                      style={{
+                                        ...botonSecundario,
+                                        width: '100%',
+                                        marginTop: 9,
+                                        color: '#9a3412',
+                                        borderColor: '#fdba74',
+                                      }}
+                                    >
+                                      Añadir con revisión manual
+                                    </button>
+                                  </article>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {recomendadoActual.length === 0 &&
+                            revisarActual.length === 0 && (
+                              <div
+                                style={{
+                                  ...avisoNeutral,
+                                  borderColor: '#fecaca',
+                                  background: '#fff7f7',
+                                  color: '#991b1b',
+                                }}
+                              >
+                                No hay un grupo compatible en el turno
+                                solicitado.
+                              </div>
+                            )}
+
+                          {alternativas.length > 0 && (
+                            <div>
+                              <strong
+                                style={{
+                                  display: 'block',
+                                  marginBottom: 8,
+                                }}
+                              >
+                                Opciones en otros días de Ocio
+                              </strong>
+                              <div style={{ display: 'grid', gap: 8 }}>
+                                {alternativas.map((opcion) => {
+                                  const recomendado =
+                                    opcion.estado === 'RECOMENDADO';
+
+                                  return (
+                                    <article
+                                      key={`ocio-rec-alt-${opcion.grupo.grupo_id}`}
+                                      style={{
+                                        ...(recomendado
+                                          ? avisoCompleto
+                                          : avisoNeutral),
+                                        background: recomendado
+                                          ? '#f0fdf4'
+                                          : '#fff7ed',
+                                        borderColor: recomendado
+                                          ? '#86efac'
+                                          : '#fdba74',
+                                      }}
+                                    >
+                                      <div style={agendaCabeceraLinea}>
+                                        <div>
+                                          <strong>
+                                            {opcion.grupo.dia_semana} ·{' '}
+                                            {horaCorta(
+                                              opcion.grupo.hora_inicio
+                                            )}–
+                                            {horaCorta(
+                                              opcion.grupo.hora_fin
+                                            )}
+                                          </strong>
+                                          <div style={{ marginTop: 4 }}>
+                                            {opcion.grupo.nombre_grupo} · Nivel{' '}
+                                            {opcion.grupo.nivel_grupo || '-'} ·{' '}
+                                            {opcion.totalActual} →{' '}
+                                            {opcion.totalFinal} niños
+                                          </div>
+                                          <div
+                                            style={{
+                                              color: '#475569',
+                                              marginTop: 4,
+                                            }}
+                                          >
+                                            {opcion.motivo}
+                                          </div>
+                                        </div>
+
+                                        <strong
+                                          style={{
+                                            color: recomendado
+                                              ? '#166534'
+                                              : '#9a3412',
+                                            fontSize: 12,
+                                          }}
+                                        >
+                                          {recomendado
+                                            ? 'RECOMENDADO'
+                                            : 'REVISAR'}
+                                        </strong>
+                                      </div>
+
+                                      <button
+                                        type="button"
+                                        disabled={
+                                          ocioNuevoGuardandoGrupoId ===
+                                          opcion.grupo.grupo_id
+                                        }
+                                        onClick={() =>
+                                          incorporarNuevoAlumnoOcio(opcion)
+                                        }
+                                        style={{
+                                          ...(recomendado
+                                            ? botonPrincipal
+                                            : botonSecundario),
+                                          width: '100%',
+                                          marginTop: 9,
+                                        }}
+                                      >
+                                        {ocioNuevoGuardandoGrupoId ===
+                                        opcion.grupo.grupo_id
+                                          ? 'Añadiendo…'
+                                          : recomendado
+                                          ? 'Padres OK · añadir a este turno'
+                                          : 'Padres OK · añadir con revisión'}
+                                      </button>
+                                    </article>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {alternativas.length === 0 &&
+                            recomendadoActual.length === 0 &&
+                            revisarActual.length === 0 && (
+                              <div
+                                style={{
+                                  ...avisoNeutral,
+                                  borderColor: '#fecaca',
+                                  background: '#fff7f7',
+                                  color: '#991b1b',
+                                }}
+                              >
+                                Tampoco hay un grupo compatible en los otros
+                                turnos de Ocio.
+                              </div>
+                            )}
+                        </div>
+                      )}
+                    </article>
+                  );
+                })()}
+
+                {ocioPanelOperativo === 'cambios' && (
+                  <>
+                    <article style={agendaBloqueBlanco}>
+                      <div style={agendaCabeceraLinea}>
+                        <div>
+                          <h3 style={{ margin: 0 }}>Cambios de esta semana</h3>
+                          <p style={{ margin: '5px 0 0', color: '#64748b' }}>
+                            Cambios puntuales sin modificar el grupo estable.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => abrirFormularioCambioOcio()}
+                          style={botonPrincipal}
+                        >
+                          + Cambio puntual
+                        </button>
+                      </div>
+
+                      {mostrarFormularioOcioCambio && (
+                        <div
+                          style={{
+                            ...avisoNeutral,
+                            marginTop: 12,
+                            padding: 12,
+                          }}
+                        >
+                          <div style={gridFormulario}>
+                            <label style={labelCampo}>
+                              Alumno
+                              <select
+                                value={ocioCambioForm.alumnoId}
+                                onChange={(e) =>
+                                  setOcioCambioForm({
+                                    ...ocioCambioForm,
+                                    alumnoId: e.target.value,
+                                    diaDestino: '',
+                                    grupoDestinoId: '',
+                                    fecha: '',
+                                  })
+                                }
+                              >
+                                <option value="">Seleccionar alumno</option>
+                                {ocioAlumnos
+                                  .slice()
+                                  .sort((a, b) =>
+                                    a.alumno.localeCompare(b.alumno)
+                                  )
+                                  .map((alumno) => (
+                                    <option
+                                      key={`cambio-int-${alumno.alumno_id}`}
+                                      value={alumno.alumno_id}
+                                    >
+                                      {alumno.alumno} ·{' '}
+                                      {alumno.grupo_estable || 'Sin grupo'}
+                                    </option>
+                                  ))}
+                              </select>
+                            </label>
+
+                            <label style={labelCampo}>
+                              Día solicitado
+                              <select
+                                value={ocioCambioForm.diaDestino}
+                                onChange={(e) => {
+                                  const diaDestino = e.target.value as
+                                    | ''
+                                    | 'Jueves'
+                                    | 'Sábado'
+                                    | 'Domingo';
+
+                                  setOcioCambioForm({
+                                    ...ocioCambioForm,
+                                    diaDestino,
+                                    grupoDestinoId: '',
+                                    fecha: fechaCambioOcioPorDia(diaDestino),
+                                  });
+                                }}
+                              >
+                                <option value="">Seleccionar día</option>
+                                {(['Jueves', 'Sábado', 'Domingo'] as const)
+                                  .filter(
+                                    (dia) =>
+                                      textoSinAcentosGrupoApp(dia) !==
+                                      textoSinAcentosGrupoApp(
+                                        ocioAlumnoCambioSeleccionado?.grupo_dia ||
+                                          ocioAlumnoCambioSeleccionado?.dia_fijo ||
+                                          ''
+                                      )
+                                  )
+                                  .map((dia) => (
+                                    <option
+                                      key={`cambio-dia-int-${dia}`}
+                                      value={dia}
+                                    >
+                                      {dia} · {horarioTurnoOcio(dia).inicio}-
+                                      {horarioTurnoOcio(dia).fin}
+                                    </option>
+                                  ))}
+                              </select>
+                            </label>
+
+                            <label style={labelCampo}>
+                              Nota interna
+                              <textarea
+                                value={ocioCambioForm.motivo}
+                                onChange={(e) =>
+                                  setOcioCambioForm({
+                                    ...ocioCambioForm,
+                                    motivo: e.target.value,
+                                  })
+                                }
+                                rows={2}
+                                placeholder="Ej.: viene sábado en vez de domingo"
+                              />
+                            </label>
+                          </div>
+
+                          {renderRecomendadorCambioPuntualOcio()}
+
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 8,
+                              marginTop: 10,
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={guardarCambioPuntualOcio}
+                              disabled={
+                                !ocioCambioForm.alumnoId ||
+                                !ocioCambioForm.diaDestino ||
+                                !ocioCambioForm.grupoDestinoId
+                              }
+                              style={botonPrincipal}
+                            >
+                              Confirmar cambio puntual
+                            </button>
+                            <button
+                              type="button"
+                              onClick={limpiarFormularioCambioOcio}
+                              style={botonSecundario}
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {cambiosOcioSemana.length === 0 ? (
+                        <div style={{ ...agendaVacio, marginTop: 12 }}>
+                          No hay cambios puntuales esta semana.
+                        </div>
+                      ) : (
+                        <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
+                          {cambiosOcioSemana.map((cambio) => (
+                            <div
+                              key={`cambio-integrado-${cambio.reubicacion_id}`}
+                              style={miniTarjetaBlanca}
+                            >
+                              <div style={agendaCabeceraLinea}>
+                                <div>
+                                  <strong>{cambio.alumno}</strong>
+                                  <div
+                                    style={{
+                                      marginTop: 4,
+                                      color: '#64748b',
+                                    }}
+                                  >
+                                    {formatearFecha(cambio.fecha)} ·{' '}
+                                    {cambio.grupo_origen || 'Origen'} →{' '}
+                                    {cambio.grupo_destino || 'Destino'}
+                                  </div>
+                                </div>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    gap: 6,
+                                    flexWrap: 'wrap',
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      abrirFormularioCambioOcio(cambio)
+                                    }
+                                    style={botonSecundario}
+                                  >
+                                    Modificar
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      eliminarCambioPuntualOcio(cambio)
+                                    }
+                                    style={botonPeligroMini}
+                                  >
+                                    Eliminar
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </article>
+                  </>
+                )}
+
+                {ocioPanelOperativo === 'semana' && (
+                  <>
+                    {cambiosOcioSemana.length > 0 && (
+                      <details style={avisoNeutral}>
+                        <summary
+                          style={{ cursor: 'pointer', fontWeight: 800 }}
+                        >
+                          Cambios puntuales de esta semana ·{' '}
+                          {cambiosOcioSemana.length}
+                        </summary>
+                        <div
+                          style={{
+                            display: 'grid',
+                            gap: 7,
+                            marginTop: 9,
+                          }}
+                        >
+                          {cambiosOcioSemana.map((cambio) => (
+                            <div
+                              key={`prep-cambio-${cambio.reubicacion_id}`}
+                            >
+                              <strong>{cambio.alumno}</strong> ·{' '}
+                              {cambio.grupo_origen || 'Origen'} →{' '}
+                              {cambio.grupo_destino || 'Destino'}
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+
+                    {(() => {
+                      const gruposDiaResumen =
+                        gruposOcioDiaSemana(ocioTurnoVista);
+                      const alumnosDiaResumen = new Set(
+                        gruposDiaResumen.flatMap((grupo) =>
+                          alumnosGrupoOcioEstable(grupo.grupo_id).map(
+                            (alumno) => alumno.alumno_id
+                          )
+                        )
+                      ).size;
+                      const vienenDiaResumen = new Set(
+                        gruposDiaResumen.flatMap((grupo) =>
+                          alumnosGrupoOcioEstable(grupo.grupo_id)
+                            .filter((alumno) =>
+                              alumnoVieneOcioSemana(alumno.alumno_id)
+                            )
+                            .map((alumno) => alumno.alumno_id)
+                        )
+                      ).size;
+
+                      return (
+                        <article style={agendaBloqueBlanco}>
+                          <div style={gridMiniMetricas}>
+                            <div
+                              style={{
+                                border: '1px solid #e2e8f0',
+                                borderRadius: 12,
+                                padding: '12px 14px',
+                                background: '#f8fafc',
+                                display: 'grid',
+                                gap: 3,
+                              }}
+                            >
+                              <strong>{gruposDiaResumen.length}</strong>
+                              <span>grupos estables</span>
+                            </div>
+                            <div
+                              style={{
+                                border: '1px solid #e2e8f0',
+                                borderRadius: 12,
+                                padding: '12px 14px',
+                                background: '#f8fafc',
+                                display: 'grid',
+                                gap: 3,
+                              }}
+                            >
+                              <strong>{alumnosDiaResumen}</strong>
+                              <span>alumnos del día</span>
+                            </div>
+                            <div
+                              style={{
+                                border: '1px solid #e2e8f0',
+                                borderRadius: 12,
+                                padding: '12px 14px',
+                                background: '#f8fafc',
+                                display: 'grid',
+                                gap: 3,
+                              }}
+                            >
+                              <strong>{vienenDiaResumen}</strong>
+                              <span>vienen esta semana</span>
+                            </div>
+                          </div>
+                        </article>
+                      );
+                    })()}
+
+                    <div style={{ display: 'grid', gap: 12 }}>
+                      {gruposOcioDiaSemana(ocioTurnoVista).map((grupo) => {
+                        const fecha = fechaGrupoOcioSemana(grupo);
+                        const alumnosGrupo =
+                          alumnosGrupoOcioEstable(grupo.grupo_id);
+                        const presentes = alumnosGrupo.filter((alumno) =>
+                          alumnoVieneOcioSemana(alumno.alumno_id)
+                        );
+                        return (
+                          <article
+                            key={`ocio-prep-integrado-${grupo.grupo_id}`}
+                            style={tarjeta}
+                          >
+                            <div style={agendaCabeceraLinea}>
+                              <div>
+                                <strong style={{ fontSize: 17 }}>
+                                  {nombreGrupoSemanalOcio(grupo)}
+                                </strong>
+                                <div
+                                  style={{
+                                    marginTop: 5,
+                                    color: '#64748b',
+                                  }}
+                                >
+                                  {capitalizarPrimera(grupo.dia_semana)} ·{' '}
+                                  {formatearFecha(fecha)} ·{' '}
+                                  {horaCorta(grupo.hora_inicio)}-
+                                  {horaCorta(grupo.hora_fin)}
+                                </div>
+                                <div
+                                  style={{
+                                    marginTop: 4,
+                                    color: '#64748b',
+                                  }}
+                                >
+                                  {presentes.length}/{alumnosGrupo.length}{' '}
+                                  vienen
+                                </div>
+                              </div>
+
+                            </div>
+
+                            <div
+                              style={{
+                                display: 'grid',
+                                gap: 7,
+                                marginTop: 12,
+                              }}
+                            >
+                              {alumnosGrupo.map((alumno) => {
+                                const viene = alumnoVieneOcioSemana(
+                                  alumno.alumno_id
+                                );
+                                return (
+                                  <div
+                                    key={`prep-int-${grupo.grupo_id}-${alumno.alumno_id}`}
+                                    style={filaAlumnoAsistencia}
+                                  >
+                                    <strong>{alumno.alumno}</strong>
+                                    <div
+                                      style={{
+                                        display: 'flex',
+                                        gap: 6,
+                                        flexWrap: 'wrap',
+                                      }}
+                                    >
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          cambiarAsistenciaOcioSemana(
+                                            alumno.alumno_id,
+                                            true
+                                          )
+                                        }
+                                        style={
+                                          viene
+                                            ? botonAsistenciaOk
+                                            : botonAsistenciaOff
+                                        }
+                                      >
+                                        Viene
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          cambiarAsistenciaOcioSemana(
+                                            alumno.alumno_id,
+                                            false
+                                          )
+                                        }
+                                        style={
+                                          !viene
+                                            ? botonAsistenciaAusente
+                                            : botonAsistenciaOff
+                                        }
+                                      >
+                                        No viene
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </article>
+                        );
+                      })}
+                    </div>
+
+                    <article
+                      style={{
+                        ...agendaBloqueBlanco,
+                        border: '1px solid #bfdbfe',
+                        background: '#f8fbff',
+                      }}
+                    >
+                      <div style={agendaCabeceraLinea}>
+                        <div>
+                          <strong style={{ fontSize: 17 }}>
+                            ¿Todo revisado?
+                          </strong>
+                          <p
+                            style={{
+                              margin: '5px 0 0',
+                              color: '#64748b',
+                            }}
+                          >
+                            Cuando hayas comprobado la asistencia de todos
+                            los grupos de {ocioTurnoVista}, prepara ese día.
+                            Si ya estaba preparado, sustituirá la versión
+                            anterior de ese mismo día y turno.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            prepararDiaOcioSemana(ocioTurnoVista)
+                          }
+                          style={botonPrincipal}
+                        >
+                          {ocioSemanaResultados.some((resultado) =>
+                            resultadoPerteneceDiaOcio(
+                              resultado,
+                              ocioTurnoVista
+                            )
+                          )
+                            ? `Actualizar ${ocioTurnoVista}`
+                            : `Preparar ${ocioTurnoVista}`}
+                        </button>
+                      </div>
+                    </article>
+
+                    {ocioSemanaResultados.some((resultado) =>
+                      resultadoPerteneceDiaOcio(
+                        resultado,
+                        ocioTurnoVista
+                      )
+                    ) && (
+                      <article
+                        id="ocio-grupos-preparados-semana"
+                        style={{ ...agendaBloqueBlanco, scrollMarginTop: 18 }}
+                      >
+                        <h3 style={{ marginTop: 0 }}>
+                          Grupos preparados · {ocioTurnoVista} ·{' '}
+                          {
+                            ocioSemanaResultados.filter((resultado) =>

@@ -1,0 +1,2499 @@
+            placeholder="tu@email.com"
+            autoComplete="email"
+          />
+        </label>
+
+        <label
+          style={{ display: 'grid', gap: 7, fontWeight: 800, marginBottom: 16 }}
+        >
+          Contraseña
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={authInputApp}
+            placeholder="Contraseña"
+            autoComplete="current-password"
+          />
+        </label>
+
+        {errorAuth && (
+          <div
+            style={{
+              background: '#fff1f2',
+              color: '#be123c',
+              border: '1px solid #fecdd3',
+              borderRadius: 16,
+              padding: 12,
+              marginBottom: 12,
+              fontWeight: 800,
+            }}
+          >
+            {errorAuth}
+          </div>
+        )}
+
+        {mensajeAuth && (
+          <div
+            style={{
+              background: '#ecfdf5',
+              color: '#047857',
+              border: '1px solid #a7f3d0',
+              borderRadius: 16,
+              padding: 12,
+              marginBottom: 12,
+              fontWeight: 800,
+              lineHeight: 1.4,
+            }}
+          >
+            {mensajeAuth}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={cargandoAuth || recuperandoAuth}
+          style={{
+            ...authBotonApp,
+            opacity: cargandoAuth || recuperandoAuth ? 0.7 : 1,
+          }}
+        >
+          {cargandoAuth ? 'Entrando...' : 'Entrar'}
+        </button>
+
+        <button
+          type="button"
+          disabled={cargandoAuth || recuperandoAuth}
+          onClick={recuperarPassword}
+          style={{
+            width: '100%',
+            marginTop: 10,
+            border: '1px solid #bfdbfe',
+            borderRadius: 16,
+            padding: '13px 16px',
+            background: '#eff6ff',
+            color: '#1d4ed8',
+            fontWeight: 900,
+            fontSize: 15,
+            cursor: 'pointer',
+            opacity: cargandoAuth || recuperandoAuth ? 0.7 : 1,
+          }}
+        >
+          {recuperandoAuth
+            ? 'Enviando recuperación...'
+            : '¿Has olvidado tu contraseña?'}
+        </button>
+      </form>
+    </main>
+  );
+}
+
+function PantallaCrearPasswordApp({
+  sesionInvitacion,
+  modo = 'invite',
+  onCompletado,
+}: {
+  sesionInvitacion: SesionAuthApp;
+  modo?: 'invite' | 'recovery';
+  onCompletado: (sesion: SesionAuthApp) => Promise<void>;
+}) {
+  const [password, setPassword] = useState('');
+  const [password2, setPassword2] = useState('');
+  const [cargandoAuth, setCargandoAuth] = useState(false);
+  const [errorAuth, setErrorAuth] = useState('');
+
+  async function guardarPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setErrorAuth('');
+    if (password.length < 8) {
+      setErrorAuth('La contraseña debe tener mínimo 8 caracteres.');
+      return;
+    }
+    if (password !== password2) {
+      setErrorAuth('Las contraseñas no coinciden.');
+      return;
+    }
+
+    try {
+      setCargandoAuth(true);
+      await actualizarPasswordInvitacionApp(
+        sesionInvitacion.access_token,
+        password
+      );
+      const usuario = await obtenerUsuarioAuthApp(
+        sesionInvitacion.access_token
+      );
+      await onCompletado({ ...sesionInvitacion, user: usuario });
+      limpiarUrlAuthApp();
+    } catch (error: any) {
+      setErrorAuth(error?.message || 'No se ha podido guardar la contraseña.');
+    } finally {
+      setCargandoAuth(false);
+    }
+  }
+
+  return (
+    <main style={authShellApp}>
+      <form onSubmit={guardarPassword} style={authCardApp}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 14,
+            alignItems: 'center',
+            marginBottom: 18,
+          }}
+        >
+          <img
+            src="/logo-cabecera-mitico.png"
+            alt="Mítico Club"
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: 18,
+              objectFit: 'contain',
+              background: '#fff',
+              border: '1px solid #e5e7eb',
+            }}
+          />
+          <div>
+            <p
+              style={{
+                margin: 0,
+                color: '#16a34a',
+                fontWeight: 900,
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+                fontSize: 12,
+              }}
+            >
+              {modo === 'recovery'
+                ? 'Recuperación de acceso'
+                : 'Invitación aceptada'}
+            </p>
+            <h1 style={{ margin: '4px 0 0', fontSize: 26 }}>
+              {modo === 'recovery'
+                ? 'Crea una contraseña nueva'
+                : 'Crea tu contraseña'}
+            </h1>
+          </div>
+        </div>
+
+        <p style={{ marginTop: 0, color: '#475569', lineHeight: 1.45 }}>
+          {modo === 'recovery'
+            ? 'Escribe una contraseña nueva. Después entrarás directamente en tu cuenta.'
+            : 'Pon tu contraseña para entrar después con email y contraseña desde el móvil.'}
+        </p>
+
+        <label
+          style={{ display: 'grid', gap: 7, fontWeight: 800, marginBottom: 12 }}
+        >
+          Nueva contraseña
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            style={authInputApp}
+            placeholder="Mínimo 8 caracteres"
+            autoComplete="new-password"
+          />
+        </label>
+
+        <label
+          style={{ display: 'grid', gap: 7, fontWeight: 800, marginBottom: 16 }}
+        >
+          Repetir contraseña
+          <input
+            type="password"
+            value={password2}
+            onChange={(e) => setPassword2(e.target.value)}
+            style={authInputApp}
+            placeholder="Repite la contraseña"
+            autoComplete="new-password"
+          />
+        </label>
+
+        {errorAuth && (
+          <div
+            style={{
+              background: '#fff1f2',
+              color: '#be123c',
+              border: '1px solid #fecdd3',
+              borderRadius: 16,
+              padding: 12,
+              marginBottom: 12,
+              fontWeight: 800,
+            }}
+          >
+            {errorAuth}
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={cargandoAuth}
+          style={{ ...authBotonApp, opacity: cargandoAuth ? 0.7 : 1 }}
+        >
+          {cargandoAuth
+            ? 'Guardando...'
+            : modo === 'recovery'
+            ? 'Guardar contraseña nueva y entrar'
+            : 'Guardar contraseña y entrar'}
+        </button>
+      </form>
+    </main>
+  );
+}
+
+function PantallaAuthErrorApp({
+  mensaje,
+  onSalir,
+}: {
+  mensaje: string;
+  onSalir: () => void;
+}) {
+  return (
+    <main style={authShellApp}>
+      <section style={authCardApp}>
+        <h1 style={{ marginTop: 0 }}>Acceso pendiente de configurar</h1>
+        <p style={{ color: '#475569', lineHeight: 1.45 }}>{mensaje}</p>
+        <button type="button" onClick={onSalir} style={authBotonApp}>
+          Volver al login
+        </button>
+      </section>
+    </main>
+  );
+}
+
+async function ejecutarFuncionPublicaConRespuestaApp<T>(
+  nombreFuncion: string,
+  body: object
+): Promise<T> {
+  const respuesta = await fetch(
+    `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
+    {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    }
+  );
+
+  const texto = await respuesta.text();
+  let datos: any = null;
+  try {
+    datos = texto ? JSON.parse(texto) : null;
+  } catch {
+    datos = texto;
+  }
+
+  if (!respuesta.ok) {
+    const mensaje =
+      typeof datos === 'string'
+        ? datos
+        : datos?.message || datos?.hint || texto || 'No se pudo completar la operación.';
+    throw new Error(mensaje);
+  }
+
+  return datos as T;
+}
+
+function tokenTestNivelDesdeUrlApp() {
+  if (typeof window === 'undefined') return '';
+  return new URLSearchParams(window.location.search).get('test_nivel') || '';
+}
+
+function PantallaTestNivelPublicoApp({ token }: { token: string }) {
+  const [info, setInfo] = useState<TestNivelPublicoInfoApp | null>(null);
+  const [respuestas, setRespuestas] =
+    useState<TestNivelPublicoRespuestasApp>(testNivelPublicoRespuestasVaciasApp());
+  const [cargando, setCargando] = useState(true);
+  const [enviando, setEnviando] = useState(false);
+  const [enviado, setEnviado] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let activo = true;
+    async function cargar() {
+      setCargando(true);
+      setError('');
+      try {
+        const datos = await ejecutarFuncionPublicaConRespuestaApp<TestNivelPublicoInfoApp[]>(
+          'obtener_test_nivel_publico_app',
+          { p_token: token }
+        );
+        if (!activo) return;
+        const registro = Array.isArray(datos) ? datos[0] : null;
+        if (!registro) throw new Error('Este test no está disponible.');
+        setInfo(registro);
+      } catch (err: any) {
+        if (activo) setError(err?.message || 'Este test no está disponible.');
+      } finally {
+        if (activo) setCargando(false);
+      }
+    }
+    void cargar();
+    return () => {
+      activo = false;
+    };
+  }, [token]);
+
+  const preguntas: Array<{
+    clave: keyof Omit<TestNivelPublicoRespuestasApp, 'observaciones'>;
+    titulo: string;
+    ayuda: string;
+    opciones: Array<[string, string]>;
+  }> = [
+    {
+      clave: 'experiencia',
+      titulo: '1. ¿Cuántos días aproximadamente ha esquiado?',
+      ayuda: 'No hace falta recordar el número exacto.',
+      opciones: [
+        ['A', 'Nunca / será su primer día'],
+        ['B', '1–3 días'],
+        ['C', '4–10 días'],
+        ['D', 'Más de 10 días'],
+      ],
+    },
+    {
+      clave: 'desplazamiento',
+      titulo: '2. ¿Se desplaza solo con los esquís puestos?',
+      ayuda: 'Piensa en terreno sencillo y sin que un adulto lo lleve.',
+      opciones: [
+        ['A', 'No, necesita ayuda'],
+        ['B', 'Algo, pero necesita ayuda con frecuencia'],
+        ['C', 'Sí, se desplaza solo'],
+      ],
+    },
+    {
+      clave: 'frenado',
+      titulo: '3. ¿Puede frenar haciendo cuña?',
+      ayuda: 'Nos interesa si puede controlar la velocidad por sí mismo.',
+      opciones: [
+        ['A', 'No'],
+        ['B', 'A veces / necesita indicaciones'],
+        ['C', 'Sí, frena con autonomía'],
+      ],
+    },
+    {
+      clave: 'giros',
+      titulo: '4. ¿Cómo hace los giros para cambiar de dirección?',
+      ayuda: 'Marca lo que haga de forma habitual, no algo que haya hecho una sola vez.',
+      opciones: [
+        ['A', 'Todavía no hace giros'],
+        ['B', 'Está empezando a girar'],
+        ['C', 'Hace giros en cuña de forma autónoma'],
+        ['D', 'Hace algunos giros con los esquís en paralelo'],
+        ['E', 'Hace giros paralelos fluidos y enlazados'],
+      ],
+    },
+    {
+      clave: 'remonte',
+      titulo: '5. ¿Qué remontes utiliza sin ayuda?',
+      ayuda: 'Marca la opción más completa que haga con autonomía.',
+      opciones: [
+        ['A', 'Ninguno'],
+        ['B', 'Cinta transportadora'],
+        ['C', 'Percha / telesquí'],
+        ['D', 'Silla'],
+        ['E', 'Todos: cinta, percha y silla'],
+      ],
+    },
+    {
+      clave: 'pista',
+      titulo: '6. ¿Por dónde baja con seguridad sin que un adulto tenga que sujetarlo?',
+      ayuda: 'En Madrid SnowZone diferenciamos pista pequeña y pista grande.',
+      opciones: [
+        ['A', 'Todavía no baja una pista con autonomía'],
+        ['B', 'Pista pequeña'],
+        ['C', 'Pista grande'],
+      ],
+    },
+    {
+      clave: 'controlVelocidad',
+      titulo: '7. En pista, ¿cómo controla la velocidad y la dirección?',
+      ayuda: 'Piensa en cómo esquía durante una bajada normal.',
+      opciones: [
+        ['0', 'Todavía no sabe frenar ni controlar la velocidad'],
+        ['A', 'Necesita ayuda o recordatorios constantes para frenar'],
+        ['B', 'Controla principalmente haciendo cuña'],
+        ['C', 'Controla enlazando giros y elige por dónde bajar'],
+        ['D', 'Controla con paralelo y adapta el giro y la trayectoria'],
+      ],
+    },
+    {
+      clave: 'tecnica',
+      titulo: '8. Si el profesor le propone ejercicios mientras baja, ¿qué es capaz de hacer?',
+      ayuda: 'No pasa nada si no lo sabes: marca la opción más parecida a lo que le hayas visto hacer.',
+      opciones: [
+        ['A', 'No lo sabemos / todavía no sigue ejercicios esquiando'],
+        ['B', 'Sigue ejercicios sencillos mientras baja'],
+        ['C', 'Puede hacer giros más cortos o más largos cuando se lo piden'],
+        ['D', 'Cambia ritmo y trazado con facilidad y resuelve ejercicios técnicos'],
+      ],
+    },
+  ];
+
+  const opcionesObservacionEntrenador = [
+    ['MIEDO_INSEGURIDAD', 'Miedo o inseguridad'],
+    ['BLOQUEO_LLANTO', 'Se bloquea o llora con facilidad'],
+    ['DIFICULTAD_REMONTES', 'Dificultad o miedo con los remontes'],
+    ['AYUDA_MATERIAL', 'Necesita ayuda con el material'],
+    ['SEPARACION_FAMILIA', 'Le cuesta separarse de la familia'],
+    ['LIMITACION_FISICA', 'Lesión o limitación física a tener en cuenta'],
+    ['NECESIDAD_ESPECIAL', 'Necesidad especial comunicada por la familia'],
+    ['OTRA', 'Otra observación importante para el profesor'],
+    ['NINGUNA', 'Ninguna'],
+  ] as const;
+
+  function alternarObservacionEntrenador(codigo: string) {
+    setRespuestas((actual) => {
+      const seleccionadas = actual.observacionesEntrenador || [];
+
+      if (codigo === 'NINGUNA') {
+        return {
+          ...actual,
+          observacionesEntrenador: seleccionadas.includes('NINGUNA')
+            ? []
+            : ['NINGUNA'],
+          observacionEntrenadorOtra: '',
+        };
+      }
+
+      const sinNinguna = seleccionadas.filter(
+        (item) => item !== 'NINGUNA'
+      );
+      const yaSeleccionada = sinNinguna.includes(codigo);
+      const siguientes = yaSeleccionada
+        ? sinNinguna.filter((item) => item !== codigo)
+        : [...sinNinguna, codigo];
+
+      return {
+        ...actual,
+        observacionesEntrenador: siguientes,
+        observacionEntrenadorOtra:
+          codigo === 'OTRA' && yaSeleccionada
+            ? ''
+            : actual.observacionEntrenadorOtra,
+      };
+    });
+  }
+
+  const completo = preguntas.every(({ clave }) => Boolean(respuestas[clave]));
+
+  async function enviarTest() {
+    if (!completo || enviando) return;
+    setEnviando(true);
+    setError('');
+    try {
+      await ejecutarFuncionPublicaConRespuestaApp<unknown>(
+        'responder_test_nivel_publico_app',
+        {
+          p_token: token,
+          p_experiencia: respuestas.experiencia,
+          p_desplazamiento: respuestas.desplazamiento,
+          p_frenado: respuestas.frenado,
+          p_giros: respuestas.giros,
+          p_remonte: respuestas.remonte,
+          p_pista: respuestas.pista,
+          p_control_velocidad: respuestas.controlVelocidad,
+          p_tecnica: respuestas.tecnica,
+          p_observaciones_entrenador:
+            respuestas.observacionesEntrenador || [],
+          p_observacion_entrenador_otra:
+            respuestas.observacionEntrenadorOtra.trim() || null,
+          p_observaciones:
+            respuestas.observacionesCoordinacion.trim() || null,
+        }
+      );
+      setEnviado(true);
+    } catch (err: any) {
+      setError(err?.message || 'No se ha podido enviar el test.');
+    } finally {
+      setEnviando(false);
+    }
+  }
+
+  if (cargando) {
+    return (
+      <main style={authShellApp}>
+        <section style={authCardApp}>
+          <h1 style={{ marginTop: 0 }}>Preparando valoración...</h1>
+          <p style={{ color: '#64748b' }}>Un momento, por favor.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (error && !info) {
+    return (
+      <main style={authShellApp}>
+        <section style={authCardApp}>
+          <h1 style={{ marginTop: 0 }}>Test no disponible</h1>
+          <p style={{ color: '#64748b', lineHeight: 1.5 }}>{error}</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (enviado) {
+    return (
+      <main style={authShellApp}>
+        <section
+          style={{
+            ...authCardApp,
+            border: '1px solid #bbf7d0',
+            background: 'linear-gradient(135deg, #f0fdf4, #ffffff)',
+          }}
+        >
+          <p style={{ margin: '0 0 5px', color: '#15803d', fontWeight: 900 }}>
+            VALORACIÓN ENVIADA
+          </p>
+          <h1 style={{ margin: 0 }}>¡Gracias!</h1>
+          <p style={{ color: '#475569', lineHeight: 1.55 }}>
+            Hemos recibido las respuestas de {info?.nombre_completo}. El equipo
+            de coordinación las revisará antes de asignar un nivel inicial.
+          </p>
+          <p style={{ marginBottom: 0, color: '#64748b', fontSize: 13 }}>
+            Ya puedes cerrar esta página.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  return (
+    <main
+      style={{
+        ...authShellApp,
+        alignItems: 'flex-start',
+        padding: 'max(18px, env(safe-area-inset-top)) 14px max(28px, env(safe-area-inset-bottom))',
+      }}
+    >
+      <section
+        style={{
+          width: 'min(720px, 100%)',
+          margin: '0 auto',
+          display: 'grid',
+          gap: 14,
+        }}
+      >
+        <article
+          style={{
+            ...authCardApp,
+            width: '100%',
+            maxWidth: 'none',
+            padding: 0,
+            overflow: 'hidden',
+            border: '1px solid #dbeafe',
+            boxShadow: '0 18px 42px rgba(15, 23, 42, 0.12)',
+          }}
+        >
+          <div
+            style={{
+              position: 'relative',
+              minHeight: 235,
+              padding: '20px 18px 22px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'flex-end',
+              backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.08) 0%, rgba(15, 23, 42, 0.30) 48%, rgba(15, 23, 42, 0.82) 100%), url(${FOTO_MITICO_HERO})`,
+              backgroundSize: '118% auto',
+              backgroundPosition: 'center center',
+              backgroundRepeat: 'no-repeat',
+            }}
+          >
+            <img
+              src="/logo-cabecera-mitico.png"
+              alt="Mítico Club"
+              style={{
+                position: 'absolute',
+                top: 16,
+                left: 16,
+                width: 70,
+                height: 70,
+                padding: 6,
+                borderRadius: 18,
+                objectFit: 'contain',
+                background: 'rgba(255,255,255,.94)',
+                border: '1px solid rgba(255,255,255,.75)',
+                boxShadow: '0 8px 22px rgba(15,23,42,.18)',
+              }}
+            />
+
+            <p
+              style={{
+                margin: '0 0 5px',
+                color: '#dbeafe',
+                fontSize: 11,
+                fontWeight: 950,
+                letterSpacing: '0.10em',
+                textTransform: 'uppercase',
+              }}
+            >
+              Mítico Baby · Test inicial
+            </p>
+
+            <h1
+              style={{
+                margin: 0,
+                color: '#ffffff',
+                fontSize: 'clamp(24px, 6vw, 32px)',
+                lineHeight: 1.08,
+                textShadow: '0 2px 12px rgba(15,23,42,.35)',
+              }}
+            >
+              Queremos conocer un poquito mejor a {info?.nombre_completo}
+            </h1>
+
+            <p
+              style={{
+                margin: '8px 0 0',
+                color: '#e2e8f0',
+                fontSize: 14,
+                fontWeight: 750,
+              }}
+            >
+              Modalidad: <strong style={{ color: '#fff' }}>{info?.modalidad}</strong>
+            </p>
+          </div>
+
+          <div
+            style={{
+              padding: '16px 18px 18px',
+              background: 'linear-gradient(135deg, #f8fbff, #ffffff 58%, #f0fdf4)',
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                color: '#334155',
+                lineHeight: 1.55,
+                fontSize: 14,
+              }}
+            >
+              No hace falta que conozcas su nivel de esquí. Marca simplemente lo
+              que le hayas visto hacer. Son <strong>8 preguntas rápidas</strong> y
+              tardarás aproximadamente <strong>2 minutos</strong>.
+            </p>
+
+            <div
+              style={{
+                marginTop: 12,
+                padding: '10px 12px',
+                borderRadius: 14,
+                background: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                color: '#1e3a8a',
+                fontSize: 13,
+                lineHeight: 1.45,
+                fontWeight: 750,
+              }}
+            >
+              La propuesta de nivel será revisada por coordinación antes de
+              incorporarlo a un grupo.
+            </div>
+          </div>
+        </article>
+
+        {preguntas.map((pregunta) => (
+          <article
+            key={pregunta.clave}
+            style={{
+              ...authCardApp,
+              width: '100%',
+              maxWidth: 'none',
+              padding: 16,
+            }}
+          >
+            <h2 style={{ margin: 0, fontSize: 18, lineHeight: 1.3 }}>
+              {pregunta.titulo}
+            </h2>
+            <p style={{ margin: '5px 0 12px', color: '#64748b', fontSize: 13 }}>
+              {pregunta.ayuda}
+            </p>
+            <div style={{ display: 'grid', gap: 8 }}>
+              {pregunta.opciones.map(([codigo, texto]) => {
+                const activo = respuestas[pregunta.clave] === codigo;
+                const codigoVisible =
+                  pregunta.clave === 'controlVelocidad'
+                    ? ({
+                        '0': 'A',
+                        A: 'B',
+                        B: 'C',
+                        C: 'D',
+                        D: 'E',
+                      } as Record<string, string>)[codigo] || codigo
+                    : codigo;
+                return (
+                  <button
+                    key={codigo}
+                    type="button"
+                    onClick={() =>
+                      setRespuestas({
+                        ...respuestas,
+                        [pregunta.clave]: codigo,
+                      })
+                    }
+                    style={{
+                      minHeight: 48,
+                      padding: '10px 12px',
+                      borderRadius: 14,
+                      border: activo
+                        ? '2px solid #2563eb'
+                        : '1px solid #cbd5e1',
+                      background: activo ? '#2563eb' : '#ffffff',
+                      color: activo ? '#ffffff' : '#334155',
+                      textAlign: 'left',
+                      fontWeight: 850,
+                      boxShadow: activo
+                        ? '0 8px 18px rgba(37,99,235,.18)'
+                        : 'none',
+                    }}
+                  >
+                    <strong style={{ marginRight: 8 }}>{codigoVisible}.</strong>
+                    {texto}
+                  </button>
+                );
+              })}
+            </div>
+          </article>
+        ))}
+
+        <article
+          style={{
+            ...authCardApp,
+            width: '100%',
+            maxWidth: 'none',
+            padding: 16,
+          }}
+        >
+          <div style={{ display: 'grid', gap: 10 }}>
+            <div>
+              <strong style={{ fontSize: 16 }}>
+                ¿Hay algo importante que deba saber el profesor? (opcional)
+              </strong>
+              <p
+                style={{
+                  margin: '5px 0 0',
+                  color: '#64748b',
+                  fontSize: 13,
+                  lineHeight: 1.45,
+                }}
+              >
+                Marca solo lo que sea útil durante la clase. Puedes elegir más
+                de una opción.
+              </p>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 8,
+                minWidth: 0,
+              }}
+            >
+              {opcionesObservacionEntrenador.map(([codigo, texto]) => {
+                const activa =
+                  respuestas.observacionesEntrenador.includes(codigo);
+
+                return (
+                  <button
+                    key={codigo}
+                    type="button"
+                    onClick={() => alternarObservacionEntrenador(codigo)}
+                    style={{
+                      minHeight: 46,
+                      width: '100%',
+                      minWidth: 0,
+                      padding: '9px 11px',
+                      borderRadius: 13,
+                      border: activa
+                        ? '2px solid #2563eb'
+                        : '1px solid #cbd5e1',
+                      background: activa ? '#eff6ff' : '#ffffff',
+                      color: activa ? '#1d4ed8' : '#334155',
+                      textAlign: 'left',
+                      fontWeight: 800,
+                      lineHeight: 1.3,
+                      whiteSpace: 'normal',
+                      overflowWrap: 'anywhere',
+                    }}
+                  >
+                    {activa ? '✓ ' : ''}
+                    {texto}
+                  </button>
+                );
+              })}
+            </div>
+
+            {respuestas.observacionesEntrenador.includes('OTRA') && (
+              <label
+                style={{
+                  display: 'grid',
+                  gap: 6,
+                  fontWeight: 850,
+                  minWidth: 0,
+                }}
+              >
+                Otra observación importante para el profesor
+                <input
+                  value={respuestas.observacionEntrenadorOtra}
+                  maxLength={120}
+                  onChange={(e) =>
+                    setRespuestas({
+                      ...respuestas,
+                      observacionEntrenadorOtra: e.target.value,
+                    })
+                  }
+                  placeholder="Ej.: se asusta al subir a la silla"
+                  style={{
+                    width: '100%',
+                    minWidth: 0,
+                    border: '1px solid #cbd5e1',
+                    borderRadius: 13,
+                    padding: 11,
+                    fontSize: 16,
+                  }}
+                />
+                <small style={{ color: '#64748b', fontWeight: 700 }}>
+                  Máximo 120 caracteres.
+                </small>
+              </label>
+            )}
+          </div>
+        </article>
+
+        <article
+          style={{
+            ...authCardApp,
+            width: '100%',
+            maxWidth: 'none',
+            padding: 16,
+          }}
+        >
+          <label
+            style={{
+              display: 'grid',
+              gap: 7,
+              fontWeight: 900,
+              minWidth: 0,
+            }}
+          >
+            Comentario adicional (opcional)
+            <span
+              style={{
+                color: '#64748b',
+                fontSize: 13,
+                fontWeight: 650,
+                lineHeight: 1.45,
+              }}
+            >
+              Si quieres contarnos algo más que pueda ayudarnos a organizar
+              mejor su experiencia, puedes escribirlo aquí. Por ejemplo:
+              “Me gustaría que estuviera con su hermanito”.
+            </span>
+            <textarea
+              value={respuestas.observacionesCoordinacion}
+              maxLength={350}
+              onChange={(e) =>
+                setRespuestas({
+                  ...respuestas,
+                  observacionesCoordinacion: e.target.value,
+                })
+              }
+              rows={3}
+              placeholder="Escribe aquí cualquier comentario adicional..."
+              style={{
+                width: '100%',
+                minWidth: 0,
+                border: '1px solid #cbd5e1',
+                borderRadius: 14,
+                padding: 12,
+                resize: 'vertical',
+                fontSize: 16,
+              }}
+            />
+          </label>
+        </article>
+
+        {error && (
+          <div
+            style={{
+              padding: 12,
+              borderRadius: 14,
+              background: '#fef2f2',
+              border: '1px solid #fecaca',
+              color: '#b91c1c',
+              fontWeight: 800,
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        <button
+          type="button"
+          disabled={!completo || enviando || !info?.puede_responder}
+          onClick={enviarTest}
+          style={{
+            minHeight: 54,
+            border: 0,
+            borderRadius: 16,
+            padding: '12px 16px',
+            background:
+              completo && !enviando && info?.puede_responder
+                ? '#16a34a'
+                : '#cbd5e1',
+            color: '#ffffff',
+            fontSize: 16,
+            fontWeight: 950,
+            cursor:
+              completo && !enviando && info?.puede_responder
+                ? 'pointer'
+                : 'not-allowed',
+          }}
+        >
+          {enviando ? 'Enviando...' : 'Enviar valoración'}
+        </button>
+      </section>
+    </main>
+  );
+}
+
+const opcionesNivel = [
+  'INICIACION',
+  'A',
+  'A+',
+  'B',
+  'B+',
+  'C',
+  'C+',
+  'D',
+  'D+',
+];
+
+const nivelesDiplomaIntensivo = [
+  { id: '', codigo: 'Sin seleccionar', orden: -1 },
+  {
+    id: '8b50fa47-80dc-4808-8606-922823b708dd',
+    codigo: 'INICIACION',
+    orden: 0,
+  },
+  { id: '9da86b75-7d1d-45ce-b331-6ed3c1989553', codigo: 'A', orden: 1 },
+  { id: 'b4cc5c49-dcd6-4120-8c2d-ba657bb8dcdd', codigo: 'A+', orden: 2 },
+  { id: '0b6e022a-6d6c-498e-9337-de3c67fdc207', codigo: 'B', orden: 3 },
+  { id: 'ee0eacce-543c-48e5-baca-e0085f7768a5', codigo: 'B+', orden: 4 },
+  { id: 'ec96cd14-556a-431f-846d-74223368388f', codigo: 'C', orden: 5 },
+  { id: 'b0b4e211-71c4-4a55-84bf-351137c6cdbd', codigo: 'C+', orden: 6 },
+  { id: 'b7a9fd7c-7d1d-4357-9bff-c557977db22c', codigo: 'D', orden: 7 },
+  { id: '0f10c6da-f11f-46dd-8211-1d9e1240e161', codigo: 'D+', orden: 8 },
+];
+
+const opcionesActitud = [
+  'Muy buena',
+  'Buena',
+  'Correcta',
+  'Disperso',
+  'Se bloquea',
+  'Miedo',
+  'Cansado',
+  'No escucha',
+  'Llora',
+];
+
+const opcionesTecnica = [
+  'Primer contacto / familiarización',
+  'Deslizamiento directo',
+  'Cuña de frenado',
+  'Control de velocidad en cuña',
+  'Giros en cuña',
+  'Giros en cuña encadenados',
+  'Fundamental',
+  'Inicio de paralelo',
+  'Paralelo elemental',
+  'Paralelo consolidado',
+  'Viraje conducido / avanzado',
+];
+
+const opcionesPista = ['Pequeña', 'Grande', 'Pequeña/Grande'];
+
+const opcionesAutonomia = [
+  'Necesita ayuda constante',
+  'Necesita ayuda puntual',
+  'Autónomo en llano',
+  'Autónomo en pista pequeña',
+  'Autónomo en pista grande',
+  'Autónomo total',
+];
+
+const opcionesRitmoGrupo = [
+  'Lento para su nivel',
+  'Adecuado para su nivel',
+  'Rápido para su nivel',
+  'Muy rápido · podría ir con nivel superior',
+];
+
+const opcionesRemontes = [
+  'Cinta',
+  'Percha',
+  'Silla',
+  'Cinta y percha',
+  'Percha y silla',
+];
+
+const opcionesIncidencia = [
+  'Sin incidencia',
+  'Llanto',
+  'Miedo / bloqueo',
+  'Caída sin importancia',
+  'Caída con revisión',
+  'Se separa del grupo',
+  'No sigue instrucciones',
+  'Problema con material',
+  'Problema con remonte',
+  'Conflicto con compañero',
+  'Otro',
+];
+
+const opcionesRecomendacion = [
+  'Mantener el mismo nivel',
+  'Subir de nivel',
+  'Bajar de nivel',
+  'Revisar por coordinador',
+  'Necesita apoyo',
+  'Repetir objetivos',
+  'Probar pista grande',
+  'Volver a pista pequeña',
+  'Revisar remontes',
+  'Hacer seguimiento especial',
+];
+
+const opcionesEspecialidadEntrenador = [
+  'Baby',
+  'Ocio',
+  'Intensivos',
+  'Pista pequeña',
+  'Pista grande',
+  'Debutantes',
+  'Apoyo / coordinación',
+];
+
+const opcionesDocumentoEntrenador = [
+  'Pendiente',
+  'Recibido',
+  'Validado',
+  'Caducado',
+  'No aplica',
+];
+
+function entrenadorFormInicial(): EntrenadorFormState {
+  return {
+    id: null,
+    nombre: '',
+    email: '',
+    telefono: '',
+    tarifa: '0',
+    activo: true,
+    chaqueta: false,
+    especialidades: [],
+    titulacionEstado: 'Pendiente',
+    titulacionUrl: '',
+    titulacionObs: '',
+    antecedentesEstado: 'Pendiente',
+    antecedentesUrl: '',
+    antecedentesObs: '',
+    observaciones: '',
+  };
+}
+
+const opcionesEstadoDiplomaIntensivo = ['Pendiente', 'Revisado'];
+
+const opcionesOrigenNivelAlumno = [
+  'Familia',
+  'Jose / Coordinador',
+  'Ventas / compañera',
+  'Clase de prueba pendiente',
+  'Desconocido',
+];
+
+const opcionesRecomendacionIntensivo = [
+  '',
+  'Seguir en Baby',
+  'Pasar a Ocio',
+  'Repetir Intensivo',
+  'Continuar en Intensivos',
+  'Recomendar Particular',
+  'Revisar con coordinador',
+];
+
+const opcionesEstadoAsistenciaIntensivo = [
+  'SIN_CONFIRMAR',
+  'PRESENTE',
+  'NO_PRESENTADO',
+  'LLEGA_TARDE',
+  'BAJA_AVISADA',
+];
+
+const opcionesEstadoRecuperacionIntensivo = [
+  'Pendiente valorar',
+  'Encaja en nuevo intensivo',
+  'No encaja por nivel',
+  'Sin hueco',
+  'Aprobada',
+  'Resuelta',
+  'Descartada',
+];
+
+const opcionesPistaGrupoIntensivo = ['', 'Pequeña', 'Grande', 'Pequeña/Grande'];
+
+const puntosEncuentroAgenda = ['5', '9', '10', '6', '4', '7', '3', '2', '1'];
+
+const modalidadesAgendaTrabajo = [
+  { codigo: 'BABY', nombre: 'Baby' },
+  { codigo: 'OCIO', nombre: 'Ocio' },
+  { codigo: 'INTENSIVOS', nombre: 'Intensivo' },
+];
+
+function agendaFormInicial(): AgendaFormState {
+  return {
+    fecha: '',
+    modalidad: 'BABY',
+    hora_inicio: '10:00',
+    hora_fin: '14:00',
+    lugar: 'Madrid SnowZone',
+    texto_listado: '',
+  };
+}
+
+function referenciaTecnicaReporteApp(nivel: string): Array<[string, string]> {
+  const limpio = String(nivel || '')
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  if (limpio === 'INICIACION') {
+    return [
+      ['Nivel', 'Familiarización, deslizamiento y primeras frenadas.'],
+      ['Cuña / giro', 'Mira si empieza a abrir cuña, frena y hacia dónde consigue girar.'],
+      ['Autonomía', 'Entrada/salida de cinta y ayuda necesaria.'],
+      ['Siguiente paso', 'A cuando controle el deslizamiento y empiece a frenar en cuña.'],
+    ];
+  }
+  if (limpio === 'A') {
+    return [
+      ['Nivel', 'Cuña de frenado, control de velocidad y primeros giros.'],
+      ['Cuña / giro', 'Mira si frena a demanda y gira a ambos lados.'],
+      ['Autonomía', 'Cinta, espera arriba y dependencia del profesor.'],
+      ['Siguiente paso', 'A+ cuando encadene giros y gane autonomía.'],
+    ];
+  }
+  if (limpio === 'A+') {
+    return [
+      ['Nivel', 'Giros en cuña encadenados y preparación para pista grande.'],
+      ['Cuña / giro', 'Mira continuidad de giros, control de velocidad y si encadena sin ayuda.'],
+      ['Autonomía', 'Cinta y dinámica de grupo casi sin ayuda.'],
+      ['Siguiente paso', 'B / pista grande cuando controle, siga al entrenador y pare donde se le pide.'],
+    ];
+  }
+  if (limpio === 'B') {
+    return [
+      ['Nivel', 'Cuña todavía asentándose en pista grande.'],
+      ['Técnica', 'Giros enlazados y control de velocidad en grande.'],
+      ['Autonomía', 'Moverse con seguridad en pista grande y remontes.'],
+      ['Siguiente paso', 'B+ cuando la cuña sea sólida y encadenada.'],
+    ];
+  }
+  if (limpio === 'B+' || limpio === 'B++') {
+    return [
+      ['Nivel', 'Cuña encadenada → Fundamental → inicio de paralelo.'],
+      ['Técnica', 'Paralelo en diagonales y cuña cada vez menor durante el giro.'],
+      ['Autonomía', 'Soltura en pista grande y remontes.'],
+      ['Siguiente paso', 'C cuando el paralelo empiece a aparecer de forma clara y repetida.'],
+    ];
+  }
+  if (limpio === 'C') {
+    return [
+      ['Nivel', 'Inicio de paralelo / paralelo elemental.'],
+      ['Técnica', 'Apoyo exterior, postura y continuidad del paralelo.'],
+      ['Autonomía', 'Autónomo en pista grande y remontes.'],
+      ['Siguiente paso', 'C+ cuando el paralelo sea amplio, fluido y estable.'],
+    ];
+  }
+  if (limpio === 'C+') {
+    return [
+      ['Nivel', 'Paralelo amplio y fluido.'],
+      ['Técnica', 'Apoyo exterior, ritmo, trayectoria y primeras sensaciones de canto.'],
+      ['Autonomía', 'Autonomía completa.'],
+      ['Siguiente paso', 'D cuando el paralelo esté consolidado y admita trabajo técnico más exigente.'],
+    ];
+  }
+  if (limpio === 'D') {
+    return [
+      ['Nivel', 'Paralelo consolidado y trabajo técnico avanzado.'],
+      ['Técnica', 'Precisión, apoyo exterior, ritmo, coordinación y cantos.'],
+      ['Autonomía', 'Autonomía completa.'],
+      ['Siguiente paso', 'D+ cuando aparezca conducción clara y estable.'],
+    ];
+  }
+  if (limpio === 'D+') {
+    return [
+      ['Nivel', 'Viraje conducido / avanzado.'],
+      ['Técnica', 'Conducción, presión, cantos, cambios de radio y precisión.'],
+      ['Autonomía', 'Autonomía completa y retos técnicos.'],
+      ['Siguiente paso', 'Refinar técnica y preparación hacia dinámica de competición.'],
+    ];
+  }
+
+  return [
+    ['Nivel', 'Selecciona lo que realmente has visto hoy.'],
+    ['Técnica', 'Marca la fase técnica dominante del niño.'],
+    ['Autonomía', 'Valora la ayuda real que necesita.'],
+    ['Siguiente paso', 'Usa la recomendación solo si ves una progresión clara.'],
+  ];
+}
+
+function reporteInicial(): ReporteFormState {
+  return {
+    nivel: 'B',
+    actitud: 'Correcta',
+    tecnica: 'Giros en cuña',
+    pista: 'Pequeña',
+    autonomia: 'Necesita ayuda puntual',
+    ritmoGrupo: '',
+    remontes: 'Cinta',
+    incidencia: 'Sin incidencia',
+    recomendacion: 'Mantener el mismo nivel',
+    observaciones: '',
+    autonomiaCinta: '',
+    cunaFrenada: '',
+    giroInicial: '',
+    dinamicaAutonoma: '',
+    ayudaCunero: 'No',
+  };
+}
+
+const opcionesAutonomiaCintaInicialApp = [
+  'Necesita ayuda completa',
+  'Sube acompañado',
+  'Entra solo · ayuda al salir',
+  'Entra y sale solo',
+  'Sube solo · espera arriba · sale a señal',
+];
+
+const opcionesCunaFrenadaInicialApp = [
+  'No abre cuña',
+  'Abre cuña con ayuda',
+  'Cuña funcional',
+  'Frena con ayuda',
+  'Frena a demanda',
+];
+
+const opcionesGiroInicialApp = [
+  'No gira',
+  'Gira solo hacia un lado',
+  'Giros aislados',
+  'Enlaza giros en cuña',
+];
+
+const opcionesDinamicaAutonomaInicialApp = [
+  'Necesita al profesor todo el tiempo',
+  'Espera arriba con ayuda',
+  'Espera arriba solo',
+  'Sigue al profesor y mantiene su sitio en fila',
+  'Listo para probar pista grande',
+];
+
+const opcionesAyudaCuneroInicialApp = [
+  'No',
+  'Sí · 1 bajada y después hace cuña solo',
+  'Sí · 1 bajada y sigue necesitando ayuda',
+];
+
+
+function tecnicaInicialDerivadaReporteApp(form: ReporteFormState) {
+  const giro = String(form.giroInicial || '').trim();
+  const cuna = String(form.cunaFrenada || '').trim();
+
+  if (giro === 'Enlaza giros en cuña') return 'Giros en cuña encadenados';
+  if (giro === 'Giros aislados' || giro === 'Gira solo hacia un lado')
+    return 'Giros en cuña';
+  if (giro === 'No gira') {
+    if (cuna === 'Frena a demanda') return 'Control de velocidad en cuña';
+    if (cuna === 'Cuña funcional' || cuna === 'Frena con ayuda')
+      return 'Cuña de frenado';
+  }
+
+  if (cuna === 'Frena a demanda') return 'Control de velocidad en cuña';
+  if (cuna === 'Cuña funcional' || cuna === 'Frena con ayuda')
+    return 'Cuña de frenado';
+  if (cuna === 'Abre cuña con ayuda') return 'Cuña de frenado';
+  if (cuna === 'No abre cuña') return 'Deslizamiento directo';
+
+  return 'Primer contacto / familiarización';
+}
+
+function esNivelAprendizajeInicialApp(nivel: string | null | undefined) {
+  const limpio = String(nivel || '')
+    .trim()
+    .toUpperCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+
+  return (
+    limpio === 'INICIACION' ||
+    limpio === 'DEBUT' ||
+    limpio === 'A' ||
+    limpio === 'A+'
+  );
+}
+
+const temporadaInicioDefectoAgenda = (() => {
+  const hoy = new Date();
+  const anio = hoy.getFullYear();
+  const mes = hoy.getMonth() + 1;
+
+  // Temporada real de trabajo: en julio/agosto ya se prepara la temporada siguiente.
+  if (mes >= 7) return anio;
+  return anio - 1;
+})();
+
+function nombreTemporadaAgenda(anioInicio: number) {
+  return `${anioInicio}/${anioInicio + 1}`;
+}
+
+function mesesTemporadaAgenda(anioInicio: number) {
+  return [
+    `${anioInicio}-09`,
+    `${anioInicio}-10`,
+    `${anioInicio}-11`,
+    `${anioInicio}-12`,
+    `${anioInicio + 1}-01`,
+    `${anioInicio + 1}-02`,
+    `${anioInicio + 1}-03`,
+    `${anioInicio + 1}-04`,
+    `${anioInicio + 1}-05`,
+    `${anioInicio + 1}-06`,
+  ];
+}
+
+
+function IconoNavegacionApp({ tipo }: { tipo: string }) {
+  const comun = {
+    width: 20,
+    height: 20,
+    viewBox: '0 0 24 24',
+    fill: 'none',
+    stroke: 'currentColor',
+    strokeWidth: 1.8,
+    strokeLinecap: 'round' as const,
+    strokeLinejoin: 'round' as const,
+    'aria-hidden': true,
+  };
+
+  switch (tipo) {
+    case 'inicio':
+      return <svg {...comun}><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5"/><path d="M9.5 21v-6h5v6"/></svg>;
+    case 'agenda':
+      return <svg {...comun}><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/><path d="M8 14h3M13 14h3M8 17h3"/></svg>;
+    case 'cierre':
+      return <svg {...comun}><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.2 2.2L16 9"/></svg>;
+    case 'fichas':
+      return <svg {...comun}><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M6 16c.8-2 2-3 3-3s2.2 1 3 3M14 9h4M14 13h4"/></svg>;
+    case 'intensivos':
+      return <svg {...comun}><path d="m3 20 6.5-11 3.2 5L15 10l6 10Z"/><path d="m8.1 11.5 1.4 1.2 1.1-1.7"/></svg>;
+    case 'ocio':
+      return <svg {...comun}><path d="M12 2v20M4.2 6.5l15.6 11M19.8 6.5l-15.6 11"/><path d="m9.5 4 2.5 2 2.5-2M9.5 20l2.5-2 2.5 2"/></svg>;
+    case 'entrenadores':
+      return <svg {...comun}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>;
+    case 'disponibilidad':
+      return <svg {...comun}><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>;
+    case 'movil':
+      return <svg {...comun}><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M10 18h4"/></svg>;
+    case 'altas':
+      return <svg {...comun}><path d="M15 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8" cy="7" r="4"/><path d="M19 8v6M16 11h6"/></svg>;
+    case 'cobros':
+      return <svg {...comun}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18M7 15h2"/></svg>;
+    case 'analisis':
+      return <svg {...comun}><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>;
+    case 'informes':
+      return <svg {...comun}><path d="M6 2h9l4 4v16H6z"/><path d="M14 2v5h5M9 12h6M9 16h6"/></svg>;
+    case 'temporadas':
+      return <svg {...comun}><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>;
+    case 'accesos':
+      return <svg {...comun}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10"/><path d="m9 12 2 2 4-4"/></svg>;
+    default:
+      return <svg {...comun}><circle cx="12" cy="12" r="9"/></svg>;
+  }
+}
+
+function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
+  const esCoordinadorApp =
+    !perfilUsuario || esRolCoordinacionApp(perfilUsuario.rol);
+  const esEntrenadorApp = Boolean(perfilUsuario && !esCoordinadorApp);
+  const esCoordinadorJefeApp =
+    !perfilUsuario || puedeVerDireccionApp(perfilUsuario.rol);
+  const esAdministracionApp = perfilUsuario?.rol === 'administracion';
+  const puedeGestionarAccesosUsuarioApp =
+    !perfilUsuario || puedeGestionarAccesosApp(perfilUsuario.rol);
+  const entrenadorIdSesionApp = perfilUsuario?.entrenador_id || '';
+  const [salirActivoCabecera, setSalirActivoCabecera] = useState(false);
+  const [pwaInstalada, setPwaInstalada] = useState(false);
+  const [pwaInstallPrompt, setPwaInstallPrompt] = useState<any | null>(null);
+  const [mostrarAyudaInstalacionPwa, setMostrarAyudaInstalacionPwa] =
+    useState(false);
+  const [esVistaMovilApp, setEsVistaMovilApp] = useState(() =>
+    typeof window !== 'undefined'
+      ? window.matchMedia('(max-width: 719px)').matches
+      : false
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(max-width: 719px)');
+    const actualizar = () => setEsVistaMovilApp(media.matches);
+    actualizar();
+    media.addEventListener?.('change', actualizar);
+    return () => media.removeEventListener?.('change', actualizar);
+  }, []);
+
+  const usarCabeceraCompactaApp = esEntrenadorApp || esVistaMovilApp;
+
+  const [pantalla, setPantalla] = useState<
+    | 'agenda'
+    | 'resumenDia'
+    | 'inicio'
+    | 'planning'
+    | 'entrenador'
+    | 'alumnos'
+    | 'ocioAlumnos'
+    | 'ocioGrupos'
+    | 'ocioSemana'
+    | 'ocioCambios'
+    | 'revisionOcio'
+    | 'entrenadores'
+    | 'usuarios'
+    | 'administracion'
+    | 'disponibilidad'
+    | 'reportes'
+    | 'cobros'
+    | 'informes'
+    | 'temporadas'
+    | 'analisis'
+    | 'intensivos'
+    | 'listados'
+  >(esEntrenadorApp ? 'entrenador' : 'inicio');
+
+  const contenidoPantallaRef = useRef<HTMLDivElement | null>(null);
+
+  type EnfoqueAppOpciones = {
+    espera?: number;
+    block?: ScrollLogicalPosition;
+    inline?: ScrollLogicalPosition;
+    abrirDetallesPadre?: boolean;
+  };
+
+  // Regla de interacción Mítico:
+  // usar este motor cuando una acción ABRE contenido (panel, ficha, grupo,
+  // acordeón o subvista). No usarlo para guardar, borrar, publicar,
+  // asistencia ni acciones rápidas que no abren contenido.
+  function enfocarElementoApp(
+    objetivo: string | HTMLElement | null | undefined,
+    opciones: EnfoqueAppOpciones = {}
+  ) {
+    const {
+      espera = 0,
+      block = 'start',
+      inline = 'nearest',
+      abrirDetallesPadre = false,
+    } = opciones;
+
+    const ejecutar = () => {
+      const elemento =
+        typeof objetivo === 'string'
+          ? document.getElementById(objetivo)
+          : objetivo;
+
+      if (!elemento) return;
+
+      if (abrirDetallesPadre) {
+        let padre = elemento.parentElement;
+        while (padre) {
+          if (padre instanceof HTMLDetailsElement) padre.open = true;
+          padre = padre.parentElement;
+        }
+      }
+
+      elemento.scrollIntoView({
+        behavior: 'smooth',
+        block,
+        inline,
+      });
+    };
+
+    if (espera > 0) {
+      window.setTimeout(ejecutar, espera);
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(ejecutar);
+    });
+  }
+
+  const abrirPantallaConScroll = (destino: typeof pantalla) => {
+    setPantalla(destino);
+    enfocarElementoApp(contenidoPantallaRef.current);
+  };
+
+  useEffect(() => {
+    if (esEntrenadorApp && pantalla !== 'entrenador') {
+      setPantalla('entrenador');
+      return;
+    }
+
+    if (
+      esCoordinadorApp &&
+      !esCoordinadorJefeApp &&
+      (pantalla === 'cobros' ||
+        pantalla === 'informes' ||
+        pantalla === 'temporadas' ||
+        pantalla === 'analisis' ||
+        pantalla === 'usuarios')
+    ) {
+      setPantalla('agenda');
+    }
+  }, [
+    esEntrenadorApp,
+    esCoordinadorApp,
+    esCoordinadorJefeApp,
+    pantalla,
+  ]);
+
+  useEffect(() => {
+    if (
+      pantalla === 'administracion' &&
+      !puedeVerAdministracionAltasApp(perfilUsuario?.rol)
+    ) {
+      setPantalla(esEntrenadorApp ? 'entrenador' : 'agenda');
+    }
+  }, [pantalla, perfilUsuario?.rol, esEntrenadorApp]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const estaInstalada = () =>
+      window.matchMedia('(display-mode: standalone)').matches ||
+      Boolean((navigator as any).standalone);
+
+    setPwaInstalada(estaInstalada());
+
+    const alPrepararInstalacion = (evento: Event) => {
+      evento.preventDefault();
+      setPwaInstallPrompt(evento as any);
+    };
+
+    const alInstalar = () => {
+      setPwaInstalada(true);
+      setPwaInstallPrompt(null);
+      setMostrarAyudaInstalacionPwa(false);
+    };
+
+    window.addEventListener(
+      'beforeinstallprompt',
+      alPrepararInstalacion as EventListener
+    );
+    window.addEventListener('appinstalled', alInstalar);
+
+    return () => {
+      window.removeEventListener(
+        'beforeinstallprompt',
+        alPrepararInstalacion as EventListener
+      );
+      window.removeEventListener('appinstalled', alInstalar);
+    };
+  }, []);
+
+  async function instalarPwaEntrenador() {
+    if (pwaInstalada) return;
+
+    if (pwaInstallPrompt) {
+      try {
+        await pwaInstallPrompt.prompt();
+        const eleccion = await pwaInstallPrompt.userChoice;
+
+        if (eleccion?.outcome === 'accepted') {
+          setMostrarAyudaInstalacionPwa(false);
+        }
+
+        setPwaInstallPrompt(null);
+        return;
+      } catch {
+        // Si el navegador no permite abrir el diálogo nativo,
+        // mostramos la guía manual de instalación.
+      }
+    }
+
+    setMostrarAyudaInstalacionPwa((actual) => !actual);
+  }
+
+  const esDispositivoIosPwa =
+    typeof navigator !== 'undefined' &&
+    /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+
+  const [usuariosOperativos, setUsuariosOperativos] = useState<
+    UsuarioOperativoGestionApp[]
+  >([]);
+  const [cargandoUsuariosOperativos, setCargandoUsuariosOperativos] =
+    useState(false);
+  const [gestionandoUsuarioOperativoId, setGestionandoUsuarioOperativoId] =
+    useState('');
+  const [mostrarAltaUsuarioOperativo, setMostrarAltaUsuarioOperativo] =
+    useState(false);
+  const [formUsuarioOperativo, setFormUsuarioOperativo] = useState({
+    nombre: '',
+    email: '',
+    rol: 'sub_coordinador' as 'sub_coordinador' | 'administracion',
+  });
+
+  const [avisos, setAvisos] = useState<AvisoJose[]>([]);
+  const [resumenInicio, setResumenInicio] = useState<ResumenInicio>({
+    reportesPendientes: 0,
+    asistenciasSinConfirmar: 0,
+    gruposSinPublicar: 0,
+    entrenadoresSinConfirmar: 0,
+  });
+
+  const [anioInicioTemporadaAgenda, setAnioInicioTemporadaAgenda] = useState(
+    () =>
+      Math.max(
+        2026,
+        leerStorageNumeroApp(
+          'mitico_temporada_trabajo',
+          temporadaInicioDefectoAgenda
+        )
+      )
+  );
+  const [mesAgenda, setMesAgenda] = useState(() =>
+    leerStorageApp('mitico_mes_trabajo', '')
+  );
+  const [semanaAgendaInicio, setSemanaAgendaInicio] = useState(() =>
+    leerStorageApp('mitico_semana_trabajo', '')
+  );
+  const [planning, setPlanning] = useState<GrupoPlanning[]>([]);
+  const [filtroPlanning, setFiltroPlanning] = useState<
+    'todos' | 'pendientes' | 'cerrados' | 'sin_publicar'
+  >('todos');
+  const [detalle, setDetalle] = useState<DetalleGrupo | null>(null);
+  const [whatsappGruposApp, setWhatsappGruposApp] = useState<
+    WhatsappGrupoApp[]
+  >([]);
+
+  const [gruposEntrenador, setGruposEntrenador] = useState<
+    GrupoEntrenadorApp[]
+  >([]);
+  const [alumnosReporteEntrenador, setAlumnosReporteEntrenador] = useState<
+    AlumnoReporteEntrenador[]
+  >([]);
+  const [busquedaGrupoEntrenador, setBusquedaGrupoEntrenador] = useState('');
+  const [tabVistaEntrenador, setTabVistaEntrenador] = useState<
+    'disponibilidad' | 'grupos'
+  >('disponibilidad');
+  const [tareaEntrenadorAbierta, setTareaEntrenadorAbierta] =
+    useState<string | null>(null);
+  const [semanaEntrenadorSeleccionada, setSemanaEntrenadorSeleccionada] =
+    useState('');
+  const [diaDisponibilidadAbierto, setDiaDisponibilidadAbierto] =
+    useState('');
+
+  const gestionarDiaDisponibilidad = (
+    claveDia: string,
+    event: React.SyntheticEvent<HTMLDetailsElement>
+  ) => {
+    if (event.target !== event.currentTarget) return;
+
+    if (event.currentTarget.open) {
+      setDiaDisponibilidadAbierto(claveDia);
+      return;
+    }
+
+    // El día seleccionado permanece abierto. Solo se cierra al abrir otro día.
+    setDiaDisponibilidadAbierto((actual) =>
+      actual === claveDia ? claveDia : actual
+    );
+  };
+
+  const cerrarAcordeonesHermanos = (
+    event: React.SyntheticEvent<HTMLDetailsElement>
+  ) => {
+    if (event.target !== event.currentTarget) return;
+
+    const actual = event.currentTarget;
+    if (!actual.open) return;
+
+    const contenedor = actual.parentElement;
+    if (!contenedor) return;
+
+    Array.from(contenedor.children).forEach((elemento) => {
+      if (
+        elemento instanceof HTMLDetailsElement &&
+        elemento !== actual &&
+        elemento.open
+      ) {
+        elemento.open = false;
+      }
+    });
+  };
+
+  const enfocarAcordeonEntrenadorAlAbrir = (
+    event: React.MouseEvent<HTMLElement>
+  ) => {
+    const detalle = event.currentTarget.closest('details');
+    if (!(detalle instanceof HTMLDetailsElement) || detalle.open) return;
+
+    enfocarElementoApp(detalle, { block: 'start' });
+  };
+
+  const irASeccionGrupoEntrenador = (
+    seccion: 'asistencia' | 'trabajo' | 'observaciones',
+    grupoDomId: string
+  ) => {
+    setSeccionGrupoEntrenador(seccion);
+
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const objetivo = document.getElementById(
+          `${grupoDomId}-${seccion}`
+        );
+        if (!objetivo) return;
+
+        const ficha = objetivo.closest(
+          '.trainer-group-card.is-sheet-open'
+        ) as HTMLElement | null;
+
+        if (
+          ficha &&
+          window.matchMedia('(max-width: 719px)').matches
+        ) {
+          ficha.scrollTo({
+            top: Math.max(0, objetivo.offsetTop - 150),
+            behavior: 'smooth',
+          });
+          return;
+        }
+
+        objetivo.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      });
+    });
+  };
+
+  const [grupoActivoEntrenador, setGrupoActivoEntrenador] =
+    useState<GrupoActivoEntrenador | null>(null);
+  const [seccionGrupoEntrenador, setSeccionGrupoEntrenador] = useState<
+    'asistencia' | 'trabajo' | 'observaciones'
+  >('asistencia');
+  const [reporteActivo, setReporteActivo] = useState<ReporteActivo | null>(
+    null
+  );
+  const [formReporte, setFormReporte] = useState<ReporteFormState>(
+    reporteInicial()
+  );
+  const [nivelPartidaReporte, setNivelPartidaReporte] = useState('');
+
+  const overlayEntrenadorAbierto = Boolean(
+    grupoActivoEntrenador || reporteActivo
+  );
+
+  useEffect(() => {
+    if (!overlayEntrenadorAbierto || typeof window === 'undefined') return;
+    if (!window.matchMedia('(max-width: 719px)').matches) return;
+
+    const scrollY = window.scrollY;
+    const estilosPrevios = {
+      position: document.body.style.position,
+      top: document.body.style.top,
+      left: document.body.style.left,
+      right: document.body.style.right,
+      width: document.body.style.width,
+      overflow: document.body.style.overflow,
+    };
+
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.position = estilosPrevios.position;
+      document.body.style.top = estilosPrevios.top;
+      document.body.style.left = estilosPrevios.left;
+      document.body.style.right = estilosPrevios.right;
+      document.body.style.width = estilosPrevios.width;
+      document.body.style.overflow = estilosPrevios.overflow;
+      window.scrollTo({ top: scrollY, behavior: 'auto' });
+    };
+  }, [overlayEntrenadorAbierto]);
+
+  const [modalidadAnalisisAdmin, setModalidadAnalisisAdmin] =
+    useState<ModalidadAnalisisAdminApp>('BABY');
+  const [temporadaAnalisisAdminId, setTemporadaAnalisisAdminId] =
+    useState<string>('');
+  const [analisisAdmin, setAnalisisAdmin] =
+    useState<AnalisisAdminPayloadApp | null>(null);
+  const [cargandoAnalisisAdmin, setCargandoAnalisisAdmin] = useState(false);
+  const [errorAnalisisAdmin, setErrorAnalisisAdmin] = useState('');
+
+  const [alumnos, setAlumnos] = useState<AlumnoResumen[]>([]);
+  const [alumnosBabyFicha, setAlumnosBabyFicha] = useState<
+    AlumnoBabyFichaApp[]
+  >([]);
+  const [tendenciasRitmoAlumnos, setTendenciasRitmoAlumnos] = useState<
+    TendenciaRitmoAlumnoApp[]
+  >([]);
+  const [perfilesOperativosAlumnos, setPerfilesOperativosAlumnos] = useState<
+    PerfilOperativoAlumnoApp[]
+  >([]);
+  const [progresionInicialAlumnos, setProgresionInicialAlumnos] = useState<
+    ProgresionInicialAlumnoApp[]
+  >([]);
+  const [trabajosDiariosHistoricos, setTrabajosDiariosHistoricos] = useState<
+    TrabajoDiarioHistoricoApp[]
+  >([]);
+  const [busquedaAlumno, setBusquedaAlumno] = useState('');
+  const [filtroAlumnos, setFiltroAlumnos] = useState<
+    | 'todos'
+    | 'sin_nivel'
+    | 'sin_reportes'
+    | 'revisar_ficha'
+    | 'revision_reciente'
+    | 'seguimiento_especial'
+  >('todos');
+  const [vistaFichasAlumnos, setVistaFichasAlumnos] = useState<
+    'general' | 'intensivos'
+  >('general');
+  const [filtroFichasIntensivos, setFiltroFichasIntensivos] = useState<
+    'todos' | 'en_curso' | 'recuperar' | 'finalizados'
+  >('todos');
+  const [busquedaFichasIntensivos, setBusquedaFichasIntensivos] =
+    useState('');
+  const [alumnoEditandoId, setAlumnoEditandoId] = useState<string | null>(null);
+  const [alumnoEditNombre, setAlumnoEditNombre] = useState('');
+  const [alumnoEditFechaNacimiento, setAlumnoEditFechaNacimiento] =
+    useState('');
+  const [alumnoEditTelefono, setAlumnoEditTelefono] = useState('');
+  const [alumnoEditNivel, setAlumnoEditNivel] = useState('');
+  const [alumnoEditOrigen, setAlumnoEditOrigen] =
+    useState('Jose / Coordinador');
+  const [alumnoEditEstado, setAlumnoEditEstado] = useState(
+    'pendiente completar'
+  );
+  const [mostrarNuevoAlumnoManual, setMostrarNuevoAlumnoManual] =
+    useState(false);
+  const [nuevoAlumnoNombre, setNuevoAlumnoNombre] = useState('');
+  const [nuevoAlumnoNivel, setNuevoAlumnoNivel] = useState('');
+  const [nuevoAlumnoOrigen, setNuevoAlumnoOrigen] =
+    useState('Jose / Coordinador');
+  const [nuevoAlumnoEstado, setNuevoAlumnoEstado] = useState(
+    'pendiente completar'
+  );
+  const [evaluacionAlumnoActivaId, setEvaluacionAlumnoActivaId] = useState<
+    string | null
+  >(null);
+  const [evaluacionAlumnoTexto, setEvaluacionAlumnoTexto] = useState('');
+  const [historialAlumnoAbiertoId, setHistorialAlumnoAbiertoId] = useState<
+    string | null
+  >(null);
+
+  const [ocioAlumnos, setOcioAlumnos] = useState<OcioAlumnoApp[]>([]);
+  const [ocioGrupos, setOcioGrupos] = useState<OcioGrupoApp[]>([]);
+  const [ocioTurnoVista, setOcioTurnoVista] = useState<
+    'Jueves' | 'Sábado' | 'Domingo'
+  >('Jueves');
+  const [ocioAlumnosTurnoAbierto, setOcioAlumnosTurnoAbierto] =
+    useState(false);
+  const [ocioAlumnoRecomendandoId, setOcioAlumnoRecomendandoId] =
+    useState('');
+  const [ocioGrupoGestionAbiertoId, setOcioGrupoGestionAbiertoId] =
+    useState<string>('');
+  const [ocioBusquedaGestionGrupo, setOcioBusquedaGestionGrupo] =
+    useState('');
+  const [ocioPanelOperativo, setOcioPanelOperativo] = useState<
+    'ninguno' | 'cambios' | 'semana' | 'nuevo'
+  >('ninguno');
+  const [ocioNuevoNombre, setOcioNuevoNombre] = useState('');
+  const [ocioNuevoNivel, setOcioNuevoNivel] = useState('');
+  const [ocioNuevoAlumnoId, setOcioNuevoAlumnoId] = useState('');
+  const [ocioNuevoSugerencias, setOcioNuevoSugerencias] = useState<
+    AlumnoResumen[]
+  >([]);
+  const [ocioNuevoRecomendaciones, setOcioNuevoRecomendaciones] = useState<
+    Array<{
+      grupo: OcioGrupoApp;
+      estado: 'RECOMENDADO' | 'REVISAR' | 'NO_ENCAJA';
+      motivo: string;
+      score: number;
+      totalActual: number;
+      totalFinal: number;
+      esTurnoActual: boolean;
+    }>
+  >([]);
+  const [ocioNuevoAnalizando, setOcioNuevoAnalizando] = useState(false);
+  const [ocioNuevoGuardandoGrupoId, setOcioNuevoGuardandoGrupoId] =
+    useState('');
+  const [ocioRecomendacionesCambio, setOcioRecomendacionesCambio] = useState<
+    OcioRecomendacionCambioApp[]
+  >([]);
+  const [busquedaOcio, setBusquedaOcio] = useState('');
+  const [filtroDiaFichasOcio, setFiltroDiaFichasOcio] = useState<
+    '' | 'Jueves' | 'Sábado' | 'Domingo'
+  >('');
+  const [filtroEstadoFichasOcio, setFiltroEstadoFichasOcio] = useState<
+    'todos' | 'sin_grupo' | 'sin_nivel' | 'revisar_grupo'
+  >('todos');
+  const [mostrarNuevoOcio, setMostrarNuevoOcio] = useState(false);
+  const [ocioAlumnoEditandoId, setOcioAlumnoEditandoId] = useState<
+    string | null
+  >(null);
+  const [ocioNombre, setOcioNombre] = useState('');
+  const [ocioTelefono, setOcioTelefono] = useState('');
+  const [ocioNivel, setOcioNivel] = useState('');
+  const [ocioFechaNacimiento, setOcioFechaNacimiento] = useState('');
+  const [ocioDiaFijo, setOcioDiaFijo] = useState('Jueves');
+  const [ocioHoraInicio, setOcioHoraInicio] = useState('18:00');
+  const [ocioHoraFin, setOcioHoraFin] = useState('20:00');
+  const [ocioObservaciones, setOcioObservaciones] = useState('');
+  const [textoImportarOcio, setTextoImportarOcio] = useState('');
+  const [resultadoImportarOcio, setResultadoImportarOcio] = useState<
+    OcioImportadoApp[]
+  >([]);
+  const [ocioGrupoForm, setOcioGrupoForm] = useState<OcioGrupoFormState>(
+    ocioGrupoFormInicial()
+  );
+  const [mostrarFormularioOcioGrupo, setMostrarFormularioOcioGrupo] =
+    useState(false);
+  const [ocioPropuestaGrupos, setOcioPropuestaGrupos] = useState<
+    OcioGrupoPropuestaApp[]
+  >([]);
+  const [ocioGenerandoPropuesta, setOcioGenerandoPropuesta] = useState(false);
+  const [ocioGuardandoPropuesta, setOcioGuardandoPropuesta] = useState(false);
+  const [evaluacionOcioActivaId, setEvaluacionOcioActivaId] = useState<
+    string | null
+  >(null);
+  const [evaluacionOcioTexto, setEvaluacionOcioTexto] = useState('');
+  const [ocioSemanaAsistencia, setOcioSemanaAsistencia] = useState<
+    Record<string, boolean>
+  >({});
+  const [ocioSemanaEntrenadores, setOcioSemanaEntrenadores] = useState<
+    Record<string, string>
+  >({});
+  const [ocioSemanaResultados, setOcioSemanaResultados] = useState<
+    OcioPrepararResultadoApp[]
+  >([]);
+  const [ocioCambiosPuntuales, setOcioCambiosPuntuales] = useState<
+    OcioCambioPuntualApp[]
+  >([]);
+  const [ocioCambioForm, setOcioCambioForm] = useState<OcioCambioFormState>(
+    ocioCambioFormInicial()
+  );
+  const [mostrarFormularioOcioCambio, setMostrarFormularioOcioCambio] =
+    useState(false);
+
+  const [entrenadores, setEntrenadores] = useState<EntrenadorResumen[]>([]);
+  const [busquedaEntrenador, setBusquedaEntrenador] = useState('');
+  const [filtroEntrenadores, setFiltroEntrenadores] = useState<
+    | 'todos'
+    | 'activos'
+    | 'inactivos'
+    | 'sin_chaqueta'
+    | 'documentacion_pendiente'
+  >('todos');
+  const [mostrarFormularioEntrenador, setMostrarFormularioEntrenador] =
+    useState(false);
+  const [formEntrenador, setFormEntrenador] = useState<EntrenadorFormState>(
+    entrenadorFormInicial()
+  );
+  const [creandoAccesoEntrenadorId, setCreandoAccesoEntrenadorId] =
+    useState('');
+  const [gestionandoAccesoEntrenadorId, setGestionandoAccesoEntrenadorId] =
+    useState('');
+  const [estadosAccesoEntrenadores, setEstadosAccesoEntrenadores] = useState<
+    Record<string, EstadoAccesoEntrenadorApp>
+  >({});
+  const [
+    cargandoEstadosAccesoEntrenadores,
+    setCargandoEstadosAccesoEntrenadores,
+  ] = useState(false);
+
+  const [disponibilidad, setDisponibilidad] = useState<
+    DisponibilidadEntrenador[]
+  >([]);
+  const [disponibilidadEditorVista, setDisponibilidadEditorVista] = useState<
+    RespuestaDisponibilidadPublicadaEntrenadoresEditor | null
+  >(null);
+  const [
+    semanaPublicadaObjetivoEntrenador,
+    setSemanaPublicadaObjetivoEntrenador,
+  ] = useState('');
+  const [busquedaDisponibilidad, setBusquedaDisponibilidad] = useState('');
+  const [filtroDisponibilidad, setFiltroDisponibilidad] = useState<
+    'todos' | 'disponibles' | 'no_puedo' | 'pendientes'
+  >('todos');
+
+
+  const [borradorDisponibilidadEditor, setBorradorDisponibilidadEditor] =
+    useState<BorradorDisponibilidadEditor | null>(null);
+  const [vistaPreviaDisponibilidadEditor, setVistaPreviaDisponibilidadEditor] =
+    useState(false);
+  const [mensajeDisponibilidadEditor, setMensajeDisponibilidadEditor] =
+    useState('');
+  const [diaDisponibilidadEditorAbierto, setDiaDisponibilidadEditorAbierto] =
+    useState<string | null>(null);
+  const [turnoResumenDisponibilidadAbierto, setTurnoResumenDisponibilidadAbierto] =
+    useState<string | null>(null);
+  const [
+    categoriaResumenDisponibilidad,
+    setCategoriaResumenDisponibilidad,
+  ] = useState<Record<string, 'disponibles' | 'no_puedo' | 'pendientes'>>({});
+  const [estadoServidorDisponibilidadEditor, setEstadoServidorDisponibilidadEditor] =
+    useState<EstadoServidorDisponibilidadEditor>('sin_preparar');
+  const [publicadaAtDisponibilidadEditor, setPublicadaAtDisponibilidadEditor] =
+    useState<string | null>(null);
+  const [versionPublicadaDisponibilidadEditor, setVersionPublicadaDisponibilidadEditor] =
+    useState(0);
+  const [guardandoDisponibilidadEditor, setGuardandoDisponibilidadEditor] =
+    useState(false);
+  const [publicandoDisponibilidadEditor, setPublicandoDisponibilidadEditor] =
+    useState(false);
+  const [retirandoDisponibilidadEditor, setRetirandoDisponibilidadEditor] =
+    useState(false);
+
+  const [reportesPendientes, setReportesPendientes] = useState<
+    ReportePendiente[]
+  >([]);
+  const [busquedaReportes, setBusquedaReportes] = useState('');
+  const [filtroReportes, setFiltroReportes] = useState<
+    'todos' | 'faltan_reportes' | 'asistencias_sin_confirmar' | 'criticos'
+  >('todos');
+
+  const [cobros, setCobros] = useState<CobroMensual[]>([]);
+  const [cobrosDetalle, setCobrosDetalle] = useState<CobroDetalleMensual[]>([]);
+  const [anioCobros, setAnioCobros] = useState(new Date().getFullYear());
+  const [mesCobros, setMesCobros] = useState(new Date().getMonth() + 1);
+  const [busquedaCobros, setBusquedaCobros] = useState('');
+  const [filtroCobros, setFiltroCobros] = useState<
+    'todos' | 'pendiente' | 'cerrado' | 'incidencias' | 'este_mes'
+  >('todos');
+  const [tarifasEditadasCobros, setTarifasEditadasCobros] = useState<
+    Record<string, string>
+  >({});
+  const [formCobroManual, setFormCobroManual] = useState<CobroManualFormState>(
+    cobroManualInicial()
+  );
+  const [cobroPdfPreview, setCobroPdfPreview] =
+    useState<CobroPdfPreviewState | null>(null);
+
+  const [intensivos, setIntensivos] = useState<IntensivoApp[]>([]);
+  const [intensivoFichaSeleccionado, setIntensivoFichaSeleccionado] =
+    useState<Record<string, string>>({});
+  const [anadiendoFichaAIntensivoId, setAnadiendoFichaAIntensivoId] =
+    useState('');
+  const [selectorIntensivoFichaAbiertoId, setSelectorIntensivoFichaAbiertoId] =
+    useState('');
+  const [panelControlIntensivo, setPanelControlIntensivo] = useState<
+    PanelControlIntensivoApp[]
+  >([]);
+  const [busquedaIntensivos, setBusquedaIntensivos] = useState('');
+  const [filtroIntensivos, setFiltroIntensivos] = useState<
+    'todos' | 'activos' | 'cerrados' | 'sin_alumnos' | 'proximos'
+  >('todos');
+  const [mesIntensivos, setMesIntensivos] = useState(() => {
+    const ahora = new Date();
+    return `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [
+    gestionarPanelControlIntensivoId,
+    setGestionarPanelControlIntensivoId,
+  ] = useState<string | null>(null);
+  const [intensivoCursoAbiertoId, setIntensivoCursoAbiertoId] = useState<
+    string | null
+  >(null);
+
+  const [mostrarFormularioIntensivo, setMostrarFormularioIntensivo] =
+    useState(false);
+  const [formIntensivo, setFormIntensivo] = useState<IntensivoFormState>(
+    intensivoInicial()
+  );
+  const [diaActivoIntensivoId, setDiaActivoIntensivoId] = useState<
+    string | null
+  >(null);
+  const [diaEditandoIntensivoId, setDiaEditandoIntensivoId] = useState<
+    string | null
+  >(null);
+  const [formDiaIntensivo, setFormDiaIntensivo] =
+    useState<DiaIntensivoFormState>(diaIntensivoInicial());
+  const [
+    plantillaCuatroSesionesIntensivo,
+    setPlantillaCuatroSesionesIntensivo,
+  ] = useState<PlantillaCuatroSesionesIntensivoState>(
+    plantillaCuatroSesionesInicial()
+  );
+  const [
+    mostrarPlantillaCuatroSesionesIntensivoId,
+    setMostrarPlantillaCuatroSesionesIntensivoId,
+  ] = useState<string | null>(null);
+  const [intensivoAlumnos, setIntensivoAlumnos] = useState<
+    IntensivoAlumnoApp[]
+  >([]);
+  const [alumnosParaIntensivo, setAlumnosParaIntensivo] = useState<
+    AlumnoParaIntensivoApp[]
+  >([]);
+  const [alumnosResumenVolcado, setAlumnosResumenVolcado] = useState<
+    AlumnoResumenParaVolcadoApp[]
+  >([]);
+  const [gestionarAlumnosIntensivoId, setGestionarAlumnosIntensivoId] =
+    useState<string | null>(null);
+  const [busquedaAlumnoIntensivo, setBusquedaAlumnoIntensivo] = useState('');
+  const [alumnoSeleccionadoIntensivoId, setAlumnoSeleccionadoIntensivoId] =
+    useState('');
+  const [mostrarVolcadoIntensivoId, setMostrarVolcadoIntensivoId] = useState<
+    string | null
+  >(null);
+  const [textoVolcadoIntensivo, setTextoVolcadoIntensivo] = useState('');
+  const [resultadoVolcadoIntensivo, setResultadoVolcadoIntensivo] = useState<
+    VolcadoAlumnoIntensivoApp[]
+  >([]);
+  const [intensivoDias, setIntensivoDias] = useState<IntensivoDiaApp[]>([]);
+  const [intensivoAsistencias, setIntensivoAsistencias] = useState<
+    IntensivoAsistenciaApp[]
+  >([]);
+  const [gestionarAsistenciaIntensivoId, setGestionarAsistenciaIntensivoId] =
+    useState<string | null>(null);
+  const [diaAsistenciaSeleccionadoId, setDiaAsistenciaSeleccionadoId] =
+    useState('');
+  const [intensivoMás, setIntensivoMás] = useState<IntensivoRecuperacionApp[]>(
+    []
+  );
+  const [recomendacionesRecuperacion, setRecomendacionesRecuperacion] = useState<
+    RecuperacionRecomendacionApp[]
+  >([]);
+  const [gruposDestinoRecuperacion, setGruposDestinoRecuperacion] = useState<
+    GrupoDestinoRecuperacionApp[]
+  >([]);
+  const [gestionarMásIntensivoId, setGestionarMásIntensivoId] = useState<
+    string | null
+  >(null);
+
+  const [gruposIntensivoDia, setGruposIntensivoDia] = useState<
+    GrupoIntensivoDiaApp[]
+  >([]);
+  const [resumenReportesIntensivo, setResumenReportesIntensivo] = useState<
+    ResumenReportesIntensivoApp[]
+  >([]);
+  const [resumenFinalIntensivo, setResumenFinalIntensivo] = useState<
+    ResumenFinalIntensivoApp[]
+  >([]);
+  const [reportesDetalleIntensivo, setReportesDetalleIntensivo] = useState<
+    ReporteDetalleIntensivoApp[]
+  >([]);
+  const [gestionarDiplomasIntensivoId, setGestionarDiplomasIntensivoId] =
+    useState<string | null>(null);
+  const [gestionarGruposIntensivoId, setGestionarGruposIntensivoId] = useState<
+    string | null
+  >(null);
+  const [diaGrupoSeleccionadoId, setDiaGrupoSeleccionadoId] = useState('');
+  const [formGrupoIntensivo, setFormGrupoIntensivo] =
+    useState<GrupoIntensivoFormState>(grupoIntensivoInicial());
+  const [recomendacionesGrupoIntensivo, setRecomendacionesGrupoIntensivo] =
+    useState<RecomendacionGrupoIntensivoDiaApp[]>([]);
+  const [entrenadoresPorGrupoRecomendado, setEntrenadoresPorGrupoRecomendado] =
+    useState<Record<string, string>>({});
+  const [
+    entrenadoresApoyoPorGrupoRecomendado,
+    setEntrenadoresApoyoPorGrupoRecomendado,
+  ] = useState<Record<string, string>>({});
+  const [
+    responsablesReportePorGrupoRecomendado,
+    setResponsablesReportePorGrupoRecomendado,
+  ] = useState<Record<string, string>>({});
+  const [destinoAlumnoRecomendado, setDestinoAlumnoRecomendado] = useState<
+    Record<string, string>
+  >({});
+  const [
+    trabajoDiarioPorGrupoRecomendado,
+    setTrabajoDiarioPorGrupoRecomendado,
+  ] = useState<Record<string, string>>({});
+  const [
+    observacionesPorGrupoRecomendado,
+    setObservacionesPorGrupoRecomendado,
+  ] = useState<Record<string, string>>({});
+  const [gruposExtraIntensivoPorDia, setGruposExtraIntensivoPorDia] =
+    useState<Record<string, string[]>>({});
+
+  const [revisionIntensivoId, setRevisionIntensivoId] = useState('');
+  const [revisionIntensivoDiaId, setRevisionIntensivoDiaId] = useState('');
+  const [revisionIntensivoSugerencias, setRevisionIntensivoSugerencias] =
+    useState<RevisionEntreSesionesIntensivoApp[]>([]);
+  const [revisionIntensivoAnalizando, setRevisionIntensivoAnalizando] =
+    useState(false);
+  const [revisionIntensivoAnalizado, setRevisionIntensivoAnalizado] =
+    useState(false);
+
+  const [listados, setListados] = useState<ListadoApp[]>([]);
+  const [busquedaListados, setBusquedaListados] = useState('');
+  const [filtroListados, setFiltroListados] = useState<
+    'todos' | 'pendientes' | 'altas' | 'no_encontrados' | 'fuera_plazo'
+  >('todos');
+
+  const [snowZoneModo, setSnowZoneModo] =
+    useState<SnowZoneModoApp>('mensual');
+  const [snowZoneMes, setSnowZoneMes] = useState(() =>
+    fechaIsoHoyApp().slice(0, 7)
+  );
+  const [snowZoneSemanaInicio, setSnowZoneSemanaInicio] = useState(() => {
+    const hoy = new Date(`${fechaIsoHoyApp()}T12:00:00`);
+    const diaSemana = hoy.getDay();
+    const desplazamiento = diaSemana === 0 ? -6 : 1 - diaSemana;
+    hoy.setDate(hoy.getDate() + desplazamiento);
+    return fechaIsoEditor(hoy);
+  });
+  const [snowZoneDias, setSnowZoneDias] = useState<SnowZoneDiaApp[]>([]);
+  const [snowZoneCargando, setSnowZoneCargando] = useState(false);
+  const [snowZoneError, setSnowZoneError] = useState('');
+
+  const [candidatosEquipo, setCandidatosEquipo] = useState<CandidatoEquipoApp[]>([]);
+  const [candidatosEquipoCargando, setCandidatosEquipoCargando] = useState(false);
+  const [candidatosEquipoError, setCandidatosEquipoError] = useState('');
+  const [candidatosEquipoGenerado, setCandidatosEquipoGenerado] = useState(false);
+
+  const [tipoListadoAlumnos, setTipoListadoAlumnos] =
+    useState<TipoListadoAlumnosApp>('BABY');
+  const [listadoAlumnosTemporada, setListadoAlumnosTemporada] = useState<
+    ListadoAlumnoTemporadaApp[]
+  >([]);
+  const [listadoAlumnosCargando, setListadoAlumnosCargando] = useState(false);
+  const [listadoAlumnosError, setListadoAlumnosError] = useState('');
+  const [listadoAlumnosGenerado, setListadoAlumnosGenerado] = useState(false);
+  const [busquedaListadoAlumnos, setBusquedaListadoAlumnos] = useState('');
+
+  const [evaluacionesAnualesOcio, setEvaluacionesAnualesOcio] = useState<
+    EvaluacionAnualOcioApp[]
+  >([]);
+  const [evaluacionesAnualesOcioCargando, setEvaluacionesAnualesOcioCargando] =
+    useState(false);
+  const [evaluacionesAnualesOcioError, setEvaluacionesAnualesOcioError] =
+    useState('');
+  const [evaluacionesAnualesOcioGeneradas, setEvaluacionesAnualesOcioGeneradas] =
+    useState(false);
+  const [busquedaEvaluacionAnualOcio, setBusquedaEvaluacionAnualOcio] =
+    useState('');
+
+  const [cierreTemporadaAlumnos, setCierreTemporadaAlumnos] = useState<
+    CierreTemporadaAlumnoApp[]
+  >([]);
+  const [resumenCierreTemporada, setResumenCierreTemporada] =
+    useState<ResumenCierreTemporadaApp | null>(null);
+  const [cierreTemporadaCargando, setCierreTemporadaCargando] = useState(false);
+  const [cierreTemporadaError, setCierreTemporadaError] = useState('');
+  const [cierreTemporadaAnalizado, setCierreTemporadaAnalizado] = useState(false);
+  const [filtroCierreTemporada, setFiltroCierreTemporada] = useState<
+    'todos' | 'conservar' | 'eliminar'
+  >('todos');
+  const [busquedaCierreTemporada, setBusquedaCierreTemporada] = useState('');
+
+  const [archivoCopiaMaestraNombre, setArchivoCopiaMaestraNombre] = useState('');
+  const [temporadaOrigenCopiaMaestra, setTemporadaOrigenCopiaMaestra] = useState('');
+  const [filasCopiaMaestraImport, setFilasCopiaMaestraImport] = useState<
+    FilaCopiaMaestraImportApp[]
+  >([]);
+  const [errorCopiaMaestraImport, setErrorCopiaMaestraImport] = useState('');
+  const [importandoCopiaMaestra, setImportandoCopiaMaestra] = useState(false);
+  const [resultadoImportacionCopiaMaestra, setResultadoImportacionCopiaMaestra] =
+    useState('');
+  const [confirmacionCierreTexto, setConfirmacionCierreTexto] = useState('');
+  const [confirmacionBackupCierre, setConfirmacionBackupCierre] = useState(false);
+  const [confirmacionListadoCierre, setConfirmacionListadoCierre] = useState(false);
+  const [cerrandoTemporada, setCerrandoTemporada] = useState(false);
+  const [resultadoCierreTemporada, setResultadoCierreTemporada] = useState('');
+  const [iniciandoNuevaTemporada, setIniciandoNuevaTemporada] = useState(false);
+  const [resultadoNuevaTemporada, setResultadoNuevaTemporada] = useState('');
+  const [temporadaActivaCierre, setTemporadaActivaCierre] = useState('');
+  const [cargandoTemporadaActivaCierre, setCargandoTemporadaActivaCierre] =
+    useState(false);
+  const [errorTemporadaActivaCierre, setErrorTemporadaActivaCierre] =
+    useState('');
+  const [mostrarFlujoCierre, setMostrarFlujoCierre] = useState(false);
+
+  const [agendaSesionesDirectas, setAgendaSesionesDirectas] = useState<
+    AgendaSesionDirectaApp[]
+  >([]);
+  const [agendaSesionActivaId, setAgendaSesionActivaId] = useState('');
+  const [agendaFiltroAlumnos, setAgendaFiltroAlumnos] = useState<
+    'TODOS' | 'NUEVO' | 'CONOCIDO'
+  >('TODOS');
+  const [mostrarAlumnoFueraPlazo, setMostrarAlumnoFueraPlazo] = useState(false);
+  const [alumnoFueraPlazoNombre, setAlumnoFueraPlazoNombre] = useState('');
+  const [alumnoFueraPlazoNivel, setAlumnoFueraPlazoNivel] = useState('');
+  const [alumnoFueraPlazoAlumnoId, setAlumnoFueraPlazoAlumnoId] = useState('');
+  const [incorporandoFueraPlazo, setIncorporandoFueraPlazo] = useState(false);
+  const [mensajeIncorporacionFueraPlazo, setMensajeIncorporacionFueraPlazo] = useState('');
+  const [errorIncorporacionFueraPlazo, setErrorIncorporacionFueraPlazo] = useState('');
+  const [analizandoFueraPlazo, setAnalizandoFueraPlazo] = useState(false);
+  const [recomendacionesFueraPlazo, setRecomendacionesFueraPlazo] = useState<
+    RecomendacionFueraPlazoAgendaApp[]
+  >([]);
+  const [agendaFormularioAbierto, setAgendaFormularioAbierto] = useState(false);
+  const [agendaDiaCompactoActivo, setAgendaDiaCompactoActivo] = useState('');
+  const [gruposAgendaManuales, setGruposAgendaManuales] = useState<string[]>(
+    []
+  );
+  const [agendaForm, setAgendaForm] = useState<AgendaFormState>(
+    agendaFormInicial()
+  );
+  const [agendaAlumnosSesion, setAgendaAlumnosSesion] = useState<
+    AgendaAlumnoSesionApp[]
+  >([]);
+  const [agendaGruposSesion, setAgendaGruposSesion] = useState<
+    AgendaGrupoSesionApp[]
+  >([]);
+  const [agendaGruposRecursosTurno, setAgendaGruposRecursosTurno] = useState<
+    AgendaGrupoSesionApp[]
+  >([]);
+  const [
+    disponibilidadSesionAgenda,
+    setDisponibilidadSesionAgenda,
+  ] = useState<any[]>([]);
+  const [
+    contextoRecursosSesionAgenda,
+    setContextoRecursosSesionAgenda,
+  ] = useState<{
+    sesion_id: string;
+    fecha: string;
+    hora_inicio: string;
+    hora_fin: string;
+  } | null>(null);
+  const [agendaRecomendaciones, setAgendaRecomendaciones] = useState<
+    AgendaRecomendacionSesionApp[]
+  >([]);
+  const [fechaResumenDia, setFechaResumenDia] = useState(() =>
+    leerStorageApp('mitico_fecha_resumen_dia', fechaIsoHoyApp())
+  );
+  const [busquedaAlumnoResumenDia, setBusquedaAlumnoResumenDia] = useState('');
+  const [turnoResumenDiaAbierto, setTurnoResumenDiaAbierto] = useState('');
+  const [gruposOperativosResumenDia, setGruposOperativosResumenDia] = useState<
+    Record<string, AgendaGrupoSesionApp[]>
+  >({});
+  const [grupoResumenDiaDestacado, setGrupoResumenDiaDestacado] = useState('');
+  const [alumnoResumenDiaDestacado, setAlumnoResumenDiaDestacado] = useState('');
+  const [busquedaRevisionOcio, setBusquedaRevisionOcio] = useState('');
+  const [filtroRevisionOcio, setFiltroRevisionOcio] = useState<
+    'todos' | 'cambios' | 'sin_grupo' | 'sin_reportes'
+  >('cambios');
+  const [destinoRevisionOcio, setDestinoRevisionOcio] = useState<
+    Record<string, string>
+  >({});
+  const [ultimaDescargaBackupSemana, setUltimaDescargaBackupSemana] =
+    useState('');
+  const [semanaBackupSeleccionada, setSemanaBackupSeleccionada] =
+    useState('');
+  const [backupRestauracion, setBackupRestauracion] = useState<any | null>(null);
+  const [archivoBackupRestauracion, setArchivoBackupRestauracion] = useState('');
+  const [errorBackupRestauracion, setErrorBackupRestauracion] = useState('');
+  const [confirmacionBackupRestauracion, setConfirmacionBackupRestauracion] =
+    useState('');
+  const [restaurandoBackupSemanal, setRestaurandoBackupSemanal] = useState(false);
+  const [resultadoRestauracionBackup, setResultadoRestauracionBackup] =
+    useState('');
+  const [destinoAlumnoAgendaGrupo, setDestinoAlumnoAgendaGrupo] = useState<
+    Record<string, string>
+  >({});
+  const [entrenadoresAgendaGrupo, setEntrenadoresAgendaGrupo] = useState<
+    Record<string, string>
+  >({});
+  const [entrenadoresApoyoAgendaGrupo, setEntrenadoresApoyoAgendaGrupo] =
+    useState<Record<string, string>>({});
+  const [responsablesReporteAgendaGrupo, setResponsablesReporteAgendaGrupo] =
+    useState<Record<string, string>>({});
+  const [puntosAgendaGrupo, setPuntosAgendaGrupo] = useState<
+    Record<string, string>
+  >({});
+  const [trabajoAgendaGrupo, setTrabajoAgendaGrupo] = useState<
+    Record<string, string>
+  >({});
+  const [observacionesAgendaGrupo, setObservacionesAgendaGrupo] = useState<
+    Record<string, string>
+  >({});
+  const [trabajoGrupoCreadoEditando, setTrabajoGrupoCreadoEditando] = useState<
+    Record<string, string>
+  >({});
+  const [
+    observacionesGrupoCreadoEditando,
+    setObservacionesGrupoCreadoEditando,
+  ] = useState<Record<string, string>>({});
+
+  const [cargando, setCargando] = useState(false);
+  const [error, setError] = useState('');
+  const [whatsappPreview, setWhatsappPreview] =
+    useState<WhatsappPreviewState | null>(null);
+
+  const [altasNivelInicial, setAltasNivelInicial] = useState<AltaNivelInicialApp[]>([]);
+  const [formAltaNivelInicial, setFormAltaNivelInicial] =
+    useState<AltaNivelInicialFormApp>(altaNivelInicialFormVacioApp());
+  const [mostrarFormularioAltaNivel, setMostrarFormularioAltaNivel] = useState(false);
+  const [cargandoAltasNivel, setCargandoAltasNivel] = useState(false);
+  const [guardandoAltaNivel, setGuardandoAltaNivel] = useState(false);
+  const [nivelesValidacionAlta, setNivelesValidacionAlta] =
+    useState<Record<string, string>>({});
+
+  const [filtroAltasNivel, setFiltroAltasNivel] = useState<
+    'TODOS' | 'PENDIENTE_ENVIO' | 'ENVIADO' | 'RESPONDIDO' | 'VALIDADO' | 'ANADIDO' | 'DESCARTADO'
+  >('TODOS');
+  const [altaNivelAbiertaId, setAltaNivelAbiertaId] = useState('');
+  const [intensivosAltaNivel, setIntensivosAltaNivel] = useState<IntensivoApp[]>([]);
+  const [intensivoAltaSeleccionado, setIntensivoAltaSeleccionado] =
+    useState<Record<string, string>>({});
+  const [anadiendoAltaNivelId, setAnadiendoAltaNivelId] = useState('');
+  const [comprobandoCoincidenciasAltaId, setComprobandoCoincidenciasAltaId] =
+    useState('');
+  const [coincidenciasAltaNivel, setCoincidenciasAltaNivel] = useState<
+    Record<string, CoincidenciaAltaNivelInicialApp[]>
+  >({});
+  const [resolucionCoincidenciaAlta, setResolucionCoincidenciaAlta] = useState<
+    Record<string, string>
+  >({});
+
+  const [detalleRespuestaAlta, setDetalleRespuestaAlta] = useState('');
+
+  async function cabecerasSupabaseAutenticadasApp(
+    incluirJson = false
+  ): Promise<Record<string, string>> {
+    const accessToken = await obtenerAccessTokenSupabaseApp();
+
+    return {
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${accessToken}`,
+      ...(incluirJson ? { 'Content-Type': 'application/json' } : {}),
+    };
+  }
+
+  async function leerRespuestaSupabaseApp<T>(
+    respuesta: Response,
+    mensajePorDefecto: string
+  ): Promise<T> {
+    const texto = await respuesta.text();
+    let datos: unknown = null;
+
+    try {
+      datos = texto ? JSON.parse(texto) : null;
+    } catch {
+      datos = texto;
+    }

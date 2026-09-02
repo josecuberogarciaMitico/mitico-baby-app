@@ -1,0 +1,2500 @@
+import React, { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import './App.css';
+import { FOTO_MITICO_HERO } from './assets/imagenes';
+import {
+  CampoSelect,
+  PantallaSegura,
+  agendaAccionesSesion,
+  agendaAlumnoLinea,
+  agendaBadgeModalidad,
+  agendaBadgeModalidadColor,
+  agendaBloqueBlanco,
+  agendaBotonDiaCompacto,
+  agendaBotonMes,
+  agendaBotonSemana,
+  agendaCabeceraLinea,
+  agendaControlesGrid,
+  agendaDiaCard,
+  agendaDiaHeader,
+  agendaDiasGrid,
+  agendaDiasSelectorCompacto,
+  agendaGrupoLinea,
+  agendaGrupoPropuesta,
+  agendaGrupoResumen,
+  agendaHero,
+  agendaHeroOcio,
+  agendaHeroTrabajoSemanal,
+  agendaMesesGrid,
+  agendaMiniContador,
+  agendaMiniContadorDiaCompacto,
+  agendaMiniLabel,
+  agendaMiniTexto,
+  agendaPanelControles,
+  agendaPanelRangoSemana,
+  agendaSemanasGrid,
+  agendaSesionCard,
+  agendaSesionCardModalidad,
+  agendaSesionContadores,
+  agendaSesionTop,
+  agendaShellCompacto,
+  agendaTurnoFila,
+  agendaVacio,
+  agendaVacioMini,
+  agruparDisponibilidadPorTurno,
+  agruparDisponibilidadSemanal,
+  agruparGruposEntrenadorSemanal,
+  agruparGruposPorEntrenador,
+  agruparPorEntrenador,
+  agruparReportesPorEntrenador,
+  alumnosLimpiosWhatsapp,
+  avisoCompleto,
+  avisoInline,
+  avisoNeutral,
+  avisoPendiente,
+  avisoReportePendiente,
+  ayudaDesplegableCompacta,
+  ayudaReporteEntrenadorCaja,
+  ayudaReporteEntrenadorContenido,
+  badgeIntensivoEntrenador,
+  badgeModalidadMovil,
+  badgeNoTrabaja,
+  badgePendiente,
+  badgePistaGrandeApp,
+  badgePistaNeutraApp,
+  badgePistaPequenaApp,
+  badgeTrabaja,
+  barraPasosIntensivo,
+  bloqueInfoEntrenador,
+  bloqueSemanaMovil,
+  bloqueTexto,
+  botonAsistenciaAusente,
+  botonAsistenciaOff,
+  botonAsistenciaOk,
+  botonAsistenciaPendiente,
+  botonBaseApp,
+  botonMenu,
+  botonMenuColor,
+  botonMini,
+  botonModalidadAgenda,
+  botonPasoIntensivo,
+  botonPeligro,
+  botonPeligroMini,
+  botonPrincipal,
+  botonSecundario,
+  botonesAsistenciaMovil,
+  buscador,
+  cabeceraAppLimpia,
+  cabeceraEntrenadorMovil,
+  cabeceraMarcaApp,
+  cabeceraPantalla,
+  cabeceraPantallaMovil,
+  cabeceraSemanaMovil,
+  capitalizarPrimera,
+  celdaTextoAyudaReporte,
+  celdaTituloAyudaReporte,
+  chipDiaIntensivo,
+  chipDiaIntensivoVacio,
+  chipResumenCursoIntensivo,
+  chuletaEntrenadorMini,
+  cierreJoseCaja,
+  cierreJoseGrid,
+  cierreJoseItem,
+  cierreJoseLabel,
+  coloresModalidadAgenda,
+  contadorGrandeMovil,
+  contadorNinosMovil,
+  diaEntrenadorCard,
+  diaEntrenadorCardLibre,
+  diaEntrenadorHeader,
+  emojiPuntoEncuentro,
+  entrenadorHeroApp,
+  entrenadorHeroChips,
+  errorCaja,
+  esIntensivoGrupo,
+  escaparHtml,
+  estiloBadgePistaApp,
+  estiloGrupoPorPistaApp,
+  etiquetaFechaHoraGrupo,
+  etiquetaPistaVisualApp,
+  etiquetaSuperior,
+  extraerObservacionesVisualesGrupoApp,
+  filaAlumnoAsistencia,
+  filaAlumnoEntrenadorMovil,
+  formatearAlumnosDetalle,
+  formatearAlumnosPlanning,
+  formatearEuros,
+  formatearFecha,
+  formatearObservaciones,
+  formatearTrabajoDiario,
+  formularioCaja,
+  franjaFechasIntensivo,
+  gridFormulario,
+  gridMiniMetricas,
+  gridResumenInicio,
+  grupoEntrenadorCardMovil,
+  grupoEntrenadorTopMovil,
+  grupoNivelAFormulario,
+  inicioSemanaGlobal,
+  inputCampo,
+  inputEntrenadorBusqueda,
+  labelCampo,
+  layout,
+  limpiarDetalleObservacionVisualGrupoApp,
+  lineaDiasIntensivo,
+  listaAlumnosGrupoCompacta,
+  logoMarcaApp,
+  marcaKickerApp,
+  marcaLogoTituloApp,
+  menuBloqueApp,
+  menuBloqueColor,
+  menuPrincipalApp,
+  menuTituloApp,
+  menuTituloColor,
+  metricCardIntensivo,
+  miniBadge,
+  miniBadgeVerde,
+  miniMetrica,
+  miniTarjeta,
+  miniTarjetaBlanca,
+  miniTarjetaCerrada,
+  miniTarjetaCompleta,
+  miniTarjetaPendienteAsistencia,
+  miniTarjetaPendienteReporte,
+  nivelGeneralGrupoVisual,
+  nombreGrupoPropuestaApp,
+  nombreGrupoVisualApp,
+  nombreMes,
+  normalizarModalidadAgenda,
+  panelEntrenadorFiltroApp,
+  panelRevisionIntegradaOcio,
+  panelTrabajoGrupo,
+  resumenChipsMovil,
+  resumenCursoIntensivoGrid,
+  selectCampo,
+  selectCampoAgenda,
+  summaryAyudaReporteEntrenador,
+  summaryChuletaApp,
+  summaryTrabajoGrupo,
+  tabBarEntrenadorModerno,
+  tabEntrenadorModerno,
+  tarjeta,
+  tarjetaEntrenadorMovil,
+  tarjetaInicioAlerta,
+  tarjetaInicioEstado,
+  tarjetaInicioOk,
+  tarjetaInicioRojo,
+  tarjetaIntensivoCurso,
+  tarjetaModernaIntensivos,
+  tarjetaMovilVacia,
+  tarjetaResaltada,
+  textarea,
+  textareaCampo,
+  tituloMarcaApp,
+  turnoEntrenadorBox,
+  vistaEntrenadorShell,
+} from './lib/appHelpers';
+import { PantallaIntensivos } from './screens/IntensivosScreen';
+import {
+  generarTrabajoDiarioInteligenteApp,
+  type AlumnoContextoTrabajoDiarioApp,
+} from './lib/dailyWorkEngine';
+
+type WhatsappPreviewState = {
+  titulo: string;
+  texto: string;
+  telefonoDestino?: string;
+  claveGrupoWhatsapp?: string;
+  modalidadGrupoWhatsapp?: string;
+  referenciaGrupoWhatsapp?: string;
+  enlaceGrupoWhatsapp?: string;
+  mensajeGrupoCopiado?: boolean;
+};
+
+
+type ModalidadAnalisisAdminApp = 'BABY' | 'OCIO' | 'INTENSIVOS';
+
+type AnalisisAdminMensualApp = {
+  mes: string;
+  alumnos_unicos: number;
+  altas: number;
+  crecimiento_pct: number | null;
+  continuidad_pct: number | null;
+  perdida_continuidad_pct: number | null;
+  asistencia_real_pct: number | null;
+  promedio_ninos_turno: number;
+  promedio_por_grupo: number;
+  sesiones_realizadas: number;
+  ocupacion_pct: number | null;
+  evolucion_tecnica: number;
+  mejoran: number;
+  estables: number;
+  bajan: number;
+};
+
+type AnalisisAdminPayloadApp = {
+  meta: {
+    temporada_id: string;
+    temporada: string;
+    fecha_inicio: string;
+    fecha_fin: string;
+    modalidad: ModalidadAnalisisAdminApp;
+    generado_at: string;
+  };
+  resumen: {
+    alumnos_unicos: number;
+    altas: number;
+    continuidad_pct: number | null;
+    perdida_continuidad_pct: number | null;
+    asistencia_real_pct: number | null;
+    promedio_ninos_turno: number;
+    promedio_por_grupo: number;
+    sesiones_realizadas: number;
+    ocupacion_pct: number | null;
+    evolucion_tecnica: number;
+    alumnos_mejoran: number;
+    alumnos_estables: number;
+    alumnos_bajan: number;
+  };
+  mensual: AnalisisAdminMensualApp[];
+  niveles: Array<{ nivel: string; total: number }>;
+  progresiones: Array<{
+    desde: string;
+    hasta: string;
+    total: number;
+    sentido: 'SUBE' | 'BAJA' | 'IGUAL';
+  }>;
+  comparativa_temporadas: Array<{
+    temporada_id: string;
+    temporada: string;
+    activa: boolean;
+    alumnos_unicos: number;
+    sesiones_realizadas: number;
+    asistencia_real_pct: number | null;
+    evolucion_tecnica: number;
+  }>;
+  definiciones: Record<string, string>;
+};
+
+type AnalisisAdminRpcRowApp = {
+  payload: AnalisisAdminPayloadApp;
+};
+
+type AvisoJose = {
+  orden: number;
+  bloque: string;
+  contador: number;
+  descripcion: string;
+};
+
+type GrupoPlanning = {
+  grupo_id: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  modalidad: string;
+  nombre_grupo: string;
+  nivel_grupo: string;
+  pista: string;
+  punto_encuentro: string;
+  estado_grupo: string;
+  ratio_ok: boolean;
+  excepcion_ratio: boolean;
+  publicado: boolean;
+  entrenadores: string | null;
+  alumnos: string | null;
+  total_alumnos: number;
+  trabajo_diario: string | null;
+  observaciones_importantes: string | null;
+};
+
+type GrupoEntrenadorApp = {
+  entrenador_id: string;
+  entrenador: string;
+  estado_confirmacion: string;
+  confirmado_at: string | null;
+  grupo_id: string;
+  nombre_grupo: string;
+  nivel_grupo: string;
+  pista: string;
+  punto_encuentro: string;
+  estado_grupo: string;
+  publicado: boolean;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  modalidad: string;
+  tipo_sesion?: string | null;
+  lugar?: string | null;
+  alumnos: string | null;
+  total_alumnos: number;
+  trabajo_diario: string | null;
+  observaciones_importantes: string | null;
+};
+
+type AlumnoReporteEntrenador = {
+  entrenador_id: string;
+  entrenador: string;
+  grupo_id: string;
+  nombre_grupo: string;
+  publicado: boolean;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  modalidad: string;
+  alumno_id: string;
+  alumno: string;
+  estado_asistencia: string;
+  reporte_id: string | null;
+  enviado_at: string | null;
+  estado_reporte: string;
+  nivel_alumno?: string | null;
+  fuente_nivel?: string | null;
+  pista_alumno?: string | null;
+};
+
+type DetalleGrupo = {
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  modalidad: string;
+  grupo_id: string;
+  nombre_grupo: string;
+  nivel_grupo: string;
+  pista: string;
+  punto_encuentro: string;
+  estado_grupo: string;
+  ratio_ok: boolean;
+  excepcion_ratio: boolean;
+  entrenadores: string | null;
+  alumnos_detalle: string | null;
+  total_alumnos: number;
+  trabajo_diario: string | null;
+  trabajo_diario_revisado: boolean;
+  observaciones_importantes: string | null;
+  publicado: boolean;
+  cancelado: boolean;
+};
+
+type TrabajoDiarioHistoricoApp = {
+  fecha: string;
+  modalidad: string;
+  alumnos_detalle: string | null;
+  trabajo_diario: string | null;
+};
+
+type AlumnoBabyFichaApp = {
+  alumno_id: string;
+  ultimo_baby: string | null;
+  total_sesiones_baby: number;
+};
+
+type AlumnoResumen = {
+  alumno_id: string;
+  alumno: string;
+  telefono: string | null;
+  nivel_actual: string | null;
+  nivel_estimado: string | null;
+  origen_nivel_estimado: string | null;
+  estado_ficha: string;
+  total_reportes: number;
+  total_entrenamientos_realizados: number;
+  ultima_fecha_reporte: string | null;
+  ultima_modalidad: string | null;
+  ultimo_nivel_reportado: string | null;
+  ultima_actitud: string | null;
+  ultima_tecnica: string | null;
+  ultima_pista: string | null;
+  ultimos_remontes: string[] | null;
+  ultima_autonomia: string | null;
+  ultima_incidencia: string | null;
+  ultima_recomendacion: string | null;
+  fecha_nacimiento: string | null;
+};
+
+type TendenciaRitmoAlumnoApp = {
+  alumno_id: string;
+  ritmo_tendencia: string | null;
+  confianza: 'ALTA' | 'MEDIA' | 'BAJA' | null;
+  reportes_usados: number;
+  ritmo_ultimo: string | null;
+  ritmo_anterior: string | null;
+  ritmo_tercero: string | null;
+};
+
+type PerfilOperativoAlumnoApp = {
+  alumno_id: string;
+  alumno: string;
+  nivel_usado: string | null;
+  fuerza_nivel: 'BAJO' | 'ADECUADO' | 'FUERTE' | 'MUY_FUERTE' | null;
+  ritmo_tendencia: string | null;
+  confianza_ritmo: 'ALTA' | 'MEDIA' | 'BAJA' | null;
+  reportes_ritmo: number;
+  autonomia_reciente: string | null;
+  remontes_recientes: string[] | null;
+  demanda_atencion: 'NORMAL' | 'MEDIA' | 'ALTA' | null;
+  edad_aprox: number | null;
+  observacion_visible_entrenador: string | null;
+  mostrar_observacion_entrenador: boolean;
+  aviso_operativo: string | null;
+};
+
+
+type ProgresionInicialAlumnoApp = {
+  alumno_id: string;
+  grupo_id: string;
+  entrenador_id: string;
+  nivel_reportado: string | null;
+  autonomia_cinta: string | null;
+  cuna_frenada: string | null;
+  giro_inicial: string | null;
+  dinamica_autonoma: string | null;
+  ayuda_cunero: string | null;
+  updated_at: string | null;
+};
+
+type OcioAlumnoApp = {
+  alumno_id: string;
+  alumno: string;
+  telefono: string | null;
+  nivel: string | null;
+  nivel_usado: string | null;
+  fuente_nivel: string | null;
+  fecha_nacimiento: string | null;
+  estado_ficha: string | null;
+  origen_nivel_estimado: string | null;
+  dia_fijo: string | null;
+  hora_inicio_fija: string | null;
+  hora_fin_fija: string | null;
+  observaciones: string | null;
+  grupo_id: string | null;
+  grupo_estable: string | null;
+  grupo_dia: string | null;
+  grupo_hora_inicio: string | null;
+  grupo_hora_fin: string | null;
+  grupo_nivel: string | null;
+  grupo_pista: string | null;
+  grupo_punto: string | null;
+  total_reportes: number;
+  ultimo_reporte_fecha: string | null;
+};
+
+type OcioGrupoApp = {
+  grupo_id: string;
+  nombre_grupo: string;
+  dia_semana: string;
+  hora_inicio: string;
+  hora_fin: string;
+  nivel_grupo: string | null;
+  pista: string | null;
+  punto_encuentro: string | null;
+  observaciones: string | null;
+  activo: boolean;
+  temporada: string | null;
+  total_alumnos: number;
+  alumnos_lista: string | null;
+};
+
+type OcioGrupoPropuestaApp = {
+  propuesta_id: string;
+  nombre: string;
+  pista: 'Pequeña' | 'Grande';
+  nivelObjetivo: string;
+  punto: string;
+  alumnoIds: string[];
+  aviso: string | null;
+};
+
+type OcioImportadoApp = {
+  alumno: string;
+  nivel: string;
+  resultado: string;
+};
+
+type OcioRecomendacionCambioApp = {
+  alumno_id: string;
+  alumno: string;
+  nivel_alumno: string | null;
+  orden_alumno: number;
+  grupo_id: string | null;
+  nombre_grupo: string | null;
+  nivel_grupo: string | null;
+  recomendacion: string;
+};
+
+type OcioPrepararResultadoApp = {
+  grupo_estable: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  alumnos: number;
+  entrenador: string | null;
+  estado: string;
+  sesion_id: string | null;
+  grupo_id: string | null;
+  punto_encuentro?: string | null;
+  publicado?: boolean;
+  alumnos_lista?: string[];
+};
+
+type OcioCambioPuntualApp = {
+  reubicacion_id: string;
+  alumno_id: string;
+  alumno: string;
+  nivel_usado: string | null;
+  fecha: string;
+  grupo_origen_id: string | null;
+  grupo_origen: string | null;
+  origen_dia_semana: string | null;
+  origen_hora_inicio: string | null;
+  origen_hora_fin: string | null;
+  grupo_destino_id: string;
+  grupo_destino: string;
+  destino_dia_semana: string | null;
+  destino_hora_inicio: string | null;
+  destino_hora_fin: string | null;
+  destino_punto: string | null;
+  motivo: string | null;
+  estado: string;
+  created_at: string | null;
+  updated_at: string | null;
+};
+
+type OcioCambioFormState = {
+  id: string | null;
+  alumnoId: string;
+  diaDestino: '' | 'Jueves' | 'Sábado' | 'Domingo';
+  grupoDestinoId: string;
+  fecha: string;
+  motivo: string;
+};
+
+function ocioCambioFormInicial(): OcioCambioFormState {
+  return {
+    id: null,
+    alumnoId: '',
+    diaDestino: '',
+    grupoDestinoId: '',
+    fecha: '',
+    motivo: '',
+  };
+}
+
+type OcioGrupoFormState = {
+  id: string | null;
+  nombre: string;
+  dia: string;
+  horaInicio: string;
+  horaFin: string;
+  nivel: string;
+  pista: string;
+  punto: string;
+  observaciones: string;
+};
+
+function ocioGrupoFormInicial(): OcioGrupoFormState {
+  return {
+    id: null,
+    nombre: '',
+    dia: 'Jueves',
+    horaInicio: '18:00',
+    horaFin: '20:00',
+    nivel: 'A',
+    pista: 'Pequeña',
+    punto: '1',
+    observaciones: '',
+  };
+}
+
+type EntrenadorResumen = {
+  entrenador_id: string;
+  nombre_completo: string;
+  email: string | null;
+  telefono: string | null;
+  estado_cobro: string;
+  tarifa_por_turno: number;
+  activo: boolean;
+  chaqueta_entregada: boolean;
+  especialidades: string[] | null;
+  titulacion_estado: string | null;
+  titulacion_url: string | null;
+  titulacion_observaciones: string | null;
+  antecedentes_estado: string | null;
+  antecedentes_url: string | null;
+  antecedentes_observaciones: string | null;
+  observaciones_internas: string | null;
+  created_at: string;
+};
+
+type EstadoAccesoEntrenadorCodigoApp =
+  | 'sin_acceso'
+  | 'invitacion_pendiente'
+  | 'activo'
+  | 'desactivado'
+  | 'revisar';
+
+type EstadoAccesoEntrenadorApp = {
+  entrenador_id: string;
+  estado: EstadoAccesoEntrenadorCodigoApp;
+  email: string | null;
+  auth_user_id: string | null;
+  confirmado_at: string | null;
+  ultimo_acceso_at: string | null;
+};
+
+type EntrenadorFormState = {
+  id: string | null;
+  nombre: string;
+  email: string;
+  telefono: string;
+  tarifa: string;
+  activo: boolean;
+  chaqueta: boolean;
+  especialidades: string[];
+  titulacionEstado: string;
+  titulacionUrl: string;
+  titulacionObs: string;
+  antecedentesEstado: string;
+  antecedentesUrl: string;
+  antecedentesObs: string;
+  observaciones: string;
+};
+
+type DisponibilidadEntrenador = {
+  id: string;
+  semana: string;
+  fecha_inicio: string;
+  fecha_fin: string;
+  entrenador_id: string;
+  entrenador: string;
+  estado_disponibilidad: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  nombre_turno: string;
+  respuesta: string | null;
+  comentario: string | null;
+  aviso_enviado: boolean;
+  aviso_enviado_at: string | null;
+  fecha_limite: string | null;
+  especialidades: string[] | null;
+  fuente?: 'editor';
+};
+
+
+type ModalidadDisponibilidadEditor = 'Baby' | 'Ocio' | 'Intensivos';
+
+type TurnoDisponibilidadEditor = {
+  id: string;
+  hora_inicio: string;
+  hora_fin: string;
+  modalidades: ModalidadDisponibilidadEditor[];
+  nota: string;
+};
+
+type DiaDisponibilidadEditor = {
+  fecha: string;
+  nombre: string;
+  activo: boolean;
+  turnos: TurnoDisponibilidadEditor[];
+};
+
+type BorradorDisponibilidadEditor = {
+  version: 1;
+  semana_inicio: string;
+  fecha_limite: string;
+  fecha_limite_manual?: boolean;
+  estado: 'Borrador';
+  actualizado_en: string | null;
+  dias: DiaDisponibilidadEditor[];
+};
+
+type EstadoServidorDisponibilidadEditor =
+  | 'sin_preparar'
+  | 'borrador'
+  | 'publicado';
+
+type RespuestaDisponibilidadEditorServidor = {
+  existe: boolean;
+  semana_inicio: string;
+  estado: EstadoServidorDisponibilidadEditor;
+  fuente: 'plantilla' | 'borrador' | 'publicado';
+  fecha_limite: string | null;
+  publicada_at: string | null;
+  version_publicada: number;
+  actualizado_en?: string | null;
+  dias: DiaDisponibilidadEditor[];
+};
+
+type RespuestaDisponibilidadPublicadaEntrenadoresEditor = {
+  gestionada: boolean;
+  existe: boolean;
+  semana_inicio: string;
+  estado: 'sin_preparar' | 'sin_publicar' | 'publicado';
+  fecha_limite?: string | null;
+  publicada_at: string | null;
+  version_publicada: number;
+  turnos: DisponibilidadEntrenador[];
+};
+
+function idTurnoDisponibilidadEditor() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+  return `turno-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function fechaIsoEditor(fecha: Date) {
+  const anio = fecha.getFullYear();
+  const mes = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dia = String(fecha.getDate()).padStart(2, '0');
+  return `${anio}-${mes}-${dia}`;
+}
+
+function sumarDiasEditor(fechaIso: string, dias: number) {
+  const fecha = new Date(`${fechaIso}T12:00:00`);
+  fecha.setDate(fecha.getDate() + dias);
+  return fechaIsoEditor(fecha);
+}
+
+function fechaLimiteAutomaticaDisponibilidadEditor(semanaInicio: string) {
+  // Las semanas del calendario de temporada comienzan siempre en lunes.
+  return `${semanaInicio}T13:00`;
+}
+
+function formatearFechaHoraDisponibilidadEditor(valor: string) {
+  if (!valor) return '-';
+  const [fecha, hora = ''] = valor.split('T');
+  return `${formatearFecha(fecha)}${hora ? ` · ${hora.slice(0, 5)}` : ''}`;
+}
+
+function turnoEditor(
+  hora_inicio: string,
+  hora_fin: string,
+  modalidades: ModalidadDisponibilidadEditor[]
+): TurnoDisponibilidadEditor {
+  return {
+    id: idTurnoDisponibilidadEditor(),
+    hora_inicio,
+    hora_fin,
+    modalidades,
+    nota: '',
+  };
+}
+
+function diaPermiteVariosTurnosDisponibilidadEditor(nombre: string) {
+  const dia = nombre.trim().toLowerCase();
+  return dia === 'sábado' || dia === 'domingo';
+}
+
+function turnoInicialDisponibilidadEditor(
+  nombreDia: string
+): TurnoDisponibilidadEditor {
+  const dia = nombreDia.trim().toLowerCase();
+  if (dia === 'sábado' || dia === 'domingo') {
+    return turnoEditor('09:45', '11:45', ['Baby', 'Ocio']);
+  }
+  return turnoEditor('18:00', '20:00', ['Baby']);
+}
+
+function crearBorradorDisponibilidadEditor(
+  semanaInicio: string
+): BorradorDisponibilidadEditor {
+  const diasConfigurados: Array<{
+    nombre: string;
+    offset: number;
+    turnos: TurnoDisponibilidadEditor[];
+  }> = [
+    {
+      nombre: 'miércoles',
+      offset: 2,
+      turnos: [turnoEditor('18:00', '20:00', ['Baby'])],
+    },
+    {
+      nombre: 'jueves',
+      offset: 3,
+      turnos: [turnoEditor('18:00', '20:00', ['Baby'])],
+    },
+    {
+      nombre: 'viernes',
+      offset: 4,
+      turnos: [turnoEditor('18:00', '20:00', ['Baby'])],
+    },
+    {
+      nombre: 'sábado',
+      offset: 5,
+      turnos: [
+        turnoEditor('09:45', '11:45', ['Baby', 'Ocio']),
+        turnoEditor('12:00', '14:00', ['Baby', 'Ocio']),
+        turnoEditor('14:30', '16:30', ['Intensivos']),
+      ],
+    },
+    {
+      nombre: 'domingo',
+      offset: 6,
+      turnos: [
+        turnoEditor('09:45', '11:45', ['Baby', 'Ocio']),
+        turnoEditor('12:00', '14:00', ['Baby', 'Ocio']),
+      ],
+    },
+  ];
+
+  return {
+    version: 1,
+    semana_inicio: semanaInicio,
+    fecha_limite: fechaLimiteAutomaticaDisponibilidadEditor(semanaInicio),
+    fecha_limite_manual: false,
+    estado: 'Borrador',
+    actualizado_en: null,
+    dias: diasConfigurados.map((dia) => ({
+      fecha: sumarDiasEditor(semanaInicio, dia.offset),
+      nombre: dia.nombre,
+      activo: true,
+      turnos: dia.turnos,
+    })),
+  };
+}
+
+function normalizarBorradorDisponibilidadEditor(
+  borrador: BorradorDisponibilidadEditor
+): BorradorDisponibilidadEditor {
+  const plantilla = crearBorradorDisponibilidadEditor(borrador.semana_inicio);
+  const guardadosPorNombre = new Map(
+    (borrador.dias || []).map((dia) => [dia.nombre.toLowerCase(), dia])
+  );
+
+  const fechaLimiteManual = borrador.fecha_limite_manual === true;
+
+  return {
+    ...borrador,
+    fecha_limite:
+      fechaLimiteManual && borrador.fecha_limite
+        ? borrador.fecha_limite
+        : fechaLimiteAutomaticaDisponibilidadEditor(borrador.semana_inicio),
+    fecha_limite_manual: fechaLimiteManual,
+    dias: plantilla.dias.map((diaPlantilla) => {
+      const guardado = guardadosPorNombre.get(diaPlantilla.nombre);
+      if (!guardado) return diaPlantilla;
+
+      const turnosGuardados = Array.isArray(guardado.turnos)
+        ? guardado.turnos
+        : [];
+      const turnosNormalizados =
+        turnosGuardados.length > 0
+          ? diaPermiteVariosTurnosDisponibilidadEditor(diaPlantilla.nombre)
+            ? turnosGuardados
+            : turnosGuardados.slice(0, 1)
+          : [];
+
+      return {
+        ...diaPlantilla,
+        activo: Boolean(guardado.activo),
+        turnos: turnosNormalizados,
+      };
+    }),
+  };
+}
+
+function normalizarBorradorDisponibilidadEditorServidor(
+  respuesta: RespuestaDisponibilidadEditorServidor
+): BorradorDisponibilidadEditor {
+  const plantilla = crearBorradorDisponibilidadEditor(respuesta.semana_inicio);
+  const diasServidor = new Map(
+    (respuesta.dias || []).map((dia) => [dia.fecha, dia])
+  );
+
+  return {
+    ...plantilla,
+    fecha_limite:
+      respuesta.fecha_limite ||
+      fechaLimiteAutomaticaDisponibilidadEditor(respuesta.semana_inicio),
+    fecha_limite_manual:
+      Boolean(respuesta.fecha_limite) &&
+      respuesta.fecha_limite !==
+        fechaLimiteAutomaticaDisponibilidadEditor(respuesta.semana_inicio),
+    actualizado_en: respuesta.actualizado_en || respuesta.publicada_at || null,
+    dias: plantilla.dias.map((diaPlantilla) => {
+      const diaServidor = diasServidor.get(diaPlantilla.fecha);
+      if (!diaServidor) {
+        return { ...diaPlantilla, activo: false, turnos: [] };
+      }
+
+      const turnos = Array.isArray(diaServidor.turnos)
+        ? diaServidor.turnos
+        : [];
+
+      return {
+        ...diaPlantilla,
+        activo: Boolean(diaServidor.activo),
+        turnos: diaPermiteVariosTurnosDisponibilidadEditor(
+          diaPlantilla.nombre
+        )
+          ? turnos
+          : turnos.slice(0, 1),
+      };
+    }),
+  };
+}
+
+function claveStorageDisponibilidadEditor(semanaInicio: string) {
+  return `mitico_disponibilidad_editor_v1_${semanaInicio}`;
+}
+
+type ReportePendiente = {
+  entrenador_id: string;
+  entrenador: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  modalidad: string;
+  grupo_id: string;
+  nombre_grupo: string;
+  alumno_id: string;
+  alumno: string;
+  estado_asistencia: string;
+  estado_reporte: string;
+  nivel_alumno?: string | null;
+  fuente_nivel?: string | null;
+  pista_alumno?: string | null;
+};
+
+type CobroMensual = {
+  temporada: string;
+  anio: number;
+  mes: number;
+  estado_mes: string;
+  nota_direccion: string | null;
+  entrenador_id: string;
+  entrenador: string;
+  tarifa_por_turno: number;
+  total_turnos_computables: number;
+  total_turnos_baby: number;
+  total_turnos_intensivos: number;
+  total_turnos_ocio: number;
+  subtotal_sesiones: number;
+  ajustes_total: number;
+  total_mes: number;
+  detalle_turnos: string | null;
+  detalle_ajustes: string | null;
+  pendientes_revisar: number;
+};
+
+type CobroDetalleMensual = {
+  entrenador_id: string;
+  entrenador: string;
+  anio: number;
+  mes: number;
+  temporada: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  modalidad: string;
+  grupo_id: string;
+  entreno_manual_id?: string | null;
+  origen_cobro?: string | null;
+  nombre_grupo: string;
+  total_alumnos: number;
+  estado_grupo: string;
+  publicado: boolean;
+  tarifa_por_turno: number;
+  importe_turno: number;
+  observaciones?: string | null;
+};
+
+type CobroManualFormState = {
+  entrenadorId: string;
+  fecha: string;
+  horaInicio: string;
+  horaFin: string;
+  modalidad: string;
+  nombreGrupo: string;
+  totalAlumnos: string;
+  importeOverride: string;
+  observaciones: string;
+};
+
+type CobroPdfPreviewState = {
+  titulo: string;
+  cuerpo: string;
+};
+
+function fechaIsoHoyApp() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function leerStorageApp(clave: string, defecto = '') {
+  if (typeof window === 'undefined') return defecto;
+  return window.localStorage.getItem(clave) || defecto;
+}
+
+function leerStorageNumeroApp(clave: string, defecto: number) {
+  const valor = Number(leerStorageApp(clave, ''));
+  return Number.isFinite(valor) && valor > 0 ? valor : defecto;
+}
+
+function cobroManualInicial(): CobroManualFormState {
+  return {
+    entrenadorId: '',
+    fecha: fechaIsoHoyApp(),
+    horaInicio: '18:00',
+    horaFin: '20:00',
+    modalidad: 'BABY',
+    nombreGrupo: 'Entreno manual',
+    totalAlumnos: '0',
+    importeOverride: '',
+    observaciones: '',
+  };
+}
+
+type IntensivoApp = {
+  intensivo_id: string;
+  temporada: string;
+  intensivo: string;
+  lugar: string;
+  estado: string;
+  total_alumnos: number;
+  total_dias: number;
+  fecha_inicio: string | null;
+  fecha_fin: string | null;
+};
+
+type PanelControlIntensivoApp = {
+  intensivo_id: string;
+  temporada: string;
+  intensivo: string;
+  lugar: string;
+  estado: string;
+  total_dias: number;
+  dias_con_sesion: number;
+  dias_sin_sesion: number;
+  total_grupos: number;
+  grupos_publicados: number;
+  grupos_sin_publicar: number;
+  alumnos_inscritos: number;
+  asignaciones_esperadas: number;
+  asignaciones_hechas: number;
+  asignaciones_faltantes_estimadas: number;
+  total_reportes: number;
+  reportes_pendientes_estimados: number;
+  diplomas_pendientes: number;
+  diplomas_revisados: number;
+  total_recuperaciones: number;
+  recuperaciones_pendientes: number;
+  recuperaciones_cerradas: number;
+  estado_operativo: string;
+};
+
+type IntensivoAlumnoApp = {
+  intensivo_alumno_id: string;
+  intensivo_id: string;
+  intensivo: string;
+  alumno_id: string;
+  alumno: string;
+  estado_diploma: string;
+  recomendacion_siguiente_paso: string | null;
+  nivel_final_propuesto_id: string | null;
+  nivel_final_confirmado_id: string | null;
+  created_at: string;
+};
+
+type AlumnoParaIntensivoApp = {
+  alumno_id: string;
+  alumno: string;
+};
+
+type AlumnoResumenParaVolcadoApp = {
+  alumno_id: string;
+  alumno: string;
+  nombre_normalizado: string | null;
+  fecha_nacimiento: string | null;
+  nivel_actual_id: string | null;
+  nivel_actual: string | null;
+  orden_nivel_actual: number | null;
+  pista_nivel_actual: string | null;
+  nivel_estimado_id: string | null;
+  nivel_estimado: string | null;
+  orden_nivel_estimado: number | null;
+  pista_nivel_estimado: string | null;
+  nivel_resumen: string | null;
+  pista_resumen: string | null;
+  origen_nivel_estimado: string | null;
+  estado_ficha: string;
+  observacion_interna: string | null;
+  observacion_visible_entrenador: string | null;
+  mostrar_observacion_entrenador: boolean;
+  activo: boolean;
+};
+
+type VolcadoAlumnoIntensivoApp = {
+  alumno_id: string;
+  alumno: string;
+  resultado: string;
+  nivel_resumen: string | null;
+  pista_resumen: string | null;
+  estado_ficha: string;
+  observacion_visible_entrenador: string | null;
+};
+
+type IntensivoDiaApp = {
+  intensivo_dia_id: string;
+  intensivo_id: string;
+  numero_dia: number;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  sesion_id: string | null;
+  created_at: string;
+};
+
+type IntensivoAsistenciaApp = {
+  intensivo_dia_id: string;
+  intensivo_id: string;
+  intensivo: string;
+  numero_dia: number;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  alumno_id: string;
+  alumno: string;
+  asistencia_id: string | null;
+  estado: string;
+  falta_genera_recuperacion: boolean;
+  estado_diploma: string;
+  recomendacion_siguiente_paso: string | null;
+};
+
+type IntensivoRecuperacionApp = {
+  recuperacion_id: string;
+  intensivo_origen_id: string | null;
+  intensivo_origen: string | null;
+  alumno_id: string;
+  alumno: string;
+  intensivo_destino_id: string | null;
+  intensivo_destino: string | null;
+  grupo_destino_id: string | null;
+  grupo_destino: string | null;
+  estado: string;
+  created_at: string;
+  intensivo_dia_origen_id: string | null;
+  numero_dia_origen: number | null;
+  fecha_falta: string | null;
+  hora_inicio_falta: string | null;
+  hora_fin_falta: string | null;
+  estado_falta: string | null;
+  falta_genera_recuperacion: boolean | null;
+  nivel_alumno: string | null;
+  nivel_orden_alumno: number | null;
+  fecha_destino: string | null;
+  hora_inicio_destino: string | null;
+  hora_fin_destino: string | null;
+};
+
+type RecuperacionRecomendacionApp = {
+  recuperacion_id: string;
+  alumno_id: string;
+  nivel_alumno: string | null;
+  nivel_orden_alumno: number | null;
+  fecha_falta: string;
+  grupo_id: string;
+  intensivo_dia_id: string;
+  intensivo_destino_id: string;
+  intensivo_destino: string;
+  numero_dia_destino: number;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  nombre_grupo: string;
+  nivel_grupo: string | null;
+  pista: string | null;
+  publicado: boolean;
+  total_alumnos: number;
+  capacidad_max: number;
+  plazas_libres: number;
+  nivel_min_grupo: number | null;
+  nivel_max_grupo: number | null;
+  diferencia_nivel: number;
+  edad_media_grupo_meses: number | null;
+  diferencia_edad_meses: number | null;
+  dias_despues: number;
+  puntuacion: number;
+  categoria: 'IDEAL' | 'COMPATIBLE';
+  motivo: string;
+  orden_recomendacion: number;
+};
+
+type GrupoDestinoRecuperacionApp = {
+  grupo_id: string;
+  nombre_grupo: string;
+  fecha: string;
+  hora_inicio: string;
+  modalidad: string;
+};
+
+type GrupoIntensivoDiaApp = {
+  intensivo_dia_id: string;
+  intensivo_id: string;
+  intensivo: string;
+  numero_dia: number;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  sesion_id: string | null;
+  estado_sesion: string | null;
+  grupo_id: string | null;
+  nombre_grupo: string | null;
+  nivel_grupo: string | null;
+  pista: string | null;
+  punto_encuentro: string | null;
+  estado_grupo: string | null;
+  publicado: boolean | null;
+  observaciones_importantes: string | null;
+  entrenador_id: string | null;
+  entrenador: string | null;
+  estado_confirmacion: string | null;
+  total_alumnos: number;
+  alumnos_lista: string | null;
+  trabajo_diario: string | null;
+};
+
+type RecomendacionGrupoIntensivoDiaApp = {
+  intensivo_dia_id: string;
+  intensivo_id: string;
+  numero_dia: number;
+  fecha: string;
+  grupo_recomendado: string;
+  bloque_tecnico: string;
+  orden_bloque: number;
+  pista_recomendada: string;
+  tamanio_grupo: number;
+  alerta_grupo: string;
+  alumno_id: string;
+  alumno: string;
+  nivel_resumen: string;
+  nivel_orden: number;
+  fuente_nivel: string;
+  edad: number | null;
+  estado_ficha: string;
+  observacion_visible_entrenador: string | null;
+  orden_en_grupo: number;
+};
+
+type GrupoEditableIntensivoDiaApp = {
+  intensivo_dia_id: string;
+  intensivo_id: string;
+  numero_dia: number;
+  fecha: string;
+  grupo_id: string;
+  nombre_grupo: string;
+  nivel_grupo: string | null;
+  pista: string | null;
+  publicado: boolean;
+  entrenador_id: string | null;
+  trabajo_diario: string | null;
+  observaciones_importantes: string | null;
+  alumno_id: string;
+  alumno: string;
+  nivel_resumen: string;
+  nivel_orden: number;
+  fuente_nivel: string;
+  edad: number | null;
+  estado_ficha: string;
+  observacion_visible_entrenador: string | null;
+  orden_en_grupo: number;
+};
+
+type RevisionEntreSesionesIntensivoApp = {
+  alumno_id: string;
+  alumno: string;
+  nivel: string;
+  grupo_origen_id: string;
+  grupo_origen: string;
+  grupo_destino_id: string;
+  grupo_destino: string;
+  estado: 'CAMBIO_RECOMENDADO' | 'REVISAR' | 'MANTENER';
+  motivo: string;
+  diferencia_actual: number;
+  diferencia_destino: number;
+};
+
+
+type ResumenReportesIntensivoApp = {
+  intensivo_id: string;
+  intensivo: string;
+  alumno_id: string;
+  alumno: string;
+  total_dias_intensivo: number;
+  total_reportes: number;
+  actitudes_reportadas: string | null;
+  tecnicas_reportadas: string | null;
+  pistas_reportadas: string | null;
+  autonomias_reportadas: string | null;
+  incidencias_reportadas: string | null;
+  recomendaciones_reportadas: string | null;
+  ultimo_reporte_at: string | null;
+};
+
+type ResumenFinalIntensivoApp = {
+  intensivo_alumno_id: string;
+  intensivo_id: string;
+  intensivo: string;
+  alumno_id: string;
+  alumno: string;
+  total_dias_intensivo: number;
+  dias_en_grupo: number;
+  dias_presente: number;
+  dias_ausente: number;
+  dias_pendiente_asistencia: number;
+  total_reportes: number;
+  reportes_pendientes_estimados: number;
+  niveles_reportados: string | null;
+  nivel_mas_alto_id: string | null;
+  nivel_mas_alto_reportado: string | null;
+  nivel_ultimo_reporte: string | null;
+  actitud_ultimo_reporte: string | null;
+  tecnica_ultimo_reporte: string | null;
+  autonomia_ultimo_reporte: string | null;
+  recomendacion_ultimo_reporte: string | null;
+  ultimo_reporte_fecha: string | null;
+  actitudes_reportadas: string | null;
+  tecnicas_reportadas: string | null;
+  pistas_reportadas: string | null;
+  autonomias_reportadas: string | null;
+  incidencias_reportadas: string | null;
+  recomendaciones_reportadas: string | null;
+  comentarios_actitud: string | null;
+  comentarios_tecnica: string | null;
+  comentarios_autonomia: string | null;
+  comentarios_incidencias: string | null;
+  comentarios_recomendacion: string | null;
+  nivel_final_propuesto_id: string | null;
+  nivel_final_propuesto: string | null;
+  nivel_final_confirmado_id: string | null;
+  nivel_final_confirmado: string | null;
+  recomendacion_siguiente_paso: string | null;
+  estado_diploma: string;
+};
+
+type ReporteDetalleIntensivoApp = {
+  intensivo_id: string;
+  intensivo: string;
+  intensivo_dia_id: string;
+  numero_dia: number;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  grupo_id: string;
+  nombre_grupo: string;
+  entrenador: string | null;
+  alumno_id: string;
+  alumno: string;
+  nivel_reportado: string | null;
+  actitud: string | null;
+  actitud_comentario: string | null;
+  tecnica: string | null;
+  tecnica_comentario: string | null;
+  pista: string | null;
+  autonomia: string | null;
+  autonomia_comentario: string | null;
+  incidencia: string | null;
+  incidencia_comentario: string | null;
+  recomendacion_proxima_sesion: string | null;
+  recomendacion_comentario: string | null;
+  enviado_at: string | null;
+};
+
+type ListadoApp = {
+  listado_id: string;
+  semana: string | null;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  modalidad: string;
+  estado: string;
+  fuera_de_plazo: boolean;
+  total_nombres_detectados: number;
+  encontrados: number;
+  altas_nuevas: number;
+  no_encontrados: number;
+  pendientes_revisar: number;
+  duplicados: number;
+};
+
+type SnowZoneDiaApp = {
+  fecha: string;
+  pista_pequena: number;
+  pista_grande: number;
+  total: number;
+};
+
+type SnowZoneModoApp = 'mensual' | 'semanal';
+
+type CandidatoEquipoApp = {
+  alumno_id: string;
+  alumno: string;
+  temporada: string;
+  nivel: string;
+  orden_nivel: number;
+  entrenamientos_baby: number;
+  meses_activos_baby: number;
+  ultimo_entreno_baby: string | null;
+  ultimo_reporte_fecha: string | null;
+  autonomia: string | null;
+  remontes: string[] | null;
+  actitud: string | null;
+  tecnica: string | null;
+  pista: string | null;
+  recomendacion: string | null;
+};
+
+type TipoListadoAlumnosApp = 'BABY' | 'OCIO' | 'INTENSIVOS' | 'TODOS';
+
+type ListadoAlumnoTemporadaApp = {
+  alumno_id: string;
+  alumno: string;
+  temporada: string;
+  modalidad: string;
+  nivel: string | null;
+  pista: string | null;
+  ultimo_entreno: string | null;
+  total_entrenamientos: number;
+  ultimo_intensivo: string | null;
+};
+
+type EvaluacionAnualOcioApp = {
+  alumno_id: string;
+  alumno: string;
+  temporada: string;
+  entrenamientos_ocio: number;
+  reportes_ocio: number;
+  primer_reporte_fecha: string | null;
+  ultimo_reporte_fecha: string | null;
+  nivel_inicial: string | null;
+  nivel_final: string | null;
+  niveles_reportados: string | null;
+  tecnica_inicial: string | null;
+  tecnica_final: string | null;
+  autonomia_inicial: string | null;
+  autonomia_final: string | null;
+  remontes_iniciales: string[] | null;
+  remontes_finales: string[] | null;
+  actitud_final: string | null;
+  pista_final: string | null;
+  recomendacion_final: string | null;
+  comentario_tecnica_final: string | null;
+  comentario_autonomia_final: string | null;
+};
+
+type CierreTemporadaAlumnoApp = {
+  alumno_id: string;
+  alumno: string;
+  temporada: string;
+  fecha_nacimiento: string | null;
+  telefono: string | null;
+  ultimo_nivel_real: string | null;
+  ultima_pista: string | null;
+  ultimo_entreno: string | null;
+  ultima_modalidad: string | null;
+  entrenamientos_temporada: number;
+  ultima_recomendacion: string | null;
+  tuvo_asistencia: boolean;
+  tuvo_reporte: boolean;
+  activo_temporada: boolean;
+  conservar_siguiente: boolean;
+  motivo_estado: string;
+};
+
+type ResumenCierreTemporadaApp = {
+  temporada: string;
+  total_alumnos_base: number;
+  activos_temporada: number;
+  conservar_siguiente: number;
+  eliminar_por_inactividad: number;
+  con_asistencia: number;
+  con_reporte: number;
+};
+
+type FilaCopiaMaestraImportApp = {
+  alumno_id: string;
+  alumno: string;
+  fecha_nacimiento: string;
+  telefono: string;
+  ultimo_nivel_real: string;
+  pista: string;
+  ultimo_entreno: string;
+  ultima_modalidad: string;
+  entrenamientos_temporada: number;
+  ultima_recomendacion: string;
+  valido: boolean;
+  error: string;
+};
+
+type AgendaSesionDirectaApp = {
+  sesion_id: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  lugar: string;
+  tipo_sesion: string;
+  estado_sesion: string;
+  modalidad_codigo: string;
+  modalidad: string;
+  semana: string;
+  semana_inicio: string;
+  semana_fin: string;
+  total_alumnos: number;
+  total_nuevos: number;
+  total_conocidos: number;
+  total_grupos: number;
+  grupos_publicados: number;
+  alumnos_en_grupos: number;
+  alumnos_sin_grupo: number;
+};
+
+type AgendaAlumnoSesionApp = {
+  sesion_alumno_id: string;
+  sesion_id: string;
+  alumno_id: string;
+  alumno: string;
+  orden: number;
+  estado_en_listado: string;
+  nivel_usado: string | null;
+  orden_nivel: number | null;
+  pista_recomendada: string | null;
+  origen_nivel: string | null;
+  estado_ficha: string;
+  observacion: string | null;
+};
+
+type WhatsappGrupoApp = {
+  clave_grupo: string;
+  modalidad: string;
+  referencia: string;
+  nombre_grupo: string;
+  enlace_whatsapp: string;
+  actualizado_at: string | null;
+};
+
+type AgendaGrupoSesionApp = {
+  sesion_id: string;
+  grupo_id: string;
+  nombre_grupo: string;
+  nivel_grupo: string | null;
+  pista: string | null;
+  punto_encuentro: string | null;
+  estado_grupo: string;
+  publicado: boolean;
+  trabajo_diario: string | null;
+  observaciones_importantes: string | null;
+  entrenador_id: string | null;
+  entrenador: string | null;
+  entrenador_apoyo_id?: string | null;
+  entrenador_apoyo?: string | null;
+  estado_confirmacion: string | null;
+  total_alumnos: number;
+  alumnos_lista: string | null;
+};
+
+type RecomendacionFueraPlazoAgendaApp = {
+  sesion_id: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  grupo_id: string;
+  grupo: string;
+  nivel_grupo: string;
+  pista: string;
+  punto: string;
+  entrenador: string;
+  total_actual: number;
+  total_final: number;
+  estado: 'RECOMENDADO' | 'REVISAR' | 'NO_ENCAJA';
+  motivo: string;
+  score: number;
+  es_sesion_actual: boolean;
+};
+
+type AgendaRecomendacionSesionApp = {
+  sesion_id: string;
+  grupo_recomendado: string;
+  bloque_tecnico: string;
+  pista_recomendada: string;
+  alumno_id: string;
+  alumno: string;
+  nivel_resumen: string;
+  pista_alumno: string;
+  orden_en_grupo: number;
+  alertas: string | null;
+  orden_bloque?: number | null;
+  nivel_orden?: number | null;
+  edad?: number | null;
+  fuente_nivel?: string | null;
+  estado_ficha?: string | null;
+};
+
+type AgendaFormState = {
+  fecha: string;
+  modalidad: string;
+  hora_inicio: string;
+  hora_fin: string;
+  lugar: string;
+  texto_listado: string;
+};
+
+type ReporteFormState = {
+  nivel: string;
+  actitud: string;
+  tecnica: string;
+  pista: string;
+  autonomia: string;
+  ritmoGrupo: string;
+  remontes: string;
+  incidencia: string;
+  recomendacion: string;
+  observaciones: string;
+  autonomiaCinta: string;
+  cunaFrenada: string;
+  giroInicial: string;
+  dinamicaAutonoma: string;
+  ayudaCunero: string;
+};
+
+type ReporteActivo = {
+  grupo_id: string;
+  alumno_id: string;
+};
+
+type GrupoActivoEntrenador = {
+  grupo_id: string;
+  entrenador_id: string;
+};
+
+type IntensivoFormState = {
+  temporada: string;
+  nombre: string;
+  lugar: string;
+  estado: string;
+};
+
+type DiaIntensivoFormState = {
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+};
+
+type PlantillaCuatroSesionesIntensivoState = {
+  fechaInicio: string;
+  horaInicio: string;
+  horaFin: string;
+  tipo:
+    | 'cuatro_dias'
+    | 'dos_fines_semana'
+    | 'cuatro_sabados'
+    | 'cuatro_domingos';
+};
+
+type GrupoIntensivoFormState = {
+  nombre_grupo: string;
+  nivel_grupo: string;
+  pista: string;
+  punto_encuentro: string;
+  trabajo_diario: string;
+  observaciones_importantes: string;
+  entrenador_id: string;
+  entrenador_apoyo_id: string;
+  alumnos_ids: string[];
+  publicado: boolean;
+};
+
+function intensivoInicial(): IntensivoFormState {
+  return {
+    temporada: '',
+    nombre: '',
+    lugar: 'Madrid SnowZone',
+    estado: 'Abierto',
+  };
+}
+
+function diaIntensivoInicial(): DiaIntensivoFormState {
+  return {
+    fecha: '',
+    hora_inicio: '18:00',
+    hora_fin: '20:00',
+  };
+}
+
+function plantillaCuatroSesionesInicial(): PlantillaCuatroSesionesIntensivoState {
+  return {
+    fechaInicio: '',
+    horaInicio: '18:00',
+    horaFin: '20:00',
+    tipo: 'cuatro_dias',
+  };
+}
+
+function sumarDiasIso(fechaIso: string, dias: number) {
+  const [anio, mes, dia] = fechaIso.split('-').map(Number);
+  const fecha = new Date(anio, mes - 1, dia);
+  fecha.setDate(fecha.getDate() + dias);
+  const yyyy = fecha.getFullYear();
+  const mm = String(fecha.getMonth() + 1).padStart(2, '0');
+  const dd = String(fecha.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function partesAlumnoListadoOperativoApp(valor: string | null | undefined) {
+  const partes = String(valor || '')
+    .split('·')
+    .map((parte) => parte.trim())
+    .filter(Boolean)
+    .filter((parte) => !/^test nuevo$/i.test(parte));
+
+  if (/^(ZZZS|TEST(?:\s|$)|\[TEST)/i.test(partes[0] || '') && partes.length > 1) {
+    partes.shift();
+  }
+
+  return partes;
+}
+
+function nombreRealAlumnoListadoOperativo(valor: string | null | undefined) {
+  const partes = partesAlumnoListadoOperativoApp(valor);
+  if (partes.length === 0) return '-';
+
+  // Un nombre de pruebas puede venir como:
+  // "ZZZS · Paula Rey · A+ · Pequeña".
+  // Antes se cogía solo la primera pieza ("ZZZS"), lo que rompía nombres,
+  // movimiento de alumnos y el motor de trabajo diario.
+  const partesNombre = partes.filter(
+    (parte) =>
+      !/^(?:NIVEL\s*:?)?(?:INICIACI[ÓO]N|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)$/i.test(parte) &&
+      !/^(PEQUEÑA|GRANDE|PEQUEÑA\/GRANDE)$/i.test(parte)
+  );
+
+  const nombre = partesNombre.join(' · ').trim() || partes[0];
+  return nombre.replace(/^\d+[.)-]?\s*/, '').trim();
+}
+
+function formatearAlumnoListadoOperativo(valor: string | null | undefined) {
+  const partes = partesAlumnoListadoOperativoApp(valor);
+  if (partes.length === 0) return '-';
+  const nombre = nombreRealAlumnoListadoOperativo(valor);
+  const nivelParte = partes.find((parte) =>
+    /^(?:NIVEL\s*:?)?(INICIACI[ÓO]N|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)$/i.test(parte)
+  );
+  const nivel = nivelParte?.replace(/^NIVEL\s*:?\s*/i, '').trim();
+  return nivel ? `${nombre} · ${nivel.toUpperCase()}` : nombre;
+}
+
+function nombreAlumnoOcioTarjetaApp(valor: string | null | undefined) {
+  const partes = String(valor || '')
+    .split('·')
+    .map((parte) => parte.trim())
+    .filter(Boolean);
+
+  if (partes.length === 0) return '-';
+
+  // Los datos TEST pueden llevar una etiqueta delante del nombre real.
+  // Solo se elimina en la presentación de Ocio; el dato guardado no cambia.
+  if (/^(ZZZS|TEST(?:\s|$)|\[TEST)/i.test(partes[0]) && partes.length > 1) {
+    partes.shift();
+  }
+
+  const nivel = partes.find((parte) =>
+    /^(?:NIVEL\s+)?(?:INICIACI[ÓO]N|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)$/i.test(parte)
+  );
+  const nombre = partes
+    .filter((parte) =>
+      !/^(?:NIVEL\s+)?(?:INICIACI[ÓO]N|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)$/i.test(parte)
+    )
+    .join(' · ')
+    .trim();
+
+  const nivelLimpio = nivel ? nivel.replace(/^NIVEL\s+/i, '').toUpperCase() : '';
+  return `${nombre || partes[0] || '-'}${nivelLimpio ? ` · ${nivelLimpio}` : ''}`;
+}
+
+function nombreAlumnoWhatsappPapis(valor: string | null | undefined) {
+  const operativo = formatearAlumnoListadoOperativo(valor);
+  return operativo
+    .replace(
+      /\s*·\s*(INICIACI[ÓO]N|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)\s*$/i,
+      ''
+    )
+    .trim();
+}
+
+function nombreEntrenadorWhatsappPapis(valor: string | null | undefined) {
+  return String(valor || '')
+    .replace(/^\[TEST[^\]]*\]\s*/i, '')
+    .replace(/^TEST\s+NUEVO\s*[·:\-]\s*/i, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function entrenadoresWhatsappPapis(valor: string | null | undefined) {
+  return String(valor || '')
+    .split('+')
+    .map((nombre) => nombreEntrenadorWhatsappPapis(nombre))
+    .filter(Boolean)
+    .join(' + ');
+}
+
+function calcularFechasCuatroSesionesIntensivo(
+  fechaInicio: string,
+  tipo: PlantillaCuatroSesionesIntensivoState['tipo']
+) {
+  if (!fechaInicio) return [];
+
+  if (tipo === 'cuatro_dias') {
+    return [0, 1, 2, 3].map((offset) => sumarDiasIso(fechaInicio, offset));
+  }
+
+  if (tipo === 'dos_fines_semana') {
+    return [0, 1, 7, 8].map((offset) => sumarDiasIso(fechaInicio, offset));
+  }
+
+  return [0, 7, 14, 21].map((offset) => sumarDiasIso(fechaInicio, offset));
+}
+
+function nombreTipoCuatroSesionesIntensivo(
+  tipo: PlantillaCuatroSesionesIntensivoState['tipo']
+) {
+  if (tipo === 'cuatro_dias') return '4 días seguidos';
+  if (tipo === 'dos_fines_semana') return '2 fines de semana consecutivos';
+  if (tipo === 'cuatro_sabados') return '4 sábados';
+  return '4 domingos';
+}
+
+function grupoEdadIntensivo(fechaNacimiento?: string | null) {
+  if (!fechaNacimiento) return 'Sin edad';
+  const hoy = new Date();
+  const nacimiento = new Date(`${fechaNacimiento}T00:00:00`);
+  let edad = hoy.getFullYear() - nacimiento.getFullYear();
+  const m = hoy.getMonth() - nacimiento.getMonth();
+  if (m < 0 || (m === 0 && hoy.getDate() < nacimiento.getDate())) edad -= 1;
+  return edad >= 7 ? 'Mayores' : 'Pequeños';
+}
+
+function grupoIntensivoInicial(): GrupoIntensivoFormState {
+  return {
+    nombre_grupo: 'Grupo Intensivo',
+    nivel_grupo: '',
+    pista: 'Pequeña/Grande',
+    punto_encuentro: '5',
+    trabajo_diario: '',
+    observaciones_importantes: '',
+    entrenador_id: '',
+    entrenador_apoyo_id: '',
+    alumnos_ids: [],
+    publicado: true,
+  };
+}
+
+type ResumenInicio = {
+  reportesPendientes: number;
+  asistenciasSinConfirmar: number;
+  gruposSinPublicar: number;
+  entrenadoresSinConfirmar: number;
+};
+
+const SUPABASE_URL = 'https://natxwawulodkoauqkwqz.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_xeLKsuImDbVd9tnoBzSxXw_KAqod1bu';
+
+type RolUsuarioApp =
+  | 'coordinador_jefe'
+  | 'sub_coordinador'
+  | 'administracion'
+  | 'coordinador'
+  | 'entrenador';
+
+type PerfilUsuarioApp = {
+  id: string;
+  auth_user_id: string;
+  email: string;
+  nombre: string;
+  rol: RolUsuarioApp;
+  entrenador_id: string | null;
+  activo: boolean;
+};
+
+type UsuarioOperativoGestionApp = {
+  id: string;
+  auth_user_id: string | null;
+  email: string;
+  nombre: string;
+  rol: 'coordinador_jefe' | 'sub_coordinador' | 'administracion' | 'coordinador';
+  activo: boolean;
+  estado_acceso:
+    | 'activo'
+    | 'invitacion_pendiente'
+    | 'desactivado'
+    | 'revisar';
+  confirmado_at: string | null;
+  ultimo_acceso_at: string | null;
+};
+
+type SesionAuthApp = {
+  access_token: string;
+  refresh_token?: string;
+  expires_at?: number;
+  user: {
+    id: string;
+    email?: string;
+  };
+};
+
+type AppContenidoProps = {
+  perfilUsuario?: PerfilUsuarioApp;
+  onLogout?: () => void;
+};
+
+type AltaNivelInicialApp = {
+  id: string;
+  nombre_completo: string;
+  fecha_nacimiento: string;
+  modalidad: 'BABY' | 'INTENSIVOS' | 'OCIO';
+  telefono: string;
+  token_publico: string;
+  respuesta_experiencia: string | null;
+  respuesta_desplazamiento: string | null;
+  respuesta_frenado: string | null;
+  respuesta_giros: string | null;
+  respuesta_remonte: string | null;
+  respuesta_pista: string | null;
+  respuesta_control_velocidad: string | null;
+  respuesta_tecnica: string | null;
+  observaciones_entrenador_familia: string[] | null;
+  observacion_entrenador_otra: string | null;
+  observaciones_familia: string | null;
+  nivel_propuesto_id: string | null;
+  nivel_propuesto: string | null;
+  nivel_propuesto_confianza: string | null;
+  nivel_propuesto_motivo: string | null;
+  requiere_revision_jefe: boolean;
+  nivel_validado_id: string | null;
+  nivel_validado: string | null;
+  estado:
+    | 'PENDIENTE_ENVIO'
+    | 'ENVIADO'
+    | 'RESPONDIDO'
+    | 'VALIDADO'
+    | 'ANADIDO'
+    | 'DESCARTADO';
+  creado_at: string;
+  enviado_at: string | null;
+  respondido_at: string | null;
+  validado_at: string | null;
+  eliminar_despues_de: string | null;
+};
+
+type CoincidenciaAltaNivelInicialApp = {
+  alumno_id: string;
+  alumno: string;
+  fecha_nacimiento: string | null;
+  nivel_actual: string | null;
+  tipo_coincidencia: 'EXACTA' | 'MISMA_FECHA';
+};
+
+type AvisoNuevaAltaAlumnoApp = {
+  referencia_id: string;
+  fuente: 'FICHA_MAESTRA' | 'ALTA_TEST';
+  alumno: string;
+  fecha_nacimiento: string | null;
+  nivel_actual: string | null;
+  estado: string | null;
+  motivo: 'MISMA_FECHA' | 'NOMBRE_EXACTO' | 'NOMBRE_COMPATIBLE';
+};
+
+type AltaNivelInicialFormApp = {
+  nombre: string;
+  fechaNacimiento: string;
+  modalidad: 'BABY' | 'INTENSIVOS' | 'OCIO';
+  telefono: string;
+  ocioDiaFijo: '' | 'Jueves' | 'Sábado' | 'Domingo';
+};
+
+type TestNivelPublicoInfoApp = {
+  nombre_completo: string;
+  modalidad: string;
+  estado: string;
+  puede_responder: boolean;
+};
+
+type TestNivelPublicoRespuestasApp = {
+  experiencia: string;
+  desplazamiento: string;
+  frenado: string;
+  giros: string;
+  remonte: string;
+  pista: string;
+  controlVelocidad: string;
+  tecnica: string;
+  observacionesEntrenador: string[];
+  observacionEntrenadorOtra: string;
+  observacionesCoordinacion: string;
+};
+
+function altaNivelInicialFormVacioApp(): AltaNivelInicialFormApp {
+  return {
+    nombre: '',
+    fechaNacimiento: '',
+    modalidad: 'BABY',
+    telefono: '',
+    ocioDiaFijo: '',
+  };
+}
+
+function testNivelPublicoRespuestasVaciasApp(): TestNivelPublicoRespuestasApp {
+  return {
+    experiencia: '',
+    desplazamiento: '',
+    frenado: '',
+    giros: '',
+    remonte: '',
+    pista: '',
+    controlVelocidad: '',
+    tecnica: '',
+    observacionesEntrenador: [],
+    observacionEntrenadorOtra: '',
+    observacionesCoordinacion: '',
+  };
+}
+
+const MITICO_AUTH_STORAGE_KEY = 'mitico_auth_session_v1';
+
+function rolUsuarioTextoApp(rol?: string) {
+  if (rol === 'coordinador_jefe') return 'Coordinador jefe';
+  if (rol === 'sub_coordinador' || rol === 'coordinador')
+    return 'Sub-coordinador';
+  if (rol === 'administracion') return 'Administración';
+  return 'Entrenador';
+}
+
+function esRolCoordinacionApp(rol?: string) {
+  return (
+    rol === 'coordinador_jefe' ||
+    rol === 'sub_coordinador' ||
+    rol === 'administracion' ||
+    rol === 'coordinador'
+  );
+}
+
+function puedeVerDireccionApp(rol?: string) {
+  return rol === 'coordinador_jefe';
+}
+
+function puedeGestionarAccesosApp(rol?: string) {
+  return rol === 'coordinador_jefe';
+}
+
+function puedeVerAdministracionAltasApp(rol?: string) {
+  return (
+    rol === 'coordinador_jefe' ||
+    rol === 'sub_coordinador' ||
+    rol === 'administracion'
+  );
+}
+
+function limpiarUrlAuthApp() {
+  if (typeof window === 'undefined') return;
+  const limpia = `${window.location.origin}${window.location.pathname}`;
+  window.history.replaceState({}, document.title, limpia);
+}
+
+function leerSesionGuardadaApp(): SesionAuthApp | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(MITICO_AUTH_STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as SesionAuthApp;
+  } catch {
+    return null;
+  }
+}
+
+function guardarSesionAuthApp(sesion: SesionAuthApp) {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(MITICO_AUTH_STORAGE_KEY, JSON.stringify(sesion));
+}
+
+function borrarSesionAuthApp() {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(MITICO_AUTH_STORAGE_KEY);
+}
+
+function tipoFlujoPasswordDesdeUrlApp(): 'invite' | 'recovery' {
+  if (typeof window === 'undefined') return 'invite';
+
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const search = new URLSearchParams(window.location.search.replace(/^\?/, ''));
+  const tipo = (
+    hash.get('type') ||
+    search.get('type') ||
+    ''
+  ).toLowerCase();
+
+  return tipo === 'recovery' ? 'recovery' : 'invite';
+}
+
+function extraerSesionInvitacionDesdeUrlApp(): SesionAuthApp | null {
+  if (typeof window === 'undefined') return null;
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+  const search = new URLSearchParams(window.location.search.replace(/^\?/, ''));
+  const accessToken = hash.get('access_token') || search.get('access_token');
+  const refreshToken =
+    hash.get('refresh_token') || search.get('refresh_token') || undefined;
+  const expiresIn = Number(
+    hash.get('expires_in') || search.get('expires_in') || 0
+  );
+  const type = hash.get('type') || search.get('type') || '';
+
+  if (!accessToken) return null;
+
+  return {
+    access_token: accessToken,
+    refresh_token: refreshToken,
+    expires_at: expiresIn
+      ? Math.floor(Date.now() / 1000) + expiresIn
+      : undefined,
+    user: { id: '', email: '' },
+  };
+}
+
+async function authRequestApp<T>(
+  ruta: string,
+  opciones: RequestInit = {}
+): Promise<T> {
+  const respuesta = await fetch(`${SUPABASE_URL}/auth/v1/${ruta}`, {
+    ...opciones,
+    headers: {
+      apikey: SUPABASE_ANON_KEY,
+      'Content-Type': 'application/json',
+      ...(opciones.headers || {}),
+    },
+  });
+
+  const texto = await respuesta.text();
+  let datos: any = null;
+  try {
+    datos = texto ? JSON.parse(texto) : null;
+  } catch {
+    datos = texto;
+  }
+
+  if (!respuesta.ok) {
+    const mensaje =
+      typeof datos === 'string'
+        ? datos
+        : datos?.msg || datos?.message || texto || 'Error de autenticación';
+    throw new Error(mensaje);
+  }
+
+  return datos as T;
+}
+
+async function iniciarSesionEmailPasswordApp(
+  email: string,
+  password: string
+): Promise<SesionAuthApp> {
+  const datos: any = await authRequestApp('token?grant_type=password', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  });
+
+  return {
+    access_token: datos.access_token,
+    refresh_token: datos.refresh_token,
+    expires_at: datos.expires_at,
+    user: {
+      id: datos.user?.id || '',
+      email: datos.user?.email || email,
+    },
+  };
+}
+
+async function refrescarSesionAuthApp(
+  refreshToken: string
+): Promise<SesionAuthApp> {
+  const datos: any = await authRequestApp('token?grant_type=refresh_token', {
+    method: 'POST',
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+
+  return {
+    access_token: datos.access_token,
+    refresh_token: datos.refresh_token || refreshToken,
+    expires_at: datos.expires_at,
+    user: {
+      id: datos.user?.id || '',
+      email: datos.user?.email || '',
+    },
+  };
+}
+
+
+let refrescoSesionEnCursoApp: Promise<SesionAuthApp> | null = null;
+
+async function obtenerSesionSupabaseActivaApp(): Promise<SesionAuthApp> {
+  const sesion = leerSesionGuardadaApp();
+
+  if (!sesion?.access_token) {
+    throw new Error('La sesión ha caducado. Sal y vuelve a entrar.');
+  }
+
+  const ahora = Math.floor(Date.now() / 1000);
+  const sigueVigente =
+    !sesion.expires_at || Number(sesion.expires_at) > ahora + 60;
+
+  if (sigueVigente) {
+    return sesion;
+  }
+
+  if (!sesion.refresh_token) {
+    borrarSesionAuthApp();
+    throw new Error('La sesión ha caducado. Sal y vuelve a entrar.');
+  }
+
+  if (!refrescoSesionEnCursoApp) {
+    refrescoSesionEnCursoApp = refrescarSesionAuthApp(sesion.refresh_token)
+      .then((refrescada) => {
+        const sesionCompleta: SesionAuthApp = {
+          ...refrescada,
+          user: refrescada.user?.id ? refrescada.user : sesion.user,
+        };
+        guardarSesionAuthApp(sesionCompleta);
+        return sesionCompleta;
+      })
+      .finally(() => {
+        refrescoSesionEnCursoApp = null;
+      });
+  }
+
+  return refrescoSesionEnCursoApp;
+}
+
+async function obtenerAccessTokenSupabaseApp(): Promise<string> {
+  const sesion = await obtenerSesionSupabaseActivaApp();
+  return sesion.access_token;
+}
+
+async function obtenerUsuarioAuthApp(
+  accessToken: string
+): Promise<{ id: string; email?: string }> {
+  const datos: any = await authRequestApp('user', {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+
+  return {
+    id: datos.id || datos.user?.id || '',
+    email: datos.email || datos.user?.email || '',
+  };
+}
+
+async function solicitarRecuperacionPasswordApp(email: string) {
+  const redirectTo =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}${window.location.pathname}`
+      : '';
+
+  await authRequestApp('recover', {
+    method: 'POST',
+    body: JSON.stringify({
+      email: email.trim().toLowerCase(),
+      redirect_to: redirectTo || undefined,
+    }),
+  });
+}
+
+async function actualizarPasswordInvitacionApp(
+  accessToken: string,
+  password: string
+) {
+  await authRequestApp('user', {
+    method: 'PUT',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({ password }),
+  });
+}
+
+async function cargarPerfilUsuarioApp(
+  accessToken: string,
+  userId: string
+): Promise<PerfilUsuarioApp | null> {
+  const respuesta = await fetch(
+    `${SUPABASE_URL}/rest/v1/usuarios_app?select=id,auth_user_id,email,nombre,rol,entrenador_id,activo&auth_user_id=eq.${encodeURIComponent(
+      userId
+    )}&activo=eq.true&limit=1`,
+    {
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  );
+
+  if (!respuesta.ok) {
+    const texto = await respuesta.text();
+    throw new Error(texto || 'No se pudo cargar el perfil del usuario.');
+  }
+
+  const perfiles = await respuesta.json();
+  return perfiles[0] || null;
+}
+
+const authShellApp: React.CSSProperties = {
+  minHeight: '100vh',
+  display: 'grid',
+  placeItems: 'center',
+  padding: 18,
+  background: 'linear-gradient(135deg, #eaf3ff 0%, #f8fbff 42%, #ecfdf5 100%)',
+  color: '#0f172a',
+};
+
+const authCardApp: React.CSSProperties = {
+  width: '100%',
+  maxWidth: 520,
+  background: 'rgba(255,255,255,0.92)',
+  border: '1px solid #dbeafe',
+  borderRadius: 28,
+  boxShadow: '0 24px 70px rgba(15,23,42,0.16)',
+  padding: 24,
+};
+
+const authInputApp: React.CSSProperties = {
+  width: '100%',
+  boxSizing: 'border-box',
+  border: '1px solid #cbd5e1',
+  borderRadius: 16,
+  padding: '13px 14px',
+  fontSize: 16,
+};
+
+const authBotonApp: React.CSSProperties = {
+  width: '100%',
+  border: '0',
+  borderRadius: 16,
+  padding: '14px 18px',
+  background: '#2563eb',
+  color: '#fff',
+  fontWeight: 900,
+  fontSize: 16,
+  cursor: 'pointer',
+  boxShadow: '0 14px 24px rgba(37,99,235,0.24)',
+};
+
+function PantallaLoginApp({
+  onLogin,
+  onRecuperarPassword,
+}: {
+  onLogin: (email: string, password: string) => Promise<void>;
+  onRecuperarPassword: (email: string) => Promise<void>;
+}) {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [cargandoAuth, setCargandoAuth] = useState(false);
+  const [recuperandoAuth, setRecuperandoAuth] = useState(false);
+  const [errorAuth, setErrorAuth] = useState('');
+  const [mensajeAuth, setMensajeAuth] = useState('');
+
+  async function recuperarPassword() {
+    setErrorAuth('');
+    setMensajeAuth('');
+
+    if (!email.trim()) {
+      setErrorAuth('Escribe primero el email de tu cuenta.');
+      return;
+    }
+
+    try {
+      setRecuperandoAuth(true);
+      await onRecuperarPassword(email.trim());
+      setMensajeAuth(
+        'Te hemos enviado un email para crear una contraseña nueva. Revisa también spam o correo no deseado.'
+      );
+    } catch (error: any) {
+      setErrorAuth(
+        error?.message ||
+          'No se ha podido enviar el email de recuperación.'
+      );
+    } finally {
+      setRecuperandoAuth(false);
+    }
+  }
+
+  async function enviarLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setErrorAuth('');
+    if (!email.trim() || !password) {
+      setErrorAuth('Mete email y contraseña.');
+      return;
+    }
+    try {
+      setCargandoAuth(true);
+      await onLogin(email.trim(), password);
+    } catch (error: any) {
+      setErrorAuth(error?.message || 'No se ha podido iniciar sesión.');
+    } finally {
+      setCargandoAuth(false);
+    }
+  }
+
+  return (
+    <main style={authShellApp}>
+      <form onSubmit={enviarLogin} style={authCardApp}>
+        <div
+          style={{
+            display: 'flex',
+            gap: 14,
+            alignItems: 'center',
+            marginBottom: 18,
+          }}
+        >
+          <img
+            src="/logo-cabecera-mitico.png"
+            alt="Mítico Club"
+            style={{
+              width: 64,
+              height: 64,
+              borderRadius: 18,
+              objectFit: 'contain',
+              background: '#fff',
+              border: '1px solid #e5e7eb',
+            }}
+          />
+          <div>
+            <p
+              style={{
+                margin: 0,
+                color: '#2563eb',
+                fontWeight: 900,
+                letterSpacing: 2,
+                textTransform: 'uppercase',
+                fontSize: 12,
+              }}
+            >
+              Acceso privado
+            </p>
+            <h1 style={{ margin: '4px 0 0', fontSize: 26 }}>
+              Mítico Baby / Ocio
+            </h1>
+          </div>
+        </div>
+
+        <p style={{ marginTop: 0, color: '#475569', lineHeight: 1.45 }}>
+          Entra con tu email y contraseña. Si eres entrenador, solo verás tu
+          panel de trabajo.
+        </p>
+
+        <label
+          style={{ display: 'grid', gap: 7, fontWeight: 800, marginBottom: 12 }}
+        >
+          Email
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            style={authInputApp}

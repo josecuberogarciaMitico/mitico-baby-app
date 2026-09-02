@@ -1,0 +1,2500 @@
+                            Desactivar acceso
+                          </button>
+                        </>
+                      )}
+
+                      {usuario.estado_acceso === 'invitacion_pendiente' && (
+                        <button
+                          type="button"
+                          disabled={gestionando}
+                          onClick={() =>
+                            gestionarUsuarioOperativo(
+                              usuario,
+                              'reenviar_invitacion'
+                            )
+                          }
+                          style={{
+                            ...botonMini,
+                            width: '100%',
+                            minHeight: 42,
+                            background: '#fff7ed',
+                            color: '#9a3412',
+                            border: '1px solid #fed7aa',
+                            fontWeight: 900,
+                          }}
+                        >
+                          Reenviar invitación
+                        </button>
+                      )}
+
+                      {usuario.estado_acceso === 'desactivado' && (
+                        <button
+                          type="button"
+                          disabled={gestionando}
+                          onClick={() =>
+                            gestionarUsuarioOperativo(usuario, 'activar')
+                          }
+                          style={{
+                            ...botonMini,
+                            width: '100%',
+                            minHeight: 42,
+                            background: '#ecfdf5',
+                            color: '#047857',
+                            border: '1px solid #a7f3d0',
+                            fontWeight: 900,
+                          }}
+                        >
+                          Activar acceso
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </article>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {pantalla === 'entrenadores' && (
+        <section>
+          <div style={cabeceraPantalla}>
+            <div>
+              <h2>Entrenadores / gestión</h2>
+              <p style={{ margin: '6px 0 0', color: '#555' }}>
+                Alta, contacto, especialidades, chaqueta y documentación. Los
+                cobros se gestionan en Cobros.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={abrirNuevoEntrenador}
+                style={botonPrincipal}
+              >
+                + Añadir entrenador
+              </button>
+              <button onClick={cargarEntrenadores} style={botonSecundario}>
+                Refrescar
+              </button>
+            </div>
+          </div>
+
+          {mostrarFormularioEntrenador && (
+            <article
+              id="formulario-gestion-entrenador"
+              style={{
+                ...agendaBloqueBlanco,
+                scrollMarginTop: 18,
+                border: '1px solid #bfdbfe',
+                background:
+                  'linear-gradient(135deg, rgba(239,246,255,0.96), rgba(255,255,255,0.98))',
+                boxShadow: '0 14px 34px rgba(37,99,235,0.08)',
+              }}
+            >
+              <h3 style={{ marginTop: 0 }}>
+                {formEntrenador.id ? 'Editar entrenador' : 'Alta de entrenador'}
+              </h3>
+              <p style={{ marginTop: 0, color: '#555' }}>
+                Para que puedan usar la app necesitas al menos nombre. El email
+                es recomendable para acceso/login y el teléfono para WhatsApp.
+              </p>
+
+              <div style={gridFormulario}>
+                <label style={labelCampo}>
+                  Nombre completo
+                  <input
+                    value={formEntrenador.nombre}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        nombre: e.target.value,
+                      })
+                    }
+                    placeholder="Nombre y apellidos"
+                    style={inputCampo}
+                  />
+                </label>
+
+                <label style={labelCampo}>
+                  Email acceso app
+                  <input
+                    value={formEntrenador.email}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        email: e.target.value,
+                      })
+                    }
+                    placeholder="correo@ejemplo.com"
+                    style={inputCampo}
+                  />
+                </label>
+
+                <label style={labelCampo}>
+                  Teléfono / WhatsApp
+                  <input
+                    value={formEntrenador.telefono}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        telefono: e.target.value,
+                      })
+                    }
+                    placeholder="600000000"
+                    style={inputCampo}
+                  />
+                </label>
+
+                <label style={labelCampo}>
+                  Tarifa por turno
+                  <input
+                    value={formEntrenador.tarifa}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        tarifa: e.target.value,
+                      })
+                    }
+                    placeholder="0"
+                    type="number"
+                    style={inputCampo}
+                  />
+                </label>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 10,
+                  flexWrap: 'wrap',
+                  marginTop: 12,
+                }}
+              >
+                <label style={{ ...miniTarjetaBlanca, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={formEntrenador.activo}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        activo: e.target.checked,
+                      })
+                    }
+                  />{' '}
+                  Activo esta temporada
+                </label>
+                <label style={{ ...miniTarjetaBlanca, cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    checked={formEntrenador.chaqueta}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        chaqueta: e.target.checked,
+                      })
+                    }
+                  />{' '}
+                  Chaqueta entregada
+                </label>
+              </div>
+
+              <h4>Especialidades</h4>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {opcionesEspecialidadEntrenador.map((especialidad) => (
+                  <label
+                    key={especialidad}
+                    style={botonMenu(
+                      formEntrenador.especialidades.includes(especialidad)
+                    )}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formEntrenador.especialidades.includes(
+                        especialidad
+                      )}
+                      onChange={() =>
+                        alternarEspecialidadEntrenador(especialidad)
+                      }
+                      style={{ display: 'none' }}
+                    />
+                    {especialidad}
+                  </label>
+                ))}
+              </div>
+
+              <h4>Documentación</h4>
+              <div style={gridFormulario}>
+                <label style={labelCampo}>
+                  Titulación
+                  <select
+                    value={formEntrenador.titulacionEstado}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        titulacionEstado: e.target.value,
+                      })
+                    }
+                    style={selectCampo}
+                  >
+                    {opcionesDocumentoEntrenador.map((opcion) => (
+                      <option key={opcion} value={opcion}>
+                        {opcion}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={labelCampo}>
+                  Enlace titulación
+                  <input
+                    value={formEntrenador.titulacionUrl}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        titulacionUrl: e.target.value,
+                      })
+                    }
+                    placeholder="Drive / PDF / enlace interno"
+                    style={inputCampo}
+                  />
+                </label>
+                <label style={labelCampo}>
+                  Antecedentes sexuales
+                  <select
+                    value={formEntrenador.antecedentesEstado}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        antecedentesEstado: e.target.value,
+                      })
+                    }
+                    style={selectCampo}
+                  >
+                    {opcionesDocumentoEntrenador.map((opcion) => (
+                      <option key={opcion} value={opcion}>
+                        {opcion}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label style={labelCampo}>
+                  Enlace antecedentes
+                  <input
+                    value={formEntrenador.antecedentesUrl}
+                    onChange={(e) =>
+                      setFormEntrenador({
+                        ...formEntrenador,
+                        antecedentesUrl: e.target.value,
+                      })
+                    }
+                    placeholder="Drive / PDF / enlace interno"
+                    style={inputCampo}
+                  />
+                </label>
+              </div>
+
+              <label style={{ ...labelCampo, marginTop: 12 }}>
+                Observaciones internas
+                <textarea
+                  value={formEntrenador.observaciones}
+                  onChange={(e) =>
+                    setFormEntrenador({
+                      ...formEntrenador,
+                      observaciones: e.target.value,
+                    })
+                  }
+                  placeholder="Disponibilidad especial, forma de trabajar, restricciones, notas de coordinación..."
+                  style={{ ...inputCampo, minHeight: 80 }}
+                />
+              </label>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  marginTop: 14,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={guardarEntrenadorGestion}
+                  style={botonPrincipal}
+                >
+                  Guardar entrenador
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMostrarFormularioEntrenador(false);
+                    setFormEntrenador(entrenadorFormInicial());
+                  }}
+                  style={botonSecundario}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </article>
+          )}
+
+          <input
+            value={busquedaEntrenador}
+            onChange={(e) => setBusquedaEntrenador(e.target.value)}
+            placeholder="Buscar entrenador, teléfono, email o especialidad..."
+            style={buscador}
+          />
+
+          <nav
+            style={{
+              display: 'flex',
+              gap: 8,
+              flexWrap: 'wrap',
+              marginBottom: 16,
+            }}
+          >
+            <button
+              onClick={() => setFiltroEntrenadores('todos')}
+              style={botonMenu(filtroEntrenadores === 'todos')}
+            >
+              Todos
+            </button>
+            <button
+              onClick={() => setFiltroEntrenadores('activos')}
+              style={botonMenu(filtroEntrenadores === 'activos')}
+            >
+              Activos
+            </button>
+            <button
+              onClick={() => setFiltroEntrenadores('inactivos')}
+              style={botonMenu(filtroEntrenadores === 'inactivos')}
+            >
+              Inactivos
+            </button>
+            <button
+              onClick={() => setFiltroEntrenadores('sin_chaqueta')}
+              style={botonMenu(filtroEntrenadores === 'sin_chaqueta')}
+            >
+              Sin chaqueta
+            </button>
+            <button
+              onClick={() => setFiltroEntrenadores('documentacion_pendiente')}
+              style={botonMenu(
+                filtroEntrenadores === 'documentacion_pendiente'
+              )}
+            >
+              Documentación pendiente
+            </button>
+          </nav>
+
+          {cargando && <p>Cargando entrenadores...</p>}
+
+          {!cargando && entrenadoresFiltrados.length === 0 && !error && (
+            <article style={tarjetaMovilVacia}>
+              <h3 style={{ marginTop: 0 }}>Sin entrenadores en este filtro</h3>
+              <p style={{ marginBottom: 0 }}>
+                Puedes añadir el primer entrenador con el botón superior.
+              </p>
+            </article>
+          )}
+
+          <section style={{ display: 'grid', gap: 12 }}>
+            {entrenadoresFiltrados.map((entrenador) => {
+              const documentacionOk =
+                (entrenador.titulacion_estado || 'Pendiente') === 'Validado' &&
+                (entrenador.antecedentes_estado || 'Pendiente') === 'Validado';
+
+              const acceso =
+                estadosAccesoEntrenadores[entrenador.entrenador_id] || null;
+              const gestionandoAcceso =
+                creandoAccesoEntrenadorId === entrenador.entrenador_id ||
+                gestionandoAccesoEntrenadorId === entrenador.entrenador_id;
+
+              const textoEstadoAcceso =
+                acceso?.estado === 'activo'
+                  ? 'Acceso activo'
+                  : acceso?.estado === 'invitacion_pendiente'
+                  ? 'Invitación pendiente'
+                  : acceso?.estado === 'desactivado'
+                  ? 'Acceso desactivado'
+                  : acceso?.estado === 'revisar'
+                  ? 'Revisar acceso'
+                  : 'Sin acceso';
+
+              const estiloEstadoAcceso =
+                acceso?.estado === 'activo'
+                  ? {
+                      background: '#ecfdf5',
+                      color: '#047857',
+                      borderColor: '#a7f3d0',
+                    }
+                  : acceso?.estado === 'invitacion_pendiente'
+                  ? {
+                      background: '#fff7ed',
+                      color: '#9a3412',
+                      borderColor: '#fed7aa',
+                    }
+                  : acceso?.estado === 'desactivado'
+                  ? {
+                      background: '#fef2f2',
+                      color: '#b91c1c',
+                      borderColor: '#fecaca',
+                    }
+                  : {
+                      background: '#f8fafc',
+                      color: '#64748b',
+                      borderColor: '#cbd5e1',
+                    };
+
+              return (
+                <article
+                  id={`entrenador-${entrenador.entrenador_id}`}
+                  key={entrenador.entrenador_id}
+                  style={{
+                    ...tarjeta,
+                    border: '1px solid #dbeafe',
+                    background:
+                      'linear-gradient(135deg, rgba(255,255,255,0.99), rgba(248,250,252,0.98))',
+                    boxShadow: '0 10px 28px rgba(15,23,42,0.06)',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      flexWrap: 'wrap',
+                      alignItems: 'flex-start',
+                    }}
+                  >
+                    <div>
+                      <p style={etiquetaSuperior}>ENTRENADOR</p>
+                      <h3 style={{ margin: 0 }}>
+                        {entrenador.nombre_completo}
+                      </h3>
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 7,
+                          flexWrap: 'wrap',
+                          marginTop: 8,
+                        }}
+                      >
+                        <span
+                          style={{
+                            ...agendaBadgeModalidad,
+                            background: entrenador.activo
+                              ? '#ecfdf5'
+                              : '#f8fafc',
+                            color: entrenador.activo ? '#047857' : '#64748b',
+                            borderColor: entrenador.activo
+                              ? '#a7f3d0'
+                              : '#cbd5e1',
+                          }}
+                        >
+                          {entrenador.activo ? 'Activo' : 'Inactivo'}
+                        </span>
+                        <span
+                          style={{
+                            ...agendaBadgeModalidad,
+                            background: entrenador.chaqueta_entregada
+                              ? '#eff6ff'
+                              : '#fff7ed',
+                            color: entrenador.chaqueta_entregada
+                              ? '#1d4ed8'
+                              : '#9a3412',
+                            borderColor: entrenador.chaqueta_entregada
+                              ? '#bfdbfe'
+                              : '#fed7aa',
+                          }}
+                        >
+                          Chaqueta {entrenador.chaqueta_entregada ? 'OK' : 'pendiente'}
+                        </span>
+
+                        {puedeGestionarAccesosUsuarioApp && (
+                          <span
+                            style={{
+                              ...agendaBadgeModalidad,
+                              ...estiloEstadoAcceso,
+                            }}
+                          >
+                            {cargandoEstadosAccesoEntrenadores && !acceso
+                              ? 'Comprobando acceso…'
+                              : textoEstadoAcceso}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fit, minmax(150px, 1fr))',
+                        gap: 8,
+                        width: '100%',
+                        minWidth: 0,
+                      }}
+                    >
+                      {puedeGestionarAccesosUsuarioApp &&
+                        (cargandoEstadosAccesoEntrenadores && !acceso ? (
+                          <button
+                            type="button"
+                            disabled
+                            style={{
+                              ...botonMini,
+                              width: '100%',
+                              minHeight: 42,
+                              background: '#f8fafc',
+                              color: '#64748b',
+                              border: '1px solid #cbd5e1',
+                              opacity: 0.7,
+                            }}
+                          >
+                            Comprobando acceso…
+                          </button>
+                        ) : acceso?.estado === 'activo' ? (
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns:
+                                'repeat(auto-fit, minmax(140px, 1fr))',
+                              gap: 8,
+                              width: '100%',
+                            }}
+                          >
+                            <button
+                              type="button"
+                              disabled={gestionandoAcceso}
+                              onClick={() =>
+                                gestionarAccesoEntrenador(
+                                  entrenador,
+                                  'desactivar'
+                                )
+                              }
+                              style={{
+                                ...botonMini,
+                                width: '100%',
+                                minHeight: 42,
+                                whiteSpace: 'normal',
+                                background: '#fff1f2',
+                                color: '#be123c',
+                                border: '1px solid #fecdd3',
+                                fontWeight: 900,
+                                opacity: gestionandoAcceso ? 0.65 : 1,
+                              }}
+                            >
+                              {gestionandoAcceso
+                                ? 'Gestionando…'
+                                : 'Desactivar acceso'}
+                            </button>
+
+                            <button
+                              type="button"
+                              disabled={gestionandoAcceso}
+                              onClick={() =>
+                                gestionarAccesoEntrenador(
+                                  entrenador,
+                                  'enviar_recuperacion'
+                                )
+                              }
+                              style={{
+                                ...botonMini,
+                                width: '100%',
+                                minHeight: 42,
+                                whiteSpace: 'normal',
+                                background: '#eff6ff',
+                                color: '#1d4ed8',
+                                border: '1px solid #bfdbfe',
+                                fontWeight: 900,
+                                opacity: gestionandoAcceso ? 0.65 : 1,
+                              }}
+                            >
+                              {gestionandoAcceso
+                                ? 'Enviando…'
+                                : 'Recuperar contraseña'}
+                            </button>
+                          </div>
+                        ) : acceso?.estado === 'invitacion_pendiente' ? (
+                          <button
+                            type="button"
+                            disabled={gestionandoAcceso}
+                            onClick={() =>
+                              gestionarAccesoEntrenador(
+                                entrenador,
+                                'reenviar_invitacion'
+                              )
+                            }
+                            style={{
+                              ...botonMini,
+                              width: '100%',
+                              minHeight: 42,
+                              whiteSpace: 'normal',
+                              background: '#fff7ed',
+                              color: '#9a3412',
+                              border: '1px solid #fed7aa',
+                              fontWeight: 900,
+                              opacity: gestionandoAcceso ? 0.65 : 1,
+                            }}
+                          >
+                            {gestionandoAcceso
+                              ? 'Reenviando…'
+                              : 'Reenviar invitación'}
+                          </button>
+                        ) : acceso?.estado === 'desactivado' ? (
+                          <button
+                            type="button"
+                            disabled={gestionandoAcceso}
+                            onClick={() =>
+                              gestionarAccesoEntrenador(entrenador, 'activar')
+                            }
+                            style={{
+                              ...botonMini,
+                              width: '100%',
+                              minHeight: 42,
+                              whiteSpace: 'normal',
+                              background: '#ecfdf5',
+                              color: '#047857',
+                              border: '1px solid #a7f3d0',
+                              fontWeight: 900,
+                              opacity: gestionandoAcceso ? 0.65 : 1,
+                            }}
+                          >
+                            {gestionandoAcceso
+                              ? 'Activando…'
+                              : 'Activar acceso'}
+                          </button>
+                        ) : acceso?.estado === 'revisar' ? (
+                          <button
+                            type="button"
+                            onClick={() => cargarEstadosAccesoEntrenadores()}
+                            style={{
+                              ...botonMini,
+                              width: '100%',
+                              minHeight: 42,
+                              background: '#f8fafc',
+                              color: '#475569',
+                              border: '1px solid #cbd5e1',
+                              fontWeight: 900,
+                            }}
+                          >
+                            Revisar acceso
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={gestionandoAcceso}
+                            onClick={() => crearAccesoAppEntrenador(entrenador)}
+                            style={{
+                              ...botonMini,
+                              width: '100%',
+                              minWidth: 0,
+                              minHeight: 42,
+                              whiteSpace: 'normal',
+                              lineHeight: 1.15,
+                              overflowWrap: 'break-word',
+                              textAlign: 'center',
+                              background: '#f5f3ff',
+                              color: '#6d28d9',
+                              border: '1px solid #ddd6fe',
+                              fontWeight: 900,
+                              opacity: gestionandoAcceso ? 0.65 : 1,
+                            }}
+                          >
+                            {gestionandoAcceso
+                              ? 'Creando acceso…'
+                              : 'Crear acceso app'}
+                          </button>
+                        ))}
+                      <button
+                        type="button"
+                        onClick={() => pedirDatosAltaEntrenadorWhatsapp(entrenador)}
+                        style={{
+                          ...botonMini,
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 42,
+                          whiteSpace: 'normal',
+                          lineHeight: 1.15,
+                          overflowWrap: 'break-word',
+                          textAlign: 'center',
+                          background: '#ecfdf5',
+                          color: '#047857',
+                          border: '1px solid #a7f3d0',
+                          fontWeight: 900,
+                        }}
+                      >
+                        Pedir datos
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => abrirEditarEntrenador(entrenador)}
+                        style={{
+                          ...botonMini,
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 42,
+                          whiteSpace: 'normal',
+                          lineHeight: 1.15,
+                          overflowWrap: 'break-word',
+                          textAlign: 'center',
+                          background: '#eff6ff',
+                          color: '#1d4ed8',
+                          border: '1px solid #bfdbfe',
+                          fontWeight: 900,
+                        }}
+                      >
+                        Editar ficha
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => eliminarEntrenadorGestion(entrenador)}
+                        style={{
+                          ...botonPeligro,
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 42,
+                          whiteSpace: 'normal',
+                          lineHeight: 1.15,
+                          overflowWrap: 'break-word',
+                          textAlign: 'center',
+                          background: '#fff1f2',
+                          color: '#be123c',
+                          borderColor: '#fecdd3',
+                        }}
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ ...gridMiniMetricas, marginTop: 14 }}>
+                    <div
+                      style={{
+                        ...miniMetrica,
+                        background: '#f8fafc',
+                        borderColor: '#e2e8f0',
+                      }}
+                    >
+                      <strong>Contacto</strong>
+                      <span>Email: {entrenador.email || '-'}</span>
+                      <span>WhatsApp: {entrenador.telefono || '-'}</span>
+                    </div>
+                    <div
+                      style={{
+                        ...miniMetrica,
+                        background: '#f0fdf4',
+                        borderColor: '#bbf7d0',
+                      }}
+                    >
+                      <strong>Especialidades</strong>
+                      <span>
+                        {(entrenador.especialidades || []).length > 0
+                          ? (entrenador.especialidades || []).join(' · ')
+                          : 'Sin marcar'}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        ...miniMetrica,
+                        background: '#fff7ed',
+                        borderColor: '#fed7aa',
+                      }}
+                    >
+                      <strong>Documentación</strong>
+                      <span>
+                        Titulación:{' '}
+                        {entrenador.titulacion_estado || 'Pendiente'}
+                      </span>
+                      <span>
+                        Antecedentes:{' '}
+                        {entrenador.antecedentes_estado || 'Pendiente'}
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        ...miniMetrica,
+                        background: documentacionOk ? '#ecfdf5' : '#fef2f2',
+                        borderColor: documentacionOk ? '#a7f3d0' : '#fecaca',
+                      }}
+                    >
+                      <strong>Estado operativo</strong>
+                      <span>
+                        {documentacionOk
+                          ? 'Documentación OK'
+                          : 'Revisar documentación'}
+                      </span>
+                      <span>
+                        Tarifa: {entrenador.tarifa_por_turno || 0} € / turno
+                      </span>
+                    </div>
+                  </div>
+
+                  {(entrenador.titulacion_url ||
+                    entrenador.antecedentes_url ||
+                    entrenador.observaciones_internas) && (
+                    <details>
+                      <summary style={{ cursor: 'pointer', fontWeight: 900 }}>
+                        Ver documentos y notas
+                      </summary>
+                      <div style={{ marginTop: 10, display: 'grid', gap: 6 }}>
+                        <p style={{ margin: 0 }}>
+                          <strong>Titulación:</strong>{' '}
+                          {entrenador.titulacion_url || '-'}{' '}
+                          {entrenador.titulacion_observaciones
+                            ? `· ${entrenador.titulacion_observaciones}`
+                            : ''}
+                        </p>
+                        <p style={{ margin: 0 }}>
+                          <strong>Antecedentes:</strong>{' '}
+                          {entrenador.antecedentes_url || '-'}{' '}
+                          {entrenador.antecedentes_observaciones
+                            ? `· ${entrenador.antecedentes_observaciones}`
+                            : ''}
+                        </p>
+                        <p style={{ margin: 0 }}>
+                          <strong>Notas:</strong>{' '}
+                          {entrenador.observaciones_internas || '-'}
+                        </p>
+                      </div>
+                    </details>
+                  )}
+                </article>
+              );
+            })}
+          </section>
+        </section>
+      )}
+
+      {pantalla === 'disponibilidad' && (
+        <section style={{ display: 'grid', gap: 16 }}>
+          <div className="availability-flow-card">
+            <div className="availability-flow-head">
+              <div>
+                <h2>Disponibilidad semanal</h2>
+                <p>
+                  Configura solo los días y turnos reales de la semana y publica
+                  la versión que verá la Vista entrenador.
+                </p>
+              </div>
+
+              <div className="availability-editor-hero-status">
+                <strong>
+                  {estadoServidorDisponibilidadEditor === 'publicado'
+                    ? 'Semana publicada'
+                    : estadoServidorDisponibilidadEditor === 'borrador'
+                    ? 'Borrador'
+                    : 'Sin preparar'}
+                </strong>
+                {estadoServidorDisponibilidadEditor === 'publicado' && (
+                  <span className="availability-editor-published-week">
+                    {borradorDisponibilidadEditor?.semana_inicio
+                      ? rangoSemanaAgenda(borradorDisponibilidadEditor.semana_inicio)
+                      : '-'}
+                  </span>
+                )}
+                <span>
+                  {resumenBorradorDisponibilidadEditor.dias} días ·{' '}
+                  {resumenBorradorDisponibilidadEditor.turnos} turnos
+                </span>
+              </div>
+            </div>
+
+            <details className="availability-flow-details">
+              <summary>Chuleta rápida del flujo</summary>
+              <ol>
+                <li>Selecciona la semana que vas a preparar.</li>
+                <li>Activa solo los días reales y ajusta sus turnos.</li>
+                <li>Guarda borrador mientras estés revisando.</li>
+                <li>Publica cuando la semana ya esté correcta.</li>
+                <li>
+                  Revisa después las respuestas en “Disponibilidad recibida por
+                  turno”.
+                </li>
+                <li>
+                  La Vista entrenador usará siempre la última versión publicada.
+                </li>
+              </ol>
+            </details>
+          </div>
+
+          <section className="availability-response-summary">
+            <header className="availability-response-summary-header">
+              <div>
+                <h3>Disponibilidad recibida por turno</h3>
+              </div>
+              <span className="availability-response-total">
+                {disponibilidadPorTurno.length}{' '}
+                {disponibilidadPorTurno.length === 1 ? 'turno' : 'turnos'}
+              </span>
+            </header>
+
+            <div className="availability-response-controls">
+              <input
+                value={busquedaDisponibilidad}
+                onChange={(e) => setBusquedaDisponibilidad(e.target.value)}
+                placeholder="Buscar entrenador..."
+                aria-label="Buscar entrenador en disponibilidad"
+              />
+              <div className="availability-response-filter-buttons">
+                <button
+                  type="button"
+                  className={filtroDisponibilidad === 'todos' ? 'is-active' : ''}
+                  onClick={() => setFiltroDisponibilidad('todos')}
+                >
+                  Todos
+                </button>
+                <button
+                  type="button"
+                  className={
+                    filtroDisponibilidad === 'disponibles' ? 'is-active' : ''
+                  }
+                  onClick={() => setFiltroDisponibilidad('disponibles')}
+                >
+                  Disponibles
+                </button>
+                <button
+                  type="button"
+                  className={
+                    filtroDisponibilidad === 'no_puedo' ? 'is-active' : ''
+                  }
+                  onClick={() => setFiltroDisponibilidad('no_puedo')}
+                >
+                  No pueden
+                </button>
+                <button
+                  type="button"
+                  className={
+                    filtroDisponibilidad === 'pendientes' ? 'is-active' : ''
+                  }
+                  onClick={() => setFiltroDisponibilidad('pendientes')}
+                >
+                  Pendientes
+                </button>
+              </div>
+            </div>
+
+            {cargando && <p>Cargando disponibilidad...</p>}
+
+            {!cargando &&
+              disponibilidadSemanalEntrenador.length === 0 &&
+              !error && (
+                <article className="availability-response-empty">
+                  <strong>Sin disponibilidad creada para esta semana</strong>
+                  <span>
+                    Selecciona la semana y utiliza el sistema de respaldo hasta
+                    conectar la publicación del Sprint 2B.
+                  </span>
+                </article>
+              )}
+
+            <div className="availability-response-turns">
+              {disponibilidadPorTurno.map((turno) => {
+                const abierto =
+                  turnoResumenDisponibilidadAbierto === turno.clave;
+                const categoriaActiva =
+                  categoriaResumenDisponibilidad[turno.clave] ||
+                  'disponibles';
+                const personasCategoria =
+                  categoriaActiva === 'disponibles'
+                    ? turno.disponibles
+                    : categoriaActiva === 'no_puedo'
+                    ? turno.no_puedo
+                    : turno.pendientes;
+                const tituloCategoria =
+                  categoriaActiva === 'disponibles'
+                    ? 'Disponibles para asignar'
+                    : categoriaActiva === 'no_puedo'
+                    ? 'No pueden asistir'
+                    : 'Pendientes de contestar';
+
+                return (
+                  <article
+                    key={turno.clave}
+                    className={`availability-response-turn ${
+                      abierto ? 'is-open' : ''
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      className="availability-response-turn-header"
+                      aria-expanded={abierto}
+                      onClick={() => {
+                        setTurnoResumenDisponibilidadAbierto((actual) =>
+                          actual === turno.clave ? null : turno.clave
+                        );
+                        setCategoriaResumenDisponibilidad((actual) => ({
+                          ...actual,
+                          [turno.clave]:
+                            actual[turno.clave] || 'disponibles',
+                        }));
+                      }}
+                    >
+                      <span className="availability-response-turn-date">
+                        <strong>
+                          {capitalizarPrimera(
+                            new Date(
+                              `${turno.fecha}T00:00:00`
+                            ).toLocaleDateString('es-ES', {
+                              weekday: 'long',
+                            })
+                          )}{' '}
+                          {formatearFecha(turno.fecha)}
+                        </strong>
+                        <small>
+                          {turno.hora_inicio.slice(0, 5)}–
+                          {turno.hora_fin.slice(0, 5)}
+                        </small>
+                      </span>
+                      <span className="availability-response-counts">
+                        <b className="is-success">
+                          {turno.disponibles.length} disponibles
+                        </b>
+                        <b className="is-danger">
+                          {turno.no_puedo.length} no pueden
+                        </b>
+                        <b className="is-warning">
+                          {turno.pendientes.length} pendientes
+                        </b>
+                      </span>
+                      <span
+                        className="availability-response-chevron"
+                        aria-hidden="true"
+                      >
+                        {abierto ? '⌃' : '⌄'}
+                      </span>
+                    </button>
+
+                    {abierto && (
+                      <div className="availability-response-turn-body">
+                        <div className="availability-response-category-buttons">
+                          <button
+                            type="button"
+                            className={`is-success ${
+                              categoriaActiva === 'disponibles'
+                                ? 'is-selected'
+                                : ''
+                            }`}
+                            onClick={() =>
+                              setCategoriaResumenDisponibilidad((actual) => ({
+                                ...actual,
+                                [turno.clave]: 'disponibles',
+                              }))
+                            }
+                          >
+                            Disponibles · {turno.disponibles.length}
+                          </button>
+                          <button
+                            type="button"
+                            className={`is-danger ${
+                              categoriaActiva === 'no_puedo'
+                                ? 'is-selected'
+                                : ''
+                            }`}
+                            onClick={() =>
+                              setCategoriaResumenDisponibilidad((actual) => ({
+                                ...actual,
+                                [turno.clave]: 'no_puedo',
+                              }))
+                            }
+                          >
+                            No pueden · {turno.no_puedo.length}
+                          </button>
+                          <button
+                            type="button"
+                            className={`is-warning ${
+                              categoriaActiva === 'pendientes'
+                                ? 'is-selected'
+                                : ''
+                            }`}
+                            onClick={() =>
+                              setCategoriaResumenDisponibilidad((actual) => ({
+                                ...actual,
+                                [turno.clave]: 'pendientes',
+                              }))
+                            }
+                          >
+                            Pendientes · {turno.pendientes.length}
+                          </button>
+                        </div>
+
+                        <section className="availability-response-people">
+                          <strong>{tituloCategoria}</strong>
+                          {personasCategoria.length > 0 ? (
+                            <div>
+                              {personasCategoria.map((persona) => (
+                                <span key={`${turno.clave}-${persona}`}>
+                                  {persona}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <p>No hay entrenadores en este estado.</p>
+                          )}
+                        </section>
+
+                        <button
+                          type="button"
+                          className="availability-response-ready"
+                          onClick={() =>
+                            setTurnoResumenDisponibilidadAbierto(null)
+                          }
+                        >
+                          Listo, cerrar turno
+                        </button>
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+
+          <article style={agendaBloqueBlanco}>
+            <h3 style={{ marginTop: 0 }}>Semana que estás pidiendo</h3>
+            <div style={gridFormulario}>
+              <label style={labelCampo}>
+                Temporada
+                <select
+                  value={anioInicioTemporadaAgenda}
+                  style={selectCampoAgenda}
+                  onChange={(e) => {
+                    const nuevoAnio = Number(e.target.value);
+                    setAnioInicioTemporadaAgenda(nuevoAnio);
+                    setMesAgenda(`${nuevoAnio}-09`);
+                    setSemanaAgendaInicio('');
+                  }}
+                >
+                  {opcionesTemporadaAgenda.map((anio) => (
+                    <option key={anio} value={anio}>
+                      {nombreTemporadaAgenda(anio)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label style={labelCampo}>
+                Mes
+                <select
+                  value={mesAgendaActivo}
+                  style={selectCampoAgenda}
+                  onChange={(e) => {
+                    setMesAgenda(e.target.value);
+                    setSemanaAgendaInicio('');
+                  }}
+                >
+                  {mesesAgenda.map((clave) => (
+                    <option key={clave} value={clave}>
+                      {nombreMesAgendaDesdeClave(clave)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label style={labelCampo}>
+                Semana lunes-domingo
+                <select
+                  value={semanaAgendaActiva}
+                  onChange={(e) => setSemanaAgendaInicio(e.target.value)}
+                >
+                  {semanasAgenda.map((semana) => (
+                    <option key={semana} value={semana}>
+                      Semana {rangoSemanaAgenda(semana)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <p style={{ margin: '10px 0 0', fontWeight: 800 }}>
+              Disponibilidad seleccionada: Semana{' '}
+              {semanaAgendaActiva ? rangoSemanaAgenda(semanaAgendaActiva) : '-'}
+            </p>
+          </article>
+
+          {borradorDisponibilidadEditor && (
+            <section className="availability-editor-shell">
+              <header className="availability-editor-toolbar">
+                <div>
+                  <div className="availability-editor-title-row">
+                    <span className="availability-editor-kicker">EDITOR DE LA SEMANA</span>
+                    <span
+                      className={`availability-server-status availability-server-status--${estadoServidorDisponibilidadEditor}`}
+                    >
+                      {estadoServidorDisponibilidadEditor === 'publicado'
+                        ? 'Publicado'
+                        : estadoServidorDisponibilidadEditor === 'borrador'
+                        ? 'Borrador en Supabase'
+                        : 'Sin preparar'}
+                    </span>
+                  </div>
+                  <h3>
+                    {rangoSemanaAgenda(
+                      borradorDisponibilidadEditor.semana_inicio
+                    )}
+                  </h3>
+                  <p>{mensajeDisponibilidadEditor}</p>
+                  {publicadaAtDisponibilidadEditor && (
+                    <small className="availability-published-at">
+                      Última publicación:{' '}
+                      {new Date(publicadaAtDisponibilidadEditor).toLocaleString(
+                        'es-ES',
+                        {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        }
+                      )}
+                    </small>
+                  )}
+                </div>
+                <div className="availability-editor-actions">
+                  <button
+                    type="button"
+                    className="availability-soft-button"
+                    onClick={restaurarPlantillaDisponibilidadEditor}
+                  >
+                    Restaurar plantilla
+                  </button>
+                  <button
+                    type="button"
+                    className="availability-soft-button"
+                    onClick={() => setVistaPreviaDisponibilidadEditor(true)}
+                  >
+                    Vista previa
+                  </button>
+                  <button
+                    type="button"
+                    className="availability-primary-button"
+                    onClick={() => void guardarBorradorDisponibilidadEditor()}
+                    disabled={
+                      guardandoDisponibilidadEditor ||
+                      publicandoDisponibilidadEditor
+                    }
+                  >
+                    {guardandoDisponibilidadEditor
+                      ? 'Guardando...'
+                      : 'Guardar borrador'}
+                  </button>
+                </div>
+              </header>
+
+              <div className="availability-deadline-row">
+                <div className="availability-deadline-control">
+                  <label>
+                    Fecha y hora límite para responder
+                    <input
+                      type="datetime-local"
+                      value={borradorDisponibilidadEditor.fecha_limite}
+                      onChange={(event) =>
+                        actualizarBorradorDisponibilidadEditor((actual) => ({
+                          ...actual,
+                          fecha_limite: event.target.value,
+                          fecha_limite_manual: true,
+                        }))
+                      }
+                    />
+                  </label>
+                  <div className="availability-deadline-help">
+                    <span>
+                      {borradorDisponibilidadEditor.fecha_limite_manual
+                        ? 'Fecha modificada manualmente.'
+                        : 'Automática: lunes de esta semana a las 13:00.'}
+                    </span>
+                    {borradorDisponibilidadEditor.fecha_limite_manual && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          actualizarBorradorDisponibilidadEditor((actual) => ({
+                            ...actual,
+                            fecha_limite:
+                              fechaLimiteAutomaticaDisponibilidadEditor(
+                                actual.semana_inicio
+                              ),
+                            fecha_limite_manual: false,
+                          }))
+                        }
+                      >
+                        Usar lunes 13:00
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div className="availability-editor-summary">
+                  <span>
+                    <strong>{resumenBorradorDisponibilidadEditor.dias}</strong>
+                    días activos
+                  </span>
+                  <span>
+                    <strong>{resumenBorradorDisponibilidadEditor.turnos}</strong>
+                    turnos
+                  </span>
+                </div>
+              </div>
+
+              <div className="availability-days-editor">
+                {borradorDisponibilidadEditor.dias.map((dia) => {
+                  const abierto =
+                    diaDisponibilidadEditorAbierto === dia.fecha;
+                  const permiteVarios =
+                    diaPermiteVariosTurnosDisponibilidadEditor(dia.nombre);
+                  const resumenTurnosDia =
+                    dia.turnos.length > 0
+                      ? dia.turnos
+                          .map(
+                            (turno) =>
+                              `${turno.hora_inicio}–${turno.hora_fin}`
+                          )
+                          .join(' · ')
+                      : 'Sin turno configurado';
+
+                  return (
+                    <article
+                      key={dia.fecha}
+                      className={`availability-day-editor ${
+                        dia.activo ? 'is-active' : 'is-inactive'
+                      } ${abierto ? 'is-open' : ''}`}
+                    >
+                      <header className="availability-day-editor-header">
+                        <button
+                          type="button"
+                          className="availability-day-editor-open"
+                          disabled={!dia.activo}
+                          aria-expanded={abierto}
+                          onClick={() =>
+                            setDiaDisponibilidadEditorAbierto((actual) =>
+                              actual === dia.fecha ? null : dia.fecha
+                            )
+                          }
+                        >
+                          <span className="availability-day-editor-name">
+                            {capitalizarPrimera(dia.nombre)}
+                          </span>
+                          <strong>{formatearFecha(dia.fecha)}</strong>
+                          <small>
+                            {dia.activo
+                              ? `${dia.turnos.length} ${
+                                  dia.turnos.length === 1 ? 'turno' : 'turnos'
+                                } · ${resumenTurnosDia}`
+                              : 'No se publicará'}
+                          </small>
+                          <span
+                            className="availability-day-editor-chevron"
+                            aria-hidden="true"
+                          >
+                            {abierto ? '⌃' : '⌄'}
+                          </span>
+                        </button>
+
+                        <label
+                          className="availability-day-toggle"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={dia.activo}
+                            onChange={(event) =>
+                              activarDiaDisponibilidadEditor(
+                                dia.fecha,
+                                event.target.checked
+                              )
+                            }
+                          />
+                          <span>
+                            {dia.activo ? 'Se publica' : 'No se publica'}
+                          </span>
+                        </label>
+                      </header>
+
+                      {dia.activo && abierto && (
+                        <div className="availability-turns-editor">
+                          <div className="availability-day-rule">
+                            <strong>
+                              {permiteVarios
+                                ? 'Puedes añadir varios turnos'
+                                : 'Este día tiene un único turno'}
+                            </strong>
+                            <span>
+                              {permiteVarios
+                                ? 'Sábado y domingo permiten varios horarios.'
+                                : 'Miércoles, jueves y viernes no admiten turnos duplicados.'}
+                            </span>
+                          </div>
+
+                          {dia.turnos.map((turno, indice) => (
+                            <section
+                              key={turno.id}
+                              className="availability-turn-editor"
+                            >
+                              <div className="availability-turn-editor-title">
+                                <strong>
+                                  {permiteVarios
+                                    ? `Turno ${indice + 1}`
+                                    : 'Turno único'}
+                                </strong>
+                                {permiteVarios && (
+                                  <div>
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        duplicarTurnoDisponibilidadEditor(
+                                          dia.fecha,
+                                          turno.id
+                                        )
+                                      }
+                                    >
+                                      Duplicar
+                                    </button>
+                                    <button
+                                      type="button"
+                                      className="is-danger"
+                                      onClick={() =>
+                                        eliminarTurnoDisponibilidadEditor(
+                                          dia.fecha,
+                                          turno.id
+                                        )
+                                      }
+                                    >
+                                      Eliminar
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+
+                              <div className="availability-time-grid">
+                                <label>
+                                  Inicio
+                                  <span className="availability-native-time">
+                                    <input
+                                      type="time"
+                                      value={turno.hora_inicio}
+                                      onChange={(event) =>
+                                        actualizarTurnoDisponibilidadEditor(
+                                          dia.fecha,
+                                          turno.id,
+                                          { hora_inicio: event.target.value }
+                                        )
+                                      }
+                                    />
+                                  </span>
+                                </label>
+                                <label>
+                                  Fin
+                                  <span className="availability-native-time">
+                                    <input
+                                      type="time"
+                                      value={turno.hora_fin}
+                                      onChange={(event) =>
+                                        actualizarTurnoDisponibilidadEditor(
+                                          dia.fecha,
+                                          turno.id,
+                                          { hora_fin: event.target.value }
+                                        )
+                                      }
+                                    />
+                                  </span>
+                                </label>
+                              </div>
+
+                              <fieldset className="availability-modalities">
+                                <legend>Modalidades previstas</legend>
+                                {(
+                                  [
+                                    'Baby',
+                                    'Ocio',
+                                    'Intensivos',
+                                  ] as ModalidadDisponibilidadEditor[]
+                                ).map((modalidad) => (
+                                  <label
+                                    key={modalidad}
+                                    className={`availability-modality-chip availability-modality-chip--${modalidad.toLowerCase()}`}
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={turno.modalidades.includes(
+                                        modalidad
+                                      )}
+                                      onChange={() =>
+                                        alternarModalidadDisponibilidadEditor(
+                                          dia.fecha,
+                                          turno.id,
+                                          modalidad
+                                        )
+                                      }
+                                    />
+                                    <span>{modalidad}</span>
+                                  </label>
+                                ))}
+                              </fieldset>
+
+                              <label className="availability-note-field">
+                                Nota interna opcional
+                                <input
+                                  value={turno.nota}
+                                  onChange={(event) =>
+                                    actualizarTurnoDisponibilidadEditor(
+                                      dia.fecha,
+                                      turno.id,
+                                      { nota: event.target.value }
+                                    )
+                                  }
+                                  placeholder="Ej.: solo si hay alumnos, cambio de instalación..."
+                                />
+                              </label>
+                            </section>
+                          ))}
+
+                          {permiteVarios && (
+                            <button
+                              type="button"
+                              className="availability-add-turn"
+                              onClick={() =>
+                                añadirTurnoDisponibilidadEditor(dia.fecha)
+                              }
+                            >
+                              + Añadir turno
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            className="availability-day-ready"
+                            onClick={() =>
+                              setDiaDisponibilidadEditorAbierto(null)
+                            }
+                          >
+                            Listo, cerrar día
+                          </button>
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+
+              <footer className="availability-editor-footer">
+                <div>
+                  <strong>Publicación protegida en Supabase</strong>
+                  <span>
+                    Guardar conserva el borrador. Publicar crea una copia estable
+                    de esta semana. La Vista entrenador seguirá usando el sistema
+                    actual hasta conectar Sprint 2C.
+                  </span>
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'flex-end',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  {estadoServidorDisponibilidadEditor === 'publicado' && (
+                    <button
+                      type="button"
+                      onClick={() => void retirarDisponibilidadEditor()}
+                      disabled={
+                        guardandoDisponibilidadEditor ||
+                        publicandoDisponibilidadEditor ||
+                        retirandoDisponibilidadEditor
+                      }
+                      style={{
+                        border: '1px solid #fecaca',
+                        background: '#fff7f7',
+                        color: '#b42318',
+                        borderRadius: 12,
+                        padding: '10px 12px',
+                        fontWeight: 900,
+                        cursor: retirandoDisponibilidadEditor
+                          ? 'wait'
+                          : 'pointer',
+                      }}
+                    >
+                      {retirandoDisponibilidadEditor
+                        ? 'Retirando...'
+                        : 'Retirar disponibilidad'}
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    className="availability-publish-button"
+                    onClick={() => void publicarDisponibilidadEditor()}
+                    disabled={
+                      guardandoDisponibilidadEditor ||
+                      publicandoDisponibilidadEditor ||
+                      retirandoDisponibilidadEditor ||
+                      resumenBorradorDisponibilidadEditor.turnos === 0
+                    }
+                  >
+                    {publicandoDisponibilidadEditor
+                      ? 'Publicando...'
+                      : estadoServidorDisponibilidadEditor === 'publicado'
+                      ? 'Volver a publicar cambios'
+                      : 'Publicar disponibilidad'}
+                  </button>
+                </div>
+              </footer>
+
+
+            </section>
+          )}
+
+          <section className="availability-trainer-details">
+            <div className="availability-trainer-details-header">
+              <div>
+                <h3>Detalle por entrenador</h3>
+                <p>
+                  Consulta cada entrenador por desplegables sin abrir todo el
+                  histórico a la vez.
+                </p>
+              </div>
+
+              <span className="availability-response-total">
+                {disponibilidadSemanalEntrenador.length}{' '}
+                {disponibilidadSemanalEntrenador.length === 1
+                  ? 'entrenador'
+                  : 'entrenadores'}
+              </span>
+            </div>
+
+            <div className="availability-trainer-details-list">
+              {disponibilidadSemanalEntrenador.map((grupo) => (
+                <details
+                  key={grupo.entrenador_id}
+                  className="availability-trainer-detail-card"
+                >
+                  <summary className="availability-trainer-detail-summary">
+                    <div className="availability-trainer-detail-name">
+                      <span className="availability-editor-kicker">
+                        ENTRENADOR
+                      </span>
+                      <strong>{grupo.entrenador}</strong>
+                    </div>
+
+                    <div className="availability-trainer-detail-metrics">
+                      <span className="is-success">
+                        {grupo.disponibles} disponibles
+                      </span>
+                      <span className="is-danger">
+                        {grupo.no_puedo} no puedo
+                      </span>
+                      <span className="is-warning">
+                        {grupo.pendientes} pendientes
+                      </span>
+                    </div>
+                  </summary>
+
+                  <div className="availability-trainer-detail-body">
+                    {grupo.semanas.map((semana) => (
+                      <section
+                        key={`${grupo.entrenador_id}-${semana.inicio}`}
+                        className="availability-trainer-week-card"
+                      >
+                        <h4>Semana {rangoSemanaAgenda(semana.inicio)}</h4>
+
+                        <div className="availability-trainer-day-list">
+                          {diasTrabajoSemanaAgenda(semana.inicio).map((dia) => {
+                            const turnosDia = semana.turnos.filter(
+                              (turno) => turno.fecha === dia.fecha
+                            );
+
+                            return (
+                              <details
+                                key={`${grupo.entrenador_id}-${dia.fecha}`}
+                                className="availability-trainer-day-card"
+                              >
+                                <summary className="availability-trainer-day-summary">
+                                  <div>
+                                    <strong>
+                                      {capitalizarPrimera(dia.nombre)}
+                                    </strong>
+                                    <span>{formatearFecha(dia.fecha)}</span>
+                                  </div>
+                                  <small>
+                                    {turnosDia.length}{' '}
+                                    {turnosDia.length === 1
+                                      ? 'turno'
+                                      : 'turnos'}
+                                  </small>
+                                </summary>
+
+                                <div className="availability-trainer-day-turns">
+                                  {turnosDia.length === 0 ? (
+                                    <p className="availability-trainer-no-turns">
+                                      Sin turnos publicados para este día.
+                                    </p>
+                                  ) : (
+                                    turnosDia.map((turno) => (
+                                      <div
+                                        key={`${turno.fecha}-${turno.hora_inicio}-${turno.hora_fin}`}
+                                        className="availability-trainer-turn-card"
+                                      >
+                                        <strong>
+                                          {turno.hora_inicio.slice(0, 5)}–
+                                          {turno.hora_fin.slice(0, 5)}
+                                        </strong>
+
+                                        <p>
+                                          Respuesta:{' '}
+                                          <strong>
+                                            {turno.respuesta || 'Pendiente'}
+                                          </strong>
+                                        </p>
+
+                                        <div className="availability-trainer-turn-actions">
+                                          <button
+                                            onClick={() =>
+                                              responderDisponibilidadRapida(
+                                                turno,
+                                                'Disponible'
+                                              )
+                                            }
+                                            style={
+                                              turno.respuesta === 'Disponible'
+                                                ? botonAsistenciaOk
+                                                : botonAsistenciaOff
+                                            }
+                                          >
+                                            Disponible
+                                          </button>
+
+                                          <button
+                                            onClick={() =>
+                                              responderDisponibilidadRapida(
+                                                turno,
+                                                'No puedo'
+                                              )
+                                            }
+                                            style={
+                                              turno.respuesta === 'No puedo'
+                                                ? botonAsistenciaAusente
+                                                : botonAsistenciaOff
+                                            }
+                                          >
+                                            No puedo
+                                          </button>
+                                        </div>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              </details>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                </details>
+              ))}
+            </div>
+          </section>
+        </section>
+      )}
+
+      {pantalla === 'cobros' && esCoordinadorJefeApp && (
+        <section
+          style={{
+            display: 'grid',
+            gap: 16,
+            minWidth: 0,
+          }}
+        >
+          <article
+            style={{
+              ...agendaHero,
+              border: '1px solid rgba(37, 99, 235, 0.16)',
+              background:
+                'linear-gradient(135deg, rgba(239, 246, 255, 0.98), rgba(255, 255, 255, 0.98) 48%, rgba(240, 253, 250, 0.94))',
+              boxShadow: '0 16px 38px rgba(15, 23, 42, 0.07)',
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <p
+                style={{
+                  margin: '0 0 5px',
+                  color: '#2563eb',
+                  fontWeight: 950,
+                  fontSize: 11,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Dirección · control mensual
+              </p>
+              <h2 style={{ margin: 0, color: '#172033' }}>
+                Cobros entrenadores
+              </h2>
+              <p
+                style={{
+                  margin: '8px 0 0',
+                  color: '#475569',
+                  lineHeight: 1.45,
+                  maxWidth: 760,
+                }}
+              >
+                Resumen mensual unificado de Baby, Intensivos y Ocio. Turnos,
+                tarifas, ajustes y cierre del mes en una sola vista.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+              <button
+                onClick={() => void cargarCobrosDesdeSemanaActiva()}
+                style={botonSecundario}
+                title="Vuelve al mes correspondiente a la semana de trabajo activa"
+              >
+                Actualizar
+              </button>
+              <button onClick={abrirPdfCobrosConjunto} style={botonPrincipal}>
+                PDF conjunto dirección
+              </button>
+            </div>
+          </article>
+
+          <article
+            style={{
+              ...agendaBloqueBlanco,
+              border: '1px solid #dbeafe',
+              background:
+                'linear-gradient(180deg, rgba(255,255,255,0.99), rgba(248,250,252,0.98))',
+              boxShadow: '0 10px 28px rgba(15, 23, 42, 0.05)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                flexWrap: 'wrap',
+                marginBottom: 12,
+              }}
+            >
+              <div>
+                <p
+                  style={{
+                    margin: '0 0 3px',
+                    color: '#64748b',
+                    fontSize: 11,
+                    fontWeight: 900,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Periodo
+                </p>
+                <h3 style={{ margin: 0, color: '#172033' }}>Mes a revisar</h3>
+                <span
+                  style={{
+                    display: 'block',
+                    marginTop: 4,
+                    color: '#64748b',
+                    fontSize: 11,
+                    fontWeight: 800,
+                  }}
+                >
+                  Al entrar o pulsar Actualizar se usa la semana de trabajo activa.
+                </span>
+              </div>
+              <span
+                style={{
+                  padding: '7px 11px',
+                  borderRadius: 999,
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  color: '#1d4ed8',
+                  fontSize: 12,
+                  fontWeight: 900,
+                }}
+              >
+                {nombreMes(mesCobros)} {anioCobros}
+              </span>
+            </div>
+
+            <div style={gridFormulario}>
+              <label style={labelCampo}>
+                Año
+                <select
+                  value={anioCobros}
+                  onChange={(e) => setAnioCobros(Number(e.target.value))}
+                  style={selectCampo}
+                >
+                  {aniosCobrosOpciones.map((anio) => (
+                    <option key={anio} value={anio}>
+                      {anio}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label style={labelCampo}>
+                Mes
+                <select
+                  value={mesCobros}
+                  onChange={(e) => setMesCobros(Number(e.target.value))}
+                  style={selectCampo}
+                >
+                  {Array.from({ length: 12 }, (_, indice) => indice + 1).map(
+                    (mes) => (
+                      <option key={mes} value={mes}>
+                        {nombreMes(mes)}
+                      </option>
+                    )
+                  )}
+                </select>
+              </label>
+              <div style={{ ...labelCampo, justifyContent: 'flex-end' }}>
+                <button onClick={cargarCobros} style={botonPrincipal}>
+                  Ver mes
+                </button>
+              </div>
+            </div>
+          </article>
+
+          <details
+            style={{
+              ...agendaBloqueBlanco,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid #fed7aa',
+              background:
+                'linear-gradient(135deg, rgba(255,247,237,0.96), rgba(255,255,255,0.99))',
+              boxShadow: '0 10px 28px rgba(15, 23, 42, 0.05)',
+            }}
+          >
+            <summary
+              style={{
+                listStyle: 'none',
+                cursor: 'pointer',
+                padding: '15px 16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+              }}
+            >
+              <span style={{ display: 'grid', gap: 3, minWidth: 0 }}>
+                <strong style={{ color: '#9a3412', fontSize: 15 }}>
+                  + Añadir entreno manual
+                </strong>
+                <span
+                  style={{
+                    color: '#78716c',
+                    fontSize: 12,
+                    lineHeight: 1.35,
+                  }}
+                >
+                  Solo para sesiones que no estén registradas en Baby,
+                  Intensivos u Ocio.
+                </span>
+              </span>
+              <span
+                aria-hidden="true"
+                style={{
+                  width: 32,
+                  height: 32,
+                  borderRadius: 10,
+                  display: 'grid',
+                  placeItems: 'center',
+                  flex: '0 0 auto',
+                  background: '#fff7ed',
+                  border: '1px solid #fdba74',
+                  color: '#c2410c',
+                  fontSize: 18,
+                  fontWeight: 950,
+                }}
+              >
+                +
+              </span>
+            </summary>
+
+            <div
+              style={{
+                padding: '0 16px 16px',
+                borderTop: '1px solid rgba(251, 146, 60, 0.18)',
+              }}
+            >
+              <p
+                style={{
+                  margin: '12px 0',
+                  color: '#78716c',
+                  fontSize: 13,
+                  lineHeight: 1.45,
+                }}
+              >
+                Cuenta como un turno más en el mes del entrenador.
+              </p>
+
+              <div style={gridFormulario}>
+                <label style={labelCampo}>
+                  Entrenador
+                  <select
+                    value={formCobroManual.entrenadorId}
+                    onChange={(e) =>
+                      setFormCobroManual({
+                        ...formCobroManual,
+                        entrenadorId: e.target.value,
+                      })
+                    }
+                    style={selectCampo}
+                  >
+                    <option value="">Elegir entrenador</option>
+                    {entrenadores
+                      .filter((entrenador) => entrenador.activo !== false)
+                      .map((entrenador) => (
+                        <option
+                          key={entrenador.entrenador_id}
+                          value={entrenador.entrenador_id}
+                        >
+                          {entrenador.nombre_completo}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <label style={labelCampo}>
+                  Fecha
+                  <input
+                    type="date"
+                    value={formCobroManual.fecha}
+                    onChange={(e) =>
+                      setFormCobroManual({
+                        ...formCobroManual,
+                        fecha: e.target.value,
+                      })
+                    }
+                    style={inputCampo}
+                  />
+                </label>
+                <label style={labelCampo}>
+                  Inicio
+                  <input
+                    type="time"
+                    value={formCobroManual.horaInicio}
+                    onChange={(e) =>
+                      setFormCobroManual({
+                        ...formCobroManual,
+                        horaInicio: e.target.value,
+                      })
+                    }
+                    style={inputCampo}
+                  />
+                </label>
+                <label style={labelCampo}>
+                  Fin
+                  <input
+                    type="time"
+                    value={formCobroManual.horaFin}
+                    onChange={(e) =>
+                      setFormCobroManual({
+                        ...formCobroManual,
+                        horaFin: e.target.value,
+                      })
+                    }
+                    style={inputCampo}
+                  />
+                </label>
+                <label style={labelCampo}>
+                  Modalidad
+                  <select
+                    value={formCobroManual.modalidad}
+                    onChange={(e) =>
+                      setFormCobroManual({
+                        ...formCobroManual,
+                        modalidad: e.target.value,
+                      })
+                    }
+                    style={selectCampo}
+                  >
+                    <option value="BABY">Baby</option>
+                    <option value="INTENSIVOS">Intensivos</option>
+                    <option value="OCIO">Ocio</option>
+                  </select>
+                </label>
+                <label style={labelCampo}>
+                  Nombre / motivo
+                  <input
+                    value={formCobroManual.nombreGrupo}
+                    onChange={(e) =>
+                      setFormCobroManual({
+                        ...formCobroManual,
+                        nombreGrupo: e.target.value,
+                      })
+                    }
+                    placeholder="Apoyo pista / entreno manual / sustitución..."
+                    style={inputCampo}
+                  />
+                </label>
+                <label style={labelCampo}>
+                  Niños
+                  <input
+                    type="number"
+                    value={formCobroManual.totalAlumnos}
+                    onChange={(e) =>
+                      setFormCobroManual({
+                        ...formCobroManual,
+                        totalAlumnos: e.target.value,
+                      })
+                    }
+                    style={inputCampo}
+                  />
+                </label>
+                <label style={labelCampo}>
+                  Importe especial opcional
+                  <input
+                    value={formCobroManual.importeOverride}
+                    onChange={(e) =>
+                      setFormCobroManual({
+                        ...formCobroManual,
+                        importeOverride: e.target.value,
+                      })
+                    }
+                    placeholder="Vacío = tarifa del entrenador"
+                    style={inputCampo}
+                  />
+                </label>
+                <label style={{ ...labelCampo, gridColumn: '1 / -1' }}>
+                  Observaciones
+                  <textarea
+                    value={formCobroManual.observaciones}
+                    onChange={(e) =>
+                      setFormCobroManual({
+                        ...formCobroManual,
+                        observaciones: e.target.value,
+                      })
+                    }
+                    rows={2}
+                    placeholder="Nota para dirección si hace falta..."
+                    style={textareaCampo}
+                  />
+                </label>
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  gap: 8,
+                  flexWrap: 'wrap',
+                  marginTop: 12,
+                }}
+              >
+                <button
+                  onClick={crearEntrenoManualCobro}
+                  style={botonPrincipal}
+                >
+                  Añadir entreno manual
+                </button>
+                <button
+                  onClick={() => setFormCobroManual(cobroManualInicial())}
+                  style={botonSecundario}
+                >
+                  Limpiar formulario
+                </button>
+              </div>
+            </div>
+          </details>
+
+          <section
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+              gap: 10,
+            }}
+          >
+            <article
+              style={{
+                ...miniTarjetaBlanca,
+                border: '1px solid #bfdbfe',
+                background:
+                  'linear-gradient(135deg, #eff6ff, rgba(255,255,255,0.98))',
+              }}
+            >
+              <strong style={{ color: '#1d4ed8' }}>Total mes</strong>
+              <p
+                style={{
+                  fontSize: 26,
+                  fontWeight: 950,
+                  margin: '8px 0 0',
+                  color: '#172033',
+                }}
+              >
+                {formatearEuros(totalGeneralCobrosMes)}
+              </p>
+            </article>
+            <article
+              style={{
+                ...miniTarjetaBlanca,
+                border: '1px solid #cbd5e1',
+                background:
+                  'linear-gradient(135deg, #f8fafc, rgba(255,255,255,0.98))',
+              }}
+            >
+              <strong style={{ color: '#475569' }}>Turnos</strong>
+              <p
+                style={{
+                  fontSize: 26,
+                  fontWeight: 950,
+                  margin: '8px 0 0',
+                  color: '#172033',
+                }}
+              >
+                {totalTurnosCobrosMes}
+              </p>
+            </article>
+            <article
+              style={{
+                ...miniTarjetaBlanca,
+                border: '1px solid #bfdbfe',
+                background:
+                  'linear-gradient(135deg, #eff6ff, rgba(255,255,255,0.98))',
+              }}
+            >
+              <strong style={{ color: '#2563eb' }}>Baby</strong>
+              <p
+                style={{
+                  fontSize: 26,
+                  fontWeight: 950,
+                  margin: '8px 0 0',
+                  color: '#172033',
+                }}
+              >
+                {totalBabyCobrosMes}
+              </p>
+            </article>
+            <article
+              style={{
+                ...miniTarjetaBlanca,
+                border: '1px solid #fed7aa',
+                background:
+                  'linear-gradient(135deg, #fff7ed, rgba(255,255,255,0.98))',
+              }}
+            >
+              <strong style={{ color: '#ea580c' }}>Intensivos</strong>
+              <p
+                style={{
+                  fontSize: 26,
+                  fontWeight: 950,
+                  margin: '8px 0 0',
+                  color: '#172033',
+                }}
+              >
+                {totalIntensivosCobrosMes}
+              </p>
+            </article>
+            <article
+              style={{
+                ...miniTarjetaBlanca,
+                border: '1px solid #bbf7d0',
+                background:
+                  'linear-gradient(135deg, #f0fdf4, rgba(255,255,255,0.98))',
+              }}
+            >
+              <strong style={{ color: '#16a34a' }}>Ocio</strong>
+              <p
+                style={{
+                  fontSize: 26,
+                  fontWeight: 950,
+                  margin: '8px 0 0',
+                  color: '#172033',
+                }}
+              >
+                {totalOcioCobrosMes}
+              </p>
+            </article>
+          </section>
+
+          <article
+            style={{
+              ...agendaBloqueBlanco,
+              padding: 12,
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 8px 22px rgba(15, 23, 42, 0.04)',
+            }}
+          >
+            <input
+              value={busquedaCobros}
+              onChange={(e) => setBusquedaCobros(e.target.value)}
+              placeholder="Buscar entrenador, temporada, mes, modalidad o estado..."
+              style={{ ...buscador, marginBottom: 10 }}
+            />
+
+            <div
+              style={{
+                display: 'flex',
+                gap: 8,
+                flexWrap: 'wrap',
+                overflowX: 'auto',
+                overscrollBehaviorX: 'contain',
+                paddingBottom: 2,
+              }}
+            >
+              <button
+                onClick={() => setFiltroCobros('todos')}
+                style={botonMenu(filtroCobros === 'todos')}
+              >
+                Todos
+              </button>
+              <button
+                onClick={() => setFiltroCobros('pendiente')}
+                style={botonMenu(filtroCobros === 'pendiente')}
+              >
+                Pendiente
+              </button>
+              <button
+                onClick={() => setFiltroCobros('cerrado')}
+                style={botonMenu(filtroCobros === 'cerrado')}
+              >
+                Cerrado / pagado
+              </button>
+              <button
+                onClick={() => setFiltroCobros('incidencias')}
+                style={botonMenu(filtroCobros === 'incidencias')}
+              >
+                Con incidencias
+              </button>
+              <button
+                onClick={() => setFiltroCobros('este_mes')}
+                style={botonMenu(filtroCobros === 'este_mes')}
+              >
+                Este mes
+              </button>
+            </div>
+          </article>
+
+          {cargando && (
+            <article
+              style={{
+                ...agendaBloqueBlanco,
+                border: '1px solid #dbeafe',
+                color: '#1d4ed8',
+                fontWeight: 800,
+              }}
+            >
+              Cargando cobros...
+            </article>
+          )}
+
+          {!cargando && cobrosFiltrados.length === 0 && !error && (
+            <article
+              style={{
+                ...tarjeta,
+                border: '1px solid #cbd5e1',
+                background:
+                  'linear-gradient(135deg, #f8fafc, rgba(255,255,255,0.98))',
+              }}
+            >
+              <p
+                style={{
+                  margin: '0 0 4px',
+                  fontSize: 11,
+                  fontWeight: 900,
+                  letterSpacing: '0.08em',
+                  textTransform: 'uppercase',
+                  color: '#64748b',
+                }}
+              >
+                Resultado del mes
+              </p>
+              <h3 style={{ margin: 0 }}>Sin cobros</h3>
+              <p style={{ margin: '7px 0 0', color: '#64748b' }}>
+                No hay turnos con entrenador asignado para este mes. Cuando
+                prepares o publiques grupos de Baby, Intensivos u Ocio,
+                aparecerán aquí.
+              </p>
+            </article>
+          )}
+
+          <section style={{ display: 'grid', gap: 14, minWidth: 0 }}>
+            {cobrosFiltrados.map((cobro) => {
+              const detalles = detallesDeCobro(cobro.entrenador_id);
+              const estadoCobro = String(cobro.estado_mes || 'abierto').toLowerCase();
+              const colorEstado =
+                estadoCobro === 'pagado'
+                  ? '#16a34a'
+                  : estadoCobro === 'cerrado'
+                  ? '#2563eb'
+                  : estadoCobro === 'revisado'
+                  ? '#7c3aed'
+                  : '#f59e0b';
+              const fondoEstado =
+                estadoCobro === 'pagado'
+                  ? '#f0fdf4'
+                  : estadoCobro === 'cerrado'
+                  ? '#eff6ff'
+                  : estadoCobro === 'revisado'
+                  ? '#f5f3ff'
+                  : '#fffbeb';
+
+              return (
+                <article
+                  key={`${cobro.entrenador_id}-${cobro.anio}-${cobro.mes}`}
+                  style={{
+                    ...tarjeta,
+                    minWidth: 0,
+                    border: '1px solid #e2e8f0',
+                    borderLeft: `5px solid ${colorEstado}`,
+                    boxShadow: '0 12px 30px rgba(15, 23, 42, 0.06)',
+                    background:
+                      'linear-gradient(180deg, rgba(255,255,255,0.99), rgba(248,250,252,0.96))',
+                  }}
+                >
+                  <div
+                    style={{
+                      ...agendaCabeceraLinea,
+                      gap: 14,
+                      alignItems: 'flex-start',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 8,
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <h3 style={{ margin: 0, color: '#172033' }}>
+                          {cobro.entrenador}
+                        </h3>
+                        <span
+                          style={{
+                            padding: '5px 9px',
+                            borderRadius: 999,
+                            background: fondoEstado,
+                            border: `1px solid ${colorEstado}33`,
+                            color: colorEstado,
+                            fontSize: 11,
+                            fontWeight: 950,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.04em',
+                          }}
+                        >
+                          {cobro.estado_mes}
+                        </span>
+                      </div>
+                      <p style={{ margin: '6px 0 0', color: '#64748b' }}>
+                        {nombreMes(cobro.mes)} {cobro.anio} · {cobro.temporada}
+                      </p>
+                    </div>
+                    <div style={{ textAlign: 'right', flex: '0 0 auto' }}>
+                      <p
+                        style={{
+                          fontSize: 28,
+                          fontWeight: 950,
+                          margin: 0,
+                          color: '#172033',
+                        }}
+                      >
+                        {formatearEuros(cobro.total_mes)}
+                      </p>
+                      <p style={{ margin: '4px 0 0', color: '#64748b' }}>
+                        {cobro.total_turnos_computables} turnos
+                      </p>
+                    </div>
+                  </div>
+
+                  <section
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns:
+                        'repeat(auto-fit, minmax(125px, 1fr))',

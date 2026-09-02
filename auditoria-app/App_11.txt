@@ -1,0 +1,2500 @@
+                      marginTop: 12,
+                    }}
+                  >
+                    <strong>Alumnos de esta sesión</strong>
+                    <button
+                      type="button"
+                      style={botonSecundario}
+                      onClick={async () => {
+                        const abrir = !mostrarAlumnoFueraPlazo;
+                        setMostrarAlumnoFueraPlazo(abrir);
+                        setRecomendacionesFueraPlazo([]);
+
+                        if (abrir) {
+                          try {
+                            // Refrescar aquí el maestro real de alumnos.
+                            // Antes este panel dependía de que "Fichas" se hubiera cargado
+                            // previamente, por eso Bautista no aparecía como sugerencia.
+                            const data = await consultarSupabase<AlumnoResumen>(
+                              'v_resumen_alumno_v2',
+                              'select=*&order=alumno.asc'
+                            );
+                            setAlumnos(data);
+                          } catch (err) {
+                            setError(
+                              err instanceof Error
+                                ? err.message
+                                : 'No se pudo cargar el maestro de alumnos.'
+                            );
+                          }
+
+                          requestAnimationFrame(() =>
+                            document
+                              .getElementById('agenda-alumno-fuera-plazo')
+                              ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                          );
+                        }
+                      }}
+                    >
+                      + Alumno fuera de plazo
+                    </button>
+                  </div>
+
+                  {mostrarAlumnoFueraPlazo && (
+                    <section
+                      id="agenda-alumno-fuera-plazo"
+                      style={{
+                        ...avisoNeutral,
+                        marginTop: 10,
+                        border: '1px solid #bfdbfe',
+                        background: '#f8fbff',
+                        scrollMarginTop: 16,
+                      }}
+                    >
+                      <div style={agendaCabeceraLinea}>
+                        <div>
+                          <strong>Analizar alumno fuera de plazo</strong>
+                          <p style={{ margin: '4px 0 0', color: '#64748b' }}>
+                            Primero recomienda. No añade ni mueve al niño todavía.
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          style={botonMini}
+                          onClick={() => {
+                            setMostrarAlumnoFueraPlazo(false);
+                            setRecomendacionesFueraPlazo([]);
+                          }}
+                        >
+                          Cerrar
+                        </button>
+                      </div>
+
+                      <div style={{ ...gridFormulario, marginTop: 12 }}>
+                        <label style={labelCampo}>
+                          Nombre y apellidos
+                          <div style={{ position: 'relative' }}>
+                            <input
+                              value={alumnoFueraPlazoNombre}
+                              onChange={(e) => {
+                                setAlumnoFueraPlazoNombre(e.target.value);
+                                setAlumnoFueraPlazoNivel('');
+                                setAlumnoFueraPlazoAlumnoId('');
+                                setRecomendacionesFueraPlazo([]);
+                              }}
+                              placeholder="Ej. Mario Costa Fernández"
+                              autoComplete="off"
+                              style={{ width: '100%' }}
+                            />
+                            {alumnoFueraPlazoNombre.trim().length >= 1 && (() => {
+                              const busqueda = normalizarNombreFueraPlazoAgenda(alumnoFueraPlazoNombre);
+                              const sugerencias = alumnos
+                                .filter((alumno) =>
+                                  normalizarNombreFueraPlazoAgenda(alumno.alumno).startsWith(busqueda)
+                                )
+                                .slice(0, 6);
+                              const nombreExacto = sugerencias.some(
+                                (alumno) =>
+                                  normalizarNombreFueraPlazoAgenda(alumno.alumno) === busqueda
+                              );
+                              if (!sugerencias.length || nombreExacto) return null;
+                              return (
+                                <div
+                                  style={{
+                                    position: 'absolute',
+                                    zIndex: 30,
+                                    top: 'calc(100% + 4px)',
+                                    left: 0,
+                                    right: 0,
+                                    maxHeight: 210,
+                                    overflowY: 'auto',
+                                    border: '1px solid #cbd5e1',
+                                    borderRadius: 10,
+                                    background: '#fff',
+                                    boxShadow: '0 10px 25px rgba(15, 23, 42, 0.12)',
+                                    padding: 4,
+                                  }}
+                                >
+                                  {sugerencias.map((alumno) => (
+                                    <button
+                                      key={`sugerencia-fuera-plazo-${alumno.alumno_id}`}
+                                      type="button"
+                                      style={{
+                                        width: '100%',
+                                        border: 0,
+                                        background: 'transparent',
+                                        padding: '9px 10px',
+                                        borderRadius: 8,
+                                        textAlign: 'left',
+                                        fontWeight: 700,
+                                        cursor: 'pointer',
+                                      }}
+                                      onClick={() => {
+                                        const nivelFicha =
+                                          alumno.nivel_actual ||
+                                          alumno.ultimo_nivel_reportado ||
+                                          alumno.nivel_estimado ||
+                                          'INICIACION';
+                                        setAlumnoFueraPlazoNombre(alumno.alumno);
+                                        setAlumnoFueraPlazoNivel(nivelFicha);
+                                        setAlumnoFueraPlazoAlumnoId(alumno.alumno_id);
+                                        setRecomendacionesFueraPlazo([]);
+                                      }}
+                                    >
+                                      {alumno.alumno}
+                                    </button>
+                                  ))}
+                                </div>
+                              );
+                            })()}
+                          </div>
+                        </label>
+                        <label style={labelCampo}>
+                          Nivel
+                          <select
+                            value={alumnoFueraPlazoNivel}
+                            onChange={(e) => {
+                              setAlumnoFueraPlazoNivel(e.target.value);
+                              setRecomendacionesFueraPlazo([]);
+                            }}
+                          >
+                            <option value="">Automático / INICIACIÓN si es nuevo</option>
+                            <option value="INICIACION">INICIACIÓN</option>
+                            <option value="A">A</option>
+                            <option value="A+">A+</option>
+                            <option value="B">B</option>
+                            <option value="B+">B+</option>
+                            <option value="C">C</option>
+                            <option value="C+">C+</option>
+                            <option value="D">D</option>
+                            <option value="D+">D+</option>
+                          </select>
+                        </label>
+                      </div>
+
+                      <button
+                        type="button"
+                        style={{ ...botonPrincipal, marginTop: 10 }}
+                        disabled={analizandoFueraPlazo}
+                        onClick={analizarEncajeAlumnoFueraPlazoAgenda}
+                      >
+                        {analizandoFueraPlazo ? 'Analizando…' : 'Analizar encaje'}
+                      </button>
+
+                      {errorIncorporacionFueraPlazo && (
+                        <div style={{ marginTop: 10, padding: '10px 12px', border: '1px solid #fecaca', background: '#fff7f7', color: '#991b1b', borderRadius: 12, fontWeight: 700 }}>
+                          <strong>No se ha podido añadir.</strong>
+                          <div style={{ marginTop: 4 }}>{errorIncorporacionFueraPlazo}</div>
+                        </div>
+                      )}
+
+                      {mensajeIncorporacionFueraPlazo && (
+                        <div
+                          style={{
+                            marginTop: 10,
+                            padding: '10px 12px',
+                            border: '1px solid #bbf7d0',
+                            background: '#f0fdf4',
+                            color: '#166534',
+                            borderRadius: 12,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {mensajeIncorporacionFueraPlazo}
+                        </div>
+                      )}
+
+                      {recomendacionesFueraPlazo.length > 0 && (() => {
+                        const opcionesTurnoActual = recomendacionesFueraPlazo.filter(
+                          (opcion) => opcion.es_sesion_actual
+                        );
+                        const opcionesRecomendadasTurnoActual = opcionesTurnoActual.filter(
+                          (opcion) => opcion.estado === 'RECOMENDADO'
+                        );
+                        const opcionesRevisionTurnoActual = opcionesTurnoActual.filter(
+                          (opcion) => opcion.estado === 'REVISAR'
+                        );
+
+                        // Fuera del turno actual solo enseñamos alternativas que
+                        // realmente ENCAJAN. Los NO_ENCAJA y REVISAR no aportan
+                        // valor como propuesta de cambio de horario.
+                        const alternativasValidas = recomendacionesFueraPlazo
+                          .filter(
+                            (opcion) =>
+                              !opcion.es_sesion_actual &&
+                              opcion.estado === 'RECOMENDADO'
+                          )
+                          .slice(0, 5);
+
+                        const encajaEnTurnoActual =
+                          opcionesRecomendadasTurnoActual.length > 0;
+                        const requiereRevisionTurnoActual =
+                          !encajaEnTurnoActual &&
+                          opcionesRevisionTurnoActual.length > 0;
+
+                        const renderOpcionFueraPlazo = (
+                          opcion: RecomendacionFueraPlazoAgendaApp,
+                          etiqueta?: string
+                        ) => (
+                          <article
+                            key={`${opcion.sesion_id}-${opcion.grupo_id}`}
+                            style={{
+                              ...miniTarjetaBlanca,
+                              border:
+                                opcion.estado === 'RECOMENDADO'
+                                  ? '1px solid #86efac'
+                                  : '1px solid #fdba74',
+                              background:
+                                opcion.estado === 'RECOMENDADO' ? '#f0fdf4' : '#fff7ed',
+                            }}
+                          >
+                            <div style={agendaGrupoLinea}>
+                              <div>
+                                <strong>
+                                  {etiqueta ||
+                                    `${formatearFecha(opcion.fecha)} · ${opcion.hora_inicio?.slice(0, 5)}–${opcion.hora_fin?.slice(0, 5)}`}
+                                </strong>
+                                <p style={{ margin: '4px 0 0' }}>
+                                  {opcion.grupo} · Nivel {opcion.nivel_grupo} · {opcion.pista}
+                                </p>
+                              </div>
+                              <span
+                                style={{
+                                  ...agendaBadgeModalidad,
+                                  whiteSpace: 'nowrap',
+                                }}
+                              >
+                                {opcion.estado === 'RECOMENDADO' ? 'ENCAJA' : 'REVISAR'}
+                              </span>
+                            </div>
+                            <p style={{ margin: '8px 0 0' }}>
+                              <strong>{opcion.entrenador || 'Sin entrenador'}</strong> · Punto {opcion.punto} ·{' '}
+                              {opcion.total_actual} → {opcion.total_final} niños
+                            </p>
+                            <p style={{ margin: '6px 0 0', color: '#475569' }}>{opcion.motivo}</p>
+
+                            {opcion.estado !== 'NO_ENCAJA' && (
+                              <button
+                                type="button"
+                                style={{
+                                  ...botonPrincipal,
+                                  marginTop: 10,
+                                  width: '100%',
+                                  ...(opcion.estado === 'REVISAR'
+                                    ? {
+                                        background: '#fff7ed',
+                                        color: '#9a3412',
+                                        border: '1px solid #fdba74',
+                                      }
+                                    : {}),
+                                }}
+                                disabled={incorporandoFueraPlazo}
+                                onClick={() =>
+                                  incorporarAlumnoFueraPlazoEnGrupo(opcion)
+                                }
+                              >
+                                {incorporandoFueraPlazo
+                                  ? 'Añadiendo…'
+                                  : !opcion.es_sesion_actual
+                                  ? 'Añadir a este turno'
+                                  : opcion.estado === 'REVISAR'
+                                  ? 'Añadir con revisión manual'
+                                  : 'Añadir a este grupo'}
+                              </button>
+                            )}
+                          </article>
+                        );
+
+                        return (
+                          <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
+                            <article
+                              style={{
+                                ...miniTarjetaBlanca,
+                                border: encajaEnTurnoActual
+                                  ? '2px solid #22c55e'
+                                  : '2px solid #ef4444',
+                                background: encajaEnTurnoActual ? '#f0fdf4' : '#fff7f7',
+                              }}
+                            >
+                              <strong>
+                                Este turno ·{' '}
+                                {encajaEnTurnoActual
+                                  ? 'SÍ HAY ENCAJE'
+                                  : requiereRevisionTurnoActual
+                                  ? 'REQUIERE REVISIÓN'
+                                  : 'NO HAY ENCAJE'}
+                              </strong>
+                              <p style={{ margin: '5px 0 0', color: '#475569' }}>
+                                {encajaEnTurnoActual
+                                  ? 'Hay una opción compatible por nivel y ratio en el turno donde se ha apuntado.'
+                                  : requiereRevisionTurnoActual
+                                  ? 'En este turno solo hay una opción que requiere revisión manual. Debajo se buscan alternativas de la semana que sí encajen.'
+                                  : 'No hay ningún grupo compatible por nivel y ratio en este turno. Debajo se buscan alternativas de la semana que sí encajen.'}
+                              </p>
+                            </article>
+
+                            {opcionesRecomendadasTurnoActual.map((opcion) =>
+                              renderOpcionFueraPlazo(opcion, 'Este turno')
+                            )}
+
+                            {opcionesRevisionTurnoActual.map((opcion) =>
+                              renderOpcionFueraPlazo(opcion, 'Este turno · revisar')
+                            )}
+
+                            {alternativasValidas.length > 0 && (
+                              <>
+                                <strong style={{ marginTop: 4 }}>Otros turnos donde sí puede encajar</strong>
+                                {alternativasValidas.map((opcion) =>
+                                  renderOpcionFueraPlazo(opcion)
+                                )}
+                              </>
+                            )}
+
+                            {!encajaEnTurnoActual && alternativasValidas.length === 0 && (
+                              <div style={avisoNeutral}>
+                                No encuentro ningún grupo compatible en los turnos creados de esta semana.
+                              </div>
+                            )}
+
+                            <div style={{ ...avisoNeutral, marginTop: 2 }}>
+                              
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </section>
+                  )}
+
+                  <details id="agenda-alumnos-detectados" style={{ marginTop: 12, scrollMarginTop: 16 }}>
+                    <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>
+                      Alumnos detectados · editar niveles y fichas
+                    </summary>
+                    <div style={{ ...avisoNeutral, margin: '10px 0 12px' }}>
+                      Si cambias un nivel aquí, se guarda como nivel real de la
+                      ficha y se usa en toda la app.
+                    </div>
+                    {agendaFiltroAlumnos !== 'TODOS' && (
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 8,
+                          margin: '0 0 10px',
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        <strong>
+                          Mostrando: {agendaFiltroAlumnos === 'NUEVO' ? 'nuevos pendientes de Altas/Test' : 'alumnos conocidos'}
+                        </strong>
+                        <button
+                          type="button"
+                          style={botonMini}
+                          onClick={() => setAgendaFiltroAlumnos('TODOS')}
+                        >
+                          Ver todos
+                        </button>
+                      </div>
+                    )}
+                    <div style={{ display: 'grid', gap: 8 }}>
+                      {agendaAlumnosSesion
+                        .filter(
+                          (alumno) =>
+                            agendaFiltroAlumnos === 'TODOS' ||
+                            (agendaFiltroAlumnos === 'NUEVO'
+                              ? alumno.estado_en_listado === 'PENDIENTE_TEST'
+                              : alumno.estado_en_listado === agendaFiltroAlumnos)
+                        )
+                        .map((alumno) => (
+                        <div
+                          key={alumno.sesion_alumno_id}
+                          style={agendaAlumnoLinea}
+                        >
+                          <div>
+                            <strong>{alumno.alumno}</strong>
+                            <p style={{ margin: '4px 0 0' }}>
+                              {alumno.estado_en_listado} · Nivel:{' '}
+                              <strong>
+                                {alumno.nivel_usado || 'SIN NIVEL'}
+                              </strong>{' '}
+                              · {alumno.origen_nivel || '-'} · Pista{' '}
+                              {alumno.pista_recomendada || '-'}
+                            </p>
+                          </div>
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 8,
+                              flexWrap: 'wrap',
+                              justifyContent: 'flex-end',
+                              alignItems: 'center',
+                              maxWidth: 560,
+                            }}
+                          >
+                            {alumno.estado_en_listado === 'PENDIENTE_TEST' ? (
+                              <>
+                                <button
+                                  onClick={() => abrirAltaTestDesdeAgenda(alumno)}
+                                  style={botonPrincipal}
+                                >
+                                  Crear Alta / Test
+                                </button>
+                                <button
+                                  onClick={() => quitarAlumnoAgenda(alumno)}
+                                  style={botonPeligroMini}
+                                >
+                                  Quitar sesión
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  onClick={() => editarNivelAlumnoAgenda(alumno)}
+                                  style={botonMini}
+                                >
+                                  Editar nivel
+                                </button>
+                                <button
+                                  onClick={() => editarNombreAlumnoAgenda(alumno)}
+                                  style={botonMini}
+                                >
+                                  Editar nombre
+                                </button>
+                                <button
+                                  onClick={() => quitarAlumnoAgenda(alumno)}
+                                  style={botonPeligroMini}
+                                >
+                                  Quitar sesión
+                                </button>
+                                <button
+                                  onClick={() => borrarAlumnoBaseAgenda(alumno)}
+                                  style={botonPeligroMini}
+                                >
+                                  Borrar ficha
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      marginTop: 16,
+                    }}
+                  >
+                    <button
+                      onClick={() =>
+                        generarRecomendacionAgendaSesion(agendaSesionActivaId)
+                      }
+                      style={botonPrincipal}
+                    >
+                      Generar grupos recomendados
+                    </button>
+                    <button
+                      onClick={crearGrupoManualAgenda}
+                      style={botonSecundario}
+                    >
+                      Crear grupo manual vacío
+                    </button>
+                    {agendaGruposSesion.length > 0 && (
+                      <button
+                        onClick={copiarMensajeWhatsAppPapisSesionActual}
+                        style={botonSecundario}
+                      >
+                        Ver WhatsApp papis
+                      </button>
+                    )}
+                    <button
+                      onClick={borrarSesionAgendaActual}
+                      style={botonPeligro}
+                    >
+                      Borrar sesión
+                    </button>
+                  </div>
+
+                  {gruposAgendaManuales.length > 0 && (
+                    <div style={{ ...avisoNeutral, marginTop: 12 }}>
+                      <strong>Grupos manuales preparados:</strong>
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 8,
+                          flexWrap: 'wrap',
+                          marginTop: 8,
+                        }}
+                      >
+                        {gruposAgendaManuales.map((grupoManual) => (
+                          <span
+                            key={`chip-manual-agenda-${grupoManual}`}
+                            style={agendaBadgeModalidad}
+                          >
+                            {grupoManual}
+                          </span>
+                        ))}
+                      </div>
+                      <p style={{ margin: '8px 0 0' }}>
+                        Ahora en la propuesta usa “Mover a” para mandar alumnos
+                        a esos grupos. Si no ves alumnos debajo, pulsa “Generar
+                        grupos recomendados”.
+                      </p>
+                    </div>
+                  )}
+
+                  {gruposRecomendadosAgenda().length > 0 && (
+                    <section
+                      id="agenda-propuesta-grupos"
+                      style={{ marginTop: 16 }}
+                    >
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: 10,
+                          flexWrap: 'wrap',
+                          alignItems: 'center',
+                          marginBottom: 10,
+                        }}
+                      >
+                        <h4 style={{ margin: 0 }}>
+                          Propuesta editable antes de publicar
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={crearTodosGruposAgendaDesdeRecomendacion}
+                          style={botonPrincipal}
+                          disabled={cargando}
+                        >
+                          Crear todos los grupos
+                        </button>
+                      </div>
+                      <div style={{ display: 'grid', gap: 12 }}>
+                        {gruposRecomendadosAgenda().map(
+                          ([nombreGrupo, alumnosGrupo], indiceGrupoAgenda) => {
+                            const primero = alumnosGrupo[0];
+                            const trabajoAuto =
+                              trabajoAgendaGrupo[nombreGrupo] ||
+                              trabajoDiarioAutomaticoAgenda(
+                                nombreGrupo,
+                                alumnosGrupo
+                              );
+                            const puntoDefecto =
+                              puntosEncuentroAgenda[
+                                indiceGrupoAgenda % puntosEncuentroAgenda.length
+                              ];
+                            const nombreGrupoVisible = nombreGrupoPropuestaApp(
+                              alumnosGrupo,
+                              indiceGrupoAgenda
+                            );
+                            const observacionesAutoGrupo =
+                              observacionesAutomaticasGrupoAgenda(alumnosGrupo);
+                            const validacionPedagogicaGrupo =
+                              textoValidacionPedagogicaGrupoApp(alumnosGrupo);
+
+                            return (
+                              <article
+                                key={nombreGrupo}
+                                style={{
+                                  ...agendaGrupoPropuesta,
+                                  ...estiloGrupoPorPistaApp({
+                                    pista: primero.pista_recomendada,
+                                    nivel_grupo: primero.nivel_resumen,
+                                  }),
+                                }}
+                              >
+                                <div style={agendaGrupoLinea}>
+                                  <h3 style={{ margin: 0 }}>
+                                    {nombreGrupoVisible}
+                                  </h3>
+                                  <span>{alumnosGrupo.length} niños</span>
+                                </div>
+                                <p>
+                                  <strong>Bloque:</strong>{' '}
+                                  {primero.bloque_tecnico} ·{' '}
+                                  <strong>Pista:</strong>{' '}
+                                  {primero.pista_recomendada}
+                                </p>
+                                <div
+                                  style={{
+                                    ...estiloValidacionPedagogicaApp(
+                                      validacionPedagogicaGrupo.estado
+                                    ),
+                                    marginBottom: 10,
+                                  }}
+                                >
+                                  <strong>
+                                    {validacionPedagogicaGrupo.titulo}
+                                  </strong>
+                                  {validacionPedagogicaGrupo.mensajes.length >
+                                    0 && (
+                                    <ul
+                                      style={{
+                                        margin: '6px 0 0',
+                                        paddingLeft: 18,
+                                      }}
+                                    >
+                                      {validacionPedagogicaGrupo.mensajes.map(
+                                        (mensaje) => (
+                                          <li key={`${nombreGrupo}-${mensaje}`}>
+                                            {mensaje}
+                                          </li>
+                                        )
+                                      )}
+                                    </ul>
+                                  )}
+                                </div>
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gap: 8,
+                                    marginBottom: 12,
+                                  }}
+                                >
+                                  {alumnosGrupo.map((alumno) => {
+                                    const perfilBaby =
+                                      perfilOperativoAlumnoApp(
+                                        alumno.alumno_id
+                                      );
+                                    const explicacionBaby =
+                                      explicacionCompactaPropuestaBabyApp(
+                                        alumno
+                                      );
+
+                                    return (
+                                    <div
+                                      key={`${nombreGrupo}-${alumno.alumno_id}`}
+                                      style={{
+                                        ...agendaAlumnoLinea,
+                                        minWidth: 0,
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          minWidth: 0,
+                                          overflowWrap: 'anywhere',
+                                        }}
+                                      >
+                                        <strong>{alumno.alumno}</strong>
+                                        <p
+                                          style={{
+                                            margin: '4px 0 0',
+                                            overflowWrap: 'anywhere',
+                                          }}
+                                        >
+                                          {alumno.nivel_resumen} ·{' '}
+                                          {alumno.pista_alumno ||
+                                            alumno.pista_recomendada ||
+                                            '-'}
+                                          {perfilBaby?.edad_aprox !== null &&
+                                          perfilBaby?.edad_aprox !== undefined
+                                            ? ` · ${perfilBaby.edad_aprox} años`
+                                            : ''}
+                                        </p>
+                                        {explicacionBaby && (
+                                          <p
+                                            style={{
+                                              margin: '3px 0 0',
+                                              fontSize: 11,
+                                              lineHeight: 1.25,
+                                              color: '#64748b',
+                                              fontWeight: 700,
+                                              overflowWrap: 'anywhere',
+                                            }}
+                                          >
+                                            {explicacionBaby}
+                                          </p>
+                                        )}
+                                      </div>
+                                      <label
+                                        style={{
+                                          ...labelCampo,
+                                          minWidth: esVistaMovilApp ? 0 : 220,
+                                          width: esVistaMovilApp
+                                            ? '100%'
+                                            : undefined,
+                                          maxWidth: '100%',
+                                        }}
+                                      >
+                                        Mover a
+                                        <select
+                                          value={destinoActualAlumnoAgenda(
+                                            alumno
+                                          )}
+                                          onChange={(e) =>
+                                            moverAlumnoAgendaRecomendado(
+                                              alumno.alumno_id,
+                                              e.target.value
+                                            )
+                                          }
+                                        >
+                                          {nombresGruposAgendaBase().map(
+                                            (grupoDestino) => (
+                                              <option
+                                                key={`${alumno.alumno_id}-${grupoDestino}`}
+                                                value={grupoDestino}
+                                              >
+                                                {grupoDestino}
+                                              </option>
+                                            )
+                                          )}
+                                          <option value="__NO_CREAR__">
+                                            Dejar fuera de momento
+                                          </option>
+                                        </select>
+                                      </label>
+                                    </div>
+                                    );
+                                  })}
+                                </div>
+
+                                <div style={gridFormulario}>
+                                  <label style={labelCampo}>
+                                    Entrenador
+                                    <select
+                                      value={
+                                        entrenadoresAgendaGrupo[nombreGrupo] ||
+                                        ''
+                                      }
+                                      onChange={(e) =>
+                                        setEntrenadoresAgendaGrupo({
+                                          ...entrenadoresAgendaGrupo,
+                                          [nombreGrupo]: e.target.value,
+                                        })
+                                      }
+                                    >
+                                      <option value="">
+                                        Selecciona entrenador
+                                      </option>
+                                      {entrenadoresDisponiblesSesionActiva()
+                                        .filter((entrenador) => {
+                                          const actual = entrenadoresAgendaGrupo[nombreGrupo] || '';
+                                          const usadosEnOtros = new Set([
+                                            ...Object.entries(entrenadoresAgendaGrupo)
+                                              .filter(([grupo]) => grupo !== nombreGrupo)
+                                              .map(([, id]) => id),
+                                            ...Object.entries(entrenadoresApoyoAgendaGrupo)
+                                              .filter(([grupo]) => grupo !== nombreGrupo)
+                                              .map(([, id]) => id),
+                                            entrenadoresApoyoAgendaGrupo[nombreGrupo] || '',
+                                            ...gruposRecursosTurnoAgenda()
+                                              .flatMap((grupo) => [
+                                                grupo.entrenador_id || '',
+                                                grupo.entrenador_apoyo_id || '',
+                                              ])
+                                              .filter(Boolean),
+                                          ].filter(Boolean));
+                                          return entrenador.entrenador_id === actual || !usadosEnOtros.has(entrenador.entrenador_id);
+                                        })
+                                        .map((entrenador) => (
+                                          <option
+                                            key={entrenador.entrenador_id}
+                                            value={entrenador.entrenador_id}
+                                          >
+                                            {entrenador.nombre_completo}
+                                          </option>
+                                        ))}
+                                    </select>
+                                  </label>
+                                  <label style={labelCampo}>
+                                    Punto encuentro
+                                    <select
+                                      value={puntoDisponibleAgendaParaGrupo(
+                                        nombreGrupo,
+                                        indiceGrupoAgenda
+                                      )}
+                                      onChange={(e) =>
+                                        setPuntosAgendaGrupo({
+                                          ...puntosAgendaGrupo,
+                                          [nombreGrupo]: e.target.value,
+                                        })
+                                      }
+                                    >
+                                      {puntosEncuentroAgenda
+                                        .filter((punto) => {
+                                          const usadosReales = new Set(
+                                            gruposRecursosTurnoAgenda()
+                                              .map(
+                                                (grupo) =>
+                                                  grupo.punto_encuentro || ''
+                                              )
+                                              .filter(Boolean)
+                                          );
+                                          const usadosPropuesta = new Set(
+                                            Object.entries(puntosAgendaGrupo)
+                                              .filter(
+                                                ([grupo]) =>
+                                                  grupo !== nombreGrupo
+                                              )
+                                              .map(([, valor]) => valor)
+                                              .filter(Boolean)
+                                          );
+
+                                          const puntoActual =
+                                            puntoDisponibleAgendaParaGrupo(
+                                              nombreGrupo,
+                                              indiceGrupoAgenda
+                                            );
+
+                                          return (
+                                            punto === puntoActual ||
+                                            (!usadosReales.has(punto) &&
+                                              !usadosPropuesta.has(punto))
+                                          );
+                                        })
+                                        .map((punto) => (
+                                          <option
+                                            key={`punto-agenda-${punto}`}
+                                            value={punto}
+                                          >
+                                            Punto {punto}
+                                          </option>
+                                        ))}
+                                    </select>
+                                  </label>
+                                  <label style={labelCampo}>
+                                    Segundo entrenador
+                                    <select
+                                      value={
+                                        entrenadoresApoyoAgendaGrupo[
+                                          nombreGrupo
+                                        ] || ''
+                                      }
+                                      onChange={(e) =>
+                                        setEntrenadoresApoyoAgendaGrupo({
+                                          ...entrenadoresApoyoAgendaGrupo,
+                                          [nombreGrupo]: e.target.value,
+                                        })
+                                      }
+                                    >
+                                      <option value="">
+                                        Sin segundo entrenador
+                                      </option>
+                                      {entrenadoresDisponiblesSesionActiva()
+                                        .filter((entrenador) => {
+                                          const actual = entrenadoresApoyoAgendaGrupo[nombreGrupo] || '';
+                                          const usadosEnOtros = new Set([
+                                            ...Object.entries(entrenadoresAgendaGrupo)
+                                              .filter(([grupo]) => grupo !== nombreGrupo)
+                                              .map(([, id]) => id),
+                                            ...Object.entries(entrenadoresApoyoAgendaGrupo)
+                                              .filter(([grupo]) => grupo !== nombreGrupo)
+                                              .map(([, id]) => id),
+                                            entrenadoresAgendaGrupo[nombreGrupo] || '',
+                                            ...gruposRecursosTurnoAgenda()
+                                              .flatMap((grupo) => [
+                                                grupo.entrenador_id || '',
+                                                grupo.entrenador_apoyo_id || '',
+                                              ])
+                                              .filter(Boolean),
+                                          ].filter(Boolean));
+                                          return entrenador.entrenador_id === actual || !usadosEnOtros.has(entrenador.entrenador_id);
+                                        })
+                                        .map((entrenador) => (
+                                          <option
+                                            key={`${nombreGrupo}-apoyo-${entrenador.entrenador_id}`}
+                                            value={entrenador.entrenador_id}
+                                          >
+                                            {entrenador.nombre_completo}
+                                          </option>
+                                        ))}
+                                    </select>
+                                  </label>
+                                </div>
+
+                                {necesitaDosEntrenadoresGrupoApp(
+                                  alumnosGrupo
+                                ) && (
+                                  <div
+                                    style={{
+                                      ...avisoPendiente,
+                                      marginBottom: 10,
+                                    }}
+                                  >
+                                    {textoNecesidadDosEntrenadoresApp(
+                                      alumnosGrupo
+                                    )}
+                                  </div>
+                                )}
+
+                                {entrenadoresAgendaGrupo[nombreGrupo] &&
+                                  entrenadoresApoyoAgendaGrupo[nombreGrupo] && (
+                                    <details
+                                      style={{
+                                        ...avisoNeutral,
+                                        marginBottom: 10,
+                                      }}
+                                    >
+                                      <summary
+                                        style={{
+                                          cursor: 'pointer',
+                                          fontWeight: 900,
+                                        }}
+                                      >
+                                        Reparto de reportes / niños
+                                      </summary>
+                                      <div
+                                        style={{
+                                          display: 'grid',
+                                          gap: 8,
+                                          marginTop: 10,
+                                        }}
+                                      >
+                                        {alumnosGrupo.map(
+                                          (alumno, indiceAlumnoReparto) => (
+                                            <label
+                                              key={`${nombreGrupo}-resp-${alumno.alumno_id}`}
+                                              style={labelCampo}
+                                            >
+                                              {alumno.alumno}
+                                              <select
+                                                value={responsableReporteAgendaApp(
+                                                  nombreGrupo,
+                                                  alumno.alumno_id,
+                                                  indiceAlumnoReparto,
+                                                  entrenadoresAgendaGrupo[
+                                                    nombreGrupo
+                                                  ],
+                                                  entrenadoresApoyoAgendaGrupo[
+                                                    nombreGrupo
+                                                  ]
+                                                )}
+                                                onChange={(e) =>
+                                                  setResponsablesReporteAgendaGrupo(
+                                                    {
+                                                      ...responsablesReporteAgendaGrupo,
+                                                      [`${nombreGrupo}__${alumno.alumno_id}`]:
+                                                        e.target.value,
+                                                    }
+                                                  )
+                                                }
+                                              >
+                                                <option
+                                                  value={
+                                                    entrenadoresAgendaGrupo[
+                                                      nombreGrupo
+                                                    ]
+                                                  }
+                                                >
+                                                  {entrenadores.find(
+                                                    (entrenador) =>
+                                                      entrenador.entrenador_id ===
+                                                      entrenadoresAgendaGrupo[
+                                                        nombreGrupo
+                                                      ]
+                                                  )?.nombre_completo ||
+                                                    'Entrenador 1'}
+                                                </option>
+                                                <option
+                                                  value={
+                                                    entrenadoresApoyoAgendaGrupo[
+                                                      nombreGrupo
+                                                    ]
+                                                  }
+                                                >
+                                                  {entrenadores.find(
+                                                    (entrenador) =>
+                                                      entrenador.entrenador_id ===
+                                                      entrenadoresApoyoAgendaGrupo[
+                                                        nombreGrupo
+                                                      ]
+                                                  )?.nombre_completo ||
+                                                    'Entrenador 2'}
+                                                </option>
+                                              </select>
+                                            </label>
+                                          )
+                                        )}
+                                      </div>
+                                    </details>
+                                  )}
+
+                                <details
+                                  style={{
+                                    ...avisoNeutral,
+                                    marginBottom: 10,
+                                  }}
+                                >
+                                  <summary
+                                    style={{
+                                      cursor: 'pointer',
+                                      fontWeight: 900,
+                                    }}
+                                  >
+                                    Trabajo diario
+                                  </summary>
+                                  <label
+                                    style={{
+                                      ...labelCampo,
+                                      display: 'block',
+                                      marginTop: 10,
+                                    }}
+                                  >
+                                    Trabajo diario automático según nivel/pista
+                                    <textarea
+                                      value={trabajoAuto}
+                                      onChange={(e) =>
+                                        setTrabajoAgendaGrupo({
+                                          ...trabajoAgendaGrupo,
+                                          [nombreGrupo]: e.target.value,
+                                        })
+                                      }
+                                      rows={4}
+                                      style={{ width: '100%', boxSizing: 'border-box' }}
+                                    />
+                                  </label>
+                                </details>
+
+                                <details
+                                  style={{
+                                    ...avisoNeutral,
+                                    marginBottom: 10,
+                                  }}
+                                >
+                                  <summary
+                                    style={{
+                                      cursor: 'pointer',
+                                      fontWeight: 900,
+                                    }}
+                                  >
+                                    Observaciones
+                                  </summary>
+                                  <label
+                                    style={{
+                                      ...labelCampo,
+                                      display: 'block',
+                                      marginTop: 10,
+                                    }}
+                                  >
+                                    Observaciones importantes para el entrenador
+                                    <textarea
+                                      value={observacionesAutoGrupo || ''}
+                                      readOnly
+                                      rows={Math.max(
+                                        3,
+                                        Math.min(
+                                          7,
+                                          (observacionesAutoGrupo || '').split('\n').length + 1
+                                        )
+                                      )}
+                                      style={{ width: '100%', boxSizing: 'border-box' }}
+                                    />
+                                  </label>
+                                  <label
+                                    style={{
+                                      ...labelCampo,
+                                      display: 'block',
+                                      marginTop: 10,
+                                    }}
+                                  >
+                                    Añadir observación manual · opcional
+                                    <textarea
+                                      value={observacionesAgendaGrupo[nombreGrupo] || ''}
+                                      onChange={(e) =>
+                                        setObservacionesAgendaGrupo({
+                                          ...observacionesAgendaGrupo,
+                                          [nombreGrupo]: e.target.value,
+                                        })
+                                      }
+                                      rows={3}
+                                      style={{ width: '100%', boxSizing: 'border-box' }}
+                                    />
+                                  </label>
+                                </details>
+                                <button
+                                  onClick={() =>
+                                    crearGrupoAgendaDesdeRecomendacion(
+                                      nombreGrupo,
+                                      alumnosGrupo,
+                                      nombreGrupoVisible
+                                    )
+                                  }
+                                  style={botonPrincipal}
+                                >
+                                  Crear este grupo revisado
+                                </button>
+                              </article>
+                            );
+                          }
+                        )}
+                      </div>
+                    </section>
+                  )}
+
+                  {agendaGruposSesion.length > 0 && (
+                    <section id="agenda-grupos-creados" style={{ marginTop: 16, scrollMarginTop: 16 }}>
+                      <h4>Grupos creados en este día</h4>
+                      <div style={{ display: 'grid', gap: 10 }}>
+                        {agendaGruposSesion.map((grupo, indiceGrupoCreado) => (
+                          <article
+                            key={grupo.grupo_id}
+                            style={{
+                              ...estiloGrupoPorPistaApp(grupo),
+                              boxShadow: '0 10px 24px rgba(52, 81, 135, 0.08)',
+                              borderRadius: 16,
+                            }}
+                          >
+                            <div style={agendaGrupoLinea}>
+                              <strong>
+                                {nombreGrupoVisualApp(grupo, indiceGrupoCreado)}
+                              </strong>
+                              <span>
+                                {nombresEntrenadoresDelGrupo(
+                                  grupo.grupo_id,
+                                  grupo.entrenador
+                                )} ·{' '}
+                                {grupo.total_alumnos} niños ·{' '}
+                                {grupo.publicado ? 'Publicado' : 'Borrador'}
+                              </span>
+                            </div>
+                            <p>
+                              <span style={estiloBadgePistaApp(grupo.pista)}>
+                                {etiquetaPistaVisualApp(grupo.pista)}
+                              </span>{' '}
+                              · Punto {grupo.punto_encuentro || '-'}
+                            </p>
+                            {grupo.alumnos_lista && (
+                              <div style={{ display: 'grid', gap: 7, marginTop: 10 }}>
+                                {grupo.alumnos_lista
+                                  .split(' || ')
+                                  .map((alumnoGrupo, indice) => {
+                                    const nombreNormalizado = normalizarNombreAlumnoAgendaApp(alumnoGrupo);
+                                    const alumnoSesion = agendaAlumnosSesion.find(
+                                      (alumno) =>
+                                        normalizarNombreAlumnoAgendaApp(alumno.alumno) === nombreNormalizado
+                                    );
+
+                                    const contextoIntensivo =
+                                      contextoIntensivoSesionAgenda(grupo.sesion_id);
+                                    const asistenciaIntensivo = alumnoSesion
+                                      ? asistenciaAlumnoIntensivoAgenda(
+                                          grupo,
+                                          alumnoSesion.alumno_id
+                                        )
+                                      : null;
+                                    const noVieneIntensivo = [
+                                      'NO_PRESENTADO',
+                                      'BAJA_AVISADA',
+                                    ].includes(
+                                      asistenciaIntensivo?.estado || ''
+                                    );
+
+                                    return (
+                                      <div
+                                        key={`${grupo.grupo_id}-${indice}`}
+                                        style={{
+                                          display: 'grid',
+                                          gridTemplateColumns: esVistaMovilApp
+                                            ? 'minmax(0, 1fr)'
+                                            : 'minmax(0, 1fr) minmax(250px, 360px)',
+                                          gap: 8,
+                                          alignItems: 'center',
+                                          padding: '8px 10px',
+                                          border: '1px solid #e2e8f0',
+                                          borderRadius: 11,
+                                          background: '#fff',
+                                          minWidth: 0,
+                                        }}
+                                      >
+                                        <strong style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
+                                          {formatearAlumnoListadoOperativo(alumnoGrupo)}
+                                        </strong>
+
+                                        {alumnoSesion && (
+                                          <div
+                                            style={{
+                                              display: 'grid',
+                                              gap: 7,
+                                              minWidth: 0,
+                                            }}
+                                          >
+                                            {contextoIntensivo && (
+                                              <div
+                                                style={{
+                                                  display: 'flex',
+                                                  gap: 6,
+                                                  flexWrap: 'wrap',
+                                                  alignItems: 'center',
+                                                }}
+                                              >
+                                                <span
+                                                  style={{
+                                                    fontSize: 12,
+                                                    fontWeight: 900,
+                                                    color: noVieneIntensivo
+                                                      ? '#b91c1c'
+                                                      : asistenciaIntensivo?.estado ===
+                                                        'PRESENTE'
+                                                      ? '#166534'
+                                                      : '#475569',
+                                                  }}
+                                                >
+                                                  {noVieneIntensivo
+                                                    ? 'No viene · recuperación'
+                                                    : asistenciaIntensivo?.estado ===
+                                                      'PRESENTE'
+                                                    ? 'Presente'
+                                                    : asistenciaIntensivo?.estado ===
+                                                      'LLEGA_TARDE'
+                                                    ? 'Llega tarde'
+                                                    : 'Previsto · asistencia pendiente'}
+                                                </span>
+
+                                                {asistenciaIntensivo?.estado !==
+                                                  'PRESENTE' &&
+                                                  asistenciaIntensivo?.estado !==
+                                                    'LLEGA_TARDE' && (
+                                                    <button
+                                                      type="button"
+                                                      disabled={cargando}
+                                                      onClick={() =>
+                                                        noVieneIntensivo
+                                                          ? void restaurarVieneIntensivoDesdeAgenda(
+                                                              alumnoSesion,
+                                                              grupo
+                                                            )
+                                                          : void marcarNoVieneIntensivoDesdeAgenda(
+                                                              alumnoSesion,
+                                                              grupo
+                                                            )
+                                                      }
+                                                      style={
+                                                        noVieneIntensivo
+                                                          ? botonSecundario
+                                                          : botonPeligro
+                                                      }
+                                                    >
+                                                      {noVieneIntensivo
+                                                        ? 'Vuelve a venir'
+                                                        : 'No viene'}
+                                                    </button>
+                                                  )}
+                                              </div>
+                                            )}
+
+                                            {agendaGruposSesion.length > 1 && (
+                                              <label
+                                                style={{
+                                                  ...labelCampo,
+                                                  margin: 0,
+                                                  minWidth: 0,
+                                                  fontSize: 12,
+                                                }}
+                                              >
+                                                Cambiar de grupo
+                                                <select
+                                                  value=""
+                                                  disabled={cargando}
+                                                  onChange={(e) => {
+                                                    const destino =
+                                                      e.target.value;
+                                                    if (destino) {
+                                                      void moverAlumnoEntreGruposAgenda(
+                                                        alumnoSesion,
+                                                        grupo,
+                                                        destino
+                                                      );
+                                                    }
+                                                  }}
+                                                  style={{
+                                                    ...selectCampo,
+                                                    width: '100%',
+                                                    minWidth: 0,
+                                                    padding: '7px 9px',
+                                                  }}
+                                                >
+                                                  <option value="">
+                                                    Elegir grupo destino…
+                                                  </option>
+                                                  {agendaGruposSesion
+                                                    .filter(
+                                                      (destino) =>
+                                                        destino.grupo_id !==
+                                                        grupo.grupo_id
+                                                    )
+                                                    .map(
+                                                      (
+                                                        destino,
+                                                        indiceDestino
+                                                      ) => (
+                                                        <option
+                                                          key={`${grupo.grupo_id}-${alumnoSesion.alumno_id}-destino-${destino.grupo_id}`}
+                                                          value={
+                                                            destino.grupo_id
+                                                          }
+                                                        >
+                                                          {nombreGrupoVisualApp(
+                                                            destino,
+                                                            indiceDestino
+                                                          )}{' '}
+                                                          ·{' '}
+                                                          {
+                                                            destino.total_alumnos
+                                                          }{' '}
+                                                          niños
+                                                        </option>
+                                                      )
+                                                    )}
+                                                </select>
+                                              </label>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            )}
+                            <details
+                              id={`agenda-trabajo-grupo-${grupo.grupo_id}`}
+                              style={panelTrabajoGrupo}
+                            >
+                              <summary
+                                style={{
+                                  ...summaryTrabajoGrupo,
+                                  border: '1px solid #d8e5f7',
+                                  background:
+                                    'linear-gradient(90deg, #f9fbff 0%, #f1f6ff 100%)',
+                                  borderRadius: 13,
+                                  padding: '10px 12px',
+                                }}
+                              >
+                                Trabajo diario y observaciones
+                              </summary>
+                              <div
+                                style={{
+                                  display: 'grid',
+                                  gap: 10,
+                                  marginTop: 12,
+                                }}
+                              >
+                                {contextoIntensivoSesionAgenda(
+                                  grupo.sesion_id
+                                ) && (
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      gap: 8,
+                                      flexWrap: 'wrap',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      padding: '9px 10px',
+                                      border: '1px solid #dbeafe',
+                                      borderRadius: 11,
+                                      background: '#f8fbff',
+                                    }}
+                                  >
+                                    <span
+                                      style={{
+                                        fontSize: 12,
+                                        color: '#475569',
+                                        fontWeight: 700,
+                                      }}
+                                    >
+                                      Motor nuevo · composición real de este día + evolución
+                                      y reportes anteriores. Si estaba vacío, se genera al abrir la jornada.
+                                    </span>
+                                    <button
+                                      type="button"
+                                      disabled={cargando}
+                                      onClick={() =>
+                                        void regenerarTrabajoGrupoIntensivoAgenda(
+                                          grupo
+                                        )
+                                      }
+                                      style={botonSecundario}
+                                    >
+                                      {grupo.trabajo_diario
+                                        ? 'Regenerar con evolución actual'
+                                        : 'Generar ahora'}
+                                    </button>
+                                  </div>
+                                )}
+                                <label style={labelCampo}>
+                                  Trabajo diario visible para entrenador
+                                  <textarea
+                                    value={
+                                      trabajoGrupoCreadoEditando[
+                                        grupo.grupo_id
+                                      ] ??
+                                      grupo.trabajo_diario ??
+                                      ''
+                                    }
+                                    onChange={(e) =>
+                                      setTrabajoGrupoCreadoEditando({
+                                        ...trabajoGrupoCreadoEditando,
+                                        [grupo.grupo_id]: e.target.value,
+                                      })
+                                    }
+                                    rows={4}
+                                    style={textareaCampo}
+                                  />
+                                </label>
+                                <label style={labelCampo}>
+                                  Observaciones
+                                  <textarea
+                                    value={
+                                      observacionesGrupoCreadoEditando[
+                                        grupo.grupo_id
+                                      ] ??
+                                      normalizarLineasObservacionesGrupoApp(
+                                        grupo.observaciones_importantes,
+                                        12
+                                      ) ??
+                                      ''
+                                    }
+                                    onChange={(e) =>
+                                      setObservacionesGrupoCreadoEditando({
+                                        ...observacionesGrupoCreadoEditando,
+                                        [grupo.grupo_id]: e.target.value,
+                                      })
+                                    }
+                                    rows={4}
+                                    style={textareaCampo}
+                                  />
+                                </label>
+                                <button
+                                  onClick={() =>
+                                    guardarTrabajoObservacionesGrupoAgenda(
+                                      grupo
+                                    )
+                                  }
+                                  style={botonPrincipal}
+                                >
+                                  Guardar trabajo y observaciones
+                                </button>
+                              </div>
+                            </details>
+                            <div
+                              style={{ marginTop: 10, display: 'grid', gap: 8 }}
+                            >
+                              <label style={labelCampo}>
+                                Entrenador
+                                <select
+                                  value={grupo.entrenador_id || ''}
+                                  onChange={(e) =>
+                                    cambiarEntrenadorGrupoAgenda(
+                                      grupo,
+                                      e.target.value
+                                    )
+                                  }
+                                  style={selectCampo}
+                                >
+                                  <option value="">
+                                    Selecciona entrenador disponible
+                                  </option>
+                                  {(grupo.entrenador_id &&
+                                  !entrenadoresDisponiblesSesionActiva().some(
+                                    (entrenador) =>
+                                      entrenador.entrenador_id ===
+                                      grupo.entrenador_id
+                                  )
+                                    ? ([
+                                        entrenadores.find(
+                                          (entrenador) =>
+                                            entrenador.entrenador_id ===
+                                            grupo.entrenador_id
+                                        ),
+                                      ].filter(Boolean) as EntrenadorResumen[])
+                                    : []
+                                  )
+                                    .concat(
+                                      entrenadoresDisponiblesCambioGrupoAgenda(
+                                        grupo.grupo_id,
+                                        grupo.entrenador_id,
+                                        grupo.entrenador_apoyo_id
+                                      )
+                                    )
+                                    .filter(
+                                      (entrenador, indice, lista) =>
+                                        lista.findIndex(
+                                          (item) =>
+                                            item.entrenador_id ===
+                                            entrenador.entrenador_id
+                                        ) === indice
+                                    )
+                                    .map((entrenador) => (
+                                      <option
+                                        key={`${grupo.grupo_id}-cambio-${entrenador.entrenador_id}`}
+                                        value={entrenador.entrenador_id}
+                                      >
+                                        {entrenador.nombre_completo}
+                                      </option>
+                                    ))}
+                                </select>
+                              </label>
+
+                              <label style={labelCampo}>
+                                Segundo entrenador
+                                <select
+                                  value={grupo.entrenador_apoyo_id || ''}
+                                  onChange={(e) =>
+                                    cambiarSegundoEntrenadorGrupoAgenda(
+                                      grupo,
+                                      e.target.value
+                                    )
+                                  }
+                                  style={selectCampo}
+                                >
+                                  <option value="">
+                                    Sin segundo entrenador
+                                  </option>
+                                  {(grupo.entrenador_apoyo_id &&
+                                  !entrenadoresDisponiblesSesionActiva().some(
+                                    (entrenador) =>
+                                      entrenador.entrenador_id ===
+                                      grupo.entrenador_apoyo_id
+                                  )
+                                    ? ([
+                                        entrenadores.find(
+                                          (entrenador) =>
+                                            entrenador.entrenador_id ===
+                                            grupo.entrenador_apoyo_id
+                                        ),
+                                      ].filter(Boolean) as EntrenadorResumen[])
+                                    : []
+                                  )
+                                    .concat(
+                                      entrenadoresDisponiblesCambioGrupoAgenda(
+                                        grupo.grupo_id,
+                                        grupo.entrenador_apoyo_id,
+                                        grupo.entrenador_id
+                                      )
+                                    )
+                                    .filter(
+                                      (entrenador, indice, lista) =>
+                                        lista.findIndex(
+                                          (item) =>
+                                            item.entrenador_id ===
+                                            entrenador.entrenador_id
+                                        ) === indice
+                                    )
+                                    .map((entrenador) => (
+                                      <option
+                                        key={`${grupo.grupo_id}-apoyo-cambio-${entrenador.entrenador_id}`}
+                                        value={entrenador.entrenador_id}
+                                      >
+                                        {entrenador.nombre_completo}
+                                      </option>
+                                    ))}
+                                </select>
+                              </label>
+
+                              <label style={labelCampo}>
+                                Punto de encuentro
+                                <select
+                                  value={grupo.punto_encuentro || ''}
+                                  onChange={(e) =>
+                                    cambiarPuntoGrupoAgenda(
+                                      grupo,
+                                      e.target.value
+                                    )
+                                  }
+                                  style={selectCampo}
+                                >
+                                  <option value="">
+                                    Selecciona punto
+                                  </option>
+                                  {puntosEncuentroAgenda
+                                    .filter((punto) => {
+                                      const usadosEnOtros = new Set(
+                                        gruposRecursosTurnoAgenda()
+                                          .filter(
+                                            (otro) =>
+                                              otro.grupo_id !== grupo.grupo_id
+                                          )
+                                          .map(
+                                            (otro) =>
+                                              otro.punto_encuentro || ''
+                                          )
+                                          .filter(Boolean)
+                                      );
+
+                                      return (
+                                        punto === grupo.punto_encuentro ||
+                                        !usadosEnOtros.has(punto)
+                                      );
+                                    })
+                                    .map((punto) => (
+                                      <option
+                                        key={`${grupo.grupo_id}-punto-${punto}`}
+                                        value={punto}
+                                      >
+                                        Punto {punto}
+                                      </option>
+                                    ))}
+                                </select>
+                              </label>
+
+                              <button
+                                onClick={() => borrarGrupoAgenda(grupo)}
+                                style={botonPeligroMini}
+                              >
+                                Borrar grupo
+                              </button>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </section>
+                  )}
+                </article>
+              )}
+            </section>
+          )}
+        </section>
+      )}
+
+      {pantalla === 'ocioAlumnos' &&
+        (() => {
+          const totalOcio = ocioAlumnos.length;
+          const ocioSinGrupo = ocioAlumnos.filter(
+            (alumno) => !alumno.grupo_id
+          ).length;
+          const ocioSinNivel = ocioAlumnos.filter(
+            (alumno) => !(alumno.nivel_usado || alumno.nivel)
+          ).length;
+          const ocioRevisarGrupo = ocioAlumnos.filter((alumno) => {
+            const recomendacion = ocioRecomendacionesCambio.find(
+              (item) => item.alumno_id === alumno.alumno_id
+            );
+            return Boolean(
+              recomendacion && recomendacion.recomendacion !== 'OK'
+            );
+          }).length;
+
+          const estiloOcioHero = {
+            ...agendaHero,
+            background:
+              'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 48%, #f8fafc 100%)',
+            border: '1px solid #bbf7d0',
+            boxShadow: '0 18px 45px rgba(22, 163, 74, 0.10)',
+          };
+
+          const tarjetaMetricaOcio = (color: string, fondo: string) => ({
+            ...miniTarjetaBlanca,
+            border: `1px solid ${color}33`,
+            background: fondo,
+            minHeight: 82,
+            display: 'grid',
+            alignContent: 'center',
+          });
+
+          return (
+            <section style={{ display: 'grid', gap: 16 }}>
+              <article style={estiloOcioHero}>
+                <div>
+                  <span
+                    style={{
+                      ...agendaBadgeModalidad,
+                      background: '#ecfdf5',
+                      color: '#047857',
+                      borderColor: '#bbf7d0',
+                    }}
+                  >
+                    FICHAS · OCIO
+                  </span>
+                  <h2 style={{ margin: '10px 0 0' }}>Alumnos Ocio</h2>
+                  <p
+                    style={{
+                      margin: '8px 0 0',
+                      color: '#475569',
+                      fontWeight: 650,
+                    }}
+                  >
+                    Base anual separada: día fijo, turno fijo, grupo estable,
+                    nivel y reportes.
+                  </p>
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 10,
+                    flexWrap: 'wrap',
+                    justifyContent: 'flex-end',
+                  }}
+                >
+                  <button
+                    onClick={() => {
+                      setVistaFichasAlumnos('general');
+                      setPantalla('alumnos');
+                    }}
+                    style={{
+                      ...botonSecundario,
+                      borderColor: '#ddd6fe',
+                      color: '#6d28d9',
+                      background: '#f5f3ff',
+                    }}
+                  >
+                    Ver alumnos Baby
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setVistaFichasAlumnos('intensivos');
+                      setPantalla('alumnos');
+                    }}
+                    style={{
+                      ...botonSecundario,
+                      borderColor: '#fed7aa',
+                      color: '#c2410c',
+                      background: '#fff7ed',
+                    }}
+                  >
+                    Ver alumnos Intensivos
+                  </button>
+
+                </div>
+              </article>
+
+              <section
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: esVistaMovilApp
+                    ? 'repeat(2, minmax(0, 1fr))'
+                    : 'repeat(auto-fit, minmax(150px, 1fr))',
+                  gap: 10,
+                  width: '100%',
+                  maxWidth: '100%',
+                  minWidth: 0,
+                  boxSizing: 'border-box',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFiltroEstadoFichasOcio('todos');
+                    setFiltroDiaFichasOcio('');
+                    setBusquedaOcio('');
+                  }}
+                  style={{
+                    ...tarjetaMetricaOcio('#16a34a', '#f0fdf4'),
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    font: 'inherit',
+                  }}
+                >
+                  <span
+                    style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
+                  >
+                    TOTAL OCIO
+                  </span>
+                  <strong style={{ fontSize: 28 }}>{totalOcio}</strong>
+                  <span>ver todos</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFiltroEstadoFichasOcio('sin_grupo')}
+                  style={{
+                    ...tarjetaMetricaOcio('#dc2626', '#fef2f2'),
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    font: 'inherit',
+                  }}
+                >
+                  <span
+                    style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
+                  >
+                    SIN GRUPO
+                  </span>
+                  <strong style={{ fontSize: 28 }}>{ocioSinGrupo}</strong>
+                  <span>ver pendientes</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFiltroEstadoFichasOcio('sin_nivel')}
+                  style={{
+                    ...tarjetaMetricaOcio('#f97316', '#fff7ed'),
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    font: 'inherit',
+                  }}
+                >
+                  <span
+                    style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
+                  >
+                    SIN NIVEL
+                  </span>
+                  <strong style={{ fontSize: 28 }}>{ocioSinNivel}</strong>
+                  <span>ver fichas</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setFiltroEstadoFichasOcio('revisar_grupo')}
+                  style={{
+                    ...tarjetaMetricaOcio('#2563eb', '#eff6ff'),
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    font: 'inherit',
+                  }}
+                >
+                  <span
+                    style={{ color: '#64748b', fontWeight: 800, fontSize: 12 }}
+                  >
+                    REVISAR GRUPO
+                  </span>
+                  <strong style={{ fontSize: 28 }}>{ocioRevisarGrupo}</strong>
+                  <span>nivel / encaje</span>
+                </button>
+              </section>
+
+              {mostrarNuevoOcio && (
+                <article
+                  style={{
+                    ...tarjetaResaltada,
+                    borderColor: '#bbf7d0',
+                    background: '#f0fdf4',
+                  }}
+                >
+                  <h3 style={{ marginTop: 0 }}>
+                    {ocioAlumnoEditandoId
+                      ? 'Editar alumno Ocio'
+                      : 'Añadir alumno Ocio'}
+                  </h3>
+                  <div style={gridFormulario}>
+                    <label style={labelCampo}>
+                      Nombre
+                      <input
+                        value={ocioNombre}
+                        onChange={(e) => setOcioNombre(e.target.value)}
+                        placeholder="Nombre completo"
+                      />
+                    </label>
+                    <label style={labelCampo}>
+                      Nivel
+                      <select
+                        value={ocioNivel}
+                        onChange={(e) => setOcioNivel(e.target.value)}
+                      >
+                        <option value="">Pendiente</option>
+                        {opcionesNivel.map((nivel) => (
+                          <option key={nivel} value={nivel}>
+                            {nivel}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label style={labelCampo}>
+                      Fecha nacimiento
+                      <input
+                        type="date"
+                        value={ocioFechaNacimiento}
+                        onChange={(e) => setOcioFechaNacimiento(e.target.value)}
+                      />
+                    </label>
+                    <label style={labelCampo}>
+                      Teléfono familia
+                      <input
+                        inputMode="tel"
+                        value={ocioTelefono}
+                        onChange={(e) => setOcioTelefono(e.target.value)}
+                        placeholder="612345678"
+                      />
+                    </label>
+                    <label style={labelCampo}>
+                      Día fijo
+                      <select
+                        value={ocioDiaFijo}
+                        onChange={(e) => setOcioDiaFijo(e.target.value)}
+                      >
+                        <option>Jueves</option>
+                        <option>Sábado</option>
+                        <option>Domingo</option>
+                        <option>Miércoles</option>
+                        <option>Viernes</option>
+                      </select>
+                    </label>
+                    <label style={labelCampo}>
+                      Hora inicio
+                      <input
+                        type="time"
+                        value={ocioHoraInicio}
+                        onChange={(e) => setOcioHoraInicio(e.target.value)}
+                      />
+                    </label>
+                    <label style={labelCampo}>
+                      Hora fin
+                      <input
+                        type="time"
+                        value={ocioHoraFin}
+                        onChange={(e) => setOcioHoraFin(e.target.value)}
+                      />
+                    </label>
+                  </div>
+                  <label style={{ ...labelCampo, marginTop: 12 }}>
+                    Observaciones
+                    <textarea
+                      value={ocioObservaciones}
+                      onChange={(e) => setOcioObservaciones(e.target.value)}
+                      placeholder="Observaciones internas de Ocio"
+                      rows={3}
+                    />
+                  </label>
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      marginTop: 12,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <button
+                      onClick={guardarAlumnoOcio}
+                      style={{ ...botonPrincipal, background: '#16a34a' }}
+                    >
+                      Guardar alumno
+                    </button>
+                    <button
+                      onClick={() => {
+                        limpiarFormularioOcioAlumno();
+                        setMostrarNuevoOcio(false);
+                      }}
+                      style={botonSecundario}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </article>
+              )}
+
+
+              <article style={agendaBloqueBlanco}>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <input
+                    value={busquedaOcio}
+                    onChange={(e) => setBusquedaOcio(e.target.value)}
+                    placeholder="Buscar alumno Ocio..."
+                    style={{ ...buscador, margin: 0, flex: '1 1 260px' }}
+                  />
+
+                  {(filtroDiaFichasOcio ||
+                    filtroEstadoFichasOcio !== 'todos') && (
+                    <>
+                      <span
+                        style={{
+                          ...agendaBadgeModalidad,
+                          background: '#ecfdf5',
+                          color: '#047857',
+                          borderColor: '#bbf7d0',
+                        }}
+                      >
+                        {filtroDiaFichasOcio
+                          ? `${filtroDiaFichasOcio} · `
+                          : ''}
+                        {filtroEstadoFichasOcio === 'sin_grupo'
+                          ? 'Sin grupo · '
+                          : filtroEstadoFichasOcio === 'sin_nivel'
+                            ? 'Sin nivel · '
+                            : filtroEstadoFichasOcio === 'revisar_grupo'
+                              ? 'Revisar grupo · '
+                              : ''}
+                        {ocioAlumnosFiltrados.length} fichas
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFiltroDiaFichasOcio('');
+                          setBusquedaOcio('');
+                        }}
+                        style={botonSecundario}
+                      >
+                        Ver todos Ocio
+                      </button>
+                    </>
+                  )}
+                </div>
+              </article>
+
+              <div style={{ display: 'grid', gap: 12 }}>
+                {ocioAlumnosFiltrados.map((alumno) => {
+                  const sinGrupo = !alumno.grupo_id;
+                  return (
+                    <article
+                      key={alumno.alumno_id}
+                      style={{
+                        ...tarjeta,
+                        border: `1px solid ${sinGrupo ? '#fecaca' : '#bbf7d0'}`,
+                        background: sinGrupo
+                          ? 'linear-gradient(135deg,#fff 0%,#fef2f2 100%)'
+                          : 'linear-gradient(135deg,#fff 0%,#f0fdf4 100%)',
+                        boxShadow: '0 14px 30px rgba(15, 23, 42, 0.07)',
+                      }}
+                    >
+                      <div style={agendaCabeceraLinea}>
+                        <div>
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 8,
+                              flexWrap: 'wrap',
+                              alignItems: 'center',
+                              marginBottom: 8,
+                            }}
+                          >
+                            <span
+                              style={{
+                                ...agendaBadgeModalidad,
+                                background: '#ecfdf5',
+                                color: '#047857',
+                                borderColor: '#bbf7d0',
+                              }}
+                            >
+                              OCIO
+                            </span>
+                            <span
+                              style={{
+                                ...agendaBadgeModalidad,
+                                background: sinGrupo ? '#fef2f2' : '#f8fafc',
+                                color: sinGrupo ? '#dc2626' : '#475569',
+                                borderColor: sinGrupo ? '#fecaca' : '#e2e8f0',
+                              }}
+                            >
+                              {sinGrupo
+                                ? 'Sin grupo estable'
+                                : alumno.grupo_estable}
+                            </span>
+                            <span
+                              style={{
+                                ...agendaBadgeModalidad,
+                                background: '#eff6ff',
+                                color: '#2563eb',
+                                borderColor: '#bfdbfe',
+                              }}
+                            >
+                              Nivel {alumno.nivel_usado || '-'}
+                            </span>
+                          </div>
+                          {bloqueIdentidadFichaAlumnoApp(
+                            alumno.alumno,
+                            alumno.fecha_nacimiento,
+                            alumno.telefono
+                          )}
+                          <p
+                            style={{
+                              margin: '8px 0 0',
+                              color: '#475569',
+                              fontWeight: 700,
+                            }}
+                          >
+                            {alumno.dia_fijo || alumno.grupo_dia || '-'} ·{' '}
+                            {(
+                              alumno.hora_inicio_fija ||
+                              alumno.grupo_hora_inicio ||
+                              ''
+                            ).slice(0, 5)}
+                            -
+                            {(
+                              alumno.hora_fin_fija ||
+                              alumno.grupo_hora_fin ||
+                              ''
+                            ).slice(0, 5)}{' '}
+                            · Reportes: {alumno.total_reportes || 0}
+                          </p>
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: 8,
+                            flexWrap: 'wrap',
+                            justifyContent: 'flex-end',
+                          }}
+                        >
+                          <button
+                            onClick={() => editarAlumnoOcio(alumno)}
+                            style={botonSecundario}
+                          >
+                            Editar ficha / Ocio
+                          </button>
+                          <button
+                            onClick={() => abrirEvaluacionOcio(alumno)}
+                            style={botonSecundario}
+                          >
+                            Ver evaluación
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setSelectorIntensivoFichaAbiertoId((actual) =>
+                                actual === alumno.alumno_id
+                                  ? ''
+                                  : alumno.alumno_id
+                              )
+                            }
+                            style={botonSecundario}
+                          >
+                            Añadir a Intensivo
+                          </button>
+                          <button
+                            onClick={() => eliminarAlumnoOcio(alumno)}
+                            style={botonPeligro}
+                          >
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
+
+                      {selectorIntensivoFichaAbiertoId === alumno.alumno_id && (
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: 8,
+                            flexWrap: 'wrap',
+                            alignItems: 'flex-end',
+                            marginTop: 10,
+                            padding: 10,
+                            borderRadius: 12,
+                            border: '1px solid #dbeafe',
+                            background: '#f8fbff',
+                          }}
+                        >
+                          <label
+                            style={{
+                              ...labelCampo,
+                              flex: '1 1 220px',
+                              minWidth: 0,
+                            }}
+                          >
+                            Intensivo de destino
+                            <select
+                              value={
+                                intensivoFichaSeleccionado[alumno.alumno_id] || ''
+                              }
+                              onChange={(e) =>
+                                setIntensivoFichaSeleccionado((actual) => ({
+                                  ...actual,
+                                  [alumno.alumno_id]: e.target.value,
+                                }))
+                              }
+                              style={{
+                                ...selectCampo,
+                                width: '100%',
+                                minWidth: 0,
+                              }}
+                            >
+                              <option value="">Seleccionar Intensivo abierto</option>
+                              {intensivos
+                                .filter(
+                                  (item) =>
+                                    String(item.estado || '').toLowerCase() !==
+                                    'cerrado'
+                                )
+                                .map((intensivo) => (
+                                  <option
+                                    key={intensivo.intensivo_id}
+                                    value={intensivo.intensivo_id}
+                                  >
+                                    {intensivo.intensivo}
+                                    {intensivo.fecha_inicio
+                                      ? ` · ${formatearFecha(
+                                          intensivo.fecha_inicio
+                                        )}`
+                                      : ''}
+                                    {intensivo.lugar
+                                      ? ` · ${intensivo.lugar}`
+                                      : ''}
+                                  </option>
+                                ))}
+                            </select>
+                          </label>
+
+                          <button
+                            type="button"
+                            onClick={() =>
+                              añadirFichaExistenteAIntensivo(
+                                alumno.alumno_id,
+                                alumno.alumno
+                              )
+                            }
+                            disabled={
+                              !intensivoFichaSeleccionado[alumno.alumno_id] ||
+                              anadiendoFichaAIntensivoId === alumno.alumno_id
+                            }
+                            style={{
+                              ...botonSecundario,
+                              opacity:
+                                !intensivoFichaSeleccionado[alumno.alumno_id] ||
+                                anadiendoFichaAIntensivoId === alumno.alumno_id
+                                  ? 0.55
+                                  : 1,
+                            }}
+                          >
+                            {anadiendoFichaAIntensivoId === alumno.alumno_id
+                              ? 'Añadiendo...'
+                              : 'Confirmar'}
+                          </button>
+                        </div>
+                      )}
+
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 8,
+                          flexWrap: 'wrap',
+                          marginTop: 12,
+                        }}
+                      >
+                        <label
+                          style={{ ...labelCampo, flex: 1, minWidth: 240 }}
+                        >
+                          Mover a grupo estable
+                          <select
+                            value={alumno.grupo_id || ''}
+                            onChange={(e) =>
+                              asignarAlumnoGrupoOcio(
+                                alumno.alumno_id,
+                                e.target.value
+                              )
+                            }
+                          >
+                            <option value="">Sin grupo</option>
+                            {ocioGrupos.map((grupo) => (
+                              <option
+                                key={grupo.grupo_id}
+                                value={grupo.grupo_id}
+                              >
+                                {grupo.nombre_grupo} · {grupo.dia_semana}{' '}
+                                {(grupo.hora_inicio || '').slice(0, 5)}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                        {alumno.grupo_id && (
+                          <button
+                            onClick={() =>
+                              quitarAlumnoGrupoOcio(
+                                alumno.alumno_id,
+                                alumno.grupo_id
+                              )
+                            }
+                            style={botonSecundario}
+                          >
+                            Quitar del grupo
+                          </button>
+                        )}
+                      </div>
+
+                      {alumno.observaciones && (
+                        <p style={{ ...avisoNeutral, marginTop: 10 }}>
+                          <strong>Obs:</strong> {alumno.observaciones}
+                        </p>
+                      )}
+
+                      {evaluacionOcioActivaId === alumno.alumno_id && (
+                        <div style={{ ...miniTarjetaBlanca, marginTop: 12 }}>
+                          <h4 style={{ marginTop: 0 }}>
+                            Vista previa evaluación Ocio
+                          </h4>
+                          <pre
+                            style={{
+                              whiteSpace: 'pre-wrap',
+                              background: '#f8fafc',
+                              padding: 12,
+                              borderRadius: 14,
+                              maxHeight: 360,
+                              overflow: 'auto',
+                            }}
+                          >
+                            {evaluacionOcioTexto}
+                          </pre>
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 8,
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <button
+                              onClick={copiarEvaluacionOcio}
+                              style={{
+                                ...botonPrincipal,
+                                background: '#16a34a',
+                              }}
+                            >
+                              Copiar para ChatGPT
+                            </button>
+                            <button
+                              onClick={() => {
+                                setEvaluacionOcioActivaId(null);
+                                setEvaluacionOcioTexto('');
+                              }}
+                              style={botonSecundario}
+                            >
+                              Cerrar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          );
+        })()}
+
+      {pantalla === 'ocioGrupos' && (() => {
+        const configuracionTurnos = {
+          Jueves: { hora: '18:00–20:00', etiqueta: 'Jueves' },
+          Sábado: { hora: '09:45–11:45', etiqueta: 'Sábado' },
+          Domingo: { hora: '12:00–14:00', etiqueta: 'Domingo' },
+        } as const;
+
+        const gruposTurno = ocioGrupos.filter(
+          (grupo) =>
+            textoSinAcentosGrupoApp(grupo.dia_semana || '') ===
+            textoSinAcentosGrupoApp(ocioTurnoVista)
+        );
+
+        const alumnosDelTurno = alumnosTurnoOcio(ocioTurnoVista);
+        const totalAlumnosTurno = alumnosDelTurno.length;
+        const alumnosSinGrupoTurno = alumnosDelTurno.filter(
+          (alumno) => !alumno.grupo_id
+        );
+
+        const tarjetaMetricaOcioTurno = (
+          color: string,
+          fondo: string
+        ): React.CSSProperties => ({
+          ...miniTarjetaBlanca,
+          border: `1px solid ${color}33`,
+          background: fondo,
+          minHeight: 82,
+          display: 'grid',
+          alignContent: 'center',
+        });
+
+        const alumnosPorGrupoOcio = new Map<string, OcioAlumnoApp[]>();
+        ocioAlumnos.forEach((alumno) => {
+          if (!alumno.grupo_id) return;
+          const actuales = alumnosPorGrupoOcio.get(alumno.grupo_id) || [];
+          actuales.push(alumno);
+          alumnosPorGrupoOcio.set(alumno.grupo_id, actuales);
+        });
+
+        const coincideTurnoAlumnoOcio = (
+          alumno: OcioAlumnoApp,
+          grupo: OcioGrupoApp
+        ) => {
+          const diaAlumno = textoSinAcentosGrupoApp(
+            alumno.dia_fijo || alumno.grupo_dia || ''
+          );
+          const diaGrupo = textoSinAcentosGrupoApp(grupo.dia_semana || '');
+          const inicioAlumno = (
+            alumno.hora_inicio_fija ||
+            alumno.grupo_hora_inicio ||
+            ''
+          ).slice(0, 5);
+          const inicioGrupo = (grupo.hora_inicio || '').slice(0, 5);
+
+          return (
+            (!diaAlumno || diaAlumno === diaGrupo) &&
+            (!inicioAlumno || inicioAlumno === inicioGrupo)
+          );
+        };
+
+        const alumnosDisponiblesParaGrupoOcio = (grupo: OcioGrupoApp) => {
+          const busqueda = textoSinAcentosGrupoApp(
+            ocioBusquedaGestionGrupo.trim()
+          );
+
+          return ocioAlumnos
+            .filter(
+              (alumno) =>
+                alumno.grupo_id !== grupo.grupo_id &&
+                coincideTurnoAlumnoOcio(alumno, grupo)
+            )
+            .filter((alumno) => {
+              if (!busqueda) return true;
+              return textoSinAcentosGrupoApp(alumno.alumno || '').includes(
+                busqueda
+              );
+            })
+            .sort((a, b) => (a.alumno || '').localeCompare(b.alumno || ''));
+        };
+
+        const avisosEvolucionPorGrupo = new Map<
+          string,
+          Array<{
+            alumno: string;
+            nivelActual: string;
+            estadoActual: string;
+            grupoSugerido: OcioGrupoApp | null;
+            motivo: string;
+          }>
+        >();
+
+        gruposTurno.forEach((grupo) => {
+          const avisos = (alumnosPorGrupoOcio.get(grupo.grupo_id) || [])
+            .map((alumno) => avisoEvolucionAlumnoOcio(alumno, grupo))
+            .filter(Boolean) as Array<{
+              alumno: string;
+              nivelActual: string;
+              estadoActual: string;
+              grupoSugerido: OcioGrupoApp | null;
+              motivo: string;
+            }>;
+
+          if (avisos.length > 0) {
+            avisosEvolucionPorGrupo.set(grupo.grupo_id, avisos);
+          }
+        });
+
+        const estiloTurno = (activo: boolean): React.CSSProperties => ({
+          border: activo ? '1px solid #16a34a' : '1px solid #bbf7d0',
+          background: activo ? '#16a34a' : '#f0fdf4',
+          color: activo ? '#ffffff' : '#166534',
+          borderRadius: 16,
+          padding: '12px 14px',
+          cursor: 'pointer',
+          fontWeight: 900,
+          textAlign: 'left',
+          boxShadow: activo ? '0 8px 22px rgba(22,163,74,0.18)' : 'none',
+          transition: 'all 160ms ease',
+          minWidth: 0,
+        });
+
+        return (
+          <section style={{ display: 'grid', gap: 16 }}>
+            <article
+              style={{
+                position: 'relative',
+                overflow: 'hidden',
+                padding: 20,
+                borderRadius: 24,
+                border: '1px solid rgba(15,118,110,.42)',
+                background:
+                  'linear-gradient(135deg, #06283b 0%, #08384b 52%, #0f5c4d 100%)',
+                boxShadow: '0 16px 36px rgba(6,40,59,.18)',
+                color: '#ffffff',
+                display: 'grid',
+                gap: 16,
+              }}
+            >
+              <div>
+                <p
+                  style={{
+                    margin: 0,
+                    color: '#6ee7b7',
+                    fontSize: 11,
+                    fontWeight: 950,
+                    letterSpacing: '.12em',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  OCIO · TEMPORADA
+                </p>
+                <h2

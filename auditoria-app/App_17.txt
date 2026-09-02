@@ -1,0 +1,915 @@
+                      gap: 8,
+                      marginTop: 12,
+                    }}
+                  >
+                    <div
+                      style={{
+                        ...miniTarjetaBlanca,
+                        background: '#eff6ff',
+                        border: '1px solid #dbeafe',
+                      }}
+                    >
+                      <strong style={{ color: '#2563eb' }}>Baby</strong>
+                      <br />
+                      {cobro.total_turnos_baby || 0} turnos
+                    </div>
+                    <div
+                      style={{
+                        ...miniTarjetaBlanca,
+                        background: '#fff7ed',
+                        border: '1px solid #ffedd5',
+                      }}
+                    >
+                      <strong style={{ color: '#ea580c' }}>Intensivos</strong>
+                      <br />
+                      {cobro.total_turnos_intensivos || 0} turnos
+                    </div>
+                    <div
+                      style={{
+                        ...miniTarjetaBlanca,
+                        background: '#f0fdf4',
+                        border: '1px solid #dcfce7',
+                      }}
+                    >
+                      <strong style={{ color: '#16a34a' }}>Ocio</strong>
+                      <br />
+                      {cobro.total_turnos_ocio || 0} turnos
+                    </div>
+                    <div
+                      style={{
+                        ...miniTarjetaBlanca,
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                      }}
+                    >
+                      <strong>Subtotal</strong>
+                      <br />
+                      {formatearEuros(cobro.subtotal_sesiones)}
+                    </div>
+                    <div
+                      style={{
+                        ...miniTarjetaBlanca,
+                        background:
+                          Number(cobro.ajustes_total || 0) !== 0
+                            ? '#fefce8'
+                            : '#f8fafc',
+                        border:
+                          Number(cobro.ajustes_total || 0) !== 0
+                            ? '1px solid #fde68a'
+                            : '1px solid #e2e8f0',
+                      }}
+                    >
+                      <strong>Ajustes</strong>
+                      <br />
+                      {formatearEuros(cobro.ajustes_total)}
+                    </div>
+                  </section>
+
+                  <div
+                    style={{
+                      ...gridFormulario,
+                      marginTop: 12,
+                      padding: 12,
+                      borderRadius: 14,
+                      background: 'rgba(248, 250, 252, 0.92)',
+                      border: '1px solid #e2e8f0',
+                    }}
+                  >
+                    <label style={labelCampo}>
+                      Tarifa por sesión
+                      <input
+                        type="number"
+                        value={
+                          tarifasEditadasCobros[cobro.entrenador_id] ??
+                          String(cobro.tarifa_por_turno ?? 0)
+                        }
+                        onChange={(e) =>
+                          setTarifasEditadasCobros({
+                            ...tarifasEditadasCobros,
+                            [cobro.entrenador_id]: e.target.value,
+                          })
+                        }
+                        style={inputCampo}
+                      />
+                    </label>
+                    <div style={{ ...labelCampo, justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={() => guardarTarifaCobro(cobro)}
+                        style={botonSecundario}
+                      >
+                        Guardar tarifa
+                      </button>
+                    </div>
+                    <div style={{ ...labelCampo, justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={() => crearAjusteCobro(cobro)}
+                        style={botonSecundario}
+                      >
+                        + Ajuste manual
+                      </button>
+                    </div>
+                    <div style={{ ...labelCampo, justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={() => abrirPdfCobroEntrenador(cobro)}
+                        style={botonPrincipal}
+                      >
+                        PDF individual
+                      </button>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      marginTop: 10,
+                      paddingTop: 10,
+                      borderTop: '1px solid #e2e8f0',
+                    }}
+                  >
+                    <button
+                      onClick={() => cambiarEstadoCobro(cobro, 'abierto')}
+                      style={botonMenu(cobro.estado_mes === 'abierto')}
+                    >
+                      Abierto
+                    </button>
+                    <button
+                      onClick={() => cambiarEstadoCobro(cobro, 'revisado')}
+                      style={botonMenu(cobro.estado_mes === 'revisado')}
+                    >
+                      Revisado
+                    </button>
+                    <button
+                      onClick={() => cambiarEstadoCobro(cobro, 'cerrado')}
+                      style={botonMenu(cobro.estado_mes === 'cerrado')}
+                    >
+                      Cerrado
+                    </button>
+                    <button
+                      onClick={() => cambiarEstadoCobro(cobro, 'pagado')}
+                      style={botonMenu(cobro.estado_mes === 'pagado')}
+                    >
+                      Pagado
+                    </button>
+                    {Number(cobro.ajustes_total || 0) !== 0 && (
+                      <button
+                        onClick={() => limpiarAjustesCobro(cobro)}
+                        style={botonPeligroMini}
+                      >
+                        Limpiar ajustes
+                      </button>
+                    )}
+                  </div>
+
+                  {cobro.nota_direccion && (
+                    <div style={{ ...avisoCompleto, marginTop: 10 }}>
+                      <strong>Nota dirección:</strong> {cobro.nota_direccion}
+                    </div>
+                  )}
+
+                  {cobro.pendientes_revisar > 0 && (
+                    <div style={{ ...avisoPendiente, marginTop: 10 }}>
+                      Hay {cobro.pendientes_revisar} turno(s) pendiente(s) de
+                      revisar/publicar antes de cerrar el mes.
+                    </div>
+                  )}
+
+                  <details
+                    style={{
+                      marginTop: 12,
+                      border: '1px solid #e2e8f0',
+                      borderRadius: 14,
+                      background: '#fff',
+                      overflow: 'hidden',
+                    }}
+                  >
+                    <summary
+                      style={{
+                        cursor: 'pointer',
+                        fontWeight: 900,
+                        padding: '11px 13px',
+                        color: '#334155',
+                        background: '#f8fafc',
+                      }}
+                    >
+                      Ver detalle de turnos ({detalles.length})
+                    </summary>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gap: 8,
+                        padding: 10,
+                        maxHeight: 360,
+                        overflowY: 'auto',
+                        overscrollBehavior: 'contain',
+                        WebkitOverflowScrolling: 'touch',
+                        scrollbarGutter: 'stable',
+                      }}
+                    >
+                      {detalles.map((detalleCobro) => (
+                        <div
+                          key={`${detalleCobro.entrenador_id}-${detalleCobro.grupo_id}-${detalleCobro.fecha}-${detalleCobro.hora_inicio}`}
+                          style={{
+                            ...miniTarjetaBlanca,
+                            border:
+                              detalleCobro.origen_cobro === 'MANUAL'
+                                ? '1px solid #fed7aa'
+                                : '1px solid #e2e8f0',
+                            background:
+                              detalleCobro.origen_cobro === 'MANUAL'
+                                ? '#fff7ed'
+                                : '#fff',
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              gap: 8,
+                              alignItems: 'flex-start',
+                            }}
+                          >
+                            <div style={{ minWidth: 0 }}>
+                              <strong>
+                                {formatearFecha(detalleCobro.fecha)} ·{' '}
+                                {horaCorta(detalleCobro.hora_inicio)}-
+                                {horaCorta(detalleCobro.hora_fin)} ·{' '}
+                                {detalleCobro.modalidad}
+                              </strong>
+                              {detalleCobro.origen_cobro === 'MANUAL' && (
+                                <span
+                                  style={{
+                                    marginLeft: 8,
+                                    padding: '3px 6px',
+                                    borderRadius: 999,
+                                    background: '#ffedd5',
+                                    color: '#c2410c',
+                                    fontSize: 10,
+                                    fontWeight: 950,
+                                  }}
+                                >
+                                  MANUAL
+                                </span>
+                              )}
+                              <p style={{ margin: '5px 0 0' }}>
+                                {detalleCobro.nombre_grupo} ·{' '}
+                                {detalleCobro.total_alumnos} niños ·{' '}
+                                {formatearEuros(detalleCobro.importe_turno)}
+                              </p>
+                              {detalleCobro.observaciones && (
+                                <p
+                                  style={{
+                                    margin: '5px 0 0',
+                                    color: '#64748b',
+                                  }}
+                                >
+                                  {detalleCobro.observaciones}
+                                </p>
+                              )}
+                            </div>
+                            {detalleCobro.origen_cobro === 'MANUAL' && (
+                              <button
+                                onClick={() =>
+                                  eliminarEntrenoManualCobro(detalleCobro)
+                                }
+                                style={botonPeligroMini}
+                              >
+                                Eliminar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </details>
+
+                  {cobro.detalle_ajustes && (
+                    <details
+                      style={{
+                        marginTop: 10,
+                        border: '1px solid #fde68a',
+                        borderRadius: 14,
+                        background: '#fff',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <summary
+                        style={{
+                          cursor: 'pointer',
+                          fontWeight: 900,
+                          padding: '11px 13px',
+                          color: '#854d0e',
+                          background: '#fefce8',
+                        }}
+                      >
+                        Ver ajustes manuales
+                      </summary>
+                      <div
+                        style={{
+                          maxHeight: 280,
+                          overflowY: 'auto',
+                          overscrollBehavior: 'contain',
+                          WebkitOverflowScrolling: 'touch',
+                          scrollbarGutter: 'stable',
+                          padding: 10,
+                        }}
+                      >
+                        <pre style={{ ...bloqueTexto, margin: 0 }}>
+                          {cobro.detalle_ajustes}
+                        </pre>
+                      </div>
+                    </details>
+                  )}
+                </article>
+              );
+            })}
+          </section>
+        </section>
+      )}
+
+      {pantalla === 'intensivos' &&
+        PantallaIntensivos({
+          abrirPanelIntensivo,
+          actualizarDiaIntensivoDesdeApp,
+          actualizarDiplomaIntensivo,
+          actualizarNivelAlumnoIntensivo,
+          actualizarRecuperacionIntensivo,
+          agendaBadgeModalidad,
+          agendaAlumnoLinea,
+          agendaGrupoLinea,
+          agendaGrupoPropuesta,
+          agruparRecomendacionesDia,
+          alumnoSeleccionadoIntensivoId,
+          alumnosDelIntensivo,
+          alumnosDisponiblesParaIntensivo,
+          asistenciasDelIntensivoDia,
+          autoproponerNivelesDiploma,
+          cambiarEstadoIntensivoCurso,
+          avisoCompleto,
+          avisoDisponibilidadDiaIntensivo,
+          avisoNeutral,
+          avisoPendiente,
+          ayudaDesplegableCompacta,
+          añadirAlumnoAIntensivo,
+          barraPasosIntensivo,
+          borrarDiaIntensivoDesdeApp,
+          borrarGrupoIntensivo,
+          borrarIntensivoCompleto,
+          botonMenu,
+          botonPasoIntensivo,
+          botonPeligro,
+          botonPeligroMini,
+          botonPrincipal,
+          botonSecundario,
+          buscador,
+          busquedaAlumnoIntensivo,
+          busquedaIntensivos,
+          cabeceraPantalla,
+          calcularFechasCuatroSesionesIntensivo,
+          cargando,
+          cargarIntensivos,
+          cerrarPanelesIntensivo,
+          chipResumenCursoIntensivo,
+          claveAlumnoRecomendado,
+          claveGrupoRecomendado,
+          codigoNivelPorId,
+          crearCuatroSesionesIntensivo,
+          crearGrupoDesdeRecomendacion,
+          crearTodosGruposDesdeRecomendacionIntensivo,
+          crearGrupoNormalIntensivo,
+          crearGrupoVacioPropuestaIntensivo,
+          generarPlantillaCuatroDiasIntensivo,
+          crearPlantillaCuatroDiasIntensivo,
+          cargarEdicionGruposIntensivoDia,
+          abrirGestionOperativaIntensivoDia,
+          configurarWhatsappIntensivoApp,
+          enlaceWhatsappIntensivoApp,
+          guardarComposicionDiaIntensivo,
+          crearIntensivoDesdeApp,
+          destinoAlumnoRecomendado,
+          diaActivoIntensivoId,
+          diaAsistenciaSeleccionadoId,
+          diaEditandoIntensivoId,
+          diaGrupoSeleccionadoId,
+          diaIntensivoInicial,
+          diasDelIntensivo,
+          eliminarRecuperacionIntensivo,
+          entrenadores,
+          entrenadoresApoyoPorGrupoRecomendado,
+          entrenadoresDisponiblesDiaIntensivo,
+          entrenadoresPorGrupoRecomendado,
+          error,
+          esVistaMovilApp,
+          enfocarElementoApp,
+          estiloBadgePistaApp,
+          estiloGrupoPorPistaApp,
+          estiloValidacionPedagogicaApp,
+          etiquetaPistaVisualApp,
+          etiquetaSuperior,
+          filtroIntensivos,
+          formDiaIntensivo,
+          formGrupoIntensivo,
+          formIntensivo,
+          temporadaActivaCierre,
+          formatearAlumnoListadoOperativo,
+          formatearFecha,
+          formatearObservaciones,
+          formularioCaja,
+          generarMásDesdeAsistencias,
+          generarRecomendacionGruposIntensivo,
+          generarTrabajoDiarioAutomaticoGrupo,
+          gestionarAlumnosIntensivoId,
+          gestionarAsistenciaIntensivoId,
+          gestionarDiplomasIntensivoId,
+          gestionarGruposIntensivoId,
+          gestionarMásIntensivoId,
+          gestionarPanelControlIntensivoId,
+          gridFormulario,
+          gruposDestinoRecuperacion,
+          gruposNormalesDelDiaIntensivo,
+          guardarDiaIntensivo,
+          inputCampo,
+          intensivoCursoAbiertoId,
+          intensivoInicial,
+          intensivos,
+          intensivosFiltrados,
+          labelCampo,
+          marcarAsistenciaIntensivo,
+          reiniciarGruposDiaIntensivoDesdeApp,
+          mesIntensivos,
+          miniTarjetaBlanca,
+          mostrarFormularioIntensivo,
+          mostrarPlantillaCuatroSesionesIntensivoId,
+          mostrarVolcadoIntensivoId,
+          necesitaDosEntrenadoresGrupoApp,
+          nivelesDiplomaIntensivo,
+          nombreGrupoVisualApp,
+          nombresGruposBaseRecomendados,
+          observacionesAutomaticasGrupoIntensivo,
+          observacionesAutomaticasGrupoIntensivoManual,
+          observacionesPorGrupoRecomendado,
+          opcionesEstadoDiplomaIntensivo,
+          opcionesEstadoRecuperacionIntensivo,
+          opcionesNivel,
+          opcionesOrigenNivelAlumno,
+          opcionesPistaGrupoIntensivo,
+          opcionesRecomendacionIntensivo,
+          panelControlDelIntensivo,
+          plantillaCuatroSesionesInicial,
+          plantillaCuatroSesionesIntensivo,
+          prepararEdicionDiaIntensivo,
+          prepararCambioRevisionIntensivo,
+          moverAlumnoManualRevisionIntensivo,
+          analizarRevisionEntreSesionesIntensivo,
+          revisionIntensivoId,
+          revisionIntensivoDiaId,
+          revisionIntensivoSugerencias,
+          revisionIntensivoAnalizando,
+          revisionIntensivoAnalizado,
+          setRevisionIntensivoDiaId,
+          setRevisionIntensivoSugerencias,
+          setRevisionIntensivoAnalizado,
+          quitarAlumnoDeIntensivo,
+          recomendacionesDelDiaIntensivo,
+          recuperacionesDelIntensivo,
+          recomendacionesRecuperacion,
+          recomendacionesDeRecuperacion,
+          aprobarRecuperacionInteligente,
+          reportesDetalleAlumnoIntensivo,
+          responsableReporteRecomendadoApp,
+          responsablesReportePorGrupoRecomendado,
+          resultadoVolcadoIntensivo,
+          resumenAlumnoIntensivo,
+          resumenFinalDelIntensivo,
+          resumenReportesDelIntensivo,
+          selectCampo,
+          setAlumnoSeleccionadoIntensivoId,
+          setBusquedaAlumnoIntensivo,
+          setBusquedaIntensivos,
+          setDestinoAlumnoRecomendado,
+          setDiaEditandoIntensivoId,
+          setDiaGrupoSeleccionadoId,
+          setEntrenadoresApoyoPorGrupoRecomendado,
+          setEntrenadoresPorGrupoRecomendado,
+          setFiltroIntensivos,
+          setMesIntensivos,
+          setFormDiaIntensivo,
+          setFormGrupoIntensivo,
+          setFormIntensivo,
+          setGestionarAlumnosIntensivoId,
+          setGestionarDiplomasIntensivoId,
+          setGestionarMásIntensivoId,
+          setIntensivoCursoAbiertoId,
+          setMostrarFormularioIntensivo,
+          setMostrarPlantillaCuatroSesionesIntensivoId,
+          setMostrarVolcadoIntensivoId,
+          setObservacionesPorGrupoRecomendado,
+          setPlantillaCuatroSesionesIntensivo,
+          setRecomendacionesGrupoIntensivo,
+          setResponsablesReportePorGrupoRecomendado,
+          setResultadoVolcadoIntensivo,
+          setTextoVolcadoIntensivo,
+          setTrabajoDiarioPorGrupoRecomendado,
+          tarjeta,
+          tarjetaIntensivoCurso,
+          textoBaseDiplomaIntensivo,
+          textoNecesidadDosEntrenadoresApp,
+          textoValidacionPedagogicaGrupoApp,
+          textoVolcadoIntensivo,
+          trabajoDiarioPorGrupoRecomendado,
+          volcarListadoAlumnosIntensivo,
+        })}
+
+      {pantalla === 'listados' && (
+        <section>
+          <div style={cabeceraPantalla}>
+            <h2>Listados cargados</h2>
+            <button onClick={cargarListados}>Actualizar listados</button>
+          </div>
+
+          <input
+            value={busquedaListados}
+            onChange={(e) => setBusquedaListados(e.target.value)}
+            placeholder="Buscar semana, modalidad, estado o fecha..."
+            style={buscador}
+          />
+
+          <div
+            style={{
+              display: 'flex',
+              gap: 8,
+              flexWrap: 'wrap',
+              marginBottom: 16,
+            }}
+          >
+            <button
+              onClick={() => setFiltroListados('todos')}
+              style={botonMenu(filtroListados === 'todos')}
+            >
+              Todos
+            </button>
+            <button
+              onClick={() => setFiltroListados('pendientes')}
+              style={botonMenu(filtroListados === 'pendientes')}
+            >
+              Pendientes revisar
+            </button>
+            <button
+              onClick={() => setFiltroListados('altas')}
+              style={botonMenu(filtroListados === 'altas')}
+            >
+              Altas nuevas
+            </button>
+            <button
+              onClick={() => setFiltroListados('no_encontrados')}
+              style={botonMenu(filtroListados === 'no_encontrados')}
+            >
+              No encontrados
+            </button>
+            <button
+              onClick={() => setFiltroListados('fuera_plazo')}
+              style={botonMenu(filtroListados === 'fuera_plazo')}
+            >
+              Fuera de plazo
+            </button>
+          </div>
+
+          {cargando && <p>Cargando listados...</p>}
+
+          {!cargando && listadosFiltrados.length === 0 && !error && (
+            <article style={tarjeta}>
+              <h3 style={{ marginTop: 0 }}>Sin listados</h3>
+              <p style={{ marginBottom: 0 }}>
+                No hay listados que coincidan con el filtro actual.
+              </p>
+            </article>
+          )}
+
+          <section style={{ display: 'grid', gap: 12 }}>
+            {listadosFiltrados.map((listado) => (
+              <article key={listado.listado_id} style={tarjeta}>
+                <h3 style={{ margin: 0 }}>{listado.semana || 'Sin semana'}</h3>
+                <p>
+                  {formatearFecha(listado.fecha)} ·{' '}
+                  {listado.hora_inicio.slice(0, 5)}–
+                  {listado.hora_fin.slice(0, 5)} · {listado.modalidad}
+                </p>
+                <p>
+                  <strong>Estado:</strong> {listado.estado}
+                </p>
+                <p>
+                  <strong>Plazo:</strong>{' '}
+                  {listado.fuera_de_plazo ? 'Fuera de plazo' : 'En plazo'}
+                </p>
+                <hr />
+                <p>
+                  <strong>Total detectados:</strong>{' '}
+                  {listado.total_nombres_detectados || 0}
+                </p>
+                <p>
+                  <strong>Encontrados:</strong> {listado.encontrados || 0} ·{' '}
+                  <strong>Altas nuevas:</strong> {listado.altas_nuevas || 0} ·{' '}
+                  <strong>Pendientes:</strong> {listado.pendientes_revisar || 0}
+                </p>
+                <p>
+                  <strong>No encontrados:</strong> {listado.no_encontrados || 0}{' '}
+                  · <strong>Duplicados:</strong> {listado.duplicados || 0}
+                </p>
+              </article>
+            ))}
+          </section>
+        </section>
+      )}
+
+      {vistaPreviaDisponibilidadEditor &&
+        borradorDisponibilidadEditor &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="availability-preview-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Vista previa de disponibilidad semanal"
+          >
+            <section className="availability-preview-sheet">
+              <header>
+                <div>
+                  <span className="availability-editor-kicker">VISTA PREVIA</span>
+                  <h2>
+                    Semana{' '}
+                    {rangoSemanaAgenda(
+                      borradorDisponibilidadEditor.semana_inicio
+                    )}
+                  </h2>
+                  <p>
+                    Límite:{' '}
+                    {new Date(
+                      borradorDisponibilidadEditor.fecha_limite
+                    ).toLocaleString('es-ES', {
+                      weekday: 'long',
+                      day: '2-digit',
+                      month: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setVistaPreviaDisponibilidadEditor(false)}
+                >
+                  Cerrar
+                </button>
+              </header>
+
+              <div className="availability-preview-days">
+                {borradorDisponibilidadEditor.dias
+                  .filter((dia) => dia.activo && dia.turnos.length > 0)
+                  .map((dia) => (
+                    <article key={dia.fecha}>
+                      <div>
+                        <strong>{capitalizarPrimera(dia.nombre)}</strong>
+                        <span>{formatearFecha(dia.fecha)}</span>
+                      </div>
+                      <ul>
+                        {dia.turnos.map((turno) => (
+                          <li key={turno.id}>
+                            <strong>
+                              {turno.hora_inicio}–{turno.hora_fin}
+                            </strong>
+                            <span>{turno.modalidades.join(' · ')}</span>
+                            {turno.nota && <small>{turno.nota}</small>}
+                          </li>
+                        ))}
+                      </ul>
+                    </article>
+                  ))}
+              </div>
+
+              {resumenBorradorDisponibilidadEditor.turnos === 0 && (
+                <p className="availability-preview-empty">
+                  No hay ningún turno activo para publicar.
+                </p>
+              )}
+
+              <footer>
+                <button
+                  type="button"
+                  className="availability-soft-button"
+                  onClick={() => setVistaPreviaDisponibilidadEditor(false)}
+                >
+                  Volver al editor
+                </button>
+                <button
+                  type="button"
+                  className="availability-primary-button"
+                  disabled={
+                    guardandoDisponibilidadEditor ||
+                    publicandoDisponibilidadEditor
+                  }
+                  onClick={async () => {
+                    const guardado =
+                      await guardarBorradorDisponibilidadEditor();
+                    if (guardado) setVistaPreviaDisponibilidadEditor(false);
+                  }}
+                >
+                  {guardandoDisponibilidadEditor
+                    ? 'Guardando...'
+                    : 'Guardar borrador'}
+                </button>
+                <button
+                  type="button"
+                  className="availability-publish-button"
+                  disabled={
+                    guardandoDisponibilidadEditor ||
+                    publicandoDisponibilidadEditor ||
+                    resumenBorradorDisponibilidadEditor.turnos === 0
+                  }
+                  onClick={() => void publicarDisponibilidadEditor()}
+                >
+                  {publicandoDisponibilidadEditor
+                    ? 'Publicando...'
+                    : 'Publicar semana'}
+                </button>
+              </footer>
+            </section>
+          </div>,
+          document.body
+        )}
+
+      {alumnoReporteActivo &&
+        typeof document !== 'undefined' &&
+        createPortal(
+          <div
+            className="trainer-report-overlay"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Reporte de ${alumnoReporteActivo.alumno}`}
+          >
+            {renderFormularioReporteEntrenador(
+              alumnoReporteActivo,
+              grupoReporteActivo?.nivel_grupo || '',
+              'sheet'
+            )}
+          </div>,
+          document.body
+        )}
+      </div>
+    </main>
+  );
+}
+
+function AppConAuth() {
+  const [sesion, setSesion] = useState<SesionAuthApp | null>(null);
+  const [perfil, setPerfil] = useState<PerfilUsuarioApp | null>(null);
+  const [sesionInvitacion, setSesionInvitacion] =
+    useState<SesionAuthApp | null>(null);
+  const [modoPasswordUrl, setModoPasswordUrl] = useState<
+    'invite' | 'recovery'
+  >('invite');
+  const [cargandoAuth, setCargandoAuth] = useState(true);
+  const [errorAuth, setErrorAuth] = useState('');
+
+  async function activarSesion(nuevaSesion: SesionAuthApp) {
+    const usuario = nuevaSesion.user.id
+      ? nuevaSesion.user
+      : await obtenerUsuarioAuthApp(nuevaSesion.access_token);
+    const sesionCompleta = { ...nuevaSesion, user: usuario };
+    const perfilUsuario = await cargarPerfilUsuarioApp(
+      sesionCompleta.access_token,
+      usuario.id
+    );
+
+    if (!perfilUsuario) {
+      borrarSesionAuthApp();
+      setSesion(null);
+      setPerfil(null);
+      setErrorAuth(
+        `La cuenta ${
+          usuario.email || ''
+        } existe en Supabase Auth, pero todavía no tiene perfil en usuarios_app. Crea/vincula el perfil y vuelve a entrar.`
+      );
+      return;
+    }
+
+    guardarSesionAuthApp(sesionCompleta);
+    setSesion(sesionCompleta);
+    setPerfil(perfilUsuario);
+    setErrorAuth('');
+  }
+
+  useEffect(() => {
+    async function iniciarAuth() {
+      try {
+        const sesionUrl = extraerSesionInvitacionDesdeUrlApp();
+        if (sesionUrl) {
+          setModoPasswordUrl(tipoFlujoPasswordDesdeUrlApp());
+          setSesionInvitacion(sesionUrl);
+          setCargandoAuth(false);
+          return;
+        }
+
+        const guardada = leerSesionGuardadaApp();
+        if (!guardada) {
+          setCargandoAuth(false);
+          return;
+        }
+
+        try {
+          const usuario = await obtenerUsuarioAuthApp(guardada.access_token);
+          await activarSesion({ ...guardada, user: usuario });
+        } catch (error) {
+          if (guardada.refresh_token) {
+            const refrescada = await refrescarSesionAuthApp(
+              guardada.refresh_token
+            );
+            await activarSesion(refrescada);
+          } else {
+            borrarSesionAuthApp();
+          }
+        }
+      } catch (error: any) {
+        borrarSesionAuthApp();
+        setErrorAuth(error?.message || 'No se ha podido comprobar la sesión.');
+      } finally {
+        setCargandoAuth(false);
+      }
+    }
+
+    iniciarAuth();
+  }, []);
+
+  async function login(email: string, password: string) {
+    const nuevaSesion = await iniciarSesionEmailPasswordApp(email, password);
+    await activarSesion(nuevaSesion);
+  }
+
+  async function recuperarPassword(email: string) {
+    await solicitarRecuperacionPasswordApp(email);
+  }
+
+  async function completarInvitacion(sesionNueva: SesionAuthApp) {
+    await activarSesion(sesionNueva);
+    setSesionInvitacion(null);
+  }
+
+  function salir() {
+    borrarSesionAuthApp();
+    setSesion(null);
+    setPerfil(null);
+    setSesionInvitacion(null);
+    setErrorAuth('');
+    limpiarUrlAuthApp();
+  }
+
+  if (cargandoAuth) {
+    return (
+      <main style={authShellApp}>
+        <section style={authCardApp}>
+          <h1 style={{ marginTop: 0 }}>Cargando acceso...</h1>
+          <p style={{ color: '#475569' }}>Comprobando sesión privada.</p>
+        </section>
+      </main>
+    );
+  }
+
+  if (sesionInvitacion) {
+    return (
+      <PantallaCrearPasswordApp
+        sesionInvitacion={sesionInvitacion}
+        modo={modoPasswordUrl}
+        onCompletado={completarInvitacion}
+      />
+    );
+  }
+
+  if (errorAuth && !sesion && !perfil) {
+    return <PantallaAuthErrorApp mensaje={errorAuth} onSalir={salir} />;
+  }
+
+  if (!sesion || !perfil) {
+    return (
+      <PantallaLoginApp
+        onLogin={login}
+        onRecuperarPassword={recuperarPassword}
+      />
+    );
+  }
+
+  return <AppContenido perfilUsuario={perfil} onLogout={salir} />;
+}
+
+export default function App() {
+  const tokenTestNivel = tokenTestNivelDesdeUrlApp();
+
+  return (
+    <PantallaSegura>
+      {tokenTestNivel ? (
+        <PantallaTestNivelPublicoApp token={tokenTestNivel} />
+      ) : (
+        <AppConAuth />
+      )}
+    </PantallaSegura>
+  );
+}

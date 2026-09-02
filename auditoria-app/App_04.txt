@@ -1,0 +1,2500 @@
+                  )}
+                </div>
+              </article>
+            );
+          })
+        )}
+      </div>
+    );
+  }
+
+  async function guardarCambioPuntualOcio() {
+    if (!ocioCambioForm.alumnoId) {
+      alert('Selecciona el alumno que cambia puntualmente.');
+      return;
+    }
+    if (!ocioCambioForm.diaDestino) {
+      alert('Selecciona el día solicitado por la familia.');
+      return;
+    }
+    if (!ocioCambioForm.grupoDestinoId) {
+      alert('Selecciona uno de los grupos propuestos por el recomendador.');
+      return;
+    }
+
+    const fecha =
+      fechaCambioOcioPorDia(ocioCambioForm.diaDestino) ||
+      fechaDestinoCambioOcio(ocioCambioForm.grupoDestinoId);
+
+    if (!fecha) {
+      alert('Selecciona una semana válida para el cambio.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('crear_reubicacion_ocio_app', {
+        p_alumno_id: ocioCambioForm.alumnoId,
+        p_fecha: fecha,
+        p_grupo_destino_id: ocioCambioForm.grupoDestinoId,
+        p_motivo: ocioCambioForm.motivo || null,
+      });
+      limpiarFormularioCambioOcio();
+      await cargarOcioCambios();
+      await cargarOcioAlumnos();
+      await cargarOcioGrupos();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error guardando cambio puntual de Ocio'
+      );
+    }
+    setCargando(false);
+  }
+
+  async function eliminarCambioPuntualOcio(cambio: OcioCambioPuntualApp) {
+    const confirmar = window.confirm(
+      `¿Eliminar el cambio puntual de ${cambio.alumno}?`
+    );
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('eliminar_reubicacion_ocio_app', {
+        p_reubicacion_id: cambio.reubicacion_id,
+      });
+      await cargarOcioCambios();
+      await cargarOcioAlumnos();
+      await cargarOcioGrupos();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error eliminando cambio puntual de Ocio'
+      );
+    }
+    setCargando(false);
+  }
+
+  const ocioAlumnosFiltrados = ocioAlumnos.filter((alumno) => {
+    const coincideBusqueda =
+      `${alumno.alumno} ${alumno.nivel_usado || ''} ${alumno.grupo_estable || ''}`
+        .toLowerCase()
+        .includes(busquedaOcio.toLowerCase());
+
+    const diaAlumno = textoSinAcentosGrupoApp(
+      alumno.dia_fijo || alumno.grupo_dia || ''
+    );
+    const coincideDia =
+      !filtroDiaFichasOcio ||
+      diaAlumno === textoSinAcentosGrupoApp(filtroDiaFichasOcio);
+
+    const recomendacionCambio = ocioRecomendacionesCambio.find(
+      (item) => item.alumno_id === alumno.alumno_id
+    );
+    const necesitaRevisarGrupo = Boolean(
+      recomendacionCambio && recomendacionCambio.recomendacion !== 'OK'
+    );
+
+    const coincideEstado =
+      filtroEstadoFichasOcio === 'todos' ||
+      (filtroEstadoFichasOcio === 'sin_grupo' && !alumno.grupo_id) ||
+      (filtroEstadoFichasOcio === 'sin_nivel' &&
+        !(alumno.nivel_usado || alumno.nivel)) ||
+      (filtroEstadoFichasOcio === 'revisar_grupo' && necesitaRevisarGrupo);
+
+    return coincideBusqueda && coincideDia && coincideEstado;
+  });
+
+  async function cargarEntrenadores() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const data = await consultarSupabase<EntrenadorResumen>(
+        'v_panel_entrenadores',
+        'select=*&order=nombre_completo.asc'
+      );
+      setEntrenadores(data);
+
+      if (puedeGestionarAccesosUsuarioApp) {
+        void cargarEstadosAccesoEntrenadores(data);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setEntrenadores([]);
+    }
+
+    setCargando(false);
+  }
+
+  async function llamarGestionUsuariosOperativos(
+    accion: string,
+    payload: Record<string, unknown> = {}
+  ) {
+    const accessToken = await obtenerAccessTokenSupabaseApp();
+
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/functions/v1/gestionar-usuarios-operativos-app`,
+      {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accion,
+          ...payload,
+        }),
+      }
+    );
+
+    const datos = await respuesta.json().catch(() => ({}));
+
+    if (!respuesta.ok) {
+      throw new Error(
+        datos?.message ||
+          datos?.error ||
+          `No se pudo gestionar el usuario (${respuesta.status}).`
+      );
+    }
+
+    return datos;
+  }
+
+  async function cargarUsuariosOperativos() {
+    if (!puedeGestionarAccesosUsuarioApp) {
+      setUsuariosOperativos([]);
+      return;
+    }
+
+    setCargandoUsuariosOperativos(true);
+    setError('');
+
+    try {
+      const datos = await llamarGestionUsuariosOperativos('listar');
+      setUsuariosOperativos(datos?.usuarios || []);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudieron cargar los usuarios de coordinación.'
+      );
+    } finally {
+      setCargandoUsuariosOperativos(false);
+    }
+  }
+
+  async function crearUsuarioOperativo() {
+    if (!puedeGestionarAccesosUsuarioApp) return;
+
+    const nombre = formUsuarioOperativo.nombre.trim();
+    const email = formUsuarioOperativo.email.trim().toLowerCase();
+    const rol = formUsuarioOperativo.rol;
+
+    if (!nombre || !email) {
+      setError('Completa nombre y email.');
+      return;
+    }
+
+    if (!email.includes('@')) {
+      setError('El email no parece válido.');
+      return;
+    }
+
+    if (
+      !window.confirm(
+        `¿Crear acceso de ${rolUsuarioTextoApp(rol)} para ${nombre}?\n\nSe enviará una invitación a ${email}.`
+      )
+    ) {
+      return;
+    }
+
+    setGestionandoUsuarioOperativoId('nuevo');
+    setError('');
+
+    try {
+      const redirectTo =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}${window.location.pathname}`
+          : '';
+
+      await llamarGestionUsuariosOperativos('crear', {
+        nombre,
+        email,
+        rol,
+        redirect_to: redirectTo,
+      });
+
+      setFormUsuarioOperativo({
+        nombre: '',
+        email: '',
+        rol: 'sub_coordinador',
+      });
+      setMostrarAltaUsuarioOperativo(false);
+      await cargarUsuariosOperativos();
+
+      window.alert(`Invitación enviada a ${email}.`);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo crear el acceso.'
+      );
+    } finally {
+      setGestionandoUsuarioOperativoId('');
+    }
+  }
+
+  async function gestionarUsuarioOperativo(
+    usuario: UsuarioOperativoGestionApp,
+    accion:
+      | 'desactivar'
+      | 'activar'
+      | 'reenviar_invitacion'
+      | 'enviar_recuperacion'
+  ) {
+    if (!puedeGestionarAccesosUsuarioApp) return;
+
+    const textos = {
+      desactivar: `¿Desactivar el acceso de ${usuario.nombre}?`,
+      activar: `¿Volver a activar el acceso de ${usuario.nombre}?`,
+      reenviar_invitacion: `¿Reenviar la invitación a ${usuario.email}?`,
+      enviar_recuperacion: `¿Enviar recuperación de contraseña a ${usuario.email}?`,
+    };
+
+    if (!window.confirm(textos[accion])) return;
+
+    setGestionandoUsuarioOperativoId(usuario.id);
+    setError('');
+
+    try {
+      const redirectTo =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}${window.location.pathname}`
+          : '';
+
+      await llamarGestionUsuariosOperativos(accion, {
+        usuario_id: usuario.id,
+        redirect_to: redirectTo,
+      });
+
+      await cargarUsuariosOperativos();
+
+      if (accion === 'reenviar_invitacion') {
+        window.alert(`Invitación reenviada a ${usuario.email}.`);
+      }
+
+      if (accion === 'enviar_recuperacion') {
+        window.alert(`Recuperación enviada a ${usuario.email}.`);
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo gestionar el usuario.'
+      );
+    } finally {
+      setGestionandoUsuarioOperativoId('');
+    }
+  }
+
+  async function llamarGestionAccesoEntrenador(
+    accion: string,
+    payload: Record<string, unknown> = {}
+  ) {
+    const accessToken = await obtenerAccessTokenSupabaseApp();
+
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/functions/v1/gestionar-acceso-usuario-app`,
+      {
+        method: 'POST',
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          accion,
+          ...payload,
+        }),
+      }
+    );
+
+    const datos = await respuesta.json().catch(() => ({}));
+
+    if (!respuesta.ok) {
+      throw new Error(
+        datos?.message ||
+          datos?.error ||
+          `No se pudo gestionar el acceso (${respuesta.status}).`
+      );
+    }
+
+    return datos;
+  }
+
+  async function cargarEstadosAccesoEntrenadores(
+    entrenadoresBase: EntrenadorResumen[] = entrenadores
+  ) {
+    if (!puedeGestionarAccesosUsuarioApp) {
+      setEstadosAccesoEntrenadores({});
+      return;
+    }
+
+    const ids = entrenadoresBase
+      .map((entrenador) => entrenador.entrenador_id)
+      .filter(Boolean);
+
+    if (ids.length === 0) {
+      setEstadosAccesoEntrenadores({});
+      return;
+    }
+
+    setCargandoEstadosAccesoEntrenadores(true);
+
+    try {
+      const datos = await llamarGestionAccesoEntrenador('listar_estados', {
+        entrenador_ids: ids,
+      });
+
+      const mapa: Record<string, EstadoAccesoEntrenadorApp> = {};
+      (datos?.estados || []).forEach((item: EstadoAccesoEntrenadorApp) => {
+        mapa[item.entrenador_id] = item;
+      });
+      setEstadosAccesoEntrenadores(mapa);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudieron cargar los estados de acceso.'
+      );
+    } finally {
+      setCargandoEstadosAccesoEntrenadores(false);
+    }
+  }
+
+  async function gestionarAccesoEntrenador(
+    entrenador: EntrenadorResumen,
+    accion:
+      | 'reenviar_invitacion'
+      | 'desactivar'
+      | 'activar'
+      | 'enviar_recuperacion'
+  ) {
+    if (!puedeGestionarAccesosUsuarioApp) {
+      setError('Solo el coordinador jefe puede gestionar accesos.');
+      return;
+    }
+
+    const textos = {
+      reenviar_invitacion: `¿Reenviar la invitación a ${entrenador.email}?`,
+      desactivar: `¿Desactivar el acceso de ${entrenador.nombre_completo}?\n\nLa ficha, grupos, reportes y cobros históricos NO se borran.`,
+      activar: `¿Volver a activar el acceso de ${entrenador.nombre_completo}?`,
+      enviar_recuperacion: `¿Enviar un email de recuperación de contraseña a ${entrenador.email}?`,
+    };
+
+    if (!window.confirm(textos[accion])) return;
+
+    setGestionandoAccesoEntrenadorId(entrenador.entrenador_id);
+    setError('');
+
+    try {
+      const redirectTo =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}${window.location.pathname}`
+          : '';
+
+      await llamarGestionAccesoEntrenador(accion, {
+        entrenador_id: entrenador.entrenador_id,
+        redirect_to: redirectTo,
+      });
+
+      await cargarEstadosAccesoEntrenadores();
+
+      if (accion === 'reenviar_invitacion') {
+        window.alert(`Invitación reenviada a ${entrenador.email}.`);
+      }
+
+      if (accion === 'enviar_recuperacion') {
+        window.alert(
+          `Email de recuperación enviado a ${entrenador.email}.`
+        );
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo gestionar el acceso.'
+      );
+    } finally {
+      setGestionandoAccesoEntrenadorId('');
+    }
+  }
+
+  async function crearAccesoAppEntrenador(entrenador: EntrenadorResumen) {
+    if (!puedeGestionarAccesosUsuarioApp) {
+      setError('Solo el coordinador jefe puede crear accesos a la app.');
+      return;
+    }
+
+    const email = String(entrenador.email || '').trim().toLowerCase();
+    if (!email) {
+      setError(
+        `La ficha de ${entrenador.nombre_completo} no tiene email de acceso. Edita la ficha antes de crear la cuenta.`
+      );
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Crear acceso app para ${entrenador.nombre_completo}?\n\n${email}\n\nSupabase enviará un email para que configure su contraseña.`
+    );
+    if (!confirmar) return;
+
+    setCreandoAccesoEntrenadorId(entrenador.entrenador_id);
+    setError('');
+
+    try {
+      const accessToken = await obtenerAccessTokenSupabaseApp();
+      const redirectTo =
+        typeof window !== 'undefined'
+          ? `${window.location.origin}${window.location.pathname}`
+          : '';
+
+      const respuesta = await fetch(
+        `${SUPABASE_URL}/functions/v1/invitar-usuario-app`,
+        {
+          method: 'POST',
+          headers: {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            entrenador_id: entrenador.entrenador_id,
+            nombre: entrenador.nombre_completo,
+            email,
+            redirect_to: redirectTo,
+          }),
+        }
+      );
+
+      const datos = await respuesta.json().catch(() => ({}));
+
+      if (!respuesta.ok) {
+        const mensaje =
+          datos?.message ||
+          datos?.error ||
+          `No se pudo crear el acceso (${respuesta.status}).`;
+        throw new Error(mensaje);
+      }
+
+      await cargarEstadosAccesoEntrenadores();
+
+      window.alert(
+        `Invitación enviada a ${email}.\n\nCuando abra el correo podrá configurar su contraseña y la cuenta quedará vinculada a la ficha de ${entrenador.nombre_completo}.`
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo crear el acceso del entrenador.'
+      );
+    }
+
+    setCreandoAccesoEntrenadorId('');
+  }
+
+  function pedirDatosAltaEntrenadorWhatsapp(entrenador: EntrenadorResumen) {
+    const nombre = nombreEntrenadorWhatsappPapis(
+      entrenador.nombre_completo || 'entrenador'
+    );
+
+    const mensaje = `Hola ${nombre} 👋
+
+Para darte de alta necesito que me pases:
+
+• Nombre completo
+• Email
+• Teléfono / WhatsApp
+• Titulación
+• Certificado de antecedentes sexuales
+
+Puedes enviarme la titulación y los antecedentes en PDF, foto o enlace.
+
+Gracias!`;
+
+    abrirPrevisualizacionWhatsapp(
+      `Alta entrenador · ${nombre}`,
+      mensaje
+    );
+  }
+
+  function abrirNuevoEntrenador() {
+    setFormEntrenador(entrenadorFormInicial());
+    setMostrarFormularioEntrenador(true);
+
+    window.setTimeout(() => {
+      document
+        .getElementById('formulario-gestion-entrenador')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }
+
+  function abrirEditarEntrenador(entrenador: EntrenadorResumen) {
+    setFormEntrenador({
+      id: entrenador.entrenador_id,
+      nombre: entrenador.nombre_completo || '',
+      email: entrenador.email || '',
+      telefono: entrenador.telefono || '',
+      tarifa: String(entrenador.tarifa_por_turno ?? 0),
+      activo: !!entrenador.activo,
+      chaqueta: !!entrenador.chaqueta_entregada,
+      especialidades: entrenador.especialidades || [],
+      titulacionEstado: entrenador.titulacion_estado || 'Pendiente',
+      titulacionUrl: entrenador.titulacion_url || '',
+      titulacionObs: entrenador.titulacion_observaciones || '',
+      antecedentesEstado: entrenador.antecedentes_estado || 'Pendiente',
+      antecedentesUrl: entrenador.antecedentes_url || '',
+      antecedentesObs: entrenador.antecedentes_observaciones || '',
+      observaciones: entrenador.observaciones_internas || '',
+    });
+    setMostrarFormularioEntrenador(true);
+
+    window.setTimeout(() => {
+      document
+        .getElementById('formulario-gestion-entrenador')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }
+
+  function alternarEspecialidadEntrenador(especialidad: string) {
+    setFormEntrenador((actual) => ({
+      ...actual,
+      especialidades: actual.especialidades.includes(especialidad)
+        ? actual.especialidades.filter((item) => item !== especialidad)
+        : [...actual.especialidades, especialidad],
+    }));
+  }
+
+  async function guardarEntrenadorGestion() {
+    if (!formEntrenador.nombre.trim()) {
+      alert('Pon el nombre del entrenador.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('guardar_entrenador_gestion_app', {
+        p_entrenador_id: formEntrenador.id,
+        p_nombre_completo: formEntrenador.nombre.trim(),
+        p_email: formEntrenador.email.trim() || null,
+        p_telefono: formEntrenador.telefono.trim() || null,
+        p_tarifa_por_turno: Number(formEntrenador.tarifa || 0),
+        p_activo: formEntrenador.activo,
+        p_chaqueta_entregada: formEntrenador.chaqueta,
+        p_especialidades: formEntrenador.especialidades,
+        p_titulacion_estado: formEntrenador.titulacionEstado,
+        p_titulacion_url: formEntrenador.titulacionUrl.trim() || null,
+        p_titulacion_observaciones: formEntrenador.titulacionObs.trim() || null,
+        p_antecedentes_estado: formEntrenador.antecedentesEstado,
+        p_antecedentes_url: formEntrenador.antecedentesUrl.trim() || null,
+        p_antecedentes_observaciones:
+          formEntrenador.antecedentesObs.trim() || null,
+        p_observaciones_internas: formEntrenador.observaciones.trim() || null,
+      });
+      setMostrarFormularioEntrenador(false);
+      setFormEntrenador(entrenadorFormInicial());
+      await cargarEntrenadores();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Error guardando entrenador'
+      );
+    }
+
+    setCargando(false);
+  }
+
+  async function eliminarEntrenadorGestion(entrenador: EntrenadorResumen) {
+    const confirmar = window.confirm(
+      `¿Eliminar la ficha de ${entrenador.nombre_completo}? Si tiene grupos históricos, primero se quitarán sus asignaciones para no bloquear la app.`
+    );
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('eliminar_entrenador_gestion_app', {
+        p_entrenador_id: entrenador.entrenador_id,
+      });
+      await cargarEntrenadores();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Error eliminando entrenador'
+      );
+    }
+
+    setCargando(false);
+  }
+
+  async function cargarDisponibilidad(semanaForzada?: string) {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const fechaReferenciaDisponibilidad = new Date();
+      if (
+        fechaReferenciaDisponibilidad.getDay() === 1 &&
+        fechaReferenciaDisponibilidad.getHours() < 6
+      ) {
+        fechaReferenciaDisponibilidad.setDate(
+          fechaReferenciaDisponibilidad.getDate() - 1
+        );
+      }
+
+      const semanaOperativaDisponibilidad = inicioSemanaAgenda(
+        claveFechaAgenda(fechaReferenciaDisponibilidad)
+      );
+
+      let semanaConsulta = semanaForzada ||
+        (esCoordinadorApp
+          ? semanaAgendaActiva || semanaOperativaDisponibilidad
+          : semanaEntrenadorSeleccionada || semanaOperativaDisponibilidad);
+
+      if (!esCoordinadorApp && !semanaForzada && !semanaEntrenadorSeleccionada) {
+        const objetivo =
+          await ejecutarFuncionAuthJson<{
+            semana_inicio: string | null;
+          }>('obtener_semana_disponibilidad_objetivo_entrenador_app', {});
+
+        semanaConsulta =
+          objetivo?.semana_inicio || semanaOperativaDisponibilidad;
+        setSemanaPublicadaObjetivoEntrenador(semanaConsulta || '');
+        setSemanaEntrenadorSeleccionada(semanaConsulta || '');
+      }
+
+      if (!esCoordinadorApp && semanaForzada) {
+        setSemanaEntrenadorSeleccionada(semanaForzada);
+      }
+
+      if (!semanaConsulta) {
+        setDisponibilidad([]);
+        setDisponibilidadEditorVista(null);
+        return;
+      }
+
+      const respuestaEditor =
+        await ejecutarFuncionAuthJson<RespuestaDisponibilidadPublicadaEntrenadoresEditor>(
+          'obtener_disponibilidad_publicada_entrenadores_editor_app',
+          { p_semana_inicio: semanaConsulta }
+        );
+
+      setDisponibilidadEditorVista(respuestaEditor);
+      setDisponibilidad(
+        (respuestaEditor.turnos || []).map((turno) => ({
+          ...turno,
+          fuente: 'editor' as const,
+        }))
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo cargar la disponibilidad publicada.'
+      );
+      setDisponibilidad([]);
+      setDisponibilidadEditorVista(null);
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  function abrirResumenCierreSemanal(
+    filtro: 'todos' | 'faltan_reportes' | 'asistencias_sin_confirmar' | 'criticos'
+  ) {
+    setFiltroReportes(filtro);
+    setBusquedaReportes('');
+
+    enfocarElementoApp('cierre-semanal-listado-pendientes', {
+      espera: 120,
+      block: 'start',
+    });
+  }
+
+  async function abrirPendienteCierreSemanal(reporte: ReportePendiente) {
+    setCargando(true);
+    setError('');
+
+    try {
+      const [anioDia, mesDia] = reporte.fecha.split('-').map(Number);
+      const mesObjetivo = `${anioDia}-${String(mesDia).padStart(2, '0')}`;
+      const semanaObjetivo = inicioSemanaAgenda(reporte.fecha);
+
+      // La Vista entrenador del coordinador usa la semana de trabajo activa.
+      // Sincronizamos primero esa semana para que el grupo objetivo no quede
+      // oculto por el filtro semanal de la propia Vista entrenador.
+      setAnioInicioTemporadaAgenda(mesDia >= 9 ? anioDia : anioDia - 1);
+      setMesAgenda(mesObjetivo);
+      setSemanaAgendaInicio(semanaObjetivo);
+      setBusquedaGrupoEntrenador('');
+      setTabVistaEntrenador('grupos');
+      setPantalla('entrenador');
+
+      await cargarGruposEntrenador();
+
+      const grupoObjetivo = gruposEntrenador.find(
+        (grupo) =>
+          grupo.grupo_id === reporte.grupo_id &&
+          grupo.entrenador_id === reporte.entrenador_id
+      );
+
+      // El estado React de cargarGruposEntrenador puede actualizarse después
+      // de este mismo tick. Aunque todavía no esté en la copia local, el
+      // identificador grupo+entrenador que trae Cierre semanal es suficiente
+      // para abrir exactamente la ficha correcta al renderizar.
+      setGrupoActivoEntrenador({
+        grupo_id: reporte.grupo_id,
+        entrenador_id: reporte.entrenador_id,
+      });
+      setSeccionGrupoEntrenador('asistencia');
+
+      window.setTimeout(() => {
+        const grupoDomId =
+          `trainer-group-${reporte.entrenador_id}-${reporte.grupo_id}`.replace(
+            /[^a-zA-Z0-9_-]/g,
+            '-'
+          );
+
+        const objetivo = document.getElementById(grupoDomId);
+
+        if (!objetivo) {
+          setError(
+            `He abierto Vista entrenador, pero no encuentro visible el grupo ${reporte.nombre_grupo}. Pulsa “Actualizar vista” si acaba de cambiar la semana.`
+          );
+          return;
+        }
+
+        let padre = objetivo.parentElement;
+        while (padre) {
+          if (padre instanceof HTMLDetailsElement) {
+            padre.open = true;
+          }
+          padre = padre.parentElement;
+        }
+
+        objetivo.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+
+        window.setTimeout(() => {
+          irASeccionGrupoEntrenador('asistencia', grupoDomId);
+        }, 180);
+      }, 520);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo abrir la tarea en Vista entrenador.'
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function cargarReportesPendientes() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const data = await consultarSupabase<ReportePendiente>(
+        'v_reportes_pendientes_entrenador_dos_entrenadores',
+        'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc,alumno.asc'
+      );
+      setReportesPendientes(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setReportesPendientes([]);
+    }
+
+    setCargando(false);
+  }
+
+  function periodoCobrosDesdeSemanaActiva() {
+    const semana = semanaAgendaActiva;
+
+    if (!semana) {
+      return {
+        anio: anioCobros,
+        mes: mesCobros,
+      };
+    }
+
+    // Tomamos el jueves de la semana como referencia.
+    // Así una semana 31/08–06/09 pertenece a septiembre, porque la mayor
+    // parte de sus días de trabajo están en septiembre.
+    const referencia = crearFechaAgenda(semana);
+    referencia.setDate(referencia.getDate() + 3);
+
+    return {
+      anio: referencia.getFullYear(),
+      mes: referencia.getMonth() + 1,
+    };
+  }
+
+  async function cargarCobros(
+    periodo?: { anio: number; mes: number }
+  ) {
+    const anioObjetivo = periodo?.anio ?? anioCobros;
+    const mesObjetivo = periodo?.mes ?? mesCobros;
+
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const [resumenData, detalleData] = await Promise.all([
+        consultarSupabase<CobroMensual>(
+          'v_cobros_mensuales_dos_entrenadores',
+          `select=*&anio=eq.${anioObjetivo}&mes=eq.${mesObjetivo}&order=entrenador.asc`
+        ),
+        consultarSupabase<CobroDetalleMensual>(
+          'v_cobros_detalle_mensual_dos_entrenadores',
+          `select=*&anio=eq.${anioObjetivo}&mes=eq.${mesObjetivo}&order=entrenador.asc,fecha.asc,hora_inicio.asc,modalidad.asc,nombre_grupo.asc`
+        ),
+      ]);
+      setCobros(resumenData);
+      setCobrosDetalle(detalleData);
+      const tarifas: Record<string, string> = {};
+      resumenData.forEach((cobro) => {
+        tarifas[cobro.entrenador_id] = String(
+          Number(cobro.tarifa_por_turno || 0)
+        );
+      });
+      setTarifasEditadasCobros(tarifas);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setCobros([]);
+      setCobrosDetalle([]);
+    }
+
+    setCargando(false);
+  }
+
+  async function cargarCobrosDesdeSemanaActiva() {
+    const periodo = periodoCobrosDesdeSemanaActiva();
+    setAnioCobros(periodo.anio);
+    setMesCobros(periodo.mes);
+    await cargarCobros(periodo);
+  }
+
+  function detallesDeCobro(entrenadorId: string) {
+    return cobrosDetalle.filter(
+      (detalleCobro) => detalleCobro.entrenador_id === entrenadorId
+    );
+  }
+
+  async function guardarTarifaCobro(cobro: CobroMensual) {
+    const valor = Number(
+      tarifasEditadasCobros[cobro.entrenador_id] ?? cobro.tarifa_por_turno ?? 0
+    );
+    if (Number.isNaN(valor) || valor < 0) {
+      alert('La tarifa tiene que ser un número válido.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('actualizar_tarifa_cobro_entrenador_app', {
+        p_entrenador_id: cobro.entrenador_id,
+        p_tarifa_por_turno: valor,
+      });
+      await cargarCobros();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error guardando tarifa');
+    }
+    setCargando(false);
+  }
+
+  async function crearAjusteCobro(cobro: CobroMensual) {
+    const concepto = window.prompt(
+      `Concepto del ajuste para ${cobro.entrenador}`,
+      'Ajuste manual'
+    );
+    if (concepto === null) return;
+
+    const importeTexto = window.prompt(
+      'Importe del ajuste. Usa negativo si quieres descontar. Ejemplo: 15 o -10',
+      '0'
+    );
+    if (importeTexto === null) return;
+
+    const importe = Number(importeTexto.replace(',', '.'));
+    if (Number.isNaN(importe)) {
+      alert('Importe no válido.');
+      return;
+    }
+
+    const observaciones =
+      window.prompt('Observación para dirección, si hace falta:', '') || '';
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('crear_ajuste_cobro_mes_app', {
+        p_entrenador_id: cobro.entrenador_id,
+        p_anio: cobro.anio,
+        p_mes: cobro.mes,
+        p_concepto: concepto.trim() || 'Ajuste manual',
+        p_importe: importe,
+        p_observaciones: observaciones.trim() || null,
+      });
+      await cargarCobros();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error creando ajuste');
+    }
+    setCargando(false);
+  }
+
+  async function limpiarAjustesCobro(cobro: CobroMensual) {
+    if (
+      !window.confirm(
+        `¿Eliminar todos los ajustes manuales de ${
+          cobro.entrenador
+        } en ${nombreMes(cobro.mes)} ${cobro.anio}?`
+      )
+    )
+      return;
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('limpiar_ajustes_cobro_mes_app', {
+        p_entrenador_id: cobro.entrenador_id,
+        p_anio: cobro.anio,
+        p_mes: cobro.mes,
+      });
+      await cargarCobros();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error limpiando ajustes');
+    }
+    setCargando(false);
+  }
+
+  async function cambiarEstadoCobro(cobro: CobroMensual, estado: string) {
+    const nota =
+      window.prompt(
+        `Nota para dirección en ${estado}:`,
+        cobro.nota_direccion || ''
+      ) || '';
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('guardar_estado_cobro_mes_app', {
+        p_entrenador_id: cobro.entrenador_id,
+        p_anio: cobro.anio,
+        p_mes: cobro.mes,
+        p_estado_mes: estado,
+        p_nota_direccion: nota.trim() || null,
+      });
+      await cargarCobros();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Error cambiando estado del cobro'
+      );
+    }
+    setCargando(false);
+  }
+
+  function htmlDetalleTurnosCobro(cobro: CobroMensual) {
+    const detalles = detallesDeCobro(cobro.entrenador_id);
+    if (detalles.length === 0) return '<p>Sin turnos detallados.</p>';
+
+    return `
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th>
+            <th>Hora</th>
+            <th>Modalidad</th>
+            <th>Grupo</th>
+            <th>Niños</th>
+            <th>Importe</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${detalles
+            .map(
+              (detalleCobro) => `
+            <tr>
+              <td>${escaparHtml(formatearFecha(detalleCobro.fecha))}</td>
+              <td>${escaparHtml(
+                horaCorta(detalleCobro.hora_inicio)
+              )}-${escaparHtml(horaCorta(detalleCobro.hora_fin))}</td>
+              <td>${escaparHtml(detalleCobro.modalidad)}</td>
+              <td>${escaparHtml(detalleCobro.nombre_grupo)}</td>
+              <td>${Number(detalleCobro.total_alumnos || 0)}</td>
+              <td>${formatearEuros(detalleCobro.importe_turno)}</td>
+            </tr>
+          `
+            )
+            .join('')}
+        </tbody>
+      </table>
+    `;
+  }
+
+  function htmlCobroEntrenador(cobro: CobroMensual) {
+    return `
+      <section class="cobro">
+        <h2>${escaparHtml(cobro.entrenador)}</h2>
+        <p><strong>Mes:</strong> ${escaparHtml(nombreMes(cobro.mes))} ${
+      cobro.anio
+    } · ${escaparHtml(cobro.temporada || '')}</p>
+        <p><strong>Estado:</strong> ${escaparHtml(
+          cobro.estado_mes || 'abierto'
+        )}</p>
+        ${
+          cobro.nota_direccion
+            ? `<p><strong>Nota dirección:</strong> ${escaparHtml(
+                cobro.nota_direccion
+              )}</p>`
+            : ''
+        }
+        <div class="resumen">
+          <div><strong>Baby</strong><br>${Number(
+            cobro.total_turnos_baby || 0
+          )} turnos</div>
+          <div><strong>Intensivos</strong><br>${Number(
+            cobro.total_turnos_intensivos || 0
+          )} turnos</div>
+          <div><strong>Ocio</strong><br>${Number(
+            cobro.total_turnos_ocio || 0
+          )} turnos</div>
+          <div><strong>Tarifa</strong><br>${formatearEuros(
+            cobro.tarifa_por_turno
+          )}</div>
+          <div><strong>Subtotal</strong><br>${formatearEuros(
+            cobro.subtotal_sesiones
+          )}</div>
+          <div><strong>Ajustes</strong><br>${formatearEuros(
+            cobro.ajustes_total
+          )}</div>
+          <div><strong>Total mes</strong><br>${formatearEuros(
+            cobro.total_mes
+          )}</div>
+        </div>
+        <h3>Detalle de turnos</h3>
+        ${htmlDetalleTurnosCobro(cobro)}
+        ${
+          cobro.detalle_ajustes
+            ? `<h3>Ajustes manuales</h3><pre>${escaparHtml(
+                cobro.detalle_ajustes
+              )}</pre>`
+            : ''
+        }
+      </section>
+    `;
+  }
+
+  function abrirPdfCobroEntrenador(cobro: CobroMensual) {
+    setCobroPdfPreview({
+      titulo: `Cobro ${cobro.entrenador} · ${nombreMes(cobro.mes)} ${
+        cobro.anio
+      }`,
+      cuerpo: htmlCobroEntrenador(cobro),
+    });
+  }
+
+  function abrirPdfCobrosConjunto() {
+    if (cobrosFiltrados.length === 0) {
+      alert('No hay cobros para generar PDF.');
+      return;
+    }
+
+    const totalGeneral = cobrosFiltrados.reduce(
+      (total, cobro) => total + Number(cobro.total_mes || 0),
+      0
+    );
+    const cuerpo = `
+      <section class="portada">
+        <h1>Resumen cobros entrenadores</h1>
+        <p>${escaparHtml(nombreMes(mesCobros))} ${anioCobros}</p>
+        <p><strong>Total dirección:</strong> ${formatearEuros(totalGeneral)}</p>
+        <p><strong>Entrenadores:</strong> ${cobrosFiltrados.length}</p>
+      </section>
+      ${cobrosFiltrados.map((cobro) => htmlCobroEntrenador(cobro)).join('')}
+    `;
+
+    setCobroPdfPreview({
+      titulo: `Cobros entrenadores · ${nombreMes(mesCobros)} ${anioCobros}`,
+      cuerpo,
+    });
+  }
+
+  function imprimirCobroPdfPreview() {
+    setTimeout(() => window.print(), 50);
+  }
+
+  async function crearEntrenoManualCobro() {
+    if (!formCobroManual.entrenadorId) {
+      alert('Elige un entrenador.');
+      return;
+    }
+
+    if (
+      !formCobroManual.fecha ||
+      !formCobroManual.horaInicio ||
+      !formCobroManual.horaFin
+    ) {
+      alert('Completa fecha y horario.');
+      return;
+    }
+
+    const totalAlumnos = Number(formCobroManual.totalAlumnos || 0);
+    const importeOverrideTexto = formCobroManual.importeOverride.trim();
+    const importeOverride = importeOverrideTexto
+      ? Number(importeOverrideTexto.replace(',', '.'))
+      : null;
+
+    if (Number.isNaN(totalAlumnos) || totalAlumnos < 0) {
+      alert('Número de niños no válido.');
+      return;
+    }
+
+    if (importeOverride !== null && Number.isNaN(importeOverride)) {
+      alert(
+        'Importe manual no válido. Déjalo vacío para usar la tarifa del entrenador.'
+      );
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('crear_entreno_manual_cobro_app', {
+        p_entrenador_id: formCobroManual.entrenadorId,
+        p_fecha: formCobroManual.fecha,
+        p_hora_inicio: formCobroManual.horaInicio,
+        p_hora_fin: formCobroManual.horaFin,
+        p_modalidad: formCobroManual.modalidad,
+        p_nombre_grupo: formCobroManual.nombreGrupo.trim() || 'Entreno manual',
+        p_total_alumnos: totalAlumnos,
+        p_observaciones: formCobroManual.observaciones.trim() || null,
+        p_importe_override: importeOverride,
+      });
+      setFormCobroManual(cobroManualInicial());
+      await cargarCobros();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Error creando entreno manual'
+      );
+    }
+    setCargando(false);
+  }
+
+  async function eliminarEntrenoManualCobro(detalleCobro: CobroDetalleMensual) {
+    const entrenoId = detalleCobro.entreno_manual_id || detalleCobro.grupo_id;
+    if (!entrenoId) return;
+    if (
+      !window.confirm(
+        `¿Eliminar este entreno manual de ${detalleCobro.entrenador}?`
+      )
+    )
+      return;
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('eliminar_entreno_manual_cobro_app', {
+        p_entreno_id: entrenoId,
+      });
+      await cargarCobros();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Error eliminando entreno manual'
+      );
+    }
+    setCargando(false);
+  }
+
+  async function cargarIntensivos() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const [
+        intensivosData,
+        intensivoAlumnosData,
+        alumnosParaIntensivoData,
+        alumnosResumenVolcadoData,
+        intensivoDiasData,
+        intensivoAsistenciasData,
+        intensivoMásData,
+        recomendacionesRecuperacionData,
+        gruposDestinoRecuperacionData,
+        gruposIntensivoDiaData,
+        resumenReportesIntensivoData,
+        resumenFinalIntensivoData,
+        reportesDetalleIntensivoData,
+        panelControlIntensivoData,
+        entrenadoresData,
+      ] = await Promise.all([
+        consultarSupabase<IntensivoApp>(
+          'v_intensivos_app',
+          'select=*&order=fecha_inicio.desc,intensivo.asc'
+        ),
+        consultarSupabase<IntensivoAlumnoApp>(
+          'v_intensivo_alumnos_app',
+          'select=*&order=intensivo.asc,alumno.asc'
+        ),
+        consultarSupabase<AlumnoParaIntensivoApp>(
+          'v_alumnos_para_intensivo_app',
+          'select=*&order=alumno.asc'
+        ),
+        consultarSupabase<AlumnoResumenParaVolcadoApp>(
+          'v_alumnos_resumen_para_volcado_app',
+          'select=*&order=alumno.asc'
+        ),
+        consultarSupabase<IntensivoDiaApp>(
+          'v_intensivo_dias_app',
+          'select=*&order=fecha.asc,hora_inicio.asc,numero_dia.asc'
+        ),
+        consultarSupabase<IntensivoAsistenciaApp>(
+          'v_intensivo_asistencias_app',
+          'select=*&order=fecha.asc,hora_inicio.asc,alumno.asc'
+        ),
+        consultarSupabase<IntensivoRecuperacionApp>(
+          'v_intensivo_recuperaciones_app',
+          'select=*&order=created_at.desc,alumno.asc'
+        ),
+        consultarSupabase<RecuperacionRecomendacionApp>(
+          'v_recuperaciones_recomendaciones_intensivo_app',
+          'select=*&order=recuperacion_id.asc,orden_recomendacion.asc'
+        ),
+        consultarSupabase<GrupoDestinoRecuperacionApp>(
+          'v_planning_app',
+          'select=grupo_id,nombre_grupo,fecha,hora_inicio,modalidad&order=fecha.desc,hora_inicio.desc,nombre_grupo.asc'
+        ),
+        consultarSupabase<GrupoIntensivoDiaApp>(
+          'v_grupos_intensivo_dia_app',
+          'select=*&order=fecha.asc,hora_inicio.asc,nombre_grupo.asc'
+        ),
+        consultarSupabase<ResumenReportesIntensivoApp>(
+          'v_resumen_reportes_intensivo_app',
+          'select=*&order=intensivo.asc,alumno.asc'
+        ),
+        consultarSupabase<ResumenFinalIntensivoApp>(
+          'v_resumen_final_intensivo_app',
+          'select=*&order=intensivo.asc,alumno.asc'
+        ),
+        consultarSupabase<ReporteDetalleIntensivoApp>(
+          'v_reportes_detalle_intensivo_app',
+          'select=*&order=intensivo.asc,alumno.asc,fecha.asc,hora_inicio.asc'
+        ),
+        consultarSupabase<PanelControlIntensivoApp>(
+          'v_panel_control_intensivo_app',
+          'select=*&order=intensivo.asc'
+        ),
+        consultarSupabase<EntrenadorResumen>(
+          'v_panel_entrenadores',
+          'select=*&order=nombre_completo.asc'
+        ),
+      ]);
+
+      setIntensivos(intensivosData);
+      setIntensivoAlumnos(intensivoAlumnosData);
+      setAlumnosParaIntensivo(alumnosParaIntensivoData);
+      setAlumnosResumenVolcado(alumnosResumenVolcadoData);
+      setIntensivoDias(intensivoDiasData);
+      setIntensivoAsistencias(intensivoAsistenciasData);
+      setIntensivoMás(intensivoMásData);
+      setRecomendacionesRecuperacion(recomendacionesRecuperacionData);
+      setGruposDestinoRecuperacion(gruposDestinoRecuperacionData);
+      setGruposIntensivoDia(gruposIntensivoDiaData);
+      setResumenReportesIntensivo(resumenReportesIntensivoData);
+      setResumenFinalIntensivo(resumenFinalIntensivoData);
+      setReportesDetalleIntensivo(reportesDetalleIntensivoData);
+      setPanelControlIntensivo(panelControlIntensivoData);
+      setEntrenadores(entrenadoresData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setIntensivos([]);
+      setIntensivoAlumnos([]);
+      setAlumnosParaIntensivo([]);
+      setAlumnosResumenVolcado([]);
+      setIntensivoDias([]);
+      setIntensivoAsistencias([]);
+      setIntensivoMás([]);
+      setRecomendacionesRecuperacion([]);
+      setGruposDestinoRecuperacion([]);
+      setGruposIntensivoDia([]);
+      setResumenReportesIntensivo([]);
+      setResumenFinalIntensivo([]);
+      setReportesDetalleIntensivo([]);
+      setPanelControlIntensivo([]);
+    }
+
+    setCargando(false);
+  }
+
+  async function crearIntensivoDesdeApp() {
+    if (!formIntensivo.nombre.trim()) {
+      setError('Pon un nombre para el intensivo.');
+      return;
+    }
+
+    if (!formIntensivo.lugar.trim()) {
+      setError('Pon un lugar para el intensivo.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Crear intensivo ${formIntensivo.nombre} en ${temporadaActivaCierre || 'la temporada activa'}?`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('crear_intensivo_app', {
+        p_temporada_nombre: '',
+        p_nombre: formIntensivo.nombre.trim(),
+        p_lugar: formIntensivo.lugar.trim(),
+        p_estado: formIntensivo.estado,
+      });
+
+      setFormIntensivo(intensivoInicial());
+      setMostrarFormularioIntensivo(false);
+      setFiltroIntensivos('todos');
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function guardarDiaIntensivo(intensivo: IntensivoApp) {
+    if (!formDiaIntensivo.fecha) {
+      setError('Selecciona una fecha para el día del intensivo.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Añadir día al intensivo ${intensivo.intensivo}?`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('crear_dia_intensivo_app', {
+        p_intensivo_id: intensivo.intensivo_id,
+        p_fecha: formDiaIntensivo.fecha,
+        p_hora_inicio: formDiaIntensivo.hora_inicio,
+        p_hora_fin: formDiaIntensivo.hora_fin,
+      });
+
+      setDiaEditandoIntensivoId(null);
+      setFormDiaIntensivo(diaIntensivoInicial());
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function crearCuatroSesionesIntensivo(intensivo: IntensivoApp) {
+    const fechas = calcularFechasCuatroSesionesIntensivo(
+      plantillaCuatroSesionesIntensivo.fechaInicio,
+      plantillaCuatroSesionesIntensivo.tipo
+    );
+
+    if (fechas.length !== 4) {
+      setError('Selecciona la primera fecha para generar las 4 sesiones.');
+      return;
+    }
+
+    const diasExistentes = diasDelIntensivo(intensivo.intensivo_id);
+    const repetidas = fechas.filter((fecha) =>
+      diasExistentes.some((dia) => dia.fecha === fecha)
+    );
+
+    if (repetidas.length > 0) {
+      setError(
+        `Ya existen estos días en el intensivo: ${repetidas
+          .map(formatearFecha)
+          .join(', ')}.`
+      );
+      return;
+    }
+
+    if (diasExistentes.length > 0) {
+      const confirmarAñadir = window.confirm(
+        `Este intensivo ya tiene ${diasExistentes.length} día(s). ¿Quieres añadir igualmente estas 4 sesiones?`
+      );
+      if (!confirmarAñadir) return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Crear 4 sesiones para ${
+        intensivo.intensivo
+      }?\n${nombreTipoCuatroSesionesIntensivo(
+        plantillaCuatroSesionesIntensivo.tipo
+      )}\n${fechas
+        .map(
+          (fecha) =>
+            `- ${formatearFecha(fecha)} ${
+              plantillaCuatroSesionesIntensivo.horaInicio
+            }-${plantillaCuatroSesionesIntensivo.horaFin}`
+        )
+        .join('\n')}`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      for (const fecha of fechas) {
+        await ejecutarFuncion('crear_dia_intensivo_app', {
+          p_intensivo_id: intensivo.intensivo_id,
+          p_fecha: fecha,
+          p_hora_inicio: plantillaCuatroSesionesIntensivo.horaInicio,
+          p_hora_fin: plantillaCuatroSesionesIntensivo.horaFin,
+        });
+      }
+
+      setMostrarPlantillaCuatroSesionesIntensivoId(null);
+      setPlantillaCuatroSesionesIntensivo(plantillaCuatroSesionesInicial());
+      await cargarIntensivos();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error creando las 4 sesiones del intensivo'
+      );
+    }
+
+    setCargando(false);
+  }
+
+  function prepararEdicionDiaIntensivo(dia: IntensivoDiaApp) {
+    setDiaEditandoIntensivoId(dia.intensivo_dia_id);
+    setFormDiaIntensivo({
+      fecha: dia.fecha || '',
+      hora_inicio: (dia.hora_inicio || '10:00').slice(0, 5),
+      hora_fin: (dia.hora_fin || '14:00').slice(0, 5),
+    });
+  }
+
+  async function actualizarDiaIntensivoDesdeApp(dia: IntensivoDiaApp) {
+    if (!formDiaIntensivo.fecha) {
+      setError('Selecciona una fecha para actualizar el día.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Actualizar el día ${dia.numero_dia} del intensivo? Si ya tiene grupo, también se actualizará su sesión.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('actualizar_dia_intensivo_app', {
+        p_intensivo_dia_id: dia.intensivo_dia_id,
+        p_fecha: formDiaIntensivo.fecha,
+        p_hora_inicio: formDiaIntensivo.hora_inicio,
+        p_hora_fin: formDiaIntensivo.hora_fin,
+      });
+
+      setDiaEditandoIntensivoId(null);
+      setFormDiaIntensivo(diaIntensivoInicial());
+
+      // El backend renumera cronológicamente. Mantenemos seleccionado el mismo
+      // día por ID, pero recargamos todo antes de volver a pintar etiquetas
+      // Día 1/2/3/4 y sesiones operativas.
+      setDiaGrupoSeleccionadoId(dia.intensivo_dia_id);
+      setDiaAsistenciaSeleccionadoId(dia.intensivo_dia_id);
+      await cargarIntensivos();
+      await cargarAgendaOperativaDirecta();
+      await cargarPlanning();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function borrarDiaIntensivoDesdeApp(dia: IntensivoDiaApp) {
+    const confirmar = window.confirm(
+      `¿Borrar el día ${dia.numero_dia} del intensivo? Se borrarán también sus grupos, alumnos de esos grupos, reportes y trabajo diario asociados a ese día.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('borrar_dia_intensivo_app', {
+        p_intensivo_dia_id: dia.intensivo_dia_id,
+      });
+
+      setDiaEditandoIntensivoId(null);
+      setFormDiaIntensivo(diaIntensivoInicial());
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function añadirAlumnoAIntensivo(intensivo: IntensivoApp) {
+    if (!alumnoSeleccionadoIntensivoId) {
+      setError('Selecciona un alumno para añadir al intensivo.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('añadir_alumno_intensivo_app', {
+        p_intensivo_id: intensivo.intensivo_id,
+        p_alumno_id: alumnoSeleccionadoIntensivoId,
+      });
+
+      setAlumnoSeleccionadoIntensivoId('');
+      setBusquedaAlumnoIntensivo('');
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function añadirFichaExistenteAIntensivo(
+    alumnoId: string,
+    alumnoNombre: string
+  ) {
+    const intensivoId = intensivoFichaSeleccionado[alumnoId] || '';
+
+    if (!intensivoId) {
+      setError('Selecciona primero el Intensivo de destino.');
+      return;
+    }
+
+    const intensivo = intensivos.find(
+      (item) => item.intensivo_id === intensivoId
+    );
+
+    if (!intensivo) {
+      setError('El Intensivo seleccionado ya no está disponible.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Añadir a ${alumnoNombre} a ${intensivo.intensivo}?` +
+        `\n\nSe reutilizará su misma ficha maestra, nivel, historial y observaciones.`
+    );
+
+    if (!confirmar) return;
+
+    setAnadiendoFichaAIntensivoId(alumnoId);
+    setError('');
+
+    try {
+      await ejecutarFuncion('añadir_alumno_intensivo_app', {
+        p_intensivo_id: intensivo.intensivo_id,
+        p_alumno_id: alumnoId,
+      });
+
+      setIntensivoFichaSeleccionado((actual) => {
+        const siguiente = { ...actual };
+        delete siguiente[alumnoId];
+        return siguiente;
+      });
+
+      await Promise.all([cargarIntensivos(), cargarAlumnos()]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    } finally {
+      setAnadiendoFichaAIntensivoId('');
+    }
+  }
+
+
+  async function volcarListadoAlumnosIntensivo(intensivo: IntensivoApp) {
+    if (!textoVolcadoIntensivo.trim()) {
+      setError('Pega el listado de Aimharder antes de volcar alumnos.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Volcar este listado en ${intensivo.intensivo}? Se crearán fichas nuevas si no existen.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      const resultado =
+        await ejecutarFuncionConRespuesta<VolcadoAlumnoIntensivoApp>(
+          'volcar_alumnos_intensivo_app',
+          {
+            p_intensivo_id: intensivo.intensivo_id,
+            p_texto: textoVolcadoIntensivo,
+          }
+        );
+
+      setResultadoVolcadoIntensivo(resultado);
+      setBusquedaAlumnoIntensivo('');
+      setAlumnoSeleccionadoIntensivoId('');
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function quitarAlumnoDeIntensivo(registro: IntensivoAlumnoApp) {
+    const confirmar = window.confirm(
+      `¿Quitar a ${registro.alumno} de este intensivo?`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('quitar_alumno_intensivo_app', {
+        p_intensivo_id: registro.intensivo_id,
+        p_alumno_id: registro.alumno_id,
+      });
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function actualizarAlumnoIntensivo(
+    registro: IntensivoAlumnoApp,
+    estadoEvaluación: string,
+    recomendacionSiguientePaso: string
+  ) {
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('actualizar_alumno_intensivo_app', {
+        p_intensivo_alumno_id: registro.intensivo_alumno_id,
+        p_estado_diploma: estadoEvaluación,
+        p_recomendacion_siguiente_paso: recomendacionSiguientePaso,
+      });
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function actualizarNivelAlumnoIntensivo(
+    registro: IntensivoAlumnoApp,
+    nivelCodigo: string,
+    origenNivel: string
+  ) {
+    if (!nivelCodigo) {
+      setError('Selecciona un nivel para el alumno.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('actualizar_nivel_alumno_intensivo_app', {
+        p_intensivo_id: registro.intensivo_id,
+        p_alumno_id: registro.alumno_id,
+        p_nivel_codigo: nivelCodigo,
+        p_origen_nivel: origenNivel || 'Jose / Coordinador',
+      });
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function reiniciarGruposDiaIntensivoDesdeApp(
+    dia: IntensivoDiaApp
+  ) {
+    const gruposDia = gruposNormalesDelDiaIntensivo(dia.intensivo_dia_id);
+
+    if (gruposDia.length === 0) {
+      setError('Este día todavía no tiene grupos que rehacer.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿REHACER LOS GRUPOS DEL DÍA ${dia.numero_dia} · ${formatearFecha(
+        dia.fecha
+      )}?\n\nSe eliminarán los grupos, entrenadores asignados, Trabajo diario y Observaciones de ESTE DÍA, pero se conservarán la fecha, el Intensivo y sus alumnos inscritos.\n\nPor seguridad, Supabase bloqueará la operación si ya existen reportes, asistencia real o recuperaciones relacionadas.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('reiniciar_grupos_intensivo_dia_app', {
+        p_intensivo_dia_id: dia.intensivo_dia_id,
+      });
+
+      setRecomendacionesGrupoIntensivo((anteriores) =>
+        anteriores.filter(
+          (registro) => registro.intensivo_dia_id !== dia.intensivo_dia_id
+        )
+      );
+      setDestinoAlumnoRecomendado({});
+      setTrabajoDiarioPorGrupoRecomendado({});
+      setObservacionesPorGrupoRecomendado({});
+
+      await cargarIntensivos();
+      await cargarAgendaOperativaDirecta();
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+
+      setDiaGrupoSeleccionadoId(dia.intensivo_dia_id);
+      await generarRecomendacionGruposIntensivo(dia);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudieron rehacer los grupos de este día.'
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function borrarGrupoIntensivo(grupo: GrupoIntensivoDiaApp) {
+    if (!grupo.grupo_id) return;
+
+    const confirmar = window.confirm(
+      `¿Borrar el grupo ${
+        grupo.nombre_grupo || 'sin nombre'
+      }? Se eliminarán sus alumnos, entrenador, reportes y trabajo diario asociados.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('borrar_grupo_intensivo_app', {
+        p_grupo_id: grupo.grupo_id,
+      });
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function borrarIntensivoCompleto(intensivo: IntensivoApp) {
+    const confirmar = window.confirm(
+      `¿Borrar COMPLETO el intensivo ${intensivo.intensivo}? Se eliminarán días, grupos, alumnos inscritos, asistencias, reportes, recuperaciones y diplomas de este intensivo.`
+    );
+
+    if (!confirmar) return;
+
+    const segundaConfirmacion = window.confirm(
+      'Confirmación final: esto es para borrar pruebas. ¿Seguro que quieres continuar?'
+    );
+
+    if (!segundaConfirmacion) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('borrar_intensivo_completo_app', {
+        p_intensivo_id: intensivo.intensivo_id,
+      });
+
+      setGestionarAlumnosIntensivoId(null);
+      setGestionarGruposIntensivoId(null);
+      setGestionarDiplomasIntensivoId(null);
+      setGestionarMásIntensivoId(null);
+      setGestionarAsistenciaIntensivoId(null);
+      setGestionarPanelControlIntensivoId(null);
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function marcarAsistenciaIntensivo(
+    registro: IntensivoAsistenciaApp,
+    estado: string,
+    faltaGeneraRecuperacion: boolean
+  ) {
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('marcar_asistencia_intensivo_app', {
+        p_intensivo_id: registro.intensivo_id,
+        p_intensivo_dia_id: registro.intensivo_dia_id,
+        p_alumno_id: registro.alumno_id,
+        p_estado: estado,
+        p_falta_genera_recuperacion: faltaGeneraRecuperacion,
+      });
+
+      if (faltaGeneraRecuperacion) {
+        await ejecutarFuncion('generar_recuperaciones_desde_asistencias_app', {
+          p_intensivo_id: registro.intensivo_id,
+        });
+      }
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function generarMásDesdeAsistencias(intensivo: IntensivoApp) {
+    const confirmar = window.confirm(
+      `¿Generar recuperaciones pendientes desde las faltas marcadas de ${intensivo.intensivo}?`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('generar_recuperaciones_desde_asistencias_app', {
+        p_intensivo_id: intensivo.intensivo_id,
+      });
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function actualizarRecuperacionIntensivo(
+    registro: IntensivoRecuperacionApp,
+    estado: string,
+    intensivoDestinoId: string,
+    grupoDestinoId: string
+  ) {
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('actualizar_recuperacion_intensivo_app', {
+        p_recuperacion_id: registro.recuperacion_id,
+        p_estado: estado,
+        p_intensivo_destino_id: intensivoDestinoId || null,
+        p_grupo_destino_id: grupoDestinoId || null,
+      });
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function eliminarRecuperacionIntensivo(
+    registro: IntensivoRecuperacionApp
+  ) {
+    const confirmar = window.confirm(
+      `¿Eliminar la recuperación de ${registro.alumno}?`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('eliminar_recuperacion_intensivo_app', {
+        p_recuperacion_id: registro.recuperacion_id,
+      });
+
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function crearGrupoNormalIntensivo(
+    intensivo: IntensivoApp,
+    dia: IntensivoDiaApp | undefined
+  ) {
+    if (!dia) {
+      setError('Primero selecciona un día del intensivo.');
+      return;
+    }
+
+    if (!formGrupoIntensivo.nombre_grupo.trim()) {
+      setError('Pon un nombre para el grupo.');
+      return;
+    }
+
+    if (formGrupoIntensivo.alumnos_ids.length === 0) {
+      setError('Selecciona al menos un alumno para el grupo.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Preparar ${formGrupoIntensivo.nombre_grupo} para ${
+        intensivo.intensivo
+      } el ${formatearFecha(
+        dia.fecha
+      )}? Después asignarás entrenador, segundo entrenador y punto en Días de entrenamiento.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('crear_grupo_intensivo_dia_app', {
+        p_intensivo_dia_id: dia.intensivo_dia_id,
+        p_nombre_grupo: formGrupoIntensivo.nombre_grupo.trim(),
+        p_nivel_grupo: formGrupoIntensivo.nivel_grupo.trim(),
+        p_pista: formGrupoIntensivo.pista,
+        p_punto_encuentro: '',
+        p_trabajo_diario: formGrupoIntensivo.trabajo_diario.trim(),
+        p_observaciones_importantes: combinarObservacionesGrupoApp(
+          observacionesAutomaticasGrupoIntensivoManual(
+            formGrupoIntensivo.alumnos_ids
+          ),
+          formGrupoIntensivo.observaciones_importantes.trim()
+        ),
+        p_entrenador_id: null,
+        p_alumnos_ids: formGrupoIntensivo.alumnos_ids,
+        p_publicado: false,
+      });
+
+
+
+      setFormGrupoIntensivo(grupoIntensivoInicial());
+      await cargarIntensivos();
+      await cargarAgendaOperativaDirecta();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  function claveGrupoRecomendado(diaId: string, grupoRecomendado: string) {
+    return `${diaId}__${grupoRecomendado}`;
+  }
+
+  function claveAlumnoRecomendado(diaId: string, alumnoId: string) {
+    return `${diaId}__alumno__${alumnoId}`;
+  }
+
+  function destinoActualAlumnoRecomendado(
+    diaId: string,
+    alumno: RecomendacionGrupoIntensivoDiaApp
+  ) {
+    return (
+      destinoAlumnoRecomendado[
+        claveAlumnoRecomendado(diaId, alumno.alumno_id)
+      ] || alumno.grupo_recomendado
+    );
+  }
+
+  function nombresGruposBaseRecomendados(diaId: string) {
+    return Array.from(
+      new Set([
+        ...recomendacionesDelDiaIntensivo(diaId)
+          .map((registro) => registro.grupo_recomendado)
+          .filter(Boolean),
+        ...(gruposExtraIntensivoPorDia[diaId] || []),
+      ])
+    );
+  }
+
+  function crearGrupoVacioPropuestaIntensivo(diaId: string) {
+    const existentes = nombresGruposBaseRecomendados(diaId);
+    const siguienteNumero =
+      existentes.reduce((maximo, nombre) => {
+        const coincidencia = nombre.match(/Grupo\s+(\d+)/i);
+        return Math.max(
+          maximo,
+          coincidencia ? Number(coincidencia[1]) : 0
+        );
+      }, 0) + 1;
+
+    const nombre = `Grupo ${siguienteNumero}`;
+
+    setGruposExtraIntensivoPorDia((anteriores) => ({
+      ...anteriores,
+      [diaId]: Array.from(
+        new Set([...(anteriores[diaId] || []), nombre])
+      ),
+    }));
+  }
+
+  function recomendacionesDelDiaIntensivo(diaId: string) {
+    return recomendacionesGrupoIntensivo.filter(
+      (registro) => registro.intensivo_dia_id === diaId
+    );
+  }
+
+  function agruparRecomendacionesDia(diaId: string) {
+    const grupos = new Map<string, RecomendacionGrupoIntensivoDiaApp[]>();
+
+    recomendacionesDelDiaIntensivo(diaId).forEach((registro) => {
+      const destino = destinoActualAlumnoRecomendado(diaId, registro);
+      if (destino === '__NO_CREAR__') return;
+
+      const existentes = grupos.get(destino) || [];
+      existentes.push({ ...registro, grupo_recomendado: destino });
+      grupos.set(destino, existentes);
+    });
+
+    return Array.from(grupos.entries())
+      .map(([nombreGrupo, alumnosGrupo]) => ({
+        nombreGrupo,
+        alumnosGrupo: alumnosGrupo.sort((a, b) => {
+          return (
+            Number(a.nivel_orden || 0) - Number(b.nivel_orden || 0) ||
+            Number(a.edad || 99) - Number(b.edad || 99) ||
+            a.alumno.localeCompare(b.alumno)
+          );
+        }),
+      }))
+      .sort((a, b) => {
+        const primeroA = a.alumnosGrupo[0];
+        const primeroB = b.alumnosGrupo[0];
+        if (!primeroA || !primeroB) return 0;
+        return (
+          Number(primeroA.orden_bloque || 0) -
+            Number(primeroB.orden_bloque || 0) ||
+          a.nombreGrupo.localeCompare(b.nombreGrupo)
+        );
+      });
+  }
+
+  async function responderDisponibilidadRapida(
+    turno: DisponibilidadEntrenador,
+    respuesta: 'Disponible' | 'No puedo' | 'Pendiente'
+  ) {
+    const respuestaAnterior = turno.respuesta;
+    setError('');
+
+    setDisponibilidad((actual) =>
+      actual.map((registro) =>
+        registro.id === turno.id ? { ...registro, respuesta } : registro
+      )
+    );
+
+    try {
+      await ejecutarFuncionAuthJson('responder_disponibilidad_editor_app', {
+        p_respuesta_id: turno.id,
+        p_respuesta: respuesta,
+        p_comentario: turno.comentario || null,
+      });
+    } catch (err) {
+      setDisponibilidad((actual) =>
+        actual.map((registro) =>
+          registro.id === turno.id
+            ? { ...registro, respuesta: respuestaAnterior }
+            : registro
+        )
+      );
+      setError(
+        err instanceof Error ? err.message : 'Error guardando disponibilidad'
+      );
+    }
+  }
+
+  function normalizarTelefonoWhatsappApp(valor: string | null | undefined) {
+    let telefono = String(valor || '').replace(/\D/g, '');
+
+    if (!telefono) return '';
+
+    // España: si la ficha guarda un móvil nacional de 9 cifras,
+    // wa.me necesita el prefijo internacional 34.
+    if (telefono.length === 9 && /^[6789]/.test(telefono)) {
+      telefono = `34${telefono}`;
+    }
+
+    return telefono;
+  }
+
+  function abrirWhatsappDirectoEntrenador(
+    entrenadorId: string,
+    nombreEntrenador: string,
+    mensaje: string
+  ) {
+    const nombreNormalizado = normalizarNombreFueraPlazoAgenda(
+      nombreEntrenador
+    );
+
+    // Primero por ID. Si el entrenador se borró/recreó durante pruebas,
+    // el ID histórico de reportes puede ser antiguo; en ese caso buscamos
+    // la ficha actual por nombre para no perder el WhatsApp.
+    const ficha =
+      entrenadores.find(
+        (entrenador) => entrenador.entrenador_id === entrenadorId
+      ) ||
+      entrenadores.find(
+        (entrenador) =>
+          normalizarNombreFueraPlazoAgenda(entrenador.nombre_completo) ===
+          nombreNormalizado
+      );
+
+    const telefono = normalizarTelefonoWhatsappApp(ficha?.telefono);
+
+    abrirPrevisualizacionWhatsapp(
+      `WhatsApp personal · ${nombreEntrenador}`,
+      mensaje,
+      telefono || undefined
+    );
+
+    if (!telefono) {
+      setError(
+        `No encuentro un teléfono válido en la ficha actual de ${nombreEntrenador}. Puedes editar y copiar el mensaje manualmente.`
+      );
+    }
+  }
+
+  function mensajeWhatsappPendientesReportes(items: ReportePendiente[]) {
+    const pendientes = items.filter(
+      (reporte) =>
+        reporte.estado_reporte === 'Falta reporte' ||
+        reporte.estado_reporte === 'Asistencia sin confirmar'
+    );
+
+    if (pendientes.length === 0) {
+      return 'Todo al día. No hay reportes pendientes ni asistencias sin confirmar.';
+    }
+
+    const porEntrenador = agruparReportesPorEntrenador(pendientes);
+    let mensaje = 'Buenas equipo!\n\n';
+    mensaje +=
+      'Tenéis tareas pendientes en la app. Por favor entrad en Vista entrenador → Grupos / reportes y dejadlo cerrado.\n\n';
+
+    porEntrenador.forEach((grupo) => {
+      const faltanReportes = grupo.reportes.filter(
+        (reporte) => reporte.estado_reporte === 'Falta reporte'
+      );
+      const faltanAsistencias = grupo.reportes.filter(
+        (reporte) => reporte.estado_reporte === 'Asistencia sin confirmar'
+      );
+      mensaje += `⛷️ ${grupo.entrenador}\n`;
+      if (faltanAsistencias.length > 0) {
+        mensaje += `- Asistencias sin confirmar: ${faltanAsistencias.length}\n`;
+        faltanAsistencias.slice(0, 6).forEach((reporte) => {
+          mensaje += `  • ${formatearFecha(
+            reporte.fecha
+          )} ${reporte.hora_inicio.slice(0, 5)}-${reporte.hora_fin.slice(
+            0,
+            5
+          )} · ${reporte.alumno} · ${reporte.nombre_grupo}\n`;
+        });
+      }
+      if (faltanReportes.length > 0) {
+        mensaje += `- Reportes pendientes: ${faltanReportes.length}\n`;
+        faltanReportes.slice(0, 6).forEach((reporte) => {
+          mensaje += `  • ${formatearFecha(
+            reporte.fecha
+          )} ${reporte.hora_inicio.slice(0, 5)}-${reporte.hora_fin.slice(
+            0,
+            5
+          )} · ${reporte.alumno} · ${reporte.nombre_grupo}\n`;
+        });
+      }
+      mensaje += '\n';
+    });
+
+    mensaje += 'Gracias!';
+    return mensaje;
+  }
+
+  function copiarWhatsappPendientesReportes() {
+    const mensaje = mensajeWhatsappPendientesReportes(reportesFiltrados);
+    abrirPrevisualizacionWhatsapp(
+      `WhatsApp entrenadores · pendientes semana ${rangoSemanaAgenda(
+        semanaAgendaActiva
+      )}`,
+      mensaje
+    );
+  }
+
+  function copiarWhatsappPendientesEntrenador(
+    entrenadorId: string,
+    nombreEntrenador: string,
+    items: ReportePendiente[]
+  ) {
+    const mensaje = mensajeWhatsappPendientesReportes(items);
+    abrirWhatsappDirectoEntrenador(
+      entrenadorId,
+      nombreEntrenador,
+      mensaje
+    );
+  }
+
+  function pendientesEntrenador(entrenadorId: string) {
+    return reportesPendientes.filter(
+      (reporte) =>
+        reporte.entrenador_id === entrenadorId &&
+        (reporte.estado_reporte === 'Falta reporte' ||
+          reporte.estado_reporte === 'Asistencia sin confirmar')
+    );
+  }
+
+  async function cargarWhatsappGruposApp() {
+    try {
+      const data = await consultarSupabase<WhatsappGrupoApp>(
+        'whatsapp_grupos_app',
+        'select=*&order=modalidad.asc,nombre_grupo.asc'
+      );
+      setWhatsappGruposApp(data);
+    } catch {
+      // La ausencia temporal de enlaces no debe bloquear la operativa.
+      setWhatsappGruposApp([]);
+    }
+  }
+
+  function normalizarClaveWhatsappGrupoApp(valor: string | null | undefined) {
+    return String(valor || '')
+      .trim()
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^A-Z0-9+]+/g, '_')
+      .replace(/^_+|_+$/g, '');
+  }
+
+  function contextoWhatsappSesionApp(sesion: AgendaSesionDirectaApp) {
+    const modalidad = normalizarClaveWhatsappGrupoApp(sesion.modalidad);
+
+    if (modalidad === 'INTENSIVOS') {
+      const dia = intensivoDias.find(
+        (item) => item.sesion_id === sesion.sesion_id
+      );
+
+      if (dia?.intensivo_id) {
+        const intensivo = intensivos.find(
+          (item) => item.intensivo_id === dia.intensivo_id
+        );
+
+        return {
+          clave: `INTENSIVO:${dia.intensivo_id}`,
+          modalidad: 'INTENSIVOS',
+          referencia: dia.intensivo_id,
+          nombre: intensivo?.intensivo || 'Intensivo',
+        };
+      }
+    }
+
+    if (modalidad === 'OCIO') {
+      return {
+        clave: 'GLOBAL:OCIO',
+        modalidad: 'OCIO',
+        referencia: 'OCIO',
+        nombre: 'Ocio',
+      };
+    }
+
+    return {
+      clave: 'GLOBAL:BABY',
+      modalidad: 'BABY',
+      referencia: 'BABY',
+      nombre: 'Baby',
+    };
+  }
+
+  function enlaceWhatsappPorClaveApp(clave: string) {
+    return (
+      whatsappGruposApp.find((registro) => registro.clave_grupo === clave)
+        ?.enlace_whatsapp || ''
+    );
+  }
+
+  function enlaceWhatsappSesionApp(sesion: AgendaSesionDirectaApp) {
+    return enlaceWhatsappPorClaveApp(
+      contextoWhatsappSesionApp(sesion).clave
+    );
+  }
+
+  function contextoWhatsappIntensivoApp(intensivo: IntensivoApp) {
+    return {
+      clave: `INTENSIVO:${intensivo.intensivo_id}`,
+      modalidad: 'INTENSIVOS',
+      referencia: intensivo.intensivo_id,
+      nombre: intensivo.intensivo,
+    };
+  }
+
+  function enlaceWhatsappIntensivoApp(intensivo: IntensivoApp) {
+    return enlaceWhatsappPorClaveApp(
+      contextoWhatsappIntensivoApp(intensivo).clave
+    );
+  }
+
+  async function configurarWhatsappIntensivoApp(intensivo: IntensivoApp) {
+    const contexto = contextoWhatsappIntensivoApp(intensivo);
+    const actual = enlaceWhatsappIntensivoApp(intensivo);
+
+    const valor = window.prompt(
+      `Grupo de WhatsApp · ${intensivo.intensivo}\n\nPega el enlace del grupo de WhatsApp de este intensivo.\n\nDéjalo vacío para eliminarlo.`,
+      actual
+    );
+
+    if (valor === null) return;
+
+    const limpio = valor.trim();
+
+    if (!limpio) {
+      if (!actual) return;
+
+      const confirmar = window.confirm(
+        `¿Eliminar el enlace de WhatsApp de ${intensivo.intensivo}?`
+      );
+      if (!confirmar) return;
+
+      try {
+        await ejecutarFuncion('eliminar_whatsapp_grupo_app', {
+          p_clave_grupo: contexto.clave,
+        });
+        await cargarWhatsappGruposApp();
+        setError('');
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'No se pudo eliminar el enlace de WhatsApp.'
+        );
+      }
+      return;
+    }
+
+    if (!esEnlaceGrupoWhatsappValido(limpio)) {
+      setError(
+        'El enlace no parece un grupo de WhatsApp válido. Debe empezar por https://chat.whatsapp.com/'
+      );
+      return;
+    }
+
+    try {
+      await ejecutarFuncion('guardar_whatsapp_grupo_app', {
+        p_clave_grupo: contexto.clave,
+        p_modalidad: contexto.modalidad,
+        p_referencia: contexto.referencia,
+        p_nombre_grupo: contexto.nombre,
+        p_enlace_whatsapp: limpio,
+      });
+      await cargarWhatsappGruposApp();
+      setError('');
+      alert(`WhatsApp guardado para ${intensivo.intensivo}.`);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo guardar el enlace de WhatsApp.'
+      );
+    }
+  }
+
+  function esEnlaceGrupoWhatsappValido(valor: string) {
+    try {
+      const url = new URL(valor.trim());
+      return (
+        url.protocol === 'https:' &&
+        (url.hostname === 'chat.whatsapp.com' ||
+          url.hostname.endsWith('.whatsapp.com'))
+      );
+    } catch {
+      return false;
+    }
+  }
+
+  async function guardarEnlaceWhatsappPreview() {
+    if (!whatsappPreview?.claveGrupoWhatsapp) return;
+
+    const limpio = String(whatsappPreview.enlaceGrupoWhatsapp || '').trim();
+
+    if (!limpio) {
+      setError('Pega primero el enlace del grupo de WhatsApp.');
+      return;
+    }
+
+    if (!esEnlaceGrupoWhatsappValido(limpio)) {
+      setError(
+        'El enlace no parece un grupo de WhatsApp válido. Debe empezar por https://chat.whatsapp.com/'
+      );
+      return;
+    }
+
+    try {
+      await ejecutarFuncion('guardar_whatsapp_grupo_app', {
+        p_clave_grupo: whatsappPreview.claveGrupoWhatsapp,
+        p_modalidad: whatsappPreview.modalidadGrupoWhatsapp || 'BABY',
+        p_referencia:
+          whatsappPreview.referenciaGrupoWhatsapp ||
+          whatsappPreview.claveGrupoWhatsapp,
+        p_nombre_grupo: whatsappPreview.titulo,
+        p_enlace_whatsapp: limpio,

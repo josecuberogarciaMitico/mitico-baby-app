@@ -1,0 +1,2500 @@
+              }
+              rows={18}
+              style={{
+                width: '100%',
+                boxSizing: 'border-box',
+                borderRadius: 16,
+                border: '1px solid #d1d5db',
+                padding: 14,
+                fontSize: 15,
+                lineHeight: 1.45,
+                fontFamily:
+                  'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                whiteSpace: 'pre-wrap',
+              }}
+            />
+
+            {whatsappPreview.claveGrupoWhatsapp && (
+              <div
+                style={{
+                  marginTop: 10,
+                  padding: '10px 12px',
+                  borderRadius: 12,
+                  border: whatsappPreview.mensajeGrupoCopiado
+                    ? '1px solid #86efac'
+                    : '1px solid #dbeafe',
+                  background: whatsappPreview.mensajeGrupoCopiado
+                    ? '#f0fdf4'
+                    : '#eff6ff',
+                  color: whatsappPreview.mensajeGrupoCopiado
+                    ? '#166534'
+                    : '#1e3a8a',
+                  fontSize: 12,
+                  fontWeight: 800,
+                }}
+              >
+                {whatsappPreview.mensajeGrupoCopiado
+                  ? 'Mensaje copiado ✓ Solo pégalo en el grupo y pulsa enviar.'
+                  : 'Un toque: copia el mensaje y abre directamente el grupo de WhatsApp.'}
+              </div>
+            )}
+
+            <div
+              style={{
+                display: 'flex',
+                gap: 8,
+                flexWrap: 'wrap',
+                marginTop: 12,
+              }}
+            >
+              {whatsappPreview.claveGrupoWhatsapp && (
+                <button
+                  onClick={() => void abrirGrupoWhatsappDesdePreview()}
+                  style={botonPrincipal}
+                >
+                  Enviar a grupo WhatsApp
+                </button>
+              )}
+              {whatsappPreview.telefonoDestino && (
+                <button
+                  onClick={abrirWhatsappDesdePrevisualizacion}
+                  style={botonPrincipal}
+                >
+                  Abrir WhatsApp
+                </button>
+              )}
+              <button
+                onClick={copiarWhatsappPrevisualizado}
+                style={
+                  whatsappPreview.telefonoDestino
+                    ? botonSecundario
+                    : botonPrincipal
+                }
+              >
+                Copiar texto
+              </button>
+              <button
+                onClick={() => setWhatsappPreview(null)}
+                style={botonSecundario}
+              >
+                Cerrar
+              </button>
+            </div>
+          </article>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes miticoFadeUp {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes miticoPulseSoft {
+          0%, 100% { box-shadow: 0 10px 24px rgba(37,99,235,0.14); }
+          50% { box-shadow: 0 14px 32px rgba(37,99,235,0.23); }
+        }
+        button, summary, input, select, textarea {
+          transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease, opacity 0.16s ease;
+        }
+        button:hover:not(:disabled) {
+          transform: translateY(-1px);
+          box-shadow: 0 10px 22px rgba(15,23,42,0.13);
+        }
+        button:active:not(:disabled) { transform: translateY(0); box-shadow: 0 4px 12px rgba(15,23,42,0.10); }
+        details[open] > *:not(summary) { animation: miticoFadeUp 0.18s ease both; }
+        article, nav > div, section { animation: miticoFadeUp 0.18s ease both; }
+        input:focus, select:focus, textarea:focus {
+          outline: none;
+          border-color: #2563eb !important;
+          box-shadow: 0 0 0 4px rgba(37,99,235,0.12);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          button, summary, input, select, textarea, article, nav > div, section {
+            transition: none !important;
+            animation: none !important;
+          }
+        }
+      `}</style>
+
+      <style>{`
+        @media print {
+          body * { visibility: hidden !important; }
+          #cobro-pdf-preview, #cobro-pdf-preview * { visibility: visible !important; }
+          #cobro-pdf-preview { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 0 !important; box-shadow: none !important; border: 0 !important; }
+          .no-imprimir-cobro { display: none !important; }
+        }
+      `}</style>
+
+      {cobroPdfPreview && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            zIndex: 9998,
+            padding: 16,
+            overflow: 'auto',
+          }}
+        >
+          <article
+            id="cobro-pdf-preview"
+            style={{
+              background: '#fff',
+              color: '#111',
+              borderRadius: 22,
+              padding: 22,
+              maxWidth: 980,
+              margin: '0 auto',
+              boxShadow: '0 24px 80px rgba(0,0,0,0.30)',
+              border: '1px solid #e5e7eb',
+              fontFamily: 'Arial, sans-serif',
+            }}
+          >
+            <div
+              className="no-imprimir-cobro"
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 12,
+                alignItems: 'flex-start',
+                marginBottom: 14,
+              }}
+            >
+              <div>
+                <p style={etiquetaSuperior}>PREVISUALIZACIÓN PDF</p>
+                <h2 style={{ margin: 0 }}>{cobroPdfPreview.titulo}</h2>
+                <p style={{ margin: '6px 0 0', color: '#dbeafe' }}>
+                  Revisa el resumen. Luego pulsa imprimir y en Mac guarda como
+                  PDF.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  onClick={imprimirCobroPdfPreview}
+                  style={botonPrincipal}
+                >
+                  Imprimir / guardar PDF
+                </button>
+                <button
+                  onClick={() => setCobroPdfPreview(null)}
+                  style={botonSecundario}
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
+
+            <style>{`
+              #cobro-pdf-preview h1, #cobro-pdf-preview h2, #cobro-pdf-preview h3 { margin-bottom: 8px; }
+              #cobro-pdf-preview .portada { border: 2px solid #111; border-radius: 16px; padding: 18px; margin-bottom: 24px; }
+              #cobro-pdf-preview .cobro { page-break-inside: avoid; border-bottom: 1px solid #ddd; padding: 18px 0; }
+              #cobro-pdf-preview .resumen { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0; }
+              #cobro-pdf-preview .resumen div { border: 1px solid #ddd; border-radius: 10px; padding: 10px; }
+              #cobro-pdf-preview table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 12px; }
+              #cobro-pdf-preview th, #cobro-pdf-preview td { border: 1px solid #ddd; padding: 7px; text-align: left; }
+              #cobro-pdf-preview th { background: #f2f2f2; }
+              #cobro-pdf-preview pre { white-space: pre-wrap; background: #f7f7f7; padding: 10px; border-radius: 10px; }
+            `}</style>
+
+            <div dangerouslySetInnerHTML={{ __html: cobroPdfPreview.cuerpo }} />
+          </article>
+        </div>
+      )}
+
+      <div ref={contenidoPantallaRef} style={{ scrollMarginTop: 24 }} />
+
+      {error && (
+        <div style={errorCaja}>
+          <strong>Error:</strong>
+          <pre style={{ whiteSpace: 'pre-wrap' }}>{error}</pre>
+        </div>
+      )}
+
+      {pantalla === 'resumenDia' && (
+        <section>
+          <div
+            style={{
+              position: 'relative',
+              overflow: 'hidden',
+              padding: 20,
+              borderRadius: 24,
+              border: '1px solid rgba(15,118,110,.42)',
+              background:
+                'linear-gradient(135deg, #06283b 0%, #08384b 52%, #0f5c4d 100%)',
+              boxShadow: '0 16px 36px rgba(6,40,59,.18)',
+              color: '#ffffff',
+              display: 'grid',
+              gap: 16,
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 16,
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ minWidth: 0, flex: '1 1 420px' }}>
+                <p
+                  style={{
+                    margin: 0,
+                    color: '#6ee7b7',
+                    fontSize: 11,
+                    fontWeight: 950,
+                    letterSpacing: '.12em',
+                  }}
+                >
+                  TRABAJO EN PISTA
+                </p>
+                <h2
+                  style={{
+                    margin: '4px 0 0',
+                    fontSize: 28,
+                    letterSpacing: '-.025em',
+                    color: '#ffffff',
+                  }}
+                >
+                  Control del día
+                </h2>
+                <p
+                  style={{
+                    margin: '7px 0 0',
+                    color: '#cbd5e1',
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Turnos, grupos, alumnos, entrenadores y puntos de encuentro del día.
+                </p>
+              </div>
+
+              <label
+                style={{
+                  display: 'grid',
+                  gap: 5,
+                  minWidth: 190,
+                  color: '#cbd5e1',
+                  fontSize: 11,
+                  fontWeight: 900,
+                  letterSpacing: '.08em',
+                }}
+              >
+                FECHA
+                <input
+                  type="date"
+                  value={fechaResumenDiaActiva}
+                  onChange={(e) => setFechaResumenDia(e.target.value)}
+                  style={{
+                    ...inputCampo,
+                    minHeight: 44,
+                    borderRadius: 13,
+                    border: '1px solid rgba(255,255,255,.24)',
+                    background: 'rgba(255,255,255,.96)',
+                  }}
+                  aria-label="Fecha del resumen operativo"
+                />
+              </label>
+            </div>
+
+            <label style={{ display: 'grid', gap: 7 }}>
+              <strong style={{ color: '#e2e8f0', fontSize: 13 }}>
+                Buscar alumno en los grupos publicados
+              </strong>
+              <input
+                type="search"
+                value={busquedaAlumnoResumenDia}
+                onChange={(e) => setBusquedaAlumnoResumenDia(e.target.value)}
+                placeholder="Nombre o apellidos del niño…"
+                style={{
+                  ...inputCampo,
+                  width: '100%',
+                  minHeight: 48,
+                  fontSize: 16,
+                  borderRadius: 14,
+                  border: '1px solid rgba(255,255,255,.22)',
+                  background: 'rgba(255,255,255,.98)',
+                }}
+              />
+            </label>
+
+            {textoBusquedaAlumnoResumenDia && (
+              <div style={{ display: 'grid', gap: 8 }}>
+                {resultadosBusquedaAlumnoResumenDia.length === 0 ? (
+                  <div
+                    style={{
+                      padding: 12,
+                      borderRadius: 14,
+                      background: 'rgba(255,247,237,.96)',
+                      border: '1px solid rgba(251,146,60,.38)',
+                      color: '#9a3412',
+                      fontWeight: 800,
+                    }}
+                  >
+                    No aparece ningún alumno con ese nombre en los grupos publicados del día.
+                  </div>
+                ) : (
+                  resultadosBusquedaAlumnoResumenDia.slice(0, 8).map((resultado: any, indice: number) => (
+                    <button
+                      type="button"
+                      key={`${resultado.sesion.id}-${resultado.grupo.grupo_id || resultado.indice}-${resultado.alumno}-${indice}`}
+                      onClick={() => abrirResultadoAlumnoResumenDia(resultado)}
+                      style={{
+                        ...botonSecundario,
+                        width: '100%',
+                        textAlign: 'left',
+                        display: 'grid',
+                        gap: 3,
+                        padding: '11px 13px',
+                      }}
+                    >
+                      <strong>{resultado.alumno}</strong>
+                      <span style={{ color: '#475569', fontSize: 13 }}>
+                        {horaCorta(resultado.sesion.hora_inicio)}–{horaCorta(resultado.sesion.hora_fin)} ·{' '}
+                        {nombreGrupoVisualApp(resultado.grupo, resultado.indice)} · Punto{' '}
+                        {resultado.grupo.punto_encuentro || '-'} ·{' '}
+                        {resultado.grupo.entrenador || resultado.grupo.entrenadores || 'Sin entrenador'}
+                      </span>
+                    </button>
+                  ))
+                )}
+              </div>
+            )}
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))',
+                gap: 10,
+              }}
+            >
+              {[
+                ['Turnos', String(sesionesResumenDia.length), sesionesResumenDia.length > 0],
+                ['Alumnos previstos', String(totalAlumnosResumenDia), totalAlumnosResumenDia > 0],
+                ['Grupos publicados', `${totalPublicadosResumenDia}/${totalGruposResumenDia}`, totalPublicadosResumenDia === totalGruposResumenDia],
+                ['Sin entrenador', String(gruposPendientesEntrenadorResumenDia.length), gruposPendientesEntrenadorResumenDia.length === 0],
+              ].map(([etiqueta, valor, ok]) => (
+                <div
+                  key={String(etiqueta)}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 16,
+                    background: ok
+                      ? 'rgba(255,255,255,.10)'
+                      : 'rgba(255,247,237,.13)',
+                    border: ok
+                      ? '1px solid rgba(255,255,255,.18)'
+                      : '1px solid rgba(251,146,60,.38)',
+                    minWidth: 0,
+                  }}
+                >
+                  <strong
+                    style={{
+                      display: 'block',
+                      color: '#cbd5e1',
+                      fontSize: 10,
+                      textTransform: 'uppercase',
+                      letterSpacing: '.06em',
+                    }}
+                  >
+                    {etiqueta}
+                  </strong>
+                  <span
+                    style={{
+                      display: 'block',
+                      marginTop: 4,
+                      color: '#ffffff',
+                      fontSize: 25,
+                      lineHeight: 1,
+                      fontWeight: 950,
+                    }}
+                  >
+                    {valor}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {gruposPendientesEntrenadorResumenDia.length > 0 && (
+            <div style={avisoPendiente}>
+              Hay {gruposPendientesEntrenadorResumenDia.length} grupo(s) sin entrenador asignado para este día.
+            </div>
+          )}
+
+          <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
+            {sesionesResumenDia.length === 0 ? (
+              <article style={tarjetaMovilVacia}>
+                No hay sesiones preparadas para este día.
+              </article>
+            ) : (
+              sesionesResumenDia.map((sesion: any) => {
+                const turnoAbierto = turnoResumenDiaAbierto === String(sesion.id);
+                const gruposPublicados = gruposPublicadosSesionResumenDia(sesion);
+
+                return (
+                  <article
+                    id={`resumen-turno-${sesion.id}`}
+                    key={sesion.id}
+                    style={{
+                      ...tarjetaEntrenadorMovil,
+                      border: turnoAbierto ? '2px solid #0f766e' : '1px solid #cbd5e1',
+                      borderRadius: 20,
+                      overflow: 'hidden',
+                      padding: 0,
+                      background: '#ffffff',
+                      boxShadow: turnoAbierto
+                        ? '0 14px 34px rgba(4,23,36,.14)'
+                        : '0 8px 20px rgba(15,23,42,.07)',
+                      scrollMarginTop: 18,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setTurnoResumenDiaAbierto((actual) =>
+                          actual === String(sesion.id) ? '' : String(sesion.id)
+                        )
+                      }
+                      aria-expanded={turnoAbierto}
+                      style={{
+                        width: '100%',
+                        border: 0,
+                        background: turnoAbierto
+                          ? 'linear-gradient(110deg,#041724 0%,#06243a 68%,#0b3a43 100%)'
+                          : 'linear-gradient(135deg,#f8fafc,#ffffff)',
+                        color: turnoAbierto ? '#ffffff' : '#172033',
+                        padding: '15px 16px',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: 12,
+                        textAlign: 'left',
+                      }}
+                    >
+                      <span style={{ display: 'grid', gap: 4 }}>
+                        <span style={{ fontSize: 12, fontWeight: 900, textTransform: 'uppercase', opacity: 0.8 }}>
+                          {sesion.modalidad}
+                        </span>
+                        <strong style={{ fontSize: 17 }}>
+                          {horaCorta(sesion.hora_inicio)}–{horaCorta(sesion.hora_fin)} · {sesion.titulo}
+                        </strong>
+                        <span style={{ fontSize: 13, opacity: 0.82 }}>
+                          {gruposPublicados.length} grupos publicados · {sesion.totalAlumnos} niños
+                        </span>
+                      </span>
+                      <span style={{ fontSize: 24, fontWeight: 900 }} aria-hidden="true">
+                        {turnoAbierto ? '−' : '+'}
+                      </span>
+                    </button>
+
+                    {turnoAbierto && (
+                      <div
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit,minmax(270px,1fr))',
+                          gap: 12,
+                          padding: 12,
+                        }}
+                      >
+                        {gruposPublicados.length === 0 ? (
+                          <div style={tarjetaMovilVacia}>
+                            No hay grupos publicados en este turno.
+                          </div>
+                        ) : (
+                          gruposPublicados.map((grupo: any, indice: number) => {
+                            const alumnosGrupo = alumnosGrupoResumenDia(grupo);
+                            return (
+                              <div
+                                id={`resumen-grupo-${String(
+                                  grupo.grupo_id || `${sesion.id}-${indice}`
+                                )}`}
+                                key={grupo.grupo_id || `${sesion.id}-${indice}`}
+                                style={{
+                                  ...miniTarjetaBlanca,
+                                  border:
+                                    grupoResumenDiaDestacado ===
+                                    String(grupo.grupo_id || `${sesion.id}-${indice}`)
+                                      ? '3px solid #16a34a'
+                                      : grupo.entrenador || grupo.entrenadores
+                                      ? '1px solid #cbd5e1'
+                                      : '2px solid #f59e0b',
+                                  borderRadius: 18,
+                                  padding: 14,
+                                  background: 'linear-gradient(180deg,#ffffff,#fbfdff)',
+                                  boxShadow: '0 10px 24px rgba(15,23,42,.06)',
+                                  minWidth: 0,
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns: 'minmax(0, 1fr) auto',
+                                    alignItems: 'start',
+                                    gap: 12,
+                                  }}
+                                >
+                                  <div style={{ minWidth: 0 }}>
+                                    <strong style={{ fontSize: 16 }}>{nombreGrupoVisualApp(grupo, indice)}</strong>
+                                    <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 8 }}>
+                                      <span style={{ ...miniBadge, background: '#0f172a', color: '#fff' }}>
+                                        PUNTO {grupo.punto_encuentro || '-'}
+                                      </span>
+                                      <span style={{ ...miniBadge, background: '#dbeafe', color: '#1e3a8a' }}>
+                                        {grupo.pista || 'SIN PISTA'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div style={{ textAlign: 'right', minWidth: 138, alignSelf: 'start' }}>
+                                    <span style={{ display: 'block', fontSize: 11, fontWeight: 900, color: '#64748b', textTransform: 'uppercase' }}>
+                                      Entrenador
+                                    </span>
+                                    <strong style={{ color: grupo.entrenador || grupo.entrenadores ? '#0f172a' : '#b45309' }}>
+                                      {grupo.entrenador || grupo.entrenadores || 'SIN ENTRENADOR'}
+                                    </strong>
+                                    {grupo.entrenador_apoyo && (
+                                      <p style={{ margin: '4px 0 0', fontSize: 13 }}>
+                                        Apoyo: {grupo.entrenador_apoyo}
+                                      </p>
+                                    )}
+                                  </div>
+                                </div>
+
+                                <div style={{ marginTop: 12 }}>
+                                  <strong style={{ display: 'block', marginBottom: 6 }}>
+                                    Alumnos ({alumnosGrupo.length})
+                                  </strong>
+                                  {alumnosGrupo.length > 0 ? (
+                                    <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4 }}>
+                                      {alumnosGrupo.map((alumno, alumnoIndice) => (
+                                        <li
+                                          id={`resumen-alumno-${String(
+                                            grupo.grupo_id || `${sesion.id}-${indice}`
+                                          )}-${claveDomAlumnoResumenDia(alumno.split('·')[0])}`}
+                                          key={`${grupo.grupo_id || indice}-${alumnoIndice}`}
+                                          style={
+                                            grupoResumenDiaDestacado ===
+                                              String(grupo.grupo_id || `${sesion.id}-${indice}`) &&
+                                            alumnoResumenDiaDestacado &&
+                                            textoSinAcentosGrupoApp(alumno.split('·')[0]) ===
+                                              alumnoResumenDiaDestacado
+                                              ? {
+                                                  background: '#fef3c7',
+                                                  border: '2px solid #f59e0b',
+                                                  borderRadius: 8,
+                                                  padding: '4px 7px',
+                                                  fontWeight: 900,
+                                                  listStylePosition: 'inside',
+                                                }
+                                              : undefined
+                                          }
+                                        >
+                                          {(() => {
+                                            const telefono = telefonoAlumnoResumenDia(alumno);
+                                            const whatsapp = hrefWhatsappAlumnoResumenDia(telefono);
+                                            const llamada = hrefTelefonoAlumnoResumenDia(telefono);
+
+                                            return (
+                                              <div
+                                                style={{
+                                                  display: 'grid',
+                                                  gridTemplateColumns: telefono ? 'minmax(0, 1fr) auto' : 'minmax(0, 1fr)',
+                                                  alignItems: 'center',
+                                                  gap: 8,
+                                                  minWidth: 0,
+                                                  width: '100%',
+                                                }}
+                                              >
+                                                <div style={{ minWidth: 0 }}>
+                                                  <strong style={{ color: '#172033' }}>{alumno}</strong>
+                                                </div>
+
+                                                {telefono && (
+                                                  <div
+                                                    style={{
+                                                      display: 'flex',
+                                                      gap: 5,
+                                                      flexWrap: 'nowrap',
+                                                      justifyContent: 'flex-end',
+                                                      alignItems: 'center',
+                                                    }}
+                                                  >
+                                                    {whatsapp && (
+                                                      <a
+                                                        href={whatsapp}
+                                                        target="_blank"
+                                                        rel="noreferrer"
+                                                        style={{
+                                                          display: 'inline-flex',
+                                                          alignItems: 'center',
+                                                          justifyContent: 'center',
+                                                          minHeight: 32,
+                                                          padding: '5px 8px',
+                                                          borderRadius: 10,
+                                                          border: '1px solid #bbf7d0',
+                                                          background: '#f0fdf4',
+                                                          color: '#15803d',
+                                                          fontSize: 11,
+                                                          fontWeight: 900,
+                                                          textDecoration: 'none',
+                                                          whiteSpace: 'nowrap',
+                                                        }}
+                                                      >
+                                                        WhatsApp
+                                                      </a>
+                                                    )}
+                                                    {llamada && (
+                                                      <a
+                                                        href={llamada}
+                                                        style={{
+                                                          display: 'inline-flex',
+                                                          alignItems: 'center',
+                                                          justifyContent: 'center',
+                                                          minHeight: 32,
+                                                          padding: '5px 8px',
+                                                          borderRadius: 10,
+                                                          border: '1px solid #bfdbfe',
+                                                          background: '#eff6ff',
+                                                          color: '#1d4ed8',
+                                                          fontSize: 11,
+                                                          fontWeight: 900,
+                                                          textDecoration: 'none',
+                                                          whiteSpace: 'nowrap',
+                                                        }}
+                                                      >
+                                                        Llamar
+                                                      </a>
+                                                    )}
+                                                  </div>
+                                                )}
+                                              </div>
+                                            );
+                                          })()}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  ) : (
+                                    <p style={{ margin: 0, color: '#64748b' }}>Sin listado cargado.</p>
+                                  )}
+                                </div>
+
+                                {grupo.trabajo_diario && (
+                                  <details
+                                    style={{
+                                      ...avisoNeutral,
+                                      marginTop: 12,
+                                      padding: 0,
+                                      overflow: 'hidden',
+                                    }}
+                                  >
+                                    <summary
+                                      style={{
+                                        cursor: 'pointer',
+                                        padding: '11px 12px',
+                                        fontWeight: 900,
+                                        userSelect: 'none',
+                                        listStylePosition: 'inside',
+                                      }}
+                                    >
+                                      Trabajo diario
+                                    </summary>
+                                    <div
+                                      style={{
+                                        whiteSpace: 'pre-wrap',
+                                        padding: '0 12px 12px',
+                                        borderTop: '1px solid #e2e8f0',
+                                        paddingTop: 10,
+                                      }}
+                                    >
+                                      {grupo.trabajo_diario}
+                                    </div>
+                                  </details>
+                                )}
+
+                                {grupo.observaciones_importantes && (
+                                  <details
+                                    style={{
+                                      ...avisoNeutral,
+                                      marginTop: 8,
+                                      padding: 0,
+                                      overflow: 'hidden',
+                                    }}
+                                  >
+                                    <summary
+                                      style={{
+                                        cursor: 'pointer',
+                                        padding: '11px 12px',
+                                        fontWeight: 900,
+                                        userSelect: 'none',
+                                        listStylePosition: 'inside',
+                                      }}
+                                    >
+                                      Observaciones
+                                    </summary>
+                                    <div
+                                      style={{
+                                        padding: '0 12px 12px',
+                                        borderTop: '1px solid #e2e8f0',
+                                        paddingTop: 10,
+                                      }}
+                                    >
+                                      {formatearObservaciones(grupo.observaciones_importantes)}
+                                    </div>
+                                  </details>
+                                )}
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    )}
+                  </article>
+                );
+              })
+            )}
+          </div>
+        </section>
+      )}
+
+      {pantalla === 'informes' && esCoordinadorJefeApp && (
+        <section>
+          <div style={cabeceraPantallaMovil}>
+            <div>
+              <p style={etiquetaSuperior}>INFORMES Y LISTADOS</p>
+              <h2 style={{ margin: 0 }}>Informes y listados</h2>
+              <p style={{ margin: '8px 0 0', color: '#475569' }}>
+                Informes operativos y listados calculados con los datos actuales. No se guardan
+                copias adicionales en Supabase.
+              </p>
+            </div>
+            <button onClick={actualizarTodo} style={botonSecundario}>
+              Actualizar datos
+            </button>
+          </div>
+
+          <details
+            open
+            style={{
+              ...tarjeta,
+              marginTop: 16,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid rgba(37,99,235,.22)',
+              background:
+                'linear-gradient(135deg, rgba(239,246,255,.95), #fff 55%, rgba(240,253,244,.75))',
+            }}
+          >
+            <summary
+              style={{
+                listStyle: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '16px 18px',
+                borderBottom: '1px solid rgba(37,99,235,.12)',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p style={{ ...etiquetaSuperior, color: '#1d4ed8', margin: '0 0 3px' }}>
+                  SNOWZONE
+                </p>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: 20,
+                    lineHeight: 1.2,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  Pista pequeña / Pista grande
+                </h3>
+              </div>
+              <span
+                style={{
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  border: '1px solid #cbd5e1',
+                  background: '#fff',
+                  color: '#334155',
+                  fontWeight: 900,
+                  fontSize: 20,
+                }}
+              >
+                ↕
+              </span>
+            </summary>
+
+            <div style={{ padding: '16px 18px 18px' }}>
+              <p style={{ margin: '0 0 14px', color: '#475569', lineHeight: 1.4 }}>
+                Cuenta asistencia real por día. Un grupo marcado como
+                Pequeña/Grande computa como Pista grande.
+              </p>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns:
+                    'repeat(auto-fit, minmax(min(100%, 190px), 1fr))',
+                  gap: 10,
+                  alignItems: 'end',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setSnowZoneModo('mensual')}
+                  style={{
+                    ...botonMenu(snowZoneModo === 'mensual'),
+                    width: '100%',
+                    minWidth: 0,
+                    minHeight: 46,
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  Mensual
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setSnowZoneModo('semanal')}
+                  style={{
+                    ...botonMenu(snowZoneModo === 'semanal'),
+                    width: '100%',
+                    minWidth: 0,
+                    minHeight: 46,
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  Semanal
+                </button>
+
+                {snowZoneModo === 'mensual' ? (
+                  <label style={{ ...labelCampo, minWidth: 0, width: '100%' }}>
+                    Mes
+                    <input
+                      type="month"
+                      value={snowZoneMes}
+                      onChange={(e) => setSnowZoneMes(e.target.value)}
+                      style={{
+                        ...inputCampo,
+                        width: '100%',
+                        minWidth: 0,
+                        maxWidth: '100%',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </label>
+                ) : (
+                  <label style={{ ...labelCampo, minWidth: 0, width: '100%' }}>
+                    Semana desde
+                    <input
+                      type="date"
+                      value={snowZoneSemanaInicio}
+                      onChange={(e) => {
+                        const valor = e.target.value;
+                        if (!valor) return;
+                        const fecha = new Date(`${valor}T12:00:00`);
+                        const diaSemana = fecha.getDay();
+                        const desplazamiento =
+                          diaSemana === 0 ? -6 : 1 - diaSemana;
+                        fecha.setDate(fecha.getDate() + desplazamiento);
+                        setSnowZoneSemanaInicio(fechaIsoEditor(fecha));
+                      }}
+                      style={{
+                        ...inputCampo,
+                        width: '100%',
+                        minWidth: 0,
+                        maxWidth: '100%',
+                        boxSizing: 'border-box',
+                      }}
+                    />
+                  </label>
+                )}
+
+                <button
+                  type="button"
+                  onClick={cargarInformeSnowZone}
+                  disabled={snowZoneCargando}
+                  style={{
+                    ...botonSecundario,
+                    width: '100%',
+                    minWidth: 0,
+                    minHeight: 46,
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  {snowZoneCargando ? 'Calculando...' : 'Actualizar informe'}
+                </button>
+              </div>
+
+              {snowZoneError && (
+                <div style={{ ...errorCaja, marginTop: 12 }}>{snowZoneError}</div>
+              )}
+
+              {!snowZoneCargando && !snowZoneError && snowZoneDias.length === 0 && (
+                <div style={{ ...avisoNeutral, marginTop: 12 }}>
+                  No hay asistencias contabilizadas en este periodo.
+                </div>
+              )}
+
+              {snowZoneDias.length > 0 && (() => {
+                const totalPequena = snowZoneDias.reduce(
+                  (total, fila) => total + Number(fila.pista_pequena || 0),
+                  0
+                );
+                const totalGrande = snowZoneDias.reduce(
+                  (total, fila) => total + Number(fila.pista_grande || 0),
+                  0
+                );
+                const totalGeneral = totalPequena + totalGrande;
+                const periodo = limitesSnowZoneSeleccionados();
+                const cabeceraPeriodo = tituloPeriodoSnowZone();
+
+                return (
+                  <>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        flexWrap: 'wrap',
+                        marginTop: 16,
+                        padding: '14px 15px',
+                        border: '1px solid #dbeafe',
+                        borderRadius: 16,
+                        background: 'rgba(255,255,255,.82)',
+                      }}
+                    >
+                      <div style={{ minWidth: 0 }}>
+                        <strong
+                          style={{
+                            display: 'block',
+                            color: '#172033',
+                            fontSize: 18,
+                            lineHeight: 1.2,
+                          }}
+                        >
+                          {cabeceraPeriodo.titulo}
+                        </strong>
+                        <span
+                          style={{
+                            display: 'block',
+                            marginTop: 4,
+                            color: '#64748b',
+                            fontSize: 13,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {cabeceraPeriodo.periodo}
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={descargarInformeSnowZoneExcel}
+                        disabled={snowZoneCargando || snowZoneDias.length === 0}
+                        style={{
+                          ...botonPrincipal,
+                          flex: '0 1 190px',
+                          minWidth: 0,
+                          minHeight: 44,
+                          whiteSpace: 'normal',
+                          overflowWrap: 'anywhere',
+                          opacity:
+                            snowZoneCargando || snowZoneDias.length === 0 ? 0.55 : 1,
+                        }}
+                      >
+                        Descargar Excel
+                      </button>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',
+                        gap: 10,
+                        marginTop: 12,
+                      }}
+                    >
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Pista pequeña</strong>
+                        <br />
+                        <span style={{ fontSize: 26, fontWeight: 900 }}>
+                          {totalPequena}
+                        </span>
+                      </div>
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Pista grande</strong>
+                        <br />
+                        <span style={{ fontSize: 26, fontWeight: 900 }}>
+                          {totalGrande}
+                        </span>
+                      </div>
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Total periodo</strong>
+                        <br />
+                        <span style={{ fontSize: 26, fontWeight: 900 }}>
+                          {totalGeneral}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        overflowX: 'auto',
+                        marginTop: 12,
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 16,
+                        background: '#fff',
+                        WebkitOverflowScrolling: 'touch',
+                      }}
+                    >
+                      <table
+                        style={{
+                          width: '100%',
+                          borderCollapse: 'collapse',
+                          minWidth: 520,
+                        }}
+                      >
+                        <thead>
+                          <tr style={{ background: '#f8fafc' }}>
+                            {['Fecha', 'Pista pequeña', 'Pista grande', 'Total'].map(
+                              (titulo) => (
+                                <th
+                                  key={titulo}
+                                  style={{
+                                    padding: '11px 12px',
+                                    textAlign:
+                                      titulo === 'Fecha' ? 'left' : 'center',
+                                    borderBottom: '1px solid #e2e8f0',
+                                    color: '#334155',
+                                  }}
+                                >
+                                  {titulo}
+                                </th>
+                              )
+                            )}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {snowZoneDias.map((fila) => (
+                            <tr key={fila.fecha}>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  fontWeight: 800,
+                                }}
+                              >
+                                {formatearFecha(fila.fecha)}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                {fila.pista_pequena}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                {fila.pista_grande}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  textAlign: 'center',
+                                  fontWeight: 900,
+                                }}
+                              >
+                                {fila.total}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr style={{ background: '#f8fafc' }}>
+                            <td style={{ padding: '11px 12px', fontWeight: 900 }}>
+                              TOTAL
+                            </td>
+                            <td
+                              style={{
+                                padding: '11px 12px',
+                                textAlign: 'center',
+                                fontWeight: 900,
+                              }}
+                            >
+                              {totalPequena}
+                            </td>
+                            <td
+                              style={{
+                                padding: '11px 12px',
+                                textAlign: 'center',
+                                fontWeight: 900,
+                              }}
+                            >
+                              {totalGrande}
+                            </td>
+                            <td
+                              style={{
+                                padding: '11px 12px',
+                                textAlign: 'center',
+                                fontWeight: 900,
+                              }}
+                            >
+                              {totalGeneral}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+
+                    <p
+                      style={{
+                        margin: '10px 0 0',
+                        color: '#64748b',
+                        fontSize: 13,
+                      }}
+                    >
+                      Periodo: {formatearFecha(periodo.desde)} –{' '}
+                      {formatearFecha(periodo.hasta)}
+                    </p>
+                  </>
+                );
+              })()}
+            </div>
+          </details>
+
+          <details
+            style={{
+              ...tarjeta,
+              marginTop: 16,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid rgba(22,163,74,.22)',
+              background:
+                'linear-gradient(135deg, rgba(240,253,244,.94), #fff 56%, rgba(239,246,255,.72))',
+            }}
+          >
+            <summary
+              style={{
+                listStyle: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '16px 18px',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p
+                  style={{
+                    ...etiquetaSuperior,
+                    color: '#15803d',
+                    margin: '0 0 3px',
+                  }}
+                >
+                  FINAL DE TEMPORADA
+                </p>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: 20,
+                    lineHeight: 1.2,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  Candidatos a equipo
+                </h3>
+                <p
+                  style={{
+                    margin: '5px 0 0',
+                    color: '#64748b',
+                    fontSize: 13,
+                  }}
+                >
+                  Solo Baby · nivel B o superior · informe bajo demanda
+                </p>
+              </div>
+
+              <span
+                style={{
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  border: '1px solid #cbd5e1',
+                  background: '#fff',
+                  color: '#334155',
+                  fontWeight: 900,
+                  fontSize: 20,
+                }}
+              >
+                ↕
+              </span>
+            </summary>
+
+            <div
+              style={{
+                padding: '16px 18px 18px',
+                borderTop: '1px solid rgba(22,163,74,.12)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <div style={{ flex: '1 1 420px', minWidth: 0 }}>
+                  <p style={{ margin: 0, color: '#475569', lineHeight: 1.45 }}>
+                    Genera el listado final con los alumnos que han entrenado en
+                    Baby esta temporada y cuyo último nivel técnico real es B o
+                    superior. Se ordenan primero por nivel y después por
+                    asistencia, continuidad y autonomía.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={cargarCandidatosEquipo}
+                  disabled={candidatosEquipoCargando}
+                  style={{
+                    ...botonPrincipal,
+                    flex: '0 1 210px',
+                    minWidth: 0,
+                    minHeight: 46,
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere',
+                    opacity: candidatosEquipoCargando ? 0.65 : 1,
+                  }}
+                >
+                  {candidatosEquipoCargando
+                    ? 'Generando...'
+                    : candidatosEquipoGenerado
+                    ? 'Actualizar candidatos'
+                    : 'Generar candidatos'}
+                </button>
+              </div>
+
+              {candidatosEquipoError && (
+                <div style={{ ...errorCaja, marginTop: 12 }}>
+                  {candidatosEquipoError}
+                </div>
+              )}
+
+              {candidatosEquipoGenerado &&
+                !candidatosEquipoCargando &&
+                !candidatosEquipoError &&
+                candidatosEquipo.length === 0 && (
+                  <div style={{ ...avisoNeutral, marginTop: 12 }}>
+                    No hay alumnos Baby con nivel B o superior en la temporada
+                    activa.
+                  </div>
+                )}
+
+              {candidatosEquipo.length > 0 && (() => {
+                const temporada = candidatosEquipo[0]?.temporada || '-';
+                const nivelesAgrupados = Array.from(
+                  new Set(candidatosEquipo.map((fila) => fila.nivel))
+                );
+
+                return (
+                  <>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        gap: 12,
+                        flexWrap: 'wrap',
+                        marginTop: 14,
+                        padding: '13px 14px',
+                        border: '1px solid #bbf7d0',
+                        borderRadius: 16,
+                        background: 'rgba(255,255,255,.82)',
+                      }}
+                    >
+                      <div>
+                        <strong
+                          style={{
+                            display: 'block',
+                            color: '#166534',
+                            fontSize: 17,
+                          }}
+                        >
+                          Temporada {temporada}
+                        </strong>
+                        <span
+                          style={{
+                            display: 'block',
+                            marginTop: 3,
+                            color: '#64748b',
+                            fontSize: 13,
+                            fontWeight: 700,
+                          }}
+                        >
+                          {candidatosEquipo.length} candidatos ·{' '}
+                          {nivelesAgrupados.length} niveles
+                        </span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={descargarCandidatosEquipoExcel}
+                        style={{
+                          ...botonPrincipal,
+                          flex: '0 1 200px',
+                          minWidth: 0,
+                          minHeight: 44,
+                          whiteSpace: 'normal',
+                        }}
+                      >
+                        Descargar Excel
+                      </button>
+                    </div>
+
+                    <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
+                      {nivelesAgrupados.map((nivel) => {
+                        const alumnosNivel = candidatosEquipo.filter(
+                          (fila) => fila.nivel === nivel
+                        );
+
+                        return (
+                          <details
+                            key={`candidatos-${nivel}`}
+                            open
+                            style={{
+                              overflow: 'hidden',
+                              border: '1px solid #dbeafe',
+                              borderRadius: 16,
+                              background: '#fff',
+                            }}
+                          >
+                            <summary
+                              style={{
+                                cursor: 'pointer',
+                                listStyle: 'none',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                gap: 10,
+                                padding: '12px 14px',
+                                background: '#f8fafc',
+                                fontWeight: 900,
+                              }}
+                            >
+                              <span>Nivel {nivel}</span>
+                              <span>{alumnosNivel.length} alumnos</span>
+                            </summary>
+
+                            <div style={{ overflowX: 'auto' }}>
+                              <table
+                                style={{
+                                  width: '100%',
+                                  minWidth: 760,
+                                  borderCollapse: 'collapse',
+                                }}
+                              >
+                                <thead>
+                                  <tr>
+                                    {[
+                                      'Alumno',
+                                      'Entrenos',
+                                      'Meses',
+                                      'Último entreno',
+                                      'Autonomía',
+                                      'Remontes',
+                                    ].map((titulo) => (
+                                      <th
+                                        key={`${nivel}-${titulo}`}
+                                        style={{
+                                          padding: '10px 12px',
+                                          textAlign:
+                                            titulo === 'Alumno'
+                                              ? 'left'
+                                              : 'center',
+                                          borderBottom: '1px solid #e2e8f0',
+                                          color: '#334155',
+                                          fontSize: 13,
+                                        }}
+                                      >
+                                        {titulo}
+                                      </th>
+                                    ))}
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {alumnosNivel.map((fila) => (
+                                    <tr key={fila.alumno_id}>
+                                      <td
+                                        style={{
+                                          padding: '10px 12px',
+                                          borderBottom: '1px solid #f1f5f9',
+                                          fontWeight: 800,
+                                        }}
+                                      >
+                                        {fila.alumno}
+                                      </td>
+                                      <td
+                                        style={{
+                                          padding: '10px 12px',
+                                          borderBottom: '1px solid #f1f5f9',
+                                          textAlign: 'center',
+                                          fontWeight: 900,
+                                        }}
+                                      >
+                                        {fila.entrenamientos_baby}
+                                      </td>
+                                      <td
+                                        style={{
+                                          padding: '10px 12px',
+                                          borderBottom: '1px solid #f1f5f9',
+                                          textAlign: 'center',
+                                        }}
+                                      >
+                                        {fila.meses_activos_baby}
+                                      </td>
+                                      <td
+                                        style={{
+                                          padding: '10px 12px',
+                                          borderBottom: '1px solid #f1f5f9',
+                                          textAlign: 'center',
+                                        }}
+                                      >
+                                        {fila.ultimo_entreno_baby
+                                          ? formatearFecha(fila.ultimo_entreno_baby)
+                                          : '-'}
+                                      </td>
+                                      <td
+                                        style={{
+                                          padding: '10px 12px',
+                                          borderBottom: '1px solid #f1f5f9',
+                                          textAlign: 'center',
+                                        }}
+                                      >
+                                        {fila.autonomia || '-'}
+                                      </td>
+                                      <td
+                                        style={{
+                                          padding: '10px 12px',
+                                          borderBottom: '1px solid #f1f5f9',
+                                          textAlign: 'center',
+                                        }}
+                                      >
+                                        {(fila.remontes || []).join(', ') || '-'}
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </details>
+                        );
+                      })}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </details>
+
+          <details
+            style={{
+              ...tarjeta,
+              marginTop: 16,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid rgba(99,102,241,.2)',
+              background:
+                'linear-gradient(135deg, rgba(238,242,255,.92), #fff 58%, rgba(248,250,252,.9))',
+            }}
+          >
+            <summary
+              style={{
+                listStyle: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '16px 18px',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p
+                  style={{
+                    ...etiquetaSuperior,
+                    color: '#4f46e5',
+                    margin: '0 0 3px',
+                  }}
+                >
+                  LISTADOS RÁPIDOS
+                </p>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: 20,
+                    lineHeight: 1.2,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  Alumnos de la temporada
+                </h3>
+                <p
+                  style={{
+                    margin: '5px 0 0',
+                    color: '#64748b',
+                    fontSize: 13,
+                  }}
+                >
+                  Baby · Ocio · Intensivos · Todos
+                </p>
+              </div>
+
+              <span
+                style={{
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  border: '1px solid #cbd5e1',
+                  background: '#fff',
+                  color: '#334155',
+                  fontWeight: 900,
+                  fontSize: 20,
+                }}
+              >
+                ↕
+              </span>
+            </summary>
+
+            <div
+              style={{
+                padding: '16px 18px 18px',
+                borderTop: '1px solid rgba(99,102,241,.12)',
+              }}
+            >
+              <p style={{ margin: 0, color: '#475569', lineHeight: 1.45 }}>
+                Genera un listado limpio con los niños que realmente han tenido
+                actividad esta temporada. No guarda copias adicionales en
+                Supabase.
+              </p>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns:
+                    'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',
+                  gap: 9,
+                  marginTop: 14,
+                }}
+              >
+                {(
+                  [
+                    ['BABY', 'Baby'],
+                    ['OCIO', 'Ocio'],
+                    ['INTENSIVOS', 'Intensivos'],
+                    ['TODOS', 'Todos'],
+                  ] as Array<[TipoListadoAlumnosApp, string]>
+                ).map(([tipo, etiqueta]) => (
+                  <button
+                    key={`listado-${tipo}`}
+                    type="button"
+                    onClick={() => cargarListadoAlumnosTemporada(tipo)}
+                    disabled={listadoAlumnosCargando}
+                    style={{
+                      ...botonMenu(tipoListadoAlumnos === tipo),
+                      width: '100%',
+                      minWidth: 0,
+                      minHeight: 44,
+                      whiteSpace: 'normal',
+                      overflowWrap: 'anywhere',
+                      opacity: listadoAlumnosCargando ? 0.7 : 1,
+                    }}
+                  >
+                    {etiqueta}
+                  </button>
+                ))}
+              </div>
+
+              {listadoAlumnosError && (
+                <div style={{ ...errorCaja, marginTop: 12 }}>
+                  {listadoAlumnosError}
+                </div>
+              )}
+
+              {listadoAlumnosCargando && (
+                <div style={{ ...avisoNeutral, marginTop: 12 }}>
+                  Generando listado...
+                </div>
+              )}
+
+              {listadoAlumnosGenerado &&
+                !listadoAlumnosCargando &&
+                !listadoAlumnosError &&
+                listadoAlumnosTemporada.length === 0 && (
+                  <div style={{ ...avisoNeutral, marginTop: 12 }}>
+                    No hay actividad real en este listado durante la temporada
+                    activa.
+                  </div>
+                )}
+
+              {listadoAlumnosTemporada.length > 0 && (() => {
+                const termino = busquedaListadoAlumnos.trim().toLowerCase();
+                const filasVisibles = termino
+                  ? listadoAlumnosTemporada.filter((fila) =>
+                      `${fila.alumno} ${fila.nivel || ''} ${fila.pista || ''} ${
+                        fila.modalidad || ''
+                      } ${fila.ultimo_intensivo || ''}`
+                        .toLowerCase()
+                        .includes(termino)
+                    )
+                  : listadoAlumnosTemporada;
+
+                const temporada =
+                  listadoAlumnosTemporada[0]?.temporada || '-';
+
+                return (
+                  <>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'minmax(0, 1fr) minmax(160px, auto)',
+                        gap: 10,
+                        alignItems: 'end',
+                        marginTop: 14,
+                      }}
+                    >
+                      <label
+                        style={{
+                          ...labelCampo,
+                          minWidth: 0,
+                          width: '100%',
+                        }}
+                      >
+                        Buscar alumno
+                        <input
+                          value={busquedaListadoAlumnos}
+                          onChange={(e) =>
+                            setBusquedaListadoAlumnos(e.target.value)
+                          }
+                          placeholder="Nombre, nivel, pista..."
+                          style={{
+                            ...inputCampo,
+                            width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={descargarListadoAlumnosTemporada}
+                        style={{
+                          ...botonPrincipal,
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 46,
+                          whiteSpace: 'normal',
+                        }}
+                      >
+                        Descargar Excel
+                      </button>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                        marginTop: 12,
+                        padding: '11px 12px',
+                        border: '1px solid #e0e7ff',
+                        borderRadius: 14,
+                        background: '#fff',
+                      }}
+                    >
+                      <strong>Temporada {temporada}</strong>
+                      <span style={{ color: '#64748b' }}>
+                        {filasVisibles.length} alumnos visibles ·{' '}
+                        {listadoAlumnosTemporada.length} total
+                      </span>
+                    </div>
+
+                    <div
+                      style={{
+                        overflowX: 'auto',
+                        marginTop: 12,
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 16,
+                        background: '#fff',
+                        WebkitOverflowScrolling: 'touch',
+                      }}
+                    >
+                      <table
+                        style={{
+                          width: '100%',
+                          minWidth: 760,
+                          borderCollapse: 'collapse',
+                        }}
+                      >
+                        <thead>
+                          <tr style={{ background: '#f8fafc' }}>
+                            {[
+                              'Alumno',
+                              'Nivel',
+                              'Pista',
+                              'Último entreno',
+                              'Entrenos',
+                              'Modalidad',
+                            ].map((titulo) => (
+                              <th
+                                key={`listado-alumnos-${titulo}`}
+                                style={{
+                                  padding: '10px 12px',
+                                  textAlign:
+                                    titulo === 'Alumno' ? 'left' : 'center',
+                                  borderBottom: '1px solid #e2e8f0',
+                                  color: '#334155',
+                                  fontSize: 13,
+                                }}
+                              >
+                                {titulo}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filasVisibles.map((fila) => (
+                            <tr key={`${tipoListadoAlumnos}-${fila.alumno_id}`}>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  fontWeight: 800,
+                                }}
+                              >
+                                {fila.alumno}
+                                {fila.ultimo_intensivo && (
+                                  <span
+                                    style={{
+                                      display: 'block',
+                                      marginTop: 2,
+                                      color: '#64748b',
+                                      fontSize: 12,
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    {fila.ultimo_intensivo}
+                                  </span>
+                                )}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  textAlign: 'center',
+                                  fontWeight: 900,
+                                }}
+                              >
+                                {fila.nivel || '-'}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                {fila.pista || '-'}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                {fila.ultimo_entreno
+                                  ? formatearFecha(fila.ultimo_entreno)
+                                  : '-'}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  textAlign: 'center',
+                                  fontWeight: 900,
+                                }}
+                              >
+                                {fila.total_entrenamientos}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  textAlign: 'center',
+                                }}
+                              >
+                                {fila.modalidad || '-'}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </details>
+
+          <details
+            style={{
+              ...tarjeta,
+              marginTop: 16,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid rgba(168,85,247,.2)',
+              background:
+                'linear-gradient(135deg, rgba(250,245,255,.94), #fff 58%, rgba(239,246,255,.72))',
+            }}
+          >
+            <summary
+              style={{
+                listStyle: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '16px 18px',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p
+                  style={{
+                    ...etiquetaSuperior,
+                    color: '#7e22ce',
+                    margin: '0 0 3px',
+                  }}
+                >
+                  FINAL DE TEMPORADA · OCIO
+                </p>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: 20,
+                    lineHeight: 1.2,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  Evaluación anual Ocio
+                </h3>
+                <p
+                  style={{
+                    margin: '5px 0 0',
+                    color: '#64748b',
+                    fontSize: 13,
+                  }}
+                >
+                  Resumen técnico de progresión para preparar los informes de familias
+                </p>
+              </div>
+
+              <span
+                style={{
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  border: '1px solid #cbd5e1',
+                  background: '#fff',
+                  color: '#334155',
+                  fontWeight: 900,
+                  fontSize: 20,
+                }}
+              >
+                ↕
+              </span>
+            </summary>
+
+            <div
+              style={{
+                padding: '16px 18px 18px',
+                borderTop: '1px solid rgba(168,85,247,.12)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'flex-start',
+                  justifyContent: 'space-between',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                }}
+              >
+                <p
+                  style={{
+                    margin: 0,
+                    color: '#475569',
+                    lineHeight: 1.45,
+                    flex: '1 1 430px',
+                  }}
+                >
+                  Resume cómo empezó y cómo termina cada alumno de Ocio según sus
+                  reportes reales de esta temporada. Sirve como base para pasármelo
+                  después por ChatGPT y redactar un informe bonito para los padres.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={cargarEvaluacionesAnualesOcio}
+                  disabled={evaluacionesAnualesOcioCargando}
+                  style={{
+                    ...botonPrincipal,
+                    flex: '0 1 220px',
+                    minWidth: 0,
+                    minHeight: 46,
+                    whiteSpace: 'normal',
+                    opacity: evaluacionesAnualesOcioCargando ? 0.65 : 1,
+                  }}
+                >
+                  {evaluacionesAnualesOcioCargando
+                    ? 'Generando...'
+                    : evaluacionesAnualesOcioGeneradas
+                    ? 'Actualizar evaluación'
+                    : 'Generar evaluación anual'}
+                </button>
+              </div>
+
+              {evaluacionesAnualesOcioError && (
+                <div style={{ ...errorCaja, marginTop: 12 }}>
+                  {evaluacionesAnualesOcioError}
+                </div>
+              )}
+
+              {evaluacionesAnualesOcioGeneradas &&
+                !evaluacionesAnualesOcioCargando &&
+                !evaluacionesAnualesOcioError &&
+                evaluacionesAnualesOcio.length === 0 && (
+                  <div style={{ ...avisoNeutral, marginTop: 12 }}>
+                    No hay alumnos con reportes de Ocio en la temporada activa.
+                  </div>
+                )}
+
+              {evaluacionesAnualesOcio.length > 0 && (() => {
+                const termino = busquedaEvaluacionAnualOcio.trim().toLowerCase();
+                const filasVisibles = termino
+                  ? evaluacionesAnualesOcio.filter((fila) =>
+                      `${fila.alumno} ${fila.nivel_inicial || ''} ${
+                        fila.nivel_final || ''
+                      } ${fila.autonomia_final || ''}`
+                        .toLowerCase()
+                        .includes(termino)
+                    )
+                  : evaluacionesAnualesOcio;
+                const temporada = evaluacionesAnualesOcio[0]?.temporada || '-';
+
+                return (
+                  <>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'minmax(0, 1fr) minmax(180px, auto)',
+                        gap: 10,
+                        alignItems: 'end',
+                        marginTop: 14,
+                      }}
+                    >
+                      <label style={{ ...labelCampo, minWidth: 0, width: '100%' }}>
+                        Buscar alumno
+                        <input
+                          value={busquedaEvaluacionAnualOcio}
+                          onChange={(e) => setBusquedaEvaluacionAnualOcio(e.target.value)}
+                          placeholder="Nombre, nivel, autonomía..."
+                          style={{
+                            ...inputCampo,
+                            width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
+                          }}
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={descargarEvaluacionesAnualesOcio}
+                        style={{
+                          ...botonPrincipal,
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 46,
+                          whiteSpace: 'normal',
+                        }}
+                      >
+                        Descargar Excel
+                      </button>
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                        marginTop: 12,
+                        padding: '11px 12px',
+                        border: '1px solid #e9d5ff',
+                        borderRadius: 14,
+                        background: '#fff',
+                      }}
+                    >
+                      <strong>Temporada {temporada}</strong>
+                      <span style={{ color: '#64748b' }}>
+                        {filasVisibles.length} alumnos visibles ·{' '}
+                        {evaluacionesAnualesOcio.length} total
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'grid', gap: 10, padding: '12px 16px 16px' }}>
+                      {filasVisibles.map((fila) => (
+                        <details
+                          key={`evaluacion-anual-ocio-${fila.alumno_id}`}
+                          style={{
+                            overflow: 'hidden',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: 16,
+                            background: '#fff',
+                          }}
+                        >
+                          <summary
+                            style={{
+                              listStyle: 'none',
+                              cursor: 'pointer',
+                              display: 'grid',
+                              gridTemplateColumns: 'minmax(0, 1fr) auto',
+                              gap: 10,
+                              alignItems: 'center',
+                              padding: '12px 14px',
+                              background: '#fafafa',
+                            }}
+                          >
+                            <div style={{ minWidth: 0 }}>
+                              <strong style={{ overflowWrap: 'anywhere' }}>
+                                {fila.alumno}
+                              </strong>
+                              <span
+                                style={{
+                                  display: 'block',
+                                  marginTop: 3,
+                                  color: '#64748b',
+                                  fontSize: 13,
+                                }}
+                              >
+                                Nivel {fila.nivel_inicial || '-'} →{' '}
+                                {fila.nivel_final || '-'} · {fila.entrenamientos_ocio}{' '}
+                                entrenos · {fila.reportes_ocio} reportes
+                              </span>
+                            </div>
+                            <span style={{ color: '#7e22ce', fontWeight: 900 }}>
+                              Ver progreso
+                            </span>
+                          </summary>
+
+                          <div
+                            style={{
+                              display: 'grid',
+                              gridTemplateColumns:
+                                'repeat(auto-fit, minmax(min(100%, 210px), 1fr))',
+                              gap: 10,
+                              padding: 14,
+                            }}
+                          >
+                            <div style={miniTarjetaBlanca}>
+                              <strong>Progresión de nivel</strong>
+                              <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                {fila.niveles_reportados ||
+                                  `${fila.nivel_inicial || '-'} → ${
+                                    fila.nivel_final || '-'
+                                  }`}
+                              </p>
+                            </div>
+
+                            <div style={miniTarjetaBlanca}>
+                              <strong>Técnica</strong>
+                              <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                {fila.tecnica_inicial || '-'} → {fila.tecnica_final || '-'}
+                              </p>
+                            </div>
+
+                            <div style={miniTarjetaBlanca}>
+                              <strong>Autonomía</strong>
+                              <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                {fila.autonomia_inicial || '-'} →{' '}
+                                {fila.autonomia_final || '-'}
+                              </p>
+                            </div>
+
+                            <div style={miniTarjetaBlanca}>
+                              <strong>Remontes finales</strong>
+                              <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                {(fila.remontes_finales || []).join(', ') || '-'}
+                              </p>
+                            </div>
+
+                            <div style={miniTarjetaBlanca}>
+                              <strong>Actitud final</strong>
+                              <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                {fila.actitud_final || '-'}
+                              </p>
+                            </div>
+
+                            <div style={miniTarjetaBlanca}>
+                              <strong>Último entrenamiento</strong>
+                              <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                {fila.ultimo_reporte_fecha
+                                  ? formatearFecha(fila.ultimo_reporte_fecha)
+                                  : '-'}
+                              </p>
+                            </div>
+
+                            {(fila.comentario_tecnica_final ||
+                              fila.comentario_autonomia_final ||
+                              fila.recomendacion_final) && (
+                              <div
+                                style={{
+                                  ...miniTarjetaBlanca,
+                                  gridColumn: '1 / -1',
+                                }}
+                              >
+                                <strong>Últimas observaciones útiles</strong>
+                                {fila.comentario_tecnica_final && (
+                                  <p style={{ margin: '7px 0 0', color: '#475569' }}>
+                                    Técnica: {fila.comentario_tecnica_final}
+                                  </p>
+                                )}
+                                {fila.comentario_autonomia_final && (
+                                  <p style={{ margin: '7px 0 0', color: '#475569' }}>
+                                    Autonomía: {fila.comentario_autonomia_final}
+                                  </p>
+                                )}
+                                {fila.recomendacion_final && (
+                                  <p style={{ margin: '7px 0 0', color: '#475569' }}>
+                                    Recomendación: {fila.recomendacion_final}
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </details>
+                      ))}
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          </details>
+
+        </section>
+      )}
+
+      {pantalla === 'temporadas' && esCoordinadorJefeApp && (
+        <section>
+          <div style={cabeceraPantallaMovil}>
+            <div>
+              <p style={etiquetaSuperior}>TEMPORADAS</p>
+              <h2 style={{ margin: 0 }}>Inicio y cierre de temporada</h2>
+              <p style={{ margin: '8px 0 0', color: '#475569' }}>
+                Cierre seguro, copia maestra, nueva temporada y carga de semilla en un único flujo ordenado.
+              </p>
+            </div>
+            <button onClick={actualizarTodo} style={botonSecundario}>
+              Actualizar datos
+            </button>
+          </div>
+          <details
+            style={{
+              ...tarjeta,
+              marginTop: 16,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid rgba(234,88,12,.22)',
+              background:
+                'linear-gradient(135deg, rgba(255,247,237,.95), #fff 58%, rgba(248,250,252,.9))',
+            }}
+          >
+            <summary
+              style={{
+                listStyle: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '16px 18px',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p
+                  style={{
+                    ...etiquetaSuperior,
+                    color: '#c2410c',
+                    margin: '0 0 3px',
+                  }}
+                >
+                  PASO 1 · REVISAR TEMPORADA
+                </p>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: 20,
+                    lineHeight: 1.2,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  Preparar próxima temporada
+                </h3>
+                <div style={{ marginTop: 12 }}>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setMostrarFlujoCierre((actual) => !actual);
+                    }}
+                    style={{
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      padding: '12px 14px',
+                      border: '1px solid #cbd5e1',
+                      borderRadius: 12,
+                      background: '#f8fafc',
+                      color: '#172033',
+                      fontSize: 14,
+                      fontWeight: 900,
+                      cursor: 'pointer',
+                      textAlign: 'left',
+                    }}
+                  >
+                    <span>Ver flujo de cierre y nueva temporada</span>
+                    <span aria-hidden="true">{mostrarFlujoCierre ? '−' : '+'}</span>
+                  </button>
+
+                  {mostrarFlujoCierre && (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        padding: '12px 14px',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: 12,
+                        background: '#f8fafc',
+                        color: '#475569',
+                        fontSize: 13,
+                        lineHeight: 1.5,
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <ol
+                        style={{
+                          margin: 0,
+                          paddingLeft: 20,
+                          display: 'grid',
+                          gap: 7,
+                        }}
+                      >
+                        <li>
+                          <strong>Paso 1:</strong> analizar la temporada, revisar
+                          “Conservar / Eliminar” y descargar la copia maestra.
+                        </li>
+                        <li>
+                          <strong>Paso 2:</strong> guardar el backup completo de
+                          Supabase y cerrar la temporada actual.
+                        </li>
+                        <li>
+                          <strong>Paso 3:</strong> iniciar la nueva temporada.
+                        </li>
+                        <li>
+                          <strong>Paso 4:</strong> cargar en la nueva temporada el
+                          CSV semilla o la copia maestra descargada.
+                        </li>
+                      </ol>
+                    </div>
+                  )}
+                </div>
+
+
+
+              </div>
+
+              <span
+                style={{
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  border: '1px solid #cbd5e1',
+                  background: '#fff',
+                  color: '#334155',
+                  fontWeight: 900,
+                  fontSize: 20,
+                }}
+              >
+                ↕
+              </span>
+            </summary>
+
+            <div
+              style={{
+                padding: '16px 18px 18px',
+                borderTop: '1px solid rgba(234,88,12,.12)',
+              }}
+            >
+              <div
+                style={{
+                  padding: 13,
+                  border: '1px solid #fed7aa',
+                  borderRadius: 14,
+                  background: '#fff7ed',
+                  color: '#9a3412',
+                  fontWeight: 800,
+                  lineHeight: 1.4,
+                }}
+              >
+                Este paso es únicamente de lectura. No elimina alumnos, reportes,
+                grupos, cobros ni ninguna otra información. Descarga aquí la copia maestra,
+                pero NO vuelvas a cargarla todavía: la semilla se importa en el Paso 4,
+                después de cerrar la temporada vieja y activar la nueva.
+              </div>
+
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: 12,
+                  flexWrap: 'wrap',
+                  marginTop: 14,
+                }}
+              >
+                <p
+                  style={{
+                    margin: 0,
+                    color: '#475569',
+                    lineHeight: 1.45,
+                    flex: '1 1 430px',
+                  }}
+                >
+                  “Con actividad” significa que el alumno ya tiene al menos una
+                  asistencia real o un reporte en esta temporada. Al principio de
+                  curso es normal que todos estén a 0: siguen siendo alumnos cargados
+                  y NO son candidatos reales a borrar hasta el cierre de final de temporada.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={analizarCierreTemporada}
+                  disabled={cierreTemporadaCargando}
+                  style={{
+                    ...botonPrincipal,
+                    flex: '0 1 220px',
+                    minWidth: 0,
+                    minHeight: 46,
+                    whiteSpace: 'normal',
+                    opacity: cierreTemporadaCargando ? 0.65 : 1,
+                  }}
+                >
+                  {cierreTemporadaCargando
+                    ? 'Analizando...'
+                    : cierreTemporadaAnalizado
+                    ? 'Actualizar análisis'
+                    : 'Analizar temporada'}
+                </button>
+              </div>
+
+              {cierreTemporadaError && (
+                <div style={{ ...errorCaja, marginTop: 12 }}>
+                  {cierreTemporadaError}
+                </div>
+              )}
+
+              {resumenCierreTemporada && (
+                <>
+                  {resumenCierreTemporada.total_alumnos_base > 0 &&
+                    resumenCierreTemporada.activos_temporada === 0 && (
+                      <div
+                        style={{
+                          marginTop: 14,
+                          padding: '13px 14px',
+                          borderRadius: 14,
+                          border: '1px solid #bbf7d0',
+                          background: '#f0fdf4',
+                          color: '#166534',
+                          fontWeight: 900,
+                          lineHeight: 1.45,
+                        }}
+                      >
+                        INICIO DE TEMPORADA · {resumenCierreTemporada.total_alumnos_base} alumnos
+                        cargados como semilla. Todavía no tienen entrenamientos ni reportes.
+                        No hay nada que cerrar ni borrar.
+                      </div>
+                    )}
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns:
+                        'repeat(auto-fit, minmax(min(100%, 145px), 1fr))',
+                      gap: 10,
+                      marginTop: 14,
+                    }}
+                  >
+                    <div style={miniTarjetaBlanca}>
+                      <strong>Total alumnos cargados</strong>
+                      <div style={{ fontSize: 26, fontWeight: 900, marginTop: 5 }}>
+                        {resumenCierreTemporada.total_alumnos_base}
+                      </div>
+                    </div>
+                    <div style={miniTarjetaBlanca}>
+                      <strong>Con actividad esta temporada</strong>
+                      <div style={{ fontSize: 26, fontWeight: 900, marginTop: 5 }}>
+                        {resumenCierreTemporada.activos_temporada}
+                      </div>

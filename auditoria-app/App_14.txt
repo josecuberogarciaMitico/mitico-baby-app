@@ -1,0 +1,2500 @@
+                    >
+                      <summary
+                        className="trainer-week-summary"
+                        style={cabeceraSemanaMovil}
+                        onClick={enfocarAcordeonEntrenadorAlAbrir}
+                      >
+                        <div>
+                          <p style={etiquetaSuperior}>
+                            {esSemanaVigente
+                              ? 'SEMANA DE TRABAJO'
+                              : 'PENDIENTES DE SEMANAS ANTERIORES'}
+                          </p>
+                          <h4 style={{ margin: 0 }}>
+                            {rangoSemanaAgenda(semana.inicio)}
+                          </h4>
+                        </div>
+                        <div style={resumenChipsMovil}>
+                          <span>{semana.grupos.length} grupos</span>
+                          <span>{totalReportesSemana} tareas pendientes</span>
+                        </div>
+                      </summary>
+
+                      <div className="trainer-day-grid trainer-day-grid--groups">
+                        {diasGruposVistaEntrenador(semana.grupos).map(
+                          (dia, indiceDia) => {
+                            const gruposDia = dia.turnos.flatMap(
+                              (turno) => turno.grupos
+                            );
+                            const pendientesDia = gruposDia.filter(
+                              (grupo) =>
+                                grupoTienePendientesVistaEntrenador(grupo)
+                            ).length;
+                            const nombreDia = capitalizarPrimera(
+                              new Date(
+                                `${dia.fecha}T00:00:00`
+                              ).toLocaleDateString('es-ES', {
+                                weekday: 'long',
+                              })
+                            );
+
+                            return (
+                              <details
+                                key={`${bloqueEntrenador.entrenador_id}-${semana.inicio}-${dia.fecha}`}
+                                className="trainer-day-accordion"
+                                style={diaEntrenadorCard}
+                                    onToggle={cerrarAcordeonesHermanos}
+                                defaultOpen={
+                                  dia.fecha === hoyAgendaClave ||
+                                  (indiceDia === 0 &&
+                                    semana.inicio ===
+                                      semanaVistaEntrenadorInicio)
+                                }
+                              >
+                                <summary
+                                  className="trainer-accordion-summary"
+                                  onClick={enfocarAcordeonEntrenadorAlAbrir}
+                                >
+                                  <div style={{ display: 'grid' }}>
+                                    <strong>{nombreDia}</strong>
+                                    <span>{formatearFecha(dia.fecha)}</span>
+                                  </div>
+                                  <div style={resumenChipsMovil}>
+                                    <span>{gruposDia.length} grupos</span>
+                                    {pendientesDia > 0 && (
+                                      <span>{pendientesDia} pendientes</span>
+                                    )}
+                                  </div>
+                                </summary>
+
+                                <div className="trainer-turn-grid">
+                                  {dia.turnos.map((turno, indiceTurno) => {
+                                    const gruposTurno = turno.grupos;
+                                    const pendientesTurno = gruposTurno.filter(
+                                      (grupo) =>
+                                        grupoTienePendientesVistaEntrenador(
+                                          grupo
+                                        )
+                                    ).length;
+
+                                    return (
+                                      <details
+                                        key={`${dia.fecha}-${turno.hora_inicio}-${turno.hora_fin}`}
+                                        className="trainer-shift-accordion"
+                                        style={turnoEntrenadorBox}
+                                        onToggle={cerrarAcordeonesHermanos}
+                                        defaultOpen={
+                                          (dia.fecha === hoyAgendaClave &&
+                                            indiceTurno === 0) ||
+                                          (dia.turnos.length === 1 &&
+                                            indiceTurno === 0)
+                                        }
+                                      >
+                                        <summary
+                                          className="trainer-shift-summary"
+                                          onClick={enfocarAcordeonEntrenadorAlAbrir}
+                                        >
+                                          <strong>
+                                            {turno.hora_inicio}–
+                                            {turno.hora_fin}
+                                          </strong>
+                                          <div style={resumenChipsMovil}>
+                                            <span>{gruposTurno.length} grupos</span>
+                                            {pendientesTurno > 0 && (
+                                              <span>
+                                                {pendientesTurno} pendientes
+                                              </span>
+                                            )}
+                                          </div>
+                                        </summary>
+
+                                        <div className="trainer-groups-list">
+                                          {gruposTurno.map(
+                                          (
+                                            grupo,
+                                            indiceGrupoEntrenadorTurno
+                                          ) => {
+                                            const alumnosGrupo =
+                                              alumnosCompletosDelGrupo(
+                                                grupo.grupo_id
+                                              );
+                                            const alumnosPropios =
+                                              alumnosDelGrupo(
+                                                grupo.grupo_id,
+                                                grupo.entrenador_id
+                                              );
+                                            const repartoGrupo =
+                                              repartoEntrenadoresDelGrupo(
+                                                grupo.grupo_id
+                                              );
+                                            const presentes =
+                                              alumnosGrupo.filter(
+                                                (a) =>
+                                                  a.estado_asistencia ===
+                                                  'Presente'
+                                              ).length;
+                                            const ausentes =
+                                              alumnosGrupo.filter(
+                                                (a) =>
+                                                  a.estado_asistencia ===
+                                                  'Ausente'
+                                              ).length;
+                                            const pendientes =
+                                              alumnosGrupo.filter(
+                                                (a) =>
+                                                  a.estado_asistencia ===
+                                                  'Pendiente'
+                                              ).length;
+                                            const faltaReporte =
+                                              alumnosPropios.filter(
+                                                (a) =>
+                                                  a.estado_reporte ===
+                                                  'Falta reporte'
+                                              ).length;
+                                            const reportesEnviados =
+                                              alumnosPropios.filter(
+                                                (a) =>
+                                                  a.estado_reporte ===
+                                                  'Reporte enviado'
+                                              ).length;
+                                            const asistenciaCompleta =
+                                              alumnosGrupo.length > 0 &&
+                                              pendientes === 0;
+                                            const confirmacionPropiaPendiente =
+                                              grupo.estado_confirmacion !== 'Confirmado';
+                                            const estadoAccionGrupo =
+                                              confirmacionPropiaPendiente
+                                                ? 'Pendiente de confirmar por ti'
+                                                : !asistenciaCompleta
+                                                ? 'Falta asistencia'
+                                                : faltaReporte > 0
+                                                ? 'Faltan reportes'
+                                                : '';
+                                            const esGrupoActivo =
+                                              grupoActivoEntrenador?.grupo_id ===
+                                                grupo.grupo_id &&
+                                              grupoActivoEntrenador?.entrenador_id ===
+                                                grupo.entrenador_id;
+                                            const grupoDomId = `trainer-group-${grupo.entrenador_id}-${grupo.grupo_id}`.replace(
+                                              /[^a-zA-Z0-9_-]/g,
+                                              '-'
+                                            );
+
+                                            const tarjetaGrupoEntrenador = (
+                                              <article
+                                                id={grupoDomId}
+                                                key={`${grupo.entrenador_id}-${grupo.grupo_id}`}
+                                                className={`trainer-group-card ${
+                                                  esGrupoActivo
+                                                    ? 'is-sheet-open'
+                                                    : ''
+                                                }`}
+                                                data-active-section={
+                                                  esGrupoActivo
+                                                    ? seccionGrupoEntrenador
+                                                    : undefined
+                                                }
+                                                style={{
+                                                  ...grupoEntrenadorCardMovil,
+                                                  ...estiloGrupoPorPistaApp(
+                                                    grupo
+                                                  ),
+                                                  boxShadow:
+                                                    '0 12px 28px rgba(52, 81, 135, 0.09)',
+                                                  borderRadius: 18,
+                                                }}
+                                              >
+                                                <div className="trainer-group-sheet-header">
+                                                  <div>
+                                                    <span className="trainer-group-sheet-kicker">
+                                                      Grupo de entrenamiento
+                                                    </span>
+                                                    <h3>
+                                                      {nombreGrupoVisualApp(
+                                                        grupo,
+                                                        indiceGrupoEntrenadorTurno
+                                                      )}
+                                                    </h3>
+                                                    <p>
+                                                      {capitalizarPrimera(
+                                                        new Date(
+                                                          `${grupo.fecha}T00:00:00`
+                                                        ).toLocaleDateString(
+                                                          'es-ES',
+                                                          { weekday: 'long' }
+                                                        )
+                                                      )}{' '}
+                                                      · {grupo.hora_inicio}–
+                                                      {grupo.hora_fin}
+                                                    </p>
+                                                  </div>
+                                                  <button
+                                                    type="button"
+                                                    className="trainer-group-sheet-close"
+                                                    onClick={cerrarGrupoEntrenador}
+                                                  >
+                                                    Cerrar
+                                                  </button>
+                                                </div>
+
+                                                <div
+                                                  style={
+                                                    grupoEntrenadorTopMovil
+                                                  }
+                                                >
+                                                  <div>
+                                                    <p
+                                                      style={
+                                                        badgeModalidadMovil
+                                                      }
+                                                    >
+                                                      {grupo.modalidad}
+                                                    </p>
+                                                    <h3
+                                                      style={{
+                                                        margin: '4px 0',
+                                                      }}
+                                                    >
+                                                      {nombreGrupoVisualApp(
+                                                        grupo,
+                                                        indiceGrupoEntrenadorTurno
+                                                      )}
+                                                    </h3>
+                                                    <p style={{ margin: 0 }}>
+                                                      Nivel{' '}
+                                                      {grupo.nivel_grupo || '-'}{' '}
+                                                      · Pista{' '}
+                                                      {grupo.pista || '-'} ·
+                                                      Punto{' '}
+                                                      {grupo.punto_encuentro ||
+                                                        '-'}
+                                                    </p>
+                                                  </div>
+                                                  <div
+                                                    style={contadorNinosMovil}
+                                                  >
+                                                    <strong>
+                                                      {grupo.total_alumnos}
+                                                    </strong>
+                                                    <span>niños</span>
+                                                  </div>
+                                                </div>
+
+                                                {repartoGrupo.length > 1 && (
+                                                  <section
+                                                    style={{
+                                                      ...miniTarjetaBlanca,
+                                                      marginTop: 10,
+                                                      display: 'grid',
+                                                      gap: 8,
+                                                    }}
+                                                  >
+                                                    <strong>Equipo y reparto del grupo</strong>
+                                                    {repartoGrupo.map((responsable) => (
+                                                      <div
+                                                        key={`${grupo.grupo_id}-reparto-${responsable.entrenador_id}`}
+                                                        style={{
+                                                          padding: '8px 10px',
+                                                          borderRadius: 12,
+                                                          background:
+                                                            responsable.entrenador_id === grupo.entrenador_id
+                                                              ? '#eff6ff'
+                                                              : '#f8fafc',
+                                                          border: '1px solid #e2e8f0',
+                                                        }}
+                                                      >
+                                                        <strong>{responsable.entrenador}</strong>
+                                                        <span style={{ marginLeft: 6, color: '#64748b' }}>
+                                                          · {responsable.alumnos.length} niño{responsable.alumnos.length === 1 ? '' : 's'}
+                                                        </span>
+                                                        <div style={{ marginTop: 4, fontSize: 13, lineHeight: 1.45 }}>
+                                                          {responsable.alumnos.length > 0
+                                                            ? responsable.alumnos.map((alumno) => alumno.alumno).join(' · ')
+                                                            : 'Sin alumnos asignados'}
+                                                        </div>
+                                                      </div>
+                                                    ))}
+                                                  </section>
+                                                )}
+
+                                                {estadoAccionGrupo && (
+                                                  <div
+                                                    className="trainer-group-action-status"
+                                                    style={avisoPendiente}
+                                                  >
+                                                    {estadoAccionGrupo}
+                                                  </div>
+                                                )}
+
+                                                <nav
+                                                  className="trainer-group-quick-nav"
+                                                  aria-label="Secciones del grupo"
+                                                >
+                                                  <button
+                                                    type="button"
+                                                    className={
+                                                      seccionGrupoEntrenador ===
+                                                      'asistencia'
+                                                        ? 'is-active'
+                                                        : ''
+                                                    }
+                                                    onClick={() =>
+                                                      irASeccionGrupoEntrenador(
+                                                        'asistencia',
+                                                        grupoDomId
+                                                      )
+                                                    }
+                                                  >
+                                                    Asistencia
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    className={
+                                                      seccionGrupoEntrenador ===
+                                                      'trabajo'
+                                                        ? 'is-active'
+                                                        : ''
+                                                    }
+                                                    onClick={() =>
+                                                      irASeccionGrupoEntrenador(
+                                                        'trabajo',
+                                                        grupoDomId
+                                                      )
+                                                    }
+                                                  >
+                                                    Trabajo diario
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    className={
+                                                      seccionGrupoEntrenador ===
+                                                      'observaciones'
+                                                        ? 'is-active'
+                                                        : ''
+                                                    }
+                                                    onClick={() =>
+                                                      irASeccionGrupoEntrenador(
+                                                        'observaciones',
+                                                        grupoDomId
+                                                      )
+                                                    }
+                                                  >
+                                                    Observaciones
+                                                  </button>
+                                                </nav>
+
+                                                {confirmacionPropiaPendiente && (
+                                                  <button
+                                                    type="button"
+                                                    className="trainer-confirm-button"
+                                                    onClick={() =>
+                                                      confirmarGrupoEntrenador(
+                                                        grupo.grupo_id,
+                                                        grupo.entrenador_id
+                                                      )
+                                                    }
+                                                    style={{
+                                                      ...botonPrincipal,
+                                                      width: '100%',
+                                                    }}
+                                                  >
+                                                    Confirmar mi participación
+                                                  </button>
+                                                )}
+
+                                                <button
+                                                  type="button"
+                                                  className="trainer-open-group-button"
+                                                  onClick={() => {
+                                                    setSeccionGrupoEntrenador(
+                                                      'asistencia'
+                                                    );
+                                                    setGrupoActivoEntrenador({
+                                                      grupo_id: grupo.grupo_id,
+                                                      entrenador_id:
+                                                        grupo.entrenador_id,
+                                                    });
+                                                  }}
+                                                >
+                                                  Abrir grupo
+                                                </button>
+
+                                                <section
+                                                  id={`${grupoDomId}-asistencia`}
+                                                  className={`trainer-attendance-panel trainer-group-section-anchor ${
+                                                    seccionGrupoEntrenador ===
+                                                    'asistencia'
+                                                      ? 'is-active-section'
+                                                      : ''
+                                                  }`}
+                                                  style={bloqueInfoEntrenador}
+                                                >
+                                                  <div className="trainer-attendance-heading">
+                                                    <h4>Niños del grupo · asistencia y reportes</h4>
+                                                    <span>Marca la asistencia al llegar</span>
+                                                  </div>
+                                                  <div
+                                                    style={resumenChipsMovil}
+                                                  >
+                                                    <span>
+                                                      Presentes {presentes}
+                                                    </span>
+                                                    <span>
+                                                      Ausentes {ausentes}
+                                                    </span>
+                                                    <span>
+                                                      Pendientes {pendientes}
+                                                    </span>
+                                                    <span>
+                                                      Reportes{' '}
+                                                      {reportesEnviados}/
+                                                      {alumnosPropios.length}
+                                                    </span>
+                                                  </div>
+
+                                                  <div
+                                                    style={{
+                                                      display: 'grid',
+                                                      gap: 8,
+                                                      marginTop: 10,
+                                                    }}
+                                                  >
+                                                    {alumnosGrupo.map(
+                                                      (alumno) => (
+                                                        <div
+                                                          key={`${grupo.grupo_id}-${alumno.alumno_id}`}
+                                                          className="trainer-student-row"
+                                                          style={miniTarjetaBlanca}
+                                                        >
+                                                          <div
+                                                            className="trainer-student-main"
+                                                            style={filaAlumnoEntrenadorMovil}
+                                                          >
+                                                            <div>
+                                                              <strong>
+                                                                {alumno.alumno}{' '}
+                                                                · Nivel{' '}
+                                                                {alumno.nivel_alumno ||
+                                                                  'SIN NIVEL'}
+                                                              </strong>
+                                                              <p
+                                                                style={{
+                                                                  margin: '4px 0 0',
+                                                                  fontSize: 12,
+                                                                  fontWeight: 800,
+                                                                  color:
+                                                                    alumno.entrenador_id === grupo.entrenador_id
+                                                                      ? '#1d4ed8'
+                                                                      : '#64748b',
+                                                                }}
+                                                              >
+                                                                {alumno.entrenador_id === grupo.entrenador_id
+                                                                  ? 'Asignado a ti'
+                                                                  : `Asignado a ${alumno.entrenador || 'otro entrenador'}`}
+                                                              </p>
+                                                              <p
+                                                                style={{
+                                                                  margin:
+                                                                    '4px 0 0',
+                                                                  fontSize: 13,
+                                                                }}
+                                                              >
+                                                                Asistencia:{' '}
+                                                                <strong>
+                                                                  {
+                                                                    alumno.estado_asistencia
+                                                                  }
+                                                                </strong>
+                                                              </p>
+                                                              <p
+                                                                style={{
+                                                                  margin:
+                                                                    '4px 0 0',
+                                                                  fontSize: 13,
+                                                                }}
+                                                              >
+                                                                Reporte:{' '}
+                                                                <strong>
+                                                                  {
+                                                                    alumno.estado_reporte
+                                                                  }
+                                                                </strong>
+                                                              </p>
+                                                            </div>
+                                                            <div
+                                                              className="trainer-attendance-actions"
+                                                              style={botonesAsistenciaMovil}
+                                                            >
+                                                              <button
+                                                                className={`trainer-soft-button trainer-soft-button--success ${
+                                                                  alumno.estado_asistencia ===
+                                                                  'Presente'
+                                                                    ? 'is-active'
+                                                                    : ''
+                                                                }`}
+                                                                onClick={() =>
+                                                                  marcarAsistencia(
+                                                                    grupo.grupo_id,
+                                                                    alumno.alumno_id,
+                                                                    'Presente'
+                                                                  )
+                                                                }
+                                                              >
+                                                                Presente
+                                                              </button>
+                                                              <button
+                                                                className={`trainer-soft-button trainer-soft-button--danger ${
+                                                                  alumno.estado_asistencia ===
+                                                                  'Ausente'
+                                                                    ? 'is-active'
+                                                                    : ''
+                                                                }`}
+                                                                onClick={() =>
+                                                                  marcarAsistencia(
+                                                                    grupo.grupo_id,
+                                                                    alumno.alumno_id,
+                                                                    'Ausente'
+                                                                  )
+                                                                }
+                                                              >
+                                                                Ausente
+                                                              </button>
+                                                              <button
+                                                                className={`trainer-soft-button trainer-soft-button--warning ${
+                                                                  alumno.estado_asistencia ===
+                                                                  'Pendiente'
+                                                                    ? 'is-active'
+                                                                    : ''
+                                                                }`}
+                                                                onClick={() =>
+                                                                  marcarAsistencia(
+                                                                    grupo.grupo_id,
+                                                                    alumno.alumno_id,
+                                                                    'Pendiente'
+                                                                  )
+                                                                }
+                                                              >
+                                                                Pendiente
+                                                              </button>
+                                                            </div>
+                                                          </div>
+
+                                                          {alumno.entrenador_id ===
+                                                            grupo.entrenador_id &&
+                                                            alumno.estado_reporte ===
+                                                              'Falta reporte' &&
+                                                            !formularioAbierto(
+                                                              alumno
+                                                            ) && (
+                                                              <button
+                                                                onClick={() =>
+                                                                  abrirFormularioReporte(
+                                                                    alumno
+                                                                  )
+                                                                }
+                                                                style={{
+                                                                  ...botonPrincipal,
+                                                                  marginTop: 10,
+                                                                  width: '100%',
+                                                                }}
+                                                              >
+                                                                Rellenar reporte
+                                                              </button>
+                                                            )}
+
+                                                          {alumno.entrenador_id ===
+                                                            grupo.entrenador_id &&
+                                                            formularioAbierto(
+                                                              alumno
+                                                            ) &&
+                                                            renderFormularioReporteEntrenador(
+                                                              alumno,
+                                                              grupo.nivel_grupo,
+                                                              'inline'
+                                                            )}
+                                                        </div>
+                                                      )
+                                                    )}
+                                                  </div>
+                                                </section>
+
+                                                <details
+                                                  id={`${grupoDomId}-trabajo`}
+                                                  className={`trainer-info-details trainer-work-details trainer-group-section-anchor ${
+                                                    seccionGrupoEntrenador ===
+                                                    'trabajo'
+                                                      ? 'is-active-section'
+                                                      : ''
+                                                  }`}
+                                                  open={
+                                                    esGrupoActivo &&
+                                                    seccionGrupoEntrenador ===
+                                                      'trabajo'
+                                                      ? true
+                                                      : undefined
+                                                  }
+                                                  style={bloqueInfoEntrenador}
+                                                >
+                                                  <summary>Trabajo diario</summary>
+                                                  <div style={bloqueTexto}>
+                                                    {formatearTrabajoDiario(
+                                                      grupo.trabajo_diario ?? null
+                                                    )}
+                                                  </div>
+                                                </details>
+
+                                                <details
+                                                  id={`${grupoDomId}-observaciones`}
+                                                  className={`trainer-info-details trainer-observations-details trainer-group-section-anchor ${
+                                                    seccionGrupoEntrenador ===
+                                                    'observaciones'
+                                                      ? 'is-active-section'
+                                                      : ''
+                                                  }`}
+                                                  open={
+                                                    esGrupoActivo &&
+                                                    seccionGrupoEntrenador ===
+                                                      'observaciones'
+                                                      ? true
+                                                      : undefined
+                                                  }
+                                                  style={bloqueInfoEntrenador}
+                                                >
+                                                  <summary>Observaciones importantes</summary>
+                                                  <div style={bloqueTexto}>
+                                                    {formatearObservaciones(
+                                                      grupo.observaciones_importantes ??
+                                                        null
+                                                    )}
+                                                  </div>
+                                                </details>
+
+                                              </article>
+                                            );
+
+                                            const mostrarGrupoEnPortal =
+                                              esGrupoActivo &&
+                                              typeof document !== 'undefined' &&
+                                              typeof window !== 'undefined' &&
+                                              window.matchMedia(
+                                                '(max-width: 719px)'
+                                              ).matches;
+
+                                            if (mostrarGrupoEnPortal) {
+                                              return createPortal(
+                                                tarjetaGrupoEntrenador,
+                                                document.body,
+                                                `grupo-entrenador-${grupo.entrenador_id}-${grupo.grupo_id}`
+                                              );
+                                            }
+
+                                            return tarjetaGrupoEntrenador;
+                                          }
+                                        )}
+                                        </div>
+                                      </details>
+                                    );
+                                  })}
+                                </div>
+                              </details>
+                            );
+                          }
+                        )}
+                      </div>
+                    </details>
+                  );
+                })}
+              </article>
+            ))}
+        </section>
+      )}
+
+      {pantalla === 'reportes' &&
+        (() => {
+          const totalReportesPendientes = reportesSemanaCierre.filter(
+            (reporte) => reporte.estado_reporte === 'Falta reporte'
+          ).length;
+          const totalAsistenciasPendientes = reportesSemanaCierre.filter(
+            (reporte) =>
+              reporte.estado_reporte === 'Asistencia sin confirmar' ||
+              reporte.estado_asistencia === 'Pendiente'
+          ).length;
+          const totalAmbosPendientes = reportesSemanaCierre.filter(
+            (reporte) =>
+              reporte.estado_reporte === 'Falta reporte' &&
+              (
+                reporte.estado_reporte === 'Asistencia sin confirmar' ||
+                reporte.estado_asistencia === 'Pendiente'
+              )
+          ).length;
+          const totalEntrenadoresPendientes = new Set(
+            reportesSemanaCierre.map((reporte) => reporte.entrenador_id)
+          ).size;
+
+          const chipEstadoReporte = (reporte: ReportePendiente) => {
+            const faltaReporte = reporte.estado_reporte === 'Falta reporte';
+            const asistenciaPendiente =
+              reporte.estado_reporte === 'Asistencia sin confirmar' ||
+              reporte.estado_asistencia === 'Pendiente';
+
+            if (faltaReporte && asistenciaPendiente) {
+              return {
+                texto: 'Reporte + asistencia',
+                estilo: {
+                  background: '#fee2e2',
+                  color: '#991b1b',
+                  border: '1px solid #fecaca',
+                },
+              };
+            }
+
+            if (asistenciaPendiente) {
+              return {
+                texto: 'Asistencia pendiente',
+                estilo: {
+                  background: '#ffedd5',
+                  color: '#9a3412',
+                  border: '1px solid #fed7aa',
+                },
+              };
+            }
+
+            return {
+              texto: 'Falta reporte',
+              estilo: {
+                background: '#dbeafe',
+                color: '#1d4ed8',
+                border: '1px solid #bfdbfe',
+              },
+            };
+          };
+
+          const metricasPendientes = [
+            {
+              titulo: 'Entrenadores',
+              valor: totalEntrenadoresPendientes,
+              detalle: 'con tareas',
+              filtro: 'todos' as const,
+              estilo: {
+                background: 'linear-gradient(135deg, #eff6ff, #ffffff)',
+                border: '1px solid #bfdbfe',
+                color: '#1e3a8a',
+              },
+            },
+            {
+              titulo: 'Reportes',
+              valor: totalReportesPendientes,
+              detalle: 'por rellenar',
+              filtro: 'faltan_reportes' as const,
+              estilo: {
+                background: 'linear-gradient(135deg, #eef2ff, #ffffff)',
+                border: '1px solid #c7d2fe',
+                color: '#3730a3',
+              },
+            },
+            {
+              titulo: 'Asistencia',
+              valor: totalAsistenciasPendientes,
+              detalle: 'sin cerrar',
+              filtro: 'asistencias_sin_confirmar' as const,
+              estilo: {
+                background: 'linear-gradient(135deg, #fff7ed, #ffffff)',
+                border: '1px solid #fed7aa',
+                color: '#9a3412',
+              },
+            },
+            {
+              titulo: 'Críticos',
+              valor: totalAmbosPendientes,
+              detalle: 'ambos pendientes',
+              filtro: 'criticos' as const,
+              estilo: {
+                background: 'linear-gradient(135deg, #fef2f2, #ffffff)',
+                border: '1px solid #fecaca',
+                color: '#991b1b',
+              },
+            },
+          ];
+
+          return (
+            <section>
+              <div
+                style={{
+                  ...cabeceraPantalla,
+                  alignItems: 'center',
+                  background: 'linear-gradient(135deg, #f8fbff, #eef7ff)',
+                  border: '1px solid #dbeafe',
+                  borderRadius: 24,
+                  padding: 20,
+                  boxShadow: '0 18px 45px rgba(15, 23, 42, 0.08)',
+                }}
+              >
+                <div>
+                  <p style={{ ...etiquetaSuperior, marginBottom: 6 }}>
+                    CONTROL SEMANAL
+                  </p>
+                  <h2 style={{ margin: 0 }}>Reportes pendientes</h2>
+                  <details style={{ marginTop: 10 }}>
+                    <summary
+                      style={{
+                        cursor: 'pointer',
+                        fontWeight: 900,
+                        color: '#2563eb',
+                      }}
+                    >
+                      Ayuda rápida
+                    </summary>
+                    <div
+                      style={{
+                        marginTop: 10,
+                        padding: 12,
+                        borderRadius: 16,
+                        background: '#ffffff',
+                        border: '1px solid #dbeafe',
+                        color: '#334155',
+                        lineHeight: 1.45,
+                      }}
+                    >
+                      <p style={{ margin: 0 }}>
+                        Revisión por semana y entrenador. Los pendientes ya
+                        aparecen en Vista entrenador; el WhatsApp solo sirve
+                        como recordatorio directo.
+                      </p>
+                    </div>
+                  </details>
+                </div>
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                    justifyContent: 'flex-end',
+                  }}
+                >
+                  <button
+                    onClick={copiarWhatsappPendientesReportes}
+                    style={botonPrincipal}
+                  >
+                    Ver WhatsApp general
+                  </button>
+                  <button
+                    onClick={cargarReportesPendientes}
+                    style={botonSecundario}
+                  >
+                    Actualizar
+                  </button>
+                </div>
+              </div>
+
+              <article
+                style={{
+                  ...agendaBloqueBlanco,
+                  marginTop: 16,
+                  borderRadius: 24,
+                  border: '1px solid #e2e8f0',
+                  boxShadow: '0 14px 35px rgba(15, 23, 42, 0.06)',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 12,
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                    marginBottom: 12,
+                  }}
+                >
+                  <div>
+                    <p style={{ ...etiquetaSuperior, marginBottom: 4 }}>
+                      SEMANA
+                    </p>
+                    <h3 style={{ margin: 0 }}>Semana a revisar</h3>
+                  </div>
+                  <span
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: 999,
+                      background: '#eef6ff',
+                      border: '1px solid #bfdbfe',
+                      color: '#1e40af',
+                      fontWeight: 900,
+                    }}
+                  >
+                    {rangoSemanaAgenda(semanaAgendaActiva)}
+                  </span>
+                </div>
+
+                <div style={gridFormulario}>
+                  <label style={labelCampo}>
+                    Temporada
+                    <select
+                      value={anioInicioTemporadaAgenda}
+                      style={selectCampoAgenda}
+                      onChange={(e) => {
+                        const nuevoAnio = Number(e.target.value);
+                        setAnioInicioTemporadaAgenda(nuevoAnio);
+                        setMesAgenda(`${nuevoAnio}-09`);
+                        setSemanaAgendaInicio('');
+                      }}
+                    >
+                      {opcionesTemporadaAgenda.map((anio) => (
+                        <option key={anio} value={anio}>
+                          {nombreTemporadaAgenda(anio)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label style={labelCampo}>
+                    Mes
+                    <select
+                      value={mesAgendaActivo}
+                      style={selectCampoAgenda}
+                      onChange={(e) => {
+                        setMesAgenda(e.target.value);
+                        setSemanaAgendaInicio('');
+                      }}
+                    >
+                      {mesesAgenda.map((clave) => (
+                        <option key={clave} value={clave}>
+                          {nombreMesAgendaDesdeClave(clave)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label style={labelCampo}>
+                    Semana lunes-domingo
+                    <select
+                      value={semanaAgendaActiva}
+                      style={selectCampoAgenda}
+                      onChange={(e) => setSemanaAgendaInicio(e.target.value)}
+                    >
+                      {semanasAgenda.map((semana) => (
+                        <option key={semana} value={semana}>
+                          Semana {rangoSemanaAgenda(semana)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
+              </article>
+
+              <section
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
+                  gap: 12,
+                  margin: '16px 0',
+                }}
+              >
+                {metricasPendientes.map((metrica) => (
+                  <article
+                    key={metrica.titulo}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`${metrica.titulo}: ${metrica.valor} ${metrica.detalle}`}
+                    onClick={() => abrirResumenCierreSemanal(metrica.filtro)}
+                    onKeyDown={(evento) => {
+                      if (evento.key === 'Enter' || evento.key === ' ') {
+                        evento.preventDefault();
+                        abrirResumenCierreSemanal(metrica.filtro);
+                      }
+                    }}
+                    style={{
+                      ...metrica.estilo,
+                      borderRadius: 20,
+                      padding: 16,
+                      boxShadow: '0 12px 25px rgba(15, 23, 42, 0.05)',
+                      cursor: 'pointer',
+                      transition: 'transform .16s ease, box-shadow .16s ease',
+                      outline:
+                        filtroReportes === metrica.filtro
+                          ? '2px solid rgba(37,99,235,.35)'
+                          : 'none',
+                      outlineOffset: 2,
+                    }}
+                    title="Pulsa para ver los pendientes concretos"
+                  >
+                    <p
+                      style={{
+                        margin: 0,
+                        fontSize: 12,
+                        letterSpacing: 1,
+                        textTransform: 'uppercase',
+                        fontWeight: 900,
+                        opacity: 0.75,
+                      }}
+                    >
+                      {metrica.titulo}
+                    </p>
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'end',
+                        gap: 8,
+                        marginTop: 6,
+                      }}
+                    >
+                      <strong style={{ fontSize: 30, lineHeight: 1 }}>
+                        {metrica.valor}
+                      </strong>
+                      <span style={{ fontWeight: 800, marginBottom: 4 }}>
+                        {metrica.detalle}
+                      </span>
+                    </div>
+                  </article>
+                ))}
+              </section>
+
+              <article
+                style={{
+                  background: '#ffffff',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: 22,
+                  padding: 14,
+                  marginBottom: 16,
+                  boxShadow: '0 10px 24px rgba(15, 23, 42, 0.04)',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr auto',
+                    gap: 12,
+                    alignItems: 'center',
+                  }}
+                >
+                  <input
+                    value={busquedaReportes}
+                    onChange={(e) => setBusquedaReportes(e.target.value)}
+                    placeholder="Buscar entrenador, alumno, grupo o modalidad..."
+                    style={{ ...buscador, margin: 0 }}
+                  />
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                      justifyContent: 'flex-end',
+                    }}
+                  >
+                    <button
+                      onClick={() => {
+                        setFiltroReportes('todos');
+                        setBusquedaReportes('');
+                      }}
+                      style={botonMenu(filtroReportes === 'todos')}
+                    >
+                      Todos
+                    </button>
+                    <button
+                      onClick={() => setFiltroReportes('faltan_reportes')}
+                      style={botonMenu(filtroReportes === 'faltan_reportes')}
+                    >
+                      Reportes
+                    </button>
+                    <button
+                      onClick={() =>
+                        setFiltroReportes('asistencias_sin_confirmar')
+                      }
+                      style={botonMenu(
+                        filtroReportes === 'asistencias_sin_confirmar'
+                      )}
+                    >
+                      Asistencia
+                    </button>
+                    {filtroReportes === 'criticos' && (
+                      <button
+                        onClick={() => setFiltroReportes('criticos')}
+                        style={botonMenu(true)}
+                        title="Reporte y asistencia pendientes a la vez"
+                      >
+                        Críticos
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </article>
+
+              {cargando && <p>Cargando reportes pendientes...</p>}
+
+              {!cargando && reportesFiltrados.length === 0 && !error && (
+                <article
+                  style={{
+                    ...tarjetaMovilVacia,
+                    border: '1px solid #bbf7d0',
+                    background: 'linear-gradient(135deg, #f0fdf4, #ffffff)',
+                    borderRadius: 24,
+                  }}
+                >
+                  <h3 style={{ marginTop: 0 }}>Todo al día en esta semana</h3>
+                  <p style={{ marginBottom: 0 }}>
+                    No hay reportes pendientes ni asistencias sin confirmar para
+                    la semana seleccionada.
+                  </p>
+                </article>
+              )}
+
+              <section
+                id="cierre-semanal-listado-pendientes"
+                style={{ display: 'grid', gap: 14, scrollMarginTop: 18 }}
+              >
+                {reportesPorEntrenador.map((grupo) => {
+                  const faltanReportes = grupo.reportes.filter(
+                    (reporte) => reporte.estado_reporte === 'Falta reporte'
+                  );
+                  const asistenciasSinConfirmar = grupo.reportes.filter(
+                    (reporte) =>
+                      reporte.estado_reporte === 'Asistencia sin confirmar' ||
+                      reporte.estado_asistencia === 'Pendiente'
+                  );
+                  const ambosPendientes = grupo.reportes.filter(
+                    (reporte) =>
+                      reporte.estado_reporte === 'Falta reporte' &&
+                      reporte.estado_asistencia === 'Pendiente'
+                  );
+                  const reportesPorFecha = grupo.reportes.reduce(
+                    (acc, reporte) => {
+                      const clave = reporte.fecha;
+                      if (!acc[clave]) acc[clave] = [];
+                      acc[clave].push(reporte);
+                      return acc;
+                    },
+                    {} as Record<string, ReportePendiente[]>
+                  );
+
+                  return (
+                    <article
+                      key={grupo.entrenador}
+                      style={{
+                        ...tarjetaEntrenadorMovil,
+                        borderRadius: 24,
+                        border: '1px solid #dbeafe',
+                        background: 'linear-gradient(135deg, #ffffff, #f8fbff)',
+                        boxShadow: '0 16px 35px rgba(15, 23, 42, 0.07)',
+                        overflow: 'hidden',
+                      }}
+                    >
+                      <header
+                        style={{
+                          ...cabeceraEntrenadorMovil,
+                          alignItems: 'center',
+                          borderBottom: '1px solid #e2e8f0',
+                          paddingBottom: 14,
+                        }}
+                      >
+                        <div>
+                          <p style={{ ...etiquetaSuperior, marginBottom: 6 }}>
+                            ENTRENADOR
+                          </p>
+                          <h3 style={{ margin: 0 }}>{grupo.entrenador}</h3>
+                          <p
+                            style={{
+                              margin: '6px 0 0',
+                              color: '#64748b',
+                              fontWeight: 700,
+                            }}
+                          >
+                            Semana {rangoSemanaAgenda(semanaAgendaActiva)}
+                          </p>
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: 8,
+                            flexWrap: 'wrap',
+                            justifyContent: 'flex-end',
+                          }}
+                        >
+                          <span
+                            style={{
+                              padding: '8px 11px',
+                              borderRadius: 999,
+                              background: '#eef2ff',
+                              color: '#3730a3',
+                              border: '1px solid #c7d2fe',
+                              fontWeight: 900,
+                            }}
+                          >
+                            {faltanReportes.length} reportes
+                          </span>
+                          <span
+                            style={{
+                              padding: '8px 11px',
+                              borderRadius: 999,
+                              background: '#fff7ed',
+                              color: '#9a3412',
+                              border: '1px solid #fed7aa',
+                              fontWeight: 900,
+                            }}
+                          >
+                            {asistenciasSinConfirmar.length} asistencias
+                          </span>
+                          {ambosPendientes.length > 0 && (
+                            <span
+                              style={{
+                                padding: '8px 11px',
+                                borderRadius: 999,
+                                background: '#fef2f2',
+                                color: '#991b1b',
+                                border: '1px solid #fecaca',
+                                fontWeight: 900,
+                              }}
+                            >
+                              {ambosPendientes.length} críticos
+                            </span>
+                          )}
+                        </div>
+                      </header>
+
+                      <div
+                        style={{
+                          display: 'flex',
+                          gap: 8,
+                          flexWrap: 'wrap',
+                          marginTop: 14,
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                        }}
+                      >
+                        <button
+                          onClick={() =>
+                            copiarWhatsappPendientesEntrenador(
+                              grupo.entrenador_id,
+                              grupo.entrenador,
+                              grupo.reportes
+                            )
+                          }
+                          style={botonPrincipal}
+                        >
+                          WhatsApp entrenador
+                        </button>
+                        <span style={{ color: '#64748b', fontWeight: 800 }}>
+                          {grupo.reportes.length} tareas pendientes
+                        </span>
+                      </div>
+
+                      <details
+                        data-cierre-detalle="true"
+                        style={{ marginTop: 12 }}
+                      >
+                        <summary
+                          style={{
+                            cursor: 'pointer',
+                            fontWeight: 900,
+                            padding: '12px 14px',
+                            borderRadius: 16,
+                            background: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            color: '#0f172a',
+                          }}
+                        >
+                          Ver detalle de pendientes
+                        </summary>
+
+                        <section
+                          style={{ display: 'grid', gap: 12, marginTop: 12 }}
+                        >
+                          {(Object.entries(reportesPorFecha) as [string, ReportePendiente[]][])
+                            .sort(([a], [b]) => a.localeCompare(b))
+                            .map(([fecha, reportesFecha]) => (
+                              <article
+                                key={`${grupo.entrenador}-${fecha}`}
+                                style={{
+                                  border: '1px solid #e2e8f0',
+                                  borderRadius: 18,
+                                  background: '#ffffff',
+                                  overflow: 'hidden',
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    justifyContent: 'space-between',
+                                    gap: 10,
+                                    flexWrap: 'wrap',
+                                    padding: '12px 14px',
+                                    background: '#f8fafc',
+                                    borderBottom: '1px solid #e2e8f0',
+                                  }}
+                                >
+                                  <strong>{formatearFecha(fecha)}</strong>
+                                  <span
+                                    style={{
+                                      color: '#64748b',
+                                      fontWeight: 800,
+                                    }}
+                                  >
+                                    {reportesFecha.length} pendiente(s)
+                                  </span>
+                                </div>
+
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gap: 8,
+                                    padding: 12,
+                                  }}
+                                >
+                                  {reportesFecha.map((reporte) => {
+                                    const chip = chipEstadoReporte(reporte);
+                                    return (
+                                      <div
+                                        key={`${reporte.grupo_id}-${reporte.alumno_id}-${reporte.estado_reporte}`}
+                                        role="button"
+                                        tabIndex={0}
+                                        onClick={() =>
+                                          void abrirPendienteCierreSemanal(reporte)
+                                        }
+                                        onKeyDown={(evento) => {
+                                          if (
+                                            evento.key === 'Enter' ||
+                                            evento.key === ' '
+                                          ) {
+                                            evento.preventDefault();
+                                            void abrirPendienteCierreSemanal(
+                                              reporte
+                                            );
+                                          }
+                                        }}
+                                        title="Resolver esta tarea en Vista entrenador"
+                                        style={{
+                                          ...miniTarjetaBlanca,
+                                          border: '1px solid #e2e8f0',
+                                          borderRadius: 16,
+                                          boxShadow: 'none',
+                                          cursor: 'pointer',
+                                        }}
+                                      >
+                                        <div
+                                          style={{ display: 'grid', gap: 8 }}
+                                        >
+                                          <div
+                                            style={{
+                                              display: 'flex',
+                                              justifyContent: 'space-between',
+                                              gap: 10,
+                                              flexWrap: 'wrap',
+                                            }}
+                                          >
+                                            <strong>{reporte.alumno}</strong>
+                                            <span
+                                              style={{
+                                                ...chip.estilo,
+                                                padding: '6px 10px',
+                                                borderRadius: 999,
+                                                fontWeight: 900,
+                                                fontSize: 12,
+                                              }}
+                                            >
+                                              {chip.texto}
+                                            </span>
+                                          </div>
+
+                                          <div
+                                            style={{
+                                              display: 'flex',
+                                              gap: 8,
+                                              flexWrap: 'wrap',
+                                              color: '#475569',
+                                              fontWeight: 700,
+                                            }}
+                                          >
+                                            <span>
+                                              Nivel{' '}
+                                              {reporte.nivel_alumno ||
+                                                'SIN NIVEL'}
+                                            </span>
+                                            <span>{reporte.modalidad}</span>
+                                            <span>
+                                              {reporte.hora_inicio.slice(0, 5)}–
+                                              {reporte.hora_fin.slice(0, 5)}
+                                            </span>
+                                          </div>
+
+                                          <div
+                                            style={{
+                                              display: 'grid',
+                                              gap: 4,
+                                              color: '#334155',
+                                            }}
+                                          >
+                                            <p style={{ margin: 0 }}>
+                                              <strong>Grupo:</strong>{' '}
+                                              {reporte.nombre_grupo}
+                                            </p>
+                                            <p style={{ margin: 0 }}>
+                                              <strong>Asistencia:</strong>{' '}
+                                              {reporte.estado_asistencia} ·{' '}
+                                              <strong>Reporte:</strong>{' '}
+                                              {reporte.estado_reporte}
+                                            </p>
+                                            <p
+                                              style={{
+                                                margin: '4px 0 0',
+                                                color: '#2563eb',
+                                                fontWeight: 900,
+                                                fontSize: 12,
+                                              }}
+                                            >
+                                              Resolver en Vista entrenador →
+                                            </p>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </article>
+                            ))}
+                        </section>
+                      </details>
+                    </article>
+                  );
+                })}
+              </section>
+            </section>
+          );
+        })()}
+
+      {pantalla === 'administracion' &&
+        puedeVerAdministracionAltasApp(perfilUsuario?.rol) && (
+          <section style={{ display: 'grid', gap: 16, minWidth: 0 }}>
+            <div style={cabeceraPantalla}>
+              <div>
+                <p style={{ ...etiquetaSuperior, color: '#0891b2' }}>ADMINISTRACIÓN</p>
+                <h2 style={{ margin: '4px 0 6px' }}>Altas y test de nivel</h2>
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button type="button" onClick={cargarAltasNivelInicial} style={botonSecundario}>
+                  Actualizar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setMostrarFormularioAltaNivel(!mostrarFormularioAltaNivel)}
+                  style={botonPrincipal}
+                >
+                  {mostrarFormularioAltaNivel ? 'Cerrar alta' : '+ Nueva alta'}
+                </button>
+              </div>
+            </div>
+
+            <details
+              style={{
+                ...tarjeta,
+                padding: 0,
+                overflow: 'hidden',
+                border: '1px solid #bae6fd',
+                background: '#ffffff',
+              }}
+            >
+              <summary
+                style={{
+                  listStyle: 'none',
+                  padding: '13px 15px',
+                  fontWeight: 950,
+                  color: '#0f172a',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                }}
+              >
+                <span style={{ color: '#0891b2' }}>›</span>
+                Instrucciones de uso
+              </summary>
+
+              <div
+                style={{
+                  borderTop: '1px solid #e2e8f0',
+                  padding: '14px 16px 16px',
+                  display: 'grid',
+                  gap: 12,
+                  color: '#475569',
+                  lineHeight: 1.5,
+                }}
+              >
+                <div>
+                  <strong style={{ color: '#172033' }}>1. Crear una nueva alta</strong>
+                  <div>
+                    Pulsa <strong>+ Nueva alta</strong> y completa nombre y apellidos,
+                    fecha de nacimiento, modalidad y teléfono de la familia.
+                  </div>
+                </div>
+
+                <div>
+                  <strong style={{ color: '#172033' }}>2. Enviar el test</strong>
+                  <div>
+                    Abre la ficha del alumno y pulsa <strong>Enviar test por WhatsApp</strong>.
+                    También puedes usar <strong>Copiar enlace</strong> si lo necesitas.
+                  </div>
+                </div>
+
+                <div>
+                  <strong style={{ color: '#172033' }}>3. Esperar la respuesta</strong>
+                  <div>
+                    Cuando la familia complete el test, la solicitud pasará automáticamente
+                    a <strong>Respondido · revisar</strong>.
+                  </div>
+                </div>
+
+                <div>
+                  <strong style={{ color: '#172033' }}>4. Revisión del nivel</strong>
+                  <div>
+                    El sistema propone un nivel inicial. El <strong>Coordinador jefe</strong>
+                    es quien revisa las respuestas y valida o corrige ese nivel.
+                  </div>
+                </div>
+
+                <div>
+                  <strong style={{ color: '#172033' }}>5. Seguimiento</strong>
+                  <div>
+                    Usa los filtros de esta pantalla para ver rápidamente qué altas están
+                    pendientes de enviar, esperando respuesta, respondidas o pendientes de
+                    añadir a listados.
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: 11,
+                    borderRadius: 12,
+                    background: '#f0f9ff',
+                    border: '1px solid #bae6fd',
+                    color: '#0c4a6e',
+                    fontSize: 13,
+                    fontWeight: 750,
+                  }}
+                >
+                  Importante: la familia no elige el nivel. Solo responde preguntas sobre
+                  lo que ha visto hacer al niño/a esquiando.
+                </div>
+              </div>
+            </details>
+
+            {mostrarFormularioAltaNivel && (
+              <article
+                style={{
+                  ...tarjeta,
+                  border: '1px solid #a5f3fc',
+                  background: 'linear-gradient(135deg, #ecfeff, #ffffff 60%)',
+                }}
+              >
+                <h3 style={{ marginTop: 0 }}>Nueva solicitud</h3>
+                <div style={gridFormulario}>
+                  <label style={labelCampo}>
+                    Nombre y apellidos
+                    <input
+                      value={formAltaNivelInicial.nombre}
+                      onChange={(e) =>
+                        setFormAltaNivelInicial({ ...formAltaNivelInicial, nombre: e.target.value })
+                      }
+                      placeholder="Lucía García López"
+                      style={inputCampo}
+                    />
+                    <small style={{ color: '#64748b' }}>
+                      No hace falta escribirlo en mayúsculas; al guardarlo se normaliza.
+                    </small>
+                  </label>
+
+                  <label style={labelCampo}>
+                    Fecha de nacimiento
+                    <input
+                      type="date"
+                      value={formAltaNivelInicial.fechaNacimiento}
+                      onChange={(e) =>
+                        setFormAltaNivelInicial({
+                          ...formAltaNivelInicial,
+                          fechaNacimiento: e.target.value,
+                        })
+                      }
+                      style={inputCampo}
+                    />
+                  </label>
+
+                  <label style={labelCampo}>
+                    Modalidad
+                    <select
+                      value={formAltaNivelInicial.modalidad}
+                      onChange={(e) => {
+                        const modalidad = e.target.value as
+                          | 'BABY'
+                          | 'INTENSIVOS'
+                          | 'OCIO';
+
+                        setFormAltaNivelInicial({
+                          ...formAltaNivelInicial,
+                          modalidad,
+                          ocioDiaFijo:
+                            modalidad === 'OCIO'
+                              ? formAltaNivelInicial.ocioDiaFijo
+                              : '',
+                        });
+                      }}
+                      style={selectCampo}
+                    >
+                      <option value="BABY">Baby</option>
+                      <option value="INTENSIVOS">Intensivos</option>
+                      <option value="OCIO">Ocio</option>
+                    </select>
+                  </label>
+
+                  {formAltaNivelInicial.modalidad === 'OCIO' && (
+                    <label style={labelCampo}>
+                      Día fijo de Ocio
+                      <select
+                        value={formAltaNivelInicial.ocioDiaFijo}
+                        onChange={(e) =>
+                          setFormAltaNivelInicial({
+                            ...formAltaNivelInicial,
+                            ocioDiaFijo: e.target.value as
+                              | ''
+                              | 'Jueves'
+                              | 'Sábado'
+                              | 'Domingo',
+                          })
+                        }
+                        style={selectCampo}
+                      >
+                        <option value="">Selecciona día</option>
+                        <option value="Jueves">Jueves</option>
+                        <option value="Sábado">Sábado</option>
+                        <option value="Domingo">Domingo</option>
+                      </select>
+                      <small style={{ color: '#64748b' }}>
+                        Día habitual de asistencia durante la temporada.
+                      </small>
+                    </label>
+                  )}
+
+                  <label style={labelCampo}>
+                    Teléfono familia
+                    <input
+                      inputMode="tel"
+                      value={formAltaNivelInicial.telefono}
+                      onChange={(e) =>
+                        setFormAltaNivelInicial({ ...formAltaNivelInicial, telefono: e.target.value })
+                      }
+                      placeholder="612345678"
+                      style={inputCampo}
+                    />
+                  </label>
+                </div>
+
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 12 }}>
+                  <button
+                    type="button"
+                    disabled={guardandoAltaNivel}
+                    onClick={crearAltaNivelInicial}
+                    style={botonPrincipal}
+                  >
+                    {guardandoAltaNivel ? 'Creando...' : 'Crear test para familia'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFormAltaNivelInicial(altaNivelInicialFormVacioApp());
+                      setMostrarFormularioAltaNivel(false);
+                    }}
+                    style={botonSecundario}
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </article>
+            )}
+
+            <section
+              style={{
+                ...tarjeta,
+                padding: 14,
+                display: 'grid',
+                gap: 12,
+              }}
+            >
+              <div>
+                <strong style={{ fontSize: 16 }}>Filtrar altas</strong>
+                <p style={{ margin: '3px 0 0', color: '#64748b', fontSize: 13 }}>
+                  Ve directamente a lo que tienes pendiente.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {[
+                  ['TODOS', 'Todos', altasNivelInicial.length, '#4f46e5', '#eef2ff'],
+                  ['PENDIENTE_ENVIO', 'Pendiente de enviar', altasNivelInicial.filter((a) => a.estado === 'PENDIENTE_ENVIO').length, '#64748b', '#f8fafc'],
+                  ['ENVIADO', 'Esperando respuesta', altasNivelInicial.filter((a) => a.estado === 'ENVIADO').length, '#d97706', '#fffbeb'],
+                  [
+                    'RESPONDIDO',
+                    'Respondido · revisar',
+                    altasNivelInicial.filter(
+                      (a) => a.estado === 'RESPONDIDO' || a.estado === 'VALIDADO'
+                    ).length,
+                    '#2563eb',
+                    '#eff6ff',
+                  ],
+                  ['ANADIDO', 'Añadidos', altasNivelInicial.filter((a) => a.estado === 'ANADIDO').length, '#0f766e', '#f0fdfa'],
+                  ['DESCARTADO', 'Descartado', altasNivelInicial.filter((a) => a.estado === 'DESCARTADO').length, '#dc2626', '#fef2f2'],
+                ].map(([valor, etiqueta, cantidad, color, fondo]) => {
+                  const activo = filtroAltasNivel === valor;
+                  return (
+                    <button
+                      key={String(valor)}
+                      type="button"
+                      onClick={() => {
+                        setFiltroAltasNivel(valor as typeof filtroAltasNivel);
+                        setAltaNivelAbiertaId('');
+                        setDetalleRespuestaAlta('');
+                      }}
+                      style={{
+                        ...botonSecundario,
+                        background: activo ? String(color) : String(fondo),
+                        color: activo ? '#ffffff' : String(color),
+                        borderColor: String(color),
+                        fontWeight: 900,
+                        boxShadow: activo
+                          ? `0 8px 18px ${String(color)}28`
+                          : 'none',
+                      }}
+                    >
+                      {String(etiqueta)} ({String(cantidad)})
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            {cargandoAltasNivel && <article style={tarjeta}>Cargando altas...</article>}
+
+            {!cargandoAltasNivel && altasNivelInicial.length === 0 && (
+              <article style={tarjeta}>
+                <h3 style={{ marginTop: 0 }}>Sin solicitudes</h3>
+                <p style={{ marginBottom: 0, color: '#64748b' }}>
+                  Cuando Administración cree un test aparecerá aquí.
+                </p>
+              </article>
+            )}
+
+            {!cargandoAltasNivel &&
+              altasNivelInicial.length > 0 &&
+              altasNivelInicial.filter((alta) =>
+                filtroAltasNivel === 'TODOS'
+                  ? true
+                  : filtroAltasNivel === 'RESPONDIDO'
+                  ? alta.estado === 'RESPONDIDO' || alta.estado === 'VALIDADO'
+                  : alta.estado === filtroAltasNivel
+              ).length === 0 && (
+                <article style={tarjeta}>
+                  <h3 style={{ marginTop: 0 }}>No hay altas en este estado</h3>
+                  <p style={{ marginBottom: 0, color: '#64748b' }}>
+                    Cambia de filtro para ver otras solicitudes.
+                  </p>
+                </article>
+              )}
+
+            <section style={{ display: 'grid', gap: 10 }}>
+              {altasNivelInicial
+                .filter((alta) =>
+                  filtroAltasNivel === 'TODOS'
+                  ? true
+                  : filtroAltasNivel === 'RESPONDIDO'
+                  ? alta.estado === 'RESPONDIDO' || alta.estado === 'VALIDADO'
+                  : alta.estado === filtroAltasNivel
+                )
+                .map((alta) => {
+                  const respondido = alta.estado === 'RESPONDIDO';
+                  const validado = alta.estado === 'VALIDADO';
+                  const anadido = alta.estado === 'ANADIDO';
+                  const descartado = alta.estado === 'DESCARTADO';
+                  const abierta = altaNivelAbiertaId === alta.id;
+                  const colorEstado =
+                    respondido ? '#2563eb'
+                    : validado ? '#16a34a'
+                    : anadido ? '#0f766e'
+                    : descartado ? '#dc2626'
+                    : alta.estado === 'ENVIADO' ? '#d97706'
+                    : '#64748b';
+
+                  const textoEstado =
+                    alta.estado === 'PENDIENTE_ENVIO' ? 'PENDIENTE DE ENVIAR'
+                    : alta.estado === 'ENVIADO' ? 'ESPERANDO RESPUESTA'
+                    : alta.estado === 'RESPONDIDO' ? 'RESPONDIDO · REVISAR'
+                    : alta.estado === 'VALIDADO' ? 'REVISADO · LISTO PARA AÑADIR'
+                    : alta.estado === 'ANADIDO' ? 'AÑADIDO'
+                    : 'DESCARTADO';
+
+                  const puedeEliminarAlta =
+                    alta.estado === 'PENDIENTE_ENVIO' ||
+                    alta.estado === 'ENVIADO' ||
+                    alta.estado === 'RESPONDIDO' ||
+                    (esCoordinadorJefeApp &&
+                      (alta.estado === 'VALIDADO' ||
+                        alta.estado === 'DESCARTADO'));
+
+                  return (
+                    <article
+                      id={`alta-nivel-${alta.id}`}
+                      key={alta.id}
+                      style={{
+                        ...tarjeta,
+                        scrollMarginTop: 18,
+                        padding: 0,
+                        minWidth: 0,
+                        overflow: 'hidden',
+                        border: `1px solid ${colorEstado}33`,
+                        borderLeft: `5px solid ${colorEstado}`,
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const seVaAAbrir = altaNivelAbiertaId !== alta.id;
+                          setDetalleRespuestaAlta('');
+                          setAltaNivelAbiertaId(seVaAAbrir ? alta.id : '');
+
+                          if (seVaAAbrir) {
+                            window.setTimeout(() => {
+                              document
+                                .getElementById(`alta-nivel-${alta.id}`)
+                                ?.scrollIntoView({
+                                  behavior: 'smooth',
+                                  block: 'start',
+                                });
+                            }, 80);
+                          }
+                        }}
+                        aria-expanded={abierta}
+                        style={{
+                          width: '100%',
+                          border: 0,
+                          background: abierta ? '#f8fafc' : '#ffffff',
+                          padding: '14px 16px',
+                          display: 'grid',
+                          gridTemplateColumns: '1fr auto',
+                          gap: 12,
+                          alignItems: 'center',
+                          textAlign: 'left',
+                        }}
+                      >
+                        <div style={{ minWidth: 0 }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 8,
+                              alignItems: 'center',
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <strong style={{ fontSize: 17, color: '#172033' }}>
+                              {alta.nombre_completo}
+                            </strong>
+                            <span
+                              style={{
+                                padding: '4px 7px',
+                                borderRadius: 999,
+                                background: `${colorEstado}12`,
+                                color: colorEstado,
+                                border: `1px solid ${colorEstado}33`,
+                                fontSize: 10,
+                                fontWeight: 950,
+                              }}
+                            >
+                              {textoEstado}
+                            </span>
+                          </div>
+
+                          <div
+                            style={{
+                              marginTop: 5,
+                              display: 'flex',
+                              gap: 8,
+                              flexWrap: 'wrap',
+                              color: '#64748b',
+                              fontSize: 13,
+                            }}
+                          >
+                            <span>{alta.modalidad}</span>
+                            <span>·</span>
+                            <span>{formatearFecha(alta.fecha_nacimiento)}</span>
+                            {alta.nivel_propuesto && (
+                              <>
+                                <span>·</span>
+                                <span>
+                                  Nivel propuesto: <strong>{alta.nivel_propuesto}</strong>
+                                </span>
+                              </>
+                            )}
+                            {alta.nivel_validado && (
+                              <>
+                                <span>·</span>
+                                <span>
+                                  Nivel validado: <strong>{alta.nivel_validado}</strong>
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        <span
+                          aria-hidden="true"
+                          style={{
+                            fontSize: 22,
+                            fontWeight: 950,
+                            color: '#64748b',
+                            transform: abierta ? 'rotate(90deg)' : 'rotate(0deg)',
+                            transition: 'transform .16s ease',
+                          }}
+                        >
+                          ›
+                        </span>
+                      </button>
+
+                      {abierta && (
+                        <div
+                          style={{
+                            padding: '12px 16px 16px',
+                            borderTop: '1px solid #e2e8f0',
+                            display: 'grid',
+                            gap: 10,
+                          }}
+                        >
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              gap: 10,
+                              flexWrap: 'wrap',
+                              alignItems: 'center',
+                            }}
+                          >
+                            <div style={{ color: '#64748b', fontSize: 13 }}>
+                              Teléfono:{' '}
+                              <strong style={{ color: '#334155' }}>{alta.telefono}</strong>
+                            </div>
+
+                            {!validado && !descartado && (
+                              <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => enviarAltaNivelWhatsapp(alta)}
+                                  style={botonPrincipal}
+                                >
+                                  {alta.estado === 'PENDIENTE_ENVIO'
+                                    ? 'Enviar test por WhatsApp'
+                                    : 'Reenviar WhatsApp'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => copiarEnlaceAltaNivel(alta)}
+                                  style={botonSecundario}
+                                >
+                                  Copiar enlace
+                                </button>
+                              </div>
+                            )}
+                          </div>
+
+                          {respondido && (
+                            <>
+                              <div
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))',
+                                  gap: 8,
+                                }}
+                              >
+                                {[
+                                  ['Experiencia', alta.respuesta_experiencia],
+                                  ['Desplazamiento', alta.respuesta_desplazamiento],
+                                  ['Frenado', alta.respuesta_frenado],
+                                  ['Giros', alta.respuesta_giros],
+                                  ['Remonte', alta.respuesta_remonte],
+                                  ['Pista', alta.respuesta_pista],
+                                  ['Control', alta.respuesta_control_velocidad],
+                                  ['Técnica', alta.respuesta_tecnica],
+                                ].map(([titulo, respuesta]) => {
+                                  const claveDetalle = `${alta.id}-${String(titulo)}`;
+                                  const detalleAbierto = detalleRespuestaAlta === claveDetalle;
+                                  const detalle = detallePreguntaTestNivelApp(
+                                    String(titulo),
+                                    respuesta
+                                  );
+
+                                  return (
+                                    <button
+                                      key={String(titulo)}
+                                      type="button"
+                                      onClick={() =>
+                                        setDetalleRespuestaAlta((actual) =>
+                                          actual === claveDetalle ? '' : claveDetalle
+                                        )
+                                      }
+                                      style={{
+                                        ...miniTarjetaBlanca,
+                                        padding: 10,
+                                        border: detalleAbierto
+                                          ? '1px solid #93c5fd'
+                                          : '1px solid #e2e8f0',
+                                        background: detalleAbierto
+                                          ? '#eff6ff'
+                                          : '#ffffff',
+                                        textAlign: 'left',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          gap: 8,
+                                          alignItems: 'center',
+                                        }}
+                                      >
+                                        <small
+                                          style={{
+                                            color: '#64748b',
+                                            fontWeight: 800,
+                                          }}
+                                        >
+                                          {String(titulo)}
+                                        </small>
+                                      </div>
+
+                                      <div
+                                        style={{
+                                          marginTop: 3,
+                                          fontSize: 18,
+                                          fontWeight: 950,
+                                          color: '#172033',
+                                        }}
+                                      >
+                                        {String(respuesta || '-')}
+                                      </div>
+
+                                      {detalleAbierto && (
+                                        <div
+                                          style={{
+                                            marginTop: 9,
+                                            paddingTop: 9,
+                                            borderTop: '1px solid #bfdbfe',
+                                            display: 'grid',
+                                            gap: 5,
+                                          }}
+                                        >
+                                          <div
+                                            style={{
+                                              fontSize: 13,
+                                              fontWeight: 900,
+                                              color: '#1e3a8a',
+                                              lineHeight: 1.35,
+                                            }}
+                                          >
+                                            {detalle.pregunta}
+                                          </div>
+                                          <div
+                                            style={{
+                                              fontSize: 13,
+                                              color: '#475569',
+                                              lineHeight: 1.4,
+                                            }}
+                                          >
+                                            <strong>Respuesta:</strong>{' '}
+                                            {detalle.respuestaTexto}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </button>
+                                  );
+                                })}
+                              </div>
+
+                              {(
+                                (alta.observaciones_entrenador_familia || [])
+                                  .length > 0 ||
+                                alta.observacion_entrenador_otra
+                              ) && (
+                                <div
+                                  style={{
+                                    ...avisoNeutral,
+                                    borderColor: '#bfdbfe',
+                                    background: '#eff6ff',
+                                  }}
+                                >
+                                  <strong>
+                                    Información de familia para el profesor:
+                                  </strong>
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      gap: 6,
+                                      flexWrap: 'wrap',
+                                      marginTop: 8,
+                                    }}
+                                  >
+                                    {(alta.observaciones_entrenador_familia || [])
+                                      .filter((codigo) => codigo !== 'NINGUNA')
+                                      .map((codigo) => {
+                                        const etiquetas: Record<string, string> = {
+                                          MIEDO_INSEGURIDAD:
+                                            'Miedo o inseguridad',
+                                          BLOQUEO_LLANTO:
+                                            'Se bloquea o llora',
+                                          DIFICULTAD_REMONTES:
+                                            'Dificultad con remontes',
+                                          AYUDA_MATERIAL:
+                                            'Necesita ayuda con material',
+                                          SEPARACION_FAMILIA:
+                                            'Le cuesta separarse de la familia',
+                                          LIMITACION_FISICA:
+                                            'Lesión / limitación física',
+                                          NECESIDAD_ESPECIAL:
+                                            'Necesidad especial comunicada',
+                                          OTRA: 'Otra observación',
+                                        };
+                                        return (
+                                          <span
+                                            key={codigo}
+                                            style={{
+                                              ...miniBadge,
+                                              whiteSpace: 'normal',
+                                            }}
+                                          >
+                                            {etiquetas[codigo] || codigo}
+                                          </span>
+                                        );
+                                      })}
+                                  </div>
+                                  {alta.observacion_entrenador_otra && (
+                                    <p
+                                      style={{
+                                        margin: '8px 0 0',
+                                        lineHeight: 1.45,
+                                      }}
+                                    >
+                                      <strong>Otra:</strong>{' '}
+                                      {alta.observacion_entrenador_otra}
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+
+                              {alta.observaciones_familia && (
+                                <div
+                                  style={{
+                                    ...avisoNeutral,
+                                    borderColor: '#e2e8f0',
+                                    background: '#f8fafc',
+                                  }}
+                                >
+                                  <strong>Comentario para coordinación:</strong>{' '}
+                                  {alta.observaciones_familia}
+                                  <div
+                                    style={{
+                                      marginTop: 5,
+                                      color: '#64748b',
+                                      fontSize: 12,
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    No se añade automáticamente a la ficha del
+                                    alumno ni al profesor.
+                                  </div>
+                                </div>
+                              )}
+
+                              <div
+                                style={{
+                                  padding: 14,
+                                  borderRadius: 16,
+                                  border: alta.requiere_revision_jefe
+                                    ? '1px solid #fdba74'
+                                    : '1px solid #bfdbfe',
+                                  background: alta.requiere_revision_jefe
+                                    ? '#fff7ed'
+                                    : '#eff6ff',
+                                }}
+                              >
+                                <strong style={{ fontSize: 18 }}>
+                                  Nivel propuesto: {alta.nivel_propuesto || 'Pendiente'}
+                                </strong>
+                                <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                  Fiabilidad del nivel propuesto: {alta.nivel_propuesto_confianza || '-'}
+                                </p>
+                                <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                  {alta.nivel_propuesto_motivo || 'Pendiente de valoración.'}
+                                </p>
+                              </div>
+
+                              {esCoordinadorJefeApp ? (
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns:
+                                      'repeat(auto-fit, minmax(180px, 1fr))',
+                                    gap: 8,
+                                    alignItems: 'end',
+                                  }}
+                                >
+                                  <label style={labelCampo}>
+                                    Nivel que validas
+                                    <select
+                                      value={
+                                        nivelesValidacionAlta[alta.id] ||
+                                        alta.nivel_propuesto ||
+                                        'INICIACION'
+                                      }
+                                      onChange={(e) =>
+                                        setNivelesValidacionAlta({
+                                          ...nivelesValidacionAlta,
+                                          [alta.id]: e.target.value,
+                                        })
+                                      }
+                                      style={selectCampo}
+                                    >
+                                      {opcionesNivel.map((nivel) => (
+                                        <option key={nivel} value={nivel}>
+                                          {nivel}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => validarAltaNivelInicial(alta)}
+                                    style={botonPrincipal}
+                                  >
+                                    Validar nivel
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => descartarAltaNivelInicial(alta)}
+                                    style={botonPeligro}
+                                  >
+                                    Descartar
+                                  </button>
+                                </div>
+                              ) : (
+                                <div style={avisoNeutral}>
+                                  Test recibido. Pendiente de revisión del Coordinador jefe.
+                                </div>
+                              )}
+                            </>
+                          )}
+
+                          {validado && (
+                            <div
+                              style={{
+                                marginTop: 2,
+                                padding: 14,
+                                borderRadius: 16,
+                                border: '1px solid #bbf7d0',
+                                background: '#f0fdf4',
+                                display: 'grid',
+                                gap: 10,
+                              }}
+                            >
+                              <div>
+                                <strong style={{ color: '#166534' }}>
+                                  Nivel validado: {alta.nivel_validado}
+                                </strong>
+                                <div
+                                  style={{
+                                    marginTop: 4,
+                                    color: '#475569',
+                                    fontSize: 13,
+                                  }}
+                                >
+                                  Revisión completada. Añádelo ahora a {alta.modalidad} desde este mismo bloque.
+                                </div>
+                              </div>
+
+                              {alta.modalidad === 'INTENSIVOS' && (
+                                <label style={labelCampo}>
+                                  Intensivo de destino
+                                  <select
+                                    value={intensivoAltaSeleccionado[alta.id] || ''}
+                                    onChange={(e) =>
+                                      setIntensivoAltaSeleccionado({
+                                        ...intensivoAltaSeleccionado,
+                                        [alta.id]: e.target.value,
+                                      })
+                                    }
+                                    style={selectCampo}
+                                  >
+                                    <option value="">Selecciona Intensivo...</option>
+                                    {intensivosAltaNivel.map((intensivo) => (
+                                      <option
+                                        key={intensivo.intensivo_id}
+                                        value={intensivo.intensivo_id}
+                                      >
+                                        {intensivo.intensivo}
+                                        {intensivo.fecha_inicio
+                                          ? ` · ${formatearFecha(intensivo.fecha_inicio)}`
+                                          : ''}
+                                        {intensivo.lugar
+                                          ? ` · ${intensivo.lugar}`
+                                          : ''}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </label>
+                              )}
+
+                              {esCoordinadorJefeApp &&
+                                (coincidenciasAltaNivel[alta.id] || []).some(
+                                  (item) =>
+                                    item.tipo_coincidencia === 'MISMA_FECHA'
+                                ) &&
+                                !(coincidenciasAltaNivel[alta.id] || []).some(
+                                  (item) => item.tipo_coincidencia === 'EXACTA'
+                                ) && (
+                                  <div
+                                    style={{
+                                      padding: 13,
+                                      borderRadius: 15,
+                                      border: '1px solid #fdba74',
+                                      background: '#fff7ed',
+                                      display: 'grid',
+                                      gap: 9,
+                                    }}
+                                  >
+                                    <div>
+                                      <strong style={{ color: '#9a3412' }}>
+                                        Posible alumno ya existente
+                                      </strong>
+                                      <p
+                                        style={{
+                                          margin: '4px 0 0',
+                                          color: '#7c2d12',
+                                          fontSize: 13,
+                                          lineHeight: 1.4,
+                                        }}
+                                      >
+                                        Hay una o más fichas que podrían
+                                        corresponder al mismo alumno por nombre y
+                                        fecha de nacimiento. No se fusionará nada
+                                        automáticamente: elige la opción correcta.
+                                      </p>
+                                    </div>
+
+                                    {(coincidenciasAltaNivel[alta.id] || [])
+                                      .filter(
+                                        (item) =>
+                                          item.tipo_coincidencia ===
+                                          'MISMA_FECHA'
+                                      )
+                                      .map((item) => (
+                                        <label
+                                          key={item.alumno_id}
+                                          style={{
+                                            display: 'flex',
+                                            gap: 9,
+                                            alignItems: 'flex-start',
+                                            padding: 10,
+                                            borderRadius: 12,
+                                            background: '#fff',
+                                            border: '1px solid #fed7aa',
+                                            cursor: 'pointer',
+                                          }}
+                                        >
+                                          <input
+                                            type="radio"
+                                            name={`coincidencia-${alta.id}`}
+                                            value={item.alumno_id}
+                                            checked={
+                                              resolucionCoincidenciaAlta[
+                                                alta.id
+                                              ] === item.alumno_id
+                                            }
+                                            onChange={() =>
+                                              setResolucionCoincidenciaAlta(
+                                                (actual) => ({
+                                                  ...actual,
+                                                  [alta.id]: item.alumno_id,
+                                                })
+                                              )
+                                            }
+                                          />
+                                          <span>
+                                            <strong>{item.alumno}</strong>
+                                            <span
+                                              style={{
+                                                display: 'block',
+                                                marginTop: 2,
+                                                color: '#64748b',
+                                                fontSize: 12,
+                                              }}
+                                            >
+                                              {item.fecha_nacimiento
+                                                ? formatearFecha(
+                                                    item.fecha_nacimiento
+                                                  )
+                                                : 'Sin fecha registrada'}
+                                              {' · '}
+                                              Nivel actual:{' '}
+                                              <strong>
+                                                {item.nivel_actual || '-'}
+                                              </strong>
+                                            </span>
+                                          </span>
+                                        </label>
+                                      ))}
+
+                                    <label
+                                      style={{
+                                        display: 'flex',
+                                        gap: 9,
+                                        alignItems: 'flex-start',
+                                        padding: 10,
+                                        borderRadius: 12,
+                                        background: '#fff',
+                                        border: '1px solid #fed7aa',
+                                        cursor: 'pointer',
+                                      }}
+                                    >
+                                      <input
+                                        type="radio"
+                                        name={`coincidencia-${alta.id}`}
+                                        value="__NUEVO__"
+                                        checked={
+                                          resolucionCoincidenciaAlta[alta.id] ===
+                                          '__NUEVO__'
+                                        }
+                                        onChange={() =>
+                                          setResolucionCoincidenciaAlta(
+                                            (actual) => ({
+                                              ...actual,
+                                              [alta.id]: '__NUEVO__',
+                                            })
+                                          )
+                                        }
+                                      />
+                                      <span>
+                                        <strong>
+                                          Es otro alumno · crear ficha nueva
+                                        </strong>
+                                        <span
+                                          style={{
+                                            display: 'block',
+                                            marginTop: 2,
+                                            color: '#64748b',
+                                            fontSize: 12,
+                                          }}
+                                        >
+                                          Usa esta opción solo si has comprobado
+                                          que no corresponde a ninguna ficha
+                                          anterior.
+                                        </span>
+                                      </span>
+                                    </label>
+                                  </div>
+                                )}
+
+                              {esCoordinadorJefeApp && (
+                                <button
+                                  type="button"
+                                  disabled={
+                                    anadiendoAltaNivelId === alta.id ||
