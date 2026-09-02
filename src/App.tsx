@@ -3989,6 +3989,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   >(esEntrenadorApp ? 'entrenador' : 'inicio');
 
   const contenidoPantallaRef = useRef<HTMLDivElement | null>(null);
+  const [cabeceraIntensivosAyudaApp, setCabeceraIntensivosAyudaApp] = useState<HTMLElement | null>(null);
 
   type EnfoqueAppOpciones = {
     espera?: number;
@@ -4049,6 +4050,25 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setPantalla(destino);
     enfocarElementoApp(contenidoPantallaRef.current);
   };
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || pantalla !== 'intensivos') {
+      setCabeceraIntensivosAyudaApp(null);
+      return;
+    }
+
+    const frame = window.requestAnimationFrame(() => {
+      const contenido = document.querySelector('.mitico-content-shell');
+      const titulo = Array.from(contenido?.querySelectorAll('h2') || []).find(
+        (elemento) => elemento.textContent?.trim() === 'Gestión de intensivos'
+      );
+      setCabeceraIntensivosAyudaApp(
+        titulo?.parentElement instanceof HTMLElement ? titulo.parentElement : null
+      );
+    });
+
+    return () => window.cancelAnimationFrame(frame);
+  }, [pantalla]);
 
   useEffect(() => {
     if (esEntrenadorApp && pantalla !== 'entrenador') {
@@ -5851,25 +5871,44 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setDetalle(null);
 
     try {
-      const avisosData = await consultarSupabase<AvisoJose>(
-        'v_inicio_avisos_jose',
-        'select=*&order=orden.asc'
-      );
+      const [
+        avisosData,
+        reportesData,
+        planningData,
+        gruposEntrenadorData,
+        sesionesData,
+        entrenadoresData,
+      ] = await Promise.all([
+        consultarSupabase<AvisoJose>(
+          'v_inicio_avisos_jose',
+          'select=*&order=orden.asc'
+        ),
+        consultarSupabase<ReportePendiente>(
+          'v_reportes_pendientes_entrenador_dos_entrenadores',
+          'select=*'
+        ),
+        consultarSupabase<GrupoPlanning>(
+          'v_planning_app',
+          'select=grupo_id,fecha,publicado'
+        ),
+        consultarSupabase<GrupoEntrenadorApp>(
+          'v_grupos_entrenador_app_dos_entrenadores',
+          'select=grupo_id,entrenador_id,fecha,estado_confirmacion,publicado'
+        ),
+        consultarSupabase<AgendaSesionDirectaApp>(
+          'v_agenda_sesiones_operativa_app',
+          'select=*&order=fecha.asc,hora_inicio.asc'
+        ),
+        consultarSupabase<EntrenadorResumen>(
+          'v_panel_entrenadores',
+          'select=*&order=nombre_completo.asc'
+        ),
+      ]);
 
-      const reportesData = await consultarSupabase<ReportePendiente>(
-        'v_reportes_pendientes_entrenador_dos_entrenadores',
-        'select=*'
-      );
-
-      const planningData = await consultarSupabase<GrupoPlanning>(
-        'v_planning_app',
-        'select=grupo_id,fecha,publicado'
-      );
-
-      const gruposEntrenadorData = await consultarSupabase<GrupoEntrenadorApp>(
-        'v_grupos_entrenador_app_dos_entrenadores',
-        'select=grupo_id,entrenador_id,fecha,estado_confirmacion,publicado'
-      );
+      // Estas dos colecciones alimentan directamente las métricas de Inicio.
+      // Antes solo se cargaban al visitar otras pantallas.
+      setAgendaSesionesDirectas(sesionesData);
+      setEntrenadores(entrenadoresData);
 
       const finSemanaInicioResumen = semanaAgendaActiva
         ? claveFechaAgenda(
@@ -18340,8 +18379,9 @@ async function abrirGestionOperativaIntensivoDia(
   }
 
   useEffect(() => {
-    cargarInicio();
-  }, []);
+    if (pantalla !== 'inicio') return;
+    void cargarInicio();
+  }, [pantalla, semanaAgendaActiva]);
 
   useEffect(() => {
     if (pantalla === 'agenda') {
@@ -18363,7 +18403,6 @@ async function abrirGestionOperativaIntensivoDia(
       cargarDisponibilidad();
       cargarAlumnos();
     }
-    if (pantalla === 'inicio') cargarInicio();
     if (pantalla === 'planning') cargarPlanning();
     if (pantalla === 'entrenador') {
       cargarGruposEntrenador();
@@ -19478,6 +19517,22 @@ async function abrirGestionOperativaIntensivoDia(
         grupo.estado_confirmacion !== 'Confirmado'
     );
   }
+
+  const totalGruposTrabajoVisibleVistaEntrenador =
+    gruposVistaEntrenador.length;
+
+  const totalTareasPendientesVistaEntrenador =
+    gruposVistaEntrenador.filter(
+      (grupo) => grupo.estado_confirmacion !== 'Confirmado'
+    ).length +
+    alumnosVistaEntrenador.filter(
+      (alumno) => alumno.estado_reporte === 'Falta reporte'
+    ).length +
+    alumnosVistaEntrenador.filter(
+      (alumno) =>
+        alumno.estado_reporte === 'Asistencia sin confirmar' ||
+        alumno.estado_asistencia === 'Pendiente'
+    ).length;
 
   function abrirGrupoDesdeTareaEntrenador(
     grupoId: string,
@@ -22113,6 +22168,388 @@ async function abrirGestionOperativaIntensivoDia(
     );
   }
 
+
+  function renderAyudaRapidaPantallaApp() {
+    if (pantalla === 'inicio' || pantalla === 'disponibilidad') return null;
+
+    const ayudas: Partial<
+      Record<
+        typeof pantalla,
+        {
+          titulo: string;
+          descripcion: string;
+          pasos: string[];
+          aviso?: string;
+        }
+      >
+    > = {
+      resumenDia: {
+        titulo: 'Trabajo en pista',
+        descripcion:
+          'Orden recomendado para preparar y revisar el trabajo real del día.',
+        pasos: [
+          'Comprueba fecha, turnos, grupos, alumnos y entrenadores antes de tocar nada.',
+          'Resuelve primero alumnos sin grupo, ratios, entrenador pendiente y cualquier incidencia operativa.',
+          'Revisa que el trabajo diario de cada grupo encaje con nivel, pista y evolución reciente.',
+          'Deja la información visible para el entrenador preparada antes de dar la jornada por lista.',
+        ],
+      },
+      agenda: {
+        titulo: 'Entrenamientos',
+        descripcion:
+          'Flujo para pasar del listado recibido a una sesión operativa y publicable.',
+        pasos: [
+          'Abre o crea la sesión con fecha, turno y modalidad correctos.',
+          'Carga el listado y resuelve nombres, altas y niveles dudosos.',
+          'Revisa la recomendación de grupos: nivel, pista, ratios y compatibilidades.',
+          'Ajusta alumnos, entrenadores, punto de encuentro o composición cuando la realidad lo pida.',
+          'Publica únicamente cuando grupos, entrenadores y alumnos estén revisados.',
+        ],
+        aviso: 'Publicar es el último paso, no el primero.',
+      },
+      ocioGrupos: {
+        titulo: 'Ocio · grupos estables',
+        descripcion:
+          'Flujo para mantener grupos estables coherentes y preparar su operativa.',
+        pasos: [
+          'Comprueba alumnos, nivel real y día fijo antes de modificar grupos.',
+          'Revisa horario, pista, punto de encuentro, nivel y número de alumnos de cada grupo estable.',
+          'Usa la propuesta como apoyo y corrige según nivel, edad y ritmo real.',
+          'Guarda solo el grupo correcto y evita duplicados innecesarios.',
+        ],
+      },
+      ocioCambios: {
+        titulo: 'Ocio · cambios puntuales',
+        descripcion:
+          'Flujo para recolocar a un alumno un día concreto sin romper su grupo estable.',
+        pasos: [
+          'Selecciona el alumno y confirma la fecha concreta del cambio.',
+          'Revisa destinos compatibles por nivel, horario, pista, ratio y plazas.',
+          'Guarda el cambio puntual sin modificar el grupo estable del alumno.',
+          'Comprueba después que el alumno aparece una sola vez y en el grupo correcto.',
+        ],
+      },
+      ocioSemana: {
+        titulo: 'Ocio · semana',
+        descripcion:
+          'Flujo para convertir grupos estables y cambios puntuales en la semana real.',
+        pasos: [
+          'Selecciona la semana correcta de temporada.',
+          'Prepara las sesiones previstas para cada día.',
+          'Aplica cambios puntuales, ausencias y altas antes de publicar.',
+          'Revisa entrenador, ratio y composición de cada grupo.',
+          'Publica solo cuando la semana coincida con lo que se ejecutará en pista.',
+        ],
+      },
+      ocioAlumnos: {
+        titulo: 'Ocio · alumnos',
+        descripcion:
+          'Flujo para mantener la ficha operativa de los alumnos de Ocio.',
+        pasos: [
+          'Localiza al alumno y comprueba nombre, nivel y grupo estable.',
+          'Revisa el nivel real confirmado y posibles discrepancias con reportes recientes.',
+          'Modifica solo los datos necesarios para que el alumno quede correctamente agrupable.',
+          'Comprueba que el cambio se refleja correctamente en grupos y recomendaciones.',
+        ],
+      },
+      revisionOcio: {
+        titulo: 'Ocio · revisión de evolución',
+        descripcion:
+          'Flujo para decidir cambios de nivel o grupo con evidencia suficiente.',
+        pasos: [
+          'Revisa reportes, nivel usado, técnica, autonomía y ritmo.',
+          'Detecta alumnos cuyo nivel o grupo ya no encaja con lo observado.',
+          'Mantén, sube, baja o revisa manualmente sin decidir por un único dato aislado.',
+          'Comprueba que el grupo final siga siendo compatible con pista, edad, ritmo y ratio.',
+        ],
+      },
+      intensivos: {
+        titulo: 'Intensivos',
+        descripcion:
+          'Flujo desde la creación del curso hasta su cierre.',
+        pasos: [
+          'Crea o abre el intensivo y comprueba fechas, lugar, estado y alumnos inscritos.',
+          'Prepara las sesiones y revisa horarios de cada día.',
+          'Forma grupos por nivel, edad, pista, compatibilidad pedagógica y ratio.',
+          'Asigna entrenadores y revisa cualquier grupo que necesite apoyo.',
+          'Publica únicamente cuando la operativa del día esté cerrada.',
+          'Entre sesiones, revisa evolución y ajusta solo cuando los reportes o la pista lo justifiquen.',
+          'Completa asistencias, reportes, recuperaciones, nivel final y diploma antes de cerrar.',
+        ],
+      },
+      entrenadores: {
+        titulo: 'Entrenadores',
+        descripcion:
+          'Flujo para dar de alta, mantener documentación y preparar el acceso del entrenador.',
+        pasos: [
+          'Busca por nombre, teléfono o email antes de crear una ficha nueva.',
+          'Completa contacto, tarifa, especialidades, documentación y observaciones internas.',
+          'Usa “Pedir datos” cuando falte documentación o información.',
+          'Comprueba el estado de acceso: sin acceso, invitación pendiente, activo o desactivado.',
+          'Mantén la ficha actualizada para cuadrantes, disponibilidad y cobros.',
+        ],
+      },
+      entrenador: {
+        titulo: 'Vista entrenador',
+        descripcion:
+          'Flujo de trabajo del entrenador desde que abre su jornada hasta que deja el grupo cerrado.',
+        pasos: [
+          'Revisa día, hora, pista, punto de encuentro y alumnos asignados.',
+          'Confirma la asignación cuando corresponda.',
+          'Usa el trabajo diario y los avisos del grupo como referencia en pista.',
+          'Marca la asistencia real de cada alumno.',
+          'Completa los reportes con lo observado durante la sesión.',
+        ],
+      },
+      reportes: {
+        titulo: 'Cierre semanal',
+        descripcion:
+          'Flujo para dejar la semana sin asistencias, reportes o confirmaciones pendientes.',
+        pasos: [
+          'Empieza por asistencias sin confirmar y reportes que faltan.',
+          'Comprueba entrenador, grupo, alumno y fecha de cada pendiente.',
+          'Resuelve lo que corresponda o reclama la información al entrenador.',
+          'Da la semana por cerrada solo cuando no queden pendientes reales.',
+        ],
+      },
+      alumnos: {
+        titulo: 'Fichas',
+        descripcion:
+          'Flujo para consultar y mantener la ficha maestra sin perder historial técnico.',
+        pasos: [
+          'Busca antes de crear para evitar duplicados.',
+          'Comprueba nivel real, estimado, origen y último reporte.',
+          'Edita únicamente los datos que realmente hayan cambiado.',
+          'Revisa cualquier contradicción entre ficha y reportes antes de usar al alumno en recomendaciones.',
+        ],
+      },
+      administracion: {
+        titulo: 'Altas / Test de nivel',
+        descripcion:
+          'Flujo para convertir una nueva alta en una ficha útil y revisada.',
+        pasos: [
+          'Comprueba duplicados por nombre y fecha de nacimiento.',
+          'Envía el test cuando corresponda.',
+          'Revisa respuestas, nivel sugerido y avisos.',
+          'Valida o corrige el nivel antes de incorporar al alumno.',
+          'Añade al flujo real de Baby, Ocio o Intensivos.',
+        ],
+      },
+      cobros: {
+        titulo: 'Cobros',
+        descripcion:
+          'Flujo para revisar turnos computables y cerrar el mes de cada entrenador.',
+        pasos: [
+          'Selecciona temporada, año y mes correctos.',
+          'Revisa sesiones computables, modalidad y entrenador.',
+          'Añade o corrige únicamente ajustes justificados.',
+          'Resuelve sesiones dudosas o pendientes antes de cerrar.',
+          'Cierra el mes cuando el total coincida con la operativa real.',
+        ],
+      },
+      analisis: {
+        titulo: 'Análisis',
+        descripcion:
+          'Flujo para leer indicadores sin confundir volumen, continuidad y evolución técnica.',
+        pasos: [
+          'Selecciona modalidad y temporada.',
+          'Lee primero el resumen general.',
+          'Baja después al detalle mensual para localizar tendencias.',
+          'Contrasta resultados con niveles y progresiones antes de sacar conclusiones.',
+        ],
+      },
+      informes: {
+        titulo: 'Informes y listados',
+        descripcion:
+          'Flujo para generar listados útiles sin modificar datos operativos.',
+        pasos: [
+          'Selecciona el informe que necesitas.',
+          'Comprueba modalidad, filtros y temporada.',
+          'Genera y revisa el resultado.',
+          'Descarga o comparte únicamente después de verificarlo.',
+        ],
+      },
+      temporadas: {
+        titulo: 'Temporadas',
+        descripcion:
+          'Flujo para preparar el cambio de temporada sin perder información histórica.',
+        pasos: [
+          'Comprueba cuál es la temporada activa.',
+          'Revisa el cierre de la temporada anterior y los alumnos que deben conservarse.',
+          'Prepara la siguiente temporada solo cuando el cierre esté revisado.',
+          'Comprueba la semilla y los niveles trasladados antes de confirmar.',
+        ],
+        aviso:
+          'El cambio de temporada afecta a toda la operativa: revisa antes de confirmar.',
+      },
+      usuarios: {
+        titulo: 'Accesos equipo',
+        descripcion:
+          'Flujo para dar acceso a coordinación o administración con el rol correcto.',
+        pasos: [
+          'Comprueba email, nombre y función de la persona.',
+          'Asigna únicamente el rol que necesita.',
+          'Revisa la invitación hasta que el acceso quede activo.',
+          'Desactiva el acceso cuando deje de ser necesario.',
+        ],
+      },
+      planning: {
+        titulo: 'Planning',
+        descripcion:
+          'Flujo para revisar el cuadrante antes de usarlo como referencia operativa.',
+        pasos: [
+          'Selecciona la semana correcta.',
+          'Revisa grupos, turnos, alumnos, pista, entrenador y publicación.',
+          'Resuelve huecos, ratios o datos incompletos antes de darlo por válido.',
+        ],
+      },
+      listados: {
+        titulo: 'Listados',
+        descripcion:
+          'Flujo para revisar importaciones y resolver incidencias del listado.',
+        pasos: [
+          'Comprueba fecha, turno, modalidad y número de nombres detectados.',
+          'Resuelve no encontrados y duplicados antes de continuar.',
+          'Revisa las altas nuevas y sus datos mínimos.',
+          'Confirma que la sesión final contiene exactamente los alumnos reales.',
+        ],
+      },
+    };
+
+    const ayuda = ayudas[pantalla];
+    if (!ayuda) return null;
+
+    const ayudaEnCabeceraOscura = [
+      'resumenDia',
+      'agenda',
+      'ocioGrupos',
+      'entrenadores',
+      'intensivos',
+    ].includes(pantalla);
+
+    return (
+      <details
+        style={{
+          width: 'fit-content',
+          maxWidth: '100%',
+          boxSizing: 'border-box',
+          marginTop: 10,
+          position: 'relative',
+          zIndex: 20,
+        }}
+      >
+        <summary
+          style={{
+            cursor: 'pointer',
+            listStyle: 'none',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 9,
+            minHeight: 36,
+            padding: '7px 11px',
+            border: ayudaEnCabeceraOscura
+              ? '1px solid rgba(255,255,255,.24)'
+              : '1px solid #cbd5e1',
+            borderRadius: 999,
+            background: ayudaEnCabeceraOscura
+              ? 'rgba(255,255,255,.10)'
+              : '#ffffff',
+            color: ayudaEnCabeceraOscura ? '#ffffff' : '#334155',
+            fontSize: 12,
+            fontWeight: 900,
+            lineHeight: 1,
+            letterSpacing: '0.01em',
+            userSelect: 'none',
+            backdropFilter: 'blur(8px)',
+          }}
+        >
+          <span
+            aria-hidden="true"
+            style={{
+              width: 23,
+              height: 23,
+              borderRadius: 999,
+              display: 'inline-grid',
+              placeItems: 'center',
+              flex: '0 0 auto',
+              background: '#eaf8ef',
+              color: '#0f9f4d',
+              fontSize: 13,
+              fontWeight: 950,
+            }}
+          >
+            ?
+          </span>
+          <span>Ayuda rápida · ver flujo</span>
+        </summary>
+
+        <div
+          style={{
+            borderTop: '1px solid #e3efe7',
+            padding: '13px 14px 15px',
+            background:
+              'linear-gradient(180deg, #fbfefc 0%, #ffffff 100%)',
+          }}
+        >
+          <div style={{ marginBottom: 11 }}>
+            <strong
+              style={{
+                display: 'block',
+                color: '#122033',
+                fontSize: 14,
+              }}
+            >
+              {ayuda.titulo}
+            </strong>
+            <span
+              style={{
+                color: '#64748b',
+                fontSize: 12,
+                lineHeight: 1.45,
+              }}
+            >
+              {ayuda.descripcion}
+            </span>
+          </div>
+
+          <ol
+            style={{
+              margin: 0,
+              paddingLeft: 21,
+              display: 'grid',
+              gap: 8,
+              color: '#334155',
+              fontSize: 12,
+              lineHeight: 1.45,
+            }}
+          >
+            {ayuda.pasos.map((paso, indice) => (
+              <li key={`${pantalla}-ayuda-${indice}`}>{paso}</li>
+            ))}
+          </ol>
+
+          {ayuda.aviso && (
+            <div
+              style={{
+                marginTop: 11,
+                padding: '9px 10px',
+                borderRadius: 10,
+                border: '1px solid #fde68a',
+                background: '#fffbeb',
+                color: '#92400e',
+                fontSize: 11,
+                fontWeight: 800,
+                lineHeight: 1.4,
+              }}
+            >
+              {ayuda.aviso}
+            </div>
+          )}
+        </div>
+      </details>
+    );
+  }
+
   return (
     <main
       className={`mitico-app-shell ${esCoordinadorApp ? 'with-sidebar' : 'trainer-only'} ${esVistaMovilApp ? 'is-mobile' : ''}`}
@@ -22843,6 +23280,7 @@ async function abrirGestionOperativaIntensivoDia(
                 >
                   Control del día
                 </h2>
+              {renderAyudaRapidaPantallaApp()}
                 <p
                   style={{
                     margin: '7px 0 0',
@@ -23347,6 +23785,7 @@ async function abrirGestionOperativaIntensivoDia(
             <div>
               <p style={etiquetaSuperior}>INFORMES Y LISTADOS</p>
               <h2 style={{ margin: 0 }}>Informes y listados</h2>
+              {renderAyudaRapidaPantallaApp()}
               <p style={{ margin: '8px 0 0', color: '#475569' }}>
                 Informes operativos y listados calculados con los datos actuales. No se guardan
                 copias adicionales en Supabase.
@@ -24822,6 +25261,7 @@ async function abrirGestionOperativaIntensivoDia(
             <div>
               <p style={etiquetaSuperior}>TEMPORADAS</p>
               <h2 style={{ margin: 0 }}>Inicio y cierre de temporada</h2>
+              {renderAyudaRapidaPantallaApp()}
               <p style={{ margin: '8px 0 0', color: '#475569' }}>
                 Cierre seguro, copia maestra, nueva temporada y carga de semilla en un único flujo ordenado.
               </p>
@@ -26407,6 +26847,7 @@ async function abrirGestionOperativaIntensivoDia(
                         ADMINISTRACIÓN
                       </span>
                       <h2 style={{ margin: '8px 0 0' }}>Análisis operativo</h2>
+              {renderAyudaRapidaPantallaApp()}
                       <p style={{ margin: '6px 0 0', color: '#64748b', lineHeight: 1.45 }}>
                         Se calcula al momento con la actividad real. No se guarda ningún informe generado en Supabase.
                       </p>
@@ -26748,6 +27189,7 @@ async function abrirGestionOperativaIntensivoDia(
             <div>
               <p style={etiquetaSuperior}>OCIO · EVOLUCIÓN</p>
               <h2 style={{ margin: 0 }}>Revisión Ocio</h2>
+              {renderAyudaRapidaPantallaApp()}
               <p style={{ margin: '8px 0 0', color: '#555' }}>
                 Niños que pueden necesitar cambio de grupo, alumnos sin grupo y
                 alumnos sin reportes.
@@ -26945,6 +27387,7 @@ async function abrirGestionOperativaIntensivoDia(
                 <h2 style={{ margin: '4px 0 0', fontSize: 30, color: '#fff' }}>
                   Días de entrenamiento
                 </h2>
+              {renderAyudaRapidaPantallaApp()}
                 <p
                   style={{
                     margin: '7px 0 0',
@@ -29293,6 +29736,7 @@ async function abrirGestionOperativaIntensivoDia(
                     FICHAS · OCIO
                   </span>
                   <h2 style={{ margin: '10px 0 0' }}>Alumnos Ocio</h2>
+              {renderAyudaRapidaPantallaApp()}
                   <p
                     style={{
                       margin: '8px 0 0',
@@ -30101,6 +30545,7 @@ async function abrirGestionOperativaIntensivoDia(
                 >
                   Grupos estables
                 </h2>
+              {renderAyudaRapidaPantallaApp()}
                 <p
                   style={{
                     margin: '7px 0 0',
@@ -32730,14 +33175,8 @@ async function abrirGestionOperativaIntensivoDia(
             <div>
               <p style={etiquetaSuperior}>OCIO · SEMANA</p>
               <h2 style={{ margin: 0 }}>Cambios puntuales</h2>
-              <details style={ayudaDesplegableCompacta}>
-                <summary>¿Para qué sirve?</summary>
-                <p style={{ margin: '8px 0 0' }}>
-                  Para mover a un niño solo una semana: por ejemplo de domingo a
-                  sábado. Luego se aplica en Preparar semana, WhatsApp, vista
-                  entrenador, reportes y cobros.
-                </p>
-              </details>
+              {renderAyudaRapidaPantallaApp()}
+              
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button
@@ -33108,14 +33547,8 @@ async function abrirGestionOperativaIntensivoDia(
           <article style={agendaHero}>
             <div>
               <h2 style={{ margin: 0 }}>Ocio · Preparar semana</h2>
-              <details style={ayudaDesplegableCompacta}>
-                <summary>Chuleta</summary>
-                <p style={{ margin: '8px 0 0' }}>
-                  Convierte los grupos estables en grupos reales de esta semana:
-                  niños que vienen, cambios puntuales, entrenador disponible,
-                  vista entrenador, reportes y cobros.
-                </p>
-              </details>
+              {renderAyudaRapidaPantallaApp()}
+              
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button onClick={abrirWhatsappSemanaOcio} style={botonSecundario}>
@@ -33763,6 +34196,7 @@ async function abrirGestionOperativaIntensivoDia(
         <section>
           <div style={cabeceraPantalla}>
             <h2>Histórico técnico de grupos</h2>
+              {renderAyudaRapidaPantallaApp()}
             <button onClick={cargarPlanning}>Actualizar histórico</button>
           </div>
 
@@ -34207,69 +34641,110 @@ async function abrirGestionOperativaIntensivoDia(
             }
           `}</style>
 
-          <div className="trainer-hero" style={entrenadorHeroApp}>
-            <div>
-              <p style={etiquetaSuperior}>VISTA ENTRENADOR</p>
-              <h2 style={{ margin: 0 }}>Panel del entrenador</h2>
-              {disponibilidadEditorVista?.existe ? (
-
-                <button
-                  type="button"
-                  onClick={() => setTabVistaEntrenador('disponibilidad')}
+          <div
+            className="trainer-hero trainer-hero--modern"
+            style={{
+              ...entrenadorHeroApp,
+              display: 'grid',
+              gridTemplateColumns: esVistaMovilApp
+                ? 'minmax(0, 1fr)'
+                : 'minmax(0, 1fr) auto',
+              alignItems: 'start',
+              gap: esVistaMovilApp ? 14 : 18,
+              padding: esVistaMovilApp ? 16 : 20,
+              borderRadius: 20,
+              border: '1px solid rgba(255,255,255,.10)',
+              background:
+                'linear-gradient(135deg, #062d3f 0%, #083b4d 58%, #0b5d4f 100%)',
+              color: '#ffffff',
+              boxShadow: '0 14px 34px rgba(15,23,42,.14)',
+            }}
+          >
+            <div style={{ minWidth: 0 }}>
+              <p
+                style={{
+                  ...etiquetaSuperior,
+                  margin: 0,
+                  color: '#86efac',
+                }}
+              >
+                VISTA ENTRENADOR
+              </p>
+              <h2
+                style={{
+                  margin: '5px 0 4px',
+                  color: '#ffffff',
+                  fontSize: esVistaMovilApp ? 24 : 30,
+                  lineHeight: 1.08,
+                }}
+              >
+                Mi semana de trabajo
+              </h2>
+              <p
+                style={{
+                  margin: 0,
+                  maxWidth: 720,
+                  color: '#cbd5e1',
+                  fontSize: 13,
+                  lineHeight: 1.45,
+                }}
+              >
+                Consulta tu disponibilidad, grupos publicados, asistencia y reportes pendientes desde una sola pantalla.
+              </p>
+              {renderAyudaRapidaPantallaApp()}
+              <div
+                className="trainer-hero-chips"
+                style={{
+                  ...entrenadorHeroChips,
+                  display: 'flex',
+                  flexWrap: 'wrap',
+                  gap: 7,
+                  marginTop: 12,
+                }}
+              >
+                <span
+                  className="trainer-current-week-chip"
                   style={{
-                    width: '100%',
-                    marginTop: 12,
-                    padding: '11px 13px',
-                    borderRadius: 13,
-                    border: '1px solid #15803d',
-                    background:
-                      'linear-gradient(180deg, #22c55e 0%, #16a34a 100%)',
-                    color: '#ffffff',
-                    fontSize: 13,
-                    fontWeight: 900,
-                    textAlign: 'center',
-                    boxShadow: '0 8px 18px rgba(22, 163, 74, 0.20)',
-                    cursor: 'pointer',
+                    padding: '7px 10px',
+                    borderRadius: 999,
+                    border: '1px solid rgba(255,255,255,.16)',
+                    background: 'rgba(255,255,255,.08)',
+                    color: '#e2e8f0',
                   }}
                 >
-                  Disponibilidad publicada ·{' '}
-                  {disponibilidadEditorVista.semana_inicio
-                    ? rangoSemanaAgenda(disponibilidadEditorVista.semana_inicio)
-                    : '-'}
-                </button>
-                            ) : (
-                <div
-                  role="status"
-                  style={{
-                    width: '100%',
-                    marginTop: 12,
-                    padding: '10px 12px',
-                    borderRadius: 13,
-                    border: '1px solid #d7e0eb',
-                    background: '#f8fafc',
-                    color: '#64748b',
-                    fontSize: 12,
-                    fontWeight: 800,
-                    textAlign: 'center',
-                  }}
-                >
-                  Sin disponibilidad publicada para esta semana
-                </div>
-              )}
-
-              <div className="trainer-hero-chips" style={entrenadorHeroChips}>
-                <span className="trainer-current-week-chip">
-                  <strong>Semana de trabajo:</strong>{' '}
+                  <strong style={{ color: '#86efac' }}>Semana</strong>{' '}
                   {semanaVistaEntrenadorInicio
                     ? rangoSemanaAgenda(semanaVistaEntrenadorInicio)
                     : '-'}
                 </span>
-                <span>{totalGruposVistaEntrenador} grupos publicados</span>
-                <span>{totalReportesVistaEntrenador} tareas pendientes</span>
-                <span>
-                  {totalDisponibilidadPendienteVistaEntrenador} disponibilidades
-                  pendientes
+
+                <span
+                  style={{
+                    padding: '7px 10px',
+                    borderRadius: 999,
+                    border: '1px solid rgba(255,255,255,.16)',
+                    background: 'rgba(255,255,255,.08)',
+                    color: '#e2e8f0',
+                  }}
+                >
+                  {totalGruposTrabajoVisibleVistaEntrenador} grupos
                 </span>
+
+                {totalTareasPendientesVistaEntrenador > 0 && (
+                  <span
+                    data-trainer-pending-summary="true"
+                    style={{
+                      padding: '7px 10px',
+                      borderRadius: 999,
+                      border: '1px solid rgba(251,146,60,.34)',
+                      background: 'rgba(249,115,22,.16)',
+                      color: '#ffedd5',
+                      fontWeight: 900,
+                    }}
+                  >
+                    {totalTareasPendientesVistaEntrenador} tareas pendientes
+                  </span>
+                )}
               </div>
             </div>
             <button
@@ -34277,7 +34752,17 @@ async function abrirGestionOperativaIntensivoDia(
                 cargarGruposEntrenador();
                 cargarDisponibilidad();
               }}
-              style={botonPrincipal}
+              style={{
+                ...botonPrincipal,
+                width: esVistaMovilApp ? '100%' : 'auto',
+                minHeight: 42,
+                padding: '9px 13px',
+                borderRadius: 13,
+                borderColor: '#16a34a',
+                background: '#16a34a',
+                color: '#ffffff',
+                boxShadow: '0 8px 18px rgba(22,163,74,.22)',
+              }}
             >
               Actualizar vista
             </button>
@@ -34293,32 +34778,90 @@ async function abrirGestionOperativaIntensivoDia(
               />
             )}
 
-            <div className="trainer-tabs" style={tabBarEntrenadorModerno}>
+            <div
+              className="trainer-tabs trainer-tabs--modern"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: esVistaMovilApp
+                  ? 'minmax(0, 1fr)'
+                  : 'repeat(2, minmax(0, 1fr))',
+                gap: 7,
+                width: '100%',
+                padding: 5,
+                border: '1px solid #dbe3ec',
+                borderRadius: 15,
+                background: '#f1f5f9',
+              }}
+            >
               <button
                 type="button"
-                className={`trainer-tab trainer-tab--availability ${
-                  tabVistaEntrenador === 'disponibilidad' ? 'is-active' : ''
-                }`}
+                className="trainer-section-tab trainer-section-tab--availability"
+                aria-pressed={tabVistaEntrenador === 'disponibilidad'}
                 onClick={() => setTabVistaEntrenador('disponibilidad')}
-                style={tabEntrenadorModerno(
-                  tabVistaEntrenador === 'disponibilidad',
-                  '#0f766e'
-                )}
+                style={{
+                  minHeight: 46,
+                  padding: '10px 13px',
+                  borderRadius: 11,
+                  border:
+                    tabVistaEntrenador === 'disponibilidad'
+                      ? '1px solid #0f766e'
+                      : '1px solid transparent',
+                  background:
+                    tabVistaEntrenador === 'disponibilidad'
+                      ? 'linear-gradient(135deg, #0f766e 0%, #0b5d55 100%)'
+                      : 'transparent',
+                  color:
+                    tabVistaEntrenador === 'disponibilidad'
+                      ? '#ffffff'
+                      : '#475569',
+                  fontSize: 13,
+                  fontWeight: 900,
+                  textAlign: 'center',
+                  boxShadow:
+                    tabVistaEntrenador === 'disponibilidad'
+                      ? '0 7px 16px rgba(15,118,110,.20)'
+                      : 'none',
+                  cursor: 'pointer',
+                  transition:
+                    'background .15s ease, color .15s ease, box-shadow .15s ease, border-color .15s ease',
+                }}
               >
-                Disponibilidad semanal
+                Disponibilidad
               </button>
               <button
                 type="button"
-                className={`trainer-tab trainer-tab--groups ${
-                  tabVistaEntrenador === 'grupos' ? 'is-active' : ''
-                }`}
+                className="trainer-section-tab trainer-section-tab--groups"
+                aria-pressed={tabVistaEntrenador === 'grupos'}
                 onClick={() => setTabVistaEntrenador('grupos')}
-                style={tabEntrenadorModerno(
-                  tabVistaEntrenador === 'grupos',
-                  '#2563eb'
-                )}
+                style={{
+                  minHeight: 46,
+                  padding: '10px 13px',
+                  borderRadius: 11,
+                  border:
+                    tabVistaEntrenador === 'grupos'
+                      ? '1px solid #0f766e'
+                      : '1px solid transparent',
+                  background:
+                    tabVistaEntrenador === 'grupos'
+                      ? 'linear-gradient(135deg, #0f766e 0%, #0b5d55 100%)'
+                      : 'transparent',
+                  color:
+                    tabVistaEntrenador === 'grupos'
+                      ? '#ffffff'
+                      : '#475569',
+                  fontSize: 13,
+                  fontWeight: 900,
+                  textAlign: 'center',
+                  boxShadow:
+                    tabVistaEntrenador === 'grupos'
+                      ? '0 7px 16px rgba(15,118,110,.20)'
+                      : 'none',
+                  cursor: 'pointer',
+                  transition:
+                    'background .15s ease, color .15s ease, box-shadow .15s ease, border-color .15s ease',
+                }}
               >
-                Grupos / reportes
+                Grupos y reportes
               </button>
             </div>
           </article>
@@ -34328,12 +34871,26 @@ async function abrirGestionOperativaIntensivoDia(
           {!cargando &&
             tabVistaEntrenador === 'disponibilidad' && (
               <section style={{ display: 'grid', gap: 12 }}>
-                <section className="trainer-availability-reminder">
-                  <strong>Recordatorio semanal</strong>
-                  <p style={{ margin: '6px 0 0' }}>
-                    Envía tu disponibilidad antes de las 13:00 del lunes. A
-                    partir de esa hora, Jose empezará a organizar los grupos de
-                    la semana.
+                <section
+                  className="trainer-availability-reminder"
+                  style={{
+                    padding: '11px 13px',
+                    borderRadius: 14,
+                    border: '1px solid #bbf7d0',
+                    background: '#f0fdf4',
+                    color: '#166534',
+                  }}
+                >
+                  <strong style={{ color: '#0f9f4d' }}>Disponibilidad semanal</strong>
+                  <p
+                    style={{
+                      margin: '4px 0 0',
+                      color: '#475569',
+                      fontSize: 13,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    Responde antes de las 13:00 del lunes para que coordinación pueda organizar los grupos de la semana.
                   </p>
                 </section>
 
@@ -34360,7 +34917,14 @@ async function abrirGestionOperativaIntensivoDia(
                     >
                       <header style={cabeceraEntrenadorMovil}>
                         <div>
-                          <p style={etiquetaSuperior}>DISPONIBILIDAD</p>
+                          <p
+                            style={{
+                              ...etiquetaSuperior,
+                              color: '#0f9f4d',
+                            }}
+                          >
+                            DISPONIBILIDAD
+                          </p>
                           <h3 style={{ margin: 0 }}>{grupo.entrenador}</h3>
                         </div>
                         <div style={resumenChipsMovil}>
@@ -34545,7 +35109,7 @@ async function abrirGestionOperativaIntensivoDia(
               >
                 <header style={cabeceraEntrenadorMovil}>
                   <div>
-                    <p style={etiquetaSuperior}>ENTRENADOR</p>
+                    <p style={{ ...etiquetaSuperior, color: '#0f9f4d' }}>ENTRENADOR</p>
                     <h3 style={{ margin: 0 }}>{bloqueEntrenador.entrenador}</h3>
                   </div>
                   <div style={contadorGrandeMovil}>
@@ -35928,34 +36492,8 @@ async function abrirGestionOperativaIntensivoDia(
                     CONTROL SEMANAL
                   </p>
                   <h2 style={{ margin: 0 }}>Reportes pendientes</h2>
-                  <details style={{ marginTop: 10 }}>
-                    <summary
-                      style={{
-                        cursor: 'pointer',
-                        fontWeight: 900,
-                        color: '#2563eb',
-                      }}
-                    >
-                      Ayuda rápida
-                    </summary>
-                    <div
-                      style={{
-                        marginTop: 10,
-                        padding: 12,
-                        borderRadius: 16,
-                        background: '#ffffff',
-                        border: '1px solid #dbeafe',
-                        color: '#334155',
-                        lineHeight: 1.45,
-                      }}
-                    >
-                      <p style={{ margin: 0 }}>
-                        Revisión por semana y entrenador. Los pendientes ya
-                        aparecen en Vista entrenador; el WhatsApp solo sirve
-                        como recordatorio directo.
-                      </p>
-                    </div>
-                  </details>
+              {renderAyudaRapidaPantallaApp()}
+                  
                 </div>
                 <div
                   style={{
@@ -36280,7 +36818,13 @@ async function abrirGestionOperativaIntensivoDia(
                         }}
                       >
                         <div>
-                          <p style={{ ...etiquetaSuperior, marginBottom: 6 }}>
+                          <p
+                            style={{
+                              ...etiquetaSuperior,
+                              marginBottom: 6,
+                              color: '#0f9f4d',
+                            }}
+                          >
                             ENTRENADOR
                           </p>
                           <h3 style={{ margin: 0 }}>{grupo.entrenador}</h3>
@@ -36560,6 +37104,7 @@ async function abrirGestionOperativaIntensivoDia(
               <div>
                 <p style={{ ...etiquetaSuperior, color: '#0891b2' }}>ADMINISTRACIÓN</p>
                 <h2 style={{ margin: '4px 0 6px' }}>Altas y test de nivel</h2>
+              {renderAyudaRapidaPantallaApp()}
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button type="button" onClick={cargarAltasNivelInicial} style={botonSecundario}>
@@ -38094,6 +38639,7 @@ async function abrirGestionOperativaIntensivoDia(
                       ? 'Alumnos Intensivos'
                       : 'Alumnos Baby'}
                   </h2>
+              {renderAyudaRapidaPantallaApp()}
                   <p
                     style={{
                       margin: '8px 0 0',
@@ -39803,6 +40349,7 @@ async function abrirGestionOperativaIntensivoDia(
           <div style={cabeceraPantalla}>
             <div>
               <h2>Accesos equipo</h2>
+              {renderAyudaRapidaPantallaApp()}
               <p style={{ margin: '6px 0 0', color: '#555' }}>
                 Cuentas de coordinación y administración. Los entrenadores se
                 gestionan desde su propia ficha.
@@ -40155,6 +40702,7 @@ async function abrirGestionOperativaIntensivoDia(
           <div style={cabeceraPantalla}>
             <div>
               <h2>Entrenadores / gestión</h2>
+              {renderAyudaRapidaPantallaApp()}
               <p style={{ margin: '6px 0 0', color: '#555' }}>
                 Alta, contacto, especialidades, chaqueta y documentación. Los
                 cobros se gestionan en Cobros.
@@ -40561,7 +41109,7 @@ async function abrirGestionOperativaIntensivoDia(
                     }}
                   >
                     <div>
-                      <p style={etiquetaSuperior}>ENTRENADOR</p>
+                      <p style={{ ...etiquetaSuperior, color: '#0f9f4d' }}>ENTRENADOR</p>
                       <h3 style={{ margin: 0 }}>
                         {entrenador.nombre_completo}
                       </h3>
@@ -40993,7 +41541,7 @@ async function abrirGestionOperativaIntensivoDia(
             </div>
 
             <details className="availability-flow-details">
-              <summary>Chuleta rápida del flujo</summary>
+              <summary>Ayuda rápida · ver flujo</summary>
               <ol>
                 <li>Selecciona la semana que vas a preparar.</li>
                 <li>Activa solo los días reales y ajusta sus turnos.</li>
@@ -41920,6 +42468,7 @@ async function abrirGestionOperativaIntensivoDia(
               <h2 style={{ margin: 0, color: '#172033' }}>
                 Cobros entrenadores
               </h2>
+              {renderAyudaRapidaPantallaApp()}
               <p
                 style={{
                   margin: '8px 0 0',
@@ -42923,6 +43472,10 @@ async function abrirGestionOperativaIntensivoDia(
       )}
 
       {pantalla === 'intensivos' &&
+        cabeceraIntensivosAyudaApp &&
+        createPortal(renderAyudaRapidaPantallaApp(), cabeceraIntensivosAyudaApp)}
+
+      {pantalla === 'intensivos' &&
         PantallaIntensivos({
           abrirPanelIntensivo,
           actualizarDiaIntensivoDesdeApp,
@@ -43119,6 +43672,7 @@ async function abrirGestionOperativaIntensivoDia(
         <section>
           <div style={cabeceraPantalla}>
             <h2>Listados cargados</h2>
+              {renderAyudaRapidaPantallaApp()}
             <button onClick={cargarListados}>Actualizar listados</button>
           </div>
 
