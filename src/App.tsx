@@ -199,6 +199,13 @@ import {
   generarTrabajoDiarioInteligenteApp,
   type AlumnoContextoTrabajoDiarioApp,
 } from './lib/dailyWorkEngine';
+import {
+  activarNotificacionesPushMitico,
+  llamarMiticoPush,
+  permisoPushMitico,
+  type EstadoSemanaEntrenadorPush,
+  type MiticoPushActionResult,
+} from './lib/pushNotifications';
 
 type WhatsappPreviewState = {
   titulo: string;
@@ -3946,6 +3953,13 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [pwaInstallPrompt, setPwaInstallPrompt] = useState<any | null>(null);
   const [mostrarAyudaInstalacionPwa, setMostrarAyudaInstalacionPwa] =
     useState(false);
+  const [estadoSemanaPushEntrenadorApp, setEstadoSemanaPushEntrenadorApp] =
+    useState<EstadoSemanaEntrenadorPush | null>(null);
+  const [, setCargandoEstadoPushEntrenadorApp] = useState(false);
+  const [gestionandoPushEntrenadorApp, setGestionandoPushEntrenadorApp] =
+    useState(false);
+  const [mensajePushEntrenadorApp, setMensajePushEntrenadorApp] = useState('');
+  const [cerrandoSemanaPushApp, setCerrandoSemanaPushApp] = useState(false);
   const [esVistaMovilApp, setEsVistaMovilApp] = useState(() =>
     typeof window !== 'undefined'
       ? window.matchMedia('(max-width: 719px)').matches
@@ -4164,6 +4178,56 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const esDispositivoIosPwa =
     typeof navigator !== 'undefined' &&
     /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+  async function contextoPushMiticoApp() {
+    return {
+      supabaseUrl: SUPABASE_URL,
+      anonKey: SUPABASE_ANON_KEY,
+      accessToken: await obtenerAccessTokenSupabaseApp(),
+    };
+  }
+
+  async function ejecutarPushMiticoApp<T extends MiticoPushActionResult>(
+    action: string,
+    payload: Record<string, unknown> = {}
+  ): Promise<T> {
+    const contexto = await contextoPushMiticoApp();
+    return llamarMiticoPush<T>(contexto, action, payload);
+  }
+
+  async function notificarGrupoPublicadoPushApp(grupoId: string) {
+    try {
+      await ejecutarPushMiticoApp('group_published', { grupo_id: grupoId });
+    } catch (error) {
+      console.warn('Grupo publicado, pero no se pudo enviar el aviso push:', error);
+    }
+  }
+
+  async function activarPushEntrenadorApp(semanaInicio: string) {
+    if (!esEntrenadorApp) return;
+    setGestionandoPushEntrenadorApp(true);
+    setMensajePushEntrenadorApp('');
+
+    try {
+      const contexto = await contextoPushMiticoApp();
+      await activarNotificacionesPushMitico(contexto);
+      setMensajePushEntrenadorApp('Avisos activados en este dispositivo.');
+
+      if (semanaInicio) {
+        const estado = await ejecutarPushMiticoApp<EstadoSemanaEntrenadorPush>(
+          'trainer_week_status',
+          { semana_inicio: semanaInicio }
+        );
+        setEstadoSemanaPushEntrenadorApp(estado);
+      }
+    } catch (error) {
+      setMensajePushEntrenadorApp(
+        error instanceof Error ? error.message : 'No se pudieron activar los avisos.'
+      );
+    } finally {
+      setGestionandoPushEntrenadorApp(false);
+    }
+  }
 
 
   const [usuariosOperativos, setUsuariosOperativos] = useState<
@@ -6112,6 +6176,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       await ejecutarFuncion('publicar_grupo_app', {
         p_grupo_id: grupoId,
       });
+      await notificarGrupoPublicadoPushApp(grupoId);
 
       await cargarPlanning();
     } catch (err) {
@@ -8875,13 +8940,35 @@ La Vista entrenador recibirá esta publicación inmediatamente.${
       setVersionPublicadaDisponibilidadEditor(
         Number(respuesta.version_publicada || 1)
       );
+      let resumenPush: MiticoPushActionResult | null = null;
+      try {
+        resumenPush = await ejecutarPushMiticoApp('availability_opened', {
+          semana_inicio: publicado.semana_inicio,
+        });
+      } catch (errorPush) {
+        console.warn(
+          'Disponibilidad publicada, pero el aviso push no pudo enviarse:',
+          errorPush
+        );
+      }
+
       setMensajeDisponibilidadEditor(
-        'Disponibilidad publicada y enviada a la Vista entrenador.'
+        resumenPush
+          ? `Disponibilidad publicada · ${Number(
+              resumenPush.sent || 0
+            )} entrenador(es) avisados por push.`
+          : 'Disponibilidad publicada y enviada a la Vista entrenador. Aviso push pendiente de configuración o revisión.'
       );
       setVistaPreviaDisponibilidadEditor(false);
       await cargarDisponibilidad();
       alert(
-        'Disponibilidad publicada. Los entrenadores ya pueden responder desde su panel.'
+        resumenPush
+          ? `Disponibilidad publicada. Avisos push enviados: ${Number(
+              resumenPush.sent || 0
+            )}. Sin avisos activados: ${Number(
+              resumenPush.without_subscription || 0
+            )}.`
+          : 'Disponibilidad publicada. Los entrenadores ya pueden responder desde su panel. El push no ha podido confirmarse.'
       );
     } catch (err) {
       const mensaje =
@@ -9656,6 +9743,7 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
       await ejecutarFuncion('publicar_grupo_app', {
         p_grupo_id: resultado.grupo_id,
       });
+      await notificarGrupoPublicadoPushApp(resultado.grupo_id);
 
       await cargarAgendaOperativaDirecta();
       await cargarPlanning();
@@ -12204,6 +12292,18 @@ Gracias!`;
         p_respuesta: respuesta,
         p_comentario: turno.comentario || null,
       });
+
+
+      try {
+        await ejecutarPushMiticoApp('availability_response_updated', {
+          respuesta_id: turno.id,
+        });
+      } catch (errorPush) {
+        console.warn(
+          'Disponibilidad guardada, pero no se pudo comprobar el aviso push de confirmación:',
+          errorPush
+        );
+      }
     } catch (err) {
       setDisponibilidad((actual) =>
         actual.map((registro) =>
@@ -17189,6 +17289,7 @@ async function abrirGestionOperativaIntensivoDia(
       await ejecutarFuncion('publicar_grupo_app', {
         p_grupo_id: grupoId,
       });
+      await notificarGrupoPublicadoPushApp(grupoId);
 
       limpiarPropuestaAgendaTrasCrear([
         { nombreGrupo, alumnosGrupo },
@@ -17386,6 +17487,7 @@ async function abrirGestionOperativaIntensivoDia(
         await ejecutarFuncion('publicar_grupo_app', {
           p_grupo_id: grupoId,
         });
+        await notificarGrupoPublicadoPushApp(grupoId);
 
         creados.push({ nombreGrupo, alumnosGrupo });
       }
@@ -19420,6 +19522,79 @@ async function abrirGestionOperativaIntensivoDia(
         )
       )
     : '';
+
+  async function cargarEstadoSemanaPushEntrenadorApp() {
+    if (!esEntrenadorApp || !semanaVistaEntrenadorInicio) {
+      setEstadoSemanaPushEntrenadorApp(null);
+      return;
+    }
+
+    setCargandoEstadoPushEntrenadorApp(true);
+    try {
+      const estado = await ejecutarPushMiticoApp<EstadoSemanaEntrenadorPush>(
+        'trainer_week_status',
+        { semana_inicio: semanaVistaEntrenadorInicio }
+      );
+      setEstadoSemanaPushEntrenadorApp(estado);
+    } catch (errorPush) {
+      console.warn('No se pudo cargar el estado push de la semana:', errorPush);
+      setEstadoSemanaPushEntrenadorApp(null);
+    } finally {
+      setCargandoEstadoPushEntrenadorApp(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!esEntrenadorApp || pantalla !== 'entrenador') return;
+    void cargarEstadoSemanaPushEntrenadorApp();
+  }, [
+    esEntrenadorApp,
+    pantalla,
+    semanaVistaEntrenadorInicio,
+    gruposEntrenador.length,
+    disponibilidad.length,
+  ]);
+
+  async function cerrarOrganizacionSemanalPushApp() {
+    if (!esCoordinadorApp || !semanaVistaEntrenadorInicio || cerrandoSemanaPushApp)
+      return;
+
+    const confirmar = window.confirm(
+      `¿Cerrar la organización de la semana ${rangoSemanaAgenda(
+        semanaVistaEntrenadorInicio
+      )} y avisar a los entrenadores?
+
+A quienes tengan grupos se les confirmará que ya están preparados. A quienes no tengan ninguno se les avisará de que esta semana no tienen grupos asignados.`
+    );
+    if (!confirmar) return;
+
+    setCerrandoSemanaPushApp(true);
+    try {
+      const resultado = await ejecutarPushMiticoApp('week_groups_closed', {
+        semana_inicio: semanaVistaEntrenadorInicio,
+      });
+
+      if (resultado.already_closed) {
+        alert('Esta semana ya estaba cerrada y los avisos ya se habían procesado.');
+      } else {
+        alert(
+          `Organización semanal cerrada. Entrenadores avisados por push: ${Number(
+            resultado.sent || 0
+          )}. Sin avisos activados: ${Number(
+            resultado.without_subscription || 0
+          )}.`
+        );
+      }
+    } catch (errorPush) {
+      alert(
+        errorPush instanceof Error
+          ? errorPush.message
+          : 'No se pudo cerrar y avisar la organización semanal.'
+      );
+    } finally {
+      setCerrandoSemanaPushApp(false);
+    }
+  }
 
   function grupoTienePendientesVistaEntrenador(grupo: GrupoEntrenadorApp) {
     const alumnosGrupo = alumnosReporteEntrenador.filter(
@@ -34858,6 +35033,276 @@ async function abrirGestionOperativaIntensivoDia(
               Actualizar vista
             </button>
           </div>
+
+          {esEntrenadorApp && (
+            <article
+              className="trainer-week-status-alert"
+              style={(() => {
+                const estado = estadoSemanaPushEntrenadorApp;
+                const gruposPublicados = Number(
+                  estado?.total_grupos_publicados ?? totalGruposVistaEntrenador
+                );
+                const cerrada = Boolean(estado?.organizacion_cerrada);
+
+                if (cerrada && gruposPublicados > 0) {
+                  return {
+                    padding: esVistaMovilApp ? 14 : 16,
+                    borderRadius: 16,
+                    border: '1px solid #86efac',
+                    background: 'linear-gradient(135deg, #ecfdf5, #f0fdf4)',
+                    color: '#166534',
+                    boxShadow: '0 8px 22px rgba(22,163,74,.08)',
+                  };
+                }
+                if (cerrada) {
+                  return {
+                    padding: esVistaMovilApp ? 14 : 16,
+                    borderRadius: 16,
+                    border: '1px solid #cbd5e1',
+                    background: 'linear-gradient(135deg, #f8fafc, #ffffff)',
+                    color: '#334155',
+                  };
+                }
+                if (gruposPublicados > 0) {
+                  return {
+                    padding: esVistaMovilApp ? 14 : 16,
+                    borderRadius: 16,
+                    border: '1px solid #99f6e4',
+                    background: 'linear-gradient(135deg, #f0fdfa, #ecfeff)',
+                    color: '#115e59',
+                  };
+                }
+                return {
+                  padding: esVistaMovilApp ? 14 : 16,
+                  borderRadius: 16,
+                  border: '1px solid #fde68a',
+                  background: 'linear-gradient(135deg, #fffbeb, #ffffff)',
+                  color: '#92400e',
+                };
+              })()}
+            >
+              {(() => {
+                const estado = estadoSemanaPushEntrenadorApp;
+                const gruposPublicados = Number(
+                  estado?.total_grupos_publicados ?? totalGruposVistaEntrenador
+                );
+                const cerrada = Boolean(estado?.organizacion_cerrada);
+                const disponibilidadPublicada = Boolean(
+                  estado?.disponibilidad_publicada ||
+                    disponibilidadEditorVista?.estado === 'publicado'
+                );
+                const pendientes = Number(
+                  estado?.disponibilidad_pendientes ??
+                    totalDisponibilidadPendienteVistaEntrenador
+                );
+
+                let titulo = 'Organización semanal en preparación';
+                let detalle = disponibilidadPublicada
+                  ? pendientes > 0
+                    ? `La disponibilidad está abierta. Te quedan ${pendientes} respuesta(s) por completar.`
+                    : 'Disponibilidad recibida. Te avisaremos cuando haya grupos publicados para ti.'
+                  : 'La disponibilidad de esta semana todavía no está publicada.';
+
+                if (gruposPublicados > 0 && !cerrada) {
+                  titulo = 'Ya hay grupos publicados para ti';
+                  detalle = `Tienes ${gruposPublicados} ${
+                    gruposPublicados === 1 ? 'grupo publicado' : 'grupos publicados'
+                  }. Revisa tus asignaciones; coordinación todavía puede estar terminando la semana.`;
+                }
+                if (cerrada && gruposPublicados > 0) {
+                  titulo = 'Tus grupos de esta semana ya están preparados';
+                  detalle = `Tienes ${gruposPublicados} ${
+                    gruposPublicados === 1 ? 'grupo asignado' : 'grupos asignados'
+                  }. Revísalos y confirma tus asignaciones.`;
+                }
+                if (cerrada && gruposPublicados === 0) {
+                  titulo = 'Organización semanal terminada';
+                  detalle =
+                    'Esta semana no tienes grupos asignados. Gracias por tu disponibilidad; no necesitas estar pendiente.';
+                }
+
+                const pushActivo = Boolean(estado?.push_activo);
+                const permiso = permisoPushMitico();
+
+                return (
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: esVistaMovilApp
+                        ? 'minmax(0, 1fr)'
+                        : 'minmax(0, 1fr) auto',
+                      gap: 12,
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <strong
+                        style={{
+                          display: 'block',
+                          fontSize: esVistaMovilApp ? 15 : 16,
+                          lineHeight: 1.25,
+                        }}
+                      >
+                        {titulo}
+                      </strong>
+                      <p
+                        style={{
+                          margin: '4px 0 0',
+                          color: 'inherit',
+                          opacity: 0.88,
+                          fontSize: 13,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {detalle}
+                      </p>
+                      {mensajePushEntrenadorApp && (
+                        <small style={{ display: 'block', marginTop: 7, fontWeight: 800 }}>
+                          {mensajePushEntrenadorApp}
+                        </small>
+                      )}
+                    </div>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                        justifyContent: esVistaMovilApp ? 'stretch' : 'flex-end',
+                      }}
+                    >
+                      {gruposPublicados > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => setTabVistaEntrenador('grupos')}
+                          style={{
+                            ...botonPrincipal,
+                            minHeight: 40,
+                            width: esVistaMovilApp ? '100%' : 'auto',
+                            padding: '8px 12px',
+                            borderRadius: 12,
+                            background: '#0f766e',
+                            borderColor: '#0f766e',
+                          }}
+                        >
+                          Ver mis grupos
+                        </button>
+                      )}
+
+                      {!pushActivo && permiso !== 'denied' && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void activarPushEntrenadorApp(semanaVistaEntrenadorInicio)
+                          }
+                          disabled={gestionandoPushEntrenadorApp}
+                          style={{
+                            ...botonSecundario,
+                            minHeight: 40,
+                            width: esVistaMovilApp ? '100%' : 'auto',
+                            padding: '8px 12px',
+                            borderRadius: 12,
+                            background: '#ffffff',
+                            color: '#172033',
+                          }}
+                        >
+                          {gestionandoPushEntrenadorApp
+                            ? 'Activando avisos...'
+                            : 'Activar avisos en este móvil'}
+                        </button>
+                      )}
+
+                      {pushActivo && (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            minHeight: 40,
+                            alignItems: 'center',
+                            padding: '8px 11px',
+                            borderRadius: 12,
+                            background: 'rgba(255,255,255,.72)',
+                            border: '1px solid rgba(15,23,42,.10)',
+                            color: '#166534',
+                            fontSize: 12,
+                            fontWeight: 900,
+                          }}
+                        >
+                          Avisos activados ✓
+                        </span>
+                      )}
+
+                      {permiso === 'denied' && !pushActivo && (
+                        <span
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            padding: '8px 11px',
+                            borderRadius: 12,
+                            background: '#fff1f2',
+                            border: '1px solid #fecdd3',
+                            color: '#be123c',
+                            fontSize: 12,
+                            fontWeight: 850,
+                          }}
+                        >
+                          Avisos bloqueados en este dispositivo
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+            </article>
+          )}
+
+          {esCoordinadorApp && (
+            <article
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                flexWrap: 'wrap',
+                padding: '11px 13px',
+                borderRadius: 14,
+                border: '1px solid #dbe3ec',
+                background: '#f8fafc',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <strong style={{ color: '#172033' }}>
+                  Aviso final de organización semanal
+                </strong>
+                <p
+                  style={{
+                    margin: '3px 0 0',
+                    color: '#64748b',
+                    fontSize: 12,
+                    lineHeight: 1.35,
+                  }}
+                >
+                  Cuando hayas terminado de publicar todos los grupos, cierra la semana para avisar también a quien finalmente no tenga trabajo.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void cerrarOrganizacionSemanalPushApp()}
+                disabled={cerrandoSemanaPushApp}
+                style={{
+                  ...botonPrincipal,
+                  minHeight: 40,
+                  padding: '8px 12px',
+                  borderRadius: 12,
+                  background: '#0f766e',
+                  borderColor: '#0f766e',
+                }}
+              >
+                {cerrandoSemanaPushApp
+                  ? 'Cerrando y avisando...'
+                  : 'Cerrar semana y avisar'}
+              </button>
+            </article>
+          )}
 
           <article className="trainer-toolbar" style={panelEntrenadorFiltroApp}>
             {esCoordinadorApp && (
