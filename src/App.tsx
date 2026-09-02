@@ -532,6 +532,9 @@ type OcioPrepararResultadoApp = {
   estado: string;
   sesion_id: string | null;
   grupo_id: string | null;
+  punto_encuentro?: string | null;
+  publicado?: boolean;
+  alumnos_lista?: string[];
 };
 
 type OcioCambioPuntualApp = {
@@ -9106,13 +9109,19 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
       )
     );
 
+    const trabajosRecientes = trabajosRecientesParaGrupoApp(
+      alumnosGrupo.map((alumno) => alumno.alumno),
+      fechaGrupoOcioSemana(grupo)
+    );
+
     return trabajoDiarioMSZApp(
       grupo.nombre_grupo,
       niveles,
       grupo.pista || alumnosGrupo[0]?.grupo_pista || 'Pequeña/Grande',
       observaciones,
       alumnosContexto,
-      'OCIO'
+      'OCIO',
+      trabajosRecientes
     );
   }
 
@@ -9141,46 +9150,115 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
     return ocioSemanaEntrenadores[grupoId] || '';
   }
 
+  function alumnosListaOcioResultadoDesdeTexto(
+    texto: string | null | undefined
+  ) {
+    if (!texto) return [];
+
+    return texto
+      .split(/\s*\|\|\s*/)
+      .map((linea) => nombreRealAlumnoListadoOperativo(linea))
+      .map((nombre) => nombre.trim())
+      .filter(Boolean);
+  }
+
+  async function cargarResultadosOcioSemanaDesdeSupabase() {
+    const semana = semanaAgendaActiva || semanaActualAgenda;
+    if (!semana) {
+      setOcioSemanaResultados([]);
+      return [];
+    }
+
+    const sesiones = await consultarSupabase<AgendaSesionDirectaApp>(
+      'v_agenda_sesiones_operativa_app',
+      'select=*&order=fecha.asc,hora_inicio.asc'
+    );
+
+    const sesionesOcio = sesiones.filter(
+      (sesion) =>
+        sesion.semana_inicio === semana &&
+        normalizarModalidadAgenda(
+          sesion.modalidad || sesion.modalidad_codigo
+        ) === 'OCIO'
+    );
+
+    const resultados: OcioPrepararResultadoApp[] = [];
+
+    for (const sesion of sesionesOcio) {
+      const grupos = await consultarSupabase<AgendaGrupoSesionApp>(
+        'v_grupos_sesion_operativa_app',
+        `select=*&sesion_id=${encodeURIComponent(
+          `eq.${sesion.sesion_id}`
+        )}&order=nombre_grupo.asc`
+      );
+
+      for (const grupo of grupos) {
+        if (grupo.cancelado) continue;
+
+        resultados.push({
+          grupo_estable: grupo.nombre_grupo || 'Grupo Ocio',
+          fecha: sesion.fecha,
+          hora_inicio: horaCorta(sesion.hora_inicio),
+          hora_fin: horaCorta(sesion.hora_fin),
+          alumnos: Number(grupo.total_alumnos || 0),
+          entrenador: grupo.entrenador || null,
+          estado: grupo.publicado
+            ? 'Publicado'
+            : 'Preparado · pendiente de publicar',
+          sesion_id: sesion.sesion_id,
+          grupo_id: grupo.grupo_id,
+          punto_encuentro: grupo.punto_encuentro || null,
+          publicado: Boolean(grupo.publicado),
+          alumnos_lista: alumnosListaOcioResultadoDesdeTexto(
+            grupo.alumnos_lista
+          ),
+        });
+      }
+    }
+
+    setOcioSemanaResultados(resultados);
+    return resultados;
+  }
+
   function mensajeWhatsappSemanaOcio() {
     const semana = semanaAgendaActiva || semanaActualAgenda;
     if (!semana) return 'Selecciona una semana.';
 
+    const resultadosSemana = [...ocioSemanaResultados]
+      .filter((resultado) => resultado.fecha)
+      .sort((a, b) =>
+        `${a.fecha} ${a.hora_inicio} ${a.grupo_estable}`.localeCompare(
+          `${b.fecha} ${b.hora_inicio} ${b.grupo_estable}`
+        )
+      );
+
+    if (resultadosSemana.length === 0) {
+      return 'Primero prepara los grupos de Ocio de esta semana.';
+    }
+
     let mensaje = `*OCIO · SEMANA ${rangoSemanaAgenda(semana)}* ⛷️💨\n\n`;
 
-    ocioGrupos.forEach((grupo) => {
-      const fecha = fechaGrupoOcioSemana(grupo);
-      const horaInicio = horaCorta(grupo.hora_inicio);
-      const horaFin = horaCorta(grupo.hora_fin);
-      const alumnosPresentes = alumnosGrupoOcioEstable(grupo.grupo_id).filter(
-        (alumno) => alumnoVieneOcioSemana(alumno.alumno_id)
-      );
-      if (alumnosPresentes.length === 0) return;
-      const entrenadorId = entrenadorSeleccionadoOcioSemana(grupo.grupo_id);
-      const entrenador =
-        entrenadores.find((item) => item.entrenador_id === entrenadorId)
-          ?.nombre_completo || 'ENTRENADOR PENDIENTE';
-
-      mensaje += `*${(grupo.dia_semana || '').toUpperCase()} · ${formatearFecha(
-        fecha
-      )}*\n`;
-      mensaje += `⏰ horario de ${horaInicio} a ${horaFin} MSZ\n\n`;
-      mensaje += `⛷️ ${entrenador}\n`;
-      mensaje += `📍${grupo.punto_encuentro || '-'}\n`;
+    resultadosSemana.forEach((resultado) => {
+      mensaje += `*${formatearFecha(resultado.fecha)}*\n`;
+      mensaje += `⏰ horario de ${horaCorta(resultado.hora_inicio)} a ${horaCorta(
+        resultado.hora_fin
+      )} MSZ\n\n`;
+      mensaje += `⛷️ ${resultado.entrenador || 'ENTRENADOR PENDIENTE'}\n`;
+      mensaje += `📍${resultado.punto_encuentro || 'PUNTO PENDIENTE'}\n`;
       mensaje += `👶\n`;
-      alumnosPresentes.forEach((alumno) => {
-        mensaje += `${nombreAlumnoWhatsappPapis(alumno.alumno)}\n`;
-      });
+
+      const nombres = resultado.alumnos_lista || [];
+      if (nombres.length > 0) {
+        nombres.forEach((nombre) => {
+          mensaje += `${nombreAlumnoWhatsappPapis(nombre)}\n`;
+        });
+      } else {
+        mensaje += `${resultado.alumnos} alumnos\n`;
+      }
       mensaje += '\n';
     });
 
-    const primerGrupoConAlumnos = ocioGrupos.find((grupo) =>
-      alumnosGrupoOcioEstable(grupo.grupo_id).some((alumno) =>
-        alumnoVieneOcioSemana(alumno.alumno_id)
-      )
-    );
-    const horaEntrada = primerGrupoConAlumnos
-      ? horaCorta(primerGrupoConAlumnos.hora_inicio)
-      : 'la hora de entrada';
+    const horaEntrada = horaCorta(resultadosSemana[0].hora_inicio);
 
     mensaje += '¡Nos vemos en MSZ equipo!\n';
     mensaje += '⚠️Papis importante!\n';
@@ -9373,6 +9451,9 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
       estado: 'Creado como pendiente de entrenador.',
       sesion_id: sesionId,
       grupo_id: grupoId,
+      punto_encuentro: null,
+      publicado: false,
+      alumnos_lista: alumnosPresentes.map((alumno) => alumno.alumno),
     };
   }
 
@@ -9387,21 +9468,8 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
         sesion.sesionId
       );
 
-      setOcioSemanaResultados((anteriores) => [
-        resultado,
-        ...anteriores.filter(
-          (item) =>
-            !(
-              item.grupo_estable === resultado.grupo_estable &&
-              item.fecha === resultado.fecha &&
-              horaCorta(item.hora_inicio) ===
-                horaCorta(resultado.hora_inicio) &&
-              horaCorta(item.hora_fin) === horaCorta(resultado.hora_fin)
-            )
-        ),
-      ]);
-
       await cargarAgendaOperativaDirecta();
+      await cargarResultadosOcioSemanaDesdeSupabase();
       await cargarPlanning();
       await cargarGruposEntrenador();
 
@@ -9483,6 +9551,49 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
     setCargando(false);
   }
 
+  async function deshacerPreparacionOcio(
+    resultado: OcioPrepararResultadoApp
+  ) {
+    const confirmar = window.confirm(
+      `¿DESHACER la preparación de Ocio del ${formatearFecha(
+        resultado.fecha
+      )} · ${horaCorta(resultado.hora_inicio)}–${horaCorta(
+        resultado.hora_fin
+      )}?\n\nSe eliminarán únicamente los grupos operativos de ese turno. Los grupos estables, alumnos habituales y cambios puntuales se conservan.\n\nSi ya existe asistencia real o reportes, Supabase bloqueará la operación.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncionAuthJson<{
+        ok: boolean;
+        sesiones_ocio_borradas: number;
+        grupos_ocio_borrados: number;
+      }>('reiniciar_turno_ocio_semana_app', {
+        p_fecha: resultado.fecha,
+        p_hora_inicio: horaCorta(resultado.hora_inicio),
+        p_hora_fin: horaCorta(resultado.hora_fin),
+      });
+
+      await cargarAgendaOperativaDirecta();
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+      await cargarCobros();
+      await cargarResultadosOcioSemanaDesdeSupabase();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo deshacer la preparación de Ocio.'
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
   async function publicarGrupoOcioPreparado(
     resultado: OcioPrepararResultadoApp
   ) {
@@ -9512,9 +9623,7 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
       await cargarGruposEntrenador();
       await cargarCobros();
 
-      setOcioSemanaResultados((anteriores) =>
-        anteriores.filter((item) => item.grupo_id !== resultado.grupo_id)
-      );
+      await cargarResultadosOcioSemanaDesdeSupabase();
     } catch (err) {
       setError(
         err instanceof Error
@@ -9636,19 +9745,8 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
         );
       }
 
-      setOcioSemanaResultados((anteriores) => [
-        ...resultados,
-        ...anteriores.filter(
-          (item) =>
-            !(
-              item.fecha === fechaTurno &&
-              horaCorta(item.hora_inicio) === inicioTurno &&
-              horaCorta(item.hora_fin) === finTurno
-            )
-        ),
-      ]);
-
       await cargarAgendaOperativaDirecta();
+      await cargarResultadosOcioSemanaDesdeSupabase();
       await cargarPlanning();
       await cargarGruposEntrenador();
 
@@ -17603,9 +17701,12 @@ async function abrirGestionOperativaIntensivoDia(
       const sesionActiva = agendaSesionesDirectas.find(
         (item) => item.sesion_id === grupoOrigen.sesion_id
       );
-      const esIntensivo =
-        `${sesionActiva?.modalidad || ''}`.trim().toUpperCase() ===
-        'INTENSIVOS';
+      const modalidadActiva = normalizarModalidadAgenda(
+        sesionActiva?.modalidad || sesionActiva?.modalidad_codigo || ''
+      );
+      const esIntensivo = modalidadActiva === 'INTENSIVOS';
+      const esOcio = modalidadActiva === 'OCIO';
+      const esBaby = modalidadActiva === 'BABY';
 
       const alumnosOrigenAntes = alumnosDelGrupoCreadoAgenda(grupoOrigen);
       const alumnosDestinoAntes = alumnosDelGrupoCreadoAgenda(grupoDestino);
@@ -17620,13 +17721,14 @@ async function abrirGestionOperativaIntensivoDia(
         alumno,
       ];
 
-      const manualesOrigen = esIntensivo
+      const debeRegenerarTrabajo = esIntensivo || esOcio || esBaby;
+      const manualesOrigen = debeRegenerarTrabajo
         ? observacionesManualesGrupoAgendaPersistentesApp(
             grupoOrigen.observaciones_importantes,
             alumnosOrigenAntes
           )
         : '';
-      const manualesDestino = esIntensivo
+      const manualesDestino = debeRegenerarTrabajo
         ? observacionesManualesGrupoAgendaPersistentesApp(
             grupoDestino.observaciones_importantes,
             alumnosDestinoAntes
@@ -17641,24 +17743,30 @@ async function abrirGestionOperativaIntensivoDia(
         p_grupo_destino_id: grupoDestinoId,
       });
 
-      // INTENSIVOS: al cambiar la composición, origen y destino dejan de usar
-      // el Trabajo diario calculado para la composición anterior.
-      // Se vuelve a ejecutar el motor común NUEVO de la app para ambos grupos.
-      if (esIntensivo) {
+      // INTENSIVOS, OCIO y BABY: un cambio de composición invalida el trabajo
+      // calculado para origen y destino. Regeneramos con el motor común nuevo.
+      if (debeRegenerarTrabajo) {
+        const baseOrigen = esIntensivo
+          ? alumnosEfectivosDelGrupoIntensivoAgenda(
+              grupoOrigen,
+              alumnosOrigenDespues
+            )
+          : alumnosOrigenDespues;
+        const baseDestino = esIntensivo
+          ? alumnosEfectivosDelGrupoIntensivoAgenda(
+              grupoDestino,
+              alumnosDestinoDespues
+            )
+          : alumnosDestinoDespues;
+
         const contenidoOrigen = contenidoTrabajoGrupoCreadoAgendaApp(
           grupoOrigen,
-          alumnosEfectivosDelGrupoIntensivoAgenda(
-            grupoOrigen,
-            alumnosOrigenDespues
-          ),
+          baseOrigen,
           manualesOrigen
         );
         const contenidoDestino = contenidoTrabajoGrupoCreadoAgendaApp(
           grupoDestino,
-          alumnosEfectivosDelGrupoIntensivoAgenda(
-            grupoDestino,
-            alumnosDestinoDespues
-          ),
+          baseDestino,
           manualesDestino
         );
 
@@ -17990,16 +18098,68 @@ async function abrirGestionOperativaIntensivoDia(
     setCargando(false);
   }
 
-  async function borrarGrupoAgenda(grupo: AgendaGrupoSesionApp) {
-    const confirmar = window.confirm(
-      `¿Borrar el grupo ${grupo.nombre_grupo}? Se quitarán sus alumnos del grupo, pero no se borran sus fichas.`
+  async function comprobarGrupoAgendaSinHistoricoReal(
+    grupoId: string
+  ) {
+    const reportesGrupo = await consultarSupabase<{ id: string }>(
+      'reportes',
+      `select=id&grupo_id=${encodeURIComponent(`eq.${grupoId}`)}&limit=1`
     );
-    if (!confirmar) return;
 
+    if (reportesGrupo.length > 0) {
+      return {
+        ok: false,
+        motivo:
+          'Este grupo ya tiene reportes. No se puede borrar desde Agenda para proteger el histórico.',
+      };
+    }
+
+    const asistenciasGrupo = await consultarSupabase<{
+      id: string;
+      estado_asistencia: string | null;
+    }>(
+      'grupo_alumnos',
+      `select=id,estado_asistencia&grupo_id=${encodeURIComponent(
+        `eq.${grupoId}`
+      )}`
+    );
+
+    const tieneAsistenciaReal = asistenciasGrupo.some((fila) =>
+      ['presente', 'ausente'].includes(
+        String(fila.estado_asistencia || '').trim().toLowerCase()
+      )
+    );
+
+    if (tieneAsistenciaReal) {
+      return {
+        ok: false,
+        motivo:
+          'Este grupo ya tiene asistencia real registrada. No se puede borrar desde Agenda para proteger el histórico.',
+      };
+    }
+
+    return { ok: true, motivo: '' };
+  }
+
+  async function borrarGrupoAgenda(grupo: AgendaGrupoSesionApp) {
     setCargando(true);
     setError('');
 
     try {
+      const proteccion = await comprobarGrupoAgendaSinHistoricoReal(
+        grupo.grupo_id
+      );
+
+      if (!proteccion.ok) {
+        setError(proteccion.motivo);
+        return;
+      }
+
+      const confirmar = window.confirm(
+        `¿Borrar el grupo ${grupo.nombre_grupo}? Se quitarán sus alumnos del grupo, pero no se borran sus fichas.`
+      );
+      if (!confirmar) return;
+
       await ejecutarFuncion('borrar_grupo_sesion_operativa_app', {
         p_grupo_id: grupo.grupo_id,
       });
@@ -18008,24 +18168,44 @@ async function abrirGestionOperativaIntensivoDia(
       await cargarDetalleSesionAgenda(grupo.sesion_id);
       setAgendaRecomendaciones([]);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo comprobar o borrar el grupo.'
+      );
+    } finally {
+      setCargando(false);
     }
-
-    setCargando(false);
   }
 
   async function borrarSesionAgendaActual() {
     if (!agendaSesionActivaId) return;
 
-    const confirmar = window.confirm(
-      '¿Borrar esta sesión? Se borran sus grupos y asignaciones. Las fichas de alumnos no se borran.'
-    );
-    if (!confirmar) return;
-
     setCargando(true);
     setError('');
 
     try {
+      const gruposSesion = agendaGruposSesion.filter(
+        (grupo) => grupo.sesion_id === agendaSesionActivaId
+      );
+
+      for (const grupo of gruposSesion) {
+        const proteccion = await comprobarGrupoAgendaSinHistoricoReal(
+          grupo.grupo_id
+        );
+        if (!proteccion.ok) {
+          setError(
+            `${grupo.nombre_grupo}: ${proteccion.motivo}`
+          );
+          return;
+        }
+      }
+
+      const confirmar = window.confirm(
+        '¿Borrar esta sesión? Se borran sus grupos y asignaciones. Las fichas de alumnos no se borran.'
+      );
+      if (!confirmar) return;
+
       await ejecutarFuncion('borrar_sesion_operativa_app', {
         p_sesion_id: agendaSesionActivaId,
       });
@@ -18037,10 +18217,14 @@ async function abrirGestionOperativaIntensivoDia(
       await cargarAgendaOperativaDirecta();
       irAlTrabajoAgenda();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo comprobar o borrar la sesión.'
+      );
+    } finally {
+      setCargando(false);
     }
-
-    setCargando(false);
   }
 
   async function cargarDetalleGrupo(
@@ -18115,6 +18299,8 @@ async function abrirGestionOperativaIntensivoDia(
       cargarOcioGrupos();
       cargarOcioCambios();
       cargarAlumnos();
+      cargarAgendaOperativaDirecta();
+      cargarResultadosOcioSemanaDesdeSupabase();
     }
     if (pantalla === 'ocioCambios') {
       cargarOcioAlumnos();
@@ -18174,6 +18360,11 @@ async function abrirGestionOperativaIntensivoDia(
     }
     if (pantalla === 'listados') cargarListados();
   }, [pantalla]);
+
+  useEffect(() => {
+    if (pantalla !== 'ocioGrupos') return;
+    void cargarResultadosOcioSemanaDesdeSupabase();
+  }, [pantalla, semanaAgendaActiva]);
 
   useEffect(() => {
     if (
@@ -32182,14 +32373,6 @@ async function abrirGestionOperativaIntensivoDia(
                                 </div>
                               </div>
 
-                              <button
-                                type="button"
-                                onClick={() => prepararGrupoOcioSemana(grupo)}
-                                disabled={presentes.length === 0}
-                                style={botonSecundario}
-                              >
-                                Preparar grupo
-                              </button>
                             </div>
 
                             <div
@@ -32289,7 +32472,14 @@ async function abrirGestionOperativaIntensivoDia(
                           }
                           style={botonPrincipal}
                         >
-                          Preparar {ocioTurnoVista}
+                          {ocioSemanaResultados.some((resultado) =>
+                            resultadoPerteneceDiaOcio(
+                              resultado,
+                              ocioTurnoVista
+                            )
+                          )
+                            ? `Actualizar ${ocioTurnoVista}`
+                            : `Preparar ${ocioTurnoVista}`}
                         </button>
                       </div>
                     </article>
@@ -32324,9 +32514,9 @@ async function abrirGestionOperativaIntensivoDia(
                               )
                             )
                             .map((resultado, indice) => {
-                            const publicado = /publicad/i.test(
-                              resultado.estado || ''
-                            );
+                            const publicado =
+                              resultado.publicado === true ||
+                              /publicad/i.test(resultado.estado || '');
 
                             return (
                               <div
@@ -32411,6 +32601,18 @@ async function abrirGestionOperativaIntensivoDia(
                                         Publicar grupo
                                       </button>
                                     )}
+
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        void deshacerPreparacionOcio(resultado)
+                                      }
+                                      style={botonPeligro}
+                                    >
+                                      {publicado
+                                        ? 'Rehacer turno'
+                                        : 'Deshacer preparación'}
+                                    </button>
                                   </div>
                                 </div>
                               </div>
