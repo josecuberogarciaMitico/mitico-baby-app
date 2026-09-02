@@ -1,0 +1,2500 @@
+  ) {
+    return (base || alumnosDelGrupoCreadoAgenda(grupo)).filter((alumno) =>
+      alumnoCuentaParaTrabajoIntensivoAgenda(grupo, alumno.alumno_id)
+    );
+  }
+
+  async function guardarTrabajoRegeneradoGrupoIntensivoAgenda(
+    grupo: AgendaGrupoSesionApp,
+    alumnosBase?: AgendaAlumnoSesionApp[]
+  ) {
+    const alumnosAntes = alumnosDelGrupoCreadoAgenda(grupo);
+    const alumnosEfectivos = alumnosEfectivosDelGrupoIntensivoAgenda(
+      grupo,
+      alumnosBase
+    );
+    const manuales = observacionesManualesGrupoAgendaPersistentesApp(
+      observacionesGrupoCreadoEditando[grupo.grupo_id] ??
+        grupo.observaciones_importantes,
+      alumnosAntes
+    );
+
+    const contenido = contenidoTrabajoGrupoCreadoAgendaApp(
+      grupo,
+      alumnosEfectivos,
+      manuales
+    );
+
+    await ejecutarFuncion('actualizar_trabajo_observaciones_grupo_app', {
+      p_grupo_id: grupo.grupo_id,
+      p_trabajo_diario: contenido.trabajo,
+      p_observaciones_importantes: contenido.observaciones,
+    });
+  }
+
+  async function regenerarTrabajoGrupoIntensivoAgenda(
+    grupo: AgendaGrupoSesionApp
+  ) {
+    if (!contextoIntensivoSesionAgenda(grupo.sesion_id)) return;
+
+    const alumnosGrupo = alumnosDelGrupoCreadoAgenda(grupo);
+    if (alumnosGrupo.length === 0) {
+      setError(
+        'No se han podido resolver los alumnos reales de este grupo. La sesión de Intensivos no está sincronizada con Días de entrenamiento.'
+      );
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await guardarTrabajoRegeneradoGrupoIntensivoAgenda(grupo);
+      if (agendaSesionActivaId) {
+        await cargarDetalleSesionAgenda(agendaSesionActivaId, {
+          preservarScroll: true,
+        });
+      }
+      await cargarIntensivos();
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo regenerar el trabajo del grupo.'
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function marcarNoVieneIntensivoDesdeAgenda(
+    alumno: AgendaAlumnoSesionApp,
+    grupo: AgendaGrupoSesionApp
+  ) {
+    const contexto = contextoIntensivoSesionAgenda(grupo.sesion_id);
+    if (!contexto) return;
+
+    const confirmar = window.confirm(
+      `¿Marcar que ${alumno.alumno} NO VIENE el Día ${contexto.dia.numero_dia}?\n\nSe mantendrá en el intensivo y en su histórico, se marcará la falta para recuperación y el Trabajo diario del grupo se recalculará sin contar con este niño.`
+    );
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('marcar_asistencia_intensivo_app', {
+        p_intensivo_id: contexto.dia.intensivo_id,
+        p_intensivo_dia_id: contexto.dia.intensivo_dia_id,
+        p_alumno_id: alumno.alumno_id,
+        p_estado: 'BAJA_AVISADA',
+        p_falta_genera_recuperacion: true,
+      });
+
+      await guardarTrabajoRegeneradoGrupoIntensivoAgenda(
+        grupo,
+        alumnosDelGrupoCreadoAgenda(grupo).filter(
+          (item) => item.alumno_id !== alumno.alumno_id
+        )
+      );
+
+      await cargarIntensivos();
+      if (agendaSesionActivaId) {
+        await cargarDetalleSesionAgenda(agendaSesionActivaId, {
+          preservarScroll: true,
+        });
+      }
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo marcar la falta del intensivo.'
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function restaurarVieneIntensivoDesdeAgenda(
+    alumno: AgendaAlumnoSesionApp,
+    grupo: AgendaGrupoSesionApp
+  ) {
+    const contexto = contextoIntensivoSesionAgenda(grupo.sesion_id);
+    if (!contexto) return;
+
+    const confirmar = window.confirm(
+      `¿Volver a dejar a ${alumno.alumno} como previsto para este día?\n\nLa asistencia volverá a pendiente. Si la recuperación aún no estaba gestionada, se retirará automáticamente.`
+    );
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('reset_asistencia_intensivo_app', {
+        p_intensivo_id: contexto.dia.intensivo_id,
+        p_intensivo_dia_id: contexto.dia.intensivo_dia_id,
+        p_alumno_id: alumno.alumno_id,
+      });
+
+      // reset_asistencia_intensivo_app devuelve la asistencia a pendiente.
+      // La función de asistencia del backend conserva/elimina recuperaciones
+      // según su estado; regeneramos con el alumno otra vez dentro del grupo.
+      await ejecutarFuncion('marcar_asistencia_intensivo_app', {
+        p_intensivo_id: contexto.dia.intensivo_id,
+        p_intensivo_dia_id: contexto.dia.intensivo_dia_id,
+        p_alumno_id: alumno.alumno_id,
+        p_estado: 'SIN_CONFIRMAR',
+        p_falta_genera_recuperacion: false,
+      });
+
+      await guardarTrabajoRegeneradoGrupoIntensivoAgenda(grupo);
+
+      await cargarIntensivos();
+      if (agendaSesionActivaId) {
+        await cargarDetalleSesionAgenda(agendaSesionActivaId, {
+          preservarScroll: true,
+        });
+      }
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo restaurar la asistencia del alumno.'
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function moverAlumnoEntreGruposAgenda(
+    alumno: AgendaAlumnoSesionApp,
+    grupoOrigen: AgendaGrupoSesionApp,
+    grupoDestinoId: string
+  ) {
+    if (!alumno?.alumno_id || !grupoOrigen?.grupo_id || !grupoDestinoId) return;
+    if (grupoOrigen.grupo_id === grupoDestinoId) return;
+
+    const grupoDestino = agendaGruposSesion.find(
+      (grupo) => grupo.grupo_id === grupoDestinoId
+    );
+    if (!grupoDestino) {
+      setError('No encuentro el grupo de destino. Actualiza la sesión y vuelve a intentarlo.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Mover a ${alumno.alumno} de ${nombreGrupoVisualApp(grupoOrigen)} a ${nombreGrupoVisualApp(grupoDestino)}?\n\nEl cambio es solo de composición: no cambia el entrenador ni su confirmación.`
+    );
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      const sesionActiva = agendaSesionesDirectas.find(
+        (item) => item.sesion_id === grupoOrigen.sesion_id
+      );
+      const modalidadActiva = normalizarModalidadAgenda(
+        sesionActiva?.modalidad || sesionActiva?.modalidad_codigo || ''
+      );
+      const esIntensivo = modalidadActiva === 'INTENSIVOS';
+      const esOcio = modalidadActiva === 'OCIO';
+      const esBaby = modalidadActiva === 'BABY';
+
+      const alumnosOrigenAntes = alumnosDelGrupoCreadoAgenda(grupoOrigen);
+      const alumnosDestinoAntes = alumnosDelGrupoCreadoAgenda(grupoDestino);
+
+      const alumnosOrigenDespues = alumnosOrigenAntes.filter(
+        (item) => item.alumno_id !== alumno.alumno_id
+      );
+      const alumnosDestinoDespues = [
+        ...alumnosDestinoAntes.filter(
+          (item) => item.alumno_id !== alumno.alumno_id
+        ),
+        alumno,
+      ];
+
+      const debeRegenerarTrabajo = esIntensivo || esOcio || esBaby;
+      const manualesOrigen = debeRegenerarTrabajo
+        ? observacionesManualesGrupoAgendaPersistentesApp(
+            grupoOrigen.observaciones_importantes,
+            alumnosOrigenAntes
+          )
+        : '';
+      const manualesDestino = debeRegenerarTrabajo
+        ? observacionesManualesGrupoAgendaPersistentesApp(
+            grupoDestino.observaciones_importantes,
+            alumnosDestinoAntes
+          )
+        : '';
+
+      // La RPC mueve únicamente la composición y conserva entrenador,
+      // segundo entrenador, punto y confirmación.
+      await ejecutarFuncion('mover_alumno_grupo_intensivo_dia_app', {
+        p_alumno_id: alumno.alumno_id,
+        p_grupo_origen_id: grupoOrigen.grupo_id,
+        p_grupo_destino_id: grupoDestinoId,
+      });
+
+      // INTENSIVOS, OCIO y BABY: un cambio de composición invalida el trabajo
+      // calculado para origen y destino. Regeneramos con el motor común nuevo.
+      if (debeRegenerarTrabajo) {
+        const baseOrigen = esIntensivo
+          ? alumnosEfectivosDelGrupoIntensivoAgenda(
+              grupoOrigen,
+              alumnosOrigenDespues
+            )
+          : alumnosOrigenDespues;
+        const baseDestino = esIntensivo
+          ? alumnosEfectivosDelGrupoIntensivoAgenda(
+              grupoDestino,
+              alumnosDestinoDespues
+            )
+          : alumnosDestinoDespues;
+
+        const contenidoOrigen = contenidoTrabajoGrupoCreadoAgendaApp(
+          grupoOrigen,
+          baseOrigen,
+          manualesOrigen
+        );
+        const contenidoDestino = contenidoTrabajoGrupoCreadoAgendaApp(
+          grupoDestino,
+          baseDestino,
+          manualesDestino
+        );
+
+        await ejecutarFuncion('actualizar_trabajo_observaciones_grupo_app', {
+          p_grupo_id: grupoOrigen.grupo_id,
+          p_trabajo_diario: contenidoOrigen.trabajo,
+          p_observaciones_importantes: contenidoOrigen.observaciones,
+        });
+
+        await ejecutarFuncion('actualizar_trabajo_observaciones_grupo_app', {
+          p_grupo_id: grupoDestino.grupo_id,
+          p_trabajo_diario: contenidoDestino.trabajo,
+          p_observaciones_importantes: contenidoDestino.observaciones,
+        });
+      }
+
+      if (agendaSesionActivaId) {
+        await cargarDetalleSesionAgenda(agendaSesionActivaId, {
+          preservarScroll: true,
+        });
+      }
+      await cargarAgendaOperativaDirecta();
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo mover el alumno entre grupos.'
+      );
+    }
+
+    setCargando(false);
+  }
+
+  async function cambiarEntrenadorGrupoAgenda(
+    grupo: AgendaGrupoSesionApp,
+    nuevoEntrenadorId: string
+  ) {
+    if (!grupo.grupo_id) return;
+
+    if (!nuevoEntrenadorId) {
+      setError('Selecciona un entrenador disponible para cambiar el grupo.');
+      return;
+    }
+
+    const nuevoEntrenador = entrenadores.find(
+      (entrenador) => entrenador.entrenador_id === nuevoEntrenadorId
+    );
+    const confirmar = window.confirm(
+      `¿Cambiar el entrenador de ${grupo.nombre_grupo} a ${
+        nuevoEntrenador?.nombre_completo || 'este entrenador'
+      }?\n\nSe actualizará la vista del entrenador y los cobros se recalcularán con la nueva asignación.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('cambiar_entrenador_grupo_app', {
+        p_grupo_id: grupo.grupo_id,
+        p_entrenador_id: nuevoEntrenadorId,
+      });
+
+      if (agendaSesionActivaId)
+        await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      await cargarAgendaOperativaDirecta();
+      await cargarGruposEntrenador();
+      await cargarReportesPendientes();
+      await cargarPlanning();
+      await cargarCobros();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error cambiando entrenador del grupo'
+      );
+    }
+
+    setCargando(false);
+  }
+
+  async function cambiarPuntoGrupoAgenda(
+    grupo: AgendaGrupoSesionApp,
+    nuevoPunto: string
+  ) {
+    if (!grupo.grupo_id || !nuevoPunto) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('cambiar_punto_encuentro_grupo_app', {
+        p_grupo_id: grupo.grupo_id,
+        p_punto_encuentro: nuevoPunto,
+      });
+
+      if (agendaSesionActivaId) {
+        await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      }
+      await cargarAgendaOperativaDirecta();
+      await cargarPlanning();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error cambiando el punto de encuentro'
+      );
+    }
+
+    setCargando(false);
+  }
+
+  async function cambiarSegundoEntrenadorGrupoAgenda(
+    grupo: AgendaGrupoSesionApp,
+    nuevoEntrenadorApoyoId: string
+  ) {
+    if (!grupo.grupo_id) return;
+
+    if (
+      nuevoEntrenadorApoyoId &&
+      nuevoEntrenadorApoyoId === grupo.entrenador_id
+    ) {
+      setError(
+        'El segundo entrenador no puede ser el mismo que el entrenador principal.'
+      );
+      return;
+    }
+
+    const nombreNuevo = nuevoEntrenadorApoyoId
+      ? entrenadores.find(
+          (entrenador) =>
+            entrenador.entrenador_id === nuevoEntrenadorApoyoId
+        )?.nombre_completo || 'este entrenador'
+      : 'ninguno';
+
+    const confirmar = window.confirm(
+      nuevoEntrenadorApoyoId
+        ? `¿Cambiar el segundo entrenador de ${grupo.nombre_grupo} a ${nombreNuevo}?\n\nSe conservará el reparto de reportes y se actualizarán Vista entrenador y Cobros.`
+        : `¿Quitar el segundo entrenador de ${grupo.nombre_grupo}?\n\nLos reportes que tenía asignados volverán al entrenador principal y Cobros se recalculará.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('guardar_apoyo_reportes_grupo_app', {
+        p_grupo_id: grupo.grupo_id,
+        p_entrenador_apoyo_id: nuevoEntrenadorApoyoId || null,
+        p_responsables: null,
+      });
+
+      if (agendaSesionActivaId) {
+        await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      }
+      await cargarAgendaOperativaDirecta();
+      await cargarGruposEntrenador();
+      await cargarReportesPendientes();
+      await cargarPlanning();
+      await cargarCobros();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error cambiando el segundo entrenador del grupo'
+      );
+    }
+
+    setCargando(false);
+  }
+
+  async function guardarTrabajoObservacionesGrupoAgenda(
+    grupo: AgendaGrupoSesionApp
+  ) {
+    if (!grupo.grupo_id) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('actualizar_trabajo_observaciones_grupo_app', {
+        p_grupo_id: grupo.grupo_id,
+        p_trabajo_diario:
+          trabajoGrupoCreadoEditando[grupo.grupo_id] ??
+          grupo.trabajo_diario ??
+          '',
+        p_observaciones_importantes: normalizarLineasObservacionesGrupoApp(
+          observacionesGrupoCreadoEditando[grupo.grupo_id] ??
+            grupo.observaciones_importantes ??
+            '',
+          12
+        ),
+      });
+
+      if (agendaSesionActivaId)
+        await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      await cargarAgendaOperativaDirecta();
+      await cargarGruposEntrenador();
+      await cargarPlanning();
+
+      window.requestAnimationFrame(() => {
+        const detalle = document.getElementById(
+          `agenda-trabajo-grupo-${grupo.grupo_id}`
+        ) as HTMLDetailsElement | null;
+        if (detalle) detalle.open = false;
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error guardando trabajo diario y observaciones del grupo'
+      );
+    }
+
+    setCargando(false);
+  }
+
+  async function editarNivelAlumnoAgenda(alumno: AgendaAlumnoSesionApp) {
+    const nuevoNivel = window.prompt(
+      `Nuevo nivel real de ficha para ${alumno.alumno} (INICIACION, A, A+, B, B+, C, C+, D, D+). Se aplicará en toda la app.`,
+      alumno.nivel_usado || 'INICIACION'
+    );
+
+    if (!nuevoNivel) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('actualizar_nivel_alumno_sesion_operativa_app', {
+        p_sesion_alumno_id: alumno.sesion_alumno_id,
+        p_nivel_codigo: nuevoNivel.trim().toUpperCase(),
+        p_origen: 'Jose / Coordinador',
+      });
+
+      await cargarDetalleSesionAgenda(alumno.sesion_id);
+      await cargarAgendaOperativaDirecta();
+      await cargarAlumnos();
+      setAgendaRecomendaciones([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function editarNombreAlumnoAgenda(alumno: AgendaAlumnoSesionApp) {
+    const nuevoNombre = window.prompt(
+      'Corrige el nombre del alumno',
+      alumno.alumno
+    );
+
+    if (!nuevoNombre || nuevoNombre.trim() === alumno.alumno) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('actualizar_nombre_alumno_sesion_operativa_app', {
+        p_sesion_alumno_id: alumno.sesion_alumno_id,
+        p_nombre: nuevoNombre.trim(),
+      });
+
+      await cargarDetalleSesionAgenda(alumno.sesion_id);
+      await cargarAgendaOperativaDirecta();
+      await cargarAlumnos();
+      setAgendaRecomendaciones([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function quitarAlumnoAgenda(alumno: AgendaAlumnoSesionApp) {
+    const confirmar = window.confirm(
+      `¿Quitar a ${alumno.alumno} de esta sesión/listado?`
+    );
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('quitar_alumno_sesion_operativa_app', {
+        p_sesion_alumno_id: alumno.sesion_alumno_id,
+      });
+
+      await cargarAgendaOperativaDirecta();
+      await cargarDetalleSesionAgenda(alumno.sesion_id);
+      setAgendaRecomendaciones([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function borrarAlumnoBaseAgenda(alumno: AgendaAlumnoSesionApp) {
+    const confirmar = window.confirm(
+      `¿BORRAR la ficha completa de ${alumno.alumno}? Esto elimina al alumno de la base y de las pruebas donde esté metido.`
+    );
+    if (!confirmar) return;
+
+    const confirmarFinal = window.confirm(
+      'Confirmación final: esta acción no es solo quitarlo del listado, borra la ficha del alumno.'
+    );
+    if (!confirmarFinal) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('borrar_alumno_base_operativa_app', {
+        p_alumno_id: alumno.alumno_id,
+      });
+
+      await cargarAgendaOperativaDirecta();
+      await cargarDetalleSesionAgenda(alumno.sesion_id);
+      setAgendaRecomendaciones([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function comprobarGrupoAgendaSinHistoricoReal(
+    grupoId: string
+  ) {
+    const reportesGrupo = await consultarSupabase<{ id: string }>(
+      'reportes',
+      `select=id&grupo_id=${encodeURIComponent(`eq.${grupoId}`)}&limit=1`
+    );
+
+    if (reportesGrupo.length > 0) {
+      return {
+        ok: false,
+        motivo:
+          'Este grupo ya tiene reportes. No se puede borrar desde Agenda para proteger el histórico.',
+      };
+    }
+
+    const asistenciasGrupo = await consultarSupabase<{
+      id: string;
+      estado_asistencia: string | null;
+    }>(
+      'grupo_alumnos',
+      `select=id,estado_asistencia&grupo_id=${encodeURIComponent(
+        `eq.${grupoId}`
+      )}`
+    );
+
+    const tieneAsistenciaReal = asistenciasGrupo.some((fila) =>
+      ['presente', 'ausente'].includes(
+        String(fila.estado_asistencia || '').trim().toLowerCase()
+      )
+    );
+
+    if (tieneAsistenciaReal) {
+      return {
+        ok: false,
+        motivo:
+          'Este grupo ya tiene asistencia real registrada. No se puede borrar desde Agenda para proteger el histórico.',
+      };
+    }
+
+    return { ok: true, motivo: '' };
+  }
+
+  async function borrarGrupoAgenda(grupo: AgendaGrupoSesionApp) {
+    setCargando(true);
+    setError('');
+
+    try {
+      const proteccion = await comprobarGrupoAgendaSinHistoricoReal(
+        grupo.grupo_id
+      );
+
+      if (!proteccion.ok) {
+        setError(proteccion.motivo);
+        return;
+      }
+
+      const confirmar = window.confirm(
+        `¿Borrar el grupo ${grupo.nombre_grupo}? Se quitarán sus alumnos del grupo, pero no se borran sus fichas.`
+      );
+      if (!confirmar) return;
+
+      await ejecutarFuncion('borrar_grupo_sesion_operativa_app', {
+        p_grupo_id: grupo.grupo_id,
+      });
+
+      await cargarAgendaOperativaDirecta();
+      await cargarDetalleSesionAgenda(grupo.sesion_id);
+      setAgendaRecomendaciones([]);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo comprobar o borrar el grupo.'
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function borrarSesionAgendaActual() {
+    if (!agendaSesionActivaId) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      const gruposSesion = agendaGruposSesion.filter(
+        (grupo) => grupo.sesion_id === agendaSesionActivaId
+      );
+
+      for (const grupo of gruposSesion) {
+        const proteccion = await comprobarGrupoAgendaSinHistoricoReal(
+          grupo.grupo_id
+        );
+        if (!proteccion.ok) {
+          setError(
+            `${grupo.nombre_grupo}: ${proteccion.motivo}`
+          );
+          return;
+        }
+      }
+
+      const confirmar = window.confirm(
+        '¿Borrar esta sesión? Se borran sus grupos y asignaciones. Las fichas de alumnos no se borran.'
+      );
+      if (!confirmar) return;
+
+      await ejecutarFuncion('borrar_sesion_operativa_app', {
+        p_sesion_id: agendaSesionActivaId,
+      });
+
+      setAgendaSesionActivaId('');
+      setAgendaAlumnosSesion([]);
+      setAgendaGruposSesion([]);
+      setAgendaRecomendaciones([]);
+      await cargarAgendaOperativaDirecta();
+      irAlTrabajoAgenda();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo comprobar o borrar la sesión.'
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function cargarDetalleGrupo(
+    nombreGrupo: string,
+    fecha: string,
+    horaInicio: string
+  ) {
+    setCargando(true);
+    setError('');
+
+    try {
+      const filtroNombre = encodeURIComponent(`eq.${nombreGrupo}`);
+      const filtroFecha = encodeURIComponent(`eq.${fecha}`);
+      const filtroHora = encodeURIComponent(`eq.${horaInicio}`);
+
+      const data = await consultarSupabase<DetalleGrupo>(
+        'v_detalle_grupos',
+        `select=*&nombre_grupo=${filtroNombre}&fecha=${filtroFecha}&hora_inicio=${filtroHora}`
+      );
+
+      setDetalle(data[0] || null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setDetalle(null);
+    }
+
+    setCargando(false);
+  }
+
+  useEffect(() => {
+    cargarInicio();
+  }, []);
+
+  useEffect(() => {
+    if (pantalla === 'agenda') {
+      cargarAgendaOperativaDirecta();
+      cargarWhatsappGruposApp();
+      cargarIntensivos();
+      cargarPlanning();
+      cargarListados();
+      cargarEntrenadores();
+      cargarDisponibilidad();
+    }
+    if (pantalla === 'resumenDia') {
+      cargarAgendaOperativaDirecta();
+      cargarIntensivos();
+      cargarPlanning();
+      cargarListados();
+      cargarReportesPendientes();
+      cargarGruposEntrenador();
+      cargarDisponibilidad();
+      cargarAlumnos();
+    }
+    if (pantalla === 'inicio') cargarInicio();
+    if (pantalla === 'planning') cargarPlanning();
+    if (pantalla === 'entrenador') {
+      cargarGruposEntrenador();
+      cargarDisponibilidad();
+    }
+    if (pantalla === 'alumnos') {
+      cargarAlumnos();
+      cargarIntensivos();
+    }
+    if (pantalla === 'ocioAlumnos') {
+      cargarOcioAlumnos();
+      cargarOcioGrupos();
+      cargarIntensivos();
+      cargarAlumnos();
+    }
+    if (pantalla === 'ocioGrupos') {
+      cargarOcioAlumnos();
+      cargarOcioGrupos();
+      cargarOcioCambios();
+      cargarAlumnos();
+      cargarAgendaOperativaDirecta();
+      cargarResultadosOcioSemanaDesdeSupabase();
+    }
+    if (pantalla === 'ocioCambios') {
+      cargarOcioAlumnos();
+      cargarOcioGrupos();
+      cargarOcioCambios();
+    }
+    if (pantalla === 'revisionOcio') {
+      cargarOcioAlumnos();
+      cargarOcioGrupos();
+      cargarOcioCambios();
+    }
+    if (pantalla === 'ocioSemana') {
+      cargarWhatsappGruposApp();
+      cargarOcioAlumnos();
+      cargarOcioGrupos();
+      cargarOcioCambios();
+      cargarEntrenadores();
+      cargarDisponibilidad();
+      cargarAgendaOperativaDirecta();
+    }
+    if (pantalla === 'entrenadores') cargarEntrenadores();
+    if (pantalla === 'administracion') {
+      cargarAltasNivelInicial();
+      cargarIntensivosAltaNivel();
+    }
+    if (pantalla === 'usuarios' && esCoordinadorJefeApp) {
+      cargarUsuariosOperativos();
+    }
+    if (pantalla === 'disponibilidad') cargarDisponibilidad();
+    if (pantalla === 'reportes') cargarReportesPendientes();
+    if (pantalla === 'cobros' && esCoordinadorJefeApp) {
+      void cargarCobrosDesdeSemanaActiva();
+      cargarEntrenadores();
+    }
+    if (
+      (pantalla === 'informes' || pantalla === 'temporadas') &&
+      esCoordinadorJefeApp
+    ) {
+      cargarAgendaOperativaDirecta();
+      cargarIntensivos();
+      cargarPlanning();
+      cargarListados();
+      cargarReportesPendientes();
+      cargarAlumnos();
+      cargarOcioAlumnos();
+      cargarOcioGrupos();
+      cargarCobros();
+    }
+    if (pantalla === 'analisis' && esCoordinadorJefeApp && !analisisAdmin) {
+      void cargarAnalisisAdminApp('BABY', '');
+    }
+    if (pantalla === 'intensivos') {
+      cargarWhatsappGruposApp();
+      cargarIntensivos();
+      cargarDisponibilidad();
+      cargarEntrenadores();
+    }
+    if (pantalla === 'listados') cargarListados();
+  }, [pantalla]);
+
+  useEffect(() => {
+    if (pantalla !== 'ocioGrupos') return;
+    void cargarResultadosOcioSemanaDesdeSupabase();
+  }, [pantalla, semanaAgendaActiva]);
+
+  useEffect(() => {
+    if (
+      pantalla === 'agenda' ||
+      pantalla === 'ocioSemana' ||
+      pantalla === 'intensivos'
+    ) {
+      void cargarContextoCerebroTrabajoDiarioApp();
+    }
+  }, [pantalla]);
+
+  useEffect(() => {
+    if (pantalla !== 'informes' || !esCoordinadorJefeApp) return;
+    cargarInformeSnowZone();
+  }, [
+    pantalla,
+    esCoordinadorJefeApp,
+    snowZoneModo,
+    snowZoneMes,
+    snowZoneSemanaInicio,
+  ]);
+
+  useEffect(() => {
+    if (
+      pantalla === 'disponibilidad' ||
+      pantalla === 'agenda' ||
+      pantalla === 'resumenDia' ||
+      pantalla === 'ocioSemana' ||
+      pantalla === 'intensivos' ||
+      pantalla === 'entrenador'
+    ) {
+      void cargarDisponibilidad();
+    }
+  }, [semanaAgendaActiva]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(
+      'mitico_temporada_trabajo',
+      String(anioInicioTemporadaAgenda)
+    );
+    if (mesAgendaActivo)
+      window.localStorage.setItem('mitico_mes_trabajo', mesAgendaActivo);
+    if (semanaAgendaActiva)
+      window.localStorage.setItem('mitico_semana_trabajo', semanaAgendaActiva);
+    const fechaTrabajoResumen = fechaResumenDia || fechaIsoHoyApp();
+    window.localStorage.setItem(
+      'mitico_fecha_resumen_dia',
+      fechaTrabajoResumen
+    );
+  }, [
+    anioInicioTemporadaAgenda,
+    mesAgendaActivo,
+    semanaAgendaActiva,
+    fechaResumenDia,
+  ]);
+
+  const sesionesAgenda = sesionesAgendaOperativa();
+
+  const fechaResumenDiaActiva = fechaResumenDia || fechaIsoHoyApp();
+  const sesionesResumenDia = sesionesAgenda.filter(
+    (sesion) => sesion.fecha === fechaResumenDiaActiva
+  );
+
+  useEffect(() => {
+    let cancelado = false;
+    const sesionesOperativasDia = agendaSesionesDirectas.filter(
+      (sesion) => sesion.fecha === fechaResumenDiaActiva
+    );
+
+    if (sesionesOperativasDia.length === 0) {
+      setGruposOperativosResumenDia({});
+      return () => {
+        cancelado = true;
+      };
+    }
+
+    Promise.all(
+      sesionesOperativasDia.map(async (sesion) => {
+        try {
+          const filtroSesion = encodeURIComponent(`eq.${sesion.sesion_id}`);
+          const grupos = await consultarSupabase<AgendaGrupoSesionApp>(
+            'v_grupos_sesion_operativa_app',
+            `select=*&sesion_id=${filtroSesion}&order=nombre_grupo.asc`
+          );
+          return [sesion.sesion_id, grupos] as const;
+        } catch {
+          return [sesion.sesion_id, [] as AgendaGrupoSesionApp[]] as const;
+        }
+      })
+    ).then((resultados) => {
+      if (cancelado) return;
+      setGruposOperativosResumenDia(Object.fromEntries(resultados));
+    });
+
+    return () => {
+      cancelado = true;
+    };
+  }, [fechaResumenDiaActiva, agendaSesionesDirectas]);
+  const reportesResumenDia = reportesPendientes.filter(
+    (reporte) => reporte.fecha === fechaResumenDiaActiva
+  );
+  const gruposEntrenadorResumenDia = gruposEntrenador.filter(
+    (grupo) => grupo.fecha === fechaResumenDiaActiva
+  );
+  const gruposPendientesEntrenadorResumenDia = [
+    ...planning.filter(
+      (grupo) => grupo.fecha === fechaResumenDiaActiva && !grupo.entrenadores
+    ),
+    ...gruposIntensivoDia.filter(
+      (grupo) =>
+        grupo.fecha === fechaResumenDiaActiva &&
+        grupo.grupo_id &&
+        !grupo.entrenador
+    ),
+  ];
+  const totalAlumnosResumenDia = sesionesResumenDia.reduce(
+    (total, sesion) => total + Number(sesion.totalAlumnos || 0),
+    0
+  );
+  const totalGruposResumenDia = sesionesResumenDia.reduce(
+    (total, sesion) => total + Number(sesion.totalGrupos || 0),
+    0
+  );
+  const totalPublicadosResumenDia = sesionesResumenDia.reduce(
+    (total, sesion) => total + Number(sesion.publicados || 0),
+    0
+  );
+
+  function gruposPublicadosSesionResumenDia(sesion: any) {
+    if (sesion.origen === 'intensivo') {
+      return (sesion.grupos || []).filter(
+        (grupo: any) => grupo.grupo_id && grupo.publicado
+      );
+    }
+
+    const sesionIdOperativo = sesion.agendaDirecta?.sesion_id;
+    if (sesionIdOperativo) {
+      const gruposOperativos = gruposOperativosResumenDia[sesionIdOperativo] || [];
+      if (gruposOperativos.length > 0) {
+        return gruposOperativos.filter((grupo) => grupo.publicado);
+      }
+    }
+
+    return (sesion.planningGrupos || []).filter((grupo: any) => grupo.publicado);
+  }
+
+  function nivelAlumnoResumenDia(nombre: string) {
+    const alumnoFicha = alumnos.find(
+      (item) =>
+        textoSinAcentosGrupoApp(item.alumno || '') ===
+        textoSinAcentosGrupoApp(nombre)
+    );
+
+    return (
+      alumnoFicha?.nivel_actual ||
+      alumnoFicha?.ultimo_nivel_reportado ||
+      alumnoFicha?.nivel_estimado ||
+      ''
+    );
+  }
+
+  function fichaAlumnoResumenDiaDesdeTexto(valor: string) {
+    const textoCompleto = textoSinAcentosGrupoApp(String(valor || ''));
+
+    const coincidencias = alumnos
+      .filter((item) => {
+        const nombreFicha = textoSinAcentosGrupoApp(item.alumno || '');
+        return nombreFicha.length >= 4 && textoCompleto.includes(nombreFicha);
+      })
+      .sort(
+        (a, b) =>
+          textoSinAcentosGrupoApp(b.alumno || '').length -
+          textoSinAcentosGrupoApp(a.alumno || '').length
+      );
+
+    if (coincidencias.length > 0) return coincidencias[0];
+
+    const nombreDirecto = String(valor || '')
+      .split('·')
+      .slice(0, -1)
+      .join('·')
+      .trim();
+
+    return (
+      alumnos.find(
+        (item) =>
+          textoSinAcentosGrupoApp(item.alumno || '') ===
+          textoSinAcentosGrupoApp(nombreDirecto)
+      ) || null
+    );
+  }
+
+  function telefonoAlumnoResumenDia(nombre: string) {
+    const alumnoFicha = fichaAlumnoResumenDiaDesdeTexto(nombre);
+    return String(alumnoFicha?.telefono || '').trim();
+  }
+
+  function hrefTelefonoAlumnoResumenDia(telefono: string) {
+    const limpio = String(telefono || '').replace(/[^+\d]/g, '');
+    return limpio ? `tel:${limpio}` : '';
+  }
+
+  function hrefWhatsappAlumnoResumenDia(telefono: string) {
+    const limpio = normalizarTelefonoWhatsappApp(telefono);
+    return limpio ? `https://wa.me/${limpio}` : '';
+  }
+
+  function copiarTelefonoAlumnoResumenDia(telefono: string) {
+    if (!telefono) return;
+    if (navigator.clipboard?.writeText) {
+      void navigator.clipboard.writeText(telefono);
+      return;
+    }
+    window.prompt('Copia el teléfono', telefono);
+  }
+
+  function alumnosGrupoResumenDia(grupo: any) {
+    // MISMA fuente y MISMO formato que "Días de entrenamiento".
+    // No reconstruimos nombres desde observaciones ni desde fichas paralelas.
+    // Así el Resumen del día refleja exactamente el listado publicado del grupo.
+    const textoAlumnos = String(grupo?.alumnos_lista || '').trim();
+    if (!textoAlumnos) return [] as string[];
+
+    return textoAlumnos
+      .split(' || ')
+      .map((alumnoGrupo) => String(alumnoGrupo || '').trim())
+      .filter(Boolean)
+      .map((alumnoGrupo) => {
+        const ficha = fichaAlumnoResumenDiaDesdeTexto(alumnoGrupo);
+        if (!ficha) return formatearAlumnoListadoOperativo(alumnoGrupo);
+
+        const nivelEnListado = alumnoGrupo
+          .split('·')
+          .map((parte) => parte.trim())
+          .find((parte) =>
+            /^(INICIACI[ÓO]N|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)$/i.test(parte)
+          );
+        const nivel =
+          nivelEnListado ||
+          ficha.nivel_actual ||
+          ficha.ultimo_nivel_reportado ||
+          ficha.nivel_estimado ||
+          '';
+
+        return `${ficha.alumno}${nivel ? ` · ${String(nivel).toUpperCase()}` : ''}`;
+      });
+  }
+
+  function claveDomAlumnoResumenDia(nombre: string) {
+    return textoSinAcentosGrupoApp(nombre)
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  const textoBusquedaAlumnoResumenDia = textoSinAcentosGrupoApp(
+    busquedaAlumnoResumenDia.trim()
+  );
+  const resultadosBusquedaAlumnoResumenDia = textoBusquedaAlumnoResumenDia
+    ? sesionesResumenDia.flatMap((sesion: any) =>
+        gruposPublicadosSesionResumenDia(sesion).flatMap(
+          (grupo: any, indice: number) =>
+            alumnosGrupoResumenDia(grupo)
+              .filter((alumno) =>
+                textoSinAcentosGrupoApp(alumno).includes(
+                  textoBusquedaAlumnoResumenDia
+                )
+              )
+              .map((alumno) => ({
+                alumno,
+                sesion,
+                grupo,
+                indice,
+              }))
+        )
+      )
+    : [];
+
+  function abrirResultadoAlumnoResumenDia(resultado: any) {
+    const sesionId = String(resultado.sesion.id);
+    const grupoId = String(
+      resultado.grupo.grupo_id || `${sesionId}-${resultado.indice}`
+    );
+    const alumnoClave = textoSinAcentosGrupoApp(resultado.alumno.split('·')[0]);
+
+    setTurnoResumenDiaAbierto(sesionId);
+    setGrupoResumenDiaDestacado(grupoId);
+    setAlumnoResumenDiaDestacado(alumnoClave);
+
+    window.setTimeout(() => {
+      const alumnoId = `resumen-alumno-${grupoId}-${claveDomAlumnoResumenDia(
+        resultado.alumno.split('·')[0]
+      )}`;
+      const objetivo =
+        document.getElementById(alumnoId) ||
+        document.getElementById(`resumen-grupo-${grupoId}`);
+
+      objetivo?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 220);
+
+    window.setTimeout(() => {
+      setGrupoResumenDiaDestacado('');
+      setAlumnoResumenDiaDestacado('');
+    }, 3200);
+  }
+
+  useEffect(() => {
+    if (sesionesResumenDia.length === 0) {
+      setTurnoResumenDiaAbierto('');
+      return;
+    }
+
+    setTurnoResumenDiaAbierto((actual) =>
+      sesionesResumenDia.some((sesion) => String(sesion.id) === actual)
+        ? actual
+        : String(sesionesResumenDia[0].id)
+    );
+  }, [fechaResumenDiaActiva, sesionesResumenDia.length]);
+
+  const claveSemanaBackupActiva =
+    semanaAgendaActiva || semanaActualAgenda || '';
+  const semanaBackupObjetivo =
+    semanaBackupSeleccionada || claveSemanaBackupActiva;
+
+  function claveStorageBackupSemana(semana: string) {
+    return semana ? `mitico_backup_json_${semana}` : '';
+  }
+
+  const backupSemanaStorageKey = claveStorageBackupSemana(
+    semanaBackupObjetivo
+  );
+  const backupSemanaRealizado =
+    backupSemanaStorageKey && typeof window !== 'undefined'
+      ? window.localStorage.getItem(backupSemanaStorageKey) || ''
+      : '';
+
+  const ocioRevisionBase = ocioAlumnos.map((alumno) => {
+    const recomendacion = ocioRecomendacionesCambio.find(
+      (item) => item.alumno_id === alumno.alumno_id
+    );
+    const sinGrupo = !alumno.grupo_id;
+    const sinReportes = Number(alumno.total_reportes || 0) === 0;
+    const necesitaCambio = Boolean(
+      recomendacion && recomendacion.recomendacion !== 'OK'
+    );
+    return {
+      ...alumno,
+      recomendacion_revision:
+        recomendacion?.recomendacion ||
+        (sinGrupo
+          ? 'Sin grupo estable'
+          : sinReportes
+          ? 'Sin reportes todavía'
+          : 'OK'),
+      necesita_cambio_revision: necesitaCambio,
+      sin_grupo_revision: sinGrupo,
+      sin_reportes_revision: sinReportes,
+    };
+  });
+
+  const ocioRevisionFiltrada = ocioRevisionBase.filter((alumno) => {
+    const texto = `${alumno.alumno} ${alumno.nivel_usado || ''} ${
+      alumno.grupo_estable || ''
+    } ${alumno.recomendacion_revision}`.toLowerCase();
+    const coincideBusqueda = texto.includes(busquedaRevisionOcio.toLowerCase());
+    const coincideFiltro =
+      filtroRevisionOcio === 'todos' ||
+      (filtroRevisionOcio === 'cambios' && alumno.necesita_cambio_revision) ||
+      (filtroRevisionOcio === 'sin_grupo' && alumno.sin_grupo_revision) ||
+      (filtroRevisionOcio === 'sin_reportes' && alumno.sin_reportes_revision);
+    return coincideBusqueda && coincideFiltro;
+  });
+
+  const intensivosControlFino = panelControlIntensivo.map((panel) => {
+    const faltanSesiones = Math.max(0, 4 - Number(panel.total_dias || 0));
+    const incompleto =
+      faltanSesiones > 0 ||
+      Number(panel.asignaciones_faltantes_estimadas || 0) > 0 ||
+      Number(panel.reportes_pendientes_estimados || 0) > 0 ||
+      Number(panel.diplomas_pendientes || 0) > 0 ||
+      Number(panel.recuperaciones_pendientes || 0) > 0;
+    return {
+      ...panel,
+      faltan_sesiones_4: faltanSesiones,
+      incompleto_control_fino: incompleto,
+    };
+  });
+
+  const idsAlumnosBaby = new Set(
+    alumnosBabyFicha.map((registro) => registro.alumno_id)
+  );
+
+  const alumnosBabyIntensivos = alumnos.filter((alumno) =>
+    idsAlumnosBaby.has(alumno.alumno_id)
+  );
+
+  function abrirFiltroFichas(
+    filtro: 'todos' | 'sin_nivel' | 'sin_reportes' | 'revisar_ficha'
+  ) {
+    setFiltroAlumnos(filtro);
+    setBusquedaAlumno('');
+    window.setTimeout(() => {
+      document
+        .getElementById('fichas-listado-alumnos')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }
+
+  const alumnosFiltrados = alumnosBabyIntensivos.filter((alumno) => {
+    const textoBusqueda = `${alumno.alumno} ${alumno.nivel_actual || ''} ${
+      alumno.ultimo_nivel_reportado || ''
+    } ${alumno.ultima_recomendacion || ''}`.toLowerCase();
+
+    const coincideBusqueda = textoBusqueda.includes(
+      busquedaAlumno.toLowerCase()
+    );
+
+    const sinNivel =
+      !alumno.nivel_actual &&
+      !alumno.nivel_estimado &&
+      !alumno.ultimo_nivel_reportado;
+
+    const sinReportes = Number(alumno.total_reportes || 0) === 0;
+
+    const recomendacion = (alumno.ultima_recomendacion || '').toLowerCase();
+    const incidencia = (alumno.ultima_incidencia || '').toLowerCase();
+
+    const revisionReciente =
+      recomendacion.includes('revisar') ||
+      recomendacion.includes('subir') ||
+      recomendacion.includes('bajar') ||
+      recomendacion.includes('probar') ||
+      recomendacion.includes('volver');
+
+    const seguimientoEspecial =
+      recomendacion.includes('seguimiento') ||
+      recomendacion.includes('apoyo') ||
+      incidencia.includes('miedo') ||
+      incidencia.includes('bloqueo') ||
+      incidencia.includes('caída') ||
+      incidencia.includes('llanto');
+
+    const coincideFiltro =
+      filtroAlumnos === 'todos' ||
+      (filtroAlumnos === 'sin_nivel' && sinNivel) ||
+      (filtroAlumnos === 'sin_reportes' && sinReportes) ||
+      (filtroAlumnos === 'revisar_ficha' &&
+        String(alumno.estado_ficha || '').toLowerCase().includes('revis')) ||
+      (filtroAlumnos === 'revision_reciente' && revisionReciente) ||
+      (filtroAlumnos === 'seguimiento_especial' && seguimientoEspecial);
+
+    return coincideBusqueda && coincideFiltro;
+  });
+
+  const gruposEntrenadorFiltrados = gruposEntrenador.filter((grupo) => {
+    // El entrenador solo recibe grupos PUBLICADOS.
+    // Coordinación sí puede inspeccionar borradores desde su vista.
+    if (!esCoordinadorApp && !grupo.publicado) return false;
+
+    if (
+      !esCoordinadorApp &&
+      entrenadorIdSesionApp &&
+      grupo.entrenador_id !== entrenadorIdSesionApp
+    )
+      return false;
+    if (!esCoordinadorApp && !entrenadorIdSesionApp) return false;
+    const texto = `${grupo.entrenador} ${grupo.nombre_grupo} ${
+      grupo.modalidad
+    } ${grupo.alumnos || ''}`.toLowerCase();
+    return texto.includes(busquedaGrupoEntrenador.toLowerCase());
+  });
+
+  const entrenadoresFiltrados = entrenadores.filter((entrenador) => {
+    const textoBusqueda = `${entrenador.nombre_completo} ${
+      entrenador.email || ''
+    } ${entrenador.telefono || ''} ${(entrenador.especialidades || []).join(
+      ' '
+    )}`.toLowerCase();
+
+    const coincideBusqueda = textoBusqueda.includes(
+      busquedaEntrenador.toLowerCase()
+    );
+
+    const documentacionPendiente =
+      (entrenador.titulacion_estado || 'Pendiente') !== 'Validado' ||
+      (entrenador.antecedentes_estado || 'Pendiente') !== 'Validado';
+
+    const coincideFiltro =
+      filtroEntrenadores === 'todos' ||
+      (filtroEntrenadores === 'activos' && entrenador.activo) ||
+      (filtroEntrenadores === 'inactivos' && !entrenador.activo) ||
+      (filtroEntrenadores === 'sin_chaqueta' &&
+        !entrenador.chaqueta_entregada) ||
+      (filtroEntrenadores === 'documentacion_pendiente' &&
+        documentacionPendiente);
+
+    return coincideBusqueda && coincideFiltro;
+  });
+
+  const disponibilidadFiltrada = disponibilidad.filter((item) => {
+    if (
+      !esCoordinadorApp &&
+      entrenadorIdSesionApp &&
+      item.entrenador_id !== entrenadorIdSesionApp
+    )
+      return false;
+    if (!esCoordinadorApp && !entrenadorIdSesionApp) return false;
+    const coincideSemana = semanaAgendaActiva
+      ? item.fecha_inicio === semanaAgendaActiva
+      : true;
+
+    const coincideBusqueda = item.entrenador
+      .toLowerCase()
+      .includes(busquedaDisponibilidad.toLowerCase());
+
+    const respuestaNormalizada = item.respuesta || 'Pendiente';
+
+    const coincideFiltro =
+      filtroDisponibilidad === 'todos' ||
+      (filtroDisponibilidad === 'disponibles' &&
+        respuestaNormalizada === 'Disponible') ||
+      (filtroDisponibilidad === 'no_puedo' &&
+        respuestaNormalizada === 'No puedo') ||
+      (filtroDisponibilidad === 'pendientes' &&
+        respuestaNormalizada === 'Pendiente');
+
+    return coincideSemana && coincideBusqueda && coincideFiltro;
+  });
+
+  const finSemanaReportes = semanaAgendaActiva
+    ? claveFechaAgenda(
+        new Date(
+          crearFechaAgenda(semanaAgendaActiva).getTime() +
+            6 * 24 * 60 * 60 * 1000
+        )
+      )
+    : '';
+
+  const reportesSemanaCierre = reportesPendientes.filter((reporte) => {
+    if (
+      !esCoordinadorApp &&
+      entrenadorIdSesionApp &&
+      reporte.entrenador_id !== entrenadorIdSesionApp
+    )
+      return false;
+    if (!esCoordinadorApp && !entrenadorIdSesionApp) return false;
+
+    return semanaAgendaActiva
+      ? reporte.fecha >= semanaAgendaActiva &&
+          reporte.fecha <= finSemanaReportes
+      : true;
+  });
+
+  const reportesFiltrados = reportesSemanaCierre.filter((reporte) => {
+    const texto =
+      `${reporte.entrenador} ${reporte.alumno} ${reporte.nombre_grupo} ${reporte.modalidad} ${reporte.estado_reporte}`.toLowerCase();
+
+    const coincideBusqueda = texto.includes(busquedaReportes.toLowerCase());
+
+    const asistenciaPendiente =
+      reporte.estado_reporte === 'Asistencia sin confirmar' ||
+      reporte.estado_asistencia === 'Pendiente';
+
+    const coincideFiltro =
+      filtroReportes === 'todos' ||
+      (filtroReportes === 'faltan_reportes' &&
+        reporte.estado_reporte === 'Falta reporte') ||
+      (filtroReportes === 'asistencias_sin_confirmar' &&
+        asistenciaPendiente) ||
+      (filtroReportes === 'criticos' &&
+        reporte.estado_reporte === 'Falta reporte' &&
+        asistenciaPendiente);
+
+    return coincideBusqueda && coincideFiltro;
+  });
+
+  const cobrosFiltrados = cobros.filter((cobro) => {
+    const texto =
+      `${cobro.entrenador} ${cobro.temporada} ${cobro.anio} ${cobro.mes} ${cobro.estado_mes} baby intensivos ocio`.toLowerCase();
+
+    const estadoCobro = String(cobro.estado_mes || '').toLowerCase();
+    const pendientesRevisar = Number(cobro.pendientes_revisar || 0);
+    const hoy = new Date();
+
+    const esPendiente =
+      estadoCobro.includes('pendiente') ||
+      estadoCobro.includes('abierto') ||
+      estadoCobro.includes('revisar') ||
+      estadoCobro.includes('borrador');
+
+    const esCerrado =
+      estadoCobro.includes('cerrado') ||
+      estadoCobro.includes('pagado') ||
+      estadoCobro.includes('aprobado');
+
+    const tieneIncidencias = pendientesRevisar > 0;
+
+    const esEsteMes =
+      Number(cobro.anio) === hoy.getFullYear() &&
+      Number(cobro.mes) === hoy.getMonth() + 1;
+
+    const coincideBusqueda = texto.includes(busquedaCobros.toLowerCase());
+
+    const coincideFiltro =
+      filtroCobros === 'todos' ||
+      (filtroCobros === 'pendiente' && esPendiente) ||
+      (filtroCobros === 'cerrado' && esCerrado) ||
+      (filtroCobros === 'incidencias' && tieneIncidencias) ||
+      (filtroCobros === 'este_mes' && esEsteMes);
+
+    return coincideBusqueda && coincideFiltro;
+  });
+
+  const totalGeneralCobrosMes = cobrosFiltrados.reduce(
+    (total, cobro) => total + Number(cobro.total_mes || 0),
+    0
+  );
+  const totalTurnosCobrosMes = cobrosFiltrados.reduce(
+    (total, cobro) => total + Number(cobro.total_turnos_computables || 0),
+    0
+  );
+  const totalBabyCobrosMes = cobrosFiltrados.reduce(
+    (total, cobro) => total + Number(cobro.total_turnos_baby || 0),
+    0
+  );
+  const totalIntensivosCobrosMes = cobrosFiltrados.reduce(
+    (total, cobro) => total + Number(cobro.total_turnos_intensivos || 0),
+    0
+  );
+  const totalOcioCobrosMes = cobrosFiltrados.reduce(
+    (total, cobro) => total + Number(cobro.total_turnos_ocio || 0),
+    0
+  );
+  const aniosCobrosOpciones = Array.from(
+    new Set([
+      new Date().getFullYear() - 1,
+      new Date().getFullYear(),
+      new Date().getFullYear() + 1,
+      anioCobros,
+      ...opcionesTemporadaAgenda,
+      ...opcionesTemporadaAgenda.map((anio) => anio + 1),
+    ])
+  ).sort((a, b) => a - b);
+
+  const intensivosFiltrados = intensivos.filter((intensivo) => {
+    const texto =
+      `${intensivo.intensivo} ${intensivo.temporada} ${intensivo.estado} ${intensivo.lugar}`.toLowerCase();
+
+    const coincideBusqueda = texto.includes(busquedaIntensivos.toLowerCase());
+
+    const estado = String(intensivo.estado || '').toLowerCase();
+    const totalAlumnos = Number(intensivo.total_alumnos || 0);
+
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    const fechaInicio = intensivo.fecha_inicio
+      ? new Date(`${intensivo.fecha_inicio}T00:00:00`)
+      : null;
+
+    const esActivo =
+      estado.includes('activo') ||
+      estado.includes('abierto') ||
+      estado.includes('en curso') ||
+      estado.includes('publicado');
+
+    const esCerrado =
+      estado.includes('cerrado') ||
+      estado.includes('finalizado') ||
+      estado.includes('cancelado');
+
+    const esProximo = Boolean(fechaInicio && fechaInicio >= hoy);
+
+    const coincideFiltro =
+      filtroIntensivos === 'todos' ||
+      (filtroIntensivos === 'activos' && esActivo) ||
+      (filtroIntensivos === 'cerrados' && esCerrado) ||
+      (filtroIntensivos === 'sin_alumnos' && totalAlumnos === 0) ||
+      (filtroIntensivos === 'proximos' && esProximo);
+
+    let coincideMes = true;
+    if (mesIntensivos) {
+      const [anioMes, numeroMes] = mesIntensivos
+        .split('-')
+        .map((valor) => Number(valor));
+
+      if (anioMes && numeroMes) {
+        const inicioMes = new Date(anioMes, numeroMes - 1, 1, 0, 0, 0, 0);
+        const finMes = new Date(anioMes, numeroMes, 0, 23, 59, 59, 999);
+        const inicioCurso = intensivo.fecha_inicio
+          ? new Date(`${intensivo.fecha_inicio}T00:00:00`)
+          : null;
+        const finCurso = intensivo.fecha_fin
+          ? new Date(`${intensivo.fecha_fin}T23:59:59`)
+          : inicioCurso;
+
+        coincideMes = Boolean(
+          inicioCurso &&
+            finCurso &&
+            inicioCurso <= finMes &&
+            finCurso >= inicioMes
+        );
+      }
+    }
+
+    return coincideBusqueda && coincideFiltro && coincideMes;
+  });
+
+  const listadosFiltrados = listados.filter((listado) => {
+    const texto = `${listado.semana || ''} ${listado.modalidad} ${
+      listado.estado
+    } ${listado.fecha}`.toLowerCase();
+
+    const coincideBusqueda = texto.includes(busquedaListados.toLowerCase());
+
+    const coincideFiltro =
+      filtroListados === 'todos' ||
+      (filtroListados === 'pendientes' &&
+        Number(listado.pendientes_revisar || 0) > 0) ||
+      (filtroListados === 'altas' && Number(listado.altas_nuevas || 0) > 0) ||
+      (filtroListados === 'no_encontrados' &&
+        Number(listado.no_encontrados || 0) > 0) ||
+      (filtroListados === 'fuera_plazo' && listado.fuera_de_plazo);
+
+    return coincideBusqueda && coincideFiltro;
+  });
+
+  const disponibilidadPorEntrenador = agruparPorEntrenador(
+    disponibilidadFiltrada
+  );
+  const disponibilidadSemanalEntrenador = agruparDisponibilidadSemanal(
+    disponibilidadFiltrada
+  );
+  const disponibilidadPorTurno = agruparDisponibilidadPorTurno(
+    disponibilidadFiltrada
+  ).filter((turno) => {
+    const diaSemana = new Date(`${turno.fecha}T12:00:00`).getDay();
+    return diaSemana !== 1 && diaSemana !== 2;
+  });
+
+  const sesionAgendaActiva = agendaSesionesDirectas.find(
+    (sesion) => sesion.sesion_id === agendaSesionActivaId
+  );
+
+  function horaCorta(valor: string | null | undefined) {
+    return (valor || '').slice(0, 5);
+  }
+
+  function entrenadoresDisponiblesParaTurno(
+    fecha?: string | null,
+    horaInicio?: string | null,
+    horaFin?: string | null,
+    disponibilidadFuente?: any[]
+  ) {
+    if (!fecha || !horaInicio || !horaFin) return [];
+
+    const fuente = disponibilidadFuente ?? disponibilidad;
+
+    return entrenadores
+      .filter((entrenador) => entrenador.activo)
+      .filter((entrenador) =>
+        fuente.some(
+          (turno) =>
+            turno.entrenador_id === entrenador.entrenador_id &&
+            turno.fecha === fecha &&
+            horaCorta(turno.hora_inicio) === horaCorta(horaInicio) &&
+            horaCorta(turno.hora_fin) === horaCorta(horaFin) &&
+            String(turno.respuesta || '').trim().toLowerCase() ===
+              'disponible'
+        )
+      )
+      .sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo));
+  }
+
+  function sesionOperativaActualRecursosAgenda() {
+    if (
+      contextoRecursosSesionAgenda &&
+      contextoRecursosSesionAgenda.sesion_id === agendaSesionActivaId
+    ) {
+      return contextoRecursosSesionAgenda;
+    }
+
+    if (
+      sesionAgendaActiva &&
+      sesionAgendaActiva.sesion_id === agendaSesionActivaId
+    ) {
+      return sesionAgendaActiva;
+    }
+
+    const sesionIdDetalle =
+      agendaGruposSesion[0]?.sesion_id ||
+      agendaAlumnosSesion[0]?.sesion_id ||
+      agendaSesionActivaId;
+
+    if (!sesionIdDetalle) return undefined;
+
+    const directa = agendaSesionesDirectas.find(
+      (sesion) => sesion.sesion_id === sesionIdDetalle
+    );
+    if (directa) return directa;
+
+    const diaIntensivo = intensivoDias.find(
+      (dia) => dia.sesion_id === sesionIdDetalle
+    );
+
+    if (diaIntensivo) {
+      return {
+        sesion_id: sesionIdDetalle,
+        fecha: diaIntensivo.fecha,
+        hora_inicio: diaIntensivo.hora_inicio,
+        hora_fin: diaIntensivo.hora_fin,
+      };
+    }
+
+    return undefined;
+  }
+
+  function entrenadoresDisponiblesSesionActiva() {
+    const sesion = sesionOperativaActualRecursosAgenda();
+    if (!sesion) return [];
+
+    const usarFuenteSesion =
+      contextoRecursosSesionAgenda?.sesion_id === agendaSesionActivaId;
+
+    return entrenadoresDisponiblesParaTurno(
+      sesion.fecha,
+      sesion.hora_inicio,
+      sesion.hora_fin,
+      usarFuenteSesion ? disponibilidadSesionAgenda : disponibilidad
+    );
+  }
+
+  function gruposRecursosTurnoAgenda() {
+    return agendaGruposRecursosTurno.length > 0
+      ? agendaGruposRecursosTurno
+      : agendaGruposSesion;
+  }
+
+  function entrenadoresOcupadosTurnoAgenda(grupoExcluirId?: string) {
+    const ocupados = new Set<string>();
+
+    gruposRecursosTurnoAgenda()
+      .filter((grupo) => grupo.grupo_id !== grupoExcluirId)
+      .forEach((grupo) => {
+        if (grupo.entrenador_id) ocupados.add(grupo.entrenador_id);
+        if (grupo.entrenador_apoyo_id)
+          ocupados.add(grupo.entrenador_apoyo_id);
+      });
+
+    return ocupados;
+  }
+
+  function entrenadoresDisponiblesCambioGrupoAgenda(
+    grupoId: string,
+    entrenadorActualId?: string | null,
+    entrenadorDelMismoGrupoBloqueadoId?: string | null
+  ) {
+    const ocupadosOtrosGrupos = entrenadoresOcupadosTurnoAgenda(grupoId);
+
+    if (entrenadorDelMismoGrupoBloqueadoId) {
+      ocupadosOtrosGrupos.add(entrenadorDelMismoGrupoBloqueadoId);
+    }
+
+    return entrenadoresDisponiblesSesionActiva().filter(
+      (entrenador) =>
+        entrenador.entrenador_id === entrenadorActualId ||
+        !ocupadosOtrosGrupos.has(entrenador.entrenador_id)
+    );
+  }
+
+  function entrenadoresDisponiblesDiaIntensivo(dia?: IntensivoDiaApp | null) {
+    if (!dia) return [];
+    const solapa = (inicioA: string, finA: string, inicioB: string, finB: string) =>
+      horaCorta(inicioA) < horaCorta(finB) && horaCorta(inicioB) < horaCorta(finA);
+    const ocupados = new Set<string>();
+    gruposIntensivoDia.forEach((grupo) => {
+      if (grupo.fecha === dia.fecha && solapa(grupo.hora_inicio || '', grupo.hora_fin || '', dia.hora_inicio, dia.hora_fin)) {
+        if (grupo.entrenador_id) ocupados.add(grupo.entrenador_id);
+        if (grupo.entrenador_apoyo_id) ocupados.add(grupo.entrenador_apoyo_id);
+      }
+    });
+    return entrenadoresDisponiblesParaTurno(dia.fecha, dia.hora_inicio, dia.hora_fin)
+      .filter((entrenador) => !ocupados.has(entrenador.entrenador_id));
+  }
+
+  function avisoDisponibilidadDiaIntensivo(dia?: IntensivoDiaApp | null) {
+    if (!dia) return 'Selecciona un día para ver entrenadores.';
+    const disponibles = entrenadoresDisponiblesParaTurno(
+      dia.fecha,
+      dia.hora_inicio,
+      dia.hora_fin
+    );
+    if (disponibles.length > 0)
+      return `${disponibles.length} entrenador(es) disponibles para este día/turno.`;
+    return 'No hay entrenadores disponibles declarados para este día/turno.';
+  }
+  const reportesPorEntrenador = agruparReportesPorEntrenador(reportesFiltrados);
+  const gruposEntrenadorAgrupados = agruparGruposPorEntrenador(
+    gruposEntrenadorFiltrados
+  );
+  const gruposEntrenadorSemanal = agruparGruposEntrenadorSemanal(
+    gruposEntrenadorFiltrados
+  );
+
+  // La vista del entrenador es operativa, no histórica.
+  // En móvil y escritorio muestra la semana vigente publicada y conserva
+  // únicamente tareas anteriores que todavía necesitan una acción.
+  // Ningún dato se elimina de Supabase.
+  const fechaReferenciaVistaEntrenador = new Date();
+  if (
+    fechaReferenciaVistaEntrenador.getDay() === 1 &&
+    fechaReferenciaVistaEntrenador.getHours() < 6
+  ) {
+    fechaReferenciaVistaEntrenador.setDate(
+      fechaReferenciaVistaEntrenador.getDate() - 1
+    );
+  }
+  const semanaActualVistaEntrenador = inicioSemanaAgenda(
+    claveFechaAgenda(fechaReferenciaVistaEntrenador)
+  );
+  const semanaVistaEntrenadorInicio = esCoordinadorApp
+    ? semanaAgendaActiva || semanaActualVistaEntrenador
+    : semanaPublicadaObjetivoEntrenador || semanaActualVistaEntrenador;
+  const semanaVistaEntrenadorFin = semanaVistaEntrenadorInicio
+    ? claveFechaAgenda(
+        new Date(
+          crearFechaAgenda(semanaVistaEntrenadorInicio).getTime() +
+            6 * 24 * 60 * 60 * 1000
+        )
+      )
+    : '';
+
+  function grupoTienePendientesVistaEntrenador(grupo: GrupoEntrenadorApp) {
+    const alumnosGrupo = alumnosReporteEntrenador.filter(
+      (alumno) =>
+        alumno.grupo_id === grupo.grupo_id &&
+        alumno.entrenador_id === grupo.entrenador_id
+    );
+
+    return (
+      grupo.estado_confirmacion !== 'Confirmado' ||
+      alumnosGrupo.some(
+        (alumno) =>
+          alumno.estado_asistencia === 'Pendiente' ||
+          alumno.estado_reporte === 'Falta reporte' ||
+          alumno.estado_reporte === 'Asistencia sin confirmar'
+      )
+    );
+  }
+
+  const disponibilidadVistaEntrenador = disponibilidad.filter((turno) => {
+    if (!turno.aviso_enviado) return false;
+    if (
+      !esCoordinadorApp &&
+      entrenadorIdSesionApp &&
+      turno.entrenador_id !== entrenadorIdSesionApp
+    )
+      return false;
+    if (!esCoordinadorApp && !entrenadorIdSesionApp) return false;
+    if (
+      semanaVistaEntrenadorInicio &&
+      turno.fecha_inicio !== semanaVistaEntrenadorInicio
+    )
+      return false;
+
+    return turno.entrenador
+      .toLowerCase()
+      .includes(busquedaGrupoEntrenador.toLowerCase());
+  });
+
+  const disponibilidadSemanalVistaEntrenador = agruparDisponibilidadSemanal(
+    disponibilidadVistaEntrenador
+  );
+
+  const gruposVistaEntrenador = gruposEntrenadorFiltrados.filter((grupo) => {
+    if (!semanaVistaEntrenadorInicio) return true;
+
+    const perteneceSemanaVigente =
+      grupo.fecha >= semanaVistaEntrenadorInicio &&
+      grupo.fecha <= semanaVistaEntrenadorFin;
+    const esAnterior = grupo.fecha < semanaVistaEntrenadorInicio;
+
+    if (!esCoordinadorApp) {
+      return (
+        perteneceSemanaVigente ||
+        (esAnterior && grupoTienePendientesVistaEntrenador(grupo))
+      );
+    }
+
+    return (
+      perteneceSemanaVigente ||
+      (esAnterior && grupoTienePendientesVistaEntrenador(grupo))
+    );
+  });
+
+  const gruposSemanalVistaEntrenador = agruparGruposEntrenadorSemanal(
+    gruposVistaEntrenador
+  );
+
+  const clavesGruposVistaEntrenador = new Set(
+    gruposVistaEntrenador.map(
+      (grupo) => `${grupo.entrenador_id}__${grupo.grupo_id}`
+    )
+  );
+
+  const alumnosVistaEntrenador = alumnosReporteEntrenador.filter((alumno) =>
+    clavesGruposVistaEntrenador.has(
+      `${alumno.entrenador_id}__${alumno.grupo_id}`
+    )
+  );
+
+  function pendientesEntrenadorVista(entrenadorId: string) {
+    return alumnosVistaEntrenador.filter(
+      (alumno) =>
+        alumno.entrenador_id === entrenadorId &&
+        (alumno.estado_asistencia === 'Pendiente' ||
+          alumno.estado_reporte === 'Falta reporte' ||
+          alumno.estado_reporte === 'Asistencia sin confirmar')
+    );
+  }
+
+  function gruposSinConfirmarEntrenadorVista(entrenadorId: string) {
+    return gruposVistaEntrenador.filter(
+      (grupo) =>
+        grupo.entrenador_id === entrenadorId &&
+        grupo.estado_confirmacion !== 'Confirmado'
+    );
+  }
+
+  function abrirGrupoDesdeTareaEntrenador(
+    grupoId: string,
+    entrenadorId: string,
+    seccion: 'asistencia' | 'trabajo' | 'observaciones' = 'asistencia',
+    reporte?: AlumnoReporteEntrenador
+  ) {
+    setTabVistaEntrenador('grupos');
+    setGrupoActivoEntrenador({
+      grupo_id: grupoId,
+      entrenador_id: entrenadorId,
+    });
+    setSeccionGrupoEntrenador(seccion);
+
+    window.setTimeout(() => {
+      const grupoDomId = `trainer-group-${entrenadorId}-${grupoId}`.replace(
+        /[^a-zA-Z0-9_-]/g,
+        '-'
+      );
+      const objetivo = document.getElementById(grupoDomId);
+
+      if (!objetivo) return;
+
+      let padre = objetivo.parentElement;
+      while (padre) {
+        if (padre instanceof HTMLDetailsElement) {
+          padre.open = true;
+        }
+        padre = padre.parentElement;
+      }
+
+      objetivo.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+
+      window.setTimeout(() => {
+        irASeccionGrupoEntrenador(seccion, grupoDomId);
+        if (reporte) {
+          window.setTimeout(() => {
+            void abrirFormularioReporte(reporte);
+          }, 160);
+        }
+      }, 140);
+    }, 140);
+  }
+
+  function abrirTurnoPendienteReporteEntrenador(
+    entrenadorId: string,
+    fecha: string,
+    horaInicio: string,
+    horaFin: string
+  ) {
+    const alumnoPendiente = alumnosVistaEntrenador.find(
+      (alumno) =>
+        alumno.entrenador_id === entrenadorId &&
+        alumno.fecha === fecha &&
+        alumno.hora_inicio === horaInicio &&
+        alumno.hora_fin === horaFin &&
+        alumno.estado_reporte === 'Falta reporte'
+    );
+
+    if (!alumnoPendiente) return;
+
+    const grupoPendiente = gruposVistaEntrenador.find(
+      (grupo) =>
+        grupo.entrenador_id === entrenadorId &&
+        grupo.grupo_id === alumnoPendiente.grupo_id
+    );
+
+    if (!grupoPendiente) return;
+
+    setTabVistaEntrenador('grupos');
+    setGrupoActivoEntrenador({
+      grupo_id: grupoPendiente.grupo_id,
+      entrenador_id: grupoPendiente.entrenador_id,
+    });
+    setSeccionGrupoEntrenador('asistencia');
+
+    window.setTimeout(() => {
+      const grupoDomId = `trainer-group-${grupoPendiente.entrenador_id}-${grupoPendiente.grupo_id}`.replace(
+        /[^a-zA-Z0-9_-]/g,
+        '-'
+      );
+      const objetivo = document.getElementById(grupoDomId);
+
+      if (objetivo) {
+        let padre = objetivo.parentElement;
+        while (padre) {
+          if (padre instanceof HTMLDetailsElement) {
+            padre.open = true;
+          }
+          padre = padre.parentElement;
+        }
+
+        objetivo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 120);
+  }
+
+  const gruposSemanaTrabajoVistaEntrenador = gruposVistaEntrenador.filter(
+    (grupo) =>
+      grupo.fecha >= semanaVistaEntrenadorInicio &&
+      grupo.fecha <= semanaVistaEntrenadorFin
+  );
+
+  const clavesGruposSemanaTrabajoVistaEntrenador = new Set(
+    gruposSemanaTrabajoVistaEntrenador.map(
+      (grupo) => `${grupo.entrenador_id}__${grupo.grupo_id}`
+    )
+  );
+
+  const alumnosSemanaTrabajoVistaEntrenador = alumnosReporteEntrenador.filter(
+    (alumno) =>
+      clavesGruposSemanaTrabajoVistaEntrenador.has(
+        `${alumno.entrenador_id}__${alumno.grupo_id}`
+      )
+  );
+
+  const totalGruposVistaEntrenador = gruposSemanaTrabajoVistaEntrenador.length;
+  const totalReportesVistaEntrenador =
+    alumnosSemanaTrabajoVistaEntrenador.filter(
+      (alumno) =>
+        alumno.estado_reporte === 'Falta reporte' ||
+        alumno.estado_reporte === 'Asistencia sin confirmar' ||
+        alumno.estado_asistencia === 'Pendiente'
+    ).length +
+    gruposSemanaTrabajoVistaEntrenador.filter(
+      (grupo) => grupo.estado_confirmacion !== 'Confirmado'
+    ).length;
+  const totalDisponibilidadPendienteVistaEntrenador =
+    disponibilidadVistaEntrenador.filter(
+      (turno) => (turno.respuesta || 'Pendiente') === 'Pendiente'
+    ).length;
+
+  function diasDisponibilidadVistaEntrenador(
+    turnos: DisponibilidadEntrenador[]
+  ) {
+    const mapa = new Map<string, DisponibilidadEntrenador[]>();
+    turnos.forEach((turno) => {
+      if (!mapa.has(turno.fecha)) mapa.set(turno.fecha, []);
+      mapa.get(turno.fecha)!.push(turno);
+    });
+
+    return Array.from(mapa.entries())
+      .map(([fecha, turnosDia]) => ({
+        fecha,
+        turnos: turnosDia.sort((a, b) =>
+          a.hora_inicio.localeCompare(b.hora_inicio)
+        ),
+      }))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha));
+  }
+
+  function diasGruposVistaEntrenador(grupos: GrupoEntrenadorApp[]) {
+    const mapaDias = new Map<
+      string,
+      Map<string, { hora_inicio: string; hora_fin: string; grupos: GrupoEntrenadorApp[] }>
+    >();
+
+    grupos.forEach((grupo) => {
+      if (!mapaDias.has(grupo.fecha)) mapaDias.set(grupo.fecha, new Map());
+      const claveTurno = `${grupo.hora_inicio.slice(0, 5)}__${grupo.hora_fin.slice(0, 5)}`;
+      const turnosDia = mapaDias.get(grupo.fecha)!;
+      if (!turnosDia.has(claveTurno)) {
+        turnosDia.set(claveTurno, {
+          hora_inicio: grupo.hora_inicio.slice(0, 5),
+          hora_fin: grupo.hora_fin.slice(0, 5),
+          grupos: [],
+        });
+      }
+      turnosDia.get(claveTurno)!.grupos.push(grupo);
+    });
+
+    return Array.from(mapaDias.entries())
+      .map(([fecha, turnosDia]) => ({
+        fecha,
+        turnos: Array.from(turnosDia.values()).sort((a, b) =>
+          a.hora_inicio.localeCompare(b.hora_inicio)
+        ),
+      }))
+      .sort((a, b) => a.fecha.localeCompare(b.fecha));
+  }
+
+  function alumnosDelGrupo(grupoId: string, entrenadorId: string) {
+    return alumnosReporteEntrenador.filter(
+      (alumno) =>
+        alumno.grupo_id === grupoId && alumno.entrenador_id === entrenadorId
+    );
+  }
+
+  function alumnosCompletosDelGrupo(grupoId: string) {
+    const unicos = new Map<string, AlumnoReporteEntrenador>();
+    alumnosReporteEntrenador
+      .filter((alumno) => alumno.grupo_id === grupoId)
+      .forEach((alumno) => {
+        if (!unicos.has(alumno.alumno_id)) unicos.set(alumno.alumno_id, alumno);
+      });
+    return Array.from(unicos.values()).sort((a, b) =>
+      a.alumno.localeCompare(b.alumno, 'es')
+    );
+  }
+
+  function entrenadoresDelGrupo(grupoId: string) {
+    const unicos = new Map<string, string>();
+    gruposEntrenador
+      .filter((grupo) => grupo.grupo_id === grupoId)
+      .forEach((grupo) => {
+        if (grupo.entrenador_id && grupo.entrenador) {
+          unicos.set(grupo.entrenador_id, grupo.entrenador);
+        }
+      });
+    alumnosReporteEntrenador
+      .filter((alumno) => alumno.grupo_id === grupoId)
+      .forEach((alumno) => {
+        if (alumno.entrenador_id && alumno.entrenador) {
+          unicos.set(alumno.entrenador_id, alumno.entrenador);
+        }
+      });
+    return Array.from(unicos.entries()).map(([entrenador_id, entrenador]) => ({
+      entrenador_id,
+      entrenador,
+    }));
+  }
+
+  function nombresEntrenadoresDelGrupo(grupoId: string, fallback?: string | null) {
+    const nombres = entrenadoresDelGrupo(grupoId).map((item) => item.entrenador);
+    if (nombres.length > 0) return nombres.join(' + ');
+    return fallback || 'Sin entrenador';
+  }
+
+  function repartoEntrenadoresDelGrupo(grupoId: string) {
+    return entrenadoresDelGrupo(grupoId).map((entrenador) => ({
+      ...entrenador,
+      alumnos: alumnosReporteEntrenador
+        .filter(
+          (alumno) =>
+            alumno.grupo_id === grupoId &&
+            alumno.entrenador_id === entrenador.entrenador_id
+        )
+        .sort((a, b) => a.alumno.localeCompare(b.alumno, 'es')),
+    }));
+  }
+
+  function alumnosDelIntensivo(intensivoId: string) {
+    return intensivoAlumnos.filter(
+      (registro) => registro.intensivo_id === intensivoId
+    );
+  }
+
+  function resumenAlumnoIntensivo(alumnoId: string) {
+    return alumnosResumenVolcado.find(
+      (alumno) => alumno.alumno_id === alumnoId
+    );
+  }
+
+  function diasDelIntensivo(intensivoId: string) {
+    return intensivoDias
+      .filter((dia) => dia.intensivo_id === intensivoId)
+      .slice()
+      .sort(
+        (a, b) =>
+          Number(a.numero_dia || 0) - Number(b.numero_dia || 0) ||
+          String(a.fecha || '').localeCompare(String(b.fecha || '')) ||
+          String(a.hora_inicio || '').localeCompare(String(b.hora_inicio || ''))
+      );
+  }
+
+  function asistenciasDelIntensivoDia(intensivoId: string, diaId: string) {
+    return intensivoAsistencias.filter(
+      (registro) =>
+        registro.intensivo_id === intensivoId &&
+        registro.intensivo_dia_id === diaId
+    );
+  }
+
+  function recuperacionesDelIntensivo(intensivoId: string) {
+    return intensivoMás.filter(
+      (registro) => registro.intensivo_origen_id === intensivoId
+    );
+  }
+
+  function recomendacionesDeRecuperacion(recuperacionId: string) {
+    return recomendacionesRecuperacion
+      .filter((item) => item.recuperacion_id === recuperacionId)
+      .sort((a, b) => a.orden_recomendacion - b.orden_recomendacion);
+  }
+
+  async function aprobarRecuperacionInteligente(
+    registro: IntensivoRecuperacionApp,
+    recomendacion: RecuperacionRecomendacionApp
+  ) {
+    const confirmar = window.confirm(
+      `¿Aprobar la recuperación de ${registro.alumno} en ${recomendacion.intensivo_destino} · ${recomendacion.nombre_grupo} · ${formatearFecha(recomendacion.fecha)}?`
+    );
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('asignar_recuperacion_grupo_intensivo_app', {
+        p_recuperacion_id: registro.recuperacion_id,
+        p_grupo_destino_id: recomendacion.grupo_id,
+      });
+      await cargarIntensivos();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error aprobando la recuperación');
+    }
+    setCargando(false);
+  }
+
+  function gruposNormalesDelDiaIntensivo(diaId: string) {
+    return gruposIntensivoDia.filter(
+      (grupo) => grupo.intensivo_dia_id === diaId && grupo.grupo_id
+    );
+  }
+
+  function resumenReportesDelIntensivo(intensivoId: string) {
+    return resumenReportesIntensivo.filter(
+      (registro) => registro.intensivo_id === intensivoId
+    );
+  }
+
+  function resumenFinalDelIntensivo(intensivoId: string) {
+    return resumenFinalIntensivo.filter(
+      (registro) => registro.intensivo_id === intensivoId
+    );
+  }
+
+  function reportesDetalleAlumnoIntensivo(
+    intensivoId: string,
+    alumnoId: string
+  ) {
+    return reportesDetalleIntensivo.filter(
+      (registro) =>
+        registro.intensivo_id === intensivoId && registro.alumno_id === alumnoId
+    );
+  }
+
+  function diaRevisionSugeridoIntensivoApp(intensivoId: string) {
+    const dias = diasDelIntensivo(intensivoId)
+      .slice()
+      .sort((a, b) => a.numero_dia - b.numero_dia);
+
+    const revisables = dias.filter((dia) => dia.numero_dia >= 2);
+    if (revisables.length === 0) return '';
+
+    const reportesCurso = reportesDetalleIntensivo.filter(
+      (reporte) => reporte.intensivo_id === intensivoId
+    );
+
+    const ultimoDiaReportado = reportesCurso.reduce(
+      (maximo, reporte) =>
+        Math.max(maximo, Number(reporte.numero_dia || 0)),
+      0
+    );
+
+    const numeroObjetivo =
+      ultimoDiaReportado <= 0
+        ? 2
+        : Math.min(4, ultimoDiaReportado + 1);
+
+    return (
+      revisables.find((dia) => dia.numero_dia === numeroObjetivo)
+        ?.intensivo_dia_id ||
+      revisables[0]?.intensivo_dia_id ||
+      ''
+    );
+  }
+
+  function panelControlDelIntensivo(intensivoId: string) {
+    return panelControlIntensivo.find(
+      (registro) => registro.intensivo_id === intensivoId
+    );
+  }
+
+  function cerrarPanelesIntensivo() {
+    setGestionarPanelControlIntensivoId(null);
+    setDiaActivoIntensivoId(null);
+    setDiaEditandoIntensivoId(null);
+    setGestionarAlumnosIntensivoId(null);
+    setMostrarVolcadoIntensivoId(null);
+    setGestionarGruposIntensivoId(null);
+    setGestionarAsistenciaIntensivoId(null);
+    setGestionarMásIntensivoId(null);
+    setGestionarDiplomasIntensivoId(null);
+    setRevisionIntensivoId('');
+    setRevisionIntensivoDiaId('');
+    setRevisionIntensivoSugerencias([]);
+    setRevisionIntensivoAnalizado(false);
+    setTextoVolcadoIntensivo('');
+    setResultadoVolcadoIntensivo([]);
+  }
+
+  function scrollPanelIntensivoApp(intensivoId: string) {
+    window.setTimeout(() => {
+      document
+        .getElementById(`intensivo-panel-activo-${intensivoId}`)
+        ?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+    }, 100);
+  }
+
+  function abrirPanelIntensivo(
+    intensivo: IntensivoApp,
+    panel:
+      | 'control'
+      | 'dias'
+      | 'alumnos'
+      | 'grupos'
+      | 'revision'
+      | 'asistencia'
+      | 'recuperaciones'
+      | 'diplomas'
+  ) {
+    const intensivoId = intensivo.intensivo_id;
+    const yaAbierto =
+      (panel === 'control' &&
+        gestionarPanelControlIntensivoId === intensivoId) ||
+      (panel === 'dias' && diaActivoIntensivoId === intensivoId) ||
+      (panel === 'alumnos' && gestionarAlumnosIntensivoId === intensivoId) ||
+      (panel === 'grupos' && gestionarGruposIntensivoId === intensivoId) ||
+      (panel === 'revision' && revisionIntensivoId === intensivoId) ||
+      (panel === 'asistencia' &&
+        gestionarAsistenciaIntensivoId === intensivoId) ||
+      (panel === 'recuperaciones' && gestionarMásIntensivoId === intensivoId) ||
+      (panel === 'diplomas' && gestionarDiplomasIntensivoId === intensivoId);
+
+    cerrarPanelesIntensivo();
+
+    if (yaAbierto) return;
+
+    if (panel === 'control') {
+      setGestionarPanelControlIntensivoId(intensivoId);
+      scrollPanelIntensivoApp(intensivoId);
+      return;
+    }
+
+    if (panel === 'dias') {
+      setDiaActivoIntensivoId(intensivoId);
+      setFormDiaIntensivo(diaIntensivoInicial());
+      scrollPanelIntensivoApp(intensivoId);
+      return;
+    }
+
+    if (panel === 'alumnos') {
+      setGestionarAlumnosIntensivoId(intensivoId);
+      setAlumnoSeleccionadoIntensivoId('');
+      setBusquedaAlumnoIntensivo('');
+      scrollPanelIntensivoApp(intensivoId);
+      return;
+    }
+
+    if (panel === 'grupos') {
+      const primerDia = diasDelIntensivo(intensivoId)[0];
+      const alumnosIds = alumnosDelIntensivo(intensivoId).map(
+        (registro) => registro.alumno_id
+      );
+      setGestionarGruposIntensivoId(intensivoId);
+      setDiaGrupoSeleccionadoId(primerDia?.intensivo_dia_id || '');
+      setFormGrupoIntensivo({
+        ...grupoIntensivoInicial(),
+        alumnos_ids: alumnosIds,
+      });
+      setRecomendacionesGrupoIntensivo([]);
+      setEntrenadoresPorGrupoRecomendado({});
+      setDestinoAlumnoRecomendado({});
+      setTrabajoDiarioPorGrupoRecomendado({});
+      setObservacionesPorGrupoRecomendado({});
+      setGruposExtraIntensivoPorDia({});
+      scrollPanelIntensivoApp(intensivoId);
+      return;
+    }
+
+    if (panel === 'revision') {
+      setRevisionIntensivoId(intensivoId);
+      setRevisionIntensivoDiaId(
+        diaRevisionSugeridoIntensivoApp(intensivoId)
+      );
+      setRevisionIntensivoSugerencias([]);
+      setRevisionIntensivoAnalizado(false);
+      scrollPanelIntensivoApp(intensivoId);
+      return;
+    }
+
+    if (panel === 'asistencia') {
+      const primerDia = diasDelIntensivo(intensivoId)[0];
+      setGestionarAsistenciaIntensivoId(intensivoId);
+      setDiaAsistenciaSeleccionadoId(primerDia?.intensivo_dia_id || '');
+      scrollPanelIntensivoApp(intensivoId);
+      return;
+    }
+
+    if (panel === 'recuperaciones') {
+      setGestionarMásIntensivoId(intensivoId);
+      scrollPanelIntensivoApp(intensivoId);
+      return;
+    }
+
+    if (panel === 'diplomas') {
+      setGestionarDiplomasIntensivoId(intensivoId);
+      scrollPanelIntensivoApp(intensivoId);
+    }
+  }
+
+  function codigoNivelPorId(nivelId: string | null) {
+    if (!nivelId) return '-';
+    return (
+      nivelesDiplomaIntensivo.find((nivel) => nivel.id === nivelId)?.codigo ||
+      '-'
+    );
+  }
+
+  function entrenadoresActivosParaIntensivo() {
+    return entrenadores
+      .filter((entrenador) => entrenador.activo)
+      .sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo));
+  }
+
+  function alumnosDisponiblesParaIntensivo(intensivoId: string) {
+    const alumnosYaInscritos = new Set(
+      alumnosDelIntensivo(intensivoId).map((registro) => registro.alumno_id)
+    );
+
+    const busqueda = busquedaAlumnoIntensivo.trim().toLowerCase();
+
+    return alumnosParaIntensivo
+      .filter((alumno) => !alumnosYaInscritos.has(alumno.alumno_id))
+      .filter((alumno) =>
+        busqueda ? alumno.alumno.toLowerCase().includes(busqueda) : true
+      )
+      .slice(0, 80);
+  }
+
+  function formularioAbierto(alumno: AlumnoReporteEntrenador) {
+    return (
+      reporteActivo?.grupo_id === alumno.grupo_id &&
+      reporteActivo?.alumno_id === alumno.alumno_id
+    );
+  }
+
+  const alumnoReporteActivo = reporteActivo
+    ? alumnosReporteEntrenador.find(
+        (alumno) =>
+          alumno.grupo_id === reporteActivo.grupo_id &&
+          alumno.alumno_id === reporteActivo.alumno_id
+      ) || null
+    : null;
+
+  const grupoReporteActivo = reporteActivo
+    ? gruposEntrenador.find((grupo) => grupo.grupo_id === reporteActivo.grupo_id) || null
+    : null;
+
+  function renderFormularioReporteEntrenador(
+    alumno: AlumnoReporteEntrenador,
+    nivelGrupo: string,
+    modo: 'inline' | 'sheet'
+  ) {
+    const esSheet = modo === 'sheet';
+    const nivelEfectivoReporte =
+      formReporte.nivel ||
+      nivelPartidaReporte ||
+      alumno.nivel_alumno ||
+      nivelGrupo ||
+      '';
+    const esProgresionInicialReporte =
+      esNivelAprendizajeInicialApp(nivelEfectivoReporte);
+    const reporteDomId =
+      `trainer-report-${alumno.entrenador_id}-${alumno.grupo_id}-${alumno.alumno_id}`.replace(
+        /[^a-zA-Z0-9_-]/g,
+        '-'
+      );
+
+    return (
+      <div
+        id={reporteDomId}
+        className={`trainer-report-form trainer-report-form--${modo}`}
+        style={{
+          ...(esSheet ? {} : formularioCaja),
+          border: '1px solid #d5e5ff',
+          borderRadius: 18,
+          padding: esSheet ? 14 : undefined,
+          background:
+            'linear-gradient(180deg, rgba(249,252,255,0.98) 0%, rgba(241,247,255,0.96) 100%)',
+          boxShadow: '0 12px 28px rgba(45, 82, 150, 0.08)',
+        }}
+      >
+        {esSheet ? (
+          <div className="trainer-report-sheet-header">
+            <div>
+              <span className="trainer-report-sheet-kicker">Reporte del alumno</span>
+              <h3>{alumno.alumno}</h3>
+              <p>
+                {alumno.nombre_grupo}
+                {alumno.nivel_alumno ? ` · Nivel ${alumno.nivel_alumno}` : ''}
+              </p>
+            </div>
+            <button
+              type="button"
+              className="trainer-report-sheet-close"
+              onClick={cerrarFormularioReporte}
+            >
+              Cerrar

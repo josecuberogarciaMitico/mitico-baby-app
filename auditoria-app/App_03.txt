@@ -1,0 +1,2500 @@
+        alumnoOcio = actualizados.find(
+          (alumno) =>
+            alumno.alumno_id === ocioNuevoAlumnoId ||
+            normalizarNombreFueraPlazoAgenda(alumno.alumno) ===
+              normalizarNombreFueraPlazoAgenda(nombre)
+        );
+      }
+
+      if (!alumnoOcio) {
+        throw new Error(
+          'Se ha creado la ficha de Ocio, pero no he podido localizarla para asignarla al grupo.'
+        );
+      }
+
+      // Si ya existía en Ocio, actualizamos su día/turno fijo al destino elegido.
+      await ejecutarFuncion('actualizar_alumno_ocio_app', {
+        p_alumno_id: alumnoOcio.alumno_id,
+        p_nombre_completo: alumnoOcio.alumno,
+        p_nivel_codigo: nivel || alumnoOcio.nivel_usado || null,
+        p_fecha_nacimiento: alumnoOcio.fecha_nacimiento || null,
+        p_dia_fijo: grupo.dia_semana,
+        p_hora_inicio: (grupo.hora_inicio || '').slice(0, 5),
+        p_hora_fin: (grupo.hora_fin || '').slice(0, 5),
+        p_observaciones: alumnoOcio.observaciones || null,
+        p_estado_ficha: alumnoOcio.estado_ficha || 'pendiente completar',
+      });
+
+      await ejecutarFuncion('asignar_alumno_grupo_ocio_app', {
+        p_grupo_id: grupo.grupo_id,
+        p_alumno_id: alumnoOcio.alumno_id,
+      });
+
+      setOcioTurnoVista(
+        grupo.dia_semana === 'Sábado' || grupo.dia_semana === 'Domingo'
+          ? grupo.dia_semana
+          : 'Jueves'
+      );
+      setOcioNuevoNombre('');
+      setOcioNuevoNivel('');
+      setOcioNuevoAlumnoId('');
+      setOcioNuevoSugerencias([]);
+      setOcioNuevoRecomendaciones([]);
+      setOcioPanelOperativo('ninguno');
+
+      await cargarOcioAlumnos();
+      await cargarOcioGrupos();
+
+      enfocarElementoApp('ocio-grupos-turno-activo', {
+        espera: 100,
+        block: 'start',
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo incorporar el alumno al grupo estable.'
+      );
+    }
+
+    setOcioNuevoGuardandoGrupoId('');
+  }
+
+  function edadAproximadaOcio(fechaNacimiento?: string | null) {
+    if (!fechaNacimiento) return null;
+    const fecha = new Date(`${fechaNacimiento}T12:00:00`);
+    if (Number.isNaN(fecha.getTime())) return null;
+    const hoy = new Date();
+    let edad = hoy.getFullYear() - fecha.getFullYear();
+    const mes = hoy.getMonth() - fecha.getMonth();
+    if (mes < 0 || (mes === 0 && hoy.getDate() < fecha.getDate())) edad -= 1;
+    return Math.max(0, edad);
+  }
+
+  function alumnosTurnoOcio(dia: 'Jueves' | 'Sábado' | 'Domingo') {
+    const turno = horarioTurnoOcio(dia);
+    const diaNormalizado = textoSinAcentosGrupoApp(dia);
+
+    return ocioAlumnos
+      .filter((alumno) => {
+        const diaAlumno = textoSinAcentosGrupoApp(
+          alumno.dia_fijo || alumno.grupo_dia || ''
+        );
+        const inicioAlumno = (
+          alumno.hora_inicio_fija ||
+          alumno.grupo_hora_inicio ||
+          ''
+        ).slice(0, 5);
+
+        return (
+          diaAlumno === diaNormalizado &&
+          (!inicioAlumno || inicioAlumno === turno.inicio)
+        );
+      })
+      .sort((a, b) => {
+        const funcionalA = puntuacionFuncionalOcioApp(
+          a.nivel_usado || a.nivel || 'A+',
+          a.alumno_id
+        );
+        const funcionalB = puntuacionFuncionalOcioApp(
+          b.nivel_usado || b.nivel || 'A+',
+          b.alumno_id
+        );
+        if (funcionalA !== funcionalB) return funcionalA - funcionalB;
+
+        // Edad solo como desempate una vez nivel + ritmo están parejos.
+        const edadA = edadAproximadaOcio(a.fecha_nacimiento);
+        const edadB = edadAproximadaOcio(b.fecha_nacimiento);
+        if (edadA !== null && edadB !== null && edadA !== edadB) {
+          return edadA - edadB;
+        }
+
+        return a.alumno.localeCompare(b.alumno);
+      });
+  }
+
+  function repartirTamanosOcio(total: number, maximo: number) {
+    if (total <= 0) return [] as number[];
+    const grupos = Math.max(1, Math.ceil(total / maximo));
+    const base = Math.floor(total / grupos);
+    const extra = total % grupos;
+
+    return Array.from({ length: grupos }, (_, indice) =>
+      base + (indice < extra ? 1 : 0)
+    );
+  }
+
+  function nivelObjetivoGrupoPropuestaOcio(alumnosGrupo: OcioAlumnoApp[]) {
+    const niveles = alumnosGrupo
+      .map((alumno) => ({
+        texto: (alumno.nivel_usado || alumno.nivel || 'A+').toUpperCase(),
+        orden: ordenNivelTrabajoMSZApp(
+          alumno.nivel_usado || alumno.nivel || 'A+'
+        ),
+      }))
+      .sort((a, b) => a.orden - b.orden);
+
+    if (niveles.length === 0) return 'A+';
+    return niveles[Math.floor(niveles.length / 2)].texto;
+  }
+
+  function avisoGrupoPropuestaOcio(
+    pista: 'Pequeña' | 'Grande',
+    total: number
+  ) {
+    if (pista === 'Pequeña') {
+      if (total < 3)
+        return 'Ratio insuficiente: en pista pequeña necesitamos al menos 3.';
+      if (total > 4)
+        return 'Ratio excedido: pista pequeña admite máximo 4.';
+      return null;
+    }
+
+    if (total < 3)
+      return 'Ratio insuficiente: grupo grande mínimo excepcional 3.';
+    if (total > 7)
+      return 'Ratio excedido: pista grande admite máximo 7.';
+    return null;
+  }
+
+  function generarPropuestaGruposOcio() {
+    if (ocioGuardandoPropuesta) return;
+
+    const alumnosTurno = alumnosTurnoOcio(ocioTurnoVista);
+
+    if (alumnosTurno.length === 0) {
+      alert(`No hay alumnos de Ocio cargados para ${ocioTurnoVista}.`);
+      return;
+    }
+
+    const gruposExistentes = ocioGrupos.filter(
+      (grupo) =>
+        textoSinAcentosGrupoApp(grupo.dia_semana || '') ===
+        textoSinAcentosGrupoApp(ocioTurnoVista)
+    );
+
+    if (gruposExistentes.length > 0) {
+      alert(
+        `Ya existen ${gruposExistentes.length} grupos estables para ${ocioTurnoVista}. Para evitar duplicados, gestiona esos grupos o elimínalos antes de generar una estructura inicial nueva.`
+      );
+      return;
+    }
+
+    setOcioGenerandoPropuesta(true);
+
+    const iniciacion = alumnosTurno.filter(
+      (alumno) =>
+        ordenNivelTrabajoMSZApp(alumno.nivel_usado || alumno.nivel || '') <= 0
+    );
+    const pequena = alumnosTurno.filter((alumno) => {
+      const orden = ordenNivelTrabajoMSZApp(
+        alumno.nivel_usado || alumno.nivel || ''
+      );
+      return orden >= 1 && orden <= 2;
+    });
+    const grande = alumnosTurno.filter(
+      (alumno) =>
+        ordenNivelTrabajoMSZApp(alumno.nivel_usado || alumno.nivel || '') >= 3
+    );
+
+    const nuevas: OcioGrupoPropuestaApp[] = [];
+    let numeroGrupo = 1;
+
+    const anadirBloque = (
+      bloque: OcioAlumnoApp[],
+      pista: 'Pequeña' | 'Grande',
+      maximo: number
+    ) => {
+      const tamanos = repartirTamanosOcio(bloque.length, maximo);
+      let cursor = 0;
+
+      tamanos.forEach((tamano) => {
+        const miembros = bloque.slice(cursor, cursor + tamano);
+        cursor += tamano;
+
+        nuevas.push({
+          propuesta_id: `${ocioTurnoVista}-${numeroGrupo}-${Date.now()}`,
+          nombre: `Grupo ${numeroGrupo}`,
+          pista,
+          nivelObjetivo: nivelObjetivoGrupoPropuestaOcio(miembros),
+          punto: '5',
+          alumnoIds: miembros.map((alumno) => alumno.alumno_id),
+          aviso: avisoGrupoPropuestaOcio(pista, miembros.length),
+        });
+        numeroGrupo += 1;
+      });
+    };
+
+    // Iniciación queda separada por seguridad.
+    anadirBloque(iniciacion, 'Pequeña', 4);
+    // A y A+ son compatibles y se recomiendan juntos.
+    anadirBloque(pequena, 'Pequeña', 4);
+    // B y superiores: niveles próximos, priorizando nivel y después edad.
+    anadirBloque(grande, 'Grande', 7);
+
+    setOcioPropuestaGrupos(nuevas);
+    setOcioGenerandoPropuesta(false);
+
+    enfocarElementoApp('ocio-propuesta-grupos', {
+      espera: 80,
+      block: 'start',
+    });
+  }
+
+  function moverAlumnoEntrePropuestasOcio(
+    alumnoId: string,
+    origenId: string,
+    destinoId: string
+  ) {
+    if (!destinoId || origenId === destinoId) return;
+
+    setOcioPropuestaGrupos((actuales) => {
+      const origen = actuales.find((grupo) => grupo.propuesta_id === origenId);
+      const destino = actuales.find((grupo) => grupo.propuesta_id === destinoId);
+      if (!origen || !destino) return actuales;
+
+      // Mantener la frontera Pequeña / Grande para no crear mezclas técnicas
+      // accidentales. El coordinador sigue pudiendo mover dentro de la misma pista.
+      if (origen.pista !== destino.pista) {
+        alert(
+          'Para seguridad, el recomendador no permite mover automáticamente entre pista pequeña y grande. Si necesitas una excepción, edita después el grupo estable.'
+        );
+        return actuales;
+      }
+
+      const actualizados = actuales.map((grupo) => {
+        let ids = [...grupo.alumnoIds];
+
+        if (grupo.propuesta_id === origenId) {
+          ids = ids.filter((id) => id !== alumnoId);
+        }
+        if (
+          grupo.propuesta_id === destinoId &&
+          !ids.includes(alumnoId)
+        ) {
+          ids.push(alumnoId);
+        }
+
+        const miembros = ids
+          .map((id) => ocioAlumnos.find((alumno) => alumno.alumno_id === id))
+          .filter(Boolean) as OcioAlumnoApp[];
+
+        return {
+          ...grupo,
+          alumnoIds: ids,
+          nivelObjetivo: nivelObjetivoGrupoPropuestaOcio(miembros),
+          aviso: avisoGrupoPropuestaOcio(grupo.pista, ids.length),
+        };
+      });
+
+      return actualizados;
+    });
+  }
+
+  function cambiarPuntoPropuestaOcio(propuestaId: string, punto: string) {
+    setOcioPropuestaGrupos((actuales) =>
+      actuales.map((grupo) =>
+        grupo.propuesta_id === propuestaId ? { ...grupo, punto } : grupo
+      )
+    );
+  }
+
+  function crearGrupoVacioPropuestaOcio() {
+    setOcioPropuestaGrupos((actuales) => {
+      const siguienteNumero =
+        actuales.reduce((maximo, grupo) => {
+          const coincidencia = grupo.nombre.match(/Grupo\s+(\d+)/i);
+          const numero = coincidencia ? Number(coincidencia[1]) : 0;
+          return Math.max(maximo, numero);
+        }, 0) + 1;
+
+      const nuevo: OcioGrupoPropuestaApp = {
+        propuesta_id: `${ocioTurnoVista}-manual-${Date.now()}`,
+        nombre: `Grupo ${siguienteNumero}`,
+        pista: 'Grande',
+        nivelObjetivo: 'B+',
+        punto: '5',
+        alumnoIds: [],
+        aviso: avisoGrupoPropuestaOcio('Grande', 0),
+      };
+
+      return [...actuales, nuevo];
+    });
+
+    enfocarElementoApp('ocio-propuesta-grupos', {
+      espera: 80,
+      block: 'end',
+    });
+  }
+
+  function cambiarPistaPropuestaOcio(
+    propuestaId: string,
+    pista: 'Pequeña' | 'Grande'
+  ) {
+    setOcioPropuestaGrupos((actuales) =>
+      actuales.map((grupo) => {
+        if (grupo.propuesta_id !== propuestaId) return grupo;
+
+        const miembros = grupo.alumnoIds
+          .map((id) => ocioAlumnos.find((alumno) => alumno.alumno_id === id))
+          .filter(Boolean) as OcioAlumnoApp[];
+
+        return {
+          ...grupo,
+          pista,
+          nivelObjetivo:
+            miembros.length > 0
+              ? nivelObjetivoGrupoPropuestaOcio(miembros)
+              : grupo.nivelObjetivo,
+          aviso: avisoGrupoPropuestaOcio(pista, miembros.length),
+        };
+      })
+    );
+  }
+
+  function eliminarGrupoVacioPropuestaOcio(propuestaId: string) {
+    setOcioPropuestaGrupos((actuales) => {
+      const grupo = actuales.find(
+        (item) => item.propuesta_id === propuestaId
+      );
+      if (!grupo || grupo.alumnoIds.length > 0) {
+        alert('Mueve primero los alumnos de este grupo antes de eliminarlo.');
+        return actuales;
+      }
+
+      return actuales.filter(
+        (item) => item.propuesta_id !== propuestaId
+      );
+    });
+  }
+
+  async function crearGruposEstablesDesdePropuestaOcio() {
+    if (ocioGuardandoPropuesta || ocioPropuestaGrupos.length === 0) return;
+
+    const invalidos = ocioPropuestaGrupos.filter((grupo) => grupo.aviso);
+    if (invalidos.length > 0) {
+      alert(
+        'Hay grupos con ratio no válido. Revisa la propuesta antes de crear los grupos estables.'
+      );
+      return;
+    }
+
+    const gruposExistentes = ocioGrupos.filter(
+      (grupo) =>
+        textoSinAcentosGrupoApp(grupo.dia_semana || '') ===
+        textoSinAcentosGrupoApp(ocioTurnoVista)
+    );
+
+    if (gruposExistentes.length > 0) {
+      alert(
+        'Ya hay grupos estables en este turno. Se ha cancelado la creación para evitar duplicados.'
+      );
+      return;
+    }
+
+    const totalAlumnos = ocioPropuestaGrupos.reduce(
+      (total, grupo) => total + grupo.alumnoIds.length,
+      0
+    );
+
+    const confirmar = window.confirm(
+      `Crear ${ocioPropuestaGrupos.length} grupos estables de ${ocioTurnoVista} con ${totalAlumnos} alumnos?\n\nPodrás seguir editando puntos y alumnos después.`
+    );
+    if (!confirmar) return;
+
+    setOcioGuardandoPropuesta(true);
+    setError('');
+
+    const creados: string[] = [];
+
+    try {
+      const turno = horarioTurnoOcio(ocioTurnoVista);
+
+      for (const propuesta of ocioPropuestaGrupos) {
+        const grupoId = await ejecutarFuncionAuthJson<string>(
+          'crear_grupo_ocio_app',
+          {
+            p_anio_inicio: anioInicioTemporadaAgenda,
+            p_nombre_grupo: propuesta.nombre,
+            p_dia_semana: ocioTurnoVista,
+            p_hora_inicio: turno.inicio,
+            p_hora_fin: turno.fin,
+            p_nivel_grupo: propuesta.nivelObjetivo,
+            p_pista: propuesta.pista,
+            p_punto_encuentro: null,
+            p_observaciones: null,
+          }
+        );
+
+        if (!grupoId || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(grupoId)) {
+          throw new Error(
+            `No se pudo recuperar el identificador de ${propuesta.nombre}.`
+          );
+        }
+
+        creados.push(grupoId);
+
+        for (const alumnoId of propuesta.alumnoIds) {
+          await ejecutarFuncion('asignar_alumno_grupo_ocio_app', {
+            p_grupo_id: grupoId,
+            p_alumno_id: alumnoId,
+          });
+        }
+      }
+
+      setOcioPropuestaGrupos([]);
+      await cargarOcioGrupos();
+      await cargarOcioAlumnos();
+
+      enfocarElementoApp('ocio-grupos-turno-activo', {
+        espera: 100,
+        block: 'start',
+      });
+
+      alert('Grupos estables creados correctamente.');
+    } catch (err) {
+      // Rollback funcional: si algo falla durante la creación inicial,
+      // eliminamos únicamente los grupos NUEVOS creados en esta operación.
+      for (const grupoId of [...creados].reverse()) {
+        try {
+          await ejecutarFuncion('eliminar_grupo_ocio_app', {
+            p_grupo_id: grupoId,
+          });
+        } catch {
+          // Si una limpieza falla, recargamos igualmente para mostrar el estado real.
+        }
+      }
+
+      await cargarOcioGrupos();
+      await cargarOcioAlumnos();
+
+      setError(
+        err instanceof Error
+          ? `No se pudo crear la propuesta completa: ${err.message}`
+          : 'No se pudo crear la propuesta completa.'
+      );
+      alert(
+        'La creación no se completó. He intentado revertir únicamente los grupos nuevos de esta operación. Revisa la pantalla antes de repetir.'
+      );
+    } finally {
+      setOcioGuardandoPropuesta(false);
+    }
+  }
+
+  function abrirNuevoGrupoOcio() {
+    setOcioGrupoForm(ocioGrupoFormInicial());
+    setMostrarFormularioOcioGrupo(true);
+  }
+
+  function editarGrupoOcio(grupo: OcioGrupoApp) {
+    setOcioGrupoForm({
+      id: grupo.grupo_id,
+      nombre: grupo.nombre_grupo || '',
+      dia: grupo.dia_semana || 'Jueves',
+      horaInicio: (grupo.hora_inicio || '18:00').slice(0, 5),
+      horaFin: (grupo.hora_fin || '20:00').slice(0, 5),
+      nivel: grupo.nivel_grupo || 'A',
+      pista: grupo.pista || 'Pequeña',
+      punto: '',
+      observaciones: grupo.observaciones || '',
+    });
+    setOcioTurnoVista(
+      grupo.dia_semana === 'Sábado' || grupo.dia_semana === 'Domingo'
+        ? grupo.dia_semana
+        : 'Jueves'
+    );
+    setMostrarFormularioOcioGrupo(true);
+    enfocarElementoApp('ocio-formulario-grupo-estable', {
+      espera: 80,
+      block: 'start',
+    });
+  }
+
+  async function guardarGrupoOcio() {
+    if (!ocioGrupoForm.nombre.trim()) {
+      alert('Pon un nombre al grupo estable de Ocio.');
+      return;
+    }
+    setCargando(true);
+    setError('');
+    try {
+      if (ocioGrupoForm.id) {
+        await ejecutarFuncion('actualizar_grupo_ocio_app', {
+          p_grupo_id: ocioGrupoForm.id,
+          p_nombre_grupo: ocioGrupoForm.nombre.trim(),
+          p_dia_semana: ocioGrupoForm.dia,
+          p_hora_inicio: ocioGrupoForm.horaInicio,
+          p_hora_fin: ocioGrupoForm.horaFin,
+          p_nivel_grupo: ocioGrupoForm.nivel,
+          p_pista: ocioGrupoForm.pista,
+          p_punto_encuentro: null,
+          p_observaciones: ocioGrupoForm.observaciones || null,
+        });
+      } else {
+        await ejecutarFuncionConRespuesta<{ crear_grupo_ocio_app: string }>(
+          'crear_grupo_ocio_app',
+          {
+            p_anio_inicio: anioInicioTemporadaAgenda,
+            p_nombre_grupo: ocioGrupoForm.nombre.trim(),
+            p_dia_semana: ocioGrupoForm.dia,
+            p_hora_inicio: ocioGrupoForm.horaInicio,
+            p_hora_fin: ocioGrupoForm.horaFin,
+            p_nivel_grupo: ocioGrupoForm.nivel,
+            p_pista: ocioGrupoForm.pista,
+            p_punto_encuentro: null,
+            p_observaciones: ocioGrupoForm.observaciones || null,
+          }
+        );
+      }
+      setMostrarFormularioOcioGrupo(false);
+      setOcioGrupoForm(ocioGrupoFormInicial());
+      await cargarOcioGrupos();
+      await cargarOcioAlumnos();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Error guardando grupo Ocio'
+      );
+    }
+    setCargando(false);
+  }
+
+  async function eliminarGrupoOcio(grupo: OcioGrupoApp) {
+    const confirmar = window.confirm(
+      `¿Eliminar ${grupo.nombre_grupo}? Se quitarán sus alumnos del grupo estable.`
+    );
+    if (!confirmar) return;
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('eliminar_grupo_ocio_app', {
+        p_grupo_id: grupo.grupo_id,
+      });
+      await cargarOcioGrupos();
+      await cargarOcioAlumnos();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Error eliminando grupo Ocio'
+      );
+    }
+    setCargando(false);
+  }
+
+  async function asignarAlumnoGrupoOcio(alumnoId: string, grupoId: string) {
+    if (!grupoId) return;
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('asignar_alumno_grupo_ocio_app', {
+        p_grupo_id: grupoId,
+        p_alumno_id: alumnoId,
+      });
+      await cargarOcioAlumnos();
+      await cargarOcioGrupos();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Error moviendo alumno Ocio'
+      );
+    }
+    setCargando(false);
+  }
+
+  async function quitarAlumnoGrupoOcio(
+    alumnoId: string,
+    grupoId: string | null
+  ) {
+    if (!grupoId) return;
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('quitar_alumno_grupo_ocio_app', {
+        p_grupo_id: grupoId,
+        p_alumno_id: alumnoId,
+      });
+      await cargarOcioAlumnos();
+      await cargarOcioGrupos();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Error quitando alumno del grupo'
+      );
+    }
+    setCargando(false);
+  }
+
+  async function abrirEvaluacionOcio(alumno: OcioAlumnoApp) {
+    setEvaluacionOcioActivaId(alumno.alumno_id);
+    setEvaluacionOcioTexto('Cargando evaluación de Ocio...');
+    setCargando(true);
+    setError('');
+    try {
+      const resultado = await ejecutarFuncionConRespuesta<{ texto: string }>(
+        'extraer_evaluacion_ocio_app',
+        {
+          p_alumno_id: alumno.alumno_id,
+        }
+      );
+      setEvaluacionOcioTexto(
+        resultado[0]?.texto || `No hay reportes de Ocio para ${alumno.alumno}.`
+      );
+    } catch (err) {
+      setEvaluacionOcioTexto('');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error generando evaluación de Ocio'
+      );
+    }
+    setCargando(false);
+  }
+
+  async function copiarEvaluacionOcio() {
+    if (!evaluacionOcioTexto.trim()) return;
+    try {
+      await navigator.clipboard.writeText(evaluacionOcioTexto);
+      alert(
+        'Evaluación de Ocio copiada. Pégala en ChatGPT para dejarla bonita para los padres.'
+      );
+    } catch {
+      window.prompt('Copia esta evaluación:', evaluacionOcioTexto);
+    }
+  }
+
+  function abrirPrevisualizacionWhatsapp(
+    titulo: string,
+    texto: string,
+    telefonoDestino?: string,
+    grupoWhatsapp?: {
+      clave: string;
+      modalidad: string;
+      referencia: string;
+      enlace: string;
+    }
+  ) {
+    if (!texto.trim()) {
+      setError('No hay mensaje de WhatsApp para revisar todavía.');
+      return;
+    }
+
+    setWhatsappPreview({
+      titulo,
+      texto,
+      telefonoDestino: telefonoDestino || undefined,
+      claveGrupoWhatsapp: grupoWhatsapp?.clave,
+      modalidadGrupoWhatsapp: grupoWhatsapp?.modalidad,
+      referenciaGrupoWhatsapp: grupoWhatsapp?.referencia,
+      enlaceGrupoWhatsapp: grupoWhatsapp?.enlace || '',
+    });
+  }
+
+  function abrirWhatsappDesdePrevisualizacion() {
+    if (!whatsappPreview?.texto.trim()) return;
+
+    const telefono = normalizarTelefonoWhatsappApp(
+      whatsappPreview.telefonoDestino
+    );
+
+    if (!telefono) {
+      setError(
+        'Este mensaje no tiene un teléfono de destino válido. Puedes copiarlo manualmente.'
+      );
+      return;
+    }
+
+    window.open(
+      `https://wa.me/${telefono}?text=${encodeURIComponent(
+        whatsappPreview.texto
+      )}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+  }
+
+  async function copiarWhatsappPrevisualizado() {
+    if (!whatsappPreview?.texto.trim()) return;
+
+    try {
+      await navigator.clipboard.writeText(whatsappPreview.texto);
+      alert('WhatsApp copiado. Revisa que lo pegas en el grupo correcto.');
+    } catch {
+      window.prompt('Copia este WhatsApp:', whatsappPreview.texto);
+    }
+  }
+
+  function copiarWhatsappOcioTurno(
+    dia: 'Jueves' | 'Sábado' | 'Domingo'
+  ) {
+    const turno = horarioTurnoOcio(dia);
+    const gruposDia = ocioGrupos
+      .filter(
+        (grupo) =>
+          textoSinAcentosGrupoApp(grupo.dia_semana || '') ===
+            textoSinAcentosGrupoApp(dia) &&
+          (grupo.hora_inicio || '').slice(0, 5) === turno.inicio
+      )
+      .sort((a, b) =>
+        (a.nombre_grupo || '').localeCompare(b.nombre_grupo || '', 'es')
+      );
+
+    if (gruposDia.length === 0) {
+      setError('No hay grupos estables creados en este turno.');
+      return;
+    }
+
+    let mensaje = `*${dia.toUpperCase()} · OCIO* ⛷️💨\n`;
+    mensaje += `⏰ horario de ${turno.inicio} a ${turno.fin} MSZ\n\n`;
+
+    gruposDia.forEach((grupo) => {
+      const miembros = ocioAlumnos
+        .filter((alumno) => alumno.grupo_id === grupo.grupo_id)
+        .map((alumno) => nombreAlumnoWhatsappPapis(alumno.alumno))
+        .filter(Boolean);
+
+      const resultadoSemanal = ocioSemanaResultados.find(
+        (resultado) =>
+          resultado.grupo_estable === grupo.nombre_grupo &&
+          (resultado.hora_inicio || '').slice(0, 5) === turno.inicio
+      );
+
+      const entrenadores = resultadoSemanal?.grupo_id
+        ? nombresEntrenadoresDelGrupo(
+            resultadoSemanal.grupo_id,
+            resultadoSemanal.entrenador
+          )
+        : resultadoSemanal?.entrenador || 'ENTRENADOR PENDIENTE';
+
+      mensaje += `⛷️ ${(
+        entrenadoresWhatsappPapis(entrenadores) || 'ENTRENADOR PENDIENTE'
+      ).toUpperCase()}\n`;
+      mensaje += `📍${grupo.punto_encuentro || '-'}\n`;
+      mensaje += '👶\n';
+      miembros.forEach((nombre) => {
+        mensaje += `${nombre}\n`;
+      });
+      mensaje += '\n';
+    });
+
+    mensaje += '¡Nos vemos en MSZ equipo!\n';
+    mensaje += '⚠️Papis importante!\n';
+    mensaje += `Como la logística con los peques se puede complicar un poco, os recomiendo estar 20-25 minutos antes de la hora de entrada ya que a las ${turno.inicio} el grupo estará entrando en pista con su entrenador.\n`;
+    mensaje +=
+      'Si alguno llegáis tarde, avisad en este número: Jose +34 647 027 692';
+
+    abrirPrevisualizacionWhatsapp(
+      `WhatsApp padres Ocio · ${dia} ${turno.inicio}-${turno.fin}`,
+      mensaje
+    );
+  }
+
+  function avisoEvolucionAlumnoOcio(
+    alumnoOcio: OcioAlumnoApp,
+    grupoActual: OcioGrupoApp
+  ) {
+    const resumen = alumnos.find(
+      (registro) => registro.alumno_id === alumnoOcio.alumno_id
+    );
+
+    const nivelActual =
+      resumen?.nivel_actual ||
+      resumen?.ultimo_nivel_reportado ||
+      resumen?.nivel_estimado ||
+      alumnoOcio.nivel_usado ||
+      alumnoOcio.nivel ||
+      '';
+
+    if (!nivelActual) return null;
+
+    const compatibilidadActual = compatibilidadFueraPlazoAgenda(
+      nivelActual,
+      nivelesGrupoEstableOcio(grupoActual)
+    );
+
+    if (compatibilidadActual.estado === 'RECOMENDADO') return null;
+
+    const alternativas = ocioGrupos
+      .filter(
+        (grupo) =>
+          grupo.grupo_id !== grupoActual.grupo_id &&
+          Boolean(grupo.activo)
+      )
+      .map((grupo) =>
+        evaluarEncajeGrupoEstableOcio(grupo, nivelActual, false)
+      )
+      .filter((opcion) => opcion.estado === 'RECOMENDADO')
+      .sort((a, b) => b.score - a.score);
+
+    const mejor = alternativas[0];
+
+    return {
+      alumno: alumnoOcio.alumno,
+      nivelActual,
+      estadoActual: compatibilidadActual.estado,
+      grupoSugerido: mejor?.grupo || null,
+      motivo: compatibilidadActual.motivo,
+    };
+  }
+
+  function copiarWhatsappOcioGrupo(grupo: OcioGrupoApp) {
+    const horaInicio = (grupo.hora_inicio || '').slice(0, 5);
+    const horaFin = (grupo.hora_fin || '').slice(0, 5);
+    const alumnosGrupo = (grupo.alumnos_lista || '')
+      .split(' || ')
+      .map((linea) => nombreAlumnoWhatsappPapis(linea))
+      .filter(Boolean);
+
+    let mensaje = `*${(grupo.dia_semana || '').toUpperCase()} · OCIO* ⛷️💨\n`;
+    mensaje += `⏰ horario de ${horaInicio} a ${horaFin} MSZ\n\n`;
+    mensaje += '⛷️ ENTRENADOR\n';
+    mensaje += `📍${grupo.punto_encuentro || '-'}\n`;
+    mensaje += '👶\n';
+    mensaje += `${alumnosGrupo.join('\n')}\n\n`;
+    mensaje += '¡Nos vemos en MSZ equipo!\n';
+    mensaje += '⚠️Papis importante!\n';
+    mensaje += `Como la logística con los peques se puede complicar un poco, os recomiendo estar 20-25 minutos antes de la hora de entrada ya que a las ${horaInicio} el grupo estará entrando en pista con su entrenador.\n`;
+    mensaje +=
+      'Si alguno llegáis tarde, avisad en este número: Jose +34 647 027 692';
+
+    abrirPrevisualizacionWhatsapp(
+      `WhatsApp padres Ocio · ${
+        grupo.dia_semana || ''
+      } ${horaInicio}-${horaFin}`,
+      mensaje
+    );
+  }
+
+  function offsetDiaOcio(dia: string | null | undefined) {
+    const normalizado = (dia || '').toLowerCase();
+    if (normalizado.includes('miércoles') || normalizado.includes('miercoles'))
+      return 2;
+    if (normalizado.includes('jueves')) return 3;
+    if (normalizado.includes('viernes')) return 4;
+    if (normalizado.includes('sábado') || normalizado.includes('sabado'))
+      return 5;
+    if (normalizado.includes('domingo')) return 6;
+    return 3;
+  }
+
+  const mesesBaseAgenda = mesesTemporadaAgenda(anioInicioTemporadaAgenda);
+  const mesesAgenda = mesesBaseAgenda;
+  const opcionesTemporadaAgenda = Array.from(
+    new Set(
+      Array.from({ length: 12 }, (_, indice) => 2026 + indice).concat([
+        temporadaInicioDefectoAgenda,
+      ])
+    )
+  )
+    .filter((anio) => anio >= 2026)
+    .sort((a, b) => a - b);
+
+  const hoyAgendaClave = claveFechaAgenda(new Date());
+  const mesActualAgenda = claveMesDesdeFecha(hoyAgendaClave);
+
+  const mesAgendaActivo =
+    mesAgenda && mesesAgenda.includes(mesAgenda)
+      ? mesAgenda
+      : mesesAgenda.includes(mesActualAgenda)
+      ? mesActualAgenda
+      : mesesAgenda[0] || '';
+
+  function semanasDelMesAgenda(claveMes: string) {
+    if (!claveMes) return [];
+
+    const [anio, mes] = claveMes.split('-').map(Number);
+    const primeroMes = new Date(anio, mes - 1, 1);
+    const ultimoMes = new Date(anio, mes, 0);
+    const semanas: string[] = [];
+
+    // Bloques semanales reales: siempre lunes-domingo.
+    // Si el mes empieza en martes/miércoles/etc., la primera semana empieza el lunes anterior.
+    // Ejemplo temporada 2026/2027: septiembre empieza con Semana 31 ago - 06 sept.
+    const inicio = crearFechaAgenda(
+      inicioSemanaAgenda(claveFechaAgenda(primeroMes))
+    );
+
+    while (inicio <= ultimoMes) {
+      semanas.push(claveFechaAgenda(inicio));
+      inicio.setDate(inicio.getDate() + 7);
+    }
+
+    return semanas;
+  }
+
+  const semanasAgenda = semanasDelMesAgenda(mesAgendaActivo);
+
+  const semanaActualAgenda = inicioSemanaAgenda(hoyAgendaClave);
+
+  const semanaAgendaActiva =
+    semanaAgendaInicio && semanasAgenda.includes(semanaAgendaInicio)
+      ? semanaAgendaInicio
+      : semanasAgenda.includes(semanaActualAgenda)
+      ? semanaActualAgenda
+      : semanasAgenda[0] || '';
+
+  const diasSemanaAgenda = semanaAgendaActiva
+    ? diasTrabajoSemanaAgenda(semanaAgendaActiva)
+    : [];
+
+  function cambiarSemanaTrabajoApp(nuevaSemana: string) {
+    setSemanaAgendaInicio(nuevaSemana);
+    setAgendaDiaCompactoActivo('');
+    setAgendaSesionActivaId('');
+    setAgendaFormularioAbierto(false);
+  }
+
+  useEffect(() => {
+    let cancelado = false;
+
+    async function cargarEditorSemana() {
+      setDiaDisponibilidadEditorAbierto(null);
+      setTurnoResumenDisponibilidadAbierto(null);
+      setPublicadaAtDisponibilidadEditor(null);
+      setVersionPublicadaDisponibilidadEditor(0);
+      setEstadoServidorDisponibilidadEditor('sin_preparar');
+
+      if (!semanaAgendaActiva) {
+        setBorradorDisponibilidadEditor(null);
+        return;
+      }
+
+      let borradorLocal: BorradorDisponibilidadEditor | null = null;
+      try {
+        const guardado = window.localStorage.getItem(
+          claveStorageDisponibilidadEditor(semanaAgendaActiva)
+        );
+        if (guardado) {
+          const borrador = JSON.parse(guardado) as BorradorDisponibilidadEditor;
+          if (
+            borrador?.version === 1 &&
+            borrador.semana_inicio === semanaAgendaActiva &&
+            Array.isArray(borrador.dias)
+          ) {
+            borradorLocal = normalizarBorradorDisponibilidadEditor(borrador);
+          }
+        }
+      } catch {
+        borradorLocal = null;
+      }
+
+      try {
+        const respuesta =
+          await ejecutarFuncionAuthJson<RespuestaDisponibilidadEditorServidor>(
+            'obtener_disponibilidad_semana_editor_app',
+            { p_semana_inicio: semanaAgendaActiva }
+          );
+
+        if (cancelado) return;
+
+        if (respuesta?.existe) {
+          const borradorServidor =
+            normalizarBorradorDisponibilidadEditorServidor(respuesta);
+          setBorradorDisponibilidadEditor(borradorServidor);
+          setEstadoServidorDisponibilidadEditor(respuesta.estado);
+          setPublicadaAtDisponibilidadEditor(respuesta.publicada_at || null);
+          setVersionPublicadaDisponibilidadEditor(
+            Number(respuesta.version_publicada || 0)
+          );
+          setMensajeDisponibilidadEditor(
+            respuesta.estado === 'publicado'
+              ? 'Semana publicada recuperada desde Supabase.'
+              : 'Borrador recuperado desde Supabase.'
+          );
+          window.localStorage.setItem(
+            claveStorageDisponibilidadEditor(semanaAgendaActiva),
+            JSON.stringify(borradorServidor)
+          );
+          return;
+        }
+      } catch (err) {
+        if (cancelado) return;
+        const mensaje = err instanceof Error ? err.message : '';
+        setMensajeDisponibilidadEditor(
+          borradorLocal
+            ? `Borrador local recuperado. Supabase todavía no está conectado${
+                mensaje ? `: ${mensaje}` : '.'
+              }`
+            : 'No se pudo conectar con Supabase. Se ha preparado una copia local sin publicar.'
+        );
+      }
+
+      if (cancelado) return;
+      setBorradorDisponibilidadEditor(
+        borradorLocal || crearBorradorDisponibilidadEditor(semanaAgendaActiva)
+      );
+      if (!borradorLocal) {
+        setMensajeDisponibilidadEditor((actual) =>
+          actual || 'Plantilla semanal preparada.'
+        );
+      }
+    }
+
+    void cargarEditorSemana();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [semanaAgendaActiva]);
+
+  function actualizarBorradorDisponibilidadEditor(
+    actualizar: (actual: BorradorDisponibilidadEditor) => BorradorDisponibilidadEditor
+  ) {
+    setBorradorDisponibilidadEditor((actual) =>
+      actual
+        ? {
+            ...actualizar(actual),
+            actualizado_en: null,
+            estado: 'Borrador',
+          }
+        : actual
+    );
+    setMensajeDisponibilidadEditor('Cambios sin guardar.');
+  }
+
+  function activarDiaDisponibilidadEditor(fecha: string, activo: boolean) {
+    actualizarBorradorDisponibilidadEditor((actual) => ({
+      ...actual,
+      dias: actual.dias.map((dia) => {
+        if (dia.fecha !== fecha) return dia;
+        const turnos =
+          activo && dia.turnos.length === 0
+            ? [turnoInicialDisponibilidadEditor(dia.nombre)]
+            : dia.turnos;
+        return { ...dia, activo, turnos };
+      }),
+    }));
+
+    setDiaDisponibilidadEditorAbierto((actual) =>
+      activo ? fecha : actual === fecha ? null : actual
+    );
+  }
+
+  function añadirTurnoDisponibilidadEditor(fecha: string) {
+    actualizarBorradorDisponibilidadEditor((actual) => ({
+      ...actual,
+      dias: actual.dias.map((dia) => {
+        if (dia.fecha !== fecha) return dia;
+        if (!diaPermiteVariosTurnosDisponibilidadEditor(dia.nombre)) {
+          return {
+            ...dia,
+            activo: true,
+            turnos:
+              dia.turnos.length > 0
+                ? dia.turnos.slice(0, 1)
+                : [turnoInicialDisponibilidadEditor(dia.nombre)],
+          };
+        }
+
+        return {
+          ...dia,
+          activo: true,
+          turnos: [
+            ...dia.turnos,
+            turnoInicialDisponibilidadEditor(dia.nombre),
+          ],
+        };
+      }),
+    }));
+    setDiaDisponibilidadEditorAbierto(fecha);
+  }
+
+  function actualizarTurnoDisponibilidadEditor(
+    fecha: string,
+    turnoId: string,
+    cambios: Partial<TurnoDisponibilidadEditor>
+  ) {
+    actualizarBorradorDisponibilidadEditor((actual) => ({
+      ...actual,
+      dias: actual.dias.map((dia) =>
+        dia.fecha === fecha
+          ? {
+              ...dia,
+              turnos: dia.turnos.map((turno) =>
+                turno.id === turnoId ? { ...turno, ...cambios } : turno
+              ),
+            }
+          : dia
+      ),
+    }));
+  }
+
+  function alternarModalidadDisponibilidadEditor(
+    fecha: string,
+    turnoId: string,
+    modalidad: ModalidadDisponibilidadEditor
+  ) {
+    const dia = borradorDisponibilidadEditor?.dias.find(
+      (item) => item.fecha === fecha
+    );
+    const turno = dia?.turnos.find((item) => item.id === turnoId);
+    if (!turno) return;
+
+    const modalidades = turno.modalidades.includes(modalidad)
+      ? turno.modalidades.filter((item) => item !== modalidad)
+      : [...turno.modalidades, modalidad];
+
+    actualizarTurnoDisponibilidadEditor(fecha, turnoId, {
+      modalidades: modalidades.length > 0 ? modalidades : [modalidad],
+    });
+  }
+
+  function duplicarTurnoDisponibilidadEditor(
+    fecha: string,
+    turnoId: string
+  ) {
+    actualizarBorradorDisponibilidadEditor((actual) => ({
+      ...actual,
+      dias: actual.dias.map((dia) => {
+        if (dia.fecha !== fecha) return dia;
+        if (!diaPermiteVariosTurnosDisponibilidadEditor(dia.nombre)) {
+          return { ...dia, turnos: dia.turnos.slice(0, 1) };
+        }
+
+        const indice = dia.turnos.findIndex((turno) => turno.id === turnoId);
+        if (indice < 0) return dia;
+        const copia = {
+          ...dia.turnos[indice],
+          id: idTurnoDisponibilidadEditor(),
+        };
+        const turnos = [...dia.turnos];
+        turnos.splice(indice + 1, 0, copia);
+        return { ...dia, turnos };
+      }),
+    }));
+  }
+
+  function eliminarTurnoDisponibilidadEditor(
+    fecha: string,
+    turnoId: string
+  ) {
+    actualizarBorradorDisponibilidadEditor((actual) => ({
+      ...actual,
+      dias: actual.dias.map((dia) => {
+        if (dia.fecha !== fecha) return dia;
+        if (!diaPermiteVariosTurnosDisponibilidadEditor(dia.nombre)) {
+          return dia;
+        }
+
+        const turnos = dia.turnos.filter((turno) => turno.id !== turnoId);
+        return { ...dia, turnos, activo: turnos.length > 0 && dia.activo };
+      }),
+    }));
+  }
+
+  function validarBorradorDisponibilidadEditor(
+    borrador: BorradorDisponibilidadEditor
+  ): string | null {
+    const diasActivos = borrador.dias.filter((dia) => dia.activo);
+    if (diasActivos.length === 0) {
+      return 'Activa al menos un día antes de guardar.';
+    }
+
+    for (const dia of diasActivos) {
+      if (dia.turnos.length === 0) {
+        return `${capitalizarPrimera(dia.nombre)} está activo pero no tiene turnos.`;
+      }
+
+      if (
+        !diaPermiteVariosTurnosDisponibilidadEditor(dia.nombre) &&
+        dia.turnos.length > 1
+      ) {
+        return `${capitalizarPrimera(
+          dia.nombre
+        )} solo puede tener un turno.`;
+      }
+
+      for (const turno of dia.turnos) {
+        if (!turno.hora_inicio || !turno.hora_fin) {
+          return `Completa el horario de ${dia.nombre}.`;
+        }
+        if (turno.hora_fin <= turno.hora_inicio) {
+          return `La hora final de ${dia.nombre} debe ser posterior a la inicial.`;
+        }
+        if (turno.modalidades.length === 0) {
+          return `Selecciona al menos una modalidad en ${dia.nombre}.`;
+        }
+      }
+    }
+
+    if (!borrador.fecha_limite) {
+      return 'La fecha límite para responder es obligatoria.';
+    }
+
+    return null;
+  }
+
+  async function guardarBorradorDisponibilidadEditor(): Promise<boolean> {
+    if (!borradorDisponibilidadEditor || guardandoDisponibilidadEditor) {
+      return false;
+    }
+
+    const normalizado = normalizarBorradorDisponibilidadEditor(
+      borradorDisponibilidadEditor
+    );
+    const errorValidacion = validarBorradorDisponibilidadEditor(normalizado);
+    if (errorValidacion) {
+      alert(errorValidacion);
+      return false;
+    }
+
+    setGuardandoDisponibilidadEditor(true);
+    setMensajeDisponibilidadEditor('Guardando borrador en Supabase...');
+
+    try {
+      const respuesta =
+        await ejecutarFuncionAuthJson<RespuestaDisponibilidadEditorServidor>(
+          'guardar_borrador_disponibilidad_semana_editor_app',
+          {
+            p_semana_inicio: normalizado.semana_inicio,
+            p_fecha_limite: normalizado.fecha_limite,
+            p_dias: normalizado.dias,
+          }
+        );
+
+      const guardado = normalizarBorradorDisponibilidadEditorServidor(
+        respuesta
+      );
+      window.localStorage.setItem(
+        claveStorageDisponibilidadEditor(guardado.semana_inicio),
+        JSON.stringify(guardado)
+      );
+      setBorradorDisponibilidadEditor(guardado);
+      setEstadoServidorDisponibilidadEditor('borrador');
+      setPublicadaAtDisponibilidadEditor(respuesta.publicada_at || null);
+      setVersionPublicadaDisponibilidadEditor(
+        Number(respuesta.version_publicada || 0)
+      );
+      setMensajeDisponibilidadEditor(
+        'Borrador guardado en Supabase y protegido en este navegador.'
+      );
+      return true;
+    } catch (err) {
+      const mensaje =
+        err instanceof Error ? err.message : 'No se pudo guardar el borrador.';
+      setMensajeDisponibilidadEditor(`Error: ${mensaje}`);
+      alert(
+        `${mensaje}
+
+Comprueba tu conexión y que sigues con la sesión iniciada.`
+      );
+      return false;
+    } finally {
+      setGuardandoDisponibilidadEditor(false);
+    }
+  }
+
+  async function publicarDisponibilidadEditor() {
+    if (!borradorDisponibilidadEditor || publicandoDisponibilidadEditor) return;
+
+    const errorValidacion = validarBorradorDisponibilidadEditor(
+      borradorDisponibilidadEditor
+    );
+    if (errorValidacion) {
+      alert(errorValidacion);
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Publicar la disponibilidad de la semana ${rangoSemanaAgenda(
+        borradorDisponibilidadEditor.semana_inicio
+      )}?
+
+${resumenBorradorDisponibilidadEditor.dias} días · ${
+        resumenBorradorDisponibilidadEditor.turnos
+      } turnos
+Límite: ${formatearFechaHoraDisponibilidadEditor(
+        borradorDisponibilidadEditor.fecha_limite
+      )}
+
+La Vista entrenador recibirá esta publicación inmediatamente.${
+        versionPublicadaDisponibilidadEditor > 0
+          ? '\n\nATENCIÓN: al volver a publicar se reiniciarán las respuestas de esta semana para que todos confirmen de nuevo los horarios.'
+          : ''
+      }`
+    );
+    if (!confirmar) return;
+
+    setPublicandoDisponibilidadEditor(true);
+    setMensajeDisponibilidadEditor('Guardando y publicando semana...');
+
+    try {
+      const guardado = await guardarBorradorDisponibilidadEditor();
+      if (!guardado) return;
+
+      const respuesta =
+        await ejecutarFuncionAuthJson<RespuestaDisponibilidadEditorServidor>(
+          'publicar_disponibilidad_semana_editor_app',
+          { p_semana_inicio: borradorDisponibilidadEditor.semana_inicio }
+        );
+
+      const publicado = normalizarBorradorDisponibilidadEditorServidor(
+        respuesta
+      );
+      window.localStorage.setItem(
+        claveStorageDisponibilidadEditor(publicado.semana_inicio),
+        JSON.stringify(publicado)
+      );
+      setBorradorDisponibilidadEditor(publicado);
+      setEstadoServidorDisponibilidadEditor('publicado');
+      setPublicadaAtDisponibilidadEditor(respuesta.publicada_at || null);
+      setVersionPublicadaDisponibilidadEditor(
+        Number(respuesta.version_publicada || 1)
+      );
+      setMensajeDisponibilidadEditor(
+        'Disponibilidad publicada y enviada a la Vista entrenador.'
+      );
+      setVistaPreviaDisponibilidadEditor(false);
+      await cargarDisponibilidad();
+      alert(
+        'Disponibilidad publicada. Los entrenadores ya pueden responder desde su panel.'
+      );
+    } catch (err) {
+      const mensaje =
+        err instanceof Error ? err.message : 'No se pudo publicar la semana.';
+      setMensajeDisponibilidadEditor(`Error publicando: ${mensaje}`);
+      alert(mensaje);
+    } finally {
+      setPublicandoDisponibilidadEditor(false);
+    }
+  }
+
+  async function retirarDisponibilidadEditor() {
+    if (
+      !borradorDisponibilidadEditor ||
+      retirandoDisponibilidadEditor ||
+      estadoServidorDisponibilidadEditor !== 'publicado'
+    ) {
+      return;
+    }
+
+    const semanaInicio = borradorDisponibilidadEditor.semana_inicio;
+    const confirmar = window.confirm(
+      `¿Retirar completamente la disponibilidad de la semana ${rangoSemanaAgenda(
+        semanaInicio
+      )}?
+
+Los entrenadores dejarán de verla inmediatamente y se borrarán sus respuestas de disponibilidad de esa semana.
+
+NO se borrarán grupos, reportes, asistencia ni cobros.`
+    );
+
+    if (!confirmar) return;
+
+    const confirmarFinal = window.confirm(
+      'Confirmación final: esta acción elimina la publicación, sus turnos y las respuestas recibidas. ¿Continuar?'
+    );
+
+    if (!confirmarFinal) return;
+
+    setRetirandoDisponibilidadEditor(true);
+    setMensajeDisponibilidadEditor('Retirando disponibilidad publicada...');
+
+    try {
+      await ejecutarFuncionAuthJson<{ eliminado: boolean }>(
+        'retirar_disponibilidad_semana_editor_app',
+        { p_semana_inicio: semanaInicio }
+      );
+
+      window.localStorage.removeItem(
+        claveStorageDisponibilidadEditor(semanaInicio)
+      );
+
+      const plantillaLimpia =
+        crearBorradorDisponibilidadEditor(semanaInicio);
+
+      setBorradorDisponibilidadEditor(plantillaLimpia);
+      setEstadoServidorDisponibilidadEditor('sin_preparar');
+      setPublicadaAtDisponibilidadEditor(null);
+      setVersionPublicadaDisponibilidadEditor(0);
+      setDiaDisponibilidadEditorAbierto(null);
+      setTurnoResumenDisponibilidadAbierto(null);
+      setVistaPreviaDisponibilidadEditor(false);
+      setMensajeDisponibilidadEditor(
+        'Disponibilidad retirada. La semana vuelve a estar sin publicar.'
+      );
+
+      await cargarDisponibilidad(semanaInicio);
+
+      alert(
+        'Disponibilidad retirada. Los entrenadores ya no verán esa publicación.'
+      );
+    } catch (err) {
+      const mensaje =
+        err instanceof Error
+          ? err.message
+          : 'No se pudo retirar la disponibilidad.';
+      setMensajeDisponibilidadEditor(`Error retirando: ${mensaje}`);
+      alert(mensaje);
+    } finally {
+      setRetirandoDisponibilidadEditor(false);
+    }
+  }
+
+  function restaurarPlantillaDisponibilidadEditor() {
+    if (!semanaAgendaActiva) return;
+    const confirmar = window.confirm(
+      '¿Restaurar la plantilla habitual? Se perderán los cambios no guardados de esta semana.'
+    );
+    if (!confirmar) return;
+    const plantilla = crearBorradorDisponibilidadEditor(semanaAgendaActiva);
+    setBorradorDisponibilidadEditor(plantilla);
+    setDiaDisponibilidadEditorAbierto(null);
+    setMensajeDisponibilidadEditor('Plantilla habitual restaurada.');
+  }
+
+  const resumenBorradorDisponibilidadEditor =
+    borradorDisponibilidadEditor?.dias.reduce(
+      (resumen, dia) => {
+        if (!dia.activo) return resumen;
+        resumen.dias += 1;
+        resumen.turnos += dia.turnos.length;
+        return resumen;
+      },
+      { dias: 0, turnos: 0 }
+    ) || { dias: 0, turnos: 0 };
+
+  function fechaGrupoOcioSemana(grupo: OcioGrupoApp) {
+    const semana = semanaAgendaActiva || semanaActualAgenda;
+    if (!semana) return '';
+    const fecha = crearFechaAgenda(semana);
+    fecha.setDate(fecha.getDate() + offsetDiaOcio(grupo.dia_semana));
+    return claveFechaAgenda(fecha);
+  }
+
+  function lunesSemanaOcioActiva() {
+    return semanaAgendaActiva || semanaActualAgenda || '';
+  }
+
+  function domingoSemanaOcioActiva() {
+    const semana = lunesSemanaOcioActiva();
+    if (!semana) return '';
+    const fecha = crearFechaAgenda(semana);
+    fecha.setDate(fecha.getDate() + 6);
+    return claveFechaAgenda(fecha);
+  }
+
+  function cambiosOcioSemanaActiva() {
+    const inicio = lunesSemanaOcioActiva();
+    const fin = domingoSemanaOcioActiva();
+    if (!inicio || !fin) return [];
+    return ocioCambiosPuntuales.filter(
+      (cambio) =>
+        cambio.fecha >= inicio &&
+        cambio.fecha <= fin &&
+        (cambio.estado || 'confirmada') !== 'cancelada'
+    );
+  }
+
+  function cambioEntradaOcio(
+    alumnoId: string,
+    grupoId: string | null | undefined
+  ) {
+    if (!grupoId) return null;
+    return (
+      cambiosOcioSemanaActiva().find(
+        (cambio) =>
+          cambio.alumno_id === alumnoId && cambio.grupo_destino_id === grupoId
+      ) || null
+    );
+  }
+
+  function cambioSalidaOcio(
+    alumnoId: string,
+    grupoId: string | null | undefined
+  ) {
+    if (!grupoId) return null;
+    return (
+      cambiosOcioSemanaActiva().find(
+        (cambio) =>
+          cambio.alumno_id === alumnoId && cambio.grupo_origen_id === grupoId
+      ) || null
+    );
+  }
+
+  function alumnosGrupoOcioEstable(grupoId: string | null | undefined) {
+    if (!grupoId) return [];
+
+    const cambios = cambiosOcioSemanaActiva();
+    const salientes = new Set(
+      cambios
+        .filter((cambio) => cambio.grupo_origen_id === grupoId)
+        .map((cambio) => cambio.alumno_id)
+    );
+    const entrantes = new Set(
+      cambios
+        .filter((cambio) => cambio.grupo_destino_id === grupoId)
+        .map((cambio) => cambio.alumno_id)
+    );
+
+    const mapa = new Map<string, OcioAlumnoApp>();
+
+    ocioAlumnos
+      .filter(
+        (alumno) =>
+          alumno.grupo_id === grupoId && !salientes.has(alumno.alumno_id)
+      )
+      .forEach((alumno) => mapa.set(alumno.alumno_id, alumno));
+
+    ocioAlumnos
+      .filter((alumno) => entrantes.has(alumno.alumno_id))
+      .forEach((alumno) => mapa.set(alumno.alumno_id, alumno));
+
+    return Array.from(mapa.values()).sort((a, b) =>
+      a.alumno.localeCompare(b.alumno)
+    );
+  }
+
+  function claveAsistenciaOcioSemana(alumnoId: string) {
+    return `${
+      semanaAgendaActiva || semanaActualAgenda || 'sin_semana'
+    }__${alumnoId}`;
+  }
+
+  function alumnoVieneOcioSemana(alumnoId: string) {
+    const clave = claveAsistenciaOcioSemana(alumnoId);
+    return ocioSemanaAsistencia[clave] !== false;
+  }
+
+  function cambiarAsistenciaOcioSemana(alumnoId: string, viene: boolean) {
+    const clave = claveAsistenciaOcioSemana(alumnoId);
+    setOcioSemanaAsistencia((anterior) => ({ ...anterior, [clave]: viene }));
+  }
+
+  function edadOcioAlumnoEnFecha(alumno: OcioAlumnoApp, fechaIso: string) {
+    if (!alumno.fecha_nacimiento || !fechaIso) return null;
+    const nacimiento = crearFechaAgenda(alumno.fecha_nacimiento);
+    const fecha = crearFechaAgenda(fechaIso);
+    let edad = fecha.getFullYear() - nacimiento.getFullYear();
+    const mes = fecha.getMonth() - nacimiento.getMonth();
+    if (mes < 0 || (mes === 0 && fecha.getDate() < nacimiento.getDate()))
+      edad -= 1;
+    return edad;
+  }
+
+  function categoriaOcioGrupo(grupo: OcioGrupoApp) {
+    const fecha = fechaGrupoOcioSemana(grupo);
+    const alumnosGrupo = alumnosGrupoOcioEstable(grupo.grupo_id);
+    const edades = alumnosGrupo
+      .map((alumno) => edadOcioAlumnoEnFecha(alumno, fecha))
+      .filter((edad): edad is number => typeof edad === 'number');
+
+    if (edades.length === 0) return 'Ocio';
+    const media =
+      edades.reduce((total, edad) => total + edad, 0) / edades.length;
+    return media >= 7 ? 'Mayores' : 'Pequeños';
+  }
+
+  function nombreGrupoSemanalOcio(grupo: OcioGrupoApp) {
+    const dia = (grupo.dia_semana || 'Ocio').toUpperCase();
+    const nombreEstable =
+      `${grupo.nombre_grupo || ''}`.trim() || 'Grupo';
+
+    return `OCIO ${dia} · ${nombreEstable}`;
+  }
+
+  function trabajoDiarioBaseOcioSemana(grupo: OcioGrupoApp) {
+    const alumnosGrupo = alumnosGrupoOcioEstable(grupo.grupo_id).filter(
+      (alumno) => alumnoVieneOcioSemana(alumno.alumno_id)
+    );
+
+    if (alumnosGrupo.length === 0) return '';
+
+    const niveles = alumnosGrupo
+      .map((alumno) => alumno.nivel_usado || alumno.nivel || '')
+      .filter(Boolean);
+
+    const observaciones = observacionesAutomaticasGrupoOcio(alumnosGrupo);
+
+    const alumnosContexto = alumnosGrupo.map((alumno) =>
+      contextoAlumnoTrabajoDiarioApp(
+        alumno.alumno_id,
+        alumno.alumno,
+        alumno.nivel_usado || alumno.nivel || ''
+      )
+    );
+
+    const trabajosRecientes = trabajosRecientesParaGrupoApp(
+      alumnosGrupo.map((alumno) => alumno.alumno),
+      fechaGrupoOcioSemana(grupo)
+    );
+
+    return trabajoDiarioMSZApp(
+      grupo.nombre_grupo,
+      niveles,
+      grupo.pista || alumnosGrupo[0]?.grupo_pista || 'Pequeña/Grande',
+      observaciones,
+      alumnosContexto,
+      'OCIO',
+      trabajosRecientes
+    );
+  }
+
+  function trabajoDiarioOcioSemana(grupo: OcioGrupoApp) {
+    return trabajoDiarioBaseOcioSemana(grupo);
+  }
+
+  function observacionesBaseOcioSemana(grupo: OcioGrupoApp) {
+    const alumnosGrupo = alumnosGrupoOcioEstable(grupo.grupo_id).filter(
+      (alumno) => alumnoVieneOcioSemana(alumno.alumno_id)
+    );
+
+    if (alumnosGrupo.length === 0) return '';
+
+    return combinarObservacionesGrupoApp(
+      observacionesAutomaticasGrupoOcio(alumnosGrupo),
+      grupo.observaciones || null
+    );
+  }
+
+  function observacionesOcioSemana(grupo: OcioGrupoApp) {
+    return observacionesBaseOcioSemana(grupo);
+  }
+
+  function entrenadorSeleccionadoOcioSemana(grupoId: string) {
+    return ocioSemanaEntrenadores[grupoId] || '';
+  }
+
+  function alumnosListaOcioResultadoDesdeTexto(
+    texto: string | null | undefined
+  ) {
+    if (!texto) return [];
+
+    return texto
+      .split(/\s*\|\|\s*/)
+      .map((linea) => nombreRealAlumnoListadoOperativo(linea))
+      .map((nombre) => nombre.trim())
+      .filter(Boolean);
+  }
+
+  async function cargarResultadosOcioSemanaDesdeSupabase() {
+    const semana = semanaAgendaActiva || semanaActualAgenda;
+    if (!semana) {
+      setOcioSemanaResultados([]);
+      return [];
+    }
+
+    const sesiones = await consultarSupabase<AgendaSesionDirectaApp>(
+      'v_agenda_sesiones_operativa_app',
+      'select=*&order=fecha.asc,hora_inicio.asc'
+    );
+
+    const sesionesOcio = sesiones.filter(
+      (sesion) =>
+        sesion.semana_inicio === semana &&
+        normalizarModalidadAgenda(
+          sesion.modalidad || sesion.modalidad_codigo
+        ) === 'OCIO'
+    );
+
+    const resultados: OcioPrepararResultadoApp[] = [];
+
+    for (const sesion of sesionesOcio) {
+      const grupos = await consultarSupabase<AgendaGrupoSesionApp>(
+        'v_grupos_sesion_operativa_app',
+        `select=*&sesion_id=${encodeURIComponent(
+          `eq.${sesion.sesion_id}`
+        )}&order=nombre_grupo.asc`
+      );
+
+      for (const grupo of grupos) {
+        if (grupo.cancelado) continue;
+
+        resultados.push({
+          grupo_estable: grupo.nombre_grupo || 'Grupo Ocio',
+          fecha: sesion.fecha,
+          hora_inicio: horaCorta(sesion.hora_inicio),
+          hora_fin: horaCorta(sesion.hora_fin),
+          alumnos: Number(grupo.total_alumnos || 0),
+          entrenador: grupo.entrenador || null,
+          estado: grupo.publicado
+            ? 'Publicado'
+            : 'Preparado · pendiente de publicar',
+          sesion_id: sesion.sesion_id,
+          grupo_id: grupo.grupo_id,
+          punto_encuentro: grupo.punto_encuentro || null,
+          publicado: Boolean(grupo.publicado),
+          alumnos_lista: alumnosListaOcioResultadoDesdeTexto(
+            grupo.alumnos_lista
+          ),
+        });
+      }
+    }
+
+    setOcioSemanaResultados(resultados);
+    return resultados;
+  }
+
+  function mensajeWhatsappSemanaOcio() {
+    const semana = semanaAgendaActiva || semanaActualAgenda;
+    if (!semana) return 'Selecciona una semana.';
+
+    const resultadosSemana = [...ocioSemanaResultados]
+      .filter((resultado) => resultado.fecha)
+      .sort((a, b) =>
+        `${a.fecha} ${a.hora_inicio} ${a.grupo_estable}`.localeCompare(
+          `${b.fecha} ${b.hora_inicio} ${b.grupo_estable}`
+        )
+      );
+
+    if (resultadosSemana.length === 0) {
+      return 'Primero prepara los grupos de Ocio de esta semana.';
+    }
+
+    let mensaje = `*OCIO · SEMANA ${rangoSemanaAgenda(semana)}* ⛷️💨\n\n`;
+
+    resultadosSemana.forEach((resultado) => {
+      mensaje += `*${formatearFecha(resultado.fecha)}*\n`;
+      mensaje += `⏰ horario de ${horaCorta(resultado.hora_inicio)} a ${horaCorta(
+        resultado.hora_fin
+      )} MSZ\n\n`;
+      mensaje += `⛷️ ${resultado.entrenador || 'ENTRENADOR PENDIENTE'}\n`;
+      mensaje += `📍${resultado.punto_encuentro || 'PUNTO PENDIENTE'}\n`;
+      mensaje += `👶\n`;
+
+      const nombres = resultado.alumnos_lista || [];
+      if (nombres.length > 0) {
+        nombres.forEach((nombre) => {
+          mensaje += `${nombreAlumnoWhatsappPapis(nombre)}\n`;
+        });
+      } else {
+        mensaje += `${resultado.alumnos} alumnos\n`;
+      }
+      mensaje += '\n';
+    });
+
+    const horaEntrada = horaCorta(resultadosSemana[0].hora_inicio);
+
+    mensaje += '¡Nos vemos en MSZ equipo!\n';
+    mensaje += '⚠️Papis importante!\n';
+    mensaje += `Como la logística con los peques se puede complicar un poco, os recomiendo estar 20-25 minutos antes de la hora de entrada ya que a las ${horaEntrada} el grupo estará entrando en pista con su entrenador.\n`;
+    mensaje +=
+      'Si alguno llegáis tarde, avisad en este número: Jose +34 647 027 692';
+
+    return mensaje;
+  }
+
+  function abrirWhatsappSemanaOcio() {
+    abrirPrevisualizacionWhatsapp(
+      `WhatsApp padres Ocio · semana ${rangoSemanaAgenda(
+        semanaAgendaActiva || semanaActualAgenda
+      )}`,
+      mensajeWhatsappSemanaOcio()
+    );
+  }
+
+  function resultadoPerteneceDiaOcio(
+    resultado: OcioPrepararResultadoApp,
+    dia: 'Jueves' | 'Sábado' | 'Domingo'
+  ) {
+    return ocioGrupos.some((grupo) => {
+      if (
+        textoSinAcentosGrupoApp(grupo.dia_semana) !==
+        textoSinAcentosGrupoApp(dia)
+      ) {
+        return false;
+      }
+
+      const fechaGrupo = fechaGrupoOcioSemana(grupo);
+
+      return (
+        fechaGrupo === resultado.fecha &&
+        horaCorta(grupo.hora_inicio) === horaCorta(resultado.hora_inicio) &&
+        horaCorta(grupo.hora_fin) === horaCorta(resultado.hora_fin)
+      );
+    });
+  }
+
+  function gruposOcioDiaSemana(
+    dia: 'Jueves' | 'Sábado' | 'Domingo'
+  ) {
+    return ocioGrupos.filter(
+      (grupo) =>
+        grupo.activo &&
+        textoSinAcentosGrupoApp(grupo.dia_semana) ===
+          textoSinAcentosGrupoApp(dia)
+    );
+  }
+
+  async function asegurarSesionOcioSemanaCompleta(
+    grupoReferencia: OcioGrupoApp
+  ) {
+    const dia = (grupoReferencia.dia_semana ||
+      ocioTurnoVista) as 'Jueves' | 'Sábado' | 'Domingo';
+    const fecha = fechaGrupoOcioSemana(grupoReferencia);
+    const inicio = horaCorta(grupoReferencia.hora_inicio);
+    const fin = horaCorta(grupoReferencia.hora_fin);
+
+    if (!fecha) {
+      throw new Error('No se ha podido calcular la fecha de Ocio.');
+    }
+
+    const gruposTurno = gruposOcioDiaSemana(dia).filter(
+      (grupo) =>
+        horaCorta(grupo.hora_inicio) === inicio &&
+        horaCorta(grupo.hora_fin) === fin
+    );
+
+    const alumnosTurno = Array.from(
+      new Map(
+        gruposTurno
+          .flatMap((grupo) =>
+            alumnosGrupoOcioEstable(grupo.grupo_id).filter((alumno) =>
+              alumnoVieneOcioSemana(alumno.alumno_id)
+            )
+          )
+          .map((alumno) => [alumno.alumno_id, alumno] as const)
+      ).values()
+    );
+
+    if (alumnosTurno.length === 0) {
+      throw new Error(`No hay alumnos de ${dia} marcados como Viene.`);
+    }
+
+    const listadoCompleto = alumnosTurno
+      .map((alumno) => alumno.alumno)
+      .join('\n');
+
+    const sesionResultado =
+      await ejecutarFuncionConRespuesta<{
+        sesion_id: string;
+        total_detectados: number;
+        total_nuevos: number;
+        total_conocidos: number;
+      }>('crear_sesion_operativa_desde_listado_app', {
+        p_fecha: fecha,
+        p_hora_inicio: inicio,
+        p_hora_fin: fin,
+        p_modalidad_codigo: 'OCIO',
+        p_lugar: 'Madrid SnowZone',
+        p_texto_listado: listadoCompleto,
+      });
+
+    const sesionId = sesionResultado[0]?.sesion_id;
+
+    if (!sesionId) {
+      throw new Error('No se pudo crear/localizar la sesión completa de Ocio.');
+    }
+
+    return {
+      sesionId,
+      fecha,
+      inicio,
+      fin,
+      dia,
+      gruposTurno,
+      alumnosTurno,
+      totalDetectados: Number(
+        sesionResultado[0]?.total_detectados || alumnosTurno.length
+      ),
+    };
+  }
+
+  async function crearGrupoOcioOperativoEnSesion(
+    grupo: OcioGrupoApp,
+    sesionId: string
+  ): Promise<OcioPrepararResultadoApp> {
+    const alumnosPresentes = alumnosGrupoOcioEstable(grupo.grupo_id).filter(
+      (alumno) => alumnoVieneOcioSemana(alumno.alumno_id)
+    );
+
+    if (alumnosPresentes.length === 0) {
+      throw new Error(`No hay alumnos marcados como Viene en ${grupo.nombre_grupo}.`);
+    }
+
+    const nombrePreparado = nombreGrupoSemanalOcio(grupo);
+
+    const gruposExistentes = await consultarSupabase<AgendaGrupoSesionApp>(
+      'v_grupos_sesion_operativa_app',
+      `select=*&sesion_id=${encodeURIComponent(
+        `eq.${sesionId}`
+      )}&order=nombre_grupo.asc`
+    );
+
+    const grupoAnterior = gruposExistentes.find(
+      (item) => item.nombre_grupo === nombrePreparado
+    );
+
+    if (grupoAnterior?.grupo_id) {
+      await ejecutarFuncion('borrar_grupo_sesion_operativa_app', {
+        p_grupo_id: grupoAnterior.grupo_id,
+      });
+    }
+
+    const grupoId = await ejecutarFuncionAuthJson<string>(
+      'crear_grupo_sesion_operativa_app',
+      {
+        p_sesion_id: sesionId,
+        p_nombre_grupo: nombrePreparado,
+        p_nivel_grupo:
+          grupo.nivel_grupo ||
+          alumnosPresentes[0]?.nivel_usado ||
+          'Ocio',
+        p_pista: grupo.pista || null,
+        p_punto_encuentro: null,
+        p_trabajo_diario: trabajoDiarioOcioSemana(grupo),
+        p_observaciones_importantes: observacionesOcioSemana(grupo),
+        p_entrenador_id: null,
+        p_alumnos_ids: alumnosPresentes.map((alumno) => alumno.alumno_id),
+        p_publicado: false,
+      }
+    );
+
+    if (!grupoId) {
+      throw new Error(`No se pudo crear ${nombrePreparado}.`);
+    }
+
+    const fecha = fechaGrupoOcioSemana(grupo);
+
+    return {
+      grupo_estable: nombrePreparado,
+      fecha,
+      hora_inicio: horaCorta(grupo.hora_inicio),
+      hora_fin: horaCorta(grupo.hora_fin),
+      alumnos: alumnosPresentes.length,
+      entrenador: null,
+      estado: 'Creado como pendiente de entrenador.',
+      sesion_id: sesionId,
+      grupo_id: grupoId,
+      punto_encuentro: null,
+      publicado: false,
+      alumnos_lista: alumnosPresentes.map((alumno) => alumno.alumno),
+    };
+  }
+
+  async function prepararGrupoOcioSemana(grupo: OcioGrupoApp) {
+    setCargando(true);
+    setError('');
+
+    try {
+      const sesion = await asegurarSesionOcioSemanaCompleta(grupo);
+      const resultado = await crearGrupoOcioOperativoEnSesion(
+        grupo,
+        sesion.sesionId
+      );
+
+      await cargarAgendaOperativaDirecta();
+      await cargarResultadosOcioSemanaDesdeSupabase();
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+
+      window.setTimeout(() => {
+        document
+          .getElementById('ocio-grupos-preparados-semana')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 120);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error preparando grupo Ocio semanal'
+      );
+    }
+
+    setCargando(false);
+  }
+
+  async function abrirGrupoOcioEnTrabajoSemanal(
+    resultado: OcioPrepararResultadoApp
+  ) {
+    setCargando(true);
+    setError('');
+
+    try {
+      const sesiones = await consultarSupabase<AgendaSesionDirectaApp>(
+        'v_agenda_sesiones_operativa_app',
+        'select=*&order=fecha.asc,hora_inicio.asc'
+      );
+      setAgendaSesionesDirectas(sesiones);
+
+      const inicioResultado = horaCorta(resultado.hora_inicio);
+      const finResultado = horaCorta(resultado.hora_fin);
+
+      const sesionCorrecta =
+        sesiones.find(
+          (sesion) =>
+            sesion.fecha === resultado.fecha &&
+            horaCorta(sesion.hora_inicio) === inicioResultado &&
+            horaCorta(sesion.hora_fin) === finResultado &&
+            textoSinAcentosGrupoApp(
+              sesion.modalidad_codigo || sesion.modalidad || ''
+            ).includes('ocio')
+        ) ||
+        sesiones.find(
+          (sesion) =>
+            sesion.fecha === resultado.fecha &&
+            horaCorta(sesion.hora_inicio) === inicioResultado &&
+            horaCorta(sesion.hora_fin) === finResultado
+        );
+
+      const sesionId = sesionCorrecta?.sesion_id || resultado.sesion_id;
+
+      if (!sesionId) {
+        throw new Error(
+          'No he encontrado la sesión de Ocio correspondiente a esa fecha y horario.'
+        );
+      }
+
+      setPantalla('agenda');
+      setAgendaSesionActivaId(sesionId);
+      setAgendaFiltroAlumnos('TODOS');
+      setMostrarAlumnoFueraPlazo(false);
+
+      await cargarDetalleSesionAgenda(sesionId);
+
+      window.setTimeout(() => {
+        document
+          .getElementById('agenda-sesion-abierta')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'No se pudo abrir el grupo de Ocio.'
+      );
+    }
+
+    setCargando(false);
+  }
+
+  async function deshacerPreparacionOcio(
+    resultado: OcioPrepararResultadoApp
+  ) {
+    const confirmar = window.confirm(
+      `¿DESHACER la preparación de Ocio del ${formatearFecha(
+        resultado.fecha
+      )} · ${horaCorta(resultado.hora_inicio)}–${horaCorta(
+        resultado.hora_fin
+      )}?\n\nSe eliminarán únicamente los grupos operativos de ese turno. Los grupos estables, alumnos habituales y cambios puntuales se conservan.\n\nSi ya existe asistencia real o reportes, Supabase bloqueará la operación.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncionAuthJson<{
+        ok: boolean;
+        sesiones_ocio_borradas: number;
+        grupos_ocio_borrados: number;
+      }>('reiniciar_turno_ocio_semana_app', {
+        p_fecha: resultado.fecha,
+        p_hora_inicio: horaCorta(resultado.hora_inicio),
+        p_hora_fin: horaCorta(resultado.hora_fin),
+      });
+
+      await cargarAgendaOperativaDirecta();
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+      await cargarCobros();
+      await cargarResultadosOcioSemanaDesdeSupabase();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo deshacer la preparación de Ocio.'
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function publicarGrupoOcioPreparado(
+    resultado: OcioPrepararResultadoApp
+  ) {
+    if (!resultado.grupo_id) {
+      setError('Este grupo todavía no tiene un grupo operativo asociado.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Publicar ${resultado.grupo_estable} para ${formatearFecha(
+        resultado.fecha
+      )}?\n\nAl publicarlo aparecerá en la Vista entrenador y seguirá el mismo flujo de confirmación, asistencia, reportes y cobros que Baby.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('publicar_grupo_app', {
+        p_grupo_id: resultado.grupo_id,
+      });
+
+      await cargarAgendaOperativaDirecta();
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+      await cargarCobros();
+
+      await cargarResultadosOcioSemanaDesdeSupabase();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo publicar el grupo de Ocio.'
+      );
+    }
+
+    setCargando(false);
+  }
+
+  async function prepararDiaOcioSemana(
+    dia: 'Jueves' | 'Sábado' | 'Domingo'
+  ) {
+    const gruposConAlumnos = gruposOcioDiaSemana(dia).filter((grupo) =>
+      alumnosGrupoOcioEstable(grupo.grupo_id).some((alumno) =>
+        alumnoVieneOcioSemana(alumno.alumno_id)
+      )
+    );
+
+    if (gruposConAlumnos.length === 0) {
+      setError(`No hay grupos de ${dia} con alumnos marcados como Viene.`);
+      return;
+    }
+
+    const totalAlumnosEsperados = new Set(
+      gruposConAlumnos.flatMap((grupo) =>
+        alumnosGrupoOcioEstable(grupo.grupo_id)
+          .filter((alumno) => alumnoVieneOcioSemana(alumno.alumno_id))
+          .map((alumno) => alumno.alumno_id)
+      )
+    ).size;
+
+    const confirmar = window.confirm(
+      `¿Preparar ${dia}?\n\n` +
+        `${gruposConAlumnos.length} grupos · ${totalAlumnosEsperados} alumnos.\n\n` +
+        `Se sustituirá únicamente el Ocio anterior de ese día y turno.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    let fechaTurno = '';
+    let inicioTurno = '';
+    let finTurno = '';
+
+    try {
+      const grupoReferencia = gruposConAlumnos[0];
+      fechaTurno = fechaGrupoOcioSemana(grupoReferencia);
+      inicioTurno = horaCorta(grupoReferencia.hora_inicio);
+      finTurno = horaCorta(grupoReferencia.hora_fin);
+
+      if (!fechaTurno) {
+        throw new Error(`No se ha podido calcular la fecha de ${dia}.`);
+      }
+
+      await ejecutarFuncionAuthJson<{
+        ok: boolean;
+        sesiones_ocio_borradas: number;
+      }>('reiniciar_turno_ocio_semana_app', {
+        p_fecha: fechaTurno,
+        p_hora_inicio: inicioTurno,
+        p_hora_fin: finTurno,
+      });
+
+      setOcioSemanaResultados((anteriores) =>
+        anteriores.filter(
+          (item) =>
+            !(
+              item.fecha === fechaTurno &&
+              horaCorta(item.hora_inicio) === inicioTurno &&
+              horaCorta(item.hora_fin) === finTurno
+            )
+        )
+      );
+
+      const sesion = await asegurarSesionOcioSemanaCompleta(grupoReferencia);
+
+      const resultados: OcioPrepararResultadoApp[] = [];
+
+      for (const grupo of gruposConAlumnos) {
+        resultados.push(
+          await crearGrupoOcioOperativoEnSesion(grupo, sesion.sesionId)
+        );
+      }
+
+      const gruposCreados = await consultarSupabase<AgendaGrupoSesionApp>(
+        'v_grupos_sesion_operativa_app',
+        `select=*&sesion_id=${encodeURIComponent(
+          `eq.${sesion.sesionId}`
+        )}&order=nombre_grupo.asc`
+      );
+
+      const totalAlumnosCreados = gruposCreados.reduce(
+        (total, grupo) => total + Number(grupo.total_alumnos || 0),
+        0
+      );
+
+      if (
+        gruposCreados.length !== gruposConAlumnos.length ||
+        totalAlumnosCreados !== totalAlumnosEsperados
+      ) {
+        await ejecutarFuncionAuthJson<{
+          ok: boolean;
+          sesiones_ocio_borradas: number;
+        }>('reiniciar_turno_ocio_semana_app', {
+          p_fecha: fechaTurno,
+          p_hora_inicio: inicioTurno,
+          p_hora_fin: finTurno,
+        });
+
+        throw new Error(
+          `Preparación abortada: esperaba ${gruposConAlumnos.length} grupos ` +
+            `y ${totalAlumnosEsperados} alumnos, pero se generaron ` +
+            `${gruposCreados.length} grupos y ${totalAlumnosCreados} alumnos. ` +
+            `Se ha limpiado el intento para no dejar datos incorrectos.`
+        );
+      }
+
+      await cargarAgendaOperativaDirecta();
+      await cargarResultadosOcioSemanaDesdeSupabase();
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+
+      window.setTimeout(() => {
+        document
+          .getElementById('ocio-grupos-preparados-semana')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 120);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : `No se pudo preparar ${dia}.`
+      );
+    }
+
+    setCargando(false);
+  }
+
+  async function prepararTodaSemanaOcio() {
+    for (const dia of ['Jueves', 'Sábado', 'Domingo'] as const) {
+      const gruposDia = gruposOcioDiaSemana(dia).filter((grupo) =>
+        alumnosGrupoOcioEstable(grupo.grupo_id).some((alumno) =>
+          alumnoVieneOcioSemana(alumno.alumno_id)
+        )
+      );
+
+      if (gruposDia.length > 0) {
+        await prepararDiaOcioSemana(dia);
+      }
+    }
+  }
+
+  const cambiosOcioSemana = cambiosOcioSemanaActiva().sort((a, b) =>
+    `${a.fecha} ${a.alumno}`.localeCompare(`${b.fecha} ${b.alumno}`)
+  );
+
+  const ocioAlumnoCambioSeleccionado =
+    ocioAlumnos.find(
+      (alumno) => alumno.alumno_id === ocioCambioForm.alumnoId
+    ) || null;
+
+  function grupoOcioDestinoCambioSeleccionado() {
+    return (
+      ocioGrupos.find(
+        (grupo) => grupo.grupo_id === ocioCambioForm.grupoDestinoId
+      ) || null
+    );
+  }
+
+  function fechaDestinoCambioOcio(grupoDestinoId: string) {
+    const grupo = ocioGrupos.find((item) => item.grupo_id === grupoDestinoId);
+    return grupo
+      ? fechaGrupoOcioSemana(grupo)
+      : ocioCambioForm.fecha || lunesSemanaOcioActiva();
+  }
+
+  function fechaCambioOcioPorDia(
+    dia: '' | 'Jueves' | 'Sábado' | 'Domingo'
+  ) {
+    const lunes = lunesSemanaOcioActiva();
+    if (!lunes || !dia) return '';
+
+    const fecha = crearFechaAgenda(lunes);
+    fecha.setDate(fecha.getDate() + offsetDiaOcio(dia));
+    return claveFechaAgenda(fecha);
+  }
+
+  function gruposDestinoCambioPuntualOcio() {
+    if (!ocioAlumnoCambioSeleccionado || !ocioCambioForm.diaDestino) {
+      return [];
+    }
+
+    return ocioGrupos.filter(
+      (grupo) =>
+        Boolean(grupo.activo) &&
+        esTurnoOficialOcio(grupo) &&
+        grupo.grupo_id !== ocioAlumnoCambioSeleccionado.grupo_id &&
+        textoSinAcentosGrupoApp(grupo.dia_semana || '') ===
+          textoSinAcentosGrupoApp(ocioCambioForm.diaDestino)
+    );
+  }
+
+  function recomendacionesCambioPuntualOcio() {
+    if (!ocioAlumnoCambioSeleccionado || !ocioCambioForm.diaDestino) {
+      return [];
+    }
+
+    return recomendacionesAlumnoSinGrupoOcio(
+      ocioAlumnoCambioSeleccionado,
+      gruposDestinoCambioPuntualOcio()
+    );
+  }
+
+  function limpiarFormularioCambioOcio() {
+    setOcioCambioForm(ocioCambioFormInicial());
+    setMostrarFormularioOcioCambio(false);
+  }
+
+  function abrirFormularioCambioOcio(cambio?: OcioCambioPuntualApp) {
+    if (cambio) {
+      setOcioCambioForm({
+        id: cambio.reubicacion_id,
+        alumnoId: cambio.alumno_id,
+        diaDestino:
+          cambio.destino_dia_semana === 'Jueves' ||
+          cambio.destino_dia_semana === 'Sábado' ||
+          cambio.destino_dia_semana === 'Domingo'
+            ? cambio.destino_dia_semana
+            : '',
+        grupoDestinoId: cambio.grupo_destino_id,
+        fecha: cambio.fecha,
+        motivo: cambio.motivo || '',
+      });
+    } else {
+      setOcioCambioForm({
+        ...ocioCambioFormInicial(),
+        fecha: lunesSemanaOcioActiva(),
+      });
+    }
+    setMostrarFormularioOcioCambio(true);
+  }
+
+  function renderRecomendadorCambioPuntualOcio() {
+    if (!ocioCambioForm.alumnoId) return null;
+
+    if (!ocioCambioForm.diaDestino) {
+      return (
+        <div style={{ ...avisoNeutral, marginTop: 10 }}>
+          Selecciona el día solicitado. Después aparecerá el mismo recomendador
+          de grupos que usamos para una incorporación nueva.
+        </div>
+      );
+    }
+
+    const recomendaciones = recomendacionesCambioPuntualOcio();
+    const fecha = fechaCambioOcioPorDia(ocioCambioForm.diaDestino);
+
+    return (
+      <div style={{ display: 'grid', gap: 9, marginTop: 12 }}>
+        <div style={avisoNeutral}>
+          <strong>{ocioAlumnoCambioSeleccionado?.alumno || 'Alumno'}</strong>
+          {' · '}
+          cambio puntual a <strong>{ocioCambioForm.diaDestino}</strong>
+          {fecha ? ` · ${formatearFecha(fecha)}` : ''}
+          <br />
+          Grupo habitual:{' '}
+          <strong>
+            {ocioAlumnoCambioSeleccionado?.grupo_estable || 'Sin grupo estable'}
+          </strong>
+          {' · '}
+          {ocioAlumnoCambioSeleccionado?.grupo_dia ||
+            ocioAlumnoCambioSeleccionado?.dia_fijo ||
+            '-'}
+        </div>
+
+        {recomendaciones.length === 0 ? (
+          <div
+            style={{
+              ...avisoNeutral,
+              borderColor: '#fecaca',
+              background: '#fff7f7',
+              color: '#991b1b',
+            }}
+          >
+            No hay grupos estables activos para {ocioCambioForm.diaDestino}.
+          </div>
+        ) : (
+          recomendaciones.map((opcion) => {
+            const seleccionado =
+              ocioCambioForm.grupoDestinoId === opcion.grupo.grupo_id;
+            const recomendado = opcion.estado === 'RECOMENDADO';
+            const revisar = opcion.estado === 'REVISAR';
+
+            return (
+              <article
+                key={`cambio-recomendacion-${opcion.grupo.grupo_id}`}
+                style={{
+                  borderRadius: 12,
+                  border: seleccionado
+                    ? '2px solid #2563eb'
+                    : recomendado
+                    ? '1px solid #93c5fd'
+                    : revisar
+                    ? '1px solid #fdba74'
+                    : '1px solid #fecaca',
+                  padding: 11,
+                  background: seleccionado
+                    ? '#eff6ff'
+                    : recomendado
+                    ? '#f8fbff'
+                    : revisar
+                    ? '#fffaf5'
+                    : '#fff7f7',
+                }}
+              >
+                <div style={agendaCabeceraLinea}>
+                  <div style={{ minWidth: 0 }}>
+                    <strong>
+                      {recomendado
+                        ? 'Recomendado'
+                        : revisar
+                        ? 'Revisar'
+                        : 'No encaja'}
+                      {' · '}
+                      {opcion.grupo.nombre_grupo}
+                    </strong>
+                    <div
+                      style={{
+                        marginTop: 4,
+                        color: '#64748b',
+                        fontSize: 13,
+                      }}
+                    >
+                      Nivel {opcion.grupo.nivel_grupo || '-'} ·{' '}
+                      {opcion.grupo.pista || '-'} · {opcion.totalActual} →{' '}
+                      {opcion.totalFinal} niños
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 4,
+                        color: '#64748b',
+                        fontSize: 12,
+                      }}
+                    >
+                      {opcion.motivo}
+                    </div>
+                  </div>
+
+                  {opcion.estado !== 'NO_ENCAJA' && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOcioCambioForm((actual) => ({
+                          ...actual,
+                          grupoDestinoId: opcion.grupo.grupo_id,
+                          fecha:
+                            fechaCambioOcioPorDia(actual.diaDestino) ||
+                            fechaGrupoOcioSemana(opcion.grupo),
+                        }))
+                      }
+                      style={
+                        seleccionado
+                          ? botonPrincipal
+                          : recomendado
+                          ? botonPrincipal
+                          : botonSecundario
+                      }
+                    >
+                      {seleccionado ? 'Grupo elegido' : 'Elegir este grupo'}
+                    </button>

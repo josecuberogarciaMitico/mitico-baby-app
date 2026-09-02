@@ -12000,6 +12000,16 @@ Gracias!`;
       return;
     }
 
+    const alumnosValidacionManual = formGrupoIntensivo.alumnos_ids.map(() => ({
+      nivel_resumen: formGrupoIntensivo.nivel_grupo,
+      pista_recomendada: formGrupoIntensivo.pista,
+    }));
+    const validacionOk = confirmarCrearGrupoConValidacionPedagogicaApp(
+      alumnosValidacionManual,
+      formGrupoIntensivo.nombre_grupo.trim()
+    );
+    if (!validacionOk) return;
+
     const confirmar = window.confirm(
       `¿Preparar ${formGrupoIntensivo.nombre_grupo} para ${
         intensivo.intensivo
@@ -12873,10 +12883,12 @@ Gracias!`;
 
   
   function maxRatioGrupoRevisionIntensivoApp(
-    fila: GrupoEditableIntensivoDiaApp
+    _fila: GrupoEditableIntensivoDiaApp
   ) {
-    const pista = String(fila.pista || '').toLowerCase();
-    return pista.includes('peque') ? 4 : 7;
+    // La revisión entre días puede proponer grupos pedagógicamente más
+    // pequeños, pero el máximo operativo Baby es siempre 7. Si un grupo bajo
+    // queda con 5–7 alumnos, el segundo entrenador se asigna antes de publicar.
+    return 7;
   }
 
   function convertirFilaEditableARecomendacionIntensivoApp(
@@ -13644,6 +13656,13 @@ async function abrirGestionOperativaIntensivoDia(
   ) {
     if (alumnosGrupo.length === 0) return null;
 
+    const validacion = textoValidacionPedagogicaGrupoApp(alumnosGrupo);
+    if (validacion.estado === 'BLOQUEADO') {
+      throw new Error(
+        `${nombreGrupo}: ${validacion.mensajes.join(' ') || 'La composición del grupo está bloqueada.'}`
+      );
+    }
+
     const clave = claveGrupoRecomendado(
       dia.intensivo_dia_id,
       nombreGrupo
@@ -13723,6 +13742,14 @@ async function abrirGestionOperativaIntensivoDia(
         'Primero genera la plantilla y deja el día seleccionado como quieres que empiecen los 4 días.'
       );
       return;
+    }
+
+    for (const grupo of gruposPlantilla) {
+      const validacionOk = confirmarCrearGrupoConValidacionPedagogicaApp(
+        grupo.alumnosGrupo,
+        grupo.nombreGrupo
+      );
+      if (!validacionOk) return;
     }
 
     const alumnosPlantilla = gruposPlantilla.flatMap(
@@ -13896,6 +13923,14 @@ async function abrirGestionOperativaIntensivoDia(
     if (propuesta.length === 0) {
       setError('La propuesta de este día está vacía.');
       return;
+    }
+
+    for (const grupo of propuesta) {
+      const validacionOk = confirmarCrearGrupoConValidacionPedagogicaApp(
+        grupo.alumnosGrupo,
+        grupo.nombreGrupo
+      );
+      if (!validacionOk) return;
     }
 
     const confirmar = window.confirm(
@@ -15478,13 +15513,6 @@ async function abrirGestionOperativaIntensivoDia(
     const niveles = Array.from(
       new Set(ordenes.map(nivelEtiquetaPedagogicaApp))
     );
-    const pistas = alumnosGrupo
-      .map((alumno) =>
-        `${alumno.pista_recomendada || ''} ${
-          alumno.pista_alumno || ''
-        }`.toLowerCase()
-      )
-      .join(' ');
     const textos = alumnosGrupo
       .map(
         (alumno) =>
@@ -15510,12 +15538,16 @@ async function abrirGestionOperativaIntensivoDia(
 
     if (alumnosGrupo.length === 0) bloqueos.push('Grupo sin alumnos.');
     if (alumnosGrupo.length === 1)
-      supervision.push(
-        'Grupo de 1 alumno: excepción de ratio. Publicar solo tras revisión de Jose.'
+      bloqueos.push(
+        'Grupo de 1 alumno: no es una composición publicable. Reorganiza al alumno en otro grupo.'
       );
     if (alumnosGrupo.length === 2)
       supervision.push(
-        'Grupo de 2 alumnos: solo si Jose lo acepta por encaje real o falta de niños.'
+        'Grupo de 2 alumnos: permitido como excepción de coordinación.'
+      );
+    if (alumnosGrupo.length >= 8)
+      bloqueos.push(
+        `Grupo de ${alumnosGrupo.length} alumnos: con 8 o más deben crearse 2 grupos.`
       );
 
     if (tieneIniciacion && tieneBoSuperior) {
@@ -15538,23 +15570,6 @@ async function abrirGestionOperativaIntensivoDia(
     if (tieneBPlus && tieneC) {
       avisos.push(
         'B+ con C permitido, revisar que el B+ aguante pista grande y ritmo del grupo.'
-      );
-    }
-    if (
-      alumnosGrupo.length >= 5 &&
-      ordenes.length &&
-      Math.max(...ordenes) <= 2
-    ) {
-      supervision.push(
-        'Grupo bajo de 5 niños: necesita 2 entrenadores. Si solo hay 1, publicar solo con aviso fuerte.'
-      );
-    }
-    if (/peque/.test(pistas) && alumnosGrupo.length > 5) {
-      supervision.push('Pista pequeña con más de 5 niños: dividir grupo o confirmar excepción manual.');
-    }
-    if (/grande/.test(pistas) && alumnosGrupo.length > 7) {
-      supervision.push(
-        'Pista grande con más de 7 niños: intentar dividir 4/4 o publicar con 2 entrenadores si Jose lo decide.'
       );
     }
     if (/familia|declarado|estimado|sin reporte|pendiente/.test(textos)) {
@@ -15593,7 +15608,7 @@ async function abrirGestionOperativaIntensivoDia(
     const validacion = validacionPedagogicaGrupoApp(alumnosGrupo);
     const titulo =
       validacion.estado === 'BLOQUEADO'
-        ? 'ADVERTENCIA · Revisión obligatoria'
+        ? 'BLOQUEADO · Reorganiza el grupo'
         : validacion.estado === 'SUPERVISION_JOSE'
         ? 'SUPERVISIÓN JOSE'
         : validacion.estado === 'AVISO'
@@ -15664,16 +15679,17 @@ async function abrirGestionOperativaIntensivoDia(
       nivelOrdenPedagogicoApp(alumno.nivel_resumen)
     );
     const maxOrden = ordenes.length ? Math.max(...ordenes) : 2;
-    const pistaTexto = alumnosGrupo
-      .map(
-        (alumno) =>
-          `${alumno.pista_recomendada || ''} ${alumno.pista_alumno || ''}`
-      )
-      .join(' ')
-      .toLowerCase();
-    if (alumnosGrupo.length >= 5 && maxOrden <= 2) return true;
-    if (alumnosGrupo.length > 7 && /grande/.test(pistaTexto)) return true;
-    return false;
+    const pistaTexto = `${alumnosGrupo[0]?.pista_recomendada || ''} ${
+      alumnosGrupo[0]?.pista_alumno || ''
+    }`.toLowerCase();
+    const esPistaPequena =
+      /peque/.test(pistaTexto) && !/grande/.test(pistaTexto);
+    const esGrupoBajo = maxOrden <= 2 || esPistaPequena;
+    return (
+      esGrupoBajo &&
+      alumnosGrupo.length >= 5 &&
+      alumnosGrupo.length <= 7
+    );
   }
 
   function textoNecesidadDosEntrenadoresApp(
@@ -15681,23 +15697,28 @@ async function abrirGestionOperativaIntensivoDia(
       nivel_resumen?: string | null;
       pista_recomendada?: string | null;
       pista_alumno?: string | null;
-    }[]
+    }[],
+    segundoEntrenadorAsignado = false
   ) {
     const ordenes = alumnosGrupo.map((alumno) =>
       nivelOrdenPedagogicoApp(alumno.nivel_resumen)
     );
     const maxOrden = ordenes.length ? Math.max(...ordenes) : 2;
-    const pistaTexto = alumnosGrupo
-      .map(
-        (alumno) =>
-          `${alumno.pista_recomendada || ''} ${alumno.pista_alumno || ''}`
-      )
-      .join(' ')
-      .toLowerCase();
-    if (alumnosGrupo.length >= 5 && maxOrden <= 2)
-      return 'Ratio: grupo bajo de 5 niños. Recomendado 2 entrenadores.';
-    if (alumnosGrupo.length > 7 && /grande/.test(pistaTexto))
-      return 'Ratio: pista grande con más de 7 niños. Recomendado 2 entrenadores o dividir.';
+    const pistaTexto = `${alumnosGrupo[0]?.pista_recomendada || ''} ${
+      alumnosGrupo[0]?.pista_alumno || ''
+    }`.toLowerCase();
+    const esPistaPequena =
+      /peque/.test(pistaTexto) && !/grande/.test(pistaTexto);
+    const esGrupoBajo = maxOrden <= 2 || esPistaPequena;
+    if (
+      esGrupoBajo &&
+      alumnosGrupo.length >= 5 &&
+      alumnosGrupo.length <= 7
+    ) {
+      return segundoEntrenadorAsignado
+        ? `Ratio válido: grupo bajo de ${alumnosGrupo.length} alumnos con 2 entrenadores.`
+        : `Ratio obligatorio: el grupo bajo de ${alumnosGrupo.length} alumnos necesita 2 entrenadores antes de publicar.`;
+    }
     return '';
   }
 
@@ -16285,13 +16306,15 @@ async function abrirGestionOperativaIntensivoDia(
     nombreGrupo: string
   ) {
     const validacion = textoValidacionPedagogicaGrupoApp(alumnosGrupo);
-    if (validacion.estado === 'BLOQUEADO' && alumnosGrupo.length === 0) {
-      setError(`${nombreGrupo}: el grupo no tiene alumnos.`);
+    if (validacion.estado === 'BLOQUEADO') {
+      setError(
+        `${nombreGrupo}: ${validacion.mensajes.join(' ') || 'La composición del grupo está bloqueada.'}`
+      );
       return false;
     }
     if (validacion.estado !== 'OK') {
       return window.confirm(
-        `${validacion.titulo}\n\n${validacion.mensajes.join('\n')}\n\nHay una excepción de nivel o ratio. ¿Publicar igualmente?`
+        `${validacion.titulo}\n\n${validacion.mensajes.join('\n')}\n\nHay una excepción o revisión pedagógica. ¿Continuar con este grupo?`
       );
     }
     return true;
@@ -17028,14 +17051,33 @@ async function abrirGestionOperativaIntensivoDia(
     }
 
     const entrenadorId = entrenadoresAgendaGrupo[nombreGrupo];
+    const entrenadorApoyoId =
+      entrenadoresApoyoAgendaGrupo[nombreGrupo] || '';
 
     if (!entrenadorId) {
       setError(`Selecciona entrenador para ${nombreGrupo}.`);
       return;
     }
 
+    if (entrenadorApoyoId === entrenadorId) {
+      setError(
+        `El segundo entrenador de ${nombreGrupo} no puede ser el mismo que el principal.`
+      );
+      return;
+    }
+
     if (alumnosGrupo.length === 0) {
       setError('Este grupo no tiene alumnos.');
+      return;
+    }
+
+    if (
+      necesitaDosEntrenadoresGrupoApp(alumnosGrupo) &&
+      !entrenadorApoyoId
+    ) {
+      setError(
+        `${nombreGrupo}: ${textoNecesidadDosEntrenadoresApp(alumnosGrupo)}`
+      );
       return;
     }
 
@@ -17071,27 +17113,31 @@ async function abrirGestionOperativaIntensivoDia(
     setError('');
 
     try {
-      await ejecutarFuncion('crear_grupo_sesion_operativa_app', {
-        p_sesion_id: agendaSesionActivaId,
-        p_nombre_grupo: nombreGrupo,
-        p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
-        p_pista: primero.pista_recomendada,
-        p_punto_encuentro: punto,
-        p_trabajo_diario: trabajo,
-        p_observaciones_importantes: combinarObservacionesGrupoApp(
-          observacionesAutomaticasGrupoAgenda(alumnosGrupo),
-          observacionesAgendaGrupo[nombreGrupo] || ''
-        ),
-        p_entrenador_id: entrenadorId,
-        p_alumnos_ids: alumnosGrupo.map((alumno) => alumno.alumno_id),
-        p_publicado: true,
-      });
+      const grupoId = await ejecutarFuncionAuthJson<string>(
+        'crear_grupo_sesion_operativa_app',
+        {
+          p_sesion_id: agendaSesionActivaId,
+          p_nombre_grupo: nombreGrupo,
+          p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
+          p_pista: primero.pista_recomendada,
+          p_punto_encuentro: punto,
+          p_trabajo_diario: trabajo,
+          p_observaciones_importantes: combinarObservacionesGrupoApp(
+            observacionesAutomaticasGrupoAgenda(alumnosGrupo),
+            observacionesAgendaGrupo[nombreGrupo] || ''
+          ),
+          p_entrenador_id: entrenadorId,
+          p_alumnos_ids: alumnosGrupo.map((alumno) => alumno.alumno_id),
+          p_publicado: false,
+        }
+      );
 
-      const entrenadorApoyoId = entrenadoresApoyoAgendaGrupo[nombreGrupo] || '';
-      await ejecutarFuncion('guardar_apoyo_reportes_grupo_por_contexto_app', {
-        p_contexto: 'agenda',
-        p_contexto_id: agendaSesionActivaId,
-        p_nombre_grupo: nombreGrupo,
+      if (!grupoId) {
+        throw new Error(`No se pudo crear el borrador de ${nombreGrupo}.`);
+      }
+
+      await ejecutarFuncion('guardar_apoyo_reportes_grupo_app', {
+        p_grupo_id: grupoId,
         p_entrenador_apoyo_id: entrenadorApoyoId || null,
         p_responsables: responsablesJsonAgendaApp(
           nombreGrupo,
@@ -17099,6 +17145,10 @@ async function abrirGestionOperativaIntensivoDia(
           entrenadorId,
           entrenadorApoyoId
         ),
+      });
+
+      await ejecutarFuncion('publicar_grupo_app', {
+        p_grupo_id: grupoId,
       });
 
       limpiarPropuestaAgendaTrasCrear([
@@ -17144,6 +17194,16 @@ async function abrirGestionOperativaIntensivoDia(
 
       if (!entrenadorId) {
         setError(`Selecciona entrenador para ${nombreGrupo} antes de crear todos.`);
+        return;
+      }
+
+      if (
+        necesitaDosEntrenadoresGrupoApp(alumnosGrupo) &&
+        !apoyoId
+      ) {
+        setError(
+          `${nombreGrupo}: ${textoNecesidadDosEntrenadoresApp(alumnosGrupo)}`
+        );
         return;
       }
 
@@ -17250,37 +17310,43 @@ async function abrirGestionOperativaIntensivoDia(
           trabajoAgendaGrupo[nombreGrupo] ||
           trabajoDiarioAutomaticoAgenda(nombreGrupo, alumnosGrupo);
 
-        await ejecutarFuncion('crear_grupo_sesion_operativa_app', {
-          p_sesion_id: agendaSesionActivaId,
-          p_nombre_grupo: nombreGrupo,
-          p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
-          p_pista: primero.pista_recomendada,
-          p_punto_encuentro: puntosPorGrupo[nombreGrupo],
-          p_trabajo_diario: trabajo,
-          p_observaciones_importantes: combinarObservacionesGrupoApp(
-            observacionesAutomaticasGrupoAgenda(alumnosGrupo),
-            observacionesAgendaGrupo[nombreGrupo] || ''
-          ),
-          p_entrenador_id: entrenadorId,
-          p_alumnos_ids: alumnosGrupo.map((alumno) => alumno.alumno_id),
-          p_publicado: true,
-        });
-
-        await ejecutarFuncion(
-          'guardar_apoyo_reportes_grupo_por_contexto_app',
+        const grupoId = await ejecutarFuncionAuthJson<string>(
+          'crear_grupo_sesion_operativa_app',
           {
-            p_contexto: 'agenda',
-            p_contexto_id: agendaSesionActivaId,
+            p_sesion_id: agendaSesionActivaId,
             p_nombre_grupo: nombreGrupo,
-            p_entrenador_apoyo_id: entrenadorApoyoId || null,
-            p_responsables: responsablesJsonAgendaApp(
-              nombreGrupo,
-              alumnosGrupo,
-              entrenadorId,
-              entrenadorApoyoId
+            p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
+            p_pista: primero.pista_recomendada,
+            p_punto_encuentro: puntosPorGrupo[nombreGrupo],
+            p_trabajo_diario: trabajo,
+            p_observaciones_importantes: combinarObservacionesGrupoApp(
+              observacionesAutomaticasGrupoAgenda(alumnosGrupo),
+              observacionesAgendaGrupo[nombreGrupo] || ''
             ),
+            p_entrenador_id: entrenadorId,
+            p_alumnos_ids: alumnosGrupo.map((alumno) => alumno.alumno_id),
+            p_publicado: false,
           }
         );
+
+        if (!grupoId) {
+          throw new Error(`No se pudo crear el borrador de ${nombreGrupo}.`);
+        }
+
+        await ejecutarFuncion('guardar_apoyo_reportes_grupo_app', {
+          p_grupo_id: grupoId,
+          p_entrenador_apoyo_id: entrenadorApoyoId || null,
+          p_responsables: responsablesJsonAgendaApp(
+            nombreGrupo,
+            alumnosGrupo,
+            entrenadorId,
+            entrenadorApoyoId
+          ),
+        });
+
+        await ejecutarFuncion('publicar_grupo_app', {
+          p_grupo_id: grupoId,
+        });
 
         creados.push({ nombreGrupo, alumnosGrupo });
       }
@@ -17887,6 +17953,25 @@ async function abrirGestionOperativaIntensivoDia(
     nuevoEntrenadorApoyoId: string
   ) {
     if (!grupo.grupo_id) return;
+
+    const alumnosRatioGrupo = Array.from(
+      { length: Math.max(0, Number(grupo.total_alumnos || 0)) },
+      () => ({
+        nivel_resumen: grupo.nivel_grupo,
+        pista_recomendada: grupo.pista,
+      })
+    );
+
+    if (
+      grupo.publicado &&
+      !nuevoEntrenadorApoyoId &&
+      necesitaDosEntrenadoresGrupoApp(alumnosRatioGrupo)
+    ) {
+      setError(
+        `${grupo.nombre_grupo}: no puedes quitar el segundo entrenador mientras el grupo bajo publicado tenga ${grupo.total_alumnos} alumnos. Reorganiza o despublica primero.`
+      );
+      return;
+    }
 
     if (
       nuevoEntrenadorApoyoId &&
@@ -28411,12 +28496,21 @@ async function abrirGestionOperativaIntensivoDia(
                                 ) && (
                                   <div
                                     style={{
-                                      ...avisoPendiente,
+                                      ...(entrenadoresApoyoAgendaGrupo[
+                                        nombreGrupo
+                                      ]
+                                        ? avisoCompleto
+                                        : avisoPendiente),
                                       marginBottom: 10,
                                     }}
                                   >
                                     {textoNecesidadDosEntrenadoresApp(
-                                      alumnosGrupo
+                                      alumnosGrupo,
+                                      Boolean(
+                                        entrenadoresApoyoAgendaGrupo[
+                                          nombreGrupo
+                                        ]
+                                      )
                                     )}
                                   </div>
                                 )}

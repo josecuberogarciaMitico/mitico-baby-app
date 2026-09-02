@@ -1,0 +1,2499 @@
+    if (!respuesta.ok) {
+      const mensaje =
+        typeof datos === 'string'
+          ? datos
+          : (datos as any)?.message ||
+            (datos as any)?.hint ||
+            (datos as any)?.details ||
+            texto ||
+            mensajePorDefecto;
+      throw new Error(mensaje);
+    }
+
+    return datos as T;
+  }
+
+  async function consultarSupabase<T>(
+    tabla: string,
+    query: string
+  ): Promise<T[]> {
+    const respuesta = await fetch(`${SUPABASE_URL}/rest/v1/${tabla}?${query}`, {
+      headers: await cabecerasSupabaseAutenticadasApp(),
+    });
+
+    return leerRespuestaSupabaseApp<T[]>(
+      respuesta,
+      `No se pudo consultar ${tabla}.`
+    );
+  }
+
+  async function ejecutarFuncion(nombreFuncion: string, body: object) {
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
+      {
+        method: 'POST',
+        headers: await cabecerasSupabaseAutenticadasApp(true),
+        body: JSON.stringify(body),
+      }
+    );
+
+    await leerRespuestaSupabaseApp<unknown>(
+      respuesta,
+      `No se pudo ejecutar ${nombreFuncion}.`
+    );
+  }
+
+  async function ejecutarFuncionConRespuesta<T>(
+    nombreFuncion: string,
+    body: object
+  ): Promise<T[]> {
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
+      {
+        method: 'POST',
+        headers: await cabecerasSupabaseAutenticadasApp(true),
+        body: JSON.stringify(body),
+      }
+    );
+
+    return leerRespuestaSupabaseApp<T[]>(
+      respuesta,
+      `No se pudo ejecutar ${nombreFuncion}.`
+    );
+  }
+
+  async function ejecutarFuncionAuthJson<T>(
+    nombreFuncion: string,
+    body: object
+  ): Promise<T> {
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/rest/v1/rpc/${encodeURIComponent(nombreFuncion)}`,
+      {
+        method: 'POST',
+        headers: await cabecerasSupabaseAutenticadasApp(true),
+        body: JSON.stringify(body),
+      }
+    );
+
+    return leerRespuestaSupabaseApp<T>(
+      respuesta,
+      `No se pudo ejecutar ${nombreFuncion}.`
+    );
+  }
+
+  function numeroAnalisisAdminApp(valor: number | null | undefined, sufijo = '') {
+    if (valor === null || valor === undefined || Number.isNaN(Number(valor))) return '—';
+    const numero = Number(valor);
+    const texto = Number.isInteger(numero)
+      ? String(numero)
+      : numero.toLocaleString('es-ES', { maximumFractionDigits: 2 });
+    return `${texto}${sufijo}`;
+  }
+
+  function etiquetaMesAnalisisAdminApp(mes: string) {
+    const [anio, numeroMes] = String(mes || '').split('-').map(Number);
+    if (!anio || !numeroMes) return mes || '-';
+    const fecha = new Date(anio, numeroMes - 1, 1);
+    return fecha.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
+  }
+
+  async function cargarAnalisisAdminApp(
+    modalidad: ModalidadAnalisisAdminApp = modalidadAnalisisAdmin,
+    temporadaId: string = temporadaAnalisisAdminId
+  ) {
+    if (!esCoordinadorJefeApp) return;
+    setCargandoAnalisisAdmin(true);
+    setErrorAnalisisAdmin('');
+
+    try {
+      const filas = await ejecutarFuncionConRespuesta<AnalisisAdminRpcRowApp>(
+        'obtener_analisis_admin_app',
+        {
+          p_temporada_id: temporadaId || null,
+          p_modalidad_codigo: modalidad,
+        }
+      );
+
+      const payload = filas?.[0]?.payload;
+      if (!payload) throw new Error('El análisis no ha devuelto datos.');
+
+      setAnalisisAdmin(payload);
+      setModalidadAnalisisAdmin(modalidad);
+      setTemporadaAnalisisAdminId(payload.meta.temporada_id);
+    } catch (err: any) {
+      setAnalisisAdmin(null);
+      setErrorAnalisisAdmin(
+        err?.message || 'No se pudo calcular el análisis de administración.'
+      );
+    } finally {
+      setCargandoAnalisisAdmin(false);
+    }
+  }
+
+  function cambiarModalidadAnalisisAdminApp(modalidad: ModalidadAnalisisAdminApp) {
+    setModalidadAnalisisAdmin(modalidad);
+    void cargarAnalisisAdminApp(modalidad, temporadaAnalisisAdminId);
+  }
+
+  function cambiarTemporadaAnalisisAdminApp(temporadaId: string) {
+    setTemporadaAnalisisAdminId(temporadaId);
+    void cargarAnalisisAdminApp(modalidadAnalisisAdmin, temporadaId);
+  }
+
+  function filasExportacionAnalisisAdminApp(payload: AnalisisAdminPayloadApp) {
+    const filas: Array<Array<string | number | null>> = [];
+    const r = payload.resumen;
+
+    filas.push(['ANÁLISIS ADMINISTRACIÓN']);
+    filas.push(['Modalidad', payload.meta.modalidad]);
+    filas.push(['Temporada', payload.meta.temporada]);
+    filas.push(['Generado', new Date(payload.meta.generado_at).toLocaleString('es-ES')]);
+    filas.push([]);
+    filas.push(['RESUMEN']);
+    filas.push(['Alumnos únicos', r.alumnos_unicos]);
+    filas.push(['Altas', r.altas]);
+    filas.push(['Continuidad %', r.continuidad_pct]);
+    filas.push(['Pérdida continuidad %', r.perdida_continuidad_pct]);
+    filas.push(['Asistencia real %', r.asistencia_real_pct]);
+    filas.push(['Promedio niños / turno', r.promedio_ninos_turno]);
+    filas.push(['Promedio / grupo', r.promedio_por_grupo]);
+    filas.push(['Sesiones realizadas', r.sesiones_realizadas]);
+    filas.push(['Ocupación %', r.ocupacion_pct]);
+    filas.push(['Evolución técnica', r.evolucion_tecnica]);
+    filas.push(['Alumnos mejoran', r.alumnos_mejoran]);
+    filas.push(['Alumnos estables', r.alumnos_estables]);
+    filas.push(['Alumnos bajan', r.alumnos_bajan]);
+    filas.push([]);
+    filas.push([
+      'MES', 'ALUMNOS', 'ALTAS', 'CRECIMIENTO %', 'CONTINUIDAD %',
+      'PÉRDIDA %', 'ASISTENCIA %', 'NIÑOS/TURNO', 'POR GRUPO',
+      'SESIONES', 'OCUPACIÓN %', 'EVOLUCIÓN TÉCNICA', 'MEJORAN', 'ESTABLES', 'BAJAN'
+    ]);
+    payload.mensual.forEach((m) => filas.push([
+      m.mes, m.alumnos_unicos, m.altas, m.crecimiento_pct, m.continuidad_pct,
+      m.perdida_continuidad_pct, m.asistencia_real_pct, m.promedio_ninos_turno,
+      m.promedio_por_grupo, m.sesiones_realizadas, m.ocupacion_pct,
+      m.evolucion_tecnica, m.mejoran, m.estables, m.bajan
+    ]));
+    filas.push([]);
+    filas.push(['DISTRIBUCIÓN DE NIVELES']);
+    filas.push(['Nivel', 'Total']);
+    payload.niveles.forEach((n) => filas.push([n.nivel, n.total]));
+    filas.push([]);
+    filas.push(['PROGRESIÓN DE NIVELES']);
+    filas.push(['Desde', 'Hasta', 'Sentido', 'Total']);
+    payload.progresiones.forEach((p) => filas.push([p.desde, p.hasta, p.sentido, p.total]));
+    filas.push([]);
+    filas.push(['COMPARATIVA TEMPORADAS']);
+    filas.push(['Temporada', 'Alumnos únicos', 'Sesiones', 'Asistencia %', 'Evolución técnica']);
+    payload.comparativa_temporadas.forEach((t) => filas.push([
+      t.temporada, t.alumnos_unicos, t.sesiones_realizadas,
+      t.asistencia_real_pct, t.evolucion_tecnica
+    ]));
+    return filas;
+  }
+
+  function nombreArchivoAnalisisAdminApp(payload: AnalisisAdminPayloadApp, extension: string) {
+    const temporada = payload.meta.temporada.replace(/[^0-9A-Za-z_-]+/g, '_');
+    return `analisis_${payload.meta.modalidad.toLowerCase()}_${temporada}.${extension}`;
+  }
+
+  function descargarTextoAnalisisAdminApp(contenido: BlobPart, tipo: string, nombre: string) {
+    const blob = new Blob([contenido], { type: tipo });
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = nombre;
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
+  function descargarCsvAnalisisAdminApp() {
+    if (!analisisAdmin) return;
+    const escapar = (valor: unknown) => {
+      const texto = valor === null || valor === undefined ? '' : String(valor);
+      return `"${texto.replace(/"/g, '""')}"`;
+    };
+    const csv = filasExportacionAnalisisAdminApp(analisisAdmin)
+      .map((fila) => fila.map(escapar).join(';'))
+      .join('\r\n');
+    descargarTextoAnalisisAdminApp(
+      `\uFEFF${csv}`,
+      'text/csv;charset=utf-8',
+      nombreArchivoAnalisisAdminApp(analisisAdmin, 'csv')
+    );
+  }
+
+  function descargarExcelAnalisisAdminApp() {
+    if (!analisisAdmin) return;
+    const escapar = (valor: unknown) => escaparHtml(
+      valor === null || valor === undefined ? '' : String(valor)
+    );
+    const filas = filasExportacionAnalisisAdminApp(analisisAdmin);
+    const html = `<!doctype html><html><head><meta charset="utf-8"><style>
+      body{font-family:Arial,sans-serif}table{border-collapse:collapse;width:100%}
+      td{border:1px solid #ddd;padding:6px;vertical-align:top}
+      tr:first-child td{font-weight:700;background:#eef2ff}
+    </style></head><body><table>${filas
+      .map((fila) => `<tr>${fila.map((celda) => `<td>${escapar(celda)}</td>`).join('')}</tr>`)
+      .join('')}</table></body></html>`;
+    descargarTextoAnalisisAdminApp(
+      `\uFEFF${html}`,
+      'application/vnd.ms-excel;charset=utf-8',
+      nombreArchivoAnalisisAdminApp(analisisAdmin, 'xls')
+    );
+  }
+
+  function normalizarTextoPdfAnalisisAdminApp(texto: string) {
+    return texto
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^\x20-\x7E]/g, ' ')
+      .replace(/\\/g, '\\\\')
+      .replace(/\(/g, '\\(')
+      .replace(/\)/g, '\\)');
+  }
+
+  function envolverLineaPdfAnalisisAdminApp(texto: string, maximo = 92) {
+    const limpia = normalizarTextoPdfAnalisisAdminApp(texto);
+    const palabras = limpia.split(/\s+/).filter(Boolean);
+    const lineas: string[] = [];
+    let actual = '';
+    palabras.forEach((palabra) => {
+      const candidato = actual ? `${actual} ${palabra}` : palabra;
+      if (candidato.length > maximo && actual) {
+        lineas.push(actual);
+        actual = palabra;
+      } else {
+        actual = candidato;
+      }
+    });
+    if (actual) lineas.push(actual);
+    return lineas.length ? lineas : [''];
+  }
+
+  function descargarPdfAnalisisAdminApp() {
+    if (!analisisAdmin) return;
+    const p = analisisAdmin;
+    const r = p.resumen;
+    const lineas: string[] = [
+      `MITICO BABY - ANALISIS ADMINISTRACION`,
+      `${p.meta.modalidad} · Temporada ${p.meta.temporada}`,
+      `Generado: ${new Date(p.meta.generado_at).toLocaleString('es-ES')}`,
+      '',
+      `RESUMEN`,
+      `Alumnos unicos: ${r.alumnos_unicos} · Altas: ${r.altas}`,
+      `Continuidad: ${numeroAnalisisAdminApp(r.continuidad_pct, '%')} · Perdida: ${numeroAnalisisAdminApp(r.perdida_continuidad_pct, '%')}`,
+      `Asistencia real: ${numeroAnalisisAdminApp(r.asistencia_real_pct, '%')} · Ocupacion: ${numeroAnalisisAdminApp(r.ocupacion_pct, '%')}`,
+      `Promedio ninos/turno: ${numeroAnalisisAdminApp(r.promedio_ninos_turno)} · Por grupo: ${numeroAnalisisAdminApp(r.promedio_por_grupo)}`,
+      `Sesiones realizadas: ${r.sesiones_realizadas}`,
+      `Evolucion tecnica: ${numeroAnalisisAdminApp(r.evolucion_tecnica)} · Mejoran ${r.alumnos_mejoran} · Estables ${r.alumnos_estables} · Bajan ${r.alumnos_bajan}`,
+      '',
+      `EVOLUCION MENSUAL`,
+      ...p.mensual.map((m) =>
+        `${m.mes} · alumnos ${m.alumnos_unicos} · altas ${m.altas} · crec ${numeroAnalisisAdminApp(m.crecimiento_pct, '%')} · cont ${numeroAnalisisAdminApp(m.continuidad_pct, '%')} · asist ${numeroAnalisisAdminApp(m.asistencia_real_pct, '%')} · ocup ${numeroAnalisisAdminApp(m.ocupacion_pct, '%')}`
+      ),
+      '',
+      `NIVELES`,
+      ...(p.niveles.length ? p.niveles.map((n) => `${n.nivel}: ${n.total}`) : ['Sin datos de nivel.']),
+      '',
+      `PROGRESION DE NIVELES`,
+      ...(p.progresiones.length ? p.progresiones.map((x) => `${x.desde} -> ${x.hasta} · ${x.sentido} · ${x.total}`) : ['Sin progresiones registradas.']),
+      '',
+      `COMPARATIVA TEMPORADAS`,
+      ...p.comparativa_temporadas.map((t) =>
+        `${t.temporada} · alumnos ${t.alumnos_unicos} · sesiones ${t.sesiones_realizadas} · asistencia ${numeroAnalisisAdminApp(t.asistencia_real_pct, '%')} · evolucion ${numeroAnalisisAdminApp(t.evolucion_tecnica)}`
+      ),
+    ].flatMap((linea) => envolverLineaPdfAnalisisAdminApp(linea));
+
+    const porPagina = 48;
+    const paginas: string[][] = [];
+    for (let i = 0; i < lineas.length; i += porPagina) paginas.push(lineas.slice(i, i + porPagina));
+    if (!paginas.length) paginas.push(['Sin datos.']);
+
+    const objetos: string[] = [];
+    const paginaIds = paginas.map((_, i) => 4 + i * 2);
+    objetos[1] = `<< /Type /Catalog /Pages 2 0 R >>`;
+    objetos[2] = `<< /Type /Pages /Kids [${paginaIds.map((id) => `${id} 0 R`).join(' ')}] /Count ${paginas.length} >>`;
+    objetos[3] = `<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>`;
+
+    paginas.forEach((pagina, i) => {
+      const pageId = 4 + i * 2;
+      const contentId = pageId + 1;
+      const contenido = `BT /F1 9 Tf 40 805 Td 14 TL\n${pagina
+        .map((linea) => `(${normalizarTextoPdfAnalisisAdminApp(linea)}) Tj T*`)
+        .join('\n')}\nET`;
+      objetos[pageId] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R >> >> /Contents ${contentId} 0 R >>`;
+      objetos[contentId] = `<< /Length ${contenido.length} >>\nstream\n${contenido}\nendstream`;
+    });
+
+    let pdf = '%PDF-1.4\n';
+    const offsets: number[] = [0];
+    for (let id = 1; id < objetos.length; id += 1) {
+      offsets[id] = pdf.length;
+      pdf += `${id} 0 obj\n${objetos[id]}\nendobj\n`;
+    }
+    const inicioXref = pdf.length;
+    pdf += `xref\n0 ${objetos.length}\n0000000000 65535 f \n`;
+    for (let id = 1; id < objetos.length; id += 1) {
+      pdf += `${String(offsets[id]).padStart(10, '0')} 00000 n \n`;
+    }
+    pdf += `trailer\n<< /Size ${objetos.length} /Root 1 0 R >>\nstartxref\n${inicioXref}\n%%EOF`;
+
+    descargarTextoAnalisisAdminApp(
+      pdf,
+      'application/pdf',
+      nombreArchivoAnalisisAdminApp(analisisAdmin, 'pdf')
+    );
+  }
+
+  function detallePreguntaTestNivelApp(
+    clave: string,
+    respuesta: string | null
+  ) {
+    const preguntas: Record<
+      string,
+      { pregunta: string; opciones: Record<string, string> }
+    > = {
+      Experiencia: {
+        pregunta: '¿Cuántos días aproximadamente ha esquiado?',
+        opciones: {
+          A: 'Nunca / será su primer día',
+          B: '1–3 días',
+          C: '4–10 días',
+          D: 'Más de 10 días',
+        },
+      },
+      Desplazamiento: {
+        pregunta: '¿Se desplaza solo con los esquís puestos?',
+        opciones: {
+          A: 'No, necesita ayuda',
+          B: 'Algo, pero necesita ayuda con frecuencia',
+          C: 'Sí, se desplaza solo',
+        },
+      },
+      Frenado: {
+        pregunta: '¿Puede frenar haciendo cuña?',
+        opciones: {
+          A: 'No',
+          B: 'A veces / necesita indicaciones',
+          C: 'Sí, frena con autonomía',
+        },
+      },
+      Giros: {
+        pregunta: '¿Cómo hace los giros para cambiar de dirección?',
+        opciones: {
+          A: 'Todavía no hace giros',
+          B: 'Está empezando a girar',
+          C: 'Hace giros en cuña de forma autónoma',
+          D: 'Hace algunos giros con los esquís en paralelo',
+          E: 'Hace giros paralelos fluidos y enlazados',
+        },
+      },
+      Remonte: {
+        pregunta: '¿Qué remontes utiliza sin ayuda?',
+        opciones: {
+          A: 'Ninguno',
+          B: 'Cinta transportadora',
+          C: 'Percha / telesquí',
+          D: 'Silla',
+          E: 'Todos: cinta, percha y silla',
+        },
+      },
+      Pista: {
+        pregunta: '¿Por dónde baja con seguridad sin que un adulto tenga que sujetarlo?',
+        opciones: {
+          A: 'Todavía no baja una pista con autonomía',
+          B: 'Pista pequeña',
+          C: 'Pista grande',
+        },
+      },
+      Control: {
+        pregunta: 'En pista, ¿cómo controla la velocidad y la dirección?',
+        opciones: {
+          '0': 'Todavía no sabe frenar ni controlar la velocidad',
+          A: 'Necesita ayuda o recordatorios constantes para frenar',
+          B: 'Controla principalmente haciendo cuña',
+          C: 'Controla enlazando giros y elige por dónde bajar',
+          D: 'Controla con paralelo y adapta el giro y la trayectoria',
+        },
+      },
+      Técnica: {
+        pregunta: 'Si el profesor le propone ejercicios mientras baja, ¿qué es capaz de hacer?',
+        opciones: {
+          A: 'No lo sabemos / todavía no sigue ejercicios esquiando',
+          B: 'Sigue ejercicios sencillos mientras baja',
+          C: 'Puede hacer giros más cortos o más largos cuando se lo piden',
+          D: 'Cambia ritmo y trazado con facilidad y resuelve ejercicios técnicos',
+        },
+      },
+    };
+
+    const dato = preguntas[clave];
+    return {
+      pregunta: dato?.pregunta || clave,
+      respuestaTexto:
+        (respuesta && dato?.opciones?.[respuesta]) || respuesta || 'Sin respuesta',
+    };
+  }
+
+  async function cargarIntensivosAltaNivel() {
+    if (!puedeVerAdministracionAltasApp(perfilUsuario?.rol)) return;
+    try {
+      const datos = await consultarSupabase<IntensivoApp>(
+        'v_intensivos_app',
+        'select=*&order=fecha_inicio.desc,intensivo.asc'
+      );
+      setIntensivosAltaNivel(
+        (Array.isArray(datos) ? datos : []).filter(
+          (item) =>
+            String(item.estado || '').toLowerCase() !== 'cerrado' &&
+            (!temporadaActivaCierre || item.temporada === temporadaActivaCierre)
+        )
+      );
+    } catch (err: any) {
+      setError(
+        err?.message ||
+          'No se pudieron cargar los Intensivos disponibles para las altas.'
+      );
+    }
+  }
+
+  async function anadirAltaNivelAListados(alta: AltaNivelInicialApp) {
+    if (!esCoordinadorJefeApp || alta.estado !== 'VALIDADO') return;
+
+    const intensivoId =
+      alta.modalidad === 'INTENSIVOS'
+        ? intensivoAltaSeleccionado[alta.id] || ''
+        : '';
+
+    if (alta.modalidad === 'INTENSIVOS' && !intensivoId) {
+      setError('Selecciona el Intensivo al que quieres añadir al alumno.');
+      return;
+    }
+
+    let coincidencias = coincidenciasAltaNivel[alta.id];
+
+    if (!coincidencias) {
+      setComprobandoCoincidenciasAltaId(alta.id);
+      setError('');
+
+      try {
+        coincidencias =
+          (await ejecutarFuncionAuthJson<CoincidenciaAltaNivelInicialApp[]>(
+            'obtener_coincidencias_alta_nivel_inicial_app',
+            { p_id: alta.id }
+          )) || [];
+
+        setCoincidenciasAltaNivel((actual) => ({
+          ...actual,
+          [alta.id]: coincidencias || [],
+        }));
+      } catch (err: any) {
+        setError(
+          err?.message ||
+            'No se pudo comprobar si el alumno ya existe en la ficha maestra.'
+        );
+        return;
+      } finally {
+        setComprobandoCoincidenciasAltaId('');
+      }
+    }
+
+    const coincidenciaExacta = (coincidencias || []).find(
+      (item) => item.tipo_coincidencia === 'EXACTA'
+    );
+    const candidatasMismaFecha = (coincidencias || []).filter(
+      (item) => item.tipo_coincidencia === 'MISMA_FECHA'
+    );
+
+    let alumnoExistenteId: string | null = coincidenciaExacta?.alumno_id || null;
+    let confirmarNuevo = false;
+
+    if (!coincidenciaExacta && candidatasMismaFecha.length > 0) {
+      const resolucion = resolucionCoincidenciaAlta[alta.id] || '';
+
+      if (!resolucion) {
+        setError(
+          `Hay ${candidatasMismaFecha.length} posible(s) ficha(s) compatibles por nombre y fecha de nacimiento. Elige si corresponde a una ficha existente o si es otro alumno.`
+        );
+        return;
+      }
+
+      if (resolucion === '__NUEVO__') {
+        confirmarNuevo = true;
+      } else {
+        const candidataElegida = candidatasMismaFecha.find(
+          (item) => item.alumno_id === resolucion
+        );
+
+        if (!candidataElegida) {
+          setError('La ficha seleccionada ya no está disponible.');
+          return;
+        }
+
+        alumnoExistenteId = candidataElegida.alumno_id;
+      }
+    }
+
+    const intensivoElegido =
+      alta.modalidad === 'INTENSIVOS'
+        ? intensivosAltaNivel.find((item) => item.intensivo_id === intensivoId)
+        : null;
+
+    const destino =
+      alta.modalidad === 'INTENSIVOS'
+        ? `Intensivos · ${intensivoElegido?.intensivo || 'seleccionado'}`
+        : alta.modalidad === 'OCIO'
+        ? 'Ocio'
+        : 'Baby';
+
+    const identidadTexto = coincidenciaExacta
+      ? `\n\nSe reutilizará la ficha existente: ${coincidenciaExacta.alumno}.`
+      : alumnoExistenteId
+      ? `\n\nSe reutilizará la ficha existente seleccionada.`
+      : confirmarNuevo
+      ? `\n\nHas confirmado que es otro alumno: se creará una ficha nueva.`
+      : '';
+
+    if (
+      !window.confirm(
+        `¿Añadir a ${alta.nombre_completo} a ${destino} con nivel ${
+          alta.nivel_validado || '-'
+        }?${identidadTexto}`
+      )
+    ) {
+      return;
+    }
+
+    setAnadiendoAltaNivelId(alta.id);
+    setError('');
+
+    try {
+      await ejecutarFuncionAuthJson<string>(
+        'anadir_alta_nivel_inicial_resuelta_app',
+        {
+          p_id: alta.id,
+          p_intensivo_id: intensivoId || null,
+          p_alumno_existente_id: alumnoExistenteId,
+          p_confirmar_nuevo: confirmarNuevo,
+        }
+      );
+
+      setAltaNivelAbiertaId('');
+      setIntensivoAltaSeleccionado((actual) => {
+        const siguiente = { ...actual };
+        delete siguiente[alta.id];
+        return siguiente;
+      });
+      setCoincidenciasAltaNivel((actual) => {
+        const siguiente = { ...actual };
+        delete siguiente[alta.id];
+        return siguiente;
+      });
+      setResolucionCoincidenciaAlta((actual) => {
+        const siguiente = { ...actual };
+        delete siguiente[alta.id];
+        return siguiente;
+      });
+
+      await Promise.all([cargarAltasNivelInicial(), cargarAlumnos()]);
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo añadir el alumno a los listados.');
+    } finally {
+      setAnadiendoAltaNivelId('');
+    }
+  }
+
+  async function eliminarAltaNivelInicial(alta: AltaNivelInicialApp) {
+    if (alta.estado === 'ANADIDO') return;
+
+    const puedeEliminar =
+      alta.estado === 'PENDIENTE_ENVIO' ||
+      alta.estado === 'ENVIADO' ||
+      alta.estado === 'RESPONDIDO' ||
+      (esCoordinadorJefeApp &&
+        (alta.estado === 'VALIDADO' || alta.estado === 'DESCARTADO'));
+
+    if (!puedeEliminar) return;
+
+    const mensaje =
+      `¿Eliminar definitivamente el alta de ${alta.nombre_completo}?\n\n` +
+      `Se borrarán el test, teléfono, respuestas y enlace público.\n` +
+      `Esta acción no se puede deshacer.`;
+
+    if (!window.confirm(mensaje)) return;
+
+    setError('');
+
+    try {
+      await ejecutarFuncion('eliminar_alta_nivel_inicial_app', {
+        p_id: alta.id,
+      });
+
+      if (altaNivelAbiertaId === alta.id) {
+        setAltaNivelAbiertaId('');
+      }
+
+      await cargarAltasNivelInicial();
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo eliminar el alta.');
+    }
+  }
+
+  async function borrarRegistroTemporalAnadido(
+    alta: AltaNivelInicialApp
+  ) {
+    if (alta.estado !== 'ANADIDO') return;
+
+    const confirmar = window.confirm(
+      `¿Borrar el registro temporal de ${alta.nombre_completo}?\n\n` +
+        `La ficha del alumno y los datos ya incorporados a ${alta.modalidad} ` +
+        `no se eliminarán. Solo desaparecerá este registro de Administración/Test.`
+    );
+
+    if (!confirmar) return;
+
+    setError('');
+
+    try {
+      await ejecutarFuncion('eliminar_registro_temporal_alta_nivel_app', {
+        p_id: alta.id,
+      });
+
+      if (altaNivelAbiertaId === alta.id) {
+        setAltaNivelAbiertaId('');
+      }
+
+      await cargarAltasNivelInicial();
+    } catch (err: any) {
+      setError(
+        err?.message || 'No se pudo borrar el registro temporal.'
+      );
+    }
+  }
+
+  async function cargarAltasNivelInicial() {
+    if (!puedeVerAdministracionAltasApp(perfilUsuario?.rol)) return;
+    setCargandoAltasNivel(true);
+    setError('');
+    try {
+      const datos = await ejecutarFuncionConRespuesta<AltaNivelInicialApp>(
+        'obtener_altas_nivel_inicial_app',
+        {}
+      );
+      setAltasNivelInicial(Array.isArray(datos) ? datos : []);
+    } catch (err: any) {
+      setError(err?.message || 'No se pudieron cargar las altas de Administración.');
+    } finally {
+      setCargandoAltasNivel(false);
+    }
+  }
+
+  function enlacePublicoAltaNivel(alta: AltaNivelInicialApp) {
+    if (typeof window === 'undefined') return '';
+    return `${window.location.origin}${window.location.pathname}?test_nivel=${alta.token_publico}`;
+  }
+
+  async function crearAltaNivelInicial() {
+    const nombre = formAltaNivelInicial.nombre.trim();
+    const telefono = formAltaNivelInicial.telefono.trim();
+    const fechaNacimiento = formAltaNivelInicial.fechaNacimiento;
+
+    if (!nombre || !fechaNacimiento || !telefono) {
+      setError('Completa nombre, fecha de nacimiento, modalidad y teléfono.');
+      return;
+    }
+
+    if (
+      formAltaNivelInicial.modalidad === 'OCIO' &&
+      !formAltaNivelInicial.ocioDiaFijo
+    ) {
+      setError('Selecciona el día fijo de Ocio.');
+      return;
+    }
+
+    setGuardandoAltaNivel(true);
+    setError('');
+
+    try {
+      const posibles =
+        (await ejecutarFuncionAuthJson<AvisoNuevaAltaAlumnoApp[]>(
+          'comprobar_posibles_alumnos_nueva_alta_app',
+          {
+            p_nombre_completo: nombre,
+            p_fecha_nacimiento: fechaNacimiento,
+          }
+        )) || [];
+
+      if (posibles.length > 0) {
+        const lineas = posibles
+          .slice(0, 8)
+          .map((item) => {
+            const motivo =
+              item.motivo === 'MISMA_FECHA'
+                ? 'misma fecha de nacimiento'
+                : item.motivo === 'NOMBRE_EXACTO'
+                ? 'mismo nombre'
+                : 'nombre compatible';
+
+            const fuente =
+              item.fuente === 'FICHA_MAESTRA'
+                ? 'ficha existente'
+                : `test/alta ${item.estado || ''}`.trim();
+
+            return `• ${item.alumno} · ${
+              item.fecha_nacimiento
+                ? formatearFecha(item.fecha_nacimiento)
+                : 'sin fecha'
+            } · ${fuente} · ${motivo}`;
+          })
+          .join('\n');
+
+        const continuar = window.confirm(
+          `⚠️ Posible alumno ya existente\n\n${lineas}\n\n` +
+            `Revisa antes de crear otro test. Si realmente es otro niño, ` +
+            `puedes continuar igualmente.\n\n¿Crear este test de todas formas?`
+        );
+
+        if (!continuar) return;
+      }
+
+      await ejecutarFuncionAuthJson<string>('crear_alta_nivel_inicial_app', {
+        p_nombre_completo: nombre,
+        p_fecha_nacimiento: fechaNacimiento,
+        p_modalidad: formAltaNivelInicial.modalidad,
+        p_telefono: telefono,
+        p_ocio_dia_fijo:
+          formAltaNivelInicial.modalidad === 'OCIO'
+            ? formAltaNivelInicial.ocioDiaFijo
+            : null,
+      });
+
+      setFormAltaNivelInicial(altaNivelInicialFormVacioApp());
+      setMostrarFormularioAltaNivel(false);
+      await cargarAltasNivelInicial();
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo crear el test de nivel.');
+    } finally {
+      setGuardandoAltaNivel(false);
+    }
+  }
+
+  async function copiarEnlaceAltaNivel(alta: AltaNivelInicialApp) {
+    const enlace = enlacePublicoAltaNivel(alta);
+    try {
+      await navigator.clipboard.writeText(enlace);
+      alert('Enlace del test copiado.');
+    } catch {
+      window.prompt('Copia este enlace:', enlace);
+    }
+  }
+
+  async function enviarAltaNivelWhatsapp(alta: AltaNivelInicialApp) {
+    const telefono = normalizarTelefonoWhatsappApp(alta.telefono);
+    if (!telefono) {
+      setError('El teléfono de esta alta no es válido para WhatsApp.');
+      return;
+    }
+
+    const enlace = enlacePublicoAltaNivel(alta);
+    const nombrePila = alta.nombre_completo.trim().split(/\\s+/)[0] || alta.nombre_completo;
+    const texto =
+      `Hola familia, para preparar correctamente el grupo de ${nombrePila} necesitamos una pequeña valoración de su experiencia esquiando.\n\n` +
+      `No tenéis que conocer su nivel: son 8 preguntas de respuesta cerrada sobre lo que le habéis visto hacer y se tarda aproximadamente 2 minutos.\n\n` +
+      `${enlace}\n\nMuchas gracias.`;
+
+    try {
+      await ejecutarFuncion('marcar_alta_nivel_enviada_app', { p_id: alta.id });
+      await cargarAltasNivelInicial();
+      window.open(`https://wa.me/${telefono}?text=${encodeURIComponent(texto)}`, '_blank');
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo preparar el envío por WhatsApp.');
+    }
+  }
+
+  async function validarAltaNivelInicial(alta: AltaNivelInicialApp) {
+    if (!esCoordinadorJefeApp) return;
+    const nivel = nivelesValidacionAlta[alta.id] || alta.nivel_propuesto || 'INICIACION';
+    if (!window.confirm(`¿Validar a ${alta.nombre_completo} con nivel ${nivel}?`)) return;
+
+    setError('');
+    try {
+      await ejecutarFuncion('validar_alta_nivel_inicial_app', {
+        p_id: alta.id,
+        p_nivel_codigo: nivel,
+      });
+      await cargarAltasNivelInicial();
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo validar el nivel.');
+    }
+  }
+
+  async function descartarAltaNivelInicial(alta: AltaNivelInicialApp) {
+    if (!esCoordinadorJefeApp) return;
+    if (!window.confirm(`¿Descartar la solicitud de ${alta.nombre_completo}?`)) return;
+
+    setError('');
+    try {
+      await ejecutarFuncion('descartar_alta_nivel_inicial_app', { p_id: alta.id });
+      await cargarAltasNivelInicial();
+    } catch (err: any) {
+      setError(err?.message || 'No se pudo descartar la solicitud.');
+    }
+  }
+
+  async function cargarInicio() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const avisosData = await consultarSupabase<AvisoJose>(
+        'v_inicio_avisos_jose',
+        'select=*&order=orden.asc'
+      );
+
+      const reportesData = await consultarSupabase<ReportePendiente>(
+        'v_reportes_pendientes_entrenador_dos_entrenadores',
+        'select=*'
+      );
+
+      const planningData = await consultarSupabase<GrupoPlanning>(
+        'v_planning_app',
+        'select=grupo_id,fecha,publicado'
+      );
+
+      const gruposEntrenadorData = await consultarSupabase<GrupoEntrenadorApp>(
+        'v_grupos_entrenador_app_dos_entrenadores',
+        'select=grupo_id,entrenador_id,fecha,estado_confirmacion,publicado'
+      );
+
+      const finSemanaInicioResumen = semanaAgendaActiva
+        ? claveFechaAgenda(
+            new Date(
+              crearFechaAgenda(semanaAgendaActiva).getTime() +
+                6 * 24 * 60 * 60 * 1000
+            )
+          )
+        : '';
+      const dentroSemanaInicio = (fecha?: string | null) =>
+        !semanaAgendaActiva ||
+        Boolean(fecha && fecha >= semanaAgendaActiva && fecha <= finSemanaInicioResumen);
+      const reportesSemanaInicio = reportesData.filter((reporte) => dentroSemanaInicio(reporte.fecha));
+      const planningSemanaInicio = planningData.filter((grupo) => dentroSemanaInicio(grupo.fecha));
+      const gruposEntrenadorSemanaInicio = gruposEntrenadorData.filter((grupo) => dentroSemanaInicio(grupo.fecha));
+
+      setAvisos(avisosData);
+      setResumenInicio({
+        reportesPendientes: reportesSemanaInicio.filter(
+          (reporte) => reporte.estado_reporte === 'Falta reporte'
+        ).length,
+        asistenciasSinConfirmar: reportesSemanaInicio.filter(
+          (reporte) =>
+            reporte.estado_reporte === 'Asistencia sin confirmar' ||
+            reporte.estado_asistencia === 'Pendiente'
+        ).length,
+        gruposSinPublicar: planningSemanaInicio.filter((grupo) => !grupo.publicado).length,
+        entrenadoresSinConfirmar: gruposEntrenadorSemanaInicio.filter(
+          (grupo) => grupo.publicado && grupo.estado_confirmacion !== 'Confirmado'
+        ).length,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setAvisos([]);
+      setResumenInicio({
+        reportesPendientes: 0,
+        asistenciasSinConfirmar: 0,
+        gruposSinPublicar: 0,
+        entrenadoresSinConfirmar: 0,
+      });
+    }
+
+    setCargando(false);
+  }
+
+  async function actualizarTodo() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const [
+        avisosData,
+        reportesData,
+        planningData,
+        gruposEntrenadorData,
+        alumnosEstadoData,
+      ] = await Promise.all([
+        consultarSupabase<AvisoJose>(
+          'v_inicio_avisos_jose',
+          'select=*&order=orden.asc'
+        ),
+        consultarSupabase<ReportePendiente>(
+          'v_reportes_pendientes_entrenador_dos_entrenadores',
+          'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc,alumno.asc'
+        ),
+        consultarSupabase<GrupoPlanning>(
+          'v_planning_app',
+          'select=*&order=fecha.asc,hora_inicio.asc,nombre_grupo.asc'
+        ),
+        consultarSupabase<GrupoEntrenadorApp>(
+          'v_grupos_entrenador_app_dos_entrenadores',
+          'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc'
+        ),
+        consultarSupabase<AlumnoReporteEntrenador>(
+          'v_alumnos_reporte_entrenador_app_dos_entrenadores',
+          'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc,alumno.asc'
+        ),
+      ]);
+
+      setAvisos(avisosData);
+      setReportesPendientes(reportesData);
+      setPlanning(planningData);
+      setGruposEntrenador(gruposEntrenadorData);
+      setAlumnosReporteEntrenador(alumnosEstadoData);
+
+      const finSemanaInicioResumen = semanaAgendaActiva
+        ? claveFechaAgenda(
+            new Date(
+              crearFechaAgenda(semanaAgendaActiva).getTime() +
+                6 * 24 * 60 * 60 * 1000
+            )
+          )
+        : '';
+      const dentroSemanaInicio = (fecha?: string | null) =>
+        !semanaAgendaActiva ||
+        Boolean(fecha && fecha >= semanaAgendaActiva && fecha <= finSemanaInicioResumen);
+      const reportesSemanaInicio = reportesData.filter((reporte) => dentroSemanaInicio(reporte.fecha));
+      const planningSemanaInicio = planningData.filter((grupo) => dentroSemanaInicio(grupo.fecha));
+      const gruposEntrenadorSemanaInicio = gruposEntrenadorData.filter((grupo) => dentroSemanaInicio(grupo.fecha));
+
+      setResumenInicio({
+        reportesPendientes: reportesSemanaInicio.filter(
+          (reporte) => reporte.estado_reporte === 'Falta reporte'
+        ).length,
+        asistenciasSinConfirmar: reportesSemanaInicio.filter(
+          (reporte) =>
+            reporte.estado_reporte === 'Asistencia sin confirmar' ||
+            reporte.estado_asistencia === 'Pendiente'
+        ).length,
+        gruposSinPublicar: planningSemanaInicio.filter((grupo) => !grupo.publicado).length,
+        entrenadoresSinConfirmar: gruposEntrenadorSemanaInicio.filter(
+          (grupo) => grupo.publicado && grupo.estado_confirmacion !== 'Confirmado'
+        ).length,
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function cargarPlanning() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const data = await consultarSupabase<GrupoPlanning>(
+        'v_planning_app',
+        'select=*&order=fecha.asc,hora_inicio.asc,nombre_grupo.asc'
+      );
+
+      const gruposEstado = await consultarSupabase<GrupoEntrenadorApp>(
+        'v_grupos_entrenador_app_dos_entrenadores',
+        'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc'
+      );
+
+      const alumnosEstado = await consultarSupabase<AlumnoReporteEntrenador>(
+        'v_alumnos_reporte_entrenador_app_dos_entrenadores',
+        'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc,alumno.asc'
+      );
+
+      setPlanning(data);
+      setGruposEntrenador(gruposEstado);
+      setAlumnosReporteEntrenador(alumnosEstado);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setPlanning([]);
+      setGruposEntrenador([]);
+      setAlumnosReporteEntrenador([]);
+    }
+
+    setCargando(false);
+  }
+
+  async function cargarGruposEntrenador() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const grupos = await consultarSupabase<GrupoEntrenadorApp>(
+        'v_grupos_entrenador_app_dos_entrenadores',
+        'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc'
+      );
+
+      const alumnosEstado = await consultarSupabase<AlumnoReporteEntrenador>(
+        'v_alumnos_reporte_entrenador_app_dos_entrenadores',
+        'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc,alumno.asc'
+      );
+
+      const reportesEstado = await consultarSupabase<ReportePendiente>(
+        'v_reportes_pendientes_entrenador_dos_entrenadores',
+        'select=*&order=fecha.asc,hora_inicio.asc,entrenador.asc,nombre_grupo.asc,alumno.asc'
+      );
+
+      setGruposEntrenador(grupos);
+      setAlumnosReporteEntrenador(alumnosEstado);
+      setReportesPendientes(reportesEstado);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setGruposEntrenador([]);
+      setAlumnosReporteEntrenador([]);
+    }
+
+    setCargando(false);
+  }
+
+  async function publicarGrupo(grupoId: string) {
+    const confirmar = window.confirm(
+      '¿Seguro que quieres PUBLICAR este grupo? El entrenador podrá verlo como grupo publicado.'
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('publicar_grupo_app', {
+        p_grupo_id: grupoId,
+      });
+
+      await cargarPlanning();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function despublicarGrupo(grupoId: string) {
+    const confirmar = window.confirm(
+      '¿Seguro que quieres DESPUBLICAR este grupo? Dejará de aparecer como publicado.'
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('despublicar_grupo_app', {
+        p_grupo_id: grupoId,
+      });
+
+      await cargarPlanning();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function confirmarGrupoEntrenador(
+    grupoId: string,
+    entrenadorId: string
+  ) {
+    const confirmar = window.confirm(
+      '¿Confirmas que este entrenador ha visto y acepta el grupo?'
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('confirmar_grupo_entrenador_app', {
+        p_grupo_id: grupoId,
+        p_entrenador_id: entrenadorId,
+      });
+
+      await cargarGruposEntrenador();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function marcarAsistencia(
+    grupoId: string,
+    alumnoId: string,
+    estado: string
+  ) {
+    const scrollActual = window.scrollY;
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('marcar_asistencia_alumno_app', {
+        p_grupo_id: grupoId,
+        p_alumno_id: alumnoId,
+        p_estado_asistencia: estado,
+      });
+
+      await cargarGruposEntrenador();
+
+      // En Intensivos, una ausencia marcada por el entrenador genera la
+      // recuperación en backend. Refrescamos también la sección Intensivos
+      // para que coordinación la vea sin tener que pulsar ningún actualizar.
+      if (
+        intensivoDias.some((dia) =>
+          gruposEntrenador.some(
+            (grupo) =>
+              grupo.grupo_id === grupoId &&
+              grupo.fecha === dia.fecha &&
+              String(grupo.modalidad || '').toUpperCase() === 'INTENSIVOS'
+          )
+        )
+      ) {
+        await cargarIntensivos();
+      }
+
+      if (pantalla === 'reportes') await cargarReportesPendientes();
+      setTimeout(
+        () => window.scrollTo({ top: scrollActual, behavior: 'auto' }),
+        0
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  function enfocarFormularioReporteEntrenador(
+    alumno: AlumnoReporteEntrenador,
+    espera = 140
+  ) {
+    const reporteDomId =
+      `trainer-report-${alumno.entrenador_id}-${alumno.grupo_id}-${alumno.alumno_id}`.replace(
+        /[^a-zA-Z0-9_-]/g,
+        '-'
+      );
+
+    enfocarElementoApp(reporteDomId, {
+      espera,
+      block: 'start',
+      abrirDetallesPadre: true,
+    });
+  }
+
+  async function abrirFormularioReporte(alumno: AlumnoReporteEntrenador) {
+    setReporteActivo({
+      grupo_id: alumno.grupo_id,
+      alumno_id: alumno.alumno_id,
+    });
+
+    const nivelFallback =
+      alumno.nivel_alumno ||
+      grupoNivelAFormulario(alumno.nombre_grupo) ||
+      '';
+
+    const pistaFallback =
+      alumno.pista_alumno && alumno.pista_alumno !== '-'
+        ? alumno.pista_alumno
+        : alumno.nombre_grupo.toLowerCase().includes('grande')
+          ? 'Grande'
+          : 'Pequeña';
+
+    setNivelPartidaReporte(nivelFallback);
+
+    setFormReporte({
+      ...reporteInicial(),
+      nivel: nivelFallback,
+      pista: pistaFallback,
+      observaciones: '',
+    });
+
+    enfocarFormularioReporteEntrenador(alumno, 160);
+
+    try {
+      const datos = await ejecutarFuncionConRespuesta<{
+        nivel_partida: string | null;
+        pista_partida: string | null;
+      }>('obtener_nivel_partida_reporte_app', {
+        p_grupo_id: alumno.grupo_id,
+        p_alumno_id: alumno.alumno_id,
+      });
+
+      const partida = Array.isArray(datos) ? datos[0] : null;
+      const nivelPartida = partida?.nivel_partida || nivelFallback;
+      const pistaPartida = partida?.pista_partida || pistaFallback;
+
+      setNivelPartidaReporte(nivelPartida);
+      setFormReporte((actual) => ({
+        ...actual,
+        nivel: nivelPartida,
+        pista: pistaPartida,
+      }));
+
+      enfocarFormularioReporteEntrenador(alumno, 80);
+    } catch (err) {
+      // Fallback seguro: si por cualquier motivo no responde la RPC,
+      // mantenemos el nivel ya mostrado por la ficha/grupo y no bloqueamos el reporte.
+      console.warn('No se pudo cargar el nivel de partida del reporte.', err);
+    }
+  }
+
+  function cerrarFormularioReporte() {
+    setReporteActivo(null);
+    setNivelPartidaReporte('');
+    setFormReporte(reporteInicial());
+  }
+
+  function cerrarGrupoEntrenador() {
+    setGrupoActivoEntrenador(null);
+    setSeccionGrupoEntrenador('asistencia');
+  }
+
+  async function guardarReporteAlumno(alumno: AlumnoReporteEntrenador) {
+    if (!formReporte.ritmoGrupo) {
+      setError(
+        'Selecciona el ritmo del alumno dentro del grupo antes de guardar el reporte.'
+      );
+      return;
+    }
+
+    const confirmar = window.confirm(`¿Guardar reporte de ${alumno.alumno}?`);
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('crear_reporte_alumno_app', {
+        p_grupo_id: alumno.grupo_id,
+        p_alumno_id: alumno.alumno_id,
+        p_entrenador_id: alumno.entrenador_id,
+        p_actitud: formReporte.actitud,
+        p_nivel_reportado: formReporte.nivel,
+        p_tecnica: esNivelAprendizajeInicialApp(formReporte.nivel)
+          ? tecnicaInicialDerivadaReporteApp(formReporte)
+          : formReporte.tecnica,
+        p_pista: formReporte.pista,
+        p_autonomia: formReporte.autonomia,
+        p_remontes: formReporte.remontes,
+        p_incidencia: formReporte.incidencia,
+        p_recomendacion: formReporte.recomendacion,
+        p_observaciones:
+          formReporte.observaciones || 'Reporte enviado desde la app',
+      });
+
+      await ejecutarFuncion('guardar_ritmo_ultimo_reporte_app', {
+        p_grupo_id: alumno.grupo_id,
+        p_alumno_id: alumno.alumno_id,
+        p_entrenador_id: alumno.entrenador_id,
+        p_ritmo_grupo: formReporte.ritmoGrupo,
+      });
+
+      if (
+        esNivelAprendizajeInicialApp(
+          formReporte.nivel ||
+            nivelPartidaReporte ||
+            alumno.nivel_alumno ||
+            grupoNivelAFormulario(alumno.nombre_grupo) ||
+            ''
+        )
+      ) {
+        await ejecutarFuncion('guardar_progresion_inicial_reporte_app', {
+          p_grupo_id: alumno.grupo_id,
+          p_alumno_id: alumno.alumno_id,
+          p_entrenador_id: alumno.entrenador_id,
+          p_nivel_reportado: formReporte.nivel,
+          p_autonomia_cinta: formReporte.autonomiaCinta || null,
+          p_cuna_frenada: formReporte.cunaFrenada || null,
+          p_giro_inicial: formReporte.giroInicial || null,
+          p_dinamica_autonoma: formReporte.dinamicaAutonoma || null,
+          p_ayuda_cunero: formReporte.ayudaCunero || 'No',
+        });
+      }
+
+      cerrarFormularioReporte();
+      await cargarGruposEntrenador();
+      await cargarReportesPendientes();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function cargarAlumnos() {
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      const [data, ocioData, babyData, ritmosData, perfilesData] =
+        await Promise.all([
+          consultarSupabase<AlumnoResumen>(
+            'v_resumen_alumno_v2',
+            'select=*&order=alumno.asc'
+          ),
+          consultarSupabase<OcioAlumnoApp>(
+            'v_ocio_alumnos_v2_app',
+            'select=*&order=alumno.asc'
+          ),
+          ejecutarFuncionConRespuesta<AlumnoBabyFichaApp>(
+            'obtener_alumnos_baby_fichas_app',
+            {}
+          ),
+          ejecutarFuncionConRespuesta<TendenciaRitmoAlumnoApp>(
+            'obtener_tendencia_ritmo_alumnos_app',
+            {}
+          ),
+          ejecutarFuncionConRespuesta<PerfilOperativoAlumnoApp>(
+            'obtener_perfil_operativo_alumnos_app',
+            {}
+          ),
+        ]);
+
+      // `alumnos` se mantiene como ficha maestra global.
+      // La pantalla Alumnos Baby usa únicamente actividad Baby real.
+      setAlumnos(data);
+      setOcioAlumnos(ocioData);
+      setAlumnosBabyFicha(babyData);
+      setTendenciasRitmoAlumnos(
+        Array.isArray(ritmosData) ? ritmosData : []
+      );
+      setPerfilesOperativosAlumnos(
+        Array.isArray(perfilesData) ? perfilesData : []
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setAlumnos([]);
+      setAlumnosBabyFicha([]);
+      setTendenciasRitmoAlumnos([]);
+      setPerfilesOperativosAlumnos([]);
+    }
+
+    setCargando(false);
+  }
+
+  async function cargarContextoCerebroTrabajoDiarioApp() {
+    const [
+      resumenData,
+      ritmosData,
+      perfilesData,
+      progresionData,
+      trabajosHistoricosData,
+    ] = await Promise.all([
+        consultarSupabase<AlumnoResumen>(
+          'v_resumen_alumno_v2',
+          'select=*&order=alumno.asc'
+        ).catch(() => [] as AlumnoResumen[]),
+        ejecutarFuncionConRespuesta<TendenciaRitmoAlumnoApp>(
+          'obtener_tendencia_ritmo_alumnos_app',
+          {}
+        ).catch(() => [] as TendenciaRitmoAlumnoApp[]),
+        ejecutarFuncionConRespuesta<PerfilOperativoAlumnoApp>(
+          'obtener_perfil_operativo_alumnos_app',
+          {}
+        ).catch(() => [] as PerfilOperativoAlumnoApp[]),
+        consultarSupabase<ProgresionInicialAlumnoApp>(
+          'v_ultima_progresion_inicial_alumno_app',
+          'select=*'
+        ).catch(() => [] as ProgresionInicialAlumnoApp[]),
+        consultarSupabase<TrabajoDiarioHistoricoApp>(
+          'v_detalle_grupos',
+          'select=fecha,modalidad,alumnos_detalle,trabajo_diario&trabajo_diario=not.is.null&order=fecha.desc,hora_inicio.desc&limit=240'
+        ).catch(() => [] as TrabajoDiarioHistoricoApp[]),
+      ]);
+
+    if (Array.isArray(resumenData) && resumenData.length > 0) {
+      setAlumnos(resumenData);
+    }
+    setTendenciasRitmoAlumnos(
+      Array.isArray(ritmosData) ? ritmosData : []
+    );
+    setPerfilesOperativosAlumnos(
+      Array.isArray(perfilesData) ? perfilesData : []
+    );
+    setProgresionInicialAlumnos(
+      Array.isArray(progresionData) ? progresionData : []
+    );
+    setTrabajosDiariosHistoricos(
+      Array.isArray(trabajosHistoricosData) ? trabajosHistoricosData : []
+    );
+  }
+
+  function normalizarNombreMemoriaTrabajoApp(texto: string) {
+    return texto
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  function trabajosRecientesParaGrupoApp(
+    nombresAlumnos: string[],
+    fechaActual?: string | null
+  ) {
+    const nombres = nombresAlumnos
+      .map(normalizarNombreMemoriaTrabajoApp)
+      .filter((nombre) => nombre.length >= 4);
+
+    if (nombres.length === 0 || trabajosDiariosHistoricos.length === 0) {
+      return [] as string[];
+    }
+
+    const candidatos = trabajosDiariosHistoricos
+      .filter((item) => {
+        if (!item.trabajo_diario || !item.alumnos_detalle) return false;
+        if (fechaActual && item.fecha >= fechaActual) return false;
+
+        const alumnosHistoricos = normalizarNombreMemoriaTrabajoApp(
+          item.alumnos_detalle
+        );
+
+        return nombres.some((nombre) => alumnosHistoricos.includes(nombre));
+      })
+      .map((item) => ({
+        texto: item.trabajo_diario || '',
+        coincidencias: nombres.filter((nombre) =>
+          normalizarNombreMemoriaTrabajoApp(item.alumnos_detalle || '').includes(
+            nombre
+          )
+        ).length,
+        fecha: item.fecha,
+      }))
+      .sort(
+        (a, b) =>
+          b.coincidencias - a.coincidencias ||
+          String(b.fecha).localeCompare(String(a.fecha))
+      );
+
+    const unicos: string[] = [];
+    const vistos = new Set<string>();
+
+    candidatos.forEach((item) => {
+      const clave = normalizarNombreMemoriaTrabajoApp(item.texto);
+      if (!clave || vistos.has(clave) || unicos.length >= 6) return;
+      vistos.add(clave);
+      unicos.push(item.texto);
+    });
+
+    return unicos;
+  }
+
+  function contextoAlumnoTrabajoDiarioApp(
+    alumnoId: string,
+    nombreFallback = '',
+    nivelFallback = ''
+  ): AlumnoContextoTrabajoDiarioApp {
+    const resumen = alumnos.find((item) => item.alumno_id === alumnoId);
+    const perfil = perfilesOperativosAlumnos.find(
+      (item) => item.alumno_id === alumnoId
+    );
+    const ritmo = tendenciasRitmoAlumnos.find(
+      (item) => item.alumno_id === alumnoId
+    );
+    const progresion = progresionInicialAlumnos.find(
+      (item) => item.alumno_id === alumnoId
+    );
+
+    return {
+      alumnoId,
+      nombre: resumen?.alumno || perfil?.alumno || nombreFallback || 'Alumno',
+      nivel:
+        perfil?.nivel_usado ||
+        resumen?.nivel_actual ||
+        resumen?.ultimo_nivel_reportado ||
+        resumen?.nivel_estimado ||
+        progresion?.nivel_reportado ||
+        nivelFallback ||
+        '',
+      tecnica: resumen?.ultima_tecnica || '',
+      actitud: resumen?.ultima_actitud || '',
+      autonomia: resumen?.ultima_autonomia || perfil?.autonomia_reciente || '',
+      incidencia: resumen?.ultima_incidencia || '',
+      recomendacion: resumen?.ultima_recomendacion || '',
+      remontes: Array.from(
+        new Set([
+          ...(Array.isArray(resumen?.ultimos_remontes)
+            ? resumen.ultimos_remontes
+            : []),
+          ...(Array.isArray(perfil?.remontes_recientes)
+            ? perfil.remontes_recientes
+            : []),
+        ].filter(Boolean))
+      ),
+      ritmo:
+        perfil?.ritmo_tendencia ||
+        ritmo?.ritmo_tendencia ||
+        ritmo?.ritmo_ultimo ||
+        '',
+      fuerzaNivel: perfil?.fuerza_nivel || '',
+      demandaAtencion: perfil?.demanda_atencion || '',
+      observacionOperativa:
+        perfil?.observacion_visible_entrenador ||
+        perfil?.aviso_operativo ||
+        '',
+      faseViraje: resumen?.ultima_tecnica || '',
+      progresionInicial: progresion
+        ? {
+            autonomiaCinta: progresion.autonomia_cinta || '',
+            cunaFrenada: progresion.cuna_frenada || '',
+            giroInicial: progresion.giro_inicial || '',
+            dinamicaAutonoma: progresion.dinamica_autonoma || '',
+            ayudaCunero: progresion.ayuda_cunero || '',
+          }
+        : undefined,
+    };
+  }
+
+  function tendenciaRitmoAlumnoApp(alumnoId: string) {
+    return tendenciasRitmoAlumnos.find(
+      (item) => item.alumno_id === alumnoId
+    );
+  }
+
+  function perfilOperativoAlumnoApp(alumnoId: string) {
+    return perfilesOperativosAlumnos.find(
+      (item) => item.alumno_id === alumnoId
+    );
+  }
+
+  function enlaceWhatsAppFamiliaApp(telefono?: string | null) {
+    let numero = String(telefono || '').replace(/\D/g, '');
+    if (!numero) return '';
+    if (numero.startsWith('00')) numero = numero.slice(2);
+    if (numero.length === 9) numero = `34${numero}`;
+    return `https://wa.me/${numero}`;
+  }
+
+  function bloqueIdentidadFichaAlumnoApp(
+    nombre: string,
+    fechaNacimiento?: string | null,
+    telefono?: string | null
+  ) {
+    const enlaceWhatsApp = enlaceWhatsAppFamiliaApp(telefono);
+
+    return (
+      <div style={{ display: 'grid', gap: 7, minWidth: 0 }}>
+        <h3 style={{ margin: 0, overflowWrap: 'anywhere', lineHeight: 1.2 }}>
+          {nombre}
+        </h3>
+
+        <span style={{ color: '#64748b', fontWeight: 700 }}>
+          Nacimiento:{' '}
+          <strong>
+            {fechaNacimiento ? formatearFecha(fechaNacimiento) : 'Sin registrar'}
+          </strong>
+        </span>
+
+        {telefono ? (
+          <a
+            href={enlaceWhatsApp || undefined}
+            target="_blank"
+            rel="noreferrer"
+            title="Abrir conversación de WhatsApp con la familia"
+            style={{
+              ...botonMini,
+              width: 'fit-content',
+              maxWidth: '100%',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 7,
+              background: '#ecfdf5',
+              borderColor: '#86efac',
+              color: '#166534',
+              overflowWrap: 'anywhere',
+            }}
+          >
+            WhatsApp · {telefono}
+          </a>
+        ) : (
+          <span
+            style={{
+              width: 'fit-content',
+              padding: '7px 10px',
+              borderRadius: 10,
+              border: '1px solid #e2e8f0',
+              background: '#f8fafc',
+              color: '#64748b',
+              fontWeight: 750,
+              fontSize: 13,
+            }}
+          >
+            Teléfono sin registrar
+          </span>
+        )}
+      </div>
+    );
+  }
+
+  function datosBasicosFichaAlumnoApp(alumno: AlumnoResumen) {
+    const faltan: string[] = [];
+    if (!String(alumno.alumno || '').trim()) faltan.push('nombre');
+    if (!alumno.fecha_nacimiento) faltan.push('fecha de nacimiento');
+    if (!String(alumno.telefono || '').trim()) faltan.push('teléfono');
+    if (
+      !alumno.nivel_actual &&
+      !alumno.ultimo_nivel_reportado &&
+      !alumno.nivel_estimado
+    ) {
+      faltan.push('nivel');
+    }
+    return {
+      completa: faltan.length === 0,
+      faltan,
+    };
+  }
+
+  function cerrarEditorAlumnoBase() {
+    setAlumnoEditandoId(null);
+    setAlumnoEditNombre('');
+    setAlumnoEditFechaNacimiento('');
+    setAlumnoEditTelefono('');
+    setAlumnoEditNivel('');
+    setAlumnoEditOrigen('Jose / Coordinador');
+    setAlumnoEditEstado('pendiente completar');
+  }
+
+  async function guardarAlumnoBaseConDatos(
+    alumnoId: string,
+    nombre: string,
+    fechaNacimiento: string,
+    telefono: string,
+    nivel: string,
+    origen: string,
+    estado: string
+  ) {
+    const nombreLimpio = nombre.trim().toUpperCase();
+    if (!nombreLimpio) {
+      setError('El nombre del alumno no puede estar vacío.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('actualizar_alumno_base_v2_app', {
+        p_alumno_id: alumnoId,
+        p_nombre_completo: nombreLimpio,
+        p_fecha_nacimiento: fechaNacimiento || null,
+        p_telefono: telefono.trim() || null,
+        p_nivel_codigo: nivel || null,
+        p_origen_nivel: origen || 'Jose / Coordinador',
+        p_estado_ficha: estado || 'pendiente completar',
+      });
+
+      cerrarEditorAlumnoBase();
+      await cargarAlumnos();
+      await cargarAgendaOperativaDirecta();
+      if (agendaSesionActivaId) {
+        await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      }
+      setAgendaRecomendaciones([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  function editarAlumnoBaseRapido(alumno: AlumnoResumen) {
+    setAlumnoEditandoId(alumno.alumno_id);
+    setAlumnoEditNombre(alumno.alumno || '');
+    setAlumnoEditFechaNacimiento(alumno.fecha_nacimiento || '');
+    setAlumnoEditTelefono(alumno.telefono || '');
+    setAlumnoEditNivel(
+      alumno.nivel_actual ||
+        alumno.nivel_estimado ||
+        alumno.ultimo_nivel_reportado ||
+        ''
+    );
+    setAlumnoEditOrigen(alumno.origen_nivel_estimado || 'Jose / Coordinador');
+    setAlumnoEditEstado(alumno.estado_ficha || 'pendiente completar');
+  }
+
+  async function guardarAlumnoBase(alumnoId: string) {
+    await guardarAlumnoBaseConDatos(
+      alumnoId,
+      alumnoEditNombre,
+      alumnoEditFechaNacimiento,
+      alumnoEditTelefono,
+      alumnoEditNivel,
+      alumnoEditOrigen,
+      alumnos.find((item) => item.alumno_id === alumnoId)?.estado_ficha ||
+        'pendiente completar'
+    );
+  }
+
+  async function borrarAlumnoBase(alumno: AlumnoResumen) {
+    const confirmar = window.confirm(
+      `¿Borrar definitivamente la ficha de ${alumno.alumno}?\n\nEsto borra al alumno de listados, grupos, reportes e intensivos de prueba. No se puede deshacer.`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('borrar_alumno_base_operativa_app', {
+        p_alumno_id: alumno.alumno_id,
+      });
+
+      if (alumnoEditandoId === alumno.alumno_id) cerrarEditorAlumnoBase();
+      await cargarAlumnos();
+      await cargarAgendaOperativaDirecta();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function crearAlumnoManualBase() {
+    const nombreLimpio = nuevoAlumnoNombre.trim().toUpperCase();
+    if (!nombreLimpio) {
+      setError('Escribe el nombre del alumno para crear la ficha manual.');
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('crear_alumno_manual_operativa_app', {
+        p_nombre_completo: nombreLimpio,
+        p_nivel_codigo: nuevoAlumnoNivel || null,
+        p_origen_nivel: nuevoAlumnoOrigen || 'Jose / Coordinador',
+        p_estado_ficha: nuevoAlumnoEstado || 'pendiente completar',
+      });
+
+      setNuevoAlumnoNombre('');
+      setNuevoAlumnoNivel('');
+      setNuevoAlumnoOrigen('Jose / Coordinador');
+      setNuevoAlumnoEstado('pendiente completar');
+      setMostrarNuevoAlumnoManual(false);
+      await cargarAlumnos();
+      await cargarAgendaOperativaDirecta();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Error creando alumno manual'
+      );
+    }
+
+    setCargando(false);
+  }
+
+  async function abrirEvaluacionAlumno(alumno: AlumnoResumen) {
+    setCargando(true);
+    setError('');
+    setEvaluacionAlumnoActivaId(alumno.alumno_id);
+    setEvaluacionAlumnoTexto('Cargando evaluación...');
+
+    try {
+      const resultado = await ejecutarFuncionConRespuesta<{ texto: string }>(
+        'extraer_evaluacion_alumno_reportes_app',
+        { p_alumno_id: alumno.alumno_id }
+      );
+      const texto =
+        resultado[0]?.texto || `No hay reportes todavía para ${alumno.alumno}.`;
+      setEvaluacionAlumnoTexto(texto);
+    } catch (err) {
+      setEvaluacionAlumnoTexto('');
+      setError(
+        err instanceof Error ? err.message : 'Error generando evaluación'
+      );
+    }
+
+    setCargando(false);
+  }
+
+  async function copiarEvaluacionAlumnoTexto() {
+    if (!evaluacionAlumnoTexto.trim()) return;
+
+    try {
+      await navigator.clipboard.writeText(evaluacionAlumnoTexto);
+      alert(
+        'Evaluación copiada. Pégala en ChatGPT para convertirla en mensaje bonito para padres.'
+      );
+    } catch {
+      window.prompt('Copia esta evaluación:', evaluacionAlumnoTexto);
+    }
+  }
+
+  async function cargarOcioAlumnos() {
+    setCargando(true);
+    setError('');
+    try {
+      const data = await consultarSupabase<OcioAlumnoApp>(
+        'v_ocio_alumnos_v2_app',
+        'select=*&order=alumno.asc'
+      );
+      setOcioAlumnos(data);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Error cargando alumnos de Ocio'
+      );
+      setOcioAlumnos([]);
+    }
+    setCargando(false);
+  }
+
+  async function cargarOcioGrupos() {
+    setCargando(true);
+    setError('');
+    try {
+      const data = await consultarSupabase<OcioGrupoApp>(
+        'v_ocio_grupos_estables_app',
+        'select=*&order=dia_semana.asc,hora_inicio.asc,nombre_grupo.asc'
+      );
+      setOcioGrupos(data);
+      const recomendaciones =
+        await consultarSupabase<OcioRecomendacionCambioApp>(
+          'v_ocio_recomendacion_cambios_app',
+          'select=*&order=alumno.asc'
+        );
+      setOcioRecomendacionesCambio(recomendaciones);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Error cargando grupos de Ocio'
+      );
+      setOcioGrupos([]);
+      setOcioRecomendacionesCambio([]);
+    }
+    setCargando(false);
+  }
+
+  async function cargarOcioCambios() {
+    setCargando(true);
+    setError('');
+    try {
+      const data = await consultarSupabase<OcioCambioPuntualApp>(
+        'v_ocio_reubicaciones_app',
+        'select=*&order=fecha.desc,alumno.asc'
+      );
+      setOcioCambiosPuntuales(data);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error cargando cambios puntuales de Ocio'
+      );
+      setOcioCambiosPuntuales([]);
+    }
+    setCargando(false);
+  }
+
+  function limpiarFormularioOcioAlumno() {
+    setOcioAlumnoEditandoId(null);
+    setOcioNombre('');
+    setOcioTelefono('');
+    setOcioNivel('');
+    setOcioFechaNacimiento('');
+    setOcioDiaFijo('Jueves');
+    setOcioHoraInicio('18:00');
+    setOcioHoraFin('20:00');
+    setOcioObservaciones('');
+  }
+
+  function abrirNuevoAlumnoOcio() {
+    limpiarFormularioOcioAlumno();
+    setMostrarNuevoOcio(true);
+  }
+
+  function editarAlumnoOcio(alumno: OcioAlumnoApp) {
+    setOcioAlumnoEditandoId(alumno.alumno_id);
+    setOcioNombre(alumno.alumno || '');
+    setOcioTelefono(alumno.telefono || '');
+    setOcioNivel(
+      alumno.nivel_usado && alumno.nivel_usado !== '-' ? alumno.nivel_usado : ''
+    );
+    setOcioFechaNacimiento(alumno.fecha_nacimiento || '');
+    setOcioDiaFijo(alumno.dia_fijo || alumno.grupo_dia || 'Jueves');
+    setOcioHoraInicio(
+      (alumno.hora_inicio_fija || alumno.grupo_hora_inicio || '18:00').slice(
+        0,
+        5
+      )
+    );
+    setOcioHoraFin(
+      (alumno.hora_fin_fija || alumno.grupo_hora_fin || '20:00').slice(0, 5)
+    );
+    setOcioObservaciones(alumno.observaciones || '');
+    setMostrarNuevoOcio(true);
+  }
+
+  async function guardarAlumnoOcio() {
+    const nombre = ocioNombre.trim().toUpperCase();
+    if (!nombre) {
+      alert('Pon el nombre del alumno de Ocio.');
+      return;
+    }
+    setCargando(true);
+    setError('');
+    try {
+      if (ocioAlumnoEditandoId) {
+        await ejecutarFuncion('actualizar_alumno_ocio_v2_app', {
+          p_alumno_id: ocioAlumnoEditandoId,
+          p_nombre_completo: nombre,
+          p_telefono: ocioTelefono.trim() || null,
+          p_nivel_codigo: ocioNivel || null,
+          p_fecha_nacimiento: ocioFechaNacimiento || null,
+          p_dia_fijo: ocioDiaFijo || null,
+          p_hora_inicio: ocioHoraInicio || null,
+          p_hora_fin: ocioHoraFin || null,
+          p_observaciones: ocioObservaciones || null,
+          p_estado_ficha: 'pendiente completar',
+        });
+      } else {
+        await ejecutarFuncion('crear_alumno_ocio_app', {
+          p_nombre_completo: nombre,
+          p_nivel_codigo: ocioNivel || null,
+          p_fecha_nacimiento: ocioFechaNacimiento || null,
+          p_dia_fijo: ocioDiaFijo || null,
+          p_hora_inicio: ocioHoraInicio || null,
+          p_hora_fin: ocioHoraFin || null,
+          p_observaciones: ocioObservaciones || null,
+        });
+      }
+      limpiarFormularioOcioAlumno();
+      setMostrarNuevoOcio(false);
+      await cargarOcioAlumnos();
+      await cargarOcioGrupos();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Error guardando alumno Ocio'
+      );
+    }
+    setCargando(false);
+  }
+
+  async function eliminarAlumnoOcio(alumno: OcioAlumnoApp) {
+    const confirmar = window.confirm(
+      `¿Eliminar la ficha de Ocio de ${alumno.alumno}? No se puede deshacer.`
+    );
+    if (!confirmar) return;
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('eliminar_alumno_ocio_app', {
+        p_alumno_id: alumno.alumno_id,
+      });
+      await cargarOcioAlumnos();
+      await cargarOcioGrupos();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Error eliminando alumno Ocio'
+      );
+    }
+    setCargando(false);
+  }
+
+  async function importarOcioAimharder() {
+    if (!textoImportarOcio.trim()) {
+      alert('Pega el listado de Aimharder de Ocio.');
+      return;
+    }
+    setCargando(true);
+    setError('');
+    try {
+      const resultado = await ejecutarFuncionConRespuesta<OcioImportadoApp>(
+        'importar_alumnos_ocio_aimharder_app',
+        {
+          p_texto: textoImportarOcio,
+          p_dia_fijo: ocioDiaFijo || null,
+          p_hora_inicio: ocioHoraInicio || null,
+          p_hora_fin: ocioHoraFin || null,
+        }
+      );
+      setResultadoImportarOcio(resultado);
+      await cargarOcioAlumnos();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Error importando listado Ocio'
+      );
+    }
+    setCargando(false);
+  }
+
+  function esTurnoOficialOcio(grupo: OcioGrupoApp) {
+    const dia = textoSinAcentosGrupoApp(grupo.dia_semana || '');
+    const inicio = (grupo.hora_inicio || '').slice(0, 5);
+    const fin = (grupo.hora_fin || '').slice(0, 5);
+
+    return (
+      (dia === textoSinAcentosGrupoApp('Jueves') &&
+        inicio === '18:00' &&
+        fin === '20:00') ||
+      (dia === textoSinAcentosGrupoApp('Sábado') &&
+        inicio === '09:45' &&
+        fin === '11:45') ||
+      (dia === textoSinAcentosGrupoApp('Domingo') &&
+        inicio === '12:00' &&
+        fin === '14:00')
+    );
+  }
+
+  function horarioTurnoOcio(dia: 'Jueves' | 'Sábado' | 'Domingo') {
+    if (dia === 'Sábado') {
+      return { inicio: '09:45', fin: '11:45' };
+    }
+    if (dia === 'Domingo') {
+      return { inicio: '12:00', fin: '14:00' };
+    }
+    return { inicio: '18:00', fin: '20:00' };
+  }
+
+  function nivelesGrupoEstableOcio(grupo: OcioGrupoApp) {
+    // En Ocio el grupo estable tiene un nivel objetivo propio.
+    // Ese nivel es el que debe mandar en el recomendador de incorporaciones.
+    // Los niveles individuales sirven para avisar de evolución/revisión,
+    // pero no deben bloquear que un niño compatible entre en un grupo cuyo
+    // nivel objetivo sí le corresponde.
+    if (grupo.nivel_grupo) {
+      return [grupo.nivel_grupo];
+    }
+
+    const nivelesMiembros = ocioAlumnos
+      .filter((alumno) => alumno.grupo_id === grupo.grupo_id)
+      .map((alumno) => alumno.nivel_usado || alumno.nivel || '')
+      .filter(Boolean);
+
+    return Array.from(new Set(nivelesMiembros));
+  }
+
+  function perfilOperativoOcioApp(alumnoId?: string | null) {
+    if (!alumnoId) return undefined;
+    return perfilesOperativosAlumnos.find(
+      (perfil) => perfil.alumno_id === alumnoId
+    );
+  }
+
+  function ajusteFuerzaOcioApp(
+    perfil?: PerfilOperativoAlumnoApp
+  ) {
+    if (!perfil?.fuerza_nivel) return 0;
+    if (perfil.fuerza_nivel === 'MUY_FUERTE') return 3;
+    if (perfil.fuerza_nivel === 'FUERTE') return 2;
+    if (perfil.fuerza_nivel === 'BAJO') return -3;
+    return 0;
+  }
+
+  function puntuacionFuncionalOcioApp(
+    nivel: string | null | undefined,
+    alumnoId?: string | null
+  ) {
+    const perfil = perfilOperativoOcioApp(alumnoId);
+    let score = ordenNivelTrabajoMSZApp(nivel || 'A+') * 10;
+    score += ajusteFuerzaOcioApp(perfil);
+
+    if (perfil?.demanda_atencion === 'ALTA') score -= 1;
+
+    return score;
+  }
+
+  function mediaFuncionalGrupoOcioApp(grupoId: string) {
+    const miembros = ocioAlumnos.filter(
+      (alumno) => alumno.grupo_id === grupoId
+    );
+
+    const valores = miembros
+      .map((alumno) =>
+        puntuacionFuncionalOcioApp(
+          alumno.nivel_usado || alumno.nivel || '',
+          alumno.alumno_id
+        )
+      )
+      .filter((valor) => Number.isFinite(valor));
+
+    if (valores.length === 0) return null;
+    return valores.reduce((suma, valor) => suma + valor, 0) / valores.length;
+  }
+
+  function edadMediaGrupoOcioApp(grupoId: string) {
+    const edades = ocioAlumnos
+      .filter((alumno) => alumno.grupo_id === grupoId)
+      .map((alumno) => edadAproximadaOcio(alumno.fecha_nacimiento))
+      .filter((edad): edad is number => edad !== null);
+
+    if (edades.length === 0) return null;
+    return edades.reduce((suma, edad) => suma + edad, 0) / edades.length;
+  }
+
+  function explicacionCompactaPropuestaOcioApp(
+    alumno: OcioAlumnoApp,
+    grupo: OcioGrupoPropuestaApp,
+    miembros: OcioAlumnoApp[]
+  ) {
+    const nivelAlumno = (
+      alumno.nivel_usado ||
+      alumno.nivel ||
+      ''
+    )
+      .trim()
+      .toUpperCase();
+
+    // Solo explicamos casos frontera para no meter ruido visual.
+    if (nivelAlumno !== 'B+' && nivelAlumno !== 'B++') return '';
+
+    const nivelesCompaneros = miembros
+      .filter((item) => item.alumno_id !== alumno.alumno_id)
+      .map((item) =>
+        (item.nivel_usado || item.nivel || '').trim().toUpperCase()
+      );
+
+    const conviveConC = nivelesCompaneros.some((nivel) =>
+      /^C(?:\+)?$/.test(nivel)
+    );
+    const conviveConB = nivelesCompaneros.some((nivel) => nivel === 'B');
+
+    const perfil = perfilOperativoOcioApp(alumno.alumno_id);
+    const fuerte =
+      perfil?.fuerza_nivel === 'FUERTE' ||
+      perfil?.fuerza_nivel === 'MUY_FUERTE';
+
+    if (conviveConC && fuerte) {
+      return 'Encaje: B+ fuerte · compatible con C';
+    }
+
+    if (conviveConC) {
+      return 'Encaje: ritmo compatible con el grupo';
+    }
+
+    if (conviveConB) {
+      return fuerte
+        ? 'Encaje: equilibra el ritmo del grupo'
+        : 'Encaje: ritmo similar al grupo';
+    }
+
+    return '';
+  }
+
+  function evaluarEncajeGrupoEstableOcio(
+    grupo: OcioGrupoApp,
+    nivelAlumno: string,
+    esTurnoActual: boolean,
+    alumnoId?: string | null,
+    fechaNacimiento?: string | null
+  ) {
+    const compatibilidad = compatibilidadFueraPlazoAgenda(
+      nivelAlumno,
+      nivelesGrupoEstableOcio(grupo)
+    );
+
+    const totalActual =
+      ocioAlumnos.filter((alumno) => alumno.grupo_id === grupo.grupo_id).length ||
+      Number(grupo.total_alumnos || 0);
+    const totalFinal = totalActual + 1;
+
+    const pista = `${grupo.pista || ''}`.toUpperCase();
+    const maxRatio = pista.includes('GRANDE') ? 7 : 4;
+
+    let estado = compatibilidad.estado;
+    let motivo = compatibilidad.motivo;
+    let score = compatibilidad.score;
+
+    if (totalFinal > maxRatio) {
+      estado = 'NO_ENCAJA';
+      score = 0;
+      motivo = `Superaría el ratio del grupo (${totalFinal}/${maxRatio}).`;
+    } else {
+      const huecos = Math.max(0, maxRatio - totalFinal);
+      score += Math.max(0, 12 - huecos * 2);
+      if (esTurnoActual) score += 20;
+
+      // Afinado Ocio: mismo nivel nominal no siempre significa mismo ritmo.
+      // El perfil común solo afina; no sustituye la compatibilidad técnica base.
+      const perfilAlumno = perfilOperativoOcioApp(alumnoId);
+      const mediaGrupo = mediaFuncionalGrupoOcioApp(grupo.grupo_id);
+
+      if (perfilAlumno && mediaGrupo !== null) {
+        const funcionalAlumno = puntuacionFuncionalOcioApp(
+          nivelAlumno,
+          alumnoId
+        );
+        const diferencia = Math.abs(funcionalAlumno - mediaGrupo);
+
+        if (diferencia <= 2) {
+          score += 14;
+          motivo = `${motivo} Ritmo/fortaleza muy compatible con el grupo.`;
+        } else if (diferencia <= 4) {
+          score += 7;
+          motivo = `${motivo} Ritmo compatible.`;
+        } else if (diferencia >= 7 && estado === 'RECOMENDADO') {
+          estado = 'REVISAR';
+          score = Math.max(1, score - 8);
+          motivo = `${motivo} Nivel compatible, pero el ritmo reciente difiere bastante del grupo.`;
+        }
+      }
+
+      // Edad en Ocio solo desempata cuando ya hay encaje técnico/funcional.
+      const edadAlumno = edadAproximadaOcio(fechaNacimiento);
+      const edadGrupo = edadMediaGrupoOcioApp(grupo.grupo_id);
+      if (
+        estado !== 'NO_ENCAJA' &&
+        edadAlumno !== null &&
+        edadGrupo !== null
+      ) {
+        const diferenciaEdad = Math.abs(edadAlumno - edadGrupo);
+        if (diferenciaEdad <= 2) score += 3;
+        else if (diferenciaEdad <= 4) score += 1;
+      }
+
+      // Si el alumno ya pertenece a este grupo, mantener estabilidad pesa mucho.
+      if (
+        alumnoId &&
+        ocioAlumnos.some(
+          (alumno) =>
+            alumno.alumno_id === alumnoId &&
+            alumno.grupo_id === grupo.grupo_id
+        )
+      ) {
+        score += 30;
+        motivo = `${motivo} Se prioriza mantener su grupo estable.`;
+      }
+    }
+
+    return {
+      grupo,
+      estado,
+      motivo,
+      score,
+      totalActual,
+      totalFinal,
+      esTurnoActual,
+    };
+  }
+
+  function recomendacionesAlumnoSinGrupoOcio(
+    alumno: OcioAlumnoApp,
+    gruposDia: OcioGrupoApp[]
+  ) {
+    const nivel = (
+      alumno.nivel_usado ||
+      alumno.nivel ||
+      'INICIACION'
+    )
+      .trim()
+      .toUpperCase();
+
+    return gruposDia
+      .filter((grupo) => Boolean(grupo.activo))
+      .map((grupo) =>
+        evaluarEncajeGrupoEstableOcio(
+          grupo,
+          nivel,
+          true,
+          alumno.alumno_id,
+          alumno.fecha_nacimiento
+        )
+      )
+      .sort((a, b) => {
+        const ordenEstado = {
+          RECOMENDADO: 0,
+          REVISAR: 1,
+          NO_ENCAJA: 2,
+        } as const;
+
+        const estadoA =
+          ordenEstado[a.estado as keyof typeof ordenEstado] ?? 9;
+        const estadoB =
+          ordenEstado[b.estado as keyof typeof ordenEstado] ?? 9;
+
+        if (estadoA !== estadoB) return estadoA - estadoB;
+        return b.score - a.score;
+      });
+  }
+
+  async function asignarRecomendacionAlumnoSinGrupoOcio(
+    alumno: OcioAlumnoApp,
+    grupo: OcioGrupoApp
+  ) {
+    const confirmar = window.confirm(
+      `¿Asignar a ${alumno.alumno} a ${grupo.nombre_grupo}?`
+    );
+    if (!confirmar) return;
+
+    await asignarAlumnoGrupoOcio(alumno.alumno_id, grupo.grupo_id);
+    setOcioAlumnoRecomendandoId('');
+  }
+
+  async function buscarFichaNuevoOcio(valor: string) {
+    setOcioNuevoNombre(valor);
+    setOcioNuevoAlumnoId('');
+    setOcioNuevoRecomendaciones([]);
+
+    const buscado = normalizarNombreFueraPlazoAgenda(valor);
+    if (buscado.length < 2) {
+      setOcioNuevoSugerencias([]);
+      return;
+    }
+
+    try {
+      const maestro =
+        alumnos.length > 0
+          ? alumnos
+          : await consultarSupabase<AlumnoResumen>(
+              'v_resumen_alumno_v2',
+              'select=*&order=alumno.asc'
+            );
+
+      if (alumnos.length === 0) setAlumnos(maestro);
+
+      const sugerencias = maestro
+        .filter((alumno) =>
+          normalizarNombreFueraPlazoAgenda(alumno.alumno).startsWith(buscado)
+        )
+        .slice(0, 6);
+
+      setOcioNuevoSugerencias(sugerencias);
+    } catch {
+      setOcioNuevoSugerencias([]);
+    }
+  }
+
+  function seleccionarFichaNuevoOcio(alumno: AlumnoResumen) {
+    const nivel =
+      alumno.nivel_actual ||
+      alumno.ultimo_nivel_reportado ||
+      alumno.nivel_estimado ||
+      'INICIACION';
+
+    setOcioNuevoNombre(alumno.alumno);
+    setOcioNuevoNivel(nivel);
+    setOcioNuevoAlumnoId(alumno.alumno_id);
+    setOcioNuevoSugerencias([]);
+    setOcioNuevoRecomendaciones([]);
+  }
+
+  async function analizarNuevoAlumnoOcio() {
+    const nombre = ocioNuevoNombre.trim();
+    if (!nombre) {
+      setError('Escribe o selecciona el nombre del alumno.');
+      return;
+    }
+
+    setOcioNuevoAnalizando(true);
+    setError('');
+
+    try {
+      const nivel = (ocioNuevoNivel || 'INICIACION').trim().toUpperCase();
+      if (!ocioNuevoNivel) setOcioNuevoNivel(nivel);
+
+      const turno = horarioTurnoOcio(ocioTurnoVista);
+      const diaActual = textoSinAcentosGrupoApp(ocioTurnoVista);
+
+      const resultados = ocioGrupos
+        .filter((grupo) => Boolean(grupo.activo))
+        .map((grupo) => {
+          const esTurnoActual =
+            textoSinAcentosGrupoApp(grupo.dia_semana || '') === diaActual &&
+            (grupo.hora_inicio || '').slice(0, 5) === turno.inicio;
+
+          const fichaMaestra = ocioNuevoAlumnoId
+            ? alumnos.find(
+                (alumno) => alumno.alumno_id === ocioNuevoAlumnoId
+              )
+            : undefined;
+
+          return evaluarEncajeGrupoEstableOcio(
+            grupo,
+            nivel,
+            esTurnoActual,
+            ocioNuevoAlumnoId || null,
+            fichaMaestra?.fecha_nacimiento || null
+          );
+        })
+        .sort((a, b) => {
+          if (a.esTurnoActual !== b.esTurnoActual) {
+            return a.esTurnoActual ? -1 : 1;
+          }
+          return b.score - a.score;
+        });
+
+      setOcioNuevoRecomendaciones(resultados);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'No se pudo analizar el encaje.'
+      );
+    }
+
+    setOcioNuevoAnalizando(false);
+  }
+
+  async function incorporarNuevoAlumnoOcio(
+    recomendacion: {
+      grupo: OcioGrupoApp;
+      estado: 'RECOMENDADO' | 'REVISAR' | 'NO_ENCAJA';
+      totalActual: number;
+      totalFinal: number;
+    }
+  ) {
+    if (recomendacion.estado === 'NO_ENCAJA') return;
+
+    const grupo = recomendacion.grupo;
+    const nombre = ocioNuevoNombre.trim();
+    const nivel = (ocioNuevoNivel || 'INICIACION').trim().toUpperCase();
+
+    const cambioTurno =
+      textoSinAcentosGrupoApp(grupo.dia_semana || '') !==
+      textoSinAcentosGrupoApp(ocioTurnoVista);
+
+    const confirmar = window.confirm(
+      `${nombre} · ${nivel}\n${grupo.dia_semana} ${horaCorta(
+        grupo.hora_inicio
+      )}-${horaCorta(grupo.hora_fin)} · ${grupo.nombre_grupo}\n${
+        recomendacion.totalActual
+      } → ${recomendacion.totalFinal} niños\n\n${
+        cambioTurno
+          ? 'Confirma que los padres han aceptado este turno y que quieres dejarlo como grupo estable.'
+          : '¿Confirmas que quieres incorporarlo de forma permanente a este grupo estable?'
+      }`
+    );
+    if (!confirmar) return;
+
+    setOcioNuevoGuardandoGrupoId(grupo.grupo_id);
+    setError('');
+
+    try {
+      let alumnoOcio = ocioAlumnos.find(
+        (alumno) =>
+          alumno.alumno_id === ocioNuevoAlumnoId ||
+          normalizarNombreFueraPlazoAgenda(alumno.alumno) ===
+            normalizarNombreFueraPlazoAgenda(nombre)
+      );
+
+      if (!alumnoOcio) {
+        await ejecutarFuncion('crear_alumno_ocio_app', {
+          p_nombre_completo: nombre.toUpperCase(),
+          p_nivel_codigo: nivel || null,
+          p_fecha_nacimiento: null,
+          p_dia_fijo: grupo.dia_semana,
+          p_hora_inicio: (grupo.hora_inicio || '').slice(0, 5),
+          p_hora_fin: (grupo.hora_fin || '').slice(0, 5),
+          p_observaciones: null,
+        });
+
+        const actualizados = await consultarSupabase<OcioAlumnoApp>(
+          'v_ocio_alumnos_v2_app',
+          'select=*&order=alumno.asc'
+        );
+        setOcioAlumnos(actualizados);

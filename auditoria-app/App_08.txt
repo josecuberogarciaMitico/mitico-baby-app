@@ -1,0 +1,2500 @@
+            </button>
+          </div>
+        ) : (
+          <h4 style={{ marginTop: 0 }}>Reporte de {alumno.alumno}</h4>
+        )}
+
+        <details
+          style={{
+            ...ayudaReporteEntrenadorCaja,
+            border: '1px solid #d7e4ff',
+            background: '#f7faff',
+            borderRadius: 14,
+          }}
+        >
+          <summary style={summaryAyudaReporteEntrenador}>
+            Ver referencia técnica del nivel
+          </summary>
+          <div style={{ padding: '10px 12px 12px' }}>
+            {referenciaTecnicaReporteApp(
+              formReporte.nivel || alumno.nivel_alumno || nivelGrupo || ''
+            ).map(([titulo, texto], indice) => (
+              <div
+                key={titulo}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '112px 1fr',
+                  gap: 10,
+                  padding: '8px 0',
+                  borderTop: indice === 0 ? 'none' : '1px solid #e5edf8',
+                }}
+              >
+                <strong style={{ color: '#1e3a8a', fontSize: 12 }}>
+                  {titulo}
+                </strong>
+                <span style={{ color: '#475569', fontSize: 12, lineHeight: 1.4 }}>
+                  {texto}
+                </span>
+              </div>
+            ))}
+          </div>
+        </details>
+
+        <div className="trainer-report-grid" style={gridFormulario}>
+          <div>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                marginBottom: 8,
+                padding: '5px 9px',
+                borderRadius: 999,
+                background: '#eaf2ff',
+                border: '1px solid #c9dcff',
+                color: '#2453b3',
+                fontSize: 12,
+                fontWeight: 900,
+              }}
+            >
+              Nivel de partida · {nivelPartidaReporte || alumno.nivel_alumno || 'Sin nivel'}
+            </div>
+            <CampoSelect
+              label="Nivel observado"
+              value={formReporte.nivel}
+              opciones={opcionesNivel}
+              onChange={(valor) =>
+                setFormReporte({ ...formReporte, nivel: valor })
+              }
+            />
+          </div>
+
+          <CampoSelect
+            label="Actitud"
+            value={formReporte.actitud}
+            opciones={opcionesActitud}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, actitud: valor })
+            }
+          />
+
+          {!esProgresionInicialReporte && (
+            <CampoSelect
+              label="Técnica"
+              value={formReporte.tecnica}
+              opciones={opcionesTecnica}
+              onChange={(valor) =>
+                setFormReporte({ ...formReporte, tecnica: valor })
+              }
+            />
+          )}
+
+          {esProgresionInicialReporte && (
+            <CampoSelect
+              label="Cuña y frenada"
+              value={formReporte.cunaFrenada}
+              opciones={['', ...opcionesCunaFrenadaInicialApp]}
+              onChange={(valor) =>
+                setFormReporte({
+                  ...formReporte,
+                  cunaFrenada: valor,
+                })
+              }
+            />
+          )}
+
+          {esProgresionInicialReporte && (
+            <CampoSelect
+              label="Giro"
+              value={formReporte.giroInicial}
+              opciones={['', ...opcionesGiroInicialApp]}
+              onChange={(valor) =>
+                setFormReporte({
+                  ...formReporte,
+                  giroInicial: valor,
+                })
+              }
+            />
+          )}
+
+          <CampoSelect
+            label="Pista"
+            value={formReporte.pista}
+            opciones={opcionesPista}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, pista: valor })
+            }
+          />
+
+          <CampoSelect
+            label="Autonomía"
+            value={formReporte.autonomia}
+            opciones={opcionesAutonomia}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, autonomia: valor })
+            }
+          />
+
+          {esProgresionInicialReporte && (
+            <CampoSelect
+              label="Autonomía en cinta"
+              value={formReporte.autonomiaCinta}
+              opciones={['', ...opcionesAutonomiaCintaInicialApp]}
+              onChange={(valor) =>
+                setFormReporte({
+                  ...formReporte,
+                  autonomiaCinta: valor,
+                })
+              }
+            />
+          )}
+
+          {esProgresionInicialReporte && (
+            <CampoSelect
+              label="Funcionamiento en pista"
+              value={formReporte.dinamicaAutonoma}
+              opciones={['', ...opcionesDinamicaAutonomaInicialApp]}
+              onChange={(valor) =>
+                setFormReporte({
+                  ...formReporte,
+                  dinamicaAutonoma: valor,
+                })
+              }
+            />
+          )}
+
+          <CampoSelect
+            label="Remontes"
+            value={formReporte.remontes}
+            opciones={opcionesRemontes}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, remontes: valor })
+            }
+          />
+
+          {esProgresionInicialReporte && (
+            <CampoSelect
+              label="¿Ha usado cuñero?"
+              value={formReporte.ayudaCunero}
+              opciones={opcionesAyudaCuneroInicialApp}
+              onChange={(valor) =>
+                setFormReporte({
+                  ...formReporte,
+                  ayudaCunero: valor,
+                })
+              }
+            />
+          )}
+
+          <CampoSelect
+            label="Ritmo en el grupo"
+            value={formReporte.ritmoGrupo}
+            opciones={opcionesRitmoGrupo}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, ritmoGrupo: valor })
+            }
+          />
+
+          <CampoSelect
+            label="Incidencia"
+            value={formReporte.incidencia}
+            opciones={opcionesIncidencia}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, incidencia: valor })
+            }
+          />
+
+          <CampoSelect
+            label="Recomendación"
+            value={formReporte.recomendacion}
+            opciones={opcionesRecomendacion}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, recomendacion: valor })
+            }
+          />
+
+        </div>
+
+        <label style={labelCampo}>
+          Observaciones
+          <textarea
+            value={formReporte.observaciones}
+            onChange={(e) =>
+              setFormReporte({
+                ...formReporte,
+                observaciones: e.target.value,
+              })
+            }
+            style={textarea}
+          />
+        </label>
+
+        <div
+          className="trainer-report-actions"
+          style={{
+            display: 'flex',
+            gap: 8,
+            flexWrap: 'wrap',
+            marginTop: 12,
+          }}
+        >
+          <button
+            type="button"
+            onClick={() => guardarReporteAlumno(alumno)}
+            style={botonPrincipal}
+          >
+            Guardar reporte
+          </button>
+          <button
+            type="button"
+            onClick={cerrarFormularioReporte}
+            style={botonSecundario}
+          >
+            Cancelar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function calcularEstadoPlanning(grupo: GrupoPlanning) {
+    const alumnosEstadoGrupo = alumnosReporteEntrenador.filter(
+      (alumno) => alumno.grupo_id === grupo.grupo_id
+    );
+
+    const confirmacionesGrupo = gruposEntrenador.filter(
+      (asignacion) => asignacion.grupo_id === grupo.grupo_id
+    );
+
+    const asistentesPendientes = alumnosEstadoGrupo.filter(
+      (alumno) => alumno.estado_asistencia === 'Pendiente'
+    ).length;
+
+    const reportesPendientesGrupo = alumnosEstadoGrupo.filter(
+      (alumno) => alumno.estado_reporte === 'Falta reporte'
+    ).length;
+
+    const entrenadoresSinConfirmar = confirmacionesGrupo.filter(
+      (asignacion) => asignacion.estado_confirmacion !== 'Confirmado'
+    ).length;
+
+    const grupoTieneSeguimiento = alumnosEstadoGrupo.length > 0;
+
+    if (!grupo.publicado) return 'Sin publicar';
+    if (entrenadoresSinConfirmar > 0)
+      return 'Publicado · entrenador sin confirmar';
+    if (grupoTieneSeguimiento && asistentesPendientes > 0)
+      return 'Asistencia pendiente';
+    if (grupoTieneSeguimiento && reportesPendientesGrupo > 0)
+      return 'Reportes pendientes';
+    if (grupoTieneSeguimiento) return 'Grupo cerrado';
+
+    return 'Publicado · pendiente de seguimiento';
+  }
+
+  const planningFiltrado = planning.filter((grupo) => {
+    const estado = calcularEstadoPlanning(grupo);
+
+    if (filtroPlanning === 'sin_publicar') return estado === 'Sin publicar';
+    if (filtroPlanning === 'cerrados') return estado === 'Grupo cerrado';
+    if (filtroPlanning === 'pendientes') {
+      return estado !== 'Grupo cerrado' && estado !== 'Sin publicar';
+    }
+
+    return true;
+  });
+
+  const totalPlanningPendientes = planning.filter((grupo) => {
+    const estado = calcularEstadoPlanning(grupo);
+    return estado !== 'Grupo cerrado' && estado !== 'Sin publicar';
+  }).length;
+
+  const totalPlanningCerrados = planning.filter(
+    (grupo) => calcularEstadoPlanning(grupo) === 'Grupo cerrado'
+  ).length;
+
+  const totalPlanningSinPublicar = planning.filter(
+    (grupo) => calcularEstadoPlanning(grupo) === 'Sin publicar'
+  ).length;
+
+  function crearFechaAgenda(fechaIso: string) {
+    const [anio, mes, dia] = fechaIso.split('-').map(Number);
+    return new Date(anio, mes - 1, dia);
+  }
+
+  function claveFechaAgenda(fecha: Date) {
+    const anio = fecha.getFullYear();
+    const mes = `${fecha.getMonth() + 1}`.padStart(2, '0');
+    const dia = `${fecha.getDate()}`.padStart(2, '0');
+    return `${anio}-${mes}-${dia}`;
+  }
+
+  function claveMesDesdeFecha(fechaIso: string) {
+    return fechaIso.slice(0, 7);
+  }
+
+  function nombreMesAgendaDesdeClave(clave: string) {
+    const [anio, mes] = clave.split('-').map(Number);
+    const fecha = new Date(anio, mes - 1, 1);
+    return fecha.toLocaleDateString('es-ES', {
+      month: 'long',
+      year: 'numeric',
+    });
+  }
+
+  function inicioSemanaAgenda(fechaIso: string) {
+    const fecha = crearFechaAgenda(fechaIso);
+    const diaSemana = fecha.getDay() === 0 ? 7 : fecha.getDay();
+    fecha.setDate(fecha.getDate() - diaSemana + 1);
+    return claveFechaAgenda(fecha);
+  }
+
+  function fechaAgendaCortaConAnio(fechaIso: string) {
+    const fecha = crearFechaAgenda(fechaIso);
+    return fecha.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  }
+
+  function fechaAgendaDiaCorta(fechaIso: string) {
+    const fecha = crearFechaAgenda(fechaIso);
+    return fecha.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+    });
+  }
+
+  function rangoSemanaAgenda(inicioIso: string) {
+    const inicio = crearFechaAgenda(inicioIso);
+    const fin = new Date(inicio);
+    fin.setDate(inicio.getDate() + 6);
+    return `${fechaAgendaCortaConAnio(
+      claveFechaAgenda(inicio)
+    )} – ${fechaAgendaCortaConAnio(claveFechaAgenda(fin))}`;
+  }
+
+  function rangoEntrenosSemanaAgenda(inicioIso: string) {
+    const inicio = crearFechaAgenda(inicioIso);
+    const primerEntreno = new Date(inicio);
+    const ultimoEntreno = new Date(inicio);
+    primerEntreno.setDate(inicio.getDate() + 2);
+    ultimoEntreno.setDate(inicio.getDate() + 6);
+    return `${fechaAgendaDiaCorta(
+      claveFechaAgenda(primerEntreno)
+    )} – ${fechaAgendaDiaCorta(claveFechaAgenda(ultimoEntreno))}`;
+  }
+
+  function diasTrabajoSemanaAgenda(inicioIso: string) {
+    const inicio = crearFechaAgenda(inicioIso);
+    // La semana se calcula lunes-domingo, pero en pantalla solo enseñamos días reales de entrenamiento.
+    return [2, 3, 4, 5, 6].map((offset) => {
+      const fecha = new Date(inicio);
+      fecha.setDate(inicio.getDate() + offset);
+      return {
+        fecha: claveFechaAgenda(fecha),
+        nombre: fecha.toLocaleDateString('es-ES', { weekday: 'long' }),
+        etiqueta: fecha.toLocaleDateString('es-ES', {
+          day: '2-digit',
+          month: 'short',
+        }),
+        esDiaTrabajo: true,
+      };
+    });
+  }
+
+  function turnosTrabajoDiaAgenda(fechaIso: string) {
+    const fecha = crearFechaAgenda(fechaIso);
+    const diaSemana = fecha.getDay();
+
+    if ([3, 4, 5].includes(diaSemana)) {
+      return [{ etiqueta: '18:00–20:00', inicio: '18:00', fin: '20:00' }];
+    }
+
+    if (diaSemana === 6) {
+      return [
+        { etiqueta: '09:45–11:45', inicio: '09:45', fin: '11:45' },
+        { etiqueta: '12:00–14:00', inicio: '12:00', fin: '14:00' },
+        { etiqueta: '14:30–16:30', inicio: '14:30', fin: '16:30' },
+      ];
+    }
+
+    if (diaSemana === 0) {
+      return [
+        { etiqueta: '09:45–11:45', inicio: '09:45', fin: '11:45' },
+        { etiqueta: '12:00–14:00', inicio: '12:00', fin: '14:00' },
+      ];
+    }
+
+    return [];
+  }
+
+  type SesionAgendaOperativa = {
+    id: string;
+    fecha: string;
+    hora_inicio: string;
+    hora_fin: string;
+    modalidad: string;
+    titulo: string;
+    estado: string;
+    totalAlumnos: number;
+    totalGrupos: number;
+    publicados: number;
+    origen: 'operativa' | 'intensivo' | 'planning' | 'listado';
+    intensivo?: IntensivoApp;
+    dia?: IntensivoDiaApp;
+    grupos: GrupoIntensivoDiaApp[];
+    planningGrupos: GrupoPlanning[];
+    listado?: ListadoApp;
+    agendaDirecta?: AgendaSesionDirectaApp;
+  };
+
+  function sesionesAgendaOperativa() {
+    const sesiones = new Map<string, SesionAgendaOperativa>();
+
+    agendaSesionesDirectas.forEach((sesionDirecta) => {
+      const gruposDirectos = agendaGruposSesion.filter(
+        (grupo) => grupo.sesion_id === sesionDirecta.sesion_id
+      );
+
+      sesiones.set(`operativa-${sesionDirecta.sesion_id}`, {
+        id: `operativa-${sesionDirecta.sesion_id}`,
+        fecha: sesionDirecta.fecha,
+        hora_inicio: sesionDirecta.hora_inicio,
+        hora_fin: sesionDirecta.hora_fin,
+        modalidad: sesionDirecta.modalidad_codigo || sesionDirecta.modalidad,
+        titulo: `${sesionDirecta.modalidad} · ${
+          sesionDirecta.lugar || 'Madrid SnowZone'
+        }`,
+        estado:
+          sesionDirecta.total_grupos === 0
+            ? 'Listado cargado · grupos pendientes'
+            : sesionDirecta.alumnos_sin_grupo > 0
+            ? `Faltan ${sesionDirecta.alumnos_sin_grupo} alumnos por colocar`
+            : 'Grupos creados',
+        totalAlumnos: Math.max(
+          Number(sesionDirecta.total_alumnos || 0),
+          Number(sesionDirecta.alumnos_en_grupos || 0)
+        ),
+        totalGrupos: Number(sesionDirecta.total_grupos || 0),
+        publicados: Number(sesionDirecta.grupos_publicados || 0),
+        origen: 'operativa',
+        grupos: [],
+        planningGrupos: [],
+        agendaDirecta: sesionDirecta,
+      });
+    });
+
+    intensivoDias.forEach((dia) => {
+      if (
+        dia.sesion_id &&
+        agendaSesionesDirectas.some(
+          (sesion) => sesion.sesion_id === dia.sesion_id
+        )
+      ) {
+        return;
+      }
+
+      const intensivo = intensivos.find(
+        (item) => item.intensivo_id === dia.intensivo_id
+      );
+      const gruposDia = gruposNormalesDelDiaIntensivo(dia.intensivo_dia_id);
+      const totalInscritos = alumnosDelIntensivo(dia.intensivo_id).length;
+      const id = `intensivo-${dia.intensivo_dia_id}`;
+
+      sesiones.set(id, {
+        id,
+        fecha: dia.fecha,
+        hora_inicio: dia.hora_inicio,
+        hora_fin: dia.hora_fin,
+        modalidad: 'INTENSIVO',
+        titulo: intensivo?.intensivo || 'Intensivo',
+        estado:
+          gruposDia.length === 0
+            ? 'Pendiente de grupos'
+            : gruposDia.some((grupo) => !grupo.publicado)
+            ? 'Grupos sin publicar'
+            : 'Publicado',
+        totalAlumnos: totalInscritos,
+        totalGrupos: gruposDia.length,
+        publicados: gruposDia.filter((grupo) => grupo.publicado).length,
+        origen: 'intensivo',
+        intensivo,
+        dia,
+        grupos: gruposDia,
+        planningGrupos: [],
+      });
+    });
+
+    const planningPorSesion = new Map<string, GrupoPlanning[]>();
+    planning.forEach((grupo) => {
+      const clave = `${grupo.fecha}-${grupo.hora_inicio}-${grupo.hora_fin}-${grupo.modalidad}`;
+      planningPorSesion.set(clave, [
+        ...(planningPorSesion.get(clave) || []),
+        grupo,
+      ]);
+    });
+
+    planningPorSesion.forEach((gruposSesion, clave) => {
+      const primero = gruposSesion[0];
+      if (!primero) return;
+      if (
+        String(primero.modalidad || '')
+          .toUpperCase()
+          .includes('INTENSIVO')
+      )
+        return;
+
+      const existente = [...sesiones.values()].find(
+        (sesion) =>
+          sesion.fecha === primero.fecha &&
+          sesion.hora_inicio === primero.hora_inicio &&
+          sesion.hora_fin === primero.hora_fin &&
+          String(sesion.modalidad || '').toUpperCase() ===
+            String(primero.modalidad || '').toUpperCase()
+      );
+
+      if (existente) {
+        sesiones.set(existente.id, {
+          ...existente,
+          planningGrupos: gruposSesion,
+          totalGrupos: Math.max(existente.totalGrupos, gruposSesion.length),
+          publicados: Math.max(
+            existente.publicados,
+            gruposSesion.filter((grupo) => grupo.publicado).length
+          ),
+          estado: gruposSesion.every((grupo) => grupo.publicado)
+            ? 'Publicado'
+            : existente.estado,
+        });
+        return;
+      }
+
+      sesiones.set(`planning-${clave}`, {
+        id: `planning-${clave}`,
+        fecha: primero.fecha,
+        hora_inicio: primero.hora_inicio,
+        hora_fin: primero.hora_fin,
+        modalidad: primero.modalidad,
+        titulo: primero.modalidad,
+        estado: gruposSesion.every((grupo) => grupo.publicado)
+          ? 'Publicado'
+          : 'Pendiente publicar',
+        totalAlumnos: gruposSesion.reduce(
+          (total, grupo) => total + Number(grupo.total_alumnos || 0),
+          0
+        ),
+        totalGrupos: gruposSesion.length,
+        publicados: gruposSesion.filter((grupo) => grupo.publicado).length,
+        origen: 'planning',
+        grupos: [],
+        planningGrupos: gruposSesion,
+      });
+    });
+
+    listados.forEach((listado) => {
+      const id = `listado-${listado.listado_id}`;
+      const existeSesion = [...sesiones.values()].some(
+        (sesion) =>
+          sesion.fecha === listado.fecha &&
+          sesion.hora_inicio === listado.hora_inicio &&
+          sesion.modalidad === listado.modalidad
+      );
+
+      if (existeSesion) return;
+
+      sesiones.set(id, {
+        id,
+        fecha: listado.fecha,
+        hora_inicio: listado.hora_inicio,
+        hora_fin: listado.hora_fin,
+        modalidad: listado.modalidad,
+        titulo: `Listado ${listado.modalidad}`,
+        estado: listado.estado,
+        totalAlumnos: Number(listado.total_nombres_detectados || 0),
+        totalGrupos: 0,
+        publicados: 0,
+        origen: 'listado',
+        grupos: [],
+        planningGrupos: [],
+        listado,
+      });
+    });
+
+    return [...sesiones.values()].sort((a, b) =>
+      `${a.fecha} ${a.hora_inicio}`.localeCompare(`${b.fecha} ${b.hora_inicio}`)
+    );
+  }
+
+  function sesionesDelDiaAgenda(fecha: string) {
+    return sesionesAgenda.filter((sesion) => sesion.fecha === fecha);
+  }
+
+  function abrirSesionAgenda(
+    sesion: SesionAgendaOperativa,
+    panel: 'alumnos' | 'grupos'
+  ) {
+    if (sesion.origen === 'operativa' && sesion.agendaDirecta) {
+      setAgendaDiaCompactoActivo(sesion.fecha);
+      setAgendaFormularioAbierto(false);
+
+      void cargarDisponibilidadSesionAgenda(
+        sesion.agendaDirecta.sesion_id,
+        sesion.fecha,
+        sesion.hora_inicio,
+        sesion.hora_fin
+      );
+
+      cargarDetalleSesionAgenda(sesion.agendaDirecta.sesion_id);
+      return;
+    }
+
+    if (sesion.origen === 'intensivo' && sesion.intensivo && sesion.dia) {
+      if (panel === 'alumnos') abrirPanelIntensivo(sesion.intensivo, 'alumnos');
+      if (panel === 'grupos') {
+        abrirPanelIntensivo(sesion.intensivo, 'grupos');
+        setDiaGrupoSeleccionadoId(sesion.dia.intensivo_dia_id);
+      }
+      setPantalla('intensivos');
+      return;
+    }
+
+    setPantalla('agenda');
+  }
+
+  function gruposTextoResumenSesion(sesion: SesionAgendaOperativa) {
+    if (sesion.origen === 'intensivo') {
+      return sesion.grupos
+        .filter((grupo) => grupo.grupo_id)
+        .map(
+          (grupo, indice) =>
+            `${nombreGrupoVisualApp(grupo, indice)} · ${
+              grupo.entrenador || 'Pendiente entrenador'
+            } · Punto ${grupo.punto_encuentro || '-'}`
+        )
+        .join(' || ');
+    }
+
+    if (sesion.planningGrupos.length > 0) {
+      return sesion.planningGrupos
+        .map(
+          (grupo, indice) =>
+            `${nombreGrupoVisualApp(grupo, indice)} · ${
+              grupo.entrenadores || 'Pendiente entrenador'
+            } · Punto ${grupo.punto_encuentro || '-'}`
+        )
+        .join(' || ');
+    }
+
+    if (sesion.agendaDirecta) {
+      return agendaGruposSesion
+        .filter((grupo) => grupo.sesion_id === sesion.agendaDirecta?.sesion_id)
+        .map(
+          (grupo, indice) =>
+            `${nombreGrupoVisualApp(grupo, indice)} · ${
+              grupo.entrenador || 'Pendiente entrenador'
+            } · Punto ${grupo.punto_encuentro || '-'}`
+        )
+        .join(' || ');
+    }
+
+    return '';
+  }
+
+  function limitesSnowZoneSeleccionados() {
+    if (snowZoneModo === 'semanal') {
+      const inicio = snowZoneSemanaInicio || fechaIsoHoyApp();
+      return {
+        desde: inicio,
+        hasta: sumarDiasEditor(inicio, 6),
+      };
+    }
+
+    const mes = snowZoneMes || fechaIsoHoyApp().slice(0, 7);
+    const [anio, numeroMes] = mes.split('-').map(Number);
+    const primerDia = `${anio}-${String(numeroMes).padStart(2, '0')}-01`;
+    const ultimo = new Date(anio, numeroMes, 0);
+    return {
+      desde: primerDia,
+      hasta: fechaIsoEditor(ultimo),
+    };
+  }
+
+  function tituloPeriodoSnowZone() {
+    const { desde, hasta } = limitesSnowZoneSeleccionados();
+
+    if (snowZoneModo === 'mensual') {
+      const [anio, mes] = snowZoneMes.split('-').map(Number);
+      const nombre = new Intl.DateTimeFormat('es-ES', {
+        month: 'long',
+      }).format(new Date(anio, mes - 1, 1));
+
+      return {
+        titulo: `${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} ${anio}`,
+        periodo: `${formatearFecha(desde)} al ${formatearFecha(hasta)}`,
+      };
+    }
+
+    return {
+      titulo: 'Informe semanal SnowZone',
+      periodo: `${formatearFecha(desde)} al ${formatearFecha(hasta)}`,
+    };
+  }
+
+  async function cargarInformeSnowZone() {
+    if (!esCoordinadorJefeApp) return;
+
+    const { desde, hasta } = limitesSnowZoneSeleccionados();
+    setSnowZoneCargando(true);
+    setSnowZoneError('');
+
+    try {
+      const data = await ejecutarFuncionConRespuesta<SnowZoneDiaApp>(
+        'obtener_informe_snowzone_app',
+        {
+          p_desde: desde,
+          p_hasta: hasta,
+        }
+      );
+      setSnowZoneDias(
+        data.map((fila) => ({
+          ...fila,
+          pista_pequena: Number(fila.pista_pequena || 0),
+          pista_grande: Number(fila.pista_grande || 0),
+          total: Number(fila.total || 0),
+        }))
+      );
+    } catch (err) {
+      setSnowZoneDias([]);
+      setSnowZoneError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo cargar el informe SnowZone.'
+      );
+    } finally {
+      setSnowZoneCargando(false);
+    }
+  }
+
+  function descargarInformeSnowZoneExcel() {
+    const { desde, hasta } = limitesSnowZoneSeleccionados();
+
+    if (snowZoneDias.length === 0) {
+      setSnowZoneError('No hay datos SnowZone para descargar en este periodo.');
+      return;
+    }
+
+    const totalPequena = snowZoneDias.reduce(
+      (total, fila) => total + Number(fila.pista_pequena || 0),
+      0
+    );
+    const totalGrande = snowZoneDias.reduce(
+      (total, fila) => total + Number(fila.pista_grande || 0),
+      0
+    );
+    const totalGeneral = totalPequena + totalGrande;
+
+    const escaparCsv = (valor: unknown) => {
+      const texto = String(valor ?? '');
+      return `"${texto.replace(/"/g, '""')}"`;
+    };
+
+    const cabeceraPeriodo = tituloPeriodoSnowZone();
+
+    const filasCsv: Array<Array<string | number>> = [
+      [`SNOWZONE · ${cabeceraPeriodo.titulo}`],
+      [`Periodo: ${cabeceraPeriodo.periodo}`],
+      [],
+      ['Fecha', 'Pista pequeña', 'Pista grande', 'Total'],
+      ...snowZoneDias.map((fila) => [
+        formatearFecha(fila.fecha),
+        fila.pista_pequena,
+        fila.pista_grande,
+        fila.total,
+      ]),
+      ['TOTAL', totalPequena, totalGrande, totalGeneral],
+    ];
+
+    const csv =
+      '\uFEFF' +
+      filasCsv
+        .map((fila) => fila.map(escaparCsv).join(';'))
+        .join('\r\n');
+
+    descargarTextoComoArchivo(
+      `snowzone_${snowZoneModo}_${desde}_${hasta}.csv`,
+      csv,
+      'text/csv;charset=utf-8'
+    );
+  }
+
+
+  async function cargarCandidatosEquipo() {
+    if (!esCoordinadorJefeApp) return;
+
+    setCandidatosEquipoCargando(true);
+    setCandidatosEquipoError('');
+
+    try {
+      const data = await ejecutarFuncionConRespuesta<CandidatoEquipoApp>(
+        'obtener_candidatos_equipo_baby_app'
+      );
+
+      setCandidatosEquipo(
+        data.map((fila) => ({
+          ...fila,
+          orden_nivel: Number(fila.orden_nivel || 0),
+          entrenamientos_baby: Number(fila.entrenamientos_baby || 0),
+          meses_activos_baby: Number(fila.meses_activos_baby || 0),
+          remontes: Array.isArray(fila.remontes) ? fila.remontes : [],
+        }))
+      );
+      setCandidatosEquipoGenerado(true);
+    } catch (err) {
+      setCandidatosEquipo([]);
+      setCandidatosEquipoGenerado(false);
+      setCandidatosEquipoError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo generar el informe de candidatos a equipo.'
+      );
+    } finally {
+      setCandidatosEquipoCargando(false);
+    }
+  }
+
+  function descargarCandidatosEquipoExcel() {
+    if (candidatosEquipo.length === 0) {
+      setCandidatosEquipoError('No hay candidatos para descargar.');
+      return;
+    }
+
+    const escaparCsv = (valor: unknown) => {
+      const texto = String(valor ?? '');
+      return `"${texto.replace(/"/g, '""')}"`;
+    };
+
+    const temporada = candidatosEquipo[0]?.temporada || 'temporada';
+    const filas: Array<Array<string | number>> = [
+      [`CANDIDATOS EQUIPO · BABY · ${temporada}`],
+      ['Solo alumnos Baby con nivel real B o superior'],
+      [],
+      [
+        'Nivel',
+        'Alumno',
+        'Entrenamientos Baby',
+        'Meses activos',
+        'Último entreno Baby',
+        'Último reporte técnico',
+        'Autonomía',
+        'Remontes',
+        'Actitud',
+        'Técnica',
+        'Pista',
+        'Recomendación',
+      ],
+      ...candidatosEquipo.map((fila) => [
+        fila.nivel,
+        fila.alumno,
+        fila.entrenamientos_baby,
+        fila.meses_activos_baby,
+        fila.ultimo_entreno_baby ? formatearFecha(fila.ultimo_entreno_baby) : '',
+        fila.ultimo_reporte_fecha ? formatearFecha(fila.ultimo_reporte_fecha) : '',
+        fila.autonomia || '',
+        (fila.remontes || []).join(', '),
+        fila.actitud || '',
+        fila.tecnica || '',
+        fila.pista || '',
+        fila.recomendacion || '',
+      ]),
+    ];
+
+    const csv =
+      '\uFEFF' +
+      filas.map((fila) => fila.map(escaparCsv).join(';')).join('\r\n');
+
+    descargarTextoComoArchivo(
+      `candidatos_equipo_baby_${temporada.replace(/[^0-9A-Za-z_-]/g, '-')}.csv`,
+      csv,
+      'text/csv;charset=utf-8'
+    );
+  }
+
+  async function cargarListadoAlumnosTemporada(
+    tipo: TipoListadoAlumnosApp = tipoListadoAlumnos
+  ) {
+    if (!esCoordinadorJefeApp) return;
+
+    setListadoAlumnosCargando(true);
+    setListadoAlumnosError('');
+    setTipoListadoAlumnos(tipo);
+
+    try {
+      const data = await ejecutarFuncionConRespuesta<ListadoAlumnoTemporadaApp>(
+        'obtener_listado_alumnos_temporada_app',
+        { p_tipo: tipo }
+      );
+
+      setListadoAlumnosTemporada(
+        data.map((fila) => ({
+          ...fila,
+          total_entrenamientos: Number(fila.total_entrenamientos || 0),
+        }))
+      );
+      setListadoAlumnosGenerado(true);
+    } catch (err) {
+      setListadoAlumnosTemporada([]);
+      setListadoAlumnosGenerado(false);
+      setListadoAlumnosError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo generar el listado de alumnos.'
+      );
+    } finally {
+      setListadoAlumnosCargando(false);
+    }
+  }
+
+  function descargarListadoAlumnosTemporada() {
+    if (listadoAlumnosTemporada.length === 0) {
+      setListadoAlumnosError('No hay alumnos para descargar en este listado.');
+      return;
+    }
+
+    const escaparCsv = (valor: unknown) => {
+      const texto = String(valor ?? '');
+      return `"${texto.replace(/"/g, '""')}"`;
+    };
+
+    const temporada = listadoAlumnosTemporada[0]?.temporada || 'temporada';
+    const tituloTipo =
+      tipoListadoAlumnos === 'TODOS'
+        ? 'TODOS LOS ALUMNOS'
+        : tipoListadoAlumnos;
+
+    const filas: Array<Array<string | number>> = [
+      [`LISTADO ${tituloTipo} · ${temporada}`],
+      ['Solo actividad real de la temporada activa'],
+      [],
+      [
+        'Alumno',
+        'Último nivel real',
+        'Pista',
+        'Último entrenamiento',
+        'Entrenamientos temporada',
+        'Última modalidad',
+        'Último intensivo',
+      ],
+      ...listadoAlumnosTemporada.map((fila) => [
+        fila.alumno,
+        fila.nivel || '',
+        fila.pista || '',
+        fila.ultimo_entreno ? formatearFecha(fila.ultimo_entreno) : '',
+        fila.total_entrenamientos,
+        fila.modalidad || '',
+        fila.ultimo_intensivo || '',
+      ]),
+    ];
+
+    const csv =
+      '\uFEFF' +
+      filas.map((fila) => fila.map(escaparCsv).join(';')).join('\r\n');
+
+    descargarTextoComoArchivo(
+      `listado_${tipoListadoAlumnos.toLowerCase()}_${temporada.replace(
+        /[^0-9A-Za-z_-]/g,
+        '-'
+      )}.csv`,
+      csv,
+      'text/csv;charset=utf-8'
+    );
+  }
+
+  async function cargarEvaluacionesAnualesOcio() {
+    if (!esCoordinadorJefeApp) return;
+
+    setEvaluacionesAnualesOcioCargando(true);
+    setEvaluacionesAnualesOcioError('');
+
+    try {
+      const data = await ejecutarFuncionConRespuesta<EvaluacionAnualOcioApp>(
+        'obtener_evaluacion_anual_ocio_app'
+      );
+
+      setEvaluacionesAnualesOcio(
+        data.map((fila) => ({
+          ...fila,
+          entrenamientos_ocio: Number(fila.entrenamientos_ocio || 0),
+          reportes_ocio: Number(fila.reportes_ocio || 0),
+          remontes_iniciales: Array.isArray(fila.remontes_iniciales)
+            ? fila.remontes_iniciales
+            : [],
+          remontes_finales: Array.isArray(fila.remontes_finales)
+            ? fila.remontes_finales
+            : [],
+        }))
+      );
+      setEvaluacionesAnualesOcioGeneradas(true);
+    } catch (err) {
+      setEvaluacionesAnualesOcio([]);
+      setEvaluacionesAnualesOcioGeneradas(false);
+      setEvaluacionesAnualesOcioError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo generar la evaluación anual de Ocio.'
+      );
+    } finally {
+      setEvaluacionesAnualesOcioCargando(false);
+    }
+  }
+
+  function descargarEvaluacionesAnualesOcio() {
+    if (evaluacionesAnualesOcio.length === 0) {
+      setEvaluacionesAnualesOcioError(
+        'No hay evaluaciones de Ocio para descargar.'
+      );
+      return;
+    }
+
+    const escaparCsv = (valor: unknown) => {
+      const texto = String(valor ?? '');
+      return `"${texto.replace(/"/g, '""')}"`;
+    };
+
+    const temporada = evaluacionesAnualesOcio[0]?.temporada || 'temporada';
+    const filas: Array<Array<string | number>> = [
+      [`EVALUACIÓN ANUAL OCIO · ${temporada}`],
+      [
+        'Base técnica para preparar después el informe para familias. No es el texto final para padres.',
+      ],
+      [],
+      [
+        'Alumno',
+        'Entrenamientos Ocio',
+        'Reportes Ocio',
+        'Primer reporte',
+        'Último reporte',
+        'Nivel inicial',
+        'Nivel final',
+        'Progresión niveles',
+        'Técnica inicial',
+        'Técnica final',
+        'Autonomía inicial',
+        'Autonomía final',
+        'Remontes iniciales',
+        'Remontes finales',
+        'Actitud final',
+        'Pista final',
+        'Recomendación final',
+        'Comentario técnico final',
+        'Comentario autonomía final',
+      ],
+      ...evaluacionesAnualesOcio.map((fila) => [
+        fila.alumno,
+        fila.entrenamientos_ocio,
+        fila.reportes_ocio,
+        fila.primer_reporte_fecha ? formatearFecha(fila.primer_reporte_fecha) : '',
+        fila.ultimo_reporte_fecha ? formatearFecha(fila.ultimo_reporte_fecha) : '',
+        fila.nivel_inicial || '',
+        fila.nivel_final || '',
+        fila.niveles_reportados || '',
+        fila.tecnica_inicial || '',
+        fila.tecnica_final || '',
+        fila.autonomia_inicial || '',
+        fila.autonomia_final || '',
+        (fila.remontes_iniciales || []).join(', '),
+        (fila.remontes_finales || []).join(', '),
+        fila.actitud_final || '',
+        fila.pista_final || '',
+        fila.recomendacion_final || '',
+        fila.comentario_tecnica_final || '',
+        fila.comentario_autonomia_final || '',
+      ]),
+    ];
+
+    const csv =
+      '\uFEFF' +
+      filas.map((fila) => fila.map(escaparCsv).join(';')).join('\r\n');
+
+    descargarTextoComoArchivo(
+      `evaluacion_anual_ocio_${temporada.replace(/[^0-9A-Za-z_-]/g, '-')}.csv`,
+      csv,
+      'text/csv;charset=utf-8'
+    );
+  }
+
+  async function analizarCierreTemporada() {
+    if (!esCoordinadorJefeApp) return;
+
+    setCierreTemporadaCargando(true);
+    setCierreTemporadaError('');
+
+    try {
+      const [alumnos, resumen] = await Promise.all([
+        ejecutarFuncionConRespuesta<CierreTemporadaAlumnoApp>(
+          'obtener_cierre_temporada_alumnos_v2_app'
+        ),
+        ejecutarFuncionConRespuesta<ResumenCierreTemporadaApp>(
+          'obtener_resumen_cierre_temporada_app'
+        ),
+      ]);
+
+      setCierreTemporadaAlumnos(
+        alumnos.map((fila) => ({
+          ...fila,
+          entrenamientos_temporada: Number(fila.entrenamientos_temporada || 0),
+          tuvo_asistencia: Boolean(fila.tuvo_asistencia),
+          tuvo_reporte: Boolean(fila.tuvo_reporte),
+          activo_temporada: Boolean(fila.activo_temporada),
+          conservar_siguiente: Boolean(fila.conservar_siguiente),
+        }))
+      );
+
+      const r = resumen[0] || null;
+      setResumenCierreTemporada(
+        r
+          ? {
+              ...r,
+              total_alumnos_base: Number(r.total_alumnos_base || 0),
+              activos_temporada: Number(r.activos_temporada || 0),
+              conservar_siguiente: Number(r.conservar_siguiente || 0),
+              eliminar_por_inactividad: Number(r.eliminar_por_inactividad || 0),
+              con_asistencia: Number(r.con_asistencia || 0),
+              con_reporte: Number(r.con_reporte || 0),
+            }
+          : null
+      );
+      setCierreTemporadaAnalizado(true);
+    } catch (err) {
+      setCierreTemporadaAlumnos([]);
+      setResumenCierreTemporada(null);
+      setCierreTemporadaAnalizado(false);
+      setCierreTemporadaError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo analizar el cierre de temporada.'
+      );
+    } finally {
+      setCierreTemporadaCargando(false);
+    }
+  }
+
+  function descargarCopiaMaestraTemporada() {
+    const filasConservar = cierreTemporadaAlumnos.filter(
+      (fila) => fila.conservar_siguiente
+    );
+
+    if (filasConservar.length === 0) {
+      setCierreTemporadaError(
+        'No hay alumnos preparados para la copia maestra de la siguiente temporada.'
+      );
+      return;
+    }
+
+    const escaparCsv = (valor: unknown) => {
+      const texto = String(valor ?? '');
+      return `"${texto.replace(/"/g, '""')}"`;
+    };
+
+    const temporada = filasConservar[0]?.temporada || 'temporada';
+    const filas: Array<Array<string | number>> = [
+      [`COPIA MAESTRA FIN DE TEMPORADA · ${temporada}`],
+      ['Base ligera para preparar la siguiente temporada'],
+      [],
+      [
+        'Alumno ID',
+        'Alumno',
+        'Fecha nacimiento',
+        'Teléfono',
+        'Último nivel real',
+        'Pista',
+        'Último entrenamiento',
+        'Última modalidad',
+        'Entrenamientos temporada',
+        'Última recomendación técnica',
+      ],
+      ...filasConservar.map((fila) => [
+        fila.alumno_id,
+        fila.alumno,
+        fila.fecha_nacimiento ? formatearFecha(fila.fecha_nacimiento) : '',
+        fila.telefono || '',
+        fila.ultimo_nivel_real || '',
+        fila.ultima_pista || '',
+        fila.ultimo_entreno ? formatearFecha(fila.ultimo_entreno) : '',
+        fila.ultima_modalidad || '',
+        fila.entrenamientos_temporada,
+        fila.ultima_recomendacion || '',
+      ]),
+    ];
+
+    const csv =
+      '\uFEFF' + filas.map((fila) => fila.map(escaparCsv).join(';')).join('\r\n');
+
+    descargarTextoComoArchivo(
+      `copia_maestra_${temporada.replace(/[^0-9A-Za-z_-]/g, '-')}.csv`,
+      csv,
+      'text/csv;charset=utf-8'
+    );
+  }
+
+  function parsearLineaCsvCopiaMaestra(linea: string) {
+    const celdas: string[] = [];
+    let actual = '';
+    let entreComillas = false;
+
+    for (let i = 0; i < linea.length; i += 1) {
+      const caracter = linea[i];
+
+      if (caracter === '"') {
+        if (entreComillas && linea[i + 1] === '"') {
+          actual += '"';
+          i += 1;
+        } else {
+          entreComillas = !entreComillas;
+        }
+      } else if (caracter === ';' && !entreComillas) {
+        celdas.push(actual);
+        actual = '';
+      } else {
+        actual += caracter;
+      }
+    }
+
+    celdas.push(actual);
+    return celdas.map((valor) => valor.trim());
+  }
+
+  function normalizarCabeceraCsvTemporada(valor: string) {
+    return String(valor || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('es-ES')
+      .replace(/[_-]+/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
+  async function cargarCopiaMaestraParaRevisar(archivo: File | null) {
+    setErrorCopiaMaestraImport('');
+    setFilasCopiaMaestraImport([]);
+    setArchivoCopiaMaestraNombre('');
+    setTemporadaOrigenCopiaMaestra('');
+
+    if (!archivo) return;
+
+    if (!archivo.name.toLowerCase().endsWith('.csv')) {
+      setErrorCopiaMaestraImport(
+        'Selecciona un archivo CSV compatible con la copia maestra o la semilla de temporada.'
+      );
+      return;
+    }
+
+    try {
+      const texto = (await archivo.text()).replace(/^\uFEFF/, '');
+      const lineas = texto.split(/\r?\n/).filter((linea) => linea.trim());
+
+      if (lineas.length < 2) {
+        throw new Error('El CSV está vacío o no contiene alumnos.');
+      }
+
+      let indiceCabecera = -1;
+      let tipoCsv: 'MAESTRA' | 'SEMILLA_SIMPLE' | '' = '';
+
+      for (let i = 0; i < lineas.length; i += 1) {
+        const columnas = parsearLineaCsvCopiaMaestra(lineas[i]).map(
+          normalizarCabeceraCsvTemporada
+        );
+
+        const esMaestra =
+          columnas.includes('alumno') &&
+          columnas.includes('fecha nacimiento') &&
+          columnas.some((columna) =>
+            ['ultimo nivel real', 'nivel'].includes(columna)
+          );
+
+        const esSemillaSimple =
+          columnas.includes('nombre apellidos') &&
+          columnas.includes('nivel') &&
+          columnas.includes('telefono') &&
+          columnas.includes('fecha nacimiento');
+
+        if (esSemillaSimple) {
+          indiceCabecera = i;
+          tipoCsv = 'SEMILLA_SIMPLE';
+          break;
+        }
+
+        if (esMaestra) {
+          indiceCabecera = i;
+          tipoCsv = 'MAESTRA';
+          break;
+        }
+      }
+
+      if (indiceCabecera < 0 || !tipoCsv) {
+        throw new Error(
+          'El CSV no coincide con la copia maestra de la app ni con la semilla nombre/nivel/teléfono/fecha.'
+        );
+      }
+
+      const cabeceraOriginal = parsearLineaCsvCopiaMaestra(
+        lineas[indiceCabecera]
+      );
+      const cabecera = cabeceraOriginal.map(normalizarCabeceraCsvTemporada);
+      const indice = (nombres: string[]) =>
+        cabecera.findIndex((columna) => nombres.includes(columna));
+      const valor = (columnas: string[], nombres: string[]) => {
+        const i = indice(nombres);
+        return i >= 0 ? (columnas[i] || '').trim() : '';
+      };
+
+      const textoPrevioCabecera = lineas.slice(0, indiceCabecera).join(' ');
+      const temporadaEnContenido = textoPrevioCabecera.match(
+        /COPIA\s+MAESTRA\s+FIN\s+DE\s+TEMPORADA\s*[·:-]?\s*([0-9]{4}\s*[\/-]\s*[0-9]{2,4})/i
+      )?.[1];
+
+      setTemporadaOrigenCopiaMaestra(
+        (temporadaEnContenido || 'importación externa')
+          .replace(/\s+/g, '')
+          .replace('-', '/')
+      );
+
+      const filas = lineas.slice(indiceCabecera + 1).map((linea) => {
+        const columnas = parsearLineaCsvCopiaMaestra(linea);
+
+        const alumnoId =
+          tipoCsv === 'MAESTRA'
+            ? valor(columnas, ['alumno id'])
+            : '';
+
+        const alumno =
+          tipoCsv === 'SEMILLA_SIMPLE'
+            ? valor(columnas, ['nombre apellidos'])
+            : valor(columnas, ['alumno', 'nombre apellidos']);
+
+        const fechaNacimiento = valor(columnas, [
+          'fecha nacimiento',
+          'fecha de nacimiento',
+        ]);
+
+        const telefono = valor(columnas, ['telefono', 'telefono familia']);
+
+        const ultimoNivel =
+          tipoCsv === 'SEMILLA_SIMPLE'
+            ? valor(columnas, ['nivel'])
+            : valor(columnas, ['ultimo nivel real', 'nivel']);
+
+        const pista =
+          tipoCsv === 'MAESTRA' ? valor(columnas, ['pista']) : '';
+        const ultimoEntreno =
+          tipoCsv === 'MAESTRA'
+            ? valor(columnas, ['ultimo entrenamiento'])
+            : '';
+        const ultimaModalidad =
+          tipoCsv === 'MAESTRA'
+            ? valor(columnas, ['ultima modalidad'])
+            : 'BABY';
+        const entrenamientosTexto =
+          tipoCsv === 'MAESTRA'
+            ? valor(columnas, ['entrenamientos temporada'])
+            : '0';
+        const recomendacion =
+          tipoCsv === 'MAESTRA'
+            ? valor(columnas, ['ultima recomendacion tecnica'])
+            : '';
+
+        const errores: string[] = [];
+
+        if (
+          alumnoId &&
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+            alumnoId
+          )
+        ) {
+          errores.push('ID de alumno no válido');
+        }
+
+        if (!alumno) errores.push('Falta nombre');
+
+        if (
+          ultimoNivel &&
+          !/^(INICIACION|A\+?|B\+?|C\+?|D\+?)$/i.test(ultimoNivel)
+        ) {
+          errores.push('Nivel no reconocido');
+        }
+
+        if (
+          fechaNacimiento &&
+          !/^(\d{4}-\d{2}-\d{2}|\d{1,2}[\/-]\d{1,2}[\/-]\d{4})$/.test(
+            fechaNacimiento
+          )
+        ) {
+          errores.push('Fecha de nacimiento no reconocida');
+        }
+
+        const telefonoLimpio = telefono.replace(/\s+/g, '');
+        if (
+          telefonoLimpio &&
+          !/^\+?[0-9]{6,15}$/.test(telefonoLimpio)
+        ) {
+          errores.push('Teléfono no válido');
+        }
+
+        const numeroEntrenos = Number(
+          String(entrenamientosTexto || '0').replace(',', '.')
+        );
+        if (!Number.isFinite(numeroEntrenos) || numeroEntrenos < 0) {
+          errores.push('Entrenamientos no válidos');
+        }
+
+        return {
+          alumno_id: alumnoId,
+          alumno,
+          fecha_nacimiento: fechaNacimiento,
+          telefono: telefonoLimpio,
+          ultimo_nivel_real: ultimoNivel,
+          pista,
+          ultimo_entreno: ultimoEntreno,
+          ultima_modalidad: ultimaModalidad,
+          entrenamientos_temporada: Number.isFinite(numeroEntrenos)
+            ? numeroEntrenos
+            : 0,
+          ultima_recomendacion: recomendacion,
+          valido: errores.length === 0,
+          error: errores.join(' · '),
+        } as FilaCopiaMaestraImportApp;
+      });
+
+      if (filas.length === 0) {
+        throw new Error('La copia maestra no contiene alumnos.');
+      }
+
+      setArchivoCopiaMaestraNombre(archivo.name);
+      setFilasCopiaMaestraImport(filas);
+    } catch (err) {
+      setErrorCopiaMaestraImport(
+        err instanceof Error ? err.message : 'No se pudo leer la copia maestra.'
+      );
+    }
+  }
+
+  async function importarCopiaMaestraEnAlumnos() {
+    if (!esCoordinadorJefeApp) return;
+
+    if (!temporadaActivaCierre) {
+      setErrorCopiaMaestraImport(
+        'Primero inicia la nueva temporada. Después carga la semilla.'
+      );
+      return;
+    }
+
+    const filasInvalidas = filasCopiaMaestraImport.filter((fila) => !fila.valido);
+    if (filasCopiaMaestraImport.length === 0) {
+      setErrorCopiaMaestraImport('Primero selecciona una copia maestra válida.');
+      return;
+    }
+
+    if (filasInvalidas.length > 0) {
+      setErrorCopiaMaestraImport(
+        'Corrige el CSV: no se puede importar mientras haya filas con errores.'
+      );
+      return;
+    }
+
+    setImportandoCopiaMaestra(true);
+    setErrorCopiaMaestraImport('');
+    setResultadoImportacionCopiaMaestra('');
+
+    try {
+      const data = await ejecutarFuncionConRespuesta<{
+        creados: number;
+        actualizados: number;
+        reconciliados: number;
+        omitidos: number;
+      }>('importar_semilla_copia_maestra_v3_app', {
+        p_temporada_origen:
+          temporadaOrigenCopiaMaestra || archivoCopiaMaestraNombre || 'importación externa',
+        p_filas: filasCopiaMaestraImport.map((fila) => ({
+          alumno_id: fila.alumno_id || null,
+          alumno: fila.alumno,
+          fecha_nacimiento: fila.fecha_nacimiento || null,
+          telefono: fila.telefono || null,
+          ultimo_nivel_real: fila.ultimo_nivel_real || null,
+          pista: fila.pista || null,
+          ultimo_entreno: fila.ultimo_entreno || null,
+          ultima_modalidad: fila.ultima_modalidad || null,
+          entrenamientos_temporada: fila.entrenamientos_temporada,
+          ultima_recomendacion: fila.ultima_recomendacion || null,
+        })),
+      });
+
+      const resumen = data[0];
+      setResultadoImportacionCopiaMaestra(
+        `Semilla cargada: ${Number(resumen?.creados || 0)} creados · ${Number(
+          resumen?.actualizados || 0
+        )} actualizados · ${Number(
+          resumen?.reconciliados || 0
+        )} reconciliados por nombre/fecha · ${Number(resumen?.omitidos || 0)} omitidos.`
+      );
+
+      await cargarAlumnos();
+    } catch (err) {
+      setErrorCopiaMaestraImport(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo cargar la copia maestra en la base de alumnos.'
+      );
+    } finally {
+      setImportandoCopiaMaestra(false);
+    }
+  }
+
+  async function cargarTemporadaActivaCierre() {
+    if (!esCoordinadorJefeApp) return;
+
+    setCargandoTemporadaActivaCierre(true);
+    setErrorTemporadaActivaCierre('');
+
+    try {
+      const data = await consultarSupabase<{
+        nombre: string;
+        activa: boolean;
+        fecha_inicio: string;
+      }>(
+        'temporadas',
+        'select=nombre,activa,fecha_inicio&order=fecha_inicio.desc&limit=4'
+      );
+
+      const activas = data.filter((temporada) => temporada.activa);
+
+      if (activas.length > 1) {
+        throw new Error(
+          'Hay más de una temporada activa. Revisa el estado antes de continuar.'
+        );
+      }
+
+      const activa = activas[0];
+      setTemporadaActivaCierre(activa?.nombre || '');
+
+      // Si no hay temporada activa, el único arranque permitido es la
+      // temporada inmediatamente posterior a la última temporada real.
+      if (!activa && data[0]?.nombre) {
+        const ultimoAnio = Number(String(data[0].nombre).split('/')[0]);
+        if (Number.isFinite(ultimoAnio)) {
+          const siguienteAnio = ultimoAnio + 1;
+          setAnioInicioTemporadaAgenda(siguienteAnio);
+          setMesAgenda(`${siguienteAnio}-09`);
+          setSemanaAgendaInicio('');
+        }
+      }
+    } catch (err) {
+      setTemporadaActivaCierre('');
+      setErrorTemporadaActivaCierre(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo comprobar la temporada activa.'
+      );
+    } finally {
+      setCargandoTemporadaActivaCierre(false);
+    }
+  }
+
+  async function iniciarNuevaTemporadaOperativa() {
+    if (!esCoordinadorJefeApp) return;
+
+    if (temporadaActivaCierre) {
+      setCierreTemporadaError(
+        `Ya hay una temporada activa: ${temporadaActivaCierre}. Ciérrala antes de iniciar otra.`
+      );
+      return;
+    }
+
+    if (errorTemporadaActivaCierre) {
+      setCierreTemporadaError(
+        'No se puede iniciar una temporada mientras no se haya podido comprobar el estado actual.'
+      );
+      return;
+    }
+
+    setIniciandoNuevaTemporada(true);
+    setCierreTemporadaError('');
+    setResultadoNuevaTemporada('');
+
+    try {
+      await ejecutarFuncion('activar_temporada_operativa_app', {
+        p_anio_inicio: anioInicioTemporadaAgenda,
+      });
+
+      const temporadaIniciada = nombreTemporadaAgenda(
+        anioInicioTemporadaAgenda
+      );
+
+      setTemporadaActivaCierre(temporadaIniciada);
+      setErrorTemporadaActivaCierre('');
+      setResultadoNuevaTemporada(`Temporada ${temporadaIniciada} iniciada correctamente.`);
+
+      setCierreTemporadaAnalizado(false);
+      setResumenCierreTemporada(null);
+      setCierreTemporadaAlumnos([]);
+      setFiltroCierreTemporada('todos');
+      setBusquedaCierreTemporada('');
+
+      await Promise.all([
+        cargarAgendaOperativaDirecta(),
+        cargarAlumnos(),
+        cargarPlanning(),
+        cargarListados(),
+      ]);
+    } catch (err) {
+      setCierreTemporadaError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo iniciar la nueva temporada.'
+      );
+    } finally {
+      setIniciandoNuevaTemporada(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!esCoordinadorJefeApp) return;
+    cargarTemporadaActivaCierre();
+  }, [esCoordinadorJefeApp]);
+
+  async function ejecutarCierreDefinitivoTemporada() {
+    if (!esCoordinadorJefeApp) {
+      setCierreTemporadaError(
+        'Solo el Coordinador jefe puede cerrar la temporada.'
+      );
+      return;
+    }
+
+    if (!resumenCierreTemporada) {
+      setCierreTemporadaError(
+        'Primero analiza la temporada en el Paso 1.'
+      );
+      return;
+    }
+
+    const temporada = resumenCierreTemporada.temporada;
+    const textoEsperado = `CERRAR ${temporada}`;
+
+    if (!confirmacionBackupCierre || !confirmacionListadoCierre) {
+      setCierreTemporadaError(
+        'Confirma que has guardado el backup y revisado la lista de eliminación.'
+      );
+      return;
+    }
+
+    if (confirmacionCierreTexto.trim() !== textoEsperado) {
+      setCierreTemporadaError(
+        `Escribe exactamente: ${textoEsperado}`
+      );
+      return;
+    }
+
+    setCerrandoTemporada(true);
+    setCierreTemporadaError('');
+    setResultadoCierreTemporada('');
+
+    try {
+      const data = await ejecutarFuncionConRespuesta<{
+        temporada_cerrada: string;
+        alumnos_conservados: number;
+        alumnos_eliminados: number;
+        filas_operativas_eliminadas: number;
+      }>('cerrar_temporada_seguro_v2_app', {
+        p_confirmacion: textoEsperado,
+      });
+
+      const r = data[0];
+
+      setResultadoCierreTemporada(
+        `Temporada cerrada: ${r?.temporada_cerrada || temporada} · ` +
+          `${Number(r?.alumnos_conservados || 0)} alumnos conservados · ` +
+          `${Number(r?.alumnos_eliminados || 0)} alumnos eliminados · ` +
+          `${Number(r?.filas_operativas_eliminadas || 0)} filas operativas limpiadas. ` +
+          `Histórico estadístico Baby/Ocio/Intensivos guardado.`
+      );
+
+      setConfirmacionCierreTexto('');
+      setConfirmacionBackupCierre(false);
+      setConfirmacionListadoCierre(false);
+      setCierreTemporadaAnalizado(false);
+      setResumenCierreTemporada(null);
+      setCierreTemporadaAlumnos([]);
+
+      const temporadaCerrada = String(r?.temporada_cerrada || temporada);
+      const anioCerrado = Number(temporadaCerrada.split('/')[0]);
+      if (Number.isFinite(anioCerrado)) {
+        const siguienteAnio = anioCerrado + 1;
+        setAnioInicioTemporadaAgenda(siguienteAnio);
+        setMesAgenda(`${siguienteAnio}-09`);
+        setSemanaAgendaInicio('');
+      }
+
+      // Importante: el RPC ya ha borrado la operativa en Supabase,
+      // pero las distintas pantallas conservaban sus arrays React anteriores.
+      // Recargamos todas las fuentes principales para que la UI quede vacía
+      // inmediatamente después del cierre.
+      await Promise.all([
+        cargarTemporadaActivaCierre(),
+        cargarAgendaOperativaDirecta(),
+        cargarAlumnos(),
+        cargarPlanning(),
+        cargarListados(),
+        cargarOcioAlumnos(),
+        cargarOcioGrupos(),
+        cargarIntensivos(),
+      ]);
+
+      setAgendaGruposSesion([]);
+      setAgendaGruposRecursosTurno([]);
+      setGruposOperativosResumenDia([]);
+      setGruposEntrenador([]);
+    } catch (err) {
+      setCierreTemporadaError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo cerrar la temporada.'
+      );
+    } finally {
+      setCerrandoTemporada(false);
+    }
+  }
+
+  function htmlEscapeBackup(valor: unknown) {
+    return String(valor ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function tablaBackupExcel(
+    titulo: string,
+    columnas: string[],
+    filas: Array<Array<unknown>>
+  ) {
+    const cabecera = columnas
+      .map((columna) => `<th>${htmlEscapeBackup(columna)}</th>`)
+      .join('');
+    const cuerpo =
+      filas.length > 0
+        ? filas
+            .map(
+              (fila) =>
+                `<tr>${fila
+                  .map((celda) => `<td>${htmlEscapeBackup(celda)}</td>`)
+                  .join('')}</tr>`
+            )
+            .join('')
+        : `<tr><td colspan="${columnas.length}">Sin datos</td></tr>`;
+
+    return `<h2>${htmlEscapeBackup(
+      titulo
+    )}</h2><table><thead><tr>${cabecera}</tr></thead><tbody>${cuerpo}</tbody></table><br/>`;
+  }
+
+  function descargarTextoComoArchivo(
+    nombreArchivo: string,
+    contenido: string,
+    tipo: string
+  ) {
+    const blob = new Blob([contenido], { type: tipo });
+    const url = URL.createObjectURL(blob);
+    const enlace = document.createElement('a');
+    enlace.href = url;
+    enlace.download = nombreArchivo;
+    document.body.appendChild(enlace);
+    enlace.click();
+    enlace.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function sumarDiasBackup(fechaIso: string, dias: number) {
+    const fecha = new Date(`${fechaIso}T12:00:00`);
+    fecha.setDate(fecha.getDate() + dias);
+    return [
+      fecha.getFullYear(),
+      String(fecha.getMonth() + 1).padStart(2, '0'),
+      String(fecha.getDate()).padStart(2, '0'),
+    ].join('-');
+  }
+
+  function nombreArchivoBackupSemanal(
+    temporada: string,
+    semanaInicio: string,
+    semanaFin: string
+  ) {
+    const temporadaLimpia = (temporada || 'TEMPORADA')
+      .replace(/\//g, '-')
+      .replace(/[^0-9A-Za-zÁÉÍÓÚÜÑáéíóúüñ_-]+/g, '_');
+    const generado = fechaIsoEditor(new Date());
+
+    return `MITICO_BACKUP_${temporadaLimpia}_SEMANA_${semanaInicio}_A_${semanaFin}_GENERADO_${generado}.json`;
+  }
+
+  async function descargarBackupSemanalJson() {
+    const semana = semanaBackupObjetivo;
+    if (!semana) {
+      setError(
+        'Selecciona una semana antes de descargar la copia de seguridad.'
+      );
+      return;
+    }
+
+    setError('');
+
+    try {
+      const backup = await ejecutarFuncionAuthJson<any>(
+        'obtener_backup_semanal_app',
+        { p_semana_inicio: semana }
+      );
+
+      const fin = String(
+        backup?.semana_fin || sumarDiasBackup(semana, 6)
+      );
+
+      descargarTextoComoArchivo(
+        nombreArchivoBackupSemanal(
+          String(backup?.temporada || temporadaActivaCierre || ''),
+          semana,
+          fin
+        ),
+        JSON.stringify(backup, null, 2),
+        'application/json;charset=utf-8'
+      );
+
+      const marca = new Date().toLocaleString('es-ES');
+      const storageKey = claveStorageBackupSemana(semana);
+
+      if (storageKey && typeof window !== 'undefined') {
+        window.localStorage.setItem(storageKey, marca);
+      }
+
+      setUltimaDescargaBackupSemana(marca);
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo generar el backup semanal.'
+      );
+    }
+  }
+
+  async function cargarBackupSemanalParaRestaurar(archivo: File | null) {
+    setBackupRestauracion(null);
+    setArchivoBackupRestauracion('');
+    setErrorBackupRestauracion('');
+    setConfirmacionBackupRestauracion('');
+    setResultadoRestauracionBackup('');
+
+    if (!archivo) return;
+
+    if (!archivo.name.toLowerCase().endsWith('.json')) {
+      setErrorBackupRestauracion(
+        'Selecciona un backup semanal .json generado por la app.'
+      );
+      return;
+    }
+
+    try {
+      const contenido = await archivo.text();
+      const backup = JSON.parse(contenido);
+
+      if (
+        backup?.formato !== 'MITICO_BACKUP_SEMANAL_V1' ||
+        Number(backup?.version) !== 1 ||
+        !backup?.semana_inicio ||
+        !backup?.semana_fin ||
+        !backup?.datos ||
+        typeof backup.datos !== 'object'
+      ) {
+        throw new Error(
+          'El archivo no tiene el formato de backup semanal Mítico V1.'
+        );
+      }
+
+      if (!Array.isArray(backup.datos.alumnos)) {
+        throw new Error(
+          'El backup no contiene el bloque obligatorio de alumnos.'
+        );
+      }
+
+      setArchivoBackupRestauracion(archivo.name);
+      setBackupRestauracion(backup);
+    } catch (err) {
+      setErrorBackupRestauracion(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo leer el backup.'
+      );
+    }
+  }
+
+  function totalFilasBackupRestauracion(backup: any) {
+    if (!backup?.datos || typeof backup.datos !== 'object') return 0;
+
+    return Object.values(backup.datos).reduce(
+      (total: number, valor: any) =>
+        total + (Array.isArray(valor) ? valor.length : 0),
+      0
+    );
+  }
+
+  async function restaurarBackupSemanal() {
+    if (!backupRestauracion || !esCoordinadorJefeApp) return;
+
+    const textoEsperado = `RESTAURAR ${backupRestauracion.semana_inicio}`;
+
+    if (confirmacionBackupRestauracion.trim() !== textoEsperado) {
+      setErrorBackupRestauracion(
+        `Escribe exactamente: ${textoEsperado}`
+      );
+      return;
+    }
+
+    setRestaurandoBackupSemanal(true);
+    setErrorBackupRestauracion('');
+    setResultadoRestauracionBackup('');
+
+    try {
+      const data = await ejecutarFuncionConRespuesta<{
+        semana_restaurada: string;
+        tablas_restauradas: number;
+        filas_restauradas: number;
+      }>('restaurar_backup_semanal_app', {
+        p_backup: backupRestauracion,
+        p_confirmacion: textoEsperado,
+      });
+
+      const r = data[0];
+
+      setResultadoRestauracionBackup(
+        `Backup restaurado · Semana ${r?.semana_restaurada || backupRestauracion.semana_inicio} · ` +
+          `${Number(r?.filas_restauradas || 0)} filas recuperadas.`
+      );
+
+      window.setTimeout(() => {
+        window.location.reload();
+      }, 1200);
+    } catch (err) {
+      setErrorBackupRestauracion(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo restaurar el backup.'
+      );
+    } finally {
+      setRestaurandoBackupSemanal(false);
+    }
+  }
+
+  function descargarResumenDiaExcel() {
+    const filas = sesionesResumenDia.map((sesion) => [
+      sesion.fecha,
+      `${horaCorta(sesion.hora_inicio)}-${horaCorta(sesion.hora_fin)}`,
+      sesion.modalidad,
+      sesion.titulo,
+      sesion.estado,
+      sesion.totalAlumnos,
+      sesion.totalGrupos,
+      sesion.publicados,
+      gruposTextoResumenSesion(sesion),
+    ]);
+
+    const html = `<!doctype html><html><head><meta charset="utf-8" /><style>body{font-family:Arial,sans-serif;}table{border-collapse:collapse;width:100%;}th{background:#111827;color:#fff;}th,td{border:1px solid #d1d5db;padding:6px;font-size:12px;}</style></head><body><h1>Resumen del día ${htmlEscapeBackup(
+      formatearFecha(fechaResumenDiaActiva)
+    )}</h1>${tablaBackupExcel(
+      'Sesiones del día',
+      [
+        'Fecha',
+        'Hora',
+        'Modalidad',
+        'Título',
+        'Estado',
+        'Alumnos',
+        'Grupos',
+        'Publicados',
+        'Detalle grupos',
+      ],
+      filas
+    )}</body></html>`;
+    descargarTextoComoArchivo(
+      `resumen_dia_${fechaResumenDiaActiva}.xls`,
+      html,
+      'application/vnd.ms-excel;charset=utf-8'
+    );
+  }
+
+  return (
+    <main
+      className={`mitico-app-shell ${esCoordinadorApp ? 'with-sidebar' : 'trainer-only'} ${esVistaMovilApp ? 'is-mobile' : ''}`}
+      style={layout}
+    >
+      <header className="mitico-product-header">
+        <div className="mitico-topbar">
+          <div className="mitico-brand-block">
+            <img
+              src="/logo-cabecera-mitico.png"
+              alt="Mítico Club"
+              className="mitico-brand-logo"
+            />
+            <div className="mitico-brand-copy">
+              <strong>MÍTICO BABY</strong>
+              <span>Coordinación deportiva</span>
+            </div>
+          </div>
+
+          <div className="mitico-week-control">
+            <span className="mitico-week-label">Semana de trabajo</span>
+            {esEntrenadorApp ? (
+              <strong className="mitico-week-value">
+                {semanaVistaEntrenadorInicio
+                  ? rangoSemanaAgenda(semanaVistaEntrenadorInicio)
+                  : '-'}
+              </strong>
+            ) : (
+              <select
+                value={semanaAgendaActiva}
+                onChange={(e) => cambiarSemanaTrabajoApp(e.target.value)}
+                aria-label="Cambiar semana de trabajo"
+              >
+                {semanasAgenda.map((semana) => (
+                  <option key={semana} value={semana}>
+                    {rangoSemanaAgenda(semana)}
+                  </option>
+                ))}
+              </select>
+            )}
+          </div>
+
+          <div className="mitico-topbar-actions">
+            {perfilUsuario && (
+              <div className="mitico-user-block">
+                <span className="mitico-user-avatar" aria-hidden="true">
+                  {perfilUsuario.nombre
+                    .trim()
+                    .split(/\s+/)
+                    .slice(0, 2)
+                    .map((parte) => parte.charAt(0).toUpperCase())
+                    .join('')}
+                </span>
+                <span className="mitico-user-copy">
+                  <strong>{perfilUsuario.nombre}</strong>
+                  <small>{rolUsuarioTextoApp(perfilUsuario.rol)}</small>
+                </span>
+                <button
+                  type="button"
+                  className="mitico-logout-button"
+                  onClick={onLogout}
+                  aria-label="Cerrar sesión"
+                  title="Cerrar sesión"
+                >
+                  Salir
+                </button>
+              </div>
+            )}
+
+            {(esEntrenadorApp || esCoordinadorJefeApp) && !pwaInstalada && (
+              <button
+                type="button"
+                className="mitico-install-button"
+                onClick={instalarPwaEntrenador}
+                aria-expanded={mostrarAyudaInstalacionPwa}
+                title={pwaInstallPrompt
+                  ? 'Instalar Mítico Baby en este dispositivo'
+                  : 'Ver cómo instalar Mítico Baby en este dispositivo'}
+                aria-label={pwaInstallPrompt
+                  ? 'Instalar Mítico Baby en este dispositivo'
+                  : 'Ver cómo instalar Mítico Baby en este dispositivo'}
+              >
+                <img src="/icon-192.png" alt="" aria-hidden="true" />
+                <span>{pwaInstallPrompt ? 'Instalar' : 'Cómo instalar'}</span>
+              </button>
+            )}
+          </div>
+        </div>
+
+        {mostrarAyudaInstalacionPwa && !pwaInstalada && (
+          <div className="mitico-install-help">
+            {esDispositivoIosPwa ? (
+              <>
+                En iPhone/iPad: abre esta página en Safari, pulsa
+                <strong> Compartir </strong> y después
+                <strong> Añadir a pantalla de inicio</strong>.
+              </>
+            ) : (
+              <>
+                Si no aparece el instalador automático, abre el menú del navegador y elige
+                <strong> Instalar aplicación </strong> o
+                <strong> Añadir a pantalla de inicio</strong>.
+              </>
+            )}
+          </div>
+        )}
+
+        {esCoordinadorApp ? (
+          <nav className="mitico-sidebar" aria-label="Navegación principal">
+            {!esAdministracionApp && (
+              <>
+                <div className="mitico-nav-group">
+                  <span className="mitico-nav-heading">Operativa</span>
+                  <button
+                    className={`mitico-nav-item ${pantalla === 'inicio' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('inicio')}
+                  >
+                    <IconoNavegacionApp tipo="inicio" />
+                    <span>Inicio</span>
+                  </button>
+                  <button
+                    className={`mitico-nav-item ${pantalla === 'resumenDia' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('resumenDia')}
+                  >
+                    <IconoNavegacionApp tipo="inicio" />
+                    <span>Trabajo en pista</span>
+                  </button>
+                  <button
+                    className={`mitico-nav-item ${pantalla === 'agenda' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('agenda')}
+                  >
+                    <IconoNavegacionApp tipo="agenda" />
+                    <span>Entrenamientos</span>
+                  </button>
+                  <button
+                    className={`mitico-nav-item ${['ocioGrupos', 'ocioCambios', 'ocioSemana'].includes(pantalla) ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('ocioGrupos')}
+                  >
+                    <IconoNavegacionApp tipo="ocio" />
+                    <span>Ocio</span>
+                  </button>
+                  <button
+                    className={`mitico-nav-item ${pantalla === 'intensivos' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('intensivos')}
+                  >
+                    <IconoNavegacionApp tipo="intensivos" />
+                    <span>Intensivos</span>
+                  </button>
+                </div>
+
+                <div className="mitico-nav-group">
+                  <span className="mitico-nav-heading">Equipo</span>
+                  <button
+                    className={`mitico-nav-item ${pantalla === 'entrenadores' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('entrenadores')}
+                  >
+                    <IconoNavegacionApp tipo="entrenadores" />
+                    <span>Entrenadores</span>
+                  </button>
+                  <button
+                    className={`mitico-nav-item ${pantalla === 'disponibilidad' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('disponibilidad')}
+                  >
+                    <IconoNavegacionApp tipo="disponibilidad" />
+                    <span>Disponibilidad</span>
+                  </button>
+                  <button
+                    className={`mitico-nav-item ${pantalla === 'entrenador' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('entrenador')}
+                  >
+                    <IconoNavegacionApp tipo="movil" />
+                    <span>Vista entrenador</span>
+                  </button>
+                  <button
+                    className={`mitico-nav-item ${pantalla === 'reportes' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('reportes')}
+                  >
+                    <IconoNavegacionApp tipo="cierre" />
+                    <span>Cierre semanal</span>
+                  </button>
+                </div>
+
+                <div className="mitico-nav-group">
+                  <span className="mitico-nav-heading">Gestión</span>
+                  <button
+                    className={`mitico-nav-item ${pantalla === 'alumnos' ? 'is-active' : ''}`}
+                    onClick={() => abrirPantallaConScroll('alumnos')}
+                  >
+                    <IconoNavegacionApp tipo="fichas" />
+                    <span>Fichas</span>
+                  </button>
+                  {puedeVerAdministracionAltasApp(perfilUsuario?.rol) && (
+                    <button
+                      className={`mitico-nav-item ${pantalla === 'administracion' ? 'is-active' : ''}`}
+                      onClick={() => abrirPantallaConScroll('administracion')}
+                    >
+                      <IconoNavegacionApp tipo="altas" />
+                      <span>Altas / Test</span>
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
+
+            {esAdministracionApp && puedeVerAdministracionAltasApp(perfilUsuario?.rol) && (
+              <div className="mitico-nav-group">
+                <span className="mitico-nav-heading">Administración</span>
+                <button
+                  className={`mitico-nav-item ${pantalla === 'administracion' ? 'is-active' : ''}`}
+                  onClick={() => abrirPantallaConScroll('administracion')}
+                >
+                  <IconoNavegacionApp tipo="altas" />
+                  <span>Altas / Test de nivel</span>
+                </button>
+              </div>
+            )}
+
+            {esCoordinadorJefeApp && (
+              <div className="mitico-nav-group">
+                <span className="mitico-nav-heading">Dirección</span>
+                <button className={`mitico-nav-item ${pantalla === 'cobros' ? 'is-active' : ''}`} onClick={() => abrirPantallaConScroll('cobros')}>
+                  <IconoNavegacionApp tipo="cobros" /><span>Cobros</span>
+                </button>
+                <button className={`mitico-nav-item ${pantalla === 'analisis' ? 'is-active' : ''}`} onClick={() => abrirPantallaConScroll('analisis')}>
+                  <IconoNavegacionApp tipo="analisis" /><span>Análisis</span>
+                </button>
+                <button className={`mitico-nav-item ${pantalla === 'informes' ? 'is-active' : ''}`} onClick={() => abrirPantallaConScroll('informes')}>
+                  <IconoNavegacionApp tipo="informes" /><span>Informes y listados</span>
+                </button>
+                <button className={`mitico-nav-item ${pantalla === 'temporadas' ? 'is-active' : ''}`} onClick={() => abrirPantallaConScroll('temporadas')}>
+                  <IconoNavegacionApp tipo="temporadas" /><span>Temporadas</span>
+                </button>
+                <button className={`mitico-nav-item ${pantalla === 'usuarios' ? 'is-active' : ''}`} onClick={() => abrirPantallaConScroll('usuarios')}>
+                  <IconoNavegacionApp tipo="accesos" /><span>Accesos equipo</span>
+                </button>
+              </div>
+            )}
+
+            <div className="mitico-sidebar-footer">
+              <img src="/logo-cabecera-mitico.png" alt="" aria-hidden="true" />
+              <span>
+                <strong>Mítico Club · Madrid</strong>
+                <small>Temporada {temporadaActivaCierre || 'activa'}</small>
+              </span>
+            </div>
+          </nav>
+        ) : null}
+      </header>
+
+      <style>{`
+        .mitico-app-shell {
+          --mitico-navy: #061b2d;
+          --mitico-green: #0f9f4d;
+          --mitico-green-dark: #08783a;
+          --mitico-ink: #122033;
+          --mitico-border: #e4eaf1;
+          --mitico-bg: #f4f7fb;
+          padding: 0 !important;
+          background: var(--mitico-bg) !important;
+          min-height: 100vh;
+          color: var(--mitico-ink);
+        }
+        .mitico-product-header { position: relative; z-index: 40; }
+        .mitico-topbar {
+          min-height: 74px; display: grid;
+          grid-template-columns: minmax(230px, 1fr) minmax(330px, .9fr) minmax(280px, 1fr);
+          align-items: center; gap: 18px; padding: 10px 24px;
+          background: linear-gradient(110deg, #041724 0%, #06243a 64%, #092d43 100%);
+          color: #fff; box-shadow: 0 8px 28px rgba(3,20,33,.16);
+          position: sticky; top: 0; z-index: 60;
+        }
+        .mitico-brand-block { display:flex; align-items:center; gap:12px; min-width:0; }
+        .mitico-brand-logo { width:44px; height:44px; border-radius:12px; object-fit:cover; background:#fff; border:1px solid rgba(255,255,255,.18); box-shadow:0 6px 20px rgba(0,0,0,.18); }
+        .mitico-brand-copy { display:grid; min-width:0; }
+        .mitico-brand-copy strong { font-size:18px; letter-spacing:.08em; line-height:1.05; }
+        .mitico-brand-copy span { margin-top:4px; color:#38d277; font-size:10px; font-weight:900; text-transform:uppercase; letter-spacing:.12em; }
+        .mitico-week-control { min-height:46px; display:flex; align-items:center; justify-content:center; gap:12px; padding:7px 13px; border:1px solid rgba(255,255,255,.08); border-radius:14px; background:rgba(255,255,255,.055); min-width:0; }
+        .mitico-week-label { color:#cbd7e4; font-size:12px; font-weight:750; white-space:nowrap; }
+        .mitico-week-control select { min-width:0; max-width:240px; border:0; outline:0; background:transparent; color:#fff; font-weight:850; font-size:13px; padding:4px 22px 4px 0; }
+        .mitico-week-control select option { color:#172033; background:#fff; }
+        .mitico-week-value { min-width:0; font-size:13px; color:#fff; overflow-wrap:anywhere; }
+        .mitico-topbar-actions { display:flex; justify-content:space-between; align-items:center; gap:12px; min-width:0; width:100%; }
+        .mitico-install-button { height:42px; display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:12px; border:1px solid rgba(117,229,155,.2); background:rgba(15,159,77,.13); color:#d9ffe6; font-weight:800; font-size:12px; }
+        .mitico-install-button img { width:28px; height:28px; border-radius:8px; }
+        .mitico-user-block { display:flex; align-items:center; gap:10px; min-width:0; }
+        .mitico-user-avatar { width:40px; height:40px; border-radius:50%; display:grid; place-items:center; background:linear-gradient(145deg,#34475c,#1c3046); color:#fff; font-weight:900; font-size:12px; border:1px solid rgba(255,255,255,.09); }
+        .mitico-user-copy { display:grid; min-width:0; line-height:1.15; }
+        .mitico-user-copy strong { color:#fff; font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .mitico-user-copy small { color:#b8c6d5; font-size:11px; margin-top:3px; }
+        .mitico-logout-button { min-height:34px; padding:7px 11px; border-radius:10px; border:1px solid rgba(248,113,113,.42); color:#fecaca; background:rgba(185,28,28,.18); font-size:11px; font-weight:900; box-shadow:none; }
+        .mitico-install-help { position:fixed; top:82px; right:24px; z-index:70; width:min(390px,calc(100vw - 32px)); padding:12px 14px; border-radius:14px; background:#fff; color:#31503d; border:1px solid #ccebd7; box-shadow:0 18px 55px rgba(15,23,42,.16); font-size:12px; line-height:1.45; }
+        .mitico-sidebar { position:fixed; top:74px; left:0; bottom:0; width:222px; z-index:45; display:flex; flex-direction:column; gap:2px; overflow-y:auto; padding:20px 8px 16px; background:rgba(255,255,255,.98); border-right:1px solid var(--mitico-border); box-shadow:8px 0 30px rgba(15,23,42,.025); overscroll-behavior-y:contain; scrollbar-gutter:stable; }
+        .mitico-nav-group { display:grid; gap:3px; padding:0 0 14px; margin-bottom:10px; border-bottom:1px solid #edf1f5; }
+        .mitico-nav-heading { padding:0 8px 7px; color:var(--mitico-green-dark); font-size:10px; font-weight:950; text-transform:uppercase; letter-spacing:.13em; }
+        .mitico-nav-item { position:relative; width:100%; min-height:42px; display:grid; grid-template-columns:22px minmax(0,1fr); align-items:center; gap:8px; padding:9px 8px; border:0; border-radius:10px; background:transparent; color:#506078; text-align:left; font-size:13px; font-weight:760; box-shadow:none; cursor:pointer; }
+        .mitico-nav-item:hover { background:#f5f8fa; color:#17324a; }
+        .mitico-nav-item.is-active { color:#08783a; background:linear-gradient(90deg,#eaf8ef 0%,#f7fbf8 100%); font-weight:900; }
+        .mitico-nav-item.is-active::before { content:''; position:absolute; left:0; width:3px; height:28px; border-radius:0 3px 3px 0; background:var(--mitico-green); }
+        .mitico-nav-item svg { width:19px; height:19px; }
+        .mitico-sidebar-footer { margin-top:auto; padding:14px 8px 2px; display:flex; align-items:center; gap:9px; color:#64748b; }
+        .mitico-sidebar-footer img { width:34px; height:34px; object-fit:cover; border-radius:9px; }
+        .mitico-sidebar-footer span { display:grid; min-width:0; }
+        .mitico-sidebar-footer strong { font-size:11px; color:#344256; }
+        .mitico-sidebar-footer small { font-size:10px; margin-top:2px; }
+        .mitico-content-shell { margin-left:222px; padding:28px 32px 64px; min-width:0; min-height:calc(100vh - 74px); max-width:1700px; }
+        .mitico-app-shell.trainer-only .mitico-content-shell { margin-left:auto; margin-right:auto; max-width:1120px; }
+        @media (min-width:901px) {
+          .mitico-product-header { position:sticky; top:0; z-index:60; }
+          .mitico-topbar { position:relative; top:auto; }
+        }
+        @media (max-width:1080px) {
+          .mitico-topbar { grid-template-columns:minmax(200px,1fr) minmax(280px,1fr); }
+          .mitico-topbar-actions { grid-column:1 / -1; justify-content:space-between; padding-top:2px; }
+          .mitico-sidebar { top:126px; }
+        }
+        @media (max-width:900px) {
+          .mitico-topbar { position:relative; grid-template-columns:1fr; padding:10px 14px; gap:8px; }
+          .mitico-brand-logo { width:38px; height:38px; }
+          .mitico-brand-copy strong { font-size:16px; }
+          .mitico-week-control { justify-content:flex-start; }
+          .mitico-week-control select { max-width:100%; flex:1; }
+          .mitico-user-copy { flex:1; }
+          .mitico-topbar-actions { grid-column:auto; }
+          .mitico-sidebar { position:static; width:100%; height:auto; max-height:none; padding:10px 12px 11px; flex-direction:row; align-items:flex-start; gap:12px; overflow-x:auto; overflow-y:hidden; overscroll-behavior-x:contain; scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch; border-right:0; border-bottom:1px solid var(--mitico-border); box-shadow:none; }
+          .mitico-nav-group { min-width:215px; margin:0; padding:0 10px 0 0; border-bottom:0; border-right:1px solid #edf1f5; scroll-snap-align:start; }
+          .mitico-sidebar-footer { display:none; }
+          .mitico-content-shell, .mitico-app-shell.trainer-only .mitico-content-shell { margin-left:0; max-width:none; padding:18px 14px 54px; }
+          .mitico-install-help { top:12px; right:12px; }
+        }
+        @media (max-width:600px) {
+          .mitico-topbar-actions { align-items:center; gap:8px; }
+          .mitico-user-copy strong { font-size:12px; }
+          .mitico-user-copy small { font-size:10px; }
+          .mitico-logout-button { padding-inline:8px; }
+          .mitico-content-shell, .mitico-app-shell.trainer-only .mitico-content-shell { padding:14px 10px 46px; }
+          .mitico-install-button { height:36px; padding:5px 8px; gap:6px; font-size:10px; white-space:nowrap; }
+          .mitico-install-button img { width:22px; height:22px; border-radius:6px; }
+          .mitico-app-shell.trainer-only .mitico-brand-copy span,
+          .mitico-app-shell.trainer-only .mitico-week-label,
+          .mitico-app-shell.trainer-only .mitico-user-copy small { display:none; }
+        }
+      `}</style>
+
+      <div className="mitico-content-shell">
+
+
+      {whatsappPreview && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.45)',
+            zIndex: 9999,
+            padding: 16,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <article
+            style={{
+              background: '#fff',
+              borderRadius: 22,
+              padding: 18,
+              width: 'min(920px, 100%)',
+              maxHeight: '90vh',
+              overflow: 'auto',
+              boxShadow: '0 24px 80px rgba(0,0,0,0.30)',
+              border: '1px solid #e5e7eb',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 12,
+                alignItems: 'flex-start',
+                marginBottom: 10,
+              }}
+            >
+              <div>
+                <p style={etiquetaSuperior}>PREVISUALIZACIÓN WHATSAPP</p>
+                <h2 style={{ margin: 0 }}>{whatsappPreview.titulo}</h2>
+              </div>
+              <button
+                onClick={() => setWhatsappPreview(null)}
+                style={botonSecundario}
+              >
+                Cerrar
+              </button>
+            </div>
+
+            <div style={{ ...avisoNeutral, marginBottom: 12 }}>
+              {whatsappPreview.claveGrupoWhatsapp
+                ? 'Revisa el mensaje. Al pulsar enviar, se copiará y se abrirá directamente el grupo de WhatsApp configurado para este turno.'
+                : whatsappPreview.titulo.startsWith('Alta entrenador')
+                ? 'Edita el mensaje si necesitas cambiar algo y después copia el texto para enviarlo por WhatsApp.'
+                : 'Revisa y modifica aquí el texto antes de copiarlo.'}
+            </div>
+
+            {whatsappPreview.claveGrupoWhatsapp && (
+              <div
+                style={{
+                  display: 'grid',
+                  gap: 8,
+                  marginBottom: 12,
+                  padding: 12,
+                  borderRadius: 14,
+                  border: '1px solid #bbf7d0',
+                  background: '#f0fdf4',
+                }}
+              >
+                <strong style={{ color: '#166534' }}>
+                  Grupo de WhatsApp de papis
+                </strong>
+                <input
+                  type="url"
+                  value={whatsappPreview.enlaceGrupoWhatsapp || ''}
+                  onChange={(e) =>
+                    setWhatsappPreview({
+                      ...whatsappPreview,
+                      enlaceGrupoWhatsapp: e.target.value,
+                      mensajeGrupoCopiado: false,
+                    })
+                  }
+                  placeholder="https://chat.whatsapp.com/..."
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    borderRadius: 12,
+                    border: '1px solid #86efac',
+                    padding: '10px 12px',
+                    background: '#ffffff',
+                  }}
+                />
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => void guardarEnlaceWhatsappPreview()}
+                    style={botonSecundario}
+                  >
+                    Guardar / actualizar enlace
+                  </button>
+                  <span
+                    style={{
+                      alignSelf: 'center',
+                      fontSize: 12,
+                      color: '#64748b',
+                    }}
+                  >
+                    Baby y Ocio se guardan una sola vez. En Intensivos, el enlace pertenece a ese curso.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <textarea
+              value={whatsappPreview.texto}
+              onChange={(e) =>
+                setWhatsappPreview({
+                  ...whatsappPreview,
+                  texto: e.target.value,
+                  mensajeGrupoCopiado: false,
+                })

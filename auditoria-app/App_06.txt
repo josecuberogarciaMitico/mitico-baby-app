@@ -1,0 +1,2500 @@
+          ? ` Quedaría completo con ${numeroEntrenadores} entrenadores (${totalFinal}/7).`
+          : ` Quedaría completo (${totalFinal}/${maxRatio}).`;
+    } else if (estado !== 'NO_ENCAJA') {
+      motivo +=
+        numeroEntrenadores >= 2
+          ? ` Grupo con ${numeroEntrenadores} entrenadores. Ratio resultante: ${totalFinal}/7.`
+          : ` Ratio resultante: ${totalFinal}/${maxRatio}.`;
+    }
+
+    if (grupo.publicado && estado !== 'NO_ENCAJA') score += 4;
+    if (esSesionActual && estado !== 'NO_ENCAJA') score += 8;
+
+    return {
+      sesion_id: sesion.sesion_id,
+      fecha: sesion.fecha,
+      hora_inicio: sesion.hora_inicio,
+      hora_fin: sesion.hora_fin,
+      grupo_id: grupo.grupo_id,
+      grupo: grupo.nombre_grupo,
+      nivel_grupo: grupo.nivel_grupo || niveles.join('/') || '-',
+      pista: grupo.pista || '-',
+      punto: grupo.punto_encuentro || '-',
+      entrenador: nombresEntrenadoresDelGrupo(grupo.grupo_id, grupo.entrenador),
+      total_actual: totalActual,
+      total_final: totalFinal,
+      estado,
+      motivo,
+      score,
+      es_sesion_actual: esSesionActual,
+    };
+  }
+
+  async function analizarEncajeAlumnoFueraPlazoAgenda() {
+    if (!agendaSesionActivaId) {
+      setError('Abre primero la sesión donde se ha apuntado el niño.');
+      return;
+    }
+    const nombre = alumnoFueraPlazoNombre.trim();
+    if (!nombre) {
+      setError('Escribe el nombre y apellidos del niño.');
+      return;
+    }
+
+    setAnalizandoFueraPlazo(true);
+    setError('');
+    setRecomendacionesFueraPlazo([]);
+
+    try {
+      const nombreNormalizado = normalizarNombreFueraPlazoAgenda(nombre);
+      const coincidenciasFicha = alumnos.filter((alumno) => {
+        const nombreFicha = normalizarNombreFueraPlazoAgenda(alumno.alumno);
+        return (
+          nombreFicha === nombreNormalizado ||
+          (nombreNormalizado.length >= 2 && nombreFicha.startsWith(nombreNormalizado))
+        );
+      });
+      const fichaExistente =
+        coincidenciasFicha.find(
+          (alumno) => normalizarNombreFueraPlazoAgenda(alumno.alumno) === nombreNormalizado
+        ) || (coincidenciasFicha.length === 1 ? coincidenciasFicha[0] : undefined);
+      const nivelDetectado =
+        alumnoFueraPlazoNivel ||
+        fichaExistente?.nivel_actual ||
+        fichaExistente?.ultimo_nivel_reportado ||
+        fichaExistente?.nivel_estimado ||
+        'INICIACION';
+
+      if (fichaExistente) {
+        setAlumnoFueraPlazoAlumnoId(fichaExistente.alumno_id);
+        if (fichaExistente.alumno !== nombre) {
+          setAlumnoFueraPlazoNombre(fichaExistente.alumno);
+        }
+      } else {
+        setAlumnoFueraPlazoAlumnoId('');
+      }
+      if (!alumnoFueraPlazoNivel) setAlumnoFueraPlazoNivel(nivelDetectado);
+
+      // Refrescamos la agenda completa al analizar. Así las alternativas de la
+      // semana no dependen de una copia antigua cargada al abrir la pantalla.
+      const agendaActualizada = await consultarSupabase<AgendaSesionDirectaApp>(
+        'v_agenda_sesiones_operativa_app',
+        'select=*&order=fecha.asc,hora_inicio.asc'
+      );
+      setAgendaSesionesDirectas(agendaActualizada);
+
+      const sesionActual =
+        agendaActualizada.find(
+          (sesion) => sesion.sesion_id === agendaSesionActivaId
+        ) ||
+        agendaSesionesDirectas.find(
+          (sesion) => sesion.sesion_id === agendaSesionActivaId
+        );
+      if (!sesionActual) throw new Error('No encuentro la sesión activa en la agenda.');
+
+      const resultados: RecomendacionFueraPlazoAgendaApp[] = agendaGruposSesion
+        .filter((grupo) => Boolean(grupo.grupo_id))
+        .map((grupo) =>
+          evaluarGrupoFueraPlazoAgenda(
+            grupo,
+            sesionActual,
+            nivelDetectado,
+            true
+          )
+        );
+
+      // La semana se calcula siempre por FECHA (lunes-domingo), no por
+      // semana_inicio almacenada. Esto evita perder turnos reales del sábado/
+      // domingo si ese campo viene vacío o desfasado.
+      const inicioSemanaActual = inicioSemanaAgenda(sesionActual.fecha);
+      const modalidadActual = `${sesionActual.modalidad_codigo || sesionActual.modalidad || ''}`
+        .trim()
+        .toUpperCase();
+
+      const sesionesSemana = agendaActualizada.filter((sesion) => {
+        const modalidadSesion = `${sesion.modalidad_codigo || sesion.modalidad || ''}`
+          .trim()
+          .toUpperCase();
+
+        return (
+          sesion.sesion_id !== agendaSesionActivaId &&
+          inicioSemanaAgenda(sesion.fecha) === inicioSemanaActual &&
+          modalidadSesion === modalidadActual
+        );
+      });
+
+      for (const sesion of sesionesSemana) {
+        try {
+          const filtroSesion = encodeURIComponent(`eq.${sesion.sesion_id}`);
+          const grupos = await consultarSupabase<AgendaGrupoSesionApp>(
+            'v_grupos_sesion_operativa_app',
+            `select=*&sesion_id=${filtroSesion}&order=nombre_grupo.asc`
+          );
+          grupos
+            .filter((grupo) => Boolean(grupo.grupo_id))
+            .forEach((grupo) =>
+              resultados.push(
+                evaluarGrupoFueraPlazoAgenda(grupo, sesion, nivelDetectado, false)
+              )
+            );
+        } catch {
+          // Una sesión alternativa que falle no debe bloquear el análisis del turno actual.
+        }
+      }
+
+      resultados.sort((a, b) => {
+        const prioridadEstado = { RECOMENDADO: 0, REVISAR: 1, NO_ENCAJA: 2 } as const;
+        return (
+          prioridadEstado[a.estado] - prioridadEstado[b.estado] ||
+          b.score - a.score ||
+          a.fecha.localeCompare(b.fecha) ||
+          a.hora_inicio.localeCompare(b.hora_inicio)
+        );
+      });
+      setRecomendacionesFueraPlazo(resultados);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo analizar el encaje.');
+    }
+
+    setAnalizandoFueraPlazo(false);
+  }
+
+  async function incorporarAlumnoFueraPlazoEnGrupo(
+    opcion: RecomendacionFueraPlazoAgendaApp
+  ) {
+    const nombre = alumnoFueraPlazoNombre.trim();
+    if (!nombre) {
+      setErrorIncorporacionFueraPlazo('Escribe o selecciona el nombre del niño.');
+      return;
+    }
+
+    const nivel = (alumnoFueraPlazoNivel || 'INICIACION').trim().toUpperCase();
+    const requiereRevision = opcion.estado === 'REVISAR';
+    const esOtroTurno = !opcion.es_sesion_actual;
+    const fechaHora = `${formatearFecha(opcion.fecha)} · ${opcion.hora_inicio?.slice(0, 5)}–${opcion.hora_fin?.slice(0, 5)}`;
+    const mensaje = esOtroTurno
+      ? `Vas a añadir a ${nombre} · ${nivel} en OTRO TURNO:\n\n${fechaHora}\n${opcion.grupo} · ${opcion.total_actual} → ${opcion.total_final} niños\n${opcion.entrenador || 'Sin entrenador'} · Punto ${opcion.punto}\n\nHazlo solo cuando los padres hayan confirmado el cambio de horario. ¿Continuar?`
+      : requiereRevision
+      ? `Este encaje requiere revisión manual.\n\n${nombre} · ${nivel}\n${opcion.grupo} · ${opcion.total_actual} → ${opcion.total_final} niños\n\n¿Quieres añadirlo igualmente a este grupo?`
+      : `${nombre} · ${nivel}\n${opcion.grupo} · ${opcion.total_actual} → ${opcion.total_final} niños\n${opcion.entrenador || 'Sin entrenador'} · Punto ${opcion.punto}\n\n¿Confirmas que quieres añadirlo a este grupo?`;
+
+    if (!window.confirm(mensaje)) return;
+
+    setIncorporandoFueraPlazo(true);
+    setError('');
+    setErrorIncorporacionFueraPlazo('');
+    setMensajeIncorporacionFueraPlazo('');
+
+    try {
+      const resultado = await ejecutarFuncionConRespuesta<{
+        alumno_id: string;
+        alumno: string;
+        sesion_id: string;
+        grupo_id: string;
+        grupo: string;
+        nivel_usado: string;
+        resultado: string;
+      }>('incorporar_alumno_fuera_plazo_grupo_app', {
+        p_sesion_id: opcion.sesion_id,
+        p_grupo_id: opcion.grupo_id,
+        p_alumno_id: alumnoFueraPlazoAlumnoId || null,
+        p_nombre_completo: nombre,
+        p_nivel_codigo: nivel,
+      });
+
+      const incorporado = resultado[0];
+      if (!incorporado) {
+        throw new Error('Supabase no devolvió confirmación de la incorporación.');
+      }
+
+      await cargarAgendaOperativaDirecta();
+      if (opcion.es_sesion_actual) {
+        await cargarDetalleSesionAgenda(opcion.sesion_id);
+      }
+
+      setMensajeIncorporacionFueraPlazo(
+        `${incorporado.alumno} añadido a ${incorporado.grupo} · ${fechaHora}. Listado y Vista entrenador actualizados.`
+      );
+      setRecomendacionesFueraPlazo([]);
+
+      if (opcion.es_sesion_actual) {
+        window.setTimeout(() => {
+          document
+            .getElementById('agenda-grupos-creados')
+            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 180);
+      }
+    } catch (err) {
+      const mensajeError =
+        err instanceof Error
+          ? err.message
+          : 'No se pudo incorporar el alumno al grupo.';
+      setErrorIncorporacionFueraPlazo(mensajeError);
+      setError(mensajeError);
+    } finally {
+      setIncorporandoFueraPlazo(false);
+    }
+  }
+
+  async function generarRecomendacionAgendaSesion(sesionId: string) {
+    if (!sesionId) {
+      setError('Primero carga o selecciona una sesión.');
+      return;
+    }
+
+    const pendientesTest = agendaAlumnosSesion.filter(
+      (alumno) => alumno.estado_en_listado === 'PENDIENTE_TEST'
+    );
+
+    if (pendientesTest.length > 0) {
+      setError(
+        `Hay ${pendientesTest.length} alumno(s) nuevos pendientes de Altas/Test. Resuélvelos antes de generar grupos: ${pendientesTest
+          .map((alumno) => alumno.alumno)
+          .join(', ')}`
+      );
+      return;
+    }
+
+    setCargando(true);
+    setError('');
+
+    try {
+      const data =
+        await ejecutarFuncionConRespuesta<AgendaRecomendacionSesionApp>(
+          'recomendar_grupos_sesion_operativa_app',
+          { p_sesion_id: sesionId }
+        );
+
+      const sesionActual = agendaSesionesDirectas.find(
+        (sesion) => sesion.sesion_id === sesionId
+      );
+      const esSesionBaby = textoSinAcentosGrupoApp(
+        sesionActual?.modalidad_codigo || sesionActual?.modalidad || ''
+      ).includes('baby');
+
+      let perfilesParaRecomendador = perfilesOperativosAlumnos;
+
+      if (esSesionBaby) {
+        try {
+          const perfilesActualizados =
+            await ejecutarFuncionConRespuesta<PerfilOperativoAlumnoApp>(
+              'obtener_perfil_operativo_alumnos_app',
+              {}
+            );
+          perfilesParaRecomendador = Array.isArray(perfilesActualizados)
+            ? perfilesActualizados
+            : [];
+          setPerfilesOperativosAlumnos(perfilesParaRecomendador);
+        } catch (errorPerfil) {
+          console.warn(
+            'No se pudo refrescar el perfil operativo para el recomendador Baby. Se mantiene el recomendador base.',
+            errorPerfil
+          );
+          perfilesParaRecomendador = [];
+        }
+      }
+
+      const dataPedagogica = aplicarCinturonPedagogicoAutomaticoAgenda(data, {
+        usarPerfilBaby: esSesionBaby && perfilesParaRecomendador.length > 0,
+        perfiles: perfilesParaRecomendador,
+      });
+      setAgendaRecomendaciones(dataPedagogica);
+      setDestinoAlumnoAgendaGrupo({});
+      // No borramos los grupos manuales: si Jose crea "Grupo B+" antes de generar,
+      // debe quedar disponible como destino para mover alumnos.
+      setEntrenadoresAgendaGrupo({});
+      setEntrenadoresApoyoAgendaGrupo({});
+      setResponsablesReporteAgendaGrupo({});
+      setPuntosAgendaGrupo({});
+      setTrabajoAgendaGrupo({});
+      setObservacionesAgendaGrupo({});
+
+      window.setTimeout(() => {
+        document
+          .getElementById('agenda-propuesta-grupos')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 140);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+      setAgendaRecomendaciones([]);
+    }
+
+    setCargando(false);
+  }
+
+  function claveAlumnoAgendaRecomendado(alumnoId: string) {
+    return `${agendaSesionActivaId || 'sin_sesion'}__${alumnoId}`;
+  }
+
+  function destinoActualAlumnoAgenda(alumno: AgendaRecomendacionSesionApp) {
+    return (
+      destinoAlumnoAgendaGrupo[
+        claveAlumnoAgendaRecomendado(alumno.alumno_id)
+      ] || alumno.grupo_recomendado
+    );
+  }
+
+  function nombresGruposAgendaBase() {
+    return Array.from(
+      new Set([
+        ...agendaRecomendaciones
+          .map((alumno) => alumno.grupo_recomendado)
+          .filter(Boolean),
+        ...gruposAgendaManuales,
+      ])
+    );
+  }
+
+  function crearGrupoManualAgenda() {
+    if (!agendaSesionActivaId) {
+      setError('Primero abre una sesión antes de crear un grupo manual.');
+      return;
+    }
+
+    const sugerido = `Grupo manual ${gruposAgendaManuales.length + 1}`;
+    const nombre = window.prompt(
+      'Nombre del nuevo grupo manual. Ejemplo: Grupo B+ o Grupo C/D',
+      sugerido
+    );
+    const limpio = (nombre || '').trim();
+    if (!limpio) return;
+
+    const yaExiste =
+      gruposAgendaManuales.includes(limpio) ||
+      nombresGruposAgendaBase().includes(limpio);
+    if (yaExiste) {
+      setError(`El grupo manual "${limpio}" ya existe.`);
+      return;
+    }
+
+    setError('');
+    setGruposAgendaManuales((anteriores) => [...anteriores, limpio]);
+
+    // Si todavía no hay propuesta, generamos una base para que aparezcan los alumnos
+    // y se puedan mover al grupo manual recién creado.
+    if (agendaRecomendaciones.length === 0) {
+      setTimeout(
+        () => generarRecomendacionAgendaSesion(agendaSesionActivaId),
+        0
+      );
+    }
+  }
+
+  function moverAlumnoAgendaRecomendado(alumnoId: string, destino: string) {
+    setDestinoAlumnoAgendaGrupo((anterior) => ({
+      ...anterior,
+      [claveAlumnoAgendaRecomendado(alumnoId)]: destino,
+    }));
+  }
+
+  function gruposRecomendadosAgenda() {
+    const mapa = new Map<string, AgendaRecomendacionSesionApp[]>();
+
+    agendaRecomendaciones.forEach((alumno) => {
+      const destino = destinoActualAlumnoAgenda(alumno);
+      if (destino === '__NO_CREAR__') return;
+
+      mapa.set(destino, [
+        ...(mapa.get(destino) || []),
+        { ...alumno, grupo_recomendado: destino },
+      ]);
+    });
+
+    return [...mapa.entries()]
+      .map(
+        ([nombreGrupo, alumnosGrupo]) =>
+          [
+            nombreGrupo,
+            alumnosGrupo.sort((a, b) => {
+              return (
+                a.orden_bloque - b.orden_bloque ||
+                a.nivel_orden - b.nivel_orden ||
+                a.alumno.localeCompare(b.alumno)
+              );
+            }),
+          ] as [string, AgendaRecomendacionSesionApp[]]
+      )
+      .sort((a, b) => {
+        const primeroA = a[1][0];
+        const primeroB = b[1][0];
+        if (!primeroA || !primeroB) return 0;
+        return (
+          primeroA.orden_bloque - primeroB.orden_bloque ||
+          a[0].localeCompare(b[0])
+        );
+      });
+  }
+
+  function ordenNivelTrabajoMSZApp(nivel: string | null | undefined) {
+    const limpio = (nivel || '')
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim();
+    const nivelDetectado = limpio.match(/(?:^|[^A-Z])(INICIACION|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)(?:$|[^A-Z+])/i)?.[1] || limpio;
+    if (nivelDetectado === 'D+') return 8;
+    if (nivelDetectado === 'D') return 7;
+    if (nivelDetectado === 'C+') return 6;
+    if (nivelDetectado === 'C') return 5;
+    if (nivelDetectado === 'B+' || nivelDetectado === 'B++') return 4;
+    if (nivelDetectado === 'B') return 3;
+    if (nivelDetectado === 'A+') return 2;
+    if (nivelDetectado === 'A') return 1;
+    if (nivelDetectado === 'INICIACION' || nivelDetectado === 'DEBUT') return 0;
+    return 2;
+  }
+
+  function nivelOrdenPedagogicoApp(nivel: string | null | undefined) {
+    return ordenNivelTrabajoMSZApp(nivel);
+  }
+
+  function nivelEtiquetaPedagogicaApp(orden: number) {
+    if (orden <= 0) return 'INICIACIÓN';
+    if (orden === 1) return 'A';
+    if (orden === 2) return 'A+';
+    if (orden === 3) return 'B';
+    if (orden === 4) return 'B+';
+    if (orden === 5) return 'C';
+    if (orden === 6) return 'C+';
+    if (orden === 7) return 'D';
+    return 'D+';
+  }
+
+  function validacionPedagogicaGrupoApp(
+    alumnosGrupo: {
+      nivel_resumen?: string | null;
+      alumno?: string | null;
+      pista_recomendada?: string | null;
+      pista_alumno?: string | null;
+      fuente_nivel?: string | null;
+      estado_ficha?: string | null;
+      alertas?: string | null;
+      alerta_grupo?: string | null;
+    }[]
+  ) {
+    const ordenes = alumnosGrupo
+      .map((alumno) => nivelOrdenPedagogicoApp(alumno.nivel_resumen))
+      .filter((orden) => Number.isFinite(orden));
+    const niveles = Array.from(
+      new Set(ordenes.map(nivelEtiquetaPedagogicaApp))
+    );
+    const pistas = alumnosGrupo
+      .map((alumno) =>
+        `${alumno.pista_recomendada || ''} ${
+          alumno.pista_alumno || ''
+        }`.toLowerCase()
+      )
+      .join(' ');
+    const textos = alumnosGrupo
+      .map(
+        (alumno) =>
+          `${alumno.fuente_nivel || ''} ${alumno.estado_ficha || ''} ${
+            alumno.alertas || ''
+          } ${alumno.alerta_grupo || ''}`
+      )
+      .join(' ')
+      .toLowerCase();
+
+    const tieneIniciacion = ordenes.some((orden) => orden <= 0);
+    const tieneA = ordenes.some((orden) => orden === 1);
+    const tieneAPlus = ordenes.some((orden) => orden === 2);
+    const tieneB = ordenes.some((orden) => orden === 3);
+    const tieneBPlus = ordenes.some((orden) => orden === 4);
+    const tieneC = ordenes.some((orden) => orden === 5 || orden === 6);
+    const tieneCoSuperior = ordenes.some((orden) => orden >= 5);
+    const tieneBoSuperior = ordenes.some((orden) => orden >= 3);
+
+    const bloqueos: string[] = [];
+    const supervision: string[] = [];
+    const avisos: string[] = [];
+
+    if (alumnosGrupo.length === 0) bloqueos.push('Grupo sin alumnos.');
+    if (alumnosGrupo.length === 1)
+      supervision.push(
+        'Grupo de 1 alumno: excepción de ratio. Publicar solo tras revisión de Jose.'
+      );
+    if (alumnosGrupo.length === 2)
+      supervision.push(
+        'Grupo de 2 alumnos: solo si Jose lo acepta por encaje real o falta de niños.'
+      );
+
+    if (tieneIniciacion && tieneBoSuperior) {
+      supervision.push('INICIACIÓN no puede mezclarse con B, B+, C, C+, D o D+. Ajuste manual: requiere confirmación de Jose.');
+    }
+    if (tieneIniciacion && tieneAPlus) {
+      supervision.push('INICIACIÓN solo puede mezclarse con A, no con A+. Ajuste manual: requiere confirmación de Jose.');
+    }
+    if ((tieneIniciacion || tieneA) && tieneCoSuperior) {
+      supervision.push('INICIACIÓN/A no puede mezclarse con C, C+, D o D+. Ajuste manual: requiere confirmación de Jose.');
+    }
+    if (tieneAPlus && tieneCoSuperior) {
+      supervision.push('A+ no puede mezclarse con C, C+, D o D+. Ajuste manual: requiere confirmación de Jose.');
+    }
+    if (tieneAPlus && tieneB) {
+      supervision.push(
+        'A+ con B nunca se propone automáticamente. Si Jose lo ha movido manualmente, requiere confirmación antes de publicar.'
+      );
+    }
+    if (tieneBPlus && tieneC) {
+      avisos.push(
+        'B+ con C permitido, revisar que el B+ aguante pista grande y ritmo del grupo.'
+      );
+    }
+    if (
+      alumnosGrupo.length >= 5 &&
+      ordenes.length &&
+      Math.max(...ordenes) <= 2
+    ) {
+      supervision.push(
+        'Grupo bajo de 5 niños: necesita 2 entrenadores. Si solo hay 1, publicar solo con aviso fuerte.'
+      );
+    }
+    if (/peque/.test(pistas) && alumnosGrupo.length > 5) {
+      supervision.push('Pista pequeña con más de 5 niños: dividir grupo o confirmar excepción manual.');
+    }
+    if (/grande/.test(pistas) && alumnosGrupo.length > 7) {
+      supervision.push(
+        'Pista grande con más de 7 niños: intentar dividir 4/4 o publicar con 2 entrenadores si Jose lo decide.'
+      );
+    }
+    if (/familia|declarado|estimado|sin reporte|pendiente/.test(textos)) {
+      avisos.push(
+        'Hay nivel declarado/estimado o ficha pendiente: revisar en primera bajada.'
+      );
+    }
+
+    const estado =
+      bloqueos.length > 0
+        ? 'BLOQUEADO'
+        : supervision.length > 0
+        ? 'SUPERVISION_JOSE'
+        : avisos.length > 0
+        ? 'AVISO'
+        : 'OK';
+    return {
+      estado,
+      niveles,
+      mensajes: [...bloqueos, ...supervision, ...avisos],
+    };
+  }
+
+  function textoValidacionPedagogicaGrupoApp(
+    alumnosGrupo: {
+      nivel_resumen?: string | null;
+      alumno?: string | null;
+      pista_recomendada?: string | null;
+      pista_alumno?: string | null;
+      fuente_nivel?: string | null;
+      estado_ficha?: string | null;
+      alertas?: string | null;
+      alerta_grupo?: string | null;
+    }[]
+  ) {
+    const validacion = validacionPedagogicaGrupoApp(alumnosGrupo);
+    const titulo =
+      validacion.estado === 'BLOQUEADO'
+        ? 'ADVERTENCIA · Revisión obligatoria'
+        : validacion.estado === 'SUPERVISION_JOSE'
+        ? 'SUPERVISIÓN JOSE'
+        : validacion.estado === 'AVISO'
+        ? 'AVISO PEDAGÓGICO'
+        : 'OK PEDAGÓGICO';
+    return { ...validacion, titulo };
+  }
+
+  function estiloValidacionPedagogicaApp(estado: string): React.CSSProperties {
+    if (estado === 'BLOQUEADO') return avisoPendiente;
+    if (estado === 'SUPERVISION_JOSE') return avisoPendiente;
+    if (estado === 'AVISO') return avisoCompleto;
+    return avisoNeutral;
+  }
+
+  function bandaAutomaticaPedagogicaApp(registro: {
+    nivel_resumen?: string | null;
+  }) {
+    const orden = nivelOrdenPedagogicoApp(registro.nivel_resumen);
+    if (orden <= 1) {
+      return {
+        id: 'INICIACION_A',
+        label: 'INICIACIÓN / A',
+        bloque: 'INICIACIÓN / A',
+        pista: 'Pequeña',
+        orden: 0,
+        max: 5,
+      };
+    }
+    if (orden === 2) {
+      return {
+        id: 'APLUS',
+        label: 'A+',
+        bloque: 'A+',
+        pista: 'Pequeña',
+        orden: 2,
+        max: 5,
+      };
+    }
+    if (orden <= 4) {
+      return {
+        id: 'B_BPLUS',
+        label: 'B / B+',
+        bloque: 'B / B+',
+        pista: 'Pequeña/Grande',
+        orden: 3,
+        max: 6,
+      };
+    }
+    return {
+      id: 'C_D',
+      label: 'C / D',
+      bloque: 'C / D',
+      pista: 'Grande',
+      orden: 5,
+      max: 7,
+    };
+  }
+
+  function necesitaDosEntrenadoresGrupoApp(
+    alumnosGrupo: {
+      nivel_resumen?: string | null;
+      pista_recomendada?: string | null;
+      pista_alumno?: string | null;
+    }[]
+  ) {
+    const ordenes = alumnosGrupo.map((alumno) =>
+      nivelOrdenPedagogicoApp(alumno.nivel_resumen)
+    );
+    const maxOrden = ordenes.length ? Math.max(...ordenes) : 2;
+    const pistaTexto = alumnosGrupo
+      .map(
+        (alumno) =>
+          `${alumno.pista_recomendada || ''} ${alumno.pista_alumno || ''}`
+      )
+      .join(' ')
+      .toLowerCase();
+    if (alumnosGrupo.length >= 5 && maxOrden <= 2) return true;
+    if (alumnosGrupo.length > 7 && /grande/.test(pistaTexto)) return true;
+    return false;
+  }
+
+  function textoNecesidadDosEntrenadoresApp(
+    alumnosGrupo: {
+      nivel_resumen?: string | null;
+      pista_recomendada?: string | null;
+      pista_alumno?: string | null;
+    }[]
+  ) {
+    const ordenes = alumnosGrupo.map((alumno) =>
+      nivelOrdenPedagogicoApp(alumno.nivel_resumen)
+    );
+    const maxOrden = ordenes.length ? Math.max(...ordenes) : 2;
+    const pistaTexto = alumnosGrupo
+      .map(
+        (alumno) =>
+          `${alumno.pista_recomendada || ''} ${alumno.pista_alumno || ''}`
+      )
+      .join(' ')
+      .toLowerCase();
+    if (alumnosGrupo.length >= 5 && maxOrden <= 2)
+      return 'Ratio: grupo bajo de 5 niños. Recomendado 2 entrenadores.';
+    if (alumnosGrupo.length > 7 && /grande/.test(pistaTexto))
+      return 'Ratio: pista grande con más de 7 niños. Recomendado 2 entrenadores o dividir.';
+    return '';
+  }
+
+  function responsableAutomaticoReporteApp(
+    indice: number,
+    entrenadorPrincipalId: string,
+    entrenadorApoyoId: string
+  ) {
+    if (!entrenadorApoyoId) return entrenadorPrincipalId;
+    const posicion = indice % 5;
+    return posicion < 3 ? entrenadorPrincipalId : entrenadorApoyoId;
+  }
+
+  function responsableReporteRecomendadoApp(
+    claveGrupo: string,
+    alumnoId: string,
+    indice: number,
+    entrenadorPrincipalId: string,
+    entrenadorApoyoId: string
+  ) {
+    const clave = `${claveGrupo}__${alumnoId}`;
+    return (
+      responsablesReportePorGrupoRecomendado[clave] ||
+      responsableAutomaticoReporteApp(
+        indice,
+        entrenadorPrincipalId,
+        entrenadorApoyoId
+      )
+    );
+  }
+
+  function responsableReporteAgendaApp(
+    nombreGrupo: string,
+    alumnoId: string,
+    indice: number,
+    entrenadorPrincipalId: string,
+    entrenadorApoyoId: string
+  ) {
+    const clave = `${nombreGrupo}__${alumnoId}`;
+    return (
+      responsablesReporteAgendaGrupo[clave] ||
+      responsableAutomaticoReporteApp(
+        indice,
+        entrenadorPrincipalId,
+        entrenadorApoyoId
+      )
+    );
+  }
+
+  function responsablesJsonGrupoRecomendadoApp(
+    claveGrupo: string,
+    alumnosGrupo: { alumno_id: string }[],
+    entrenadorPrincipalId: string,
+    entrenadorApoyoId: string
+  ) {
+    return alumnosGrupo.map((alumno, indice) => ({
+      alumno_id: alumno.alumno_id,
+      entrenador_id: responsableReporteRecomendadoApp(
+        claveGrupo,
+        alumno.alumno_id,
+        indice,
+        entrenadorPrincipalId,
+        entrenadorApoyoId
+      ),
+    }));
+  }
+
+  function responsablesJsonAgendaApp(
+    nombreGrupo: string,
+    alumnosGrupo: { alumno_id: string }[],
+    entrenadorPrincipalId: string,
+    entrenadorApoyoId: string
+  ) {
+    return alumnosGrupo.map((alumno, indice) => ({
+      alumno_id: alumno.alumno_id,
+      entrenador_id: responsableReporteAgendaApp(
+        nombreGrupo,
+        alumno.alumno_id,
+        indice,
+        entrenadorPrincipalId,
+        entrenadorApoyoId
+      ),
+    }));
+  }
+
+  function fuerzaNumericaPerfilBabyApp(
+    perfil?: PerfilOperativoAlumnoApp
+  ) {
+    if (!perfil?.fuerza_nivel) return 0;
+    if (perfil.fuerza_nivel === 'MUY_FUERTE') return 2;
+    if (perfil.fuerza_nivel === 'FUERTE') return 1;
+    if (perfil.fuerza_nivel === 'BAJO') return -2;
+    return 0;
+  }
+
+  function penalizacionDemandaPerfilBabyApp(
+    perfil?: PerfilOperativoAlumnoApp
+  ) {
+    if (!perfil?.demanda_atencion) return 0;
+    if (perfil.demanda_atencion === 'ALTA') return -3;
+    if (perfil.demanda_atencion === 'MEDIA') return -1;
+    return 0;
+  }
+
+  function tieneRemontePerfilBabyApp(
+    perfil: PerfilOperativoAlumnoApp | undefined,
+    patron: RegExp
+  ) {
+    return (perfil?.remontes_recientes || []).some((remonte) =>
+      patron.test(String(remonte || ''))
+    );
+  }
+
+  function perchaConsolidadaPerfilBabyApp(
+    perfil?: PerfilOperativoAlumnoApp
+  ) {
+    return tieneRemontePerfilBabyApp(perfil, /percha/i);
+  }
+
+  function transicionPerchaPerfilBabyApp(
+    alumno: AgendaRecomendacionSesionApp,
+    perfil?: PerfilOperativoAlumnoApp
+  ) {
+    const orden = nivelOrdenPedagogicoApp(alumno.nivel_resumen);
+    if (orden !== 2 && orden !== 3) return false;
+
+    // A+ / B bajo con datos recientes sin percha consolidada:
+    // se trata como grupo de transición y necesita ratio más conservador.
+    const fuerzaBaja =
+      !perfil?.fuerza_nivel ||
+      perfil.fuerza_nivel === 'BAJO' ||
+      perfil.fuerza_nivel === 'ADECUADO';
+
+    const autonomiaLimitada = /necesita ayuda|pista pequeña|llano/i.test(
+      perfil?.autonomia_reciente || ''
+    );
+
+    const tieneDatosRemontes =
+      Array.isArray(perfil?.remontes_recientes) &&
+      (perfil?.remontes_recientes?.length || 0) > 0;
+
+    return (
+      fuerzaBaja &&
+      (autonomiaLimitada ||
+        (tieneDatosRemontes && !perchaConsolidadaPerfilBabyApp(perfil)))
+    );
+  }
+
+  function bPlusPuedeTirarConCPerfilBabyApp(
+    alumno: AgendaRecomendacionSesionApp,
+    perfil?: PerfilOperativoAlumnoApp
+  ) {
+    if (nivelOrdenPedagogicoApp(alumno.nivel_resumen) !== 4) return false;
+    if (!perfil) return false;
+
+    const ritmoFuerte =
+      perfil.fuerza_nivel === 'MUY_FUERTE' ||
+      (perfil.fuerza_nivel === 'FUERTE' &&
+        perfil.ritmo_tendencia === 'Muy rápido · podría ir con nivel superior');
+
+    const confianzaSuficiente =
+      perfil.confianza_ritmo === 'ALTA' ||
+      perfil.confianza_ritmo === 'MEDIA';
+
+    const autonomiaGrande = /pista grande|autónomo total/i.test(
+      perfil.autonomia_reciente || ''
+    );
+
+    const remonteGrande =
+      tieneRemontePerfilBabyApp(perfil, /percha|silla/i);
+
+    // Solo promovemos funcionalmente un B+ cuando hay evidencia bastante sólida.
+    return (
+      ritmoFuerte &&
+      confianzaSuficiente &&
+      (autonomiaGrande || remonteGrande) &&
+      perfil.demanda_atencion !== 'ALTA'
+    );
+  }
+
+  function explicacionCompactaPropuestaBabyApp(
+    alumno: AgendaRecomendacionSesionApp
+  ) {
+    const alerta = String(alumno.alertas || '');
+
+    if (/B\+ fuerte: puede tirar con C bajo/i.test(alerta)) {
+      return 'Encaje: B+ fuerte · compatible con C';
+    }
+
+    if (/Transición A\+\/B: percha no consolidada/i.test(alerta)) {
+      return 'Encaje: transición a percha · ratio bajo';
+    }
+
+    return '';
+  }
+
+  function bandaFuncionalBabyApp(
+    alumno: AgendaRecomendacionSesionApp,
+    perfiles: PerfilOperativoAlumnoApp[]
+  ) {
+    const perfil = perfiles.find(
+      (item) => item.alumno_id === alumno.alumno_id
+    );
+
+    if (bPlusPuedeTirarConCPerfilBabyApp(alumno, perfil)) {
+      return {
+        id: 'C_D',
+        label: 'B+ fuerte / C / D',
+        bloque: 'B+ fuerte / C / D',
+        pista: 'Grande',
+        orden: 5,
+        max: 7,
+      };
+    }
+
+    return bandaAutomaticaPedagogicaApp(alumno);
+  }
+
+  function puntuacionFuncionalBabyApp(
+    alumno: AgendaRecomendacionSesionApp,
+    perfiles: PerfilOperativoAlumnoApp[]
+  ) {
+    const perfil = perfiles.find(
+      (item) => item.alumno_id === alumno.alumno_id
+    );
+    const nivelBase = nivelOrdenPedagogicoApp(alumno.nivel_resumen) * 3;
+    return (
+      nivelBase +
+      fuerzaNumericaPerfilBabyApp(perfil) +
+      penalizacionDemandaPerfilBabyApp(perfil)
+    );
+  }
+
+  function ordenarBabyPorPerfilOperativoApp(
+    alumnos: AgendaRecomendacionSesionApp[],
+    perfiles: PerfilOperativoAlumnoApp[]
+  ) {
+    return alumnos.slice().sort((a, b) => {
+      const perfilA = perfiles.find((item) => item.alumno_id === a.alumno_id);
+      const perfilB = perfiles.find((item) => item.alumno_id === b.alumno_id);
+
+      const puntuacion =
+        puntuacionFuncionalBabyApp(b, perfiles) -
+        puntuacionFuncionalBabyApp(a, perfiles);
+
+      if (puntuacion !== 0) return puntuacion;
+
+      const edadA =
+        perfilA?.edad_aprox ??
+        (typeof a.edad === 'number' ? a.edad : Number.POSITIVE_INFINITY);
+      const edadB =
+        perfilB?.edad_aprox ??
+        (typeof b.edad === 'number' ? b.edad : Number.POSITIVE_INFINITY);
+
+      if (Number.isFinite(edadA) && Number.isFinite(edadB) && edadA !== edadB) {
+        return edadA - edadB;
+      }
+
+      return a.alumno.localeCompare(b.alumno);
+    });
+  }
+
+  function tamanosGruposBabyPorPerfilApp(
+    alumnosOrdenados: AgendaRecomendacionSesionApp[],
+    banda: ReturnType<typeof bandaAutomaticaPedagogicaApp>,
+    perfiles: PerfilOperativoAlumnoApp[]
+  ) {
+    const total = alumnosOrdenados.length;
+
+    const maximo =
+      banda.id === 'INICIACION_A'
+        ? 4
+        : banda.id === 'APLUS'
+        ? 5
+        : banda.max;
+
+    // Caso crítico real: A+/B en transición a percha.
+    // Solo se divide por debajo del máximo si hay evidencia real en el perfil.
+    if (banda.id === 'APLUS' || banda.id === 'B_BPLUS') {
+      const transicion = alumnosOrdenados.filter((alumno) => {
+        const perfil = perfiles.find(
+          (item) => item.alumno_id === alumno.alumno_id
+        );
+        return transicionPerchaPerfilBabyApp(alumno, perfil);
+      }).length;
+
+      const resto = total - 3;
+
+      if (
+        transicion >= 3 &&
+        resto >= 2 &&
+        resto <= maximo &&
+        total >= 5
+      ) {
+        return [resto, 3];
+      }
+    }
+
+    if (total <= maximo) return [total];
+
+    const demandantes = alumnosOrdenados.filter(
+      (alumno) =>
+        perfiles.find((perfil) => perfil.alumno_id === alumno.alumno_id)
+          ?.demanda_atencion === 'ALTA'
+    ).length;
+    const normales = total - demandantes;
+
+    if (
+      demandantes >= 3 &&
+      demandantes <= 4 &&
+      normales >= 3 &&
+      normales <= maximo
+    ) {
+      return [normales, demandantes];
+    }
+
+    return tamanosGruposPedagogicosApp(total, maximo);
+  }
+
+  function tamanosGruposPedagogicosApp(total: number, maximo: number) {
+    if (total <= maximo) return [total];
+    const numeroGrupos = Math.ceil(total / maximo);
+    const base = Math.floor(total / numeroGrupos);
+    const extra = total % numeroGrupos;
+    const tamanos = Array.from(
+      { length: numeroGrupos },
+      (_, index) => base + (index < extra ? 1 : 0)
+    );
+    if (tamanos.some((tamano) => tamano === 1) && total >= 4) {
+      return tamanosGruposPedagogicosApp(total, Math.max(3, maximo - 1));
+    }
+    return tamanos;
+  }
+
+  function aplicarCinturonPedagogicoAutomaticoAgenda(
+    data: AgendaRecomendacionSesionApp[],
+    opciones?: {
+      usarPerfilBaby?: boolean;
+      perfiles?: PerfilOperativoAlumnoApp[];
+    }
+  ) {
+    const porBanda = new Map<string, AgendaRecomendacionSesionApp[]>();
+    data.forEach((registro) => {
+      const banda = opciones?.usarPerfilBaby
+        ? bandaFuncionalBabyApp(registro, opciones.perfiles || [])
+        : bandaAutomaticaPedagogicaApp(registro);
+      porBanda.set(banda.id, [...(porBanda.get(banda.id) || []), registro]);
+    });
+
+    let contador = 1;
+    const salida: AgendaRecomendacionSesionApp[] = [];
+    ['INICIACION_A', 'APLUS', 'B_BPLUS', 'C_D'].forEach((idBanda) => {
+      const alumnosBase = porBanda.get(idBanda) || [];
+      const alumnos = opciones?.usarPerfilBaby
+        ? ordenarBabyPorPerfilOperativoApp(
+            alumnosBase,
+            opciones.perfiles || []
+          )
+        : alumnosBase.slice().sort((a, b) => {
+            return (
+              nivelOrdenPedagogicoApp(a.nivel_resumen) -
+                nivelOrdenPedagogicoApp(b.nivel_resumen) ||
+              a.alumno.localeCompare(b.alumno)
+            );
+          });
+      if (alumnos.length === 0) return;
+      const banda = opciones?.usarPerfilBaby
+        ? bandaFuncionalBabyApp(alumnos[0], opciones.perfiles || [])
+        : bandaAutomaticaPedagogicaApp(alumnos[0]);
+      let inicio = 0;
+      const tamanos = opciones?.usarPerfilBaby
+        ? tamanosGruposBabyPorPerfilApp(
+            alumnos,
+            banda,
+            opciones.perfiles || []
+          )
+        : tamanosGruposPedagogicosApp(alumnos.length, banda.max);
+
+      tamanos.forEach(
+        (tamano) => {
+          const alumnosChunk = alumnos.slice(inicio, inicio + tamano);
+          const nombre =
+            tamano === 1
+              ? `REVISIÓN MANUAL · ${banda.label}`
+              : `Grupo ${contador++} · Nivel ${banda.label}`;
+          alumnosChunk.forEach((alumno, indice) => {
+            const perfilAlumno = (opciones?.perfiles || []).find(
+              (perfil) => perfil.alumno_id === alumno.alumno_id
+            );
+            const promocionBPlus =
+              opciones?.usarPerfilBaby &&
+              bPlusPuedeTirarConCPerfilBabyApp(alumno, perfilAlumno)
+                ? 'B+ fuerte: puede tirar con C bajo por ritmo/autonomía.'
+                : null;
+            const transicionPercha =
+              opciones?.usarPerfilBaby &&
+              transicionPerchaPerfilBabyApp(alumno, perfilAlumno)
+                ? 'Transición A+/B: percha no consolidada, priorizar ratio bajo.'
+                : null;
+            const alertaExtra =
+              tamano === 1
+                ? 'No crear grupo de 1. Revisión manual.'
+                : [promocionBPlus, transicionPercha]
+                    .filter(Boolean)
+                    .join(' · ') || alumno.alertas || null;
+            salida.push({
+              ...alumno,
+              grupo_recomendado: nombre,
+              bloque_tecnico: banda.bloque,
+              pista_recomendada: banda.pista,
+              orden_bloque: banda.orden,
+              orden_en_grupo: indice + 1,
+              alertas:
+                [alumno.alertas, alertaExtra].filter(Boolean).join(' · ') ||
+                null,
+            });
+          });
+          inicio += tamano;
+        }
+      );
+    });
+    return salida;
+  }
+
+  function ajusteAutonomiaPerfilIntensivoApp(
+    perfil?: PerfilOperativoAlumnoApp
+  ) {
+    const texto = String(perfil?.autonomia_reciente || '').toLowerCase();
+
+    if (/autónomo total|autonomo total|muy autónom|muy autonom|pista grande/.test(texto)) {
+      return 2;
+    }
+
+    if (/necesita ayuda|pista pequeña|pista pequena|poca autonomía|poca autonomia/.test(texto)) {
+      return -2;
+    }
+
+    return 0;
+  }
+
+  function ajusteDemandaPerfilIntensivoApp(
+    perfil?: PerfilOperativoAlumnoApp
+  ) {
+    if (perfil?.demanda_atencion === 'ALTA') return -2;
+    if (perfil?.demanda_atencion === 'MEDIA') return -1;
+    return 0;
+  }
+
+  function puntuacionFuncionalIntensivoApp(
+    alumno: RecomendacionGrupoIntensivoDiaApp,
+    perfiles: PerfilOperativoAlumnoApp[]
+  ) {
+    const perfil = perfiles.find(
+      (item) => item.alumno_id === alumno.alumno_id
+    );
+
+    const fuerza =
+      perfil?.fuerza_nivel === 'MUY_FUERTE'
+        ? 3
+        : perfil?.fuerza_nivel === 'FUERTE'
+        ? 2
+        : perfil?.fuerza_nivel === 'BAJO'
+        ? -3
+        : 0;
+
+    return (
+      nivelOrdenPedagogicoApp(alumno.nivel_resumen) * 10 +
+      fuerza +
+      ajusteAutonomiaPerfilIntensivoApp(perfil) +
+      ajusteDemandaPerfilIntensivoApp(perfil)
+    );
+  }
+
+  function ordenarIntensivoPorPerfilOperativoApp(
+    alumnos: RecomendacionGrupoIntensivoDiaApp[],
+    perfiles: PerfilOperativoAlumnoApp[]
+  ) {
+    return alumnos.slice().sort((a, b) => {
+      const puntuacion =
+        puntuacionFuncionalIntensivoApp(b, perfiles) -
+        puntuacionFuncionalIntensivoApp(a, perfiles);
+
+      if (puntuacion !== 0) return puntuacion;
+
+      const perfilA = perfiles.find(
+        (item) => item.alumno_id === a.alumno_id
+      );
+      const perfilB = perfiles.find(
+        (item) => item.alumno_id === b.alumno_id
+      );
+
+      const edadA =
+        perfilA?.edad_aprox ??
+        (typeof a.edad === 'number' ? a.edad : Number.POSITIVE_INFINITY);
+      const edadB =
+        perfilB?.edad_aprox ??
+        (typeof b.edad === 'number' ? b.edad : Number.POSITIVE_INFINITY);
+
+      if (
+        Number.isFinite(edadA) &&
+        Number.isFinite(edadB) &&
+        edadA !== edadB
+      ) {
+        return edadA - edadB;
+      }
+
+      return a.alumno.localeCompare(b.alumno);
+    });
+  }
+
+  function aplicarCinturonPedagogicoAutomaticoIntensivo(
+    data: RecomendacionGrupoIntensivoDiaApp[],
+    perfiles?: PerfilOperativoAlumnoApp[]
+  ) {
+    const porBanda = new Map<string, RecomendacionGrupoIntensivoDiaApp[]>();
+    data.forEach((registro) => {
+      const banda = bandaAutomaticaPedagogicaApp(registro);
+      porBanda.set(banda.id, [...(porBanda.get(banda.id) || []), registro]);
+    });
+
+    let contador = 1;
+    const salida: RecomendacionGrupoIntensivoDiaApp[] = [];
+    ['INICIACION_A', 'APLUS', 'B_BPLUS', 'C_D'].forEach((idBanda) => {
+      const alumnosBase = porBanda.get(idBanda) || [];
+      const alumnos =
+        perfiles && perfiles.length > 0
+          ? ordenarIntensivoPorPerfilOperativoApp(
+              alumnosBase,
+              perfiles
+            )
+          : alumnosBase.slice().sort((a, b) => {
+              return (
+                nivelOrdenPedagogicoApp(a.nivel_resumen) -
+                  nivelOrdenPedagogicoApp(b.nivel_resumen) ||
+                a.alumno.localeCompare(b.alumno)
+              );
+            });
+      if (alumnos.length === 0) return;
+      const banda = bandaAutomaticaPedagogicaApp(alumnos[0]);
+      let inicio = 0;
+      tamanosGruposPedagogicosApp(alumnos.length, banda.max).forEach(
+        (tamano) => {
+          const alumnosChunk = alumnos.slice(inicio, inicio + tamano);
+          const nombre =
+            tamano === 1
+              ? `REVISIÓN MANUAL · ${banda.label}`
+              : `Grupo ${contador++} · Nivel ${banda.label}`;
+          alumnosChunk.forEach((alumno, indice) => {
+            const alertaExtra =
+              tamano === 1
+                ? 'No crear grupo de 1. Revisión manual.'
+                : alumno.alerta_grupo || null;
+            salida.push({
+              ...alumno,
+              grupo_recomendado: nombre,
+              bloque_tecnico: banda.bloque,
+              pista_recomendada: banda.pista,
+              orden_bloque: banda.orden,
+              orden_en_grupo: indice + 1,
+              tamanio_grupo: tamano,
+              alerta_grupo:
+                [alumno.alerta_grupo, alertaExtra]
+                  .filter(Boolean)
+                  .join(' · ') || 'OK',
+            });
+          });
+          inicio += tamano;
+        }
+      );
+    });
+    return salida;
+  }
+
+  function confirmarCrearGrupoConValidacionPedagogicaApp(
+    alumnosGrupo: {
+      nivel_resumen?: string | null;
+      alumno?: string | null;
+      pista_recomendada?: string | null;
+      pista_alumno?: string | null;
+      fuente_nivel?: string | null;
+      estado_ficha?: string | null;
+      alertas?: string | null;
+      alerta_grupo?: string | null;
+    }[],
+    nombreGrupo: string
+  ) {
+    const validacion = textoValidacionPedagogicaGrupoApp(alumnosGrupo);
+    if (validacion.estado === 'BLOQUEADO' && alumnosGrupo.length === 0) {
+      setError(`${nombreGrupo}: el grupo no tiene alumnos.`);
+      return false;
+    }
+    if (validacion.estado !== 'OK') {
+      return window.confirm(
+        `${validacion.titulo}\n\n${validacion.mensajes.join('\n')}\n\nHay una excepción de nivel o ratio. ¿Publicar igualmente?`
+      );
+    }
+    return true;
+  }
+
+  function perfilTrabajoMSZApp(niveles: string[], pistaTexto: string) {
+    const ordenes = niveles
+      .map(ordenNivelTrabajoMSZApp)
+      .filter((orden) => Number.isFinite(orden));
+    const min = ordenes.length ? Math.min(...ordenes) : 2;
+    const max = ordenes.length ? Math.max(...ordenes) : 2;
+
+    if (min <= 1 && max <= 1) return 'INICIACION_A';
+    if (max <= 2) return 'APLUS';
+    if (max <= 4) return 'B_BPLUS';
+    if (max <= 6) return 'C_CPLUS';
+    return 'D_DPLUS';
+  }
+
+  function trabajoDiarioMSZApp(
+    nombreGrupo: string,
+    niveles: string[],
+    pistaTexto: string,
+    observacionesTexto?: string | null,
+    alumnosContexto: AlumnoContextoTrabajoDiarioApp[] = [],
+    modalidad = 'BABY',
+    trabajosRecientes: string[] = []
+  ) {
+    return generarTrabajoDiarioInteligenteApp({
+      nombreGrupo,
+      modalidad,
+      niveles,
+      pista: pistaTexto || 'Pequeña/Grande',
+      observacionesGrupo: observacionesTexto || '',
+      alumnos: alumnosContexto,
+      trabajosRecientes,
+    });
+  }
+
+  function trabajoDiarioAutomaticoAgenda(
+    nombreGrupo: string,
+    alumnosGrupo: AgendaRecomendacionSesionApp[]
+  ) {
+    const niveles = alumnosGrupo
+      .map((alumno) => alumno.nivel_resumen || '')
+      .filter(Boolean);
+    const pista =
+      alumnosGrupo[0]?.pista_recomendada ||
+      alumnosGrupo[0]?.pista_alumno ||
+      'Pequeña/Grande';
+    const observaciones = observacionesAutomaticasGrupoAgenda(alumnosGrupo);
+    const alumnosContexto = alumnosGrupo.map((alumno) =>
+      contextoAlumnoTrabajoDiarioApp(
+        alumno.alumno_id,
+        alumno.alumno,
+        alumno.nivel_resumen || ''
+      )
+    );
+
+    const sesion = agendaSesionesDirectas.find(
+      (item) => item.sesion_id === agendaSesionActivaId
+    );
+
+    const trabajosRecientes = trabajosRecientesParaGrupoApp(
+      alumnosGrupo.map((alumno) => alumno.alumno),
+      sesion?.fecha
+    );
+
+    return trabajoDiarioMSZApp(
+      nombreGrupo,
+      niveles,
+      pista,
+      observaciones,
+      alumnosContexto,
+      sesion?.modalidad || 'BABY',
+      trabajosRecientes
+    );
+  }
+
+  function limpiarObservacionCortaGrupoApp(
+    texto: string | null | undefined,
+    maximo = 170
+  ) {
+    const limpio = (texto || '')
+      .replace(/\s+/g, ' ')
+      .replace(/\s+([,.])/g, '$1')
+      .trim();
+
+    if (!limpio) return '';
+    return limpio.length > maximo
+      ? `${limpio.slice(0, maximo).trim()}...`
+      : limpio;
+  }
+
+  function textoSinAcentosGrupoApp(texto: string) {
+    return texto.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  }
+
+  function observacionUtilParaGrupoApp(texto: string | null | undefined) {
+    const limpio = limpiarObservacionCortaGrupoApp(texto, 260);
+    if (!limpio) return '';
+
+    const normalizado = textoSinAcentosGrupoApp(limpio);
+    const ruido = [
+      'alumno nuevo',
+      'alumno conocido',
+      'ficha pendiente',
+      'pendiente de nivel',
+      'jose debe asignar nivel antes de generar grupos',
+      'sin nivel',
+      'ok',
+    ];
+
+    let depurado = normalizado;
+    ruido.forEach((palabra) => {
+      depurado = depurado.replaceAll(palabra, '');
+    });
+    depurado = depurado.replace(/[.·:;\-\s]/g, '');
+
+    return depurado ? limpio : '';
+  }
+
+  function resumenCualidadDebilidadFichaApp(
+    observacionBase?: string | null,
+    extra?: string | null
+  ) {
+    const partesUtiles = [observacionBase, extra]
+      .map((parte) => observacionUtilParaGrupoApp(parte))
+      .filter(Boolean);
+
+    if (partesUtiles.length === 0) return '';
+
+    const base = limpiarObservacionCortaGrupoApp(partesUtiles.join(' · '), 260);
+    const texto = textoSinAcentosGrupoApp(base);
+    const notas: string[] = [];
+
+    if (
+      /actitud|ganas|content|sonrient|disfrut|motivad|escucha|obedece|hablador|habladora|buena/.test(
+        texto
+      )
+    ) {
+      notas.push('cualidad: buena actitud y ganas');
+    }
+    if (/autonom|solo|sola|material|se pone|se quita/.test(texto)) {
+      notas.push('cualidad: autonomía');
+    }
+    if (/llor|bloque|miedo|asust|nervi|sensible|se agobia/.test(texto)) {
+      notas.push(
+        'debilidad: puede bloquearse o tener miedo; entrada tranquila'
+      );
+    }
+    if (/remonte|percha|silla|cinta/.test(texto)) {
+      notas.push('debilidad/aviso: revisar remonte o cinta');
+    }
+    if (
+      /fila|separa|escapa|despista|atencion|atiende|hacer caso|caso/.test(texto)
+    ) {
+      notas.push('debilidad: atención, fila y dinámica de grupo');
+    }
+    if (/sentad|sienta/.test(texto)) {
+      notas.push('debilidad técnica: tiende a ir sentado');
+    }
+    if (/rigid|rigidez/.test(texto)) {
+      notas.push('debilidad técnica: rigidez');
+    }
+    if (/velocidad|corre|rapido|rápido|frena|frenada/.test(texto)) {
+      notas.push('debilidad técnica: control de velocidad y frenada');
+    }
+    if (
+      /cuna|cuña|giro|giros|paralelo|brazos|manos|mirada|exterior/.test(texto)
+    ) {
+      notas.push('debilidad/tarea técnica: giros, postura y control');
+    }
+
+    const notasUnicas = Array.from(new Set(notas)).slice(0, 3);
+    if (notasUnicas.length > 0) return `${notasUnicas.join(' / ')}.`;
+    return base;
+  }
+
+  function nombreLimpioObservacionesGrupoApp(nombre: string) {
+    const original = `${nombre || ''}`.replace(/\s+/g, ' ').trim();
+
+    const limpio = original
+      // Etiquetas usadas en datos de prueba: no deben convertirse en
+      // encabezados ni formar parte del nombre mostrado en Observaciones.
+      .replace(/^\[TEST[^\]]*\]\s*/i, '')
+      .replace(/^TEST\s+NUEVO\s*[·:\-]\s*/i, '')
+      .replace(/^NIVEL\s+APP\s+[A-D](?:\+{1,2})?\s*[·:\-]\s*/i, '')
+      .replace(/^SIN\s+REPORTES\s*[·:\-]\s*/i, '')
+      .replace(/^ULTIMO\s+REPORTE\s*[·:\-]\s*/i, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    return limpio || original || 'Alumno';
+  }
+
+  function fraseImportanteAlumnoGrupoApp(
+    nombre: string,
+    observacionBase?: string | null,
+    extra?: string | null
+  ) {
+    const detalle = resumenCualidadDebilidadFichaApp(observacionBase, extra);
+    const nombreVisible = nombreLimpioObservacionesGrupoApp(nombre);
+    return `${nombreVisible}: ${detalle || 'Nada relevante'}`;
+  }
+
+  function observacionEstandarAlumnoAgendaApp(
+    alumno: AgendaRecomendacionSesionApp
+  ) {
+    const fichaSesion = agendaAlumnosSesion.find(
+      (registro) => registro.alumno_id === alumno.alumno_id
+    );
+    const resumen = alumnos.find(
+      (registro) => registro.alumno_id === alumno.alumno_id
+    );
+
+    const nombre = nombreLimpioObservacionesGrupoApp(alumno.alumno);
+    const nivel = (alumno.nivel_resumen || fichaSesion?.nivel_usado || '')
+      .trim()
+      .toUpperCase();
+    const origen = `${fichaSesion?.origen_nivel || alumno.fuente_nivel || ''}`
+      .trim()
+      .toUpperCase();
+    const esNuevo = `${fichaSesion?.estado_en_listado || ''}`
+      .trim()
+      .toUpperCase() === 'NUEVO';
+
+    const revisarNivel =
+      /PENDIENTE|REVISAR|DUD|DESCONOC/.test(origen) ||
+      /REVISAR|PENDIENTE/.test(`${alumno.alertas || ''}`.toUpperCase());
+
+    if (esNuevo) {
+      if (/FAMILIA|DECLARAD/.test(origen) && nivel) {
+        return `${nombre}: Nivel ${nivel} declarado por familia · validar en pista`;
+      }
+      return `${nombre}: NUEVO · Sin historial. Revisar nivel y adaptación en primera bajada.`;
+    }
+
+    if (revisarNivel) {
+      return `${nombre}: REVISAR NIVEL · validar en primera bajada`;
+    }
+
+    // Una sola observación operativa vigente, con prioridad:
+    // seguridad/remontes/autonomía -> actitud -> técnica/recomendación.
+    const partes: string[] = [];
+
+    const incidencia = `${resumen?.ultima_incidencia || ''}`.trim();
+    if (
+      incidencia &&
+      !/^(NO|NINGUNA|SIN INCIDENCIA|NADA)$/i.test(incidencia)
+    ) {
+      partes.push(incidencia);
+    }
+
+    const remontes = Array.isArray(resumen?.ultimos_remontes)
+      ? resumen?.ultimos_remontes.filter(Boolean).join(', ')
+      : '';
+    const autonomia = `${resumen?.ultima_autonomia || ''}`.trim();
+    const seguridad = [remontes, autonomia].filter(Boolean).join(' · ');
+    if (seguridad) partes.push(seguridad);
+
+    const actitud = `${resumen?.ultima_actitud || ''}`.trim();
+    if (actitud) partes.push(actitud);
+
+    const tecnica = `${resumen?.ultima_tecnica || ''}`.trim();
+    const recomendacion = `${resumen?.ultima_recomendacion || ''}`.trim();
+    const tecnico = [tecnica, recomendacion].filter(Boolean).join(' · ');
+    if (tecnico) partes.push(tecnico);
+
+    const detalle = limpiarObservacionCortaGrupoApp(
+      partes.filter(Boolean).slice(0, 3).join(' · '),
+      220
+    );
+
+    return `${nombre}: ${detalle || 'Nada relevante'}`;
+  }
+
+  function limpiarTextoObservacionesGrupoApp(texto: string | null | undefined) {
+    if (!texto) return '';
+
+    return String(texto)
+      .replace(/OBSERVACIONES\s+AUTOM[ÁA]TICAS\s+PARA\s+ENTRENADOR/gi, '')
+      .replace(/OBSERVACIONES\s+JOSE/gi, '')
+      .replace(/OBSERVACIONES\s+JOS[ÉE]/gi, '')
+      .replace(/Observaciones\s+autom[áa]ticas\s+para\s+el\s+entrenador/gi, '')
+      .replace(/Observaciones\s+autom[áa]ticas\s+para\s+entrenador/gi, '')
+      .replace(/Observaciones\s+de\s+Jose/gi, '')
+      .replace(/Observaciones\s+de\s+Jos[ée]/gi, '')
+      .replace(/[•]/g, '\n')
+      // No separar por "·": puede formar parte del nombre del alumno
+      // (ej. "TEST NUEVO · Ana Gil"). Las observaciones ya vienen una por línea.
+      .replace(/[ \t]+/g, ' ')
+      .split('\n')
+      .map((linea) => linea.trim())
+      .filter(Boolean)
+      .join('\n')
+      .trim();
+  }
+
+  function limpiarDetalleObservacionAlumnoGrupoApp(
+    detalle: string | null | undefined
+  ) {
+    if (!detalle) return '';
+
+    let limpio = String(detalle)
+      .replace(/\s+/g, ' ')
+      .replace(/\s*·\s*/g, ' · ')
+      .trim();
+
+    const patronesRuido = [
+      /\bAlumno nuevo\.?/gi,
+      /\bAlumno conocido\.?/gi,
+      /\bFicha pendiente\.?/gi,
+      /\bOK\.?/gi,
+      /\bPendiente de nivel:\s*Jose debe asignar nivel antes de generar grupos\.?/gi,
+      /\bPendiente de nivel:\s*Jos[ée] debe asignar nivel antes de generar grupos\.?/gi,
+      /\bJose debe asignar nivel antes de generar grupos\.?/gi,
+      /\bJos[ée] debe asignar nivel antes de generar grupos\.?/gi,
+      /\bNivel estimado\.?/gi,
+      /\bNivel real de ficha\.?/gi,
+      /\bpendiente completar\.?/gi,
+      /\bcompleta\.?/gi,
+    ];
+
+    patronesRuido.forEach((patron) => {
+      limpio = limpio.replace(patron, '');
+    });
+
+    limpio = limpio
+      .replace(/(?:\s*·\s*){2,}/g, ' · ')
+      .replace(/^\s*[·.:;,-]+\s*/g, '')
+      .replace(/\s*[·.:;,-]+\s*$/g, '')
+      .trim();
+
+    if (!limpio) return '';
+
+    return limpiarObservacionCortaGrupoApp(limpio, 220);
+  }
+
+  function extraerObservacionesPorAlumnoGrupoApp(
+    texto: string | null | undefined,
+    maxLineas = 12
+  ) {
+    const limpio = limpiarTextoObservacionesGrupoApp(texto);
+    if (!limpio) return [] as string[];
+
+    const lineas: string[] = [];
+
+    limpio
+      .split('\n')
+      .map((linea) => linea.trim().replace(/^[-•]+\s*/, ''))
+      .filter(Boolean)
+      .forEach((linea) => {
+        const separador = linea.indexOf(':');
+        if (separador > 0) {
+          const nombre = linea.slice(0, separador).replace(/\s+/g, ' ').trim();
+          const detalle = limpiarDetalleObservacionAlumnoGrupoApp(
+            linea.slice(separador + 1)
+          );
+          if (nombre && detalle) lineas.push(`${nombre}: ${detalle}`);
+          return;
+        }
+
+        const detalle = limpiarDetalleObservacionAlumnoGrupoApp(linea);
+        if (detalle) lineas.push(detalle);
+      });
+
+    if (lineas.length === 0) {
+      const patronNombre = /([^:\n]{3,90})\s*:/g;
+      const coincidencias = Array.from(limpio.matchAll(patronNombre));
+
+      coincidencias.forEach((coincidencia, index) => {
+        const nombre = (coincidencia[1] || '')
+          .replace(/^(ENTRENADOR|PARA ENTRENADOR|OBSERVACIONES)\s+/i, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+        const inicioDetalle =
+          (coincidencia.index || 0) + coincidencia[0].length;
+        const finDetalle =
+          index + 1 < coincidencias.length
+            ? coincidencias[index + 1].index || limpio.length
+            : limpio.length;
+        const detalle = limpiarDetalleObservacionAlumnoGrupoApp(
+          limpio.slice(inicioDetalle, finDetalle)
+        );
+        if (nombre && detalle) lineas.push(`${nombre}: ${detalle}`);
+      });
+    }
+
+    return Array.from(new Set(lineas)).slice(0, maxLineas);
+  }
+
+  function normalizarLineasObservacionesGrupoApp(
+    texto: string | null | undefined,
+    maxLineas = 12
+  ) {
+    return extraerObservacionesPorAlumnoGrupoApp(texto, maxLineas).join('\n');
+  }
+
+  function combinarObservacionesGrupoApp(
+    automaticas: string,
+    manuales: string | null | undefined
+  ) {
+    const auto = normalizarLineasObservacionesGrupoApp(automaticas, 10);
+    const manual = normalizarLineasObservacionesGrupoApp(manuales, 6);
+    return [auto, manual].filter(Boolean).join('\n');
+  }
+
+  function observacionesAutomaticasGrupoAgenda(
+    alumnosGrupo: AgendaRecomendacionSesionApp[]
+  ) {
+    const lineas = alumnosGrupo.map(observacionEstandarAlumnoAgendaApp);
+    return normalizarLineasObservacionesGrupoApp(lineas.join('\n'));
+  }
+
+  function observacionEstandarAlumnoIntensivoApp(
+    alumno: RecomendacionGrupoIntensivoDiaApp
+  ) {
+    const resumen = alumnos.find(
+      (registro) => registro.alumno_id === alumno.alumno_id
+    );
+
+    const nombre = nombreLimpioObservacionesGrupoApp(alumno.alumno);
+    const nivel = `${alumno.nivel_resumen || ''}`.trim().toUpperCase();
+    const origen = `${alumno.fuente_nivel || resumen?.origen_nivel_estimado || ''}`
+      .trim()
+      .toUpperCase();
+    const estadoFicha = `${alumno.estado_ficha || resumen?.estado_ficha || ''}`
+      .trim()
+      .toUpperCase();
+
+    const revisarNivel =
+      /PENDIENTE|REVISAR|DUD|DESCONOC/.test(origen) ||
+      /REVISAR|PENDIENTE/.test(estadoFicha);
+
+    if (/FAMILIA|DECLARAD/.test(origen) && nivel) {
+      return `${nombre}: Nivel ${nivel} declarado por familia · validar en pista`;
+    }
+
+    if (revisarNivel && nivel) {
+      return `${nombre}: REVISAR NIVEL · validar en primera bajada`;
+    }
+
+    const partes: string[] = [];
+
+    const incidencia = `${resumen?.ultima_incidencia || ''}`.trim();
+    if (
+      incidencia &&
+      !/^(NO|NINGUNA|SIN INCIDENCIA|NADA)$/i.test(incidencia)
+    ) {
+      partes.push(incidencia);
+    }
+
+    const remontes = Array.isArray(resumen?.ultimos_remontes)
+      ? resumen.ultimos_remontes.filter(Boolean).join(', ')
+      : '';
+    const autonomia = `${resumen?.ultima_autonomia || ''}`.trim();
+    const seguridad = [remontes, autonomia].filter(Boolean).join(' · ');
+    if (seguridad) partes.push(seguridad);
+
+    const actitud = `${resumen?.ultima_actitud || ''}`.trim();
+    if (actitud) partes.push(actitud);
+
+    const tecnica = `${resumen?.ultima_tecnica || ''}`.trim();
+    const recomendacion = `${resumen?.ultima_recomendacion || ''}`.trim();
+    const tecnico = [tecnica, recomendacion].filter(Boolean).join(' · ');
+    if (tecnico) partes.push(tecnico);
+
+    const detalle = limpiarObservacionCortaGrupoApp(
+      partes.filter(Boolean).slice(0, 3).join(' · '),
+      220
+    );
+
+    if (detalle) {
+      return `${nombre}: ${detalle}`;
+    }
+
+    if (/COMPLETA|VALIDAD/.test(estadoFicha) || resumen) {
+      return `${nombre}: Nada relevante`;
+    }
+
+    return `${nombre}: NUEVO · Sin historial. Revisar nivel y adaptación en primera bajada.`;
+  }
+
+  function observacionesAutomaticasGrupoIntensivo(
+    alumnosGrupo: RecomendacionGrupoIntensivoDiaApp[]
+  ) {
+    const lineas = alumnosGrupo.map(observacionEstandarAlumnoIntensivoApp);
+    return normalizarLineasObservacionesGrupoApp(lineas.join('\n'));
+  }
+
+  function observacionesAutomaticasGrupoIntensivoManual(alumnosIds: string[]) {
+    const lineas = alumnosIds
+      .map((alumnoId) => {
+        const resumenIntensivo = resumenAlumnoIntensivo(alumnoId);
+        const ficha = intensivoAlumnos.find(
+          (registro) => registro.alumno_id === alumnoId
+        );
+
+        return observacionEstandarAlumnoIntensivoApp({
+          alumno_id: alumnoId,
+          alumno: resumenIntensivo?.alumno || ficha?.alumno || 'Alumno',
+          nivel_resumen:
+            resumenIntensivo?.nivel_resumen ||
+            resumenIntensivo?.nivel_actual ||
+            resumenIntensivo?.nivel_estimado ||
+            '',
+          fuente_nivel:
+            resumenIntensivo?.origen_nivel_estimado || 'Jose / Coordinador',
+          estado_ficha:
+            resumenIntensivo?.estado_ficha || 'completa',
+        } as RecomendacionGrupoIntensivoDiaApp);
+      })
+      .filter(Boolean);
+
+    return normalizarLineasObservacionesGrupoApp(lineas.join('\n'));
+  }
+
+  function observacionEstandarAlumnoOcioApp(alumno: OcioAlumnoApp) {
+    const resumen = alumnos.find(
+      (registro) => registro.alumno_id === alumno.alumno_id
+    );
+
+    const nombre = nombreLimpioObservacionesGrupoApp(alumno.alumno);
+    const nivel = (
+      resumen?.nivel_actual ||
+      resumen?.ultimo_nivel_reportado ||
+      alumno.nivel_usado ||
+      alumno.nivel ||
+      resumen?.nivel_estimado ||
+      ''
+    )
+      .trim()
+      .toUpperCase();
+
+    const origen = `${
+      alumno.fuente_nivel ||
+      alumno.origen_nivel_estimado ||
+      resumen?.origen_nivel_estimado ||
+      ''
+    }`
+      .trim()
+      .toUpperCase();
+
+    const totalReportes = Number(
+      alumno.total_reportes ?? resumen?.total_reportes ?? 0
+    );
+
+    const revisarNivel =
+      /PENDIENTE|REVISAR|DUD|DESCONOC/.test(origen) ||
+      /REVISAR|PENDIENTE/.test(
+        `${resumen?.estado_ficha || alumno.estado_ficha || ''}`.toUpperCase()
+      );
+
+    if (totalReportes === 0) {
+      if (/FAMILIA|DECLARAD/.test(origen) && nivel) {
+        return `${nombre}: Nivel ${nivel} declarado por familia · validar en pista`;
+      }
+
+      if (revisarNivel && nivel) {
+        return `${nombre}: REVISAR NIVEL · validar en primera bajada`;
+      }
+
+      return `${nombre}: NUEVO · Sin historial. Revisar nivel y adaptación en primera bajada.`;
+    }
+
+    if (revisarNivel) {
+      return `${nombre}: REVISAR NIVEL · validar en primera bajada`;
+    }
+
+    const partes: string[] = [];
+
+    const incidencia = `${resumen?.ultima_incidencia || ''}`.trim();
+    if (
+      incidencia &&
+      !/^(NO|NINGUNA|SIN INCIDENCIA|NADA)$/i.test(incidencia)
+    ) {
+      partes.push(incidencia);
+    }
+
+    const remontes = Array.isArray(resumen?.ultimos_remontes)
+      ? resumen.ultimos_remontes.filter(Boolean).join(', ')
+      : '';
+    const autonomia = `${resumen?.ultima_autonomia || ''}`.trim();
+    const seguridad = [remontes, autonomia].filter(Boolean).join(' · ');
+    if (seguridad) partes.push(seguridad);
+
+    const actitud = `${resumen?.ultima_actitud || ''}`.trim();
+    if (actitud) partes.push(actitud);
+
+    const tecnica = `${resumen?.ultima_tecnica || ''}`.trim();
+    const recomendacion = `${resumen?.ultima_recomendacion || ''}`.trim();
+    const tecnico = [tecnica, recomendacion].filter(Boolean).join(' · ');
+    if (tecnico) partes.push(tecnico);
+
+    const detalle = limpiarObservacionCortaGrupoApp(
+      partes.filter(Boolean).slice(0, 3).join(' · '),
+      220
+    );
+
+    return `${nombre}: ${detalle || 'Nada relevante'}`;
+  }
+
+  function observacionesAutomaticasGrupoOcio(alumnosGrupo: OcioAlumnoApp[]) {
+    const lineas = alumnosGrupo
+      .map((alumno) => observacionEstandarAlumnoOcioApp(alumno))
+      .filter(Boolean);
+
+    if (lineas.length === 0) return '';
+    return normalizarLineasObservacionesGrupoApp(lineas.join('\n'));
+  }
+
+  function puntoDisponibleAgendaParaGrupo(
+    nombreGrupo: string,
+    indiceGrupoActual: number
+  ) {
+    const usadosReales = new Set(
+      gruposRecursosTurnoAgenda()
+        .map((grupo) => grupo.punto_encuentro || '')
+        .filter(Boolean)
+    );
+
+    const usadosPropuesta = new Set(
+      Object.entries(puntosAgendaGrupo)
+        .filter(([grupo]) => grupo !== nombreGrupo)
+        .map(([, valor]) => valor)
+        .filter(Boolean)
+    );
+
+    const seleccionado = puntosAgendaGrupo[nombreGrupo] || '';
+
+    if (
+      seleccionado &&
+      !usadosReales.has(seleccionado) &&
+      !usadosPropuesta.has(seleccionado)
+    ) {
+      return seleccionado;
+    }
+
+    const preferidoPorIndice =
+      puntosEncuentroAgenda[
+        Math.max(0, indiceGrupoActual) % puntosEncuentroAgenda.length
+      ] || '';
+
+    if (
+      preferidoPorIndice &&
+      !usadosReales.has(preferidoPorIndice) &&
+      !usadosPropuesta.has(preferidoPorIndice)
+    ) {
+      return preferidoPorIndice;
+    }
+
+    return (
+      puntosEncuentroAgenda.find(
+        (punto) =>
+          !usadosReales.has(punto) && !usadosPropuesta.has(punto)
+      ) || ''
+    );
+  }
+
+  function limpiarPropuestaAgendaTrasCrear(
+    gruposCreados: Array<{
+      nombreGrupo: string;
+      alumnosGrupo: AgendaRecomendacionSesionApp[];
+    }>
+  ) {
+    if (gruposCreados.length === 0) return;
+
+    const alumnosCreados = new Set(
+      gruposCreados.flatMap((grupo) =>
+        grupo.alumnosGrupo.map((alumno) => alumno.alumno_id)
+      )
+    );
+    const nombresCreados = new Set(
+      gruposCreados.map((grupo) => grupo.nombreGrupo)
+    );
+
+    setAgendaRecomendaciones((anteriores) =>
+      anteriores.filter((alumno) => !alumnosCreados.has(alumno.alumno_id))
+    );
+
+    setDestinoAlumnoAgendaGrupo((anterior) => {
+      const copia = { ...anterior };
+      alumnosCreados.forEach((alumnoId) => {
+        delete copia[claveAlumnoAgendaRecomendado(alumnoId)];
+      });
+      return copia;
+    });
+
+    setEntrenadoresAgendaGrupo((anterior) => {
+      const copia = { ...anterior };
+      nombresCreados.forEach((nombre) => delete copia[nombre]);
+      return copia;
+    });
+    setEntrenadoresApoyoAgendaGrupo((anterior) => {
+      const copia = { ...anterior };
+      nombresCreados.forEach((nombre) => delete copia[nombre]);
+      return copia;
+    });
+    setPuntosAgendaGrupo((anterior) => {
+      const copia = { ...anterior };
+      nombresCreados.forEach((nombre) => delete copia[nombre]);
+      return copia;
+    });
+    setTrabajoAgendaGrupo((anterior) => {
+      const copia = { ...anterior };
+      nombresCreados.forEach((nombre) => delete copia[nombre]);
+      return copia;
+    });
+    setObservacionesAgendaGrupo((anterior) => {
+      const copia = { ...anterior };
+      nombresCreados.forEach((nombre) => delete copia[nombre]);
+      return copia;
+    });
+    setResponsablesReporteAgendaGrupo((anterior) => {
+      const copia = { ...anterior };
+      gruposCreados.forEach((grupo) => {
+        grupo.alumnosGrupo.forEach((alumno) => {
+          delete copia[`${grupo.nombreGrupo}__${alumno.alumno_id}`];
+        });
+      });
+      return copia;
+    });
+  }
+
+  async function crearGrupoAgendaDesdeRecomendacion(
+    nombreGrupo: string,
+    alumnosGrupo: AgendaRecomendacionSesionApp[],
+    nombreGrupoFinal?: string
+  ) {
+    if (!agendaSesionActivaId) {
+      setError('Primero selecciona una sesión.');
+      return;
+    }
+
+    const entrenadorId = entrenadoresAgendaGrupo[nombreGrupo];
+
+    if (!entrenadorId) {
+      setError(`Selecciona entrenador para ${nombreGrupo}.`);
+      return;
+    }
+
+    if (alumnosGrupo.length === 0) {
+      setError('Este grupo no tiene alumnos.');
+      return;
+    }
+
+    const nivelesGrupo = Array.from(
+      new Set(alumnosGrupo.map((alumno) => alumno.nivel_resumen))
+    ).join(' / ');
+    const indiceGrupoActual = gruposRecomendadosAgenda().findIndex(
+      ([grupo]) => grupo === nombreGrupo
+    );
+    const punto = puntoDisponibleAgendaParaGrupo(
+      nombreGrupo,
+      indiceGrupoActual
+    );
+
+    if (!punto) {
+      setError(
+        `No queda ningún punto de encuentro libre para ${nombreGrupo} en este turno.`
+      );
+      return;
+    }
+    const trabajo =
+      trabajoAgendaGrupo[nombreGrupo] ||
+      trabajoDiarioAutomaticoAgenda(nombreGrupo, alumnosGrupo);
+    const primero = alumnosGrupo[0];
+
+    const validacionOk = confirmarCrearGrupoConValidacionPedagogicaApp(
+      alumnosGrupo,
+      nombreGrupo
+    );
+    if (!validacionOk) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('crear_grupo_sesion_operativa_app', {
+        p_sesion_id: agendaSesionActivaId,
+        p_nombre_grupo: nombreGrupo,
+        p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
+        p_pista: primero.pista_recomendada,
+        p_punto_encuentro: punto,
+        p_trabajo_diario: trabajo,
+        p_observaciones_importantes: combinarObservacionesGrupoApp(
+          observacionesAutomaticasGrupoAgenda(alumnosGrupo),
+          observacionesAgendaGrupo[nombreGrupo] || ''
+        ),
+        p_entrenador_id: entrenadorId,
+        p_alumnos_ids: alumnosGrupo.map((alumno) => alumno.alumno_id),
+        p_publicado: true,
+      });
+
+      const entrenadorApoyoId = entrenadoresApoyoAgendaGrupo[nombreGrupo] || '';
+      await ejecutarFuncion('guardar_apoyo_reportes_grupo_por_contexto_app', {
+        p_contexto: 'agenda',
+        p_contexto_id: agendaSesionActivaId,
+        p_nombre_grupo: nombreGrupo,
+        p_entrenador_apoyo_id: entrenadorApoyoId || null,
+        p_responsables: responsablesJsonAgendaApp(
+          nombreGrupo,
+          alumnosGrupo,
+          entrenadorId,
+          entrenadorApoyoId
+        ),
+      });
+
+      limpiarPropuestaAgendaTrasCrear([
+        { nombreGrupo, alumnosGrupo },
+      ]);
+
+      await cargarAgendaOperativaDirecta();
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+      await cargarDetalleSesionAgenda(agendaSesionActivaId, {
+        preservarPropuesta: true,
+        preservarScroll: true,
+      });
+
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById('agenda-propuesta-grupos')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error desconocido');
+    }
+
+    setCargando(false);
+  }
+
+  async function crearTodosGruposAgendaDesdeRecomendacion() {
+    if (!agendaSesionActivaId) {
+      setError('Primero selecciona una sesión.');
+      return;
+    }
+
+    const grupos = gruposRecomendadosAgenda();
+    if (grupos.length === 0) {
+      setError('No hay grupos pendientes en la propuesta.');
+      return;
+    }
+
+    const entrenadoresUsados = new Set<string>();
+    for (const [nombreGrupo, alumnosGrupo] of grupos) {
+      const entrenadorId = entrenadoresAgendaGrupo[nombreGrupo] || '';
+      const apoyoId = entrenadoresApoyoAgendaGrupo[nombreGrupo] || '';
+
+      if (!entrenadorId) {
+        setError(`Selecciona entrenador para ${nombreGrupo} antes de crear todos.`);
+        return;
+      }
+
+      if (
+        entrenadoresUsados.has(entrenadorId) ||
+        (apoyoId && entrenadoresUsados.has(apoyoId)) ||
+        (apoyoId && apoyoId === entrenadorId)
+      ) {
+        setError(`Hay un entrenador repetido. Revisa ${nombreGrupo}.`);
+        return;
+      }
+
+      entrenadoresUsados.add(entrenadorId);
+      if (apoyoId) entrenadoresUsados.add(apoyoId);
+
+      const validacionOk = confirmarCrearGrupoConValidacionPedagogicaApp(
+        alumnosGrupo,
+        nombreGrupo
+      );
+      if (!validacionOk) return;
+    }
+
+    const usadosReales = new Set(
+      gruposRecursosTurnoAgenda()
+        .map((grupo) => grupo.punto_encuentro || '')
+        .filter(Boolean)
+    );
+    const puntosReservados = new Set<string>();
+    const puntosPorGrupo: Record<string, string> = {};
+
+    grupos.forEach(([nombreGrupo], indiceGrupo) => {
+      const seleccionado = puntosAgendaGrupo[nombreGrupo] || '';
+      let punto = '';
+
+      if (
+        seleccionado &&
+        !usadosReales.has(seleccionado) &&
+        !puntosReservados.has(seleccionado)
+      ) {
+        punto = seleccionado;
+      }
+
+      if (!punto) {
+        const preferido =
+          puntosEncuentroAgenda[
+            Math.max(0, indiceGrupo) % puntosEncuentroAgenda.length
+          ] || '';
+        if (
+          preferido &&
+          !usadosReales.has(preferido) &&
+          !puntosReservados.has(preferido)
+        ) {
+          punto = preferido;
+        }
+      }
+
+      if (!punto) {
+        punto =
+          puntosEncuentroAgenda.find(
+            (opcion) =>
+              !usadosReales.has(opcion) && !puntosReservados.has(opcion)
+          ) || '';
+      }
+
+      if (punto) {
+        puntosReservados.add(punto);
+        puntosPorGrupo[nombreGrupo] = punto;
+      }
+    });
+
+    const sinPunto = grupos.find(
+      ([nombreGrupo]) => !puntosPorGrupo[nombreGrupo]
+    );
+    if (sinPunto) {
+      setError(
+        `No quedan suficientes puntos libres para crear todos. Falta punto para ${sinPunto[0]}.`
+      );
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Crear y publicar los ${grupos.length} grupos tal como están ahora?\n\nSe respetarán movimientos de niños, entrenadores, puntos, trabajo diario y observaciones.`
+    );
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    const creados: Array<{
+      nombreGrupo: string;
+      alumnosGrupo: AgendaRecomendacionSesionApp[];
+    }> = [];
+
+    try {
+      for (const [nombreGrupo, alumnosGrupo] of grupos) {
+        const entrenadorId = entrenadoresAgendaGrupo[nombreGrupo];
+        const entrenadorApoyoId =
+          entrenadoresApoyoAgendaGrupo[nombreGrupo] || '';
+        const primero = alumnosGrupo[0];
+        const nivelesGrupo = Array.from(
+          new Set(alumnosGrupo.map((alumno) => alumno.nivel_resumen))
+        ).join(' / ');
+        const trabajo =
+          trabajoAgendaGrupo[nombreGrupo] ||
+          trabajoDiarioAutomaticoAgenda(nombreGrupo, alumnosGrupo);
+
+        await ejecutarFuncion('crear_grupo_sesion_operativa_app', {
+          p_sesion_id: agendaSesionActivaId,
+          p_nombre_grupo: nombreGrupo,
+          p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
+          p_pista: primero.pista_recomendada,
+          p_punto_encuentro: puntosPorGrupo[nombreGrupo],
+          p_trabajo_diario: trabajo,
+          p_observaciones_importantes: combinarObservacionesGrupoApp(
+            observacionesAutomaticasGrupoAgenda(alumnosGrupo),
+            observacionesAgendaGrupo[nombreGrupo] || ''
+          ),
+          p_entrenador_id: entrenadorId,
+          p_alumnos_ids: alumnosGrupo.map((alumno) => alumno.alumno_id),
+          p_publicado: true,
+        });
+
+        await ejecutarFuncion(
+          'guardar_apoyo_reportes_grupo_por_contexto_app',
+          {
+            p_contexto: 'agenda',
+            p_contexto_id: agendaSesionActivaId,
+            p_nombre_grupo: nombreGrupo,
+            p_entrenador_apoyo_id: entrenadorApoyoId || null,
+            p_responsables: responsablesJsonAgendaApp(
+              nombreGrupo,
+              alumnosGrupo,
+              entrenadorId,
+              entrenadorApoyoId
+            ),
+          }
+        );
+
+        creados.push({ nombreGrupo, alumnosGrupo });
+      }
+
+      limpiarPropuestaAgendaTrasCrear(creados);
+      await cargarAgendaOperativaDirecta();
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+      await cargarDetalleSesionAgenda(agendaSesionActivaId);
+    } catch (err) {
+      limpiarPropuestaAgendaTrasCrear(creados);
+      await cargarAgendaOperativaDirecta();
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+      await cargarDetalleSesionAgenda(agendaSesionActivaId, {
+        preservarPropuesta: true,
+        preservarScroll: true,
+      });
+
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById('agenda-propuesta-grupos')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+
+      setError(
+        err instanceof Error
+          ? `Se crearon ${creados.length} grupos antes del error. Los pendientes conservan tus cambios. ${err.message}`
+          : `Se crearon ${creados.length} grupos antes del error. Los pendientes conservan tus cambios.`
+      );
+    }
+
+    setCargando(false);
+  }
+
+  function normalizarNombreAlumnoAgendaApp(valor: string | null | undefined) {
+    return nombreRealAlumnoListadoOperativo(valor)
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+  }
+
+  function alumnosDelGrupoCreadoAgenda(
+    grupo: AgendaGrupoSesionApp,
+    fuente: AgendaAlumnoSesionApp[] = agendaAlumnosSesion
+  ) {
+    const nombresGrupo = (grupo.alumnos_lista || '')
+      .split(' || ')
+      .map((valor) => normalizarNombreAlumnoAgendaApp(valor))
+      .filter(Boolean);
+
+    return fuente.filter((alumno) => {
+      const nombreAlumno = normalizarNombreAlumnoAgendaApp(alumno.alumno);
+      return nombresGrupo.includes(nombreAlumno);
+    });
+  }
+
+  function alumnoAgendaComoRecomendacionGrupoCreadoApp(
+    alumno: AgendaAlumnoSesionApp,
+    grupo: AgendaGrupoSesionApp
+  ): AgendaRecomendacionSesionApp {
+    return {
+      sesion_id: alumno.sesion_id,
+      grupo_recomendado: grupo.nombre_grupo,
+      bloque_tecnico: grupo.nivel_grupo || alumno.nivel_usado || '',
+      pista_recomendada:
+        grupo.pista || alumno.pista_recomendada || 'Pequeña/Grande',
+      alumno_id: alumno.alumno_id,
+      alumno: alumno.alumno,
+      nivel_resumen: alumno.nivel_usado || '',
+      pista_alumno:
+        alumno.pista_recomendada || grupo.pista || 'Pequeña/Grande',
+      orden_en_grupo: alumno.orden || 0,
+      alertas: alumno.observacion || null,
+      fuente_nivel: alumno.origen_nivel || null,
+      estado_ficha: alumno.estado_ficha || null,
+    };
+  }
+
+  function observacionesManualesGrupoAgendaPersistentesApp(
+    textoActual: string | null | undefined,
+    alumnosAntes: AgendaAlumnoSesionApp[]
+  ) {
+    const lineas = String(textoActual || '')
+      .split(/\r?\n/)
+      .map((linea) => linea.trim())
+      .filter(Boolean);
+
+    if (lineas.length === 0) return '';
+
+    const nombres = alumnosAntes
+      .map((alumno) => nombreLimpioObservacionesGrupoApp(alumno.alumno))
+      .map((nombre) => textoSinAcentosGrupoApp(nombre))
+      .filter(Boolean);
+
+    const manuales = lineas.filter((linea) => {
+      const normalizada = textoSinAcentosGrupoApp(linea);
+      return !nombres.some(
+        (nombre) =>
+          normalizada === nombre ||
+          normalizada.startsWith(`${nombre}:`) ||
+          normalizada.startsWith(`${nombre} ·`)
+      );
+    });
+
+    return normalizarLineasObservacionesGrupoApp(manuales.join('\n'), 6);
+  }
+
+  function contenidoTrabajoGrupoCreadoAgendaApp(
+    grupo: AgendaGrupoSesionApp,
+    alumnosGrupoSesion: AgendaAlumnoSesionApp[],
+    observacionesManuales = ''
+  ) {
+    if (alumnosGrupoSesion.length === 0) {
+      return {
+        trabajo: '',
+        observaciones: observacionesManuales,
+      };
+    }
+
+    const alumnosGrupo = alumnosGrupoSesion.map((alumno) =>
+      alumnoAgendaComoRecomendacionGrupoCreadoApp(alumno, grupo)
+    );
+
+    const niveles = alumnosGrupo
+      .map((alumno) => alumno.nivel_resumen || '')
+      .filter(Boolean);
+
+    const observacionesAutomaticas =
+      observacionesAutomaticasGrupoAgenda(alumnosGrupo);
+
+    const alumnosContexto = alumnosGrupo.map((alumno) =>
+      contextoAlumnoTrabajoDiarioApp(
+        alumno.alumno_id,
+        alumno.alumno,
+        alumno.nivel_resumen || ''
+      )
+    );
+
+    const sesion = agendaSesionesDirectas.find(
+      (item) => item.sesion_id === grupo.sesion_id
+    );
+
+    const trabajosRecientes = trabajosRecientesParaGrupoApp(
+      alumnosGrupo.map((alumno) => alumno.alumno),
+      sesion?.fecha
+    );
+
+    const trabajo = trabajoDiarioMSZApp(
+      grupo.nombre_grupo,
+      niveles,
+      grupo.pista || alumnosGrupo[0]?.pista_recomendada || 'Pequeña/Grande',
+      observacionesAutomaticas,
+      alumnosContexto,
+      sesion?.modalidad || 'INTENSIVOS',
+      trabajosRecientes
+    );
+
+    return {
+      trabajo,
+      observaciones: combinarObservacionesGrupoApp(
+        observacionesAutomaticas,
+        observacionesManuales
+      ),
+    };
+  }
+
+  function contextoIntensivoSesionAgenda(
+    sesionId: string | null | undefined
+  ) {
+    if (!sesionId) return null;
+
+    const dia = intensivoDias.find((item) => item.sesion_id === sesionId);
+    if (!dia) return null;
+
+    const intensivo = intensivos.find(
+      (item) => item.intensivo_id === dia.intensivo_id
+    );
+
+    return {
+      dia,
+      intensivo,
+    };
+  }
+
+  function asistenciaAlumnoIntensivoAgenda(
+    grupo: AgendaGrupoSesionApp,
+    alumnoId: string
+  ) {
+    const contexto = contextoIntensivoSesionAgenda(grupo.sesion_id);
+    if (!contexto) return null;
+
+    return (
+      intensivoAsistencias.find(
+        (item) =>
+          item.intensivo_id === contexto.dia.intensivo_id &&
+          item.intensivo_dia_id === contexto.dia.intensivo_dia_id &&
+          item.alumno_id === alumnoId
+      ) || null
+    );
+  }
+
+  function alumnoCuentaParaTrabajoIntensivoAgenda(
+    grupo: AgendaGrupoSesionApp,
+    alumnoId: string
+  ) {
+    const asistencia = asistenciaAlumnoIntensivoAgenda(grupo, alumnoId);
+    return !['NO_PRESENTADO', 'BAJA_AVISADA'].includes(
+      asistencia?.estado || ''
+    );
+  }
+
+  function alumnosEfectivosDelGrupoIntensivoAgenda(
+    grupo: AgendaGrupoSesionApp,
+    base?: AgendaAlumnoSesionApp[]

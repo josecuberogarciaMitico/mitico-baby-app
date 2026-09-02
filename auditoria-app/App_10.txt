@@ -1,0 +1,2500 @@
+                    </div>
+                    <div style={miniTarjetaBlanca}>
+                      <strong>
+                        {resumenCierreTemporada.activos_temporada === 0
+                          ? 'Semilla cargada'
+                          : 'Conservar siguiente temporada'}
+                      </strong>
+                      <div
+                        style={{
+                          fontSize: 26,
+                          fontWeight: 900,
+                          marginTop: 5,
+                          color: '#15803d',
+                        }}
+                      >
+                        {resumenCierreTemporada.activos_temporada === 0
+                          ? resumenCierreTemporada.total_alumnos_base
+                          : resumenCierreTemporada.conservar_siguiente}
+                      </div>
+                    </div>
+                    <div style={miniTarjetaBlanca}>
+                      <strong>
+                        {resumenCierreTemporada.activos_temporada === 0
+                          ? 'Sin entrenar todavía'
+                          : 'Candidatos a eliminar al cierre'}
+                      </strong>
+                      <div
+                        style={{
+                          fontSize: 26,
+                          fontWeight: 900,
+                          marginTop: 5,
+                          color:
+                            resumenCierreTemporada.activos_temporada === 0
+                              ? '#c2410c'
+                              : '#b91c1c',
+                        }}
+                      >
+                        {resumenCierreTemporada.activos_temporada === 0
+                          ? resumenCierreTemporada.total_alumnos_base
+                          : resumenCierreTemporada.eliminar_por_inactividad}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns:
+                        'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',
+                      gap: 9,
+                      marginTop: 12,
+                    }}
+                  >
+                    {([
+                      ['todos', 'Todos'],
+                      [
+                        'conservar',
+                        resumenCierreTemporada.activos_temporada === 0
+                          ? 'Con actividad'
+                          : 'Conservar',
+                      ],
+                      [
+                        'eliminar',
+                        resumenCierreTemporada.activos_temporada === 0
+                          ? 'Sin actividad todavía'
+                          : 'Eliminar',
+                      ],
+                    ] as const).map(([valor, etiqueta]) => (
+                      <button
+                        key={`cierre-${valor}`}
+                        type="button"
+                        onClick={() => setFiltroCierreTemporada(valor)}
+                        style={{
+                          ...botonMenu(filtroCierreTemporada === valor),
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 44,
+                          whiteSpace: 'normal',
+                        }}
+                      >
+                        {etiqueta}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr) minmax(190px, auto)',
+                      gap: 10,
+                      alignItems: 'end',
+                      marginTop: 12,
+                    }}
+                  >
+                    <label style={{ ...labelCampo, minWidth: 0, width: '100%' }}>
+                      Buscar alumno
+                      <input
+                        value={busquedaCierreTemporada}
+                        onChange={(e) => setBusquedaCierreTemporada(e.target.value)}
+                        placeholder="Nombre, nivel, modalidad..."
+                        style={{
+                          ...inputCampo,
+                          width: '100%',
+                          minWidth: 0,
+                          boxSizing: 'border-box',
+                        }}
+                      />
+                    </label>
+
+                    <button
+                      type="button"
+                      onClick={descargarCopiaMaestraTemporada}
+                      disabled={resumenCierreTemporada.activos_temporada === 0}
+                      style={{
+                        ...botonPrincipal,
+                        width: '100%',
+                        minWidth: 0,
+                        minHeight: 46,
+                        whiteSpace: 'normal',
+                        opacity:
+                          resumenCierreTemporada.activos_temporada === 0 ? 0.55 : 1,
+                      }}
+                    >
+                      {resumenCierreTemporada.activos_temporada === 0
+                        ? 'Copia maestra disponible al final de temporada'
+                        : 'Descargar copia maestra'}
+                    </button>
+                  </div>
+
+                  {(() => {
+                    const termino = busquedaCierreTemporada.trim().toLowerCase();
+                    const filas = cierreTemporadaAlumnos.filter((fila) => {
+                      if (
+                        filtroCierreTemporada === 'conservar' &&
+                        !fila.conservar_siguiente
+                      )
+                        return false;
+                      if (
+                        filtroCierreTemporada === 'eliminar' &&
+                        fila.conservar_siguiente
+                      )
+                        return false;
+                      if (!termino) return true;
+                      return `${fila.alumno} ${fila.ultimo_nivel_real || ''} ${
+                        fila.ultima_modalidad || ''
+                      } ${fila.motivo_estado || ''}`
+                        .toLowerCase()
+                        .includes(termino);
+                    });
+
+                    return (
+                      <div
+                        style={{
+                          overflowX: 'auto',
+                          marginTop: 12,
+                          border: '1px solid #e2e8f0',
+                          borderRadius: 16,
+                          background: '#fff',
+                          WebkitOverflowScrolling: 'touch',
+                        }}
+                      >
+                        <table
+                          style={{
+                            width: '100%',
+                            minWidth: 860,
+                            borderCollapse: 'collapse',
+                          }}
+                        >
+                          <thead>
+                            <tr style={{ background: '#f8fafc' }}>
+                              {[
+                                'Alumno',
+                                'Nivel',
+                                'Último entreno',
+                                'Modalidad',
+                                'Entrenos',
+                                'Estado',
+                              ].map((titulo) => (
+                                <th
+                                  key={`cierre-${titulo}`}
+                                  style={{
+                                    padding: '10px 12px',
+                                    textAlign: titulo === 'Alumno' ? 'left' : 'center',
+                                    borderBottom: '1px solid #e2e8f0',
+                                    color: '#334155',
+                                    fontSize: 13,
+                                  }}
+                                >
+                                  {titulo}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {filas.map((fila) => (
+                              <tr key={`cierre-${fila.alumno_id}`}>
+                                <td
+                                  style={{
+                                    padding: '10px 12px',
+                                    borderBottom: '1px solid #f1f5f9',
+                                    fontWeight: 800,
+                                  }}
+                                >
+                                  {fila.alumno}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: '10px 12px',
+                                    borderBottom: '1px solid #f1f5f9',
+                                    textAlign: 'center',
+                                    fontWeight: 900,
+                                  }}
+                                >
+                                  {fila.ultimo_nivel_real || '-'}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: '10px 12px',
+                                    borderBottom: '1px solid #f1f5f9',
+                                    textAlign: 'center',
+                                  }}
+                                >
+                                  {fila.ultimo_entreno
+                                    ? formatearFecha(fila.ultimo_entreno)
+                                    : '-'}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: '10px 12px',
+                                    borderBottom: '1px solid #f1f5f9',
+                                    textAlign: 'center',
+                                  }}
+                                >
+                                  {fila.ultima_modalidad || '-'}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: '10px 12px',
+                                    borderBottom: '1px solid #f1f5f9',
+                                    textAlign: 'center',
+                                    fontWeight: 900,
+                                  }}
+                                >
+                                  {fila.entrenamientos_temporada}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: '10px 12px',
+                                    borderBottom: '1px solid #f1f5f9',
+                                    textAlign: 'center',
+                                    color: fila.conservar_siguiente
+                                      ? '#15803d'
+                                      : '#b91c1c',
+                                    fontWeight: 900,
+                                  }}
+                                >
+                                  {resumenCierreTemporada.activos_temporada === 0
+                                    ? 'Semilla · sin actividad todavía'
+                                    : fila.conservar_siguiente
+                                    ? 'Conservar'
+                                    : 'Eliminar'}
+                                  <span
+                                    style={{
+                                      display: 'block',
+                                      marginTop: 3,
+                                      color: '#64748b',
+                                      fontSize: 11,
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    {fila.motivo_estado}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
+            </div>
+
+
+          </details>
+
+          <details
+            style={{
+              ...tarjeta,
+              marginTop: 16,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid #fecaca',
+              background: '#fff',
+            }}
+          >
+            <summary
+              style={{
+                listStyle: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '16px 18px',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p
+                  style={{
+                    ...etiquetaSuperior,
+                    color: '#b91c1c',
+                    margin: '0 0 4px',
+                  }}
+                >
+                  PASO 2 · CIERRE DEFINITIVO
+                </p>
+                <h3 style={{ margin: 0, fontSize: 20 }}>Cerrar temporada al finalizar el curso</h3>
+              </div>
+
+              <span
+                style={{
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  border: '1px solid #fecaca',
+                  background: '#fff',
+                  color: '#b91c1c',
+                  fontWeight: 900,
+                  fontSize: 20,
+                }}
+              >
+                ↕
+              </span>
+            </summary>
+
+            <div
+              style={{
+                padding: '0 18px 18px',
+                borderTop: '1px solid #fee2e2',
+              }}
+            >
+              {resumenCierreTemporada &&
+              resumenCierreTemporada.total_alumnos_base > 0 &&
+              resumenCierreTemporada.activos_temporada === 0 ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: 14,
+                    borderRadius: 14,
+                    border: '1px solid #bbf7d0',
+                    background: '#f0fdf4',
+                    color: '#166534',
+                    fontWeight: 900,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  Temporada en fase de arranque · {resumenCierreTemporada.total_alumnos_base}{' '}
+                  alumnos cargados y todavía sin actividad. El cierre está desactivado
+                  porque ahora debes empezar a trabajar la temporada, no borrarla.
+                </div>
+              ) : !resumenCierreTemporada ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: 12,
+                    borderRadius: 12,
+                    border: '1px solid #e2e8f0',
+                    background: '#f8fafc',
+                    color: '#64748b',
+                    fontWeight: 800,
+                  }}
+                >
+                  Completa primero el Paso 1 para poder cerrar la temporada.
+                </div>
+              ) : (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: 14,
+                    borderRadius: 14,
+                    border: '1px solid #fecaca',
+                    background: '#fff7f7',
+                  }}
+                >
+                  <label
+                    style={{
+                      display: 'flex',
+                      gap: 9,
+                      alignItems: 'flex-start',
+                      color: '#475569',
+                      fontWeight: 800,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={confirmacionBackupCierre}
+                      onChange={(e) => setConfirmacionBackupCierre(e.target.checked)}
+                      style={{ marginTop: 3 }}
+                    />
+                    <span>Backup Supabase y copia maestra guardados.</span>
+                  </label>
+
+                  <label
+                    style={{
+                      display: 'flex',
+                      gap: 9,
+                      alignItems: 'flex-start',
+                      marginTop: 10,
+                      color: '#475569',
+                      fontWeight: 800,
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={confirmacionListadoCierre}
+                      onChange={(e) => setConfirmacionListadoCierre(e.target.checked)}
+                      style={{ marginTop: 3 }}
+                    />
+                    <span>Listado “Eliminar” revisado.</span>
+                  </label>
+
+                  <label
+                    style={{
+                      ...labelCampo,
+                      display: 'block',
+                      marginTop: 14,
+                      width: '100%',
+                    }}
+                  >
+                    Escribe exactamente
+                    <strong
+                      style={{
+                        display: 'block',
+                        marginTop: 4,
+                        color: '#991b1b',
+                      }}
+                    >
+                      CERRAR {resumenCierreTemporada.temporada}
+                    </strong>
+                    <input
+                      value={confirmacionCierreTexto}
+                      onChange={(e) => setConfirmacionCierreTexto(e.target.value)}
+                      placeholder={`CERRAR ${resumenCierreTemporada.temporada}`}
+                      style={{
+                        ...inputCampo,
+                        width: '100%',
+                        minWidth: 0,
+                        boxSizing: 'border-box',
+                        marginTop: 7,
+                      }}
+                    />
+                  </label>
+
+                  <button
+                    type="button"
+                    onClick={ejecutarCierreDefinitivoTemporada}
+                    disabled={cerrandoTemporada}
+                    style={{
+                      ...botonPrincipal,
+                      width: '100%',
+                      minHeight: 48,
+                      marginTop: 14,
+                      background: '#b91c1c',
+                      borderColor: '#b91c1c',
+                      opacity: cerrandoTemporada ? 0.65 : 1,
+                    }}
+                  >
+                    {cerrandoTemporada
+                      ? 'Cerrando temporada...'
+                      : 'Cerrar temporada definitivamente'}
+                  </button>
+
+                  {cierreTemporadaError && (
+                    <div style={{ ...errorCaja, marginTop: 12 }}>
+                      {cierreTemporadaError}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {resultadoCierreTemporada && (
+                <div
+                  style={{
+                    marginTop: 12,
+                    padding: 12,
+                    borderRadius: 12,
+                    border: '1px solid #bbf7d0',
+                    background: '#f0fdf4',
+                    color: '#166534',
+                    fontWeight: 900,
+                  }}
+                >
+                  {resultadoCierreTemporada}
+                </div>
+              )}
+
+            </div>
+          </details>
+
+          <article
+            style={{
+              ...tarjeta,
+              marginTop: 16,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid #bfdbfe',
+              background: '#fff',
+            }}
+          >
+            <div style={{ padding: '16px 18px' }}>
+              <p
+                style={{
+                  ...etiquetaSuperior,
+                  color: '#1d4ed8',
+                  margin: '0 0 4px',
+                }}
+              >
+                PASO 3 · ARRANQUE DE TEMPORADA
+              </p>
+              <h3 style={{ margin: 0, fontSize: 20 }}>Estado de temporada</h3>
+
+              {cargandoTemporadaActivaCierre ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    border: '1px solid #cbd5e1',
+                    background: '#f8fafc',
+                    color: '#475569',
+                    fontWeight: 900,
+                  }}
+                >
+                  Comprobando temporada activa...
+                </div>
+              ) : errorTemporadaActivaCierre ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: '12px 14px',
+                    borderRadius: 12,
+                    border: '1px solid #fecaca',
+                    background: '#fef2f2',
+                    color: '#991b1b',
+                    fontWeight: 800,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  <strong>No se ha podido comprobar la temporada activa.</strong>
+                  <div style={{ marginTop: 4 }}>
+                    Por seguridad, no se habilita el inicio de una temporada hasta conocer el estado real.
+                  </div>
+                  <button
+                    type="button"
+                    onClick={cargarTemporadaActivaCierre}
+                    style={{ ...botonSecundario, marginTop: 10 }}
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              ) : temporadaActivaCierre ? (
+                <div
+                  style={{
+                    marginTop: 14,
+                    padding: '13px 14px',
+                    borderRadius: 12,
+                    border: '1px solid #bbf7d0',
+                    background: '#f0fdf4',
+                    color: '#166534',
+                    fontWeight: 800,
+                    lineHeight: 1.45,
+                  }}
+                >
+                  <strong>Temporada en curso · {temporadaActivaCierre}</strong>
+                  <div style={{ marginTop: 4 }}>
+                    No hay nada que iniciar ahora. El arranque de la siguiente temporada se habilitará cuando cierres la temporada actual.
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div
+                    style={{
+                      marginTop: 14,
+                      padding: '11px 13px',
+                      borderRadius: 12,
+                      border: '1px solid #fde68a',
+                      background: '#fffbeb',
+                      color: '#92400e',
+                      fontWeight: 800,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    No hay ninguna temporada activa. Ahora sí puedes iniciar la siguiente.
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'minmax(0, 1fr) auto',
+                      gap: 10,
+                      alignItems: 'end',
+                      marginTop: 14,
+                    }}
+                  >
+                    <div
+                      style={{
+                        minWidth: 0,
+                        padding: '11px 13px',
+                        borderRadius: 12,
+                        border: '1px solid #bfdbfe',
+                        background: '#eff6ff',
+                        color: '#1e3a8a',
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      <div style={{ fontSize: 12, fontWeight: 900 }}>
+                        SIGUIENTE TEMPORADA
+                      </div>
+                      <strong style={{ fontSize: 18 }}>
+                        {nombreTemporadaAgenda(anioInicioTemporadaAgenda)}
+                      </strong>
+                      <div style={{ marginTop: 3, fontSize: 12, fontWeight: 700 }}>
+                        La app solo permite iniciar la temporada inmediatamente siguiente. No tienes que elegir años manualmente.
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={iniciarNuevaTemporadaOperativa}
+                      disabled={iniciandoNuevaTemporada}
+                      style={{
+                        ...botonPrincipal,
+                        minHeight: 44,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {iniciandoNuevaTemporada
+                        ? 'Iniciando...'
+                        : `Iniciar ${nombreTemporadaAgenda(anioInicioTemporadaAgenda)}`}
+                    </button>
+                  </div>
+
+                  {resultadoNuevaTemporada && (
+                    <div
+                      style={{
+                        marginTop: 12,
+                        padding: 12,
+                        borderRadius: 12,
+                        border: '1px solid #bbf7d0',
+                        background: '#f0fdf4',
+                        color: '#166534',
+                        fontWeight: 900,
+                      }}
+                    >
+                      {resultadoNuevaTemporada}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </article>
+
+          <details
+            style={{
+              ...tarjeta,
+              marginTop: 16,
+              padding: 0,
+              overflow: 'hidden',
+              border: '1px solid rgba(14,116,144,.22)',
+              background:
+                'linear-gradient(135deg, rgba(236,254,255,.94), #fff 58%, rgba(248,250,252,.9))',
+            }}
+          >
+            <summary
+              style={{
+                listStyle: 'none',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                padding: '16px 18px',
+              }}
+            >
+              <div style={{ minWidth: 0 }}>
+                <p
+                  style={{
+                    ...etiquetaSuperior,
+                    color: '#0e7490',
+                    margin: '0 0 3px',
+                  }}
+                >
+                  PASO 4 · CARGAR SEMILLA
+                </p>
+                <h3
+                  style={{
+                    margin: 0,
+                    fontSize: 20,
+                    lineHeight: 1.2,
+                    overflowWrap: 'anywhere',
+                  }}
+                >
+                  Cargar alumnos de la nueva temporada
+                </h3>
+              </div>
+
+              <span
+                style={{
+                  flex: '0 0 auto',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 999,
+                  border: '1px solid #cbd5e1',
+                  background: '#fff',
+                  color: '#334155',
+                  fontWeight: 900,
+                  fontSize: 20,
+                }}
+              >
+                ↕
+              </span>
+            </summary>
+
+            <div
+              style={{
+                padding: '16px 18px 18px',
+                borderTop: '1px solid rgba(14,116,144,.12)',
+              }}
+            >
+              <div
+                style={{
+                  padding: 13,
+                  border: '1px solid #bfdbfe',
+                  borderRadius: 14,
+                  background: '#eff6ff',
+                  color: '#1e40af',
+                  fontWeight: 900,
+                  lineHeight: 1.4,
+                  marginBottom: 12,
+                }}
+              >
+                Temporada activa: {temporadaActivaCierre || 'NINGUNA'}.
+                Si pone NINGUNA, vuelve al Paso 3 y activa la nueva temporada antes de importar.
+              </div>
+
+              <div
+                style={{
+                  padding: 13,
+                  border: '1px solid #a5f3fc',
+                  borderRadius: 14,
+                  background: '#ecfeff',
+                  color: '#155e75',
+                  fontWeight: 800,
+                  lineHeight: 1.4,
+                }}
+              >
+                Primero seleccionas y validas el CSV. Solo al pulsar
+                “Cargar semilla en alumnos” se escriben los alumnos en la temporada activa.
+              </div>
+
+              <label
+                style={{
+                  ...labelCampo,
+                  display: 'block',
+                  width: '100%',
+                  marginTop: 14,
+                }}
+              >
+                Seleccionar CSV semilla / copia maestra
+                <input
+                  type="file"
+                  accept=".csv,text/csv"
+                  onChange={(e) =>
+                    cargarCopiaMaestraParaRevisar(e.target.files?.[0] || null)
+                  }
+                  style={{
+                    ...inputCampo,
+                    display: 'block',
+                    width: '100%',
+                    minWidth: 0,
+                    boxSizing: 'border-box',
+                    marginTop: 6,
+                  }}
+                />
+              </label>
+
+              {errorCopiaMaestraImport && (
+                <div style={{ ...errorCaja, marginTop: 12 }}>
+                  {errorCopiaMaestraImport}
+                </div>
+              )}
+
+              {filasCopiaMaestraImport.length > 0 && (() => {
+                const validas = filasCopiaMaestraImport.filter((fila) => fila.valido);
+                const errores = filasCopiaMaestraImport.length - validas.length;
+
+                return (
+                  <>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',
+                        gap: 10,
+                        marginTop: 14,
+                      }}
+                    >
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Archivo</strong>
+                        <p
+                          style={{
+                            margin: '6px 0 0',
+                            color: '#475569',
+                            overflowWrap: 'anywhere',
+                          }}
+                        >
+                          {archivoCopiaMaestraNombre}
+                        </p>
+                      </div>
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Alumnos</strong>
+                        <div style={{ fontSize: 26, fontWeight: 900, marginTop: 5 }}>
+                          {filasCopiaMaestraImport.length}
+                        </div>
+                      </div>
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Correctos</strong>
+                        <div
+                          style={{
+                            fontSize: 26,
+                            fontWeight: 900,
+                            marginTop: 5,
+                            color: '#15803d',
+                          }}
+                        >
+                          {validas.length}
+                        </div>
+                      </div>
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Con errores</strong>
+                        <div
+                          style={{
+                            fontSize: 26,
+                            fontWeight: 900,
+                            marginTop: 5,
+                            color: errores > 0 ? '#b91c1c' : '#15803d',
+                          }}
+                        >
+                          {errores}
+                        </div>
+                      </div>
+                    </div>
+
+                    {resultadoImportacionCopiaMaestra && (
+                      <div
+                        style={{
+                          marginTop: 12,
+                          padding: 12,
+                          borderRadius: 14,
+                          border: '1px solid #bbf7d0',
+                          background: '#f0fdf4',
+                          color: '#166534',
+                          fontWeight: 800,
+                          lineHeight: 1.4,
+                        }}
+                      >
+                        {resultadoImportacionCopiaMaestra}
+                      </div>
+                    )}
+
+                    <div
+                      style={{
+                        marginTop: 12,
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
+                        gap: 10,
+                        alignItems: 'center',
+                        padding: 12,
+                        borderRadius: 14,
+                        border: '1px solid #dbeafe',
+                        background: '#f8fafc',
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={importarCopiaMaestraEnAlumnos}
+                        disabled={errores > 0 || importandoCopiaMaestra}
+                        style={{
+                          ...botonPrincipal,
+                          width: '100%',
+                          minWidth: 0,
+                          minHeight: 48,
+                          whiteSpace: 'normal',
+                          opacity:
+                            errores > 0 || importandoCopiaMaestra ? 0.55 : 1,
+                        }}
+                      >
+                        {importandoCopiaMaestra
+                          ? 'Cargando semilla...'
+                          : 'Cargar semilla en alumnos'}
+                      </button>
+                    </div>
+
+                    <div
+                      style={{
+                        overflowX: 'auto',
+                        marginTop: 12,
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 16,
+                        background: '#fff',
+                        WebkitOverflowScrolling: 'touch',
+                      }}
+                    >
+                      <table
+                        style={{
+                          width: '100%',
+                          minWidth: 900,
+                          borderCollapse: 'collapse',
+                        }}
+                      >
+                        <thead>
+                          <tr style={{ background: '#f8fafc' }}>
+                            {[
+                              'Alumno',
+                              'Nivel',
+                              'Pista',
+                              'Último entreno',
+                              'Modalidad',
+                              'Entrenos',
+                              'Validación',
+                            ].map((titulo) => (
+                              <th
+                                key={`import-${titulo}`}
+                                style={{
+                                  padding: '10px 12px',
+                                  textAlign: titulo === 'Alumno' ? 'left' : 'center',
+                                  borderBottom: '1px solid #e2e8f0',
+                                  color: '#334155',
+                                  fontSize: 13,
+                                }}
+                              >
+                                {titulo}
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filasCopiaMaestraImport.map((fila, index) => (
+                            <tr key={`import-${fila.alumno}-${index}`}>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  borderBottom: '1px solid #f1f5f9',
+                                  fontWeight: 800,
+                                }}
+                              >
+                                {fila.alumno || '-'}
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                {fila.ultimo_nivel_real || '-'}
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                {fila.pista || '-'}
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                {fila.ultimo_entreno || '-'}
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                {fila.ultima_modalidad || '-'}
+                              </td>
+                              <td style={{ padding: '10px 12px', textAlign: 'center' }}>
+                                {fila.entrenamientos_temporada}
+                              </td>
+                              <td
+                                style={{
+                                  padding: '10px 12px',
+                                  textAlign: 'center',
+                                  color: fila.valido ? '#15803d' : '#b91c1c',
+                                  fontWeight: 900,
+                                }}
+                              >
+                                {fila.valido ? 'Correcto' : fila.error}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                  </>
+                );
+              })()}
+            </div>
+          </details>
+
+
+          
+
+<article style={{ ...tarjeta, marginTop: 16 }}>
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 12,
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div>
+                <h3 style={{ margin: 0 }}>Copia de seguridad semanal</h3>
+                <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: 13 }}>
+                  Backup JSON restaurable de la operativa.
+                </p>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns:
+                  'repeat(auto-fit, minmax(min(100%, 230px), 1fr))',
+                gap: 10,
+                marginTop: 14,
+                alignItems: 'end',
+              }}
+            >
+              <label style={{ ...labelCampo, minWidth: 0 }}>
+                Semana a guardar
+                <select
+                  value={semanaBackupObjetivo}
+                  onChange={(e) => {
+                    setSemanaBackupSeleccionada(e.target.value);
+                    setUltimaDescargaBackupSemana('');
+                  }}
+                  style={{ ...selectCampoAgenda, width: '100%' }}
+                >
+                  {semanasAgenda.map((semana) => (
+                    <option key={`backup-${semana}`} value={semana}>
+                      {rangoSemanaAgenda(semana)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <button
+                type="button"
+                onClick={descargarBackupSemanalJson}
+                style={{ ...botonSecundario, minHeight: 44 }}
+              >
+                Descargar backup de esta semana
+              </button>
+            </div>
+
+            <div
+              style={{
+                ...(backupSemanaRealizado || ultimaDescargaBackupSemana
+                  ? avisoCompleto
+                  : avisoPendiente),
+                marginTop: 12,
+              }}
+            >
+              Semana {rangoSemanaAgenda(semanaBackupObjetivo)} ·{' '}
+              {backupSemanaRealizado || ultimaDescargaBackupSemana
+                ? `Copia guardada: ${
+                    backupSemanaRealizado || ultimaDescargaBackupSemana
+                  }`
+                : '⚠️ Falta guardar la copia de esta semana'}
+            </div>
+
+            <p
+              style={{
+                margin: '8px 0 0',
+                color: '#64748b',
+                fontSize: 12,
+                overflowWrap: 'anywhere',
+              }}
+            >
+              Nombre: MITICO_BACKUP_{(temporadaActivaCierre || 'TEMPORADA').replace(
+                /\//g,
+                '-'
+              )}_SEMANA_{semanaBackupObjetivo}_A_
+              {semanaBackupObjetivo
+                ? sumarDiasBackup(semanaBackupObjetivo, 6)
+                : '---- -- --'}
+              _GENERADO_{fechaIsoEditor(new Date())}.json
+            </p>
+
+            <details
+              style={{
+                marginTop: 14,
+                border: '1px solid #e2e8f0',
+                borderRadius: 14,
+                overflow: 'hidden',
+                background: '#fff',
+              }}
+            >
+              <summary
+                style={{
+                  cursor: 'pointer',
+                  listStyle: 'none',
+                  padding: '13px 14px',
+                  fontWeight: 900,
+                  color: '#334155',
+                }}
+              >
+                Restaurar una copia semanal
+              </summary>
+
+              <div
+                style={{
+                  padding: '14px',
+                  borderTop: '1px solid #e2e8f0',
+                }}
+              >
+                <label style={{ ...labelCampo, display: 'block', width: '100%' }}>
+                  Seleccionar backup JSON
+                  <input
+                    type="file"
+                    accept=".json,application/json"
+                    onChange={(e) =>
+                      cargarBackupSemanalParaRestaurar(
+                        e.target.files?.[0] || null
+                      )
+                    }
+                    style={{
+                      ...inputCampo,
+                      width: '100%',
+                      minWidth: 0,
+                      boxSizing: 'border-box',
+                      marginTop: 6,
+                    }}
+                  />
+                </label>
+
+                {errorBackupRestauracion && (
+                  <div style={{ ...errorCaja, marginTop: 12 }}>
+                    {errorBackupRestauracion}
+                  </div>
+                )}
+
+                {backupRestauracion && (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      display: 'grid',
+                      gap: 12,
+                    }}
+                  >
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns:
+                          'repeat(auto-fit, minmax(min(100%, 150px), 1fr))',
+                        gap: 10,
+                      }}
+                    >
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Archivo</strong>
+                        <p
+                          style={{
+                            margin: '5px 0 0',
+                            overflowWrap: 'anywhere',
+                            color: '#475569',
+                          }}
+                        >
+                          {archivoBackupRestauracion}
+                        </p>
+                      </div>
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Temporada</strong>
+                        <div style={{ marginTop: 5, fontWeight: 900 }}>
+                          {backupRestauracion.temporada || '-'}
+                        </div>
+                      </div>
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Semana</strong>
+                        <div style={{ marginTop: 5, fontWeight: 900 }}>
+                          {backupRestauracion.semana_inicio} →{' '}
+                          {backupRestauracion.semana_fin}
+                        </div>
+                      </div>
+                      <div style={miniTarjetaBlanca}>
+                        <strong>Filas</strong>
+                        <div
+                          style={{
+                            marginTop: 5,
+                            fontSize: 24,
+                            fontWeight: 900,
+                          }}
+                        >
+                          {totalFilasBackupRestauracion(backupRestauracion)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div
+                      style={{
+                        padding: 14,
+                        borderRadius: 14,
+                        border: '1px solid #fecaca',
+                        background: '#fff7f7',
+                      }}
+                    >
+                      <label
+                        style={{
+                          ...labelCampo,
+                          display: 'block',
+                          width: '100%',
+                        }}
+                      >
+                        Para restaurar escribe exactamente
+                        <strong
+                          style={{
+                            display: 'block',
+                            marginTop: 4,
+                            color: '#991b1b',
+                          }}
+                        >
+                          RESTAURAR {backupRestauracion.semana_inicio}
+                        </strong>
+                        <input
+                          value={confirmacionBackupRestauracion}
+                          onChange={(e) =>
+                            setConfirmacionBackupRestauracion(e.target.value)
+                          }
+                          style={{
+                            ...inputCampo,
+                            width: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box',
+                            marginTop: 7,
+                          }}
+                        />
+                      </label>
+
+                      <button
+                        type="button"
+                        onClick={restaurarBackupSemanal}
+                        disabled={
+                          restaurandoBackupSemanal ||
+                          confirmacionBackupRestauracion.trim() !==
+                            `RESTAURAR ${backupRestauracion.semana_inicio}`
+                        }
+                        style={{
+                          ...botonPrincipal,
+                          width: '100%',
+                          minHeight: 48,
+                          marginTop: 12,
+                          background: '#b91c1c',
+                          borderColor: '#b91c1c',
+                          opacity:
+                            restaurandoBackupSemanal ||
+                            confirmacionBackupRestauracion.trim() !==
+                              `RESTAURAR ${backupRestauracion.semana_inicio}`
+                              ? 0.5
+                              : 1,
+                        }}
+                      >
+                        {restaurandoBackupSemanal
+                          ? 'Restaurando...'
+                          : 'Restaurar esta copia'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {resultadoRestauracionBackup && (
+                  <div
+                    style={{
+                      marginTop: 12,
+                      padding: 12,
+                      borderRadius: 12,
+                      border: '1px solid #bbf7d0',
+                      background: '#f0fdf4',
+                      color: '#166534',
+                      fontWeight: 900,
+                    }}
+                  >
+                    {resultadoRestauracionBackup}
+                  </div>
+                )}
+              </div>
+            </details>
+          </article>
+        </section>
+      )}
+
+      {pantalla === 'analisis' && esCoordinadorJefeApp && (
+                <article
+                  style={{
+                    ...agendaBloqueBlanco,
+                    border: '1px solid #c4b5fd',
+                    background: 'linear-gradient(135deg, #faf5ff 0%, #ffffff 58%)',
+                    display: 'grid',
+                    gap: 16,
+                    width: '100%',
+                    minWidth: 0,
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      gap: 12,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <div style={{ minWidth: 0 }}>
+                      <span style={{ ...miniBadge, background: '#ede9fe', color: '#6d28d9' }}>
+                        ADMINISTRACIÓN
+                      </span>
+                      <h2 style={{ margin: '8px 0 0' }}>Análisis operativo</h2>
+                      <p style={{ margin: '6px 0 0', color: '#64748b', lineHeight: 1.45 }}>
+                        Se calcula al momento con la actividad real. No se guarda ningún informe generado en Supabase.
+                      </p>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        disabled={!analisisAdmin || cargandoAnalisisAdmin}
+                        onClick={descargarPdfAnalisisAdminApp}
+                        style={botonSecundario}
+                      >
+                        PDF
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!analisisAdmin || cargandoAnalisisAdmin}
+                        onClick={descargarExcelAnalisisAdminApp}
+                        style={botonSecundario}
+                      >
+                        Excel
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!analisisAdmin || cargandoAnalisisAdmin}
+                        onClick={descargarCsvAnalisisAdminApp}
+                        style={botonSecundario}
+                      >
+                        CSV
+                      </button>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: esVistaMovilApp
+                        ? 'minmax(0, 1fr)'
+                        : 'minmax(0, 1fr) minmax(220px, 320px)',
+                      gap: 10,
+                      alignItems: 'end',
+                    }}
+                  >
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {(['BABY', 'OCIO', 'INTENSIVOS'] as ModalidadAnalisisAdminApp[]).map(
+                        (modalidad) => (
+                          <button
+                            key={modalidad}
+                            type="button"
+                            disabled={cargandoAnalisisAdmin}
+                            onClick={() => cambiarModalidadAnalisisAdminApp(modalidad)}
+                            style={{
+                              ...botonSecundario,
+                              background:
+                                modalidadAnalisisAdmin === modalidad ? '#6d28d9' : '#fff',
+                              color:
+                                modalidadAnalisisAdmin === modalidad ? '#fff' : '#475569',
+                              borderColor:
+                                modalidadAnalisisAdmin === modalidad ? '#6d28d9' : '#e2e8f0',
+                              flex: esVistaMovilApp ? '1 1 95px' : undefined,
+                            }}
+                          >
+                            {modalidad === 'INTENSIVOS' ? 'Intensivos' : modalidad === 'OCIO' ? 'Ocio' : 'Baby'}
+                          </button>
+                        )
+                      )}
+                    </div>
+
+                    <label style={labelCampo}>
+                      Temporada analizada · actual + 2 anteriores
+                      <select
+                        value={temporadaAnalisisAdminId}
+                        disabled={cargandoAnalisisAdmin || !analisisAdmin}
+                        onChange={(e) => cambiarTemporadaAnalisisAdminApp(e.target.value)}
+                        style={selectCampo}
+                      >
+                        {(analisisAdmin?.comparativa_temporadas || []).map((temporada) => (
+                          <option key={temporada.temporada_id} value={temporada.temporada_id}>
+                            {temporada.temporada}{temporada.activa ? ' · actual' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  {cargandoAnalisisAdmin && (
+                    <div style={avisoNeutral}>Calculando métricas con los datos actuales…</div>
+                  )}
+
+                  {errorAnalisisAdmin && <div style={errorCaja}>{errorAnalisisAdmin}</div>}
+
+                  {analisisAdmin && !cargandoAnalisisAdmin && (
+                    <>
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          gap: 10,
+                          flexWrap: 'wrap',
+                          alignItems: 'baseline',
+                        }}
+                      >
+                        <strong style={{ fontSize: 18 }}>
+                          {analisisAdmin.meta.modalidad === 'INTENSIVOS'
+                            ? 'Intensivos'
+                            : analisisAdmin.meta.modalidad === 'OCIO'
+                            ? 'Ocio'
+                            : 'Baby'}{' '}
+                          · {analisisAdmin.meta.temporada}
+                        </strong>
+                        <span style={{ color: '#64748b', fontSize: 12, fontWeight: 700 }}>
+                          Calculado {new Date(analisisAdmin.meta.generado_at).toLocaleString('es-ES')}
+                        </span>
+                      </div>
+
+                      <section
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                          gap: 10,
+                        }}
+                      >
+                        {[
+                          ['ALUMNOS ÚNICOS', analisisAdmin.resumen.alumnos_unicos, 'identidades'],
+                          ['ALTAS', analisisAdmin.resumen.altas, 'temporada'],
+                          ['CONTINUIDAD', numeroAnalisisAdminApp(analisisAdmin.resumen.continuidad_pct, '%'), 'mes a mes'],
+                          ['PÉRDIDA', numeroAnalisisAdminApp(analisisAdmin.resumen.perdida_continuidad_pct, '%'), 'continuidad'],
+                          ['ASISTENCIA REAL', numeroAnalisisAdminApp(analisisAdmin.resumen.asistencia_real_pct, '%'), 'confirmada'],
+                          ['NIÑOS / TURNO', numeroAnalisisAdminApp(analisisAdmin.resumen.promedio_ninos_turno), 'promedio'],
+                          ['POR GRUPO', numeroAnalisisAdminApp(analisisAdmin.resumen.promedio_por_grupo), 'promedio'],
+                          ['SESIONES', analisisAdmin.resumen.sesiones_realizadas, 'realizadas'],
+                          ['OCUPACIÓN', numeroAnalisisAdminApp(analisisAdmin.resumen.ocupacion_pct, '%'), 'capacidad'],
+                        ].map(([titulo, valor, pie]) => (
+                          <div
+                            key={String(titulo)}
+                            style={{
+                              ...miniTarjetaBlanca,
+                              border: '1px solid #7c3aed33',
+                              background: '#faf5ff',
+                              minHeight: 82,
+                              display: 'grid',
+                              alignContent: 'center',
+                            }}
+                          >
+                            <span style={{ color: '#64748b', fontWeight: 850, fontSize: 11 }}>
+                              {titulo}
+                            </span>
+                            <strong style={{ fontSize: 27, overflowWrap: 'anywhere' }}>{valor}</strong>
+                            <span style={{ color: '#64748b', fontSize: 12 }}>{pie}</span>
+                          </div>
+                        ))}
+                      </section>
+
+                      <section
+                        style={{
+                          ...agendaBloqueBlanco,
+                          border: '1px solid #e2e8f0',
+                          display: 'grid',
+                          gap: 10,
+                        }}
+                      >
+                        <div>
+                          <strong>Evolución técnica</strong>
+                          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
+                            Cambio medio entre el primer y el último nivel reportado de cada alumno.
+                          </p>
+                        </div>
+                        <div
+                          style={{
+                            display: 'grid',
+                            gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
+                            gap: 8,
+                          }}
+                        >
+                          <div style={miniTarjetaBlanca}>
+                            <span style={{ color: '#64748b', fontSize: 12 }}>EVOLUCIÓN MEDIA</span>
+                            <strong style={{ fontSize: 25 }}>
+                              {numeroAnalisisAdminApp(analisisAdmin.resumen.evolucion_tecnica)}
+                            </strong>
+                          </div>
+                          <div style={miniTarjetaBlanca}>
+                            <span style={{ color: '#64748b', fontSize: 12 }}>MEJORAN</span>
+                            <strong style={{ fontSize: 25, color: '#15803d' }}>{analisisAdmin.resumen.alumnos_mejoran}</strong>
+                          </div>
+                          <div style={miniTarjetaBlanca}>
+                            <span style={{ color: '#64748b', fontSize: 12 }}>ESTABLES</span>
+                            <strong style={{ fontSize: 25 }}>{analisisAdmin.resumen.alumnos_estables}</strong>
+                          </div>
+                          <div style={miniTarjetaBlanca}>
+                            <span style={{ color: '#64748b', fontSize: 12 }}>BAJAN</span>
+                            <strong style={{ fontSize: 25, color: '#b91c1c' }}>{analisisAdmin.resumen.alumnos_bajan}</strong>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section style={{ display: 'grid', gap: 9 }}>
+                        <div>
+                          <strong>Evolución mensual</strong>
+                          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
+                            Crecimiento, continuidad, asistencia, ocupación y carga real por mes.
+                          </p>
+                        </div>
+                        <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
+                          <table
+                            style={{
+                              width: '100%',
+                              minWidth: 980,
+                              borderCollapse: 'collapse',
+                              fontSize: 12,
+                            }}
+                          >
+                            <thead>
+                              <tr>
+                                {['Mes','Alumnos','Altas','Crec.','Cont.','Pérdida','Asist.','Niños/turno','Por grupo','Sesiones','Ocup.','Evol.'].map((titulo) => (
+                                  <th key={titulo} style={{ padding: 8, textAlign: 'left', borderBottom: '1px solid #cbd5e1', color: '#475569', whiteSpace: 'nowrap' }}>
+                                    {titulo}
+                                  </th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {analisisAdmin.mensual.map((m) => (
+                                <tr key={m.mes}>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9', fontWeight: 800 }}>{etiquetaMesAnalisisAdminApp(m.mes)}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{m.alumnos_unicos}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{m.altas}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.crecimiento_pct, '%')}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.continuidad_pct, '%')}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.perdida_continuidad_pct, '%')}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.asistencia_real_pct, '%')}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.promedio_ninos_turno)}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.promedio_por_grupo)}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{m.sesiones_realizadas}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.ocupacion_pct, '%')}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.evolucion_tecnica)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </section>
+
+                      <section
+                        style={{
+                          display: 'grid',
+                          gridTemplateColumns: esVistaMovilApp ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))',
+                          gap: 12,
+                        }}
+                      >
+                        <div style={{ ...agendaBloqueBlanco, border: '1px solid #e2e8f0' }}>
+                          <strong>Distribución de niveles</strong>
+                          <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                            {analisisAdmin.niveles.length === 0 && <span style={{ color: '#64748b' }}>Sin datos todavía.</span>}
+                            {analisisAdmin.niveles.map((nivel) => {
+                              const maximo = Math.max(1, ...analisisAdmin.niveles.map((n) => n.total));
+                              return (
+                                <div key={nivel.nivel} style={{ display: 'grid', gap: 4 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
+                                    <strong>{nivel.nivel}</strong><span>{nivel.total}</span>
+                                  </div>
+                                  <div style={{ height: 8, borderRadius: 999, background: '#f1f5f9', overflow: 'hidden' }}>
+                                    <div style={{ height: '100%', width: `${Math.max(4, (nivel.total / maximo) * 100)}%`, background: '#7c3aed', borderRadius: 999 }} />
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div style={{ ...agendaBloqueBlanco, border: '1px solid #e2e8f0' }}>
+                          <strong>Progresión de niveles</strong>
+                          <div style={{ display: 'grid', gap: 7, marginTop: 10 }}>
+                            {analisisAdmin.progresiones.length === 0 && <span style={{ color: '#64748b' }}>Sin progresiones todavía.</span>}
+                            {analisisAdmin.progresiones.slice(0, 12).map((progresion, indice) => (
+                              <div key={`${progresion.desde}-${progresion.hasta}-${indice}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '7px 0', borderBottom: '1px solid #f1f5f9' }}>
+                                <span><strong>{progresion.desde}</strong> → <strong>{progresion.hasta}</strong></span>
+                                <span style={{ fontWeight: 850, color: progresion.sentido === 'SUBE' ? '#15803d' : progresion.sentido === 'BAJA' ? '#b91c1c' : '#64748b' }}>
+                                  {progresion.total} · {progresion.sentido}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </section>
+
+                      <section style={{ display: 'grid', gap: 9 }}>
+                        <div>
+                          <strong>Comparación entre temporadas</strong>
+                          <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
+                            Queda preparada para crecer automáticamente cuando existan nuevas temporadas.
+                          </p>
+                        </div>
+                        <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
+                          <table style={{ width: '100%', minWidth: 650, borderCollapse: 'collapse', fontSize: 13 }}>
+                            <thead>
+                              <tr>
+                                {['Temporada','Alumnos','Sesiones','Asistencia','Evolución técnica'].map((titulo) => (
+                                  <th key={titulo} style={{ padding: 8, textAlign: 'left', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>{titulo}</th>
+                                ))}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {analisisAdmin.comparativa_temporadas.map((temporada) => (
+                                <tr key={temporada.temporada_id}>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9', fontWeight: 800 }}>
+                                    {temporada.temporada}{temporada.activa ? ' · actual' : ''}
+                                  </td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{temporada.alumnos_unicos}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{temporada.sesiones_realizadas}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(temporada.asistencia_real_pct, '%')}</td>
+                                  <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(temporada.evolucion_tecnica)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </section>
+
+                      <details style={{ ...agendaBloqueBlanco, border: '1px solid #e2e8f0', padding: 12 }}>
+                        <summary style={{ cursor: 'pointer', fontWeight: 850, color: '#475569' }}>
+                          Cómo se calcula cada métrica
+                        </summary>
+                        <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                          {Object.entries(analisisAdmin.definiciones).map(([clave, definicion]) => (
+                            <div key={clave} style={{ fontSize: 13, lineHeight: 1.45 }}>
+                              <strong>{clave.replace(/_/g, ' ')}:</strong> {definicion}
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    </>
+                  )}
+                </article>
+              )}
+
+      {pantalla === 'revisionOcio' && (
+        <section>
+          <div style={cabeceraPantallaMovil}>
+            <div>
+              <p style={etiquetaSuperior}>OCIO · EVOLUCIÓN</p>
+              <h2 style={{ margin: 0 }}>Revisión Ocio</h2>
+              <p style={{ margin: '8px 0 0', color: '#555' }}>
+                Niños que pueden necesitar cambio de grupo, alumnos sin grupo y
+                alumnos sin reportes.
+              </p>
+            </div>
+            <button
+              onClick={() => {
+                cargarOcioAlumnos();
+                cargarOcioGrupos();
+                cargarOcioCambios();
+              }}
+              style={botonSecundario}
+            >
+              Actualizar revisión
+            </button>
+          </div>
+
+          <div style={{ ...tarjeta, marginTop: 16 }}>
+            <div style={gridFormulario}>
+              <label style={labelCampo}>
+                Buscar
+                <input
+                  value={busquedaRevisionOcio}
+                  onChange={(e) => setBusquedaRevisionOcio(e.target.value)}
+                  style={inputCampo}
+                  placeholder="Nombre, nivel o grupo"
+                />
+              </label>
+              <label style={labelCampo}>
+                Filtro
+                <select
+                  value={filtroRevisionOcio}
+                  onChange={(e) => setFiltroRevisionOcio(e.target.value as any)}
+                  style={selectCampo}
+                >
+                  <option value="cambios">Solo posibles cambios</option>
+                  <option value="sin_grupo">Sin grupo estable</option>
+                  <option value="sin_reportes">Sin reportes</option>
+                  <option value="todos">Todos</option>
+                </select>
+              </label>
+            </div>
+          </div>
+
+          <div style={gridResumenInicio}>
+            <div style={tarjetaInicioAlerta}>
+              <strong>Posibles cambios</strong>
+              <br />
+              <span style={{ fontSize: 26, fontWeight: 900 }}>
+                {
+                  ocioRevisionBase.filter(
+                    (alumno) => alumno.necesita_cambio_revision
+                  ).length
+                }
+              </span>
+            </div>
+            <div style={tarjetaInicioRojo}>
+              <strong>Sin grupo</strong>
+              <br />
+              <span style={{ fontSize: 26, fontWeight: 900 }}>
+                {
+                  ocioRevisionBase.filter((alumno) => alumno.sin_grupo_revision)
+                    .length
+                }
+              </span>
+            </div>
+            <div style={tarjetaInicioAlerta}>
+              <strong>Sin reportes</strong>
+              <br />
+              <span style={{ fontSize: 26, fontWeight: 900 }}>
+                {
+                  ocioRevisionBase.filter(
+                    (alumno) => alumno.sin_reportes_revision
+                  ).length
+                }
+              </span>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
+            {ocioRevisionFiltrada.length === 0 ? (
+              <article style={tarjetaMovilVacia}>
+                No hay alumnos en este filtro.
+              </article>
+            ) : (
+              ocioRevisionFiltrada.map((alumno) => (
+                <article key={alumno.alumno_id} style={tarjetaEntrenadorMovil}>
+                  <div style={agendaCabeceraLinea}>
+                    <div>
+                      <h3 style={{ margin: 0 }}>{alumno.alumno}</h3>
+                      <p style={{ margin: '6px 0 0', color: '#555' }}>
+                        Nivel {alumno.nivel_usado || alumno.nivel || '-'} ·
+                        Grupo actual: {alumno.grupo_estable || 'Sin grupo'}
+                      </p>
+                    </div>
+                    <span
+                      style={
+                        alumno.recomendacion_revision === 'OK'
+                          ? miniBadgeVerde
+                          : miniBadge
+                      }
+                    >
+                      {alumno.recomendacion_revision}
+                    </span>
+                  </div>
+
+                  <div style={gridFormulario}>
+                    <label style={labelCampo}>
+                      Grupo destino sugerido/manual
+                      <select
+                        value={destinoRevisionOcio[alumno.alumno_id] || ''}
+                        onChange={(e) =>
+                          setDestinoRevisionOcio({
+                            ...destinoRevisionOcio,
+                            [alumno.alumno_id]: e.target.value,
+                          })
+                        }
+                        style={selectCampo}
+                      >
+                        <option value="">Elegir grupo...</option>
+                        {ocioGrupos.map((grupo) => (
+                          <option key={grupo.grupo_id} value={grupo.grupo_id}>
+                            {grupo.nombre_grupo} · {grupo.dia_semana}{' '}
+                            {horaCorta(grupo.hora_inicio)} ·{' '}
+                            {grupo.total_alumnos} niños
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => abrirEvaluacionOcio(alumno)}
+                      style={botonSecundario}
+                    >
+                      Ver evaluación
+                    </button>
+                    <button
+                      onClick={() =>
+                        asignarAlumnoGrupoOcio(
+                          alumno.alumno_id,
+                          destinoRevisionOcio[alumno.alumno_id]
+                        )
+                      }
+                      disabled={!destinoRevisionOcio[alumno.alumno_id]}
+                      style={botonPrincipal}
+                    >
+                      Aceptar cambio de grupo
+                    </button>
+                  </div>
+                </article>
+              ))
+            )}
+          </div>
+        </section>
+      )}
+
+      {pantalla === 'agenda' && (
+        <section style={agendaShellCompacto}>
+          <article
+            style={{
+              borderRadius: 24,
+              padding: 20,
+              background:
+                'linear-gradient(135deg, #062d3f 0%, #083b4d 58%, #0b5d4f 100%)',
+              border: '1px solid rgba(16,185,129,0.28)',
+              boxShadow: '0 18px 44px rgba(15,23,42,0.16)',
+              color: '#ffffff',
+              display: 'grid',
+              gap: 16,
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                gap: 16,
+                alignItems: 'flex-start',
+                flexWrap: 'wrap',
+              }}
+            >
+              <div style={{ minWidth: 0, flex: '1 1 420px' }}>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 11,
+                    fontWeight: 900,
+                    letterSpacing: 1.15,
+                    color: '#86efac',
+                  }}
+                >
+                  TRABAJO SEMANAL · AGENDA
+                </p>
+                <h2 style={{ margin: '4px 0 0', fontSize: 30, color: '#fff' }}>
+                  Días de entrenamiento
+                </h2>
+                <p
+                  style={{
+                    margin: '7px 0 0',
+                    color: '#cbd5e1',
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Semana compacta: eliges semana, abres un día y trabajas solo una
+                  sesión. Sin bajar toda la pantalla.
+                </p>
+              </div>
+
+              <div
+                style={{
+                  minWidth: 250,
+                  padding: '11px 13px',
+                  borderRadius: 16,
+                  background: 'rgba(255,255,255,0.10)',
+                  border: '1px solid rgba(255,255,255,0.16)',
+                  display: 'grid',
+                  gap: 4,
+                }}
+              >
+                <span
+                  style={{
+                    fontSize: 10,
+                    fontWeight: 900,
+                    letterSpacing: 0.8,
+                    color: '#a7f3d0',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Semana completa
+                </span>
+                <strong style={{ fontSize: 16 }}>
+                  {semanaAgendaActiva
+                    ? rangoSemanaAgenda(semanaAgendaActiva)
+                    : 'Sin semana'}
+                </strong>
+                <span style={{ color: '#cbd5e1', fontSize: 13 }}>
+                  Entrenos:{' '}
+                  {semanaAgendaActiva
+                    ? rangoEntrenosSemanaAgenda(semanaAgendaActiva)
+                    : '-'}
+                </span>
+                <button
+                  onClick={() => { cargarAgendaOperativaDirecta(); cargarIntensivos(); cargarPlanning(); cargarListados(); cargarEntrenadores(); }}
+                  style={{
+                    ...botonSecundario,
+                    marginTop: 6,
+                    minHeight: 36,
+                    width: '100%',
+                    justifyContent: 'center',
+                    background: 'rgba(255,255,255,0.96)',
+                  }}
+                >
+                  Actualizar
+                </button>
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
+                gap: 10,
+                paddingTop: 4,
+              }}
+            >
+              <label style={{ ...labelCampo, color: '#e2e8f0' }}>
+                Temporada
+                <select
+                  value={anioInicioTemporadaAgenda}
+                  style={{ ...selectCampoAgenda, width: '100%', color: '#0f172a', background: '#ffffff' }}
+                  onChange={(e) => {
+                    const nuevoAnio = Number(e.target.value);
+                    setAnioInicioTemporadaAgenda(nuevoAnio);
+                    setMesAgenda(`${nuevoAnio}-09`);
+                    setSemanaAgendaInicio('');
+                    setAgendaDiaCompactoActivo('');
+                    setAgendaSesionActivaId('');
+                    setAgendaFormularioAbierto(false);
+                  }}
+                >
+                  {opcionesTemporadaAgenda.map((anio) => (
+                    <option key={anio} value={anio}>
+                      {nombreTemporadaAgenda(anio)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label style={{ ...labelCampo, color: '#e2e8f0' }}>
+                Mes
+                <select
+                  value={mesAgendaActivo}
+                  style={{ ...selectCampoAgenda, width: '100%', color: '#0f172a', background: '#ffffff' }}
+                  onChange={(e) => {
+                    setMesAgenda(e.target.value);
+                    setSemanaAgendaInicio('');
+                    setAgendaDiaCompactoActivo('');
+                    setAgendaSesionActivaId('');
+                    setAgendaFormularioAbierto(false);
+                  }}
+                >
+                  {mesesAgenda.map((clave) => (
+                    <option key={clave} value={clave}>
+                      {nombreMesAgendaDesdeClave(clave)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label style={{ ...labelCampo, color: '#e2e8f0' }}>
+                Semana
+                <select
+                  value={semanaAgendaActiva}
+                  style={{ ...selectCampoAgenda, width: '100%', color: '#0f172a', background: '#ffffff' }}
+                  onChange={(e) => cambiarSemanaTrabajoApp(e.target.value)}
+                >
+                  {semanasAgenda.map((semana) => (
+                    <option key={semana} value={semana}>
+                      Semana {rangoSemanaAgenda(semana)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+          </article>
+
+          <section
+            style={{
+              ...agendaPanelControles,
+              padding: 14,
+              gap: 12,
+            }}
+          >
+
+            {diasSemanaAgenda.length === 0 ? (
+              <div style={agendaVacio}>
+                Selecciona una semana para ver los días de entrenamiento.
+              </div>
+            ) : (
+              (() => {
+                const diaActivo =
+                  diasSemanaAgenda.find(
+                    (dia) => dia.fecha === agendaDiaCompactoActivo
+                  ) || diasSemanaAgenda[0];
+                const sesionesDia = diaActivo
+                  ? sesionesDelDiaAgenda(diaActivo.fecha)
+                  : [];
+                const totalAlumnosDia = sesionesDia.reduce(
+                  (total, sesion) => total + Number(sesion.totalAlumnos || 0),
+                  0
+                );
+                const totalGruposDia = sesionesDia.reduce(
+                  (total, sesion) => total + Number(sesion.totalGrupos || 0),
+                  0
+                );
+
+                return (
+                  <div style={{ display: 'grid', gap: 14 }}>
+                    <div style={agendaDiasSelectorCompacto}>
+                      {diasSemanaAgenda.map((dia) => {
+                        const sesionesDiaBoton = sesionesDelDiaAgenda(
+                          dia.fecha
+                        );
+                        const alumnosDiaBoton = sesionesDiaBoton.reduce(
+                          (total, sesion) =>
+                            total + Number(sesion.totalAlumnos || 0),
+                          0
+                        );
+                        const gruposDiaBoton = sesionesDiaBoton.reduce(
+                          (total, sesion) =>
+                            total + Number(sesion.totalGrupos || 0),
+                          0
+                        );
+                        const activo = dia.fecha === diaActivo.fecha;
+
+                        return (
+                          <button
+                            key={dia.fecha}
+                            onClick={() => {
+                              setAgendaDiaCompactoActivo(dia.fecha);
+                              setAgendaSesionActivaId('');
+                              setAgendaFormularioAbierto(false);
+                              window.setTimeout(() => {
+                                document
+                                  .getElementById('agenda-dia-seleccionado')
+                                  ?.scrollIntoView({
+                                    behavior: 'smooth',
+                                    block: 'start',
+                                  });
+                              }, 120);
+                            }}
+                            style={agendaBotonDiaCompacto(
+                              activo,
+                              alumnosDiaBoton,
+                              gruposDiaBoton
+                            )}
+                          >
+                            <span
+                              style={{
+                                display: 'grid',
+                                gap: 2,
+                                textAlign: 'left',
+                              }}
+                            >
+                              <span
+                                style={{
+                                  textTransform: 'capitalize',
+                                  fontWeight: 900,
+                                }}
+                              >
+                                {dia.nombre}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: 13,
+                                  color: activo ? '#1d4ed8' : '#64748b',
+                                }}
+                              >
+                                {fechaAgendaDiaCorta(dia.fecha)}
+                              </span>
+                            </span>
+                            <span
+                              style={agendaMiniContadorDiaCompacto(
+                                activo,
+                                alumnosDiaBoton,
+                                gruposDiaBoton
+                              )}
+                            >
+                              {alumnosDiaBoton} alumnos · {gruposDiaBoton}{' '}
+                              grupos
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <article
+                      id="agenda-dia-seleccionado"
+                      style={{
+                        ...agendaDiaCard,
+                        padding: 0,
+                        overflow: 'hidden',
+                        border: '1px solid rgba(15,118,110,0.24)',
+                        boxShadow: '0 12px 30px rgba(15,23,42,0.06)',
+                      }}
+                    >
+                      <header
+                        style={{
+                          ...agendaDiaHeader,
+                          marginBottom: 0,
+                          padding: '15px 16px',
+                          background:
+                            'linear-gradient(135deg, rgba(236,253,245,0.98), #ffffff)',
+                          borderBottom: '1px solid rgba(15,118,110,0.16)',
+                        }}
+                      >
+                        <div>
+                          <p style={agendaMiniLabel}>Día seleccionado</p>
+                          <h3
+                            style={{
+                              margin: 0,
+                              textTransform: 'capitalize',
+                              fontSize: 24,
+                            }}
+                          >
+                            {diaActivo.nombre} ·{' '}
+                            {fechaAgendaCortaConAnio(diaActivo.fecha)}
+                          </h3>
+                          <p style={{ margin: '4px 0 0', color: '#64748b' }}>
+                            {totalAlumnosDia} alumnos · {totalGruposDia} grupos
+                            · Semana {rangoSemanaAgenda(semanaAgendaActiva)}
+                          </p>
+                        </div>
+                        <span
+                          style={{
+                            ...agendaMiniTexto,
+                            alignSelf: 'center',
+                            fontWeight: 800,
+                          }}
+                        >
+                          Elige un turno y añade Baby
+                        </span>
+                      </header>
+
+                      <div style={{ display: 'grid', gap: 8, padding: '14px 16px 0' }}>
+                        {turnosTrabajoDiaAgenda(diaActivo.fecha).map(
+                          (turno) => (
+                            <div
+                              key={`${diaActivo.fecha}-${turno.inicio}`}
+                              style={agendaTurnoFila}
+                            >
+                              <strong>{turno.etiqueta}</strong>
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  gap: 6,
+                                  flexWrap: 'wrap',
+                                }}
+                              >
+                                <button
+                                  onClick={() =>
+                                    abrirFormularioAgendaDia(
+                                      diaActivo.fecha,
+                                      turno.inicio,
+                                      turno.fin,
+                                      'BABY'
+                                    )
+                                  }
+                                  style={botonModalidadAgenda('BABY')}
+                                >
+                                  + Baby
+                                </button>
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+
+                      {sesionesDia.length === 0 ? (
+                        <div style={{ ...agendaVacioMini, margin: '12px 16px 16px' }}>
+                          <strong>Sin sesiones en este día.</strong>
+                          <p style={{ margin: '6px 0 10px' }}>
+                            Para Baby, elige un turno y pulsa “+ Baby”.
+                            Ocio se prepara desde Grupos estables e Intensivos
+                            desde su flujo correspondiente.
+                          </p>
+                        </div>
+                      ) : (
+                        <div
+                          style={{ display: 'grid', gap: 10, marginTop: 12 }}
+                        >
+                          {sesionesDia.map((sesion) => (
+                            <article
+                              key={sesion.id}
+                              style={{
+                                ...agendaSesionCardModalidad(sesion.modalidad),
+                                borderRadius: 16,
+                                boxShadow: '0 8px 20px rgba(15,23,42,0.05)',
+                              }}
+                            >
+                              <div style={agendaSesionTop}>
+                                <div>
+                                  <div
+                                    style={agendaBadgeModalidadColor(
+                                      sesion.modalidad
+                                    )}
+                                  >
+                                    {sesion.modalidad}
+                                  </div>
+                                  <h4
+                                    style={{
+                                      margin: '8px 0 4px',
+                                      fontSize: 18,
+                                    }}
+                                  >
+                                    {sesion.titulo}
+                                  </h4>
+                                  <p style={{ margin: 0, color: '#475569' }}>
+                                    {sesion.hora_inicio?.slice(0, 5)} -{' '}
+                                    {sesion.hora_fin?.slice(0, 5)} ·{' '}
+                                    {sesion.estado}
+                                  </p>
+                                </div>
+                                <div style={agendaSesionContadores}>
+                                  <span>
+                                    <strong>{sesion.totalAlumnos}</strong>{' '}
+                                    alumnos
+                                  </span>
+                                  <span>
+                                    <strong>{sesion.totalGrupos}</strong> grupos
+                                  </span>
+                                </div>
+                              </div>
+                              <div style={agendaAccionesSesion}>
+                                <button
+                                  onClick={() =>
+                                    abrirSesionAgenda(
+                                      sesion,
+                                      sesion.totalGrupos > 0
+                                        ? 'grupos'
+                                        : 'alumnos'
+                                    )
+                                  }
+                                  style={botonPrincipal}
+                                >
+                                  Abrir sesión
+                                </button>
+                              </div>
+                            </article>
+                          ))}
+                        </div>
+                      )}
+                    </article>
+                  </div>
+                );
+              })()
+            )}
+          </section>
+
+          {(agendaFormularioAbierto || agendaSesionActivaId) && (
+            <section
+              id="trabajo-agenda"
+              style={{
+                ...agendaBloqueBlanco,
+                border: '2px solid #111827',
+                scrollMarginTop: 16,
+              }}
+            >
+              <div style={agendaCabeceraLinea}>
+                <div>
+                  <h3 style={{ margin: 0 }}>
+                    {agendaFormularioAbierto
+                      ? 'Pegar listado'
+                      : 'Sesión abierta'}
+                  </h3>
+                  <p style={{ margin: '4px 0 0', color: '#666' }}>
+                    Trabajo directo sin salto automático de pantalla.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setAgendaFormularioAbierto(false);
+                    setAgendaSesionActivaId('');
+                    setAgendaRecomendaciones([]);
+                  }}
+                  style={botonSecundario}
+                >
+                  Cerrar
+                </button>
+              </div>
+
+              {agendaFormularioAbierto && (
+                <article
+                  id="agenda-formulario-listado"
+                  style={{ ...tarjetaResaltada, scrollMarginTop: 16 }}
+                >
+                  <h3 style={{ marginTop: 0 }}>Pegar listado de Aimharder</h3>
+                  <p>
+                    Día seleccionado:{' '}
+                    <strong>{formatearFecha(agendaForm.fecha)}</strong>. Este
+                    listado pertenece SOLO a la modalidad y turno que ves abajo.
+                  </p>
+
+                  <div style={gridFormulario}>
+                    <label style={labelCampo}>
+                      Modalidad
+                      <select
+                        value={agendaForm.modalidad}
+                        onChange={(e) =>
+                          setAgendaForm({
+                            ...agendaForm,
+                            modalidad: e.target.value,
+                          })
+                        }
+                      >
+                        <option value="BABY">Baby</option>
+                        <option value="OCIO">Ocio</option>
+                        <option value="INTENSIVOS">Intensivo</option>
+                        <option value="PARTICULAR">Particular</option>
+                      </select>
+                    </label>
+                    <label style={labelCampo}>
+                      Hora inicio
+                      <input
+                        type="time"
+                        value={agendaForm.hora_inicio}
+                        onChange={(e) =>
+                          setAgendaForm({
+                            ...agendaForm,
+                            hora_inicio: e.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                    <label style={labelCampo}>
+                      Hora fin
+                      <input
+                        type="time"
+                        value={agendaForm.hora_fin}
+                        onChange={(e) =>
+                          setAgendaForm({
+                            ...agendaForm,
+                            hora_fin: e.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                    <label style={labelCampo}>
+                      Lugar
+                      <input
+                        value={agendaForm.lugar}
+                        onChange={(e) =>
+                          setAgendaForm({
+                            ...agendaForm,
+                            lugar: e.target.value,
+                          })
+                        }
+                      />
+                    </label>
+                  </div>
+
+                  <label style={labelCampo}>
+                    Listado del día
+                    <textarea
+                      id="agenda-textarea-listado"
+                      value={agendaForm.texto_listado}
+                      onChange={(e) =>
+                        setAgendaForm({
+                          ...agendaForm,
+                          texto_listado: e.target.value,
+                        })
+                      }
+                      placeholder="Pega aquí el listado de Aimharder..."
+                      rows={8}
+                    />
+                  </label>
+
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={volcarListadoAgendaOperativa}
+                      style={botonPrincipal}
+                    >
+                      1 · Volcar listado y crear sesión
+                    </button>
+                    <button
+                      onClick={() => setAgendaFormularioAbierto(false)}
+                      style={botonSecundario}
+                    >
+                      Cancelar
+                    </button>
+                  </div>
+                </article>
+              )}
+
+              {!agendaFormularioAbierto && agendaSesionActivaId && (
+                <article
+                  id="agenda-sesion-trabajo"
+                  style={{ ...tarjetaResaltada, scrollMarginTop: 16 }}
+                >
+                  <h3 style={{ marginTop: 0 }}>Sesión seleccionada</h3>
+
+                  {(() => {
+                    const totalAlumnosGrupos = agendaGruposSesion.reduce(
+                      (total, grupo) =>
+                        total + Number(grupo.total_alumnos || 0),
+                      0
+                    );
+                    const totalAlumnosOperativos =
+                      agendaGruposSesion.length > 0
+                        ? totalAlumnosGrupos
+                        : agendaAlumnosSesion.length;
+
+                    return (
+                  <div style={gridMiniMetricas}>
+                    <button
+                      type="button"
+                      style={{ ...miniMetrica, cursor: 'pointer', textAlign: 'left' }}
+                      onClick={() => {
+                        setAgendaFiltroAlumnos('TODOS');
+                        requestAnimationFrame(() => {
+                          const detalle = document.getElementById('agenda-alumnos-detectados') as HTMLDetailsElement | null;
+                          if (detalle) detalle.open = true;
+                          detalle?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        });
+                      }}
+                    >
+                      <strong>{totalAlumnosOperativos}</strong>
+                      <span>alumnos en grupos</span>
+                    </button>
+                    <button
+                      type="button"
+                      style={{ ...miniMetrica, cursor: 'pointer', textAlign: 'left' }}
+                      onClick={() => {
+                        document
+                          .getElementById('agenda-grupos-creados')
+                          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      }}
+                    >
+                      <strong>{agendaGruposSesion.length}</strong>
+                      <span>grupos creados</span>
+                    </button>
+                    <button
+                      type="button"
+                      style={{ ...miniMetrica, cursor: 'pointer', textAlign: 'left' }}
+                      onClick={() => {
+                        setAgendaFiltroAlumnos('NUEVO');
+                        requestAnimationFrame(() => {
+                          const detalle = document.getElementById('agenda-alumnos-detectados') as HTMLDetailsElement | null;
+                          if (detalle) detalle.open = true;
+                          detalle?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        });
+                      }}
+                    >
+                      <strong>
+                        {
+                          agendaAlumnosSesion.filter(
+                            (a) => a.estado_en_listado === 'PENDIENTE_TEST'
+                          ).length
+                        }
+                      </strong>
+                      <span>pendientes test</span>
+                    </button>
+                    <button
+                      type="button"
+                      style={{ ...miniMetrica, cursor: 'pointer', textAlign: 'left' }}
+                      onClick={() => {
+                        setAgendaFiltroAlumnos('CONOCIDO');
+                        requestAnimationFrame(() => {
+                          const detalle = document.getElementById('agenda-alumnos-detectados') as HTMLDetailsElement | null;
+                          if (detalle) detalle.open = true;
+                          detalle?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        });
+                      }}
+                    >
+                      <strong>
+                        {
+                          agendaAlumnosSesion.filter(
+                            (a) => a.estado_en_listado === 'CONOCIDO'
+                          ).length
+                        }
+                      </strong>
+                      <span>conocidos</span>
+                    </button>
+                  </div>
+                    );
+                  })()}
+
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 10,
+                      flexWrap: 'wrap',
