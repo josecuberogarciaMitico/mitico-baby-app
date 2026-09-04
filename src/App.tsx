@@ -3959,7 +3959,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [gestionandoPushEntrenadorApp, setGestionandoPushEntrenadorApp] =
     useState(false);
   const [mensajePushEntrenadorApp, setMensajePushEntrenadorApp] = useState('');
+  const autoPushIntentadoSemanaRef = useRef('');
   const [cerrandoSemanaPushApp, setCerrandoSemanaPushApp] = useState(false);
+  const [enviandoRecordatorioReportesPushId, setEnviandoRecordatorioReportesPushId] = useState('');
   const [esVistaMovilApp, setEsVistaMovilApp] = useState(() =>
     typeof window !== 'undefined'
       ? window.matchMedia('(max-width: 719px)').matches
@@ -4200,6 +4202,48 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       await ejecutarPushMiticoApp('group_published', { grupo_id: grupoId });
     } catch (error) {
       console.warn('Grupo publicado, pero no se pudo enviar el aviso push:', error);
+    }
+  }
+
+  async function notificarCambioEntrenadorGrupoPublicadoPushApp(
+    grupoId: string,
+    entrenadorAnteriorId: string
+  ) {
+    try {
+      const contexto = await contextoPushMiticoApp();
+      const respuesta = await fetch(
+        `${contexto.supabaseUrl}/functions/v1/mitico-group-assignment-push`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: contexto.anonKey,
+            Authorization: `Bearer ${contexto.accessToken}`,
+          },
+          body: JSON.stringify({
+            grupo_id: grupoId,
+            entrenador_anterior_id: entrenadorAnteriorId,
+          }),
+        }
+      );
+
+      const datos = await respuesta.json().catch(() => ({}));
+      if (!respuesta.ok) {
+        throw new Error(
+          String(
+            datos?.error ||
+              'No se pudo notificar el cambio de entrenador del grupo.'
+          )
+        );
+      }
+
+      return datos;
+    } catch (error) {
+      console.warn(
+        'Entrenador cambiado, pero no se pudo enviar el aviso Push de reasignación:',
+        error
+      );
+      return null;
     }
   }
 
@@ -6178,7 +6222,13 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       });
       await notificarGrupoPublicadoPushApp(grupoId);
 
+      if (agendaSesionActivaId) {
+        await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      }
+      await cargarAgendaOperativaDirecta();
       await cargarPlanning();
+      await cargarGruposEntrenador();
+      await cargarCobros();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     }
@@ -6201,7 +6251,13 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_grupo_id: grupoId,
       });
 
+      if (agendaSesionActivaId) {
+        await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      }
+      await cargarAgendaOperativaDirecta();
       await cargarPlanning();
+      await cargarGruposEntrenador();
+      await cargarCobros();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
     }
@@ -18016,20 +18072,75 @@ async function abrirGestionOperativaIntensivoDia(
     if (!grupo.grupo_id) return;
 
     if (!nuevoEntrenadorId) {
-      setError('Selecciona un entrenador disponible para cambiar el grupo.');
+      if (!grupo.entrenador_id) return;
+
+      if (grupo.publicado) {
+        setError(
+          `${grupo.nombre_grupo}: despublica primero el grupo antes de dejarlo sin entrenador.`
+        );
+        return;
+      }
+
+      const confirmarQuitar = window.confirm(
+        `¿Dejar ${grupo.nombre_grupo} sin entrenador asignado?
+
+` +
+          `El grupo seguirá en preparación y no será visible para ningún entrenador. ` +
+          `Si tiene segundo entrenador, tendrás que quitarlo antes.`
+      );
+      if (!confirmarQuitar) return;
+
+      setCargando(true);
+      setError('');
+
+      try {
+        await ejecutarFuncion('desasignar_entrenador_grupo_app', {
+          p_grupo_id: grupo.grupo_id,
+        });
+
+        if (agendaSesionActivaId) {
+          await cargarDetalleSesionAgenda(agendaSesionActivaId);
+        }
+        await cargarAgendaOperativaDirecta();
+        await cargarGruposEntrenador();
+        await cargarReportesPendientes();
+        await cargarPlanning();
+        await cargarCobros();
+      } catch (err) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'Error quitando el entrenador del grupo'
+        );
+      }
+
+      setCargando(false);
       return;
     }
+
+    if (nuevoEntrenadorId === grupo.entrenador_id) return;
 
     const nuevoEntrenador = entrenadores.find(
       (entrenador) => entrenador.entrenador_id === nuevoEntrenadorId
     );
+
     const confirmar = window.confirm(
-      `¿Cambiar el entrenador de ${grupo.nombre_grupo} a ${
-        nuevoEntrenador?.nombre_completo || 'este entrenador'
-      }?\n\nSe actualizará la vista del entrenador y los cobros se recalcularán con la nueva asignación.`
+      grupo.publicado
+        ? `¿Cambiar el entrenador de ${grupo.nombre_grupo} a ${
+            nuevoEntrenador?.nombre_completo || 'este entrenador'
+          }?
+
+El grupo YA está publicado. El entrenador anterior dejará de verlo, el nuevo lo verá como pendiente de confirmar y se intentará avisar a ambos por Push.`
+        : `¿Cambiar el entrenador de ${grupo.nombre_grupo} a ${
+            nuevoEntrenador?.nombre_completo || 'este entrenador'
+          }?
+
+El grupo sigue en preparación: este cambio todavía no enviará ningún Push.`
     );
 
     if (!confirmar) return;
+
+    const entrenadorAnteriorId = grupo.entrenador_id || '';
 
     setCargando(true);
     setError('');
@@ -18040,8 +18151,20 @@ async function abrirGestionOperativaIntensivoDia(
         p_entrenador_id: nuevoEntrenadorId,
       });
 
-      if (agendaSesionActivaId)
+      if (
+        grupo.publicado &&
+        entrenadorAnteriorId &&
+        entrenadorAnteriorId !== nuevoEntrenadorId
+      ) {
+        await notificarCambioEntrenadorGrupoPublicadoPushApp(
+          grupo.grupo_id,
+          entrenadorAnteriorId
+        );
+      }
+
+      if (agendaSesionActivaId) {
         await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      }
       await cargarAgendaOperativaDirecta();
       await cargarGruposEntrenador();
       await cargarReportesPendientes();
@@ -19523,8 +19646,13 @@ async function abrirGestionOperativaIntensivoDia(
       )
     : '';
 
-  async function cargarEstadoSemanaPushEntrenadorApp() {
-    if (!esEntrenadorApp || !semanaVistaEntrenadorInicio) {
+  async function cargarEstadoSemanaPushEntrenadorApp(
+    semanaForzada?: string
+  ) {
+    const semanaObjetivo =
+      semanaForzada || semanaVistaEntrenadorInicio;
+
+    if (!esEntrenadorApp || !semanaObjetivo) {
       setEstadoSemanaPushEntrenadorApp(null);
       return;
     }
@@ -19533,7 +19661,7 @@ async function abrirGestionOperativaIntensivoDia(
     try {
       const estado = await ejecutarPushMiticoApp<EstadoSemanaEntrenadorPush>(
         'trainer_week_status',
-        { semana_inicio: semanaVistaEntrenadorInicio }
+        { semana_inicio: semanaObjetivo }
       );
       setEstadoSemanaPushEntrenadorApp(estado);
     } catch (errorPush) {
@@ -19555,13 +19683,160 @@ async function abrirGestionOperativaIntensivoDia(
     disponibilidad.length,
   ]);
 
-  async function cerrarOrganizacionSemanalPushApp() {
-    if (!esCoordinadorApp || !semanaVistaEntrenadorInicio || cerrandoSemanaPushApp)
+  useEffect(() => {
+    if (
+      !esEntrenadorApp ||
+      pantalla !== 'entrenador' ||
+      !semanaVistaEntrenadorInicio ||
+      !estadoSemanaPushEntrenadorApp ||
+      estadoSemanaPushEntrenadorApp.push_activo ||
+      permisoPushMitico() !== 'granted' ||
+      gestionandoPushEntrenadorApp
+    ) {
+      return;
+    }
+
+    if (
+      autoPushIntentadoSemanaRef.current === semanaVistaEntrenadorInicio
+    ) {
+      return;
+    }
+
+    autoPushIntentadoSemanaRef.current = semanaVistaEntrenadorInicio;
+    void activarPushEntrenadorApp(semanaVistaEntrenadorInicio);
+  }, [
+    esEntrenadorApp,
+    pantalla,
+    semanaVistaEntrenadorInicio,
+    estadoSemanaPushEntrenadorApp?.push_activo,
+    gestionandoPushEntrenadorApp,
+  ]);
+
+  async function enviarRecordatorioReportesPushApp(
+    entrenadorId: string,
+    entrenadorNombre: string,
+    semanaInicio: string
+  ) {
+    if (!esCoordinadorApp || !entrenadorId || !semanaInicio) return;
+    if (enviandoRecordatorioReportesPushId) return;
+
+    setEnviandoRecordatorioReportesPushId(entrenadorId);
+    try {
+      const accessToken = await obtenerAccessTokenSupabaseApp();
+      const respuesta = await fetch(
+        `${SUPABASE_URL}/functions/v1/mitico-report-reminders`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            mode: 'manual',
+            entrenador_id: entrenadorId,
+            semana_inicio: semanaInicio,
+          }),
+        }
+      );
+
+      const datos = await respuesta.json().catch(() => ({}));
+      if (!respuesta.ok) {
+        throw new Error(
+          String(datos?.error || 'No se pudo enviar el recordatorio Push.')
+        );
+      }
+
+      if (datos?.no_pending) {
+        alert(`${entrenadorNombre} ya no tiene reportes pendientes en esta semana.`);
+        await cargarReportesPendientes();
+        return;
+      }
+
+      if (Number(datos?.sent || 0) > 0) {
+        alert(`Recordatorio Push enviado a ${entrenadorNombre}.`);
+        return;
+      }
+
+      if (Number(datos?.without_subscription || 0) > 0) {
+        alert(
+          `${entrenadorNombre} todavía no tiene las notificaciones activadas en ningún dispositivo.`
+        );
+        return;
+      }
+
+      if (Number(datos?.duplicate || 0) > 0) {
+        alert(
+          `Ya se ha enviado un recordatorio Push a ${entrenadorNombre} durante esta hora.`
+        );
+        return;
+      }
+
+      alert(`No se ha enviado ningún Push a ${entrenadorNombre}. Revisa su estado de notificaciones.`);
+    } catch (errorPush) {
+      alert(
+        errorPush instanceof Error
+          ? errorPush.message
+          : 'No se pudo enviar el recordatorio Push.'
+      );
+    } finally {
+      setEnviandoRecordatorioReportesPushId('');
+    }
+  }
+
+  async function actualizarVistaEntrenadorCompletaApp() {
+    if (cargando) return;
+
+    setCargando(true);
+    setError('');
+    setDetalle(null);
+
+    try {
+      let semanaObjetivo = semanaVistaEntrenadorInicio;
+
+      if (esEntrenadorApp) {
+        const objetivo =
+          await ejecutarFuncionAuthJson<{
+            semana_inicio: string | null;
+          }>('obtener_semana_disponibilidad_objetivo_entrenador_app', {});
+
+        if (objetivo?.semana_inicio) {
+          semanaObjetivo = objetivo.semana_inicio;
+          setSemanaPublicadaObjetivoEntrenador(semanaObjetivo);
+          setSemanaEntrenadorSeleccionada(semanaObjetivo);
+        }
+      }
+
+      await Promise.all([
+        cargarGruposEntrenador(),
+        cargarDisponibilidad(semanaObjetivo || undefined),
+      ]);
+
+      if (esEntrenadorApp && semanaObjetivo) {
+        await cargarEstadoSemanaPushEntrenadorApp(semanaObjetivo);
+      }
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo actualizar la Vista entrenador.'
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  async function cerrarOrganizacionSemanalPushApp(
+    semanaForzada?: string
+  ) {
+    const semanaCierre = semanaForzada || semanaVistaEntrenadorInicio;
+
+    if (!esCoordinadorApp || !semanaCierre || cerrandoSemanaPushApp)
       return;
 
     const confirmar = window.confirm(
       `¿Cerrar la organización de la semana ${rangoSemanaAgenda(
-        semanaVistaEntrenadorInicio
+        semanaCierre
       )} y avisar a los entrenadores?
 
 A quienes tengan grupos se les confirmará que ya están preparados. A quienes no tengan ninguno se les avisará de que esta semana no tienen grupos asignados.`
@@ -19571,7 +19846,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
     setCerrandoSemanaPushApp(true);
     try {
       const resultado = await ejecutarPushMiticoApp('week_groups_closed', {
-        semana_inicio: semanaVistaEntrenadorInicio,
+        semana_inicio: semanaCierre,
       });
 
       if (resultado.already_closed) {
@@ -27693,6 +27968,67 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             </div>
           </article>
 
+          {esCoordinadorApp && (
+            <article
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 12,
+                flexWrap: 'wrap',
+                padding: '12px 14px',
+                borderRadius: 16,
+                border: '1px solid #bbf7d0',
+                background: 'linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%)',
+                boxShadow: '0 8px 24px rgba(15,118,110,.06)',
+              }}
+            >
+              <div style={{ minWidth: 0, flex: '1 1 280px' }}>
+                <strong
+                  style={{
+                    display: 'block',
+                    color: '#166534',
+                    fontSize: 14,
+                    fontWeight: 950,
+                  }}
+                >
+                  Aviso final de organización semanal
+                </strong>
+                <p
+                  style={{
+                    margin: '4px 0 0',
+                    color: '#475569',
+                    fontSize: 12,
+                    lineHeight: 1.4,
+                  }}
+                >
+                  Cuando hayas terminado de preparar y publicar todos los grupos
+                  de esta semana, ciérrala para avisar también a los entrenadores
+                  que finalmente no tengan grupos asignados.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() =>
+                  void cerrarOrganizacionSemanalPushApp(semanaAgendaActiva)
+                }
+                disabled={cerrandoSemanaPushApp || !semanaAgendaActiva}
+                style={{
+                  ...botonPrincipal,
+                  minHeight: 42,
+                  padding: '9px 14px',
+                  borderRadius: 12,
+                  background: '#0f766e',
+                  borderColor: '#0f766e',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {cerrandoSemanaPushApp ? 'Avisando...' : 'Cerrar semana y avisar'}
+              </button>
+            </article>
+          )}
+
           <section
             style={{
               ...agendaPanelControles,
@@ -29684,6 +30020,83 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                             <div
                               style={{ marginTop: 10, display: 'grid', gap: 8 }}
                             >
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  gap: 10,
+                                  alignItems: 'center',
+                                  justifyContent: 'space-between',
+                                  flexWrap: 'wrap',
+                                  padding: '10px 12px',
+                                  borderRadius: 13,
+                                  border: grupo.publicado
+                                    ? '1px solid #86efac'
+                                    : '1px solid #fcd34d',
+                                  background: grupo.publicado
+                                    ? '#f0fdf4'
+                                    : '#fffbeb',
+                                }}
+                              >
+                                <div style={{ minWidth: 0, flex: '1 1 220px' }}>
+                                  <strong
+                                    style={{
+                                      display: 'block',
+                                      color: grupo.publicado ? '#166534' : '#92400e',
+                                      fontSize: 13,
+                                      fontWeight: 950,
+                                    }}
+                                  >
+                                    {grupo.publicado
+                                      ? `✓ Publicado para ${
+                                          grupo.entrenador || 'entrenador asignado'
+                                        }`
+                                      : 'En preparación'}
+                                  </strong>
+                                  <span
+                                    style={{
+                                      display: 'block',
+                                      marginTop: 2,
+                                      color: '#64748b',
+                                      fontSize: 12,
+                                      fontWeight: 700,
+                                    }}
+                                  >
+                                    {grupo.publicado
+                                      ? 'Visible en su Vista entrenador.'
+                                      : 'Todavía no es visible para el entrenador.'}
+                                  </span>
+                                </div>
+
+                                {!grupo.publicado ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => void publicarGrupo(grupo.grupo_id)}
+                                    disabled={cargando || !grupo.entrenador_id}
+                                    title={
+                                      grupo.entrenador_id
+                                        ? 'Publicar este grupo para el entrenador'
+                                        : 'Asigna un entrenador antes de publicar'
+                                    }
+                                    style={{
+                                      ...botonPrincipal,
+                                      opacity:
+                                        cargando || !grupo.entrenador_id ? 0.55 : 1,
+                                    }}
+                                  >
+                                    Publicar grupo
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => void despublicarGrupo(grupo.grupo_id)}
+                                    disabled={cargando}
+                                    style={botonPeligroMini}
+                                  >
+                                    Despublicar grupo
+                                  </button>
+                                )}
+                              </div>
+
                               <label style={labelCampo}>
                                 Entrenador
                                 <select
@@ -29697,7 +30110,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                   style={selectCampo}
                                 >
                                   <option value="">
-                                    Selecciona entrenador disponible
+                                    Sin entrenador asignado
                                   </option>
                                   {(grupo.entrenador_id &&
                                   !entrenadoresDisponiblesSesionActiva().some(
@@ -35014,10 +35427,9 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               </div>
             </div>
             <button
-              onClick={() => {
-                cargarGruposEntrenador();
-                cargarDisponibilidad();
-              }}
+              type="button"
+              onClick={() => void actualizarVistaEntrenadorCompletaApp()}
+              disabled={cargando}
               style={{
                 ...botonPrincipal,
                 width: esVistaMovilApp ? '100%' : 'auto',
@@ -35030,7 +35442,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                 boxShadow: '0 8px 18px rgba(22,163,74,.22)',
               }}
             >
-              Actualizar vista
+              {cargando ? 'Actualizando...' : 'Actualizar vista'}
             </button>
           </div>
 
@@ -35123,6 +35535,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
 
                 const pushActivo = Boolean(estado?.push_activo);
                 const permiso = permisoPushMitico();
+                const necesitaPermisoPush =
+                  !pushActivo && permiso === 'default';
 
                 return (
                   <div
@@ -35163,6 +35577,29 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                       )}
                     </div>
 
+                    {necesitaPermisoPush && (
+                      <div
+                        style={{
+                          width: '100%',
+                          padding: '10px 12px',
+                          borderRadius: 12,
+                          background: '#fff7ed',
+                          border: '1px solid #fdba74',
+                          color: '#9a3412',
+                          fontSize: 12,
+                          lineHeight: 1.4,
+                          fontWeight: 800,
+                        }}
+                      >
+                        <strong style={{ display: 'block', marginBottom: 3 }}>
+                          🔔 Activa los avisos de Mítico Baby
+                        </strong>
+                        Solo tendrás que aceptarlos una vez en este dispositivo.
+                        Después recibirás automáticamente los avisos de disponibilidad
+                        y grupos publicados.
+                      </div>
+                    )}
+
                     <div
                       style={{
                         display: 'flex',
@@ -35197,18 +35634,23 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                           }
                           disabled={gestionandoPushEntrenadorApp}
                           style={{
-                            ...botonSecundario,
-                            minHeight: 40,
+                            ...botonPrincipal,
+                            minHeight: 48,
                             width: esVistaMovilApp ? '100%' : 'auto',
-                            padding: '8px 12px',
-                            borderRadius: 12,
-                            background: '#ffffff',
+                            padding: '10px 14px',
+                            borderRadius: 13,
+                            background: '#f59e0b',
+                            borderColor: '#f59e0b',
                             color: '#172033',
+                            fontWeight: 950,
+                            boxShadow: '0 7px 18px rgba(245,158,11,.24)',
                           }}
                         >
                           {gestionandoPushEntrenadorApp
-                            ? 'Activando avisos...'
-                            : 'Activar avisos en este móvil'}
+                            ? 'Activando notificaciones...'
+                            : permiso === 'granted'
+                              ? 'Conectando avisos automáticamente...'
+                              : '🔔 Activar notificaciones'}
                         </button>
                       )}
 
@@ -35255,54 +35697,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             </article>
           )}
 
-          {esCoordinadorApp && (
-            <article
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 12,
-                flexWrap: 'wrap',
-                padding: '11px 13px',
-                borderRadius: 14,
-                border: '1px solid #dbe3ec',
-                background: '#f8fafc',
-              }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <strong style={{ color: '#172033' }}>
-                  Aviso final de organización semanal
-                </strong>
-                <p
-                  style={{
-                    margin: '3px 0 0',
-                    color: '#64748b',
-                    fontSize: 12,
-                    lineHeight: 1.35,
-                  }}
-                >
-                  Cuando hayas terminado de publicar todos los grupos, cierra la semana para avisar también a quien finalmente no tenga trabajo.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => void cerrarOrganizacionSemanalPushApp()}
-                disabled={cerrandoSemanaPushApp}
-                style={{
-                  ...botonPrincipal,
-                  minHeight: 40,
-                  padding: '8px 12px',
-                  borderRadius: 12,
-                  background: '#0f766e',
-                  borderColor: '#0f766e',
-                }}
-              >
-                {cerrandoSemanaPushApp
-                  ? 'Cerrando y avisando...'
-                  : 'Cerrar semana y avisar'}
-              </button>
-            </article>
-          )}
+          
 
           <article className="trainer-toolbar" style={panelEntrenadorFiltroApp}>
             {esCoordinadorApp && (
@@ -37513,18 +37908,61 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                           justifyContent: 'space-between',
                         }}
                       >
-                        <button
-                          onClick={() =>
-                            copiarWhatsappPendientesEntrenador(
-                              grupo.entrenador_id,
-                              grupo.entrenador,
-                              grupo.reportes
-                            )
-                          }
-                          style={botonPrincipal}
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: 8,
+                            flexWrap: 'wrap',
+                            alignItems: 'center',
+                          }}
                         >
-                          WhatsApp entrenador
-                        </button>
+                          <button
+                            onClick={() =>
+                              copiarWhatsappPendientesEntrenador(
+                                grupo.entrenador_id,
+                                grupo.entrenador,
+                                grupo.reportes
+                              )
+                            }
+                            style={botonPrincipal}
+                          >
+                            WhatsApp entrenador
+                          </button>
+
+                          {faltanReportes.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                void enviarRecordatorioReportesPushApp(
+                                  grupo.entrenador_id,
+                                  grupo.entrenador,
+                                  semanaAgendaActiva
+                                )
+                              }
+                              disabled={
+                                enviandoRecordatorioReportesPushId ===
+                                grupo.entrenador_id
+                              }
+                              style={{
+                                ...botonPrincipal,
+                                background: '#f59e0b',
+                                borderColor: '#f59e0b',
+                                color: '#172033',
+                                fontWeight: 950,
+                                opacity:
+                                  enviandoRecordatorioReportesPushId ===
+                                  grupo.entrenador_id
+                                    ? 0.65
+                                    : 1,
+                              }}
+                            >
+                              {enviandoRecordatorioReportesPushId ===
+                              grupo.entrenador_id
+                                ? 'Enviando Push...'
+                                : '🔔 Avisar reportes por Push'}
+                            </button>
+                          )}
+                        </div>
                         <span style={{ color: '#64748b', fontWeight: 800 }}>
                           {grupo.reportes.length} tareas pendientes
                         </span>
