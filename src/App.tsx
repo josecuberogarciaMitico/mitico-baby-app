@@ -4742,6 +4742,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [formCobroManual, setFormCobroManual] = useState<CobroManualFormState>(
     cobroManualInicial()
   );
+  const [entrenoManualCobroAbiertoId, setEntrenoManualCobroAbiertoId] =
+    useState('');
   const [cobroPdfPreview, setCobroPdfPreview] =
     useState<CobroPdfPreviewState | null>(null);
 
@@ -5156,6 +5158,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [filtroAltasNivel, setFiltroAltasNivel] = useState<
     'TODOS' | 'PENDIENTE_ENVIO' | 'ENVIADO' | 'RESPONDIDO' | 'VALIDADO' | 'ANADIDO' | 'DESCARTADO'
   >('TODOS');
+  const [filtroModalidadAltasNivel, setFiltroModalidadAltasNivel] = useState<
+    'TODAS' | 'BABY' | 'OCIO' | 'INTENSIVOS'
+  >('TODAS');
   const [altaNivelAbiertaId, setAltaNivelAbiertaId] = useState('');
   const [intensivosAltaNivel, setIntensivosAltaNivel] = useState<IntensivoApp[]>([]);
   const [intensivoAltaSeleccionado, setIntensivoAltaSeleccionado] =
@@ -5294,6 +5299,27 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     if (!anio || !numeroMes) return mes || '-';
     const fecha = new Date(anio, numeroMes - 1, 1);
     return fecha.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
+  }
+
+  function diferenciaAnalisisAdminApp(
+    actual: number | null | undefined,
+    anterior: number | null | undefined,
+    sufijo = ''
+  ) {
+    if (actual === null || actual === undefined || anterior === null || anterior === undefined) {
+      return 'Sin comparación';
+    }
+
+    const diferencia = Number(actual) - Number(anterior);
+    if (!Number.isFinite(diferencia)) return 'Sin comparación';
+
+    const redondeada = Math.round(diferencia * 10) / 10;
+    const texto = Number.isInteger(redondeada)
+      ? String(Math.abs(redondeada))
+      : Math.abs(redondeada).toLocaleString('es-ES', { maximumFractionDigits: 1 });
+
+    if (redondeada === 0) return `Sin cambio${sufijo ? ` ${sufijo}` : ''}`;
+    return `${redondeada > 0 ? '+' : '−'}${texto}${sufijo}`;
   }
 
   async function cargarAnalisisAdminApp(
@@ -5636,6 +5662,50 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       respuestaTexto:
         (respuesta && dato?.opciones?.[respuesta]) || respuesta || 'Sin respuesta',
     };
+  }
+
+
+  function coincideEstadoAltaNivelApp(
+    alta: AltaNivelInicialApp,
+    filtro: typeof filtroAltasNivel = filtroAltasNivel
+  ) {
+    if (filtro === 'TODOS') return true;
+    if (filtro === 'RESPONDIDO') {
+      return alta.estado === 'RESPONDIDO' || alta.estado === 'VALIDADO';
+    }
+    return alta.estado === filtro;
+  }
+
+  function coincideModalidadAltaNivelApp(
+    alta: AltaNivelInicialApp,
+    modalidad: typeof filtroModalidadAltasNivel = filtroModalidadAltasNivel
+  ) {
+    return modalidad === 'TODAS' || alta.modalidad === modalidad;
+  }
+
+  function altaVisibleNivelInicialApp(alta: AltaNivelInicialApp) {
+    return (
+      coincideEstadoAltaNivelApp(alta) &&
+      coincideModalidadAltaNivelApp(alta)
+    );
+  }
+
+  function totalEstadoAltasNivelApp(filtro: typeof filtroAltasNivel) {
+    return altasNivelInicial.filter(
+      (alta) =>
+        coincideEstadoAltaNivelApp(alta, filtro) &&
+        coincideModalidadAltaNivelApp(alta)
+    ).length;
+  }
+
+  function totalModalidadAltasNivelApp(
+    modalidad: typeof filtroModalidadAltasNivel
+  ) {
+    return altasNivelInicial.filter(
+      (alta) =>
+        coincideEstadoAltaNivelApp(alta) &&
+        coincideModalidadAltaNivelApp(alta, modalidad)
+    ).length;
   }
 
   async function cargarIntensivosAltaNivel() {
@@ -10198,7 +10268,14 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
                 }}
               >
                 <div style={agendaCabeceraLinea}>
-                  <div style={{ minWidth: 0 }}>
+                  <div
+              style={{
+                minWidth: 0,
+                maxWidth: esVistaMovilApp ? '100%' : 760,
+                position: 'relative',
+                zIndex: 1,
+              }}
+            >
                     <strong>
                       {recomendado
                         ? 'Recomendado'
@@ -11402,6 +11479,21 @@ Gracias!`;
     setTimeout(() => window.print(), 50);
   }
 
+  function abrirEntrenoManualCobro(cobro: CobroMensual) {
+    const yaAbierto = entrenoManualCobroAbiertoId === cobro.entrenador_id;
+
+    if (yaAbierto) {
+      setEntrenoManualCobroAbiertoId('');
+      return;
+    }
+
+    setFormCobroManual({
+      ...cobroManualInicial(),
+      entrenadorId: cobro.entrenador_id,
+    });
+    setEntrenoManualCobroAbiertoId(cobro.entrenador_id);
+  }
+
   async function crearEntrenoManualCobro() {
     if (!formCobroManual.entrenadorId) {
       alert('Elige un entrenador.');
@@ -11450,6 +11542,7 @@ Gracias!`;
         p_importe_override: importeOverride,
       });
       setFormCobroManual(cobroManualInicial());
+      setEntrenoManualCobroAbiertoId('');
       await cargarCobros();
     } catch (err) {
       setError(
@@ -22029,6 +22122,156 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
     );
   }
 
+  function ordenNivelInformeFamiliaOcioApp(nivel: string | null | undefined) {
+    const limpio = String(nivel || '')
+      .trim()
+      .toUpperCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+    const orden: Record<string, number> = {
+      INICIACION: 0,
+      DEBUT: 0,
+      A: 1,
+      'A+': 2,
+      B: 3,
+      'B+': 4,
+      C: 5,
+      'C+': 6,
+      D: 7,
+      'D+': 8,
+    };
+    return orden[limpio] ?? null;
+  }
+
+  function fraseEvolucionNivelInformeFamiliaOcioApp(fila: EvaluacionAnualOcioApp) {
+    const inicial = fila.nivel_inicial || '';
+    const final = fila.nivel_final || '';
+    if (!inicial && !final) return 'Todavía no hay suficiente información de nivel para describir una evolución.';
+    if (!inicial || !final) return `El nivel registrado actualmente es ${final || inicial}.`;
+
+    const oi = ordenNivelInformeFamiliaOcioApp(inicial);
+    const of = ordenNivelInformeFamiliaOcioApp(final);
+    if (oi !== null && of !== null && of > oi) {
+      return `Durante la temporada ha progresado desde el nivel ${inicial} hasta el nivel ${final}.`;
+    }
+    if (oi !== null && of !== null && of === oi) {
+      return `Durante la temporada ha consolidado el nivel ${final}, reforzando las habilidades trabajadas dentro de ese nivel.`;
+    }
+    if (oi !== null && of !== null && of < oi) {
+      return `El último reporte sitúa su nivel en ${final}. Coordinación puede usar este dato junto con el historial completo para ajustar el siguiente paso.`;
+    }
+    return `Su recorrido de nivel esta temporada ha sido ${inicial} → ${final}.`;
+  }
+
+  function fraseComparativaInformeFamiliaOcioApp(
+    etiqueta: string,
+    inicial: string | null | undefined,
+    final: string | null | undefined
+  ) {
+    const inicio = String(inicial || '').trim();
+    const fin = String(final || '').trim();
+    if (!inicio && !fin) return `No hay información suficiente de ${etiqueta.toLowerCase()} en los reportes disponibles.`;
+    if (inicio && fin && inicio === fin) {
+      return `Ha consolidado ${fin.toLowerCase()} como referencia principal de ${etiqueta.toLowerCase()}.`;
+    }
+    if (inicio && fin) {
+      return `Al comienzo se registró “${inicio}” y en el último reporte “${fin}”.`;
+    }
+    return `La referencia disponible de ${etiqueta.toLowerCase()} es “${fin || inicio}”.`;
+  }
+
+  function abrirInformeFamiliaOcioApp(fila: EvaluacionAnualOcioApp) {
+    if (typeof window === 'undefined') return;
+
+    const ventana = window.open('', '_blank');
+    if (!ventana) {
+      setEvaluacionesAnualesOcioError(
+        'El navegador ha bloqueado la ventana del informe. Permite ventanas emergentes para Mítico Baby y vuelve a intentarlo.'
+      );
+      return;
+    }
+
+    const seguro = (valor: unknown) => escaparHtml(String(valor ?? ''));
+    const temporada = fila.temporada || '-';
+    const periodo = fila.primer_reporte_fecha && fila.ultimo_reporte_fecha
+      ? `${formatearFecha(fila.primer_reporte_fecha)} — ${formatearFecha(fila.ultimo_reporte_fecha)}`
+      : fila.ultimo_reporte_fecha
+      ? `Hasta ${formatearFecha(fila.ultimo_reporte_fecha)}`
+      : 'Temporada actual';
+    const remontesInicio = (fila.remontes_iniciales || []).join(', ');
+    const remontesFinal = (fila.remontes_finales || []).join(', ');
+    const nivelTexto = fraseEvolucionNivelInformeFamiliaOcioApp(fila);
+    const tecnicaTexto = fraseComparativaInformeFamiliaOcioApp(
+      'Técnica',
+      fila.tecnica_inicial,
+      fila.tecnica_final
+    );
+    const autonomiaTexto = fraseComparativaInformeFamiliaOcioApp(
+      'Autonomía',
+      fila.autonomia_inicial,
+      fila.autonomia_final
+    );
+    const remontesTexto = remontesInicio || remontesFinal
+      ? remontesInicio && remontesFinal && remontesInicio !== remontesFinal
+        ? `Al inicio constaban ${remontesInicio}. En el último reporte constan ${remontesFinal}.`
+        : `Los remontes registrados actualmente son: ${remontesFinal || remontesInicio}.`
+      : 'No hay información específica de remontes en los reportes disponibles.';
+    const cobertura = fila.reportes_ocio >= 2
+      ? `Este informe resume ${fila.reportes_ocio} reportes técnicos y ${fila.entrenamientos_ocio} entrenamientos de Ocio registrados.`
+      : `Informe parcial basado en ${fila.reportes_ocio} reporte técnico y ${fila.entrenamientos_ocio} entrenamientos de Ocio registrados. Con más reportes la comparación anual será más completa.`;
+
+    const html = `<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Informe Ocio · ${seguro(fila.alumno)}</title>
+  <style>
+    *{box-sizing:border-box} body{margin:0;background:#eef4f7;color:#0f172a;font-family:Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    .page{width:min(920px,calc(100% - 28px));margin:28px auto;background:#fff;border-radius:28px;overflow:hidden;box-shadow:0 24px 70px rgba(15,23,42,.15)}
+    .hero{padding:34px;background:linear-gradient(135deg,#062d3f 0%,#083b4d 58%,#0b5d4f 100%);color:#fff;position:relative}
+    .brand{font-size:12px;font-weight:900;letter-spacing:.14em;color:#86efac;text-transform:uppercase}.hero h1{font-size:34px;margin:8px 0 6px}.hero p{margin:0;color:#dbe7ee;line-height:1.5}
+    .content{padding:30px}.intro{font-size:17px;line-height:1.65;color:#334155;margin:0 0 22px}
+    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 24px}.metric{border:1px solid #dbeafe;border-radius:16px;padding:14px;background:#f8fbff}.metric span{display:block;font-size:10px;color:#64748b;font-weight:900;letter-spacing:.08em}.metric strong{display:block;font-size:21px;margin-top:4px}
+    .section{border:1px solid #e2e8f0;border-radius:18px;padding:18px;margin-top:12px}.section h2{font-size:18px;margin:0 0 8px}.section p{margin:0;color:#475569;line-height:1.6}.accent{border-color:#bbf7d0;background:#f0fdf4}.note{margin-top:10px;padding:11px 12px;background:#f8fafc;border-radius:12px;color:#475569;line-height:1.55}
+    .footer{padding:0 30px 30px;color:#64748b;font-size:12px;line-height:1.55}.actions{display:flex;gap:10px;justify-content:center;padding:0 30px 30px}.actions button{border:0;border-radius:14px;padding:12px 18px;font-weight:900;cursor:pointer}.print{background:#0f9f4d;color:white}.close{background:#e2e8f0;color:#334155}
+    @media(max-width:700px){.hero{padding:24px}.hero h1{font-size:27px}.content{padding:20px}.metrics{grid-template-columns:repeat(2,1fr)}.footer,.actions{padding-left:20px;padding-right:20px}}
+    @media print{body{background:#fff}.page{width:100%;margin:0;box-shadow:none;border-radius:0}.actions{display:none}.hero{-webkit-print-color-adjust:exact;print-color-adjust:exact}.accent,.metric{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
+  </style>
+</head>
+<body>
+  <main class="page">
+    <header class="hero">
+      <div class="brand">Mítico Club · Ocio</div>
+      <h1>Informe de evolución · ${seguro(fila.alumno)}</h1>
+      <p>Temporada ${seguro(temporada)} · ${seguro(periodo)}</p>
+    </header>
+    <div class="content">
+      <p class="intro">${seguro(cobertura)} El objetivo es mostrar de forma clara la evolución observada durante las sesiones y orientar el siguiente paso.</p>
+      <div class="metrics">
+        <div class="metric"><span>ENTRENAMIENTOS</span><strong>${fila.entrenamientos_ocio}</strong></div>
+        <div class="metric"><span>REPORTES</span><strong>${fila.reportes_ocio}</strong></div>
+        <div class="metric"><span>NIVEL INICIAL</span><strong>${seguro(fila.nivel_inicial || '—')}</strong></div>
+        <div class="metric"><span>NIVEL ACTUAL</span><strong>${seguro(fila.nivel_final || '—')}</strong></div>
+      </div>
+      <section class="section accent"><h2>Su evolución esta temporada</h2><p>${seguro(nivelTexto)}</p>${fila.niveles_reportados ? `<div class="note"><strong>Recorrido registrado:</strong> ${seguro(fila.niveles_reportados)}</div>` : ''}</section>
+      <section class="section"><h2>Técnica</h2><p>${seguro(tecnicaTexto)}</p>${fila.comentario_tecnica_final ? `<div class="note">${seguro(fila.comentario_tecnica_final)}</div>` : ''}</section>
+      <section class="section"><h2>Autonomía</h2><p>${seguro(autonomiaTexto)}</p>${fila.comentario_autonomia_final ? `<div class="note">${seguro(fila.comentario_autonomia_final)}</div>` : ''}</section>
+      <section class="section"><h2>Remontes y entorno de pista</h2><p>${seguro(remontesTexto)}</p>${fila.pista_final ? `<div class="note"><strong>Última pista registrada:</strong> ${seguro(fila.pista_final)}</div>` : ''}</section>
+      <section class="section"><h2>Actitud y adaptación</h2><p>${fila.actitud_final ? `En el último reporte la actitud registrada fue “${seguro(fila.actitud_final)}”.` : 'No hay una valoración final de actitud registrada en los reportes disponibles.'}</p></section>
+      <section class="section accent"><h2>Siguiente paso</h2><p>${fila.recomendacion_final ? seguro(fila.recomendacion_final) : 'Todavía no hay una recomendación final registrada. Coordinación podrá completarla con los próximos reportes.'}</p></section>
+    </div>
+    <div class="footer">Informe elaborado a partir de los registros reales de entrenamientos y reportes de Mítico Club. Es una síntesis de seguimiento y no sustituye la valoración directa del equipo técnico.</div>
+    <div class="actions"><button class="print" onclick="window.print()">Imprimir / guardar PDF</button><button class="close" onclick="window.close()">Cerrar</button></div>
+  </main>
+</body>
+</html>`;
+
+    ventana.document.open();
+    ventana.document.write(html);
+    ventana.document.close();
+  }
+
   async function analizarCierreTemporada() {
     if (!esCoordinadorJefeApp) return;
 
@@ -23191,6 +23434,9 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
       'ocioGrupos',
       'entrenadores',
       'intensivos',
+      'administracion',
+      'temporadas',
+      'usuarios',
     ].includes(pantalla);
 
     return (
@@ -24547,23 +24793,77 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
 
       {pantalla === 'informes' && esCoordinadorJefeApp && (
         <section>
-          <div style={cabeceraPantallaMovil}>
-            <div>
-              <p style={etiquetaSuperior}>INFORMES Y LISTADOS</p>
-              <h2 style={{ margin: 0 }}>Informes y listados</h2>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              gap: 16,
+              flexWrap: 'wrap',
+              borderRadius: 24,
+              padding: 20,
+              background:
+                'linear-gradient(135deg, #062d3f 0%, #083b4d 58%, #0b5d4f 100%)',
+              border: '1px solid rgba(16,185,129,0.28)',
+              boxShadow: '0 18px 44px rgba(15,23,42,0.16)',
+              color: '#ffffff',
+            }}
+          >
+            <div style={{ minWidth: 0, flex: '1 1 560px' }}>
+              <span
+                style={{
+                  color: '#86efac',
+                  fontWeight: 950,
+                  fontSize: 11,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                DIRECCIÓN · INFORMES
+              </span>
+              <h2 style={{ margin: '5px 0 0', color: '#ffffff', fontSize: 30 }}>
+                Informes y listados
+              </h2>
               {renderAyudaRapidaPantallaApp()}
-              <p style={{ margin: '8px 0 0', color: '#475569' }}>
-                Informes operativos y listados calculados con los datos actuales. No se guardan
-                copias adicionales en Supabase.
+              <p
+                style={{
+                  margin: '8px 0 0',
+                  color: '#cbd5e1',
+                  lineHeight: 1.45,
+                  maxWidth: 780,
+                }}
+              >
+                Consulta informes operativos, genera listados y prepara los informes de familias de Ocio solo cuando los necesites.
               </p>
             </div>
-            <button onClick={actualizarTodo} style={botonSecundario}>
+
+            <button
+              type="button"
+              onClick={actualizarTodo}
+              style={{
+                ...botonSecundario,
+                background: '#ffffff',
+                color: '#064e3b',
+                border: '1px solid #ffffff',
+              }}
+            >
               Actualizar datos
             </button>
           </div>
 
+          <div
+            style={{
+              ...avisoNeutral,
+              marginTop: 14,
+              border: '1px solid #dbeafe',
+              background: '#ffffff',
+              color: '#475569',
+            }}
+          >
+            Los paneles permanecen cerrados al entrar. Abre únicamente el informe que quieras generar o consultar.
+          </div>
+
           <details
-            open
             style={{
               ...tarjeta,
               marginTop: 16,
@@ -24804,7 +25104,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                             snowZoneCargando || snowZoneDias.length === 0 ? 0.55 : 1,
                         }}
                       >
-                        Descargar Excel
+                        Descargar datos técnicos
                       </button>
                     </div>
 
@@ -25699,7 +25999,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     margin: '0 0 3px',
                   }}
                 >
-                  FINAL DE TEMPORADA · OCIO
+                  INFORME PARA FAMILIAS · OCIO
                 </p>
                 <h3
                   style={{
@@ -25709,7 +26009,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     overflowWrap: 'anywhere',
                   }}
                 >
-                  Evaluación anual Ocio
+                  Informes anuales Ocio
                 </h3>
                 <p
                   style={{
@@ -25718,7 +26018,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     fontSize: 13,
                   }}
                 >
-                  Resumen técnico de progresión para preparar los informes de familias
+                  Evolución anual individual preparada para compartir con cada familia
                 </p>
               </div>
 
@@ -25765,9 +26065,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     flex: '1 1 430px',
                   }}
                 >
-                  Resume cómo empezó y cómo termina cada alumno de Ocio según sus
-                  reportes reales de esta temporada. Sirve como base para pasármelo
-                  después por ChatGPT y redactar un informe bonito para los padres.
+                  Genera una única lectura de los datos reales de la temporada y, a partir de ella, prepara un informe individual por alumno con nivel, técnica, autonomía, remontes, actitud y siguiente paso. La consulta a Supabase solo se realiza al pulsar el botón de generar o actualizar.
                 </p>
 
                 <button
@@ -25786,8 +26084,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                   {evaluacionesAnualesOcioCargando
                     ? 'Generando...'
                     : evaluacionesAnualesOcioGeneradas
-                    ? 'Actualizar evaluación'
-                    : 'Generar evaluación anual'}
+                    ? 'Actualizar informes Ocio'
+                    : 'Generar informes Ocio'}
                 </button>
               </div>
 
@@ -25875,7 +26173,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                       <strong>Temporada {temporada}</strong>
                       <span style={{ color: '#64748b' }}>
                         {filasVisibles.length} alumnos visibles ·{' '}
-                        {evaluacionesAnualesOcio.length} total
+                        {evaluacionesAnualesOcio.length} informes preparados en memoria
                       </span>
                     </div>
 
@@ -25923,6 +26221,27 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                               Ver progreso
                             </span>
                           </summary>
+
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'flex-end',
+                              padding: '12px 14px 0',
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => abrirInformeFamiliaOcioApp(fila)}
+                              style={{
+                                ...botonPrincipal,
+                                minHeight: 42,
+                                background: '#0f9f4d',
+                                borderColor: '#0f9f4d',
+                              }}
+                            >
+                              Ver informe familia
+                            </button>
+                          </div>
 
                           <div
                             style={{
@@ -26023,16 +26342,59 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
 
       {pantalla === 'temporadas' && esCoordinadorJefeApp && (
         <section>
-          <div style={cabeceraPantallaMovil}>
-            <div>
-              <p style={etiquetaSuperior}>TEMPORADAS</p>
-              <h2 style={{ margin: 0 }}>Inicio y cierre de temporada</h2>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              gap: 16,
+              flexWrap: 'wrap',
+              borderRadius: 24,
+              padding: 20,
+              background:
+                'linear-gradient(135deg, #062d3f 0%, #083b4d 58%, #0b5d4f 100%)',
+              border: '1px solid rgba(16,185,129,0.28)',
+              boxShadow: '0 18px 44px rgba(15,23,42,0.16)',
+              color: '#ffffff',
+            }}
+          >
+            <div style={{ minWidth: 0, flex: '1 1 560px' }}>
+              <span
+                style={{
+                  color: '#86efac',
+                  fontWeight: 950,
+                  fontSize: 11,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                DIRECCIÓN · TEMPORADAS
+              </span>
+              <h2 style={{ margin: '5px 0 0', color: '#ffffff', fontSize: 30 }}>
+                Inicio y cierre de temporada
+              </h2>
               {renderAyudaRapidaPantallaApp()}
-              <p style={{ margin: '8px 0 0', color: '#475569' }}>
+              <p
+                style={{
+                  margin: '8px 0 0',
+                  color: '#cbd5e1',
+                  lineHeight: 1.45,
+                  maxWidth: 780,
+                }}
+              >
                 Cierre seguro, copia maestra, nueva temporada y carga de semilla en un único flujo ordenado.
               </p>
             </div>
-            <button onClick={actualizarTodo} style={botonSecundario}>
+            <button
+              type="button"
+              onClick={actualizarTodo}
+              style={{
+                ...botonSecundario,
+                background: '#ffffff',
+                color: '#064e3b',
+                border: '1px solid #ffffff',
+              }}
+            >
               Actualizar datos
             </button>
           </div>
@@ -27589,9 +27951,6 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
       {pantalla === 'analisis' && esCoordinadorJefeApp && (
                 <article
                   style={{
-                    ...agendaBloqueBlanco,
-                    border: '1px solid #c4b5fd',
-                    background: 'linear-gradient(135deg, #faf5ff 0%, #ffffff 58%)',
                     display: 'grid',
                     gap: 16,
                     width: '100%',
@@ -27604,18 +27963,42 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                       display: 'flex',
                       justifyContent: 'space-between',
                       alignItems: 'flex-start',
-                      gap: 12,
+                      gap: 16,
                       flexWrap: 'wrap',
+                      borderRadius: 24,
+                      padding: 20,
+                      background:
+                        'linear-gradient(135deg, #062d3f 0%, #083b4d 58%, #0b5d4f 100%)',
+                      border: '1px solid rgba(16,185,129,0.28)',
+                      boxShadow: '0 18px 44px rgba(15,23,42,0.16)',
+                      color: '#ffffff',
                     }}
                   >
                     <div style={{ minWidth: 0 }}>
-                      <span style={{ ...miniBadge, background: '#ede9fe', color: '#6d28d9' }}>
-                        ADMINISTRACIÓN
+                      <span
+                        style={{
+                          color: '#86efac',
+                          fontWeight: 950,
+                          fontSize: 11,
+                          letterSpacing: '0.1em',
+                          textTransform: 'uppercase',
+                        }}
+                      >
+                        DIRECCIÓN · ANÁLISIS
                       </span>
-                      <h2 style={{ margin: '8px 0 0' }}>Análisis operativo</h2>
+                      <h2 style={{ margin: '5px 0 0', color: '#ffffff', fontSize: 30 }}>
+                        Análisis operativo
+                      </h2>
               {renderAyudaRapidaPantallaApp()}
-                      <p style={{ margin: '6px 0 0', color: '#64748b', lineHeight: 1.45 }}>
-                        Se calcula al momento con la actividad real. No se guarda ningún informe generado en Supabase.
+                      <p
+                        style={{
+                          margin: '8px 0 0',
+                          color: '#cbd5e1',
+                          lineHeight: 1.45,
+                          maxWidth: 760,
+                        }}
+                      >
+                        Lectura de actividad, continuidad, asistencia, ocupación y evolución técnica con los datos reales de la temporada.
                       </p>
                     </div>
 
@@ -27624,7 +28007,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                         type="button"
                         disabled={!analisisAdmin || cargandoAnalisisAdmin}
                         onClick={descargarPdfAnalisisAdminApp}
-                        style={botonSecundario}
+                        style={{ ...botonSecundario, background: 'rgba(255,255,255,.10)', color: '#fff', border: '1px solid rgba(255,255,255,.28)' }}
                       >
                         PDF
                       </button>
@@ -27632,7 +28015,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                         type="button"
                         disabled={!analisisAdmin || cargandoAnalisisAdmin}
                         onClick={descargarExcelAnalisisAdminApp}
-                        style={botonSecundario}
+                        style={{ ...botonSecundario, background: 'rgba(255,255,255,.10)', color: '#fff', border: '1px solid rgba(255,255,255,.28)' }}
                       >
                         Excel
                       </button>
@@ -27640,7 +28023,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                         type="button"
                         disabled={!analisisAdmin || cargandoAnalisisAdmin}
                         onClick={descargarCsvAnalisisAdminApp}
-                        style={botonSecundario}
+                        style={{ ...botonSecundario, background: '#ffffff', color: '#064e3b', border: '1px solid #ffffff' }}
                       >
                         CSV
                       </button>
@@ -27649,12 +28032,16 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
 
                   <div
                     style={{
+                      ...agendaBloqueBlanco,
                       display: 'grid',
                       gridTemplateColumns: esVistaMovilApp
                         ? 'minmax(0, 1fr)'
                         : 'minmax(0, 1fr) minmax(220px, 320px)',
-                      gap: 10,
+                      gap: 12,
                       alignItems: 'end',
+                      border: '1px solid #dbeafe',
+                      background: '#ffffff',
+                      boxShadow: '0 10px 28px rgba(15,23,42,0.05)',
                     }}
                   >
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -27668,11 +28055,11 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                             style={{
                               ...botonSecundario,
                               background:
-                                modalidadAnalisisAdmin === modalidad ? '#6d28d9' : '#fff',
+                                modalidadAnalisisAdmin === modalidad ? '#0f9f4d' : '#fff',
                               color:
                                 modalidadAnalisisAdmin === modalidad ? '#fff' : '#475569',
                               borderColor:
-                                modalidadAnalisisAdmin === modalidad ? '#6d28d9' : '#e2e8f0',
+                                modalidadAnalisisAdmin === modalidad ? '#0f9f4d' : '#e2e8f0',
                               flex: esVistaMovilApp ? '1 1 95px' : undefined,
                             }}
                           >
@@ -27729,6 +28116,164 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                         </span>
                       </div>
 
+                      {(() => {
+                        const mesesConActividad = analisisAdmin.mensual.filter(
+                          (mes) =>
+                            mes.alumnos_unicos > 0 ||
+                            mes.altas > 0 ||
+                            mes.sesiones_realizadas > 0
+                        );
+                        if (mesesConActividad.length === 0) {
+                          return (
+                            <section
+                              style={{
+                                ...agendaBloqueBlanco,
+                                border: '1px solid #dbeafe',
+                                background: '#ffffff',
+                              }}
+                            >
+                              <strong style={{ fontSize: 16 }}>Último mes vs mes anterior</strong>
+                              <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: 13 }}>
+                                Todavía no hay meses con actividad real para comparar.
+                              </p>
+                            </section>
+                          );
+                        }
+
+                        const ultimo = mesesConActividad[mesesConActividad.length - 1];
+                        const anterior = mesesConActividad.length >= 2
+                          ? mesesConActividad[mesesConActividad.length - 2]
+                          : null;
+
+                        if (!anterior) {
+                          return (
+                            <section
+                              style={{
+                                ...agendaBloqueBlanco,
+                                border: '1px solid #bbf7d0',
+                                background: 'linear-gradient(135deg, #f0fdf4 0%, #ffffff 68%)',
+                              }}
+                            >
+                              <strong style={{ fontSize: 16 }}>Último mes vs mes anterior</strong>
+                              <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: 13 }}>
+                                {etiquetaMesAnalisisAdminApp(ultimo.mes)} es el primer mes con actividad real. Todavía no existe un mes anterior con el que compararlo.
+                              </p>
+                            </section>
+                          );
+                        }
+
+                        const cambios = [
+                          {
+                            titulo: 'ALUMNOS',
+                            valor: ultimo.alumnos_unicos,
+                            cambio: diferenciaAnalisisAdminApp(ultimo.alumnos_unicos, anterior.alumnos_unicos),
+                          },
+                          {
+                            titulo: 'ALTAS',
+                            valor: ultimo.altas,
+                            cambio: diferenciaAnalisisAdminApp(ultimo.altas, anterior.altas),
+                          },
+                          {
+                            titulo: 'ASISTENCIA',
+                            valor: numeroAnalisisAdminApp(ultimo.asistencia_real_pct, '%'),
+                            cambio: diferenciaAnalisisAdminApp(ultimo.asistencia_real_pct, anterior.asistencia_real_pct, ' pp'),
+                          },
+                          {
+                            titulo: 'OCUPACIÓN',
+                            valor: numeroAnalisisAdminApp(ultimo.ocupacion_pct, '%'),
+                            cambio: diferenciaAnalisisAdminApp(ultimo.ocupacion_pct, anterior.ocupacion_pct, ' pp'),
+                          },
+                          {
+                            titulo: 'NIÑOS / TURNO',
+                            valor: numeroAnalisisAdminApp(ultimo.promedio_ninos_turno),
+                            cambio: diferenciaAnalisisAdminApp(ultimo.promedio_ninos_turno, anterior.promedio_ninos_turno),
+                          },
+                          {
+                            titulo: 'EVOLUCIÓN TÉCNICA',
+                            valor: numeroAnalisisAdminApp(ultimo.evolucion_tecnica),
+                            cambio: diferenciaAnalisisAdminApp(ultimo.evolucion_tecnica, anterior.evolucion_tecnica),
+                          },
+                        ];
+
+                        return (
+                          <section
+                            style={{
+                              ...agendaBloqueBlanco,
+                              border: '1px solid #bbf7d0',
+                              background: 'linear-gradient(135deg, #f0fdf4 0%, #ffffff 68%)',
+                              display: 'grid',
+                              gap: 12,
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                gap: 10,
+                                flexWrap: 'wrap',
+                                alignItems: 'baseline',
+                              }}
+                            >
+                              <div>
+                                <strong style={{ fontSize: 16 }}>Último mes vs mes anterior</strong>
+                                <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
+                                  {etiquetaMesAnalisisAdminApp(ultimo.mes)} frente a {etiquetaMesAnalisisAdminApp(anterior.mes)}.
+                                </p>
+                              </div>
+                              <span style={{ color: '#64748b', fontSize: 12, fontWeight: 750 }}>
+                                Comparación directa · sin objetivos ni umbrales inventados
+                              </span>
+                            </div>
+
+                            <div
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))',
+                                gap: 8,
+                              }}
+                            >
+                              {cambios.map((item) => (
+                                <div
+                                  key={item.titulo}
+                                  style={{
+                                    border: '1px solid #dcfce7',
+                                    borderRadius: 14,
+                                    padding: '11px 12px',
+                                    background: '#ffffff',
+                                    minWidth: 0,
+                                  }}
+                                >
+                                  <span style={{ color: '#64748b', fontWeight: 850, fontSize: 10 }}>
+                                    {item.titulo}
+                                  </span>
+                                  <div
+                                    style={{
+                                      marginTop: 3,
+                                      display: 'flex',
+                                      justifyContent: 'space-between',
+                                      gap: 8,
+                                      alignItems: 'baseline',
+                                    }}
+                                  >
+                                    <strong style={{ fontSize: 22 }}>{item.valor}</strong>
+                                    <span
+                                      style={{
+                                        color: '#475569',
+                                        fontSize: 12,
+                                        fontWeight: 850,
+                                        whiteSpace: 'nowrap',
+                                      }}
+                                    >
+                                      {item.cambio}
+                                    </span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </section>
+                        );
+                      })()}
+
                       <section
                         style={{
                           display: 'grid',
@@ -27751,8 +28296,9 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                             key={String(titulo)}
                             style={{
                               ...miniTarjetaBlanca,
-                              border: '1px solid #7c3aed33',
-                              background: '#faf5ff',
+                              border: '1px solid #dbeafe',
+                              background: '#ffffff',
+                              boxShadow: '0 8px 20px rgba(15,23,42,0.04)',
                               minHeight: 82,
                               display: 'grid',
                               alignContent: 'center',
@@ -27875,7 +28421,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                     <strong>{nivel.nivel}</strong><span>{nivel.total}</span>
                                   </div>
                                   <div style={{ height: 8, borderRadius: 999, background: '#f1f5f9', overflow: 'hidden' }}>
-                                    <div style={{ height: '100%', width: `${Math.max(4, (nivel.total / maximo) * 100)}%`, background: '#7c3aed', borderRadius: 999 }} />
+                                    <div style={{ height: '100%', width: `${Math.max(4, (nivel.total / maximo) * 100)}%`, background: '#0f9f4d', borderRadius: 999 }} />
                                   </div>
                                 </div>
                               );
@@ -35141,12 +35687,14 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
           <section className="mitico-home-screen">
             <style>{`
               .mitico-home-screen{display:grid;gap:18px;color:#122033;min-width:0}
-              .mitico-home-hero{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap;padding:4px 2px 6px}
-              .mitico-home-hero h2{margin:0;font-size:clamp(26px,3vw,36px);letter-spacing:-.035em;line-height:1.08}
-              .mitico-home-hero p{margin:7px 0 0;color:#718096;font-size:14px}
-              .mitico-home-actions{display:flex;gap:10px;flex-wrap:wrap}
-              .mitico-home-action{min-height:42px;padding:10px 14px;border-radius:12px;border:1px solid #dce4ee;background:#fff;color:#24364b;font-weight:850;box-shadow:0 6px 18px rgba(15,23,42,.04)}
-              .mitico-home-action.primary{background:#0f9f4d;border-color:#0f9f4d;color:#fff;box-shadow:0 9px 22px rgba(15,159,77,.18)}
+              .mitico-home-hero{position:relative;display:flex;justify-content:space-between;gap:22px;align-items:flex-end;flex-wrap:wrap;min-height:220px;padding:28px 30px;border-radius:24px;overflow:hidden;background-size:112% auto;background-position:54% 42%;background-repeat:no-repeat;box-shadow:0 18px 42px rgba(15,23,42,.14);isolation:isolate}
+              .mitico-home-hero:after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(4,39,55,.88) 0%,rgba(5,50,65,.76) 44%,rgba(6,68,62,.30) 72%,rgba(6,68,62,.10) 100%);z-index:-1}
+              .mitico-home-hero-copy{max-width:650px}
+              .mitico-home-hero h2{margin:0;color:#fff;font-size:clamp(28px,3vw,39px);letter-spacing:-.035em;line-height:1.08;text-shadow:0 3px 18px rgba(2,15,23,.30)}
+              .mitico-home-hero p{margin:9px 0 0;color:#d8e8ed;font-size:15px;font-weight:700;text-shadow:0 2px 12px rgba(2,15,23,.28)}
+              .mitico-home-actions{display:flex;gap:10px;flex-wrap:wrap;position:relative;z-index:1}
+              .mitico-home-action{min-height:44px;padding:10px 15px;border-radius:13px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.92);color:#173247;font-weight:900;box-shadow:0 8px 22px rgba(2,15,23,.16);backdrop-filter:blur(8px)}
+              .mitico-home-action.primary{background:#0f9f4d;border-color:#0f9f4d;color:#fff;box-shadow:0 10px 24px rgba(15,159,77,.30)}
               .mitico-home-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px}
               .mitico-home-metric{min-width:0;padding:16px;border:1px solid #e5eaf1;border-radius:16px;background:#fff;box-shadow:0 8px 24px rgba(15,23,42,.045)}
               .mitico-home-metric.is-clickable{cursor:pointer;text-align:left;font:inherit;transition:transform .14s ease,box-shadow .14s ease}.mitico-home-metric.is-clickable:hover{transform:translateY(-1px);box-shadow:0 12px 28px rgba(15,23,42,.08)}
@@ -35174,11 +35722,16 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               .mitico-home-modality{padding:14px 16px 16px;display:grid;gap:10px}.mitico-home-modality-row{display:grid;grid-template-columns:82px minmax(0,1fr) 70px;gap:9px;align-items:center;font-size:11px}.mitico-home-bar{height:8px;border-radius:999px;background:#edf1f5;overflow:hidden}.mitico-home-bar span{display:block;height:100%;border-radius:999px;background:#0f9f4d}.mitico-home-modality-row:nth-child(2) .mitico-home-bar span{background:#3b82f6}.mitico-home-modality-row:nth-child(3) .mitico-home-bar span{background:#f59e0b}
               .mitico-home-empty{padding:24px;color:#718096;font-size:13px;text-align:center}
               @media(max-width:1200px){.mitico-home-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.mitico-home-grid{grid-template-columns:1fr}.mitico-home-session{grid-template-columns:54px minmax(0,1fr) repeat(2,54px) auto}.mitico-home-session-stat:nth-of-type(4){display:none}}
-              @media(max-width:720px){.mitico-home-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.mitico-home-metric:last-child{grid-column:1/-1}.mitico-home-actions{width:100%}.mitico-home-action{flex:1 1 140px}.mitico-home-session{grid-template-columns:50px minmax(0,1fr) auto}.mitico-home-session-stat{display:none}.mitico-home-status{font-size:8px;padding:5px 8px}}
+              @media(max-width:720px){.mitico-home-hero{min-height:245px;padding:22px 20px;background-size:auto 112%;background-position:64% center}.mitico-home-hero:after{background:linear-gradient(180deg,rgba(4,39,55,.48) 0%,rgba(4,39,55,.72) 45%,rgba(4,39,55,.94) 100%)}.mitico-home-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.mitico-home-metric:last-child{grid-column:1/-1}.mitico-home-actions{width:100%}.mitico-home-action{flex:1 1 140px}.mitico-home-session{grid-template-columns:50px minmax(0,1fr) auto}.mitico-home-session-stat{display:none}.mitico-home-status{font-size:8px;padding:5px 8px}}
             `}</style>
 
-            <div className="mitico-home-hero">
-              <div>
+            <div
+              className="mitico-home-hero"
+              style={{
+                backgroundImage: `url(${FOTO_MITICO_HERO})`,
+              }}
+            >
+              <div className="mitico-home-hero-copy">
                 <h2>{saludoInicio}, {perfilUsuario?.nombre?.split(' ')[0] || 'Jose'} 👋</h2>
                 <p>Aquí tienes la visión general de esta semana.</p>
               </div>
@@ -35774,15 +36327,20 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               gridTemplateColumns: esVistaMovilApp
                 ? 'minmax(0, 1fr)'
                 : 'minmax(0, 1fr) auto',
-              alignItems: 'start',
-              gap: esVistaMovilApp ? 14 : 18,
-              padding: esVistaMovilApp ? 16 : 20,
-              borderRadius: 20,
-              border: '1px solid rgba(255,255,255,.10)',
-              background:
-                'linear-gradient(135deg, #062d3f 0%, #083b4d 58%, #0b5d4f 100%)',
+              alignItems: esVistaMovilApp ? 'stretch' : 'end',
+              gap: esVistaMovilApp ? 16 : 22,
+              minHeight: esVistaMovilApp ? 250 : 225,
+              padding: esVistaMovilApp ? '22px 18px' : '28px 30px',
+              borderRadius: 24,
+              border: '1px solid rgba(255,255,255,.12)',
+              backgroundImage: esVistaMovilApp
+                ? `linear-gradient(180deg, rgba(4,39,55,.46) 0%, rgba(4,39,55,.72) 45%, rgba(4,39,55,.96) 100%), url(${FOTO_MITICO_HERO})`
+                : `linear-gradient(90deg, rgba(4,39,55,.90) 0%, rgba(5,50,65,.80) 46%, rgba(6,68,62,.34) 74%, rgba(6,68,62,.12) 100%), url(${FOTO_MITICO_HERO})`,
+              backgroundSize: esVistaMovilApp ? 'auto 112%' : '112% auto',
+              backgroundPosition: esVistaMovilApp ? '64% center' : '54% 40%',
+              backgroundRepeat: 'no-repeat',
               color: '#ffffff',
-              boxShadow: '0 14px 34px rgba(15,23,42,.14)',
+              boxShadow: '0 18px 42px rgba(15,23,42,.16)',
             }}
           >
             <div style={{ minWidth: 0 }}>
@@ -35878,6 +36436,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               disabled={cargando}
               style={{
                 ...botonPrincipal,
+                position: 'relative',
+                zIndex: 1,
                 width: esVistaMovilApp ? '100%' : 'auto',
                 minHeight: 42,
                 padding: '9px 13px',
@@ -38600,118 +39160,99 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
       {pantalla === 'administracion' &&
         puedeVerAdministracionAltasApp(perfilUsuario?.rol) && (
           <section style={{ display: 'grid', gap: 16, minWidth: 0 }}>
-            <div style={cabeceraPantalla}>
-              <div>
-                <p style={{ ...etiquetaSuperior, color: '#0891b2' }}>ADMINISTRACIÓN</p>
-                <h2 style={{ margin: '4px 0 6px' }}>Altas y test de nivel</h2>
-              {renderAyudaRapidaPantallaApp()}
-              </div>
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                <button type="button" onClick={cargarAltasNivelInicial} style={botonSecundario}>
-                  Actualizar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setMostrarFormularioAltaNivel(!mostrarFormularioAltaNivel)}
-                  style={botonPrincipal}
-                >
-                  {mostrarFormularioAltaNivel ? 'Cerrar alta' : '+ Nueva alta'}
-                </button>
-              </div>
-            </div>
-
-            <details
+            <article
               style={{
-                ...tarjeta,
-                padding: 0,
-                overflow: 'hidden',
-                border: '1px solid #bae6fd',
-                background: '#ffffff',
+                borderRadius: 24,
+                padding: 20,
+                background:
+                  'linear-gradient(135deg, #062d3f 0%, #083b4d 58%, #0b5d4f 100%)',
+                border: '1px solid rgba(16,185,129,0.28)',
+                boxShadow: '0 18px 44px rgba(15,23,42,0.16)',
+                color: '#ffffff',
+                display: 'grid',
+                gap: 16,
               }}
             >
-              <summary
-                style={{
-                  listStyle: 'none',
-                  padding: '13px 15px',
-                  fontWeight: 950,
-                  color: '#0f172a',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                }}
-              >
-                <span style={{ color: '#0891b2' }}>›</span>
-                Instrucciones de uso
-              </summary>
-
               <div
                 style={{
-                  borderTop: '1px solid #e2e8f0',
-                  padding: '14px 16px 16px',
-                  display: 'grid',
-                  gap: 12,
-                  color: '#475569',
-                  lineHeight: 1.5,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  gap: 16,
+                  alignItems: 'flex-start',
+                  flexWrap: 'wrap',
                 }}
               >
-                <div>
-                  <strong style={{ color: '#172033' }}>1. Crear una nueva alta</strong>
-                  <div>
-                    Pulsa <strong>+ Nueva alta</strong> y completa nombre y apellidos,
-                    fecha de nacimiento, modalidad y teléfono de la familia.
-                  </div>
-                </div>
-
-                <div>
-                  <strong style={{ color: '#172033' }}>2. Enviar el test</strong>
-                  <div>
-                    Abre la ficha del alumno y pulsa <strong>Enviar test por WhatsApp</strong>.
-                    También puedes usar <strong>Copiar enlace</strong> si lo necesitas.
-                  </div>
-                </div>
-
-                <div>
-                  <strong style={{ color: '#172033' }}>3. Esperar la respuesta</strong>
-                  <div>
-                    Cuando la familia complete el test, la solicitud pasará automáticamente
-                    a <strong>Respondido · revisar</strong>.
-                  </div>
-                </div>
-
-                <div>
-                  <strong style={{ color: '#172033' }}>4. Revisión del nivel</strong>
-                  <div>
-                    El sistema propone un nivel inicial. El <strong>Coordinador jefe</strong>
-                    es quien revisa las respuestas y valida o corrige ese nivel.
-                  </div>
-                </div>
-
-                <div>
-                  <strong style={{ color: '#172033' }}>5. Seguimiento</strong>
-                  <div>
-                    Usa los filtros de esta pantalla para ver rápidamente qué altas están
-                    pendientes de enviar, esperando respuesta, respondidas o pendientes de
-                    añadir a listados.
-                  </div>
+                <div style={{ minWidth: 0, flex: '1 1 420px' }}>
+                  <p
+                    style={{
+                      margin: 0,
+                      fontSize: 11,
+                      fontWeight: 900,
+                      letterSpacing: 1.15,
+                      color: '#86efac',
+                    }}
+                  >
+                    ADMINISTRACIÓN
+                  </p>
+                  <h2
+                    style={{
+                      margin: '4px 0 0',
+                      fontSize: 30,
+                      color: '#ffffff',
+                    }}
+                  >
+                    Altas y test de nivel
+                  </h2>
+                  {renderAyudaRapidaPantallaApp()}
+                  <p
+                    style={{
+                      margin: '7px 0 0',
+                      color: '#cbd5e1',
+                      lineHeight: 1.4,
+                      maxWidth: 720,
+                    }}
+                  >
+                    Gestiona nuevas altas, envía el test, revisa la propuesta y
+                    valida el nivel antes de incorporar al alumno.
+                  </p>
                 </div>
 
                 <div
                   style={{
-                    padding: 11,
-                    borderRadius: 12,
-                    background: '#f0f9ff',
-                    border: '1px solid #bae6fd',
-                    color: '#0c4a6e',
-                    fontSize: 13,
-                    fontWeight: 750,
+                    display: 'flex',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
                   }}
                 >
-                  Importante: la familia no elige el nivel. Solo responde preguntas sobre
-                  lo que ha visto hacer al niño/a esquiando.
+                  <button
+                    type="button"
+                    onClick={cargarAltasNivelInicial}
+                    style={{
+                      ...botonSecundario,
+                      background: 'rgba(255,255,255,.10)',
+                      color: '#ffffff',
+                      border: '1px solid rgba(255,255,255,.28)',
+                    }}
+                  >
+                    Actualizar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setMostrarFormularioAltaNivel(!mostrarFormularioAltaNivel)
+                    }
+                    style={{
+                      ...botonPrincipal,
+                      background: '#16a34a',
+                      borderColor: '#16a34a',
+                    }}
+                  >
+                    {mostrarFormularioAltaNivel ? 'Cerrar alta' : '+ Nueva alta'}
+                  </button>
                 </div>
               </div>
-            </details>
+            </article>
 
             {mostrarFormularioAltaNivel && (
               <article
@@ -38850,58 +39391,110 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                 ...tarjeta,
                 padding: 14,
                 display: 'grid',
-                gap: 12,
+                gap: 14,
               }}
             >
               <div>
                 <strong style={{ fontSize: 16 }}>Filtrar altas</strong>
                 <p style={{ margin: '3px 0 0', color: '#64748b', fontSize: 13 }}>
-                  Ve directamente a lo que tienes pendiente.
+                  Combina estado y modalidad para ver exactamente lo que necesitas.
                 </p>
               </div>
 
-              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                {[
-                  ['TODOS', 'Todos', altasNivelInicial.length, '#4f46e5', '#eef2ff'],
-                  ['PENDIENTE_ENVIO', 'Pendiente de enviar', altasNivelInicial.filter((a) => a.estado === 'PENDIENTE_ENVIO').length, '#64748b', '#f8fafc'],
-                  ['ENVIADO', 'Esperando respuesta', altasNivelInicial.filter((a) => a.estado === 'ENVIADO').length, '#d97706', '#fffbeb'],
-                  [
-                    'RESPONDIDO',
-                    'Respondido · revisar',
-                    altasNivelInicial.filter(
-                      (a) => a.estado === 'RESPONDIDO' || a.estado === 'VALIDADO'
-                    ).length,
-                    '#2563eb',
-                    '#eff6ff',
-                  ],
-                  ['ANADIDO', 'Añadidos', altasNivelInicial.filter((a) => a.estado === 'ANADIDO').length, '#0f766e', '#f0fdfa'],
-                  ['DESCARTADO', 'Descartado', altasNivelInicial.filter((a) => a.estado === 'DESCARTADO').length, '#dc2626', '#fef2f2'],
-                ].map(([valor, etiqueta, cantidad, color, fondo]) => {
-                  const activo = filtroAltasNivel === valor;
-                  return (
-                    <button
-                      key={String(valor)}
-                      type="button"
-                      onClick={() => {
-                        setFiltroAltasNivel(valor as typeof filtroAltasNivel);
-                        setAltaNivelAbiertaId('');
-                        setDetalleRespuestaAlta('');
-                      }}
-                      style={{
-                        ...botonSecundario,
-                        background: activo ? String(color) : String(fondo),
-                        color: activo ? '#ffffff' : String(color),
-                        borderColor: String(color),
-                        fontWeight: 900,
-                        boxShadow: activo
-                          ? `0 8px 18px ${String(color)}28`
-                          : 'none',
-                      }}
-                    >
-                      {String(etiqueta)} ({String(cantidad)})
-                    </button>
-                  );
-                })}
+              <div style={{ display: 'grid', gap: 8 }}>
+                <small
+                  style={{
+                    color: '#64748b',
+                    fontWeight: 900,
+                    textTransform: 'uppercase',
+                    letterSpacing: '.06em',
+                  }}
+                >
+                  Estado
+                </small>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {[
+                    ['TODOS', 'Todos', totalEstadoAltasNivelApp('TODOS'), '#4f46e5', '#eef2ff'],
+                    ['PENDIENTE_ENVIO', 'Pendiente de enviar', totalEstadoAltasNivelApp('PENDIENTE_ENVIO'), '#64748b', '#f8fafc'],
+                    ['ENVIADO', 'Esperando respuesta', totalEstadoAltasNivelApp('ENVIADO'), '#d97706', '#fffbeb'],
+                    ['RESPONDIDO', 'Respondido · revisar', totalEstadoAltasNivelApp('RESPONDIDO'), '#2563eb', '#eff6ff'],
+                    ['ANADIDO', 'Añadidos', totalEstadoAltasNivelApp('ANADIDO'), '#0f766e', '#f0fdfa'],
+                    ['DESCARTADO', 'Descartado', totalEstadoAltasNivelApp('DESCARTADO'), '#dc2626', '#fef2f2'],
+                  ].map(([valor, etiqueta, cantidad, color, fondo]) => {
+                    const activo = filtroAltasNivel === valor;
+                    return (
+                      <button
+                        key={String(valor)}
+                        type="button"
+                        onClick={() => {
+                          setFiltroAltasNivel(valor as typeof filtroAltasNivel);
+                          setAltaNivelAbiertaId('');
+                          setDetalleRespuestaAlta('');
+                        }}
+                        style={{
+                          ...botonSecundario,
+                          background: activo ? String(color) : String(fondo),
+                          color: activo ? '#ffffff' : String(color),
+                          borderColor: String(color),
+                          fontWeight: 900,
+                          boxShadow: activo
+                            ? `0 8px 18px ${String(color)}28`
+                            : 'none',
+                        }}
+                      >
+                        {String(etiqueta)} ({String(cantidad)})
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gap: 8 }}>
+                <small
+                  style={{
+                    color: '#64748b',
+                    fontWeight: 900,
+                    textTransform: 'uppercase',
+                    letterSpacing: '.06em',
+                  }}
+                >
+                  Modalidad
+                </small>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {[
+                    ['TODAS', 'Todas', totalModalidadAltasNivelApp('TODAS'), '#334155', '#f8fafc'],
+                    ['BABY', 'Baby', totalModalidadAltasNivelApp('BABY'), '#2563eb', '#eff6ff'],
+                    ['OCIO', 'Ocio', totalModalidadAltasNivelApp('OCIO'), '#7c3aed', '#f5f3ff'],
+                    ['INTENSIVOS', 'Intensivos', totalModalidadAltasNivelApp('INTENSIVOS'), '#ea580c', '#fff7ed'],
+                  ].map(([valor, etiqueta, cantidad, color, fondo]) => {
+                    const activo = filtroModalidadAltasNivel === valor;
+                    return (
+                      <button
+                        key={String(valor)}
+                        type="button"
+                        onClick={() => {
+                          setFiltroModalidadAltasNivel(
+                            valor as typeof filtroModalidadAltasNivel
+                          );
+                          setAltaNivelAbiertaId('');
+                          setDetalleRespuestaAlta('');
+                        }}
+                        style={{
+                          ...botonSecundario,
+                          background: activo ? String(color) : String(fondo),
+                          color: activo ? '#ffffff' : String(color),
+                          borderColor: String(color),
+                          fontWeight: 900,
+                          boxShadow: activo
+                            ? `0 8px 18px ${String(color)}28`
+                            : 'none',
+                        }}
+                      >
+                        {String(etiqueta)} ({String(cantidad)})
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </section>
 
@@ -38918,30 +39511,18 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
 
             {!cargandoAltasNivel &&
               altasNivelInicial.length > 0 &&
-              altasNivelInicial.filter((alta) =>
-                filtroAltasNivel === 'TODOS'
-                  ? true
-                  : filtroAltasNivel === 'RESPONDIDO'
-                  ? alta.estado === 'RESPONDIDO' || alta.estado === 'VALIDADO'
-                  : alta.estado === filtroAltasNivel
-              ).length === 0 && (
+              altasNivelInicial.filter(altaVisibleNivelInicialApp).length === 0 && (
                 <article style={tarjeta}>
-                  <h3 style={{ marginTop: 0 }}>No hay altas en este estado</h3>
+                  <h3 style={{ marginTop: 0 }}>No hay altas con estos filtros</h3>
                   <p style={{ marginBottom: 0, color: '#64748b' }}>
-                    Cambia de filtro para ver otras solicitudes.
+                    Cambia el estado o la modalidad para ver otras solicitudes.
                   </p>
                 </article>
               )}
 
             <section style={{ display: 'grid', gap: 10 }}>
               {altasNivelInicial
-                .filter((alta) =>
-                  filtroAltasNivel === 'TODOS'
-                  ? true
-                  : filtroAltasNivel === 'RESPONDIDO'
-                  ? alta.estado === 'RESPONDIDO' || alta.estado === 'VALIDADO'
-                  : alta.estado === filtroAltasNivel
-                )
+                .filter(altaVisibleNivelInicialApp)
                 .map((alta) => {
                   const respondido = alta.estado === 'RESPONDIDO';
                   const validado = alta.estado === 'VALIDADO';
@@ -39054,7 +39635,38 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                               fontSize: 13,
                             }}
                           >
-                            <span>{alta.modalidad}</span>
+                            <span
+                              style={{
+                                padding: '3px 7px',
+                                borderRadius: 999,
+                                fontSize: 11,
+                                fontWeight: 950,
+                                background:
+                                  alta.modalidad === 'BABY'
+                                    ? '#eff6ff'
+                                    : alta.modalidad === 'OCIO'
+                                    ? '#f5f3ff'
+                                    : '#fff7ed',
+                                color:
+                                  alta.modalidad === 'BABY'
+                                    ? '#1d4ed8'
+                                    : alta.modalidad === 'OCIO'
+                                    ? '#6d28d9'
+                                    : '#c2410c',
+                                border:
+                                  alta.modalidad === 'BABY'
+                                    ? '1px solid #bfdbfe'
+                                    : alta.modalidad === 'OCIO'
+                                    ? '1px solid #ddd6fe'
+                                    : '1px solid #fed7aa',
+                              }}
+                            >
+                              {alta.modalidad === 'BABY'
+                                ? 'BABY'
+                                : alta.modalidad === 'OCIO'
+                                ? 'OCIO'
+                                : 'INTENSIVOS'}
+                            </span>
                             <span>·</span>
                             <span>{formatearFecha(alta.fecha_nacimiento)}</span>
                             {alta.nivel_propuesto && (
@@ -39208,7 +39820,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                           color: '#172033',
                                         }}
                                       >
-                                        {String(respuesta || '-')}
+                                        {detalle.respuestaTexto}
                                       </div>
 
                                       {detalleAbierto && (
@@ -39238,7 +39850,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                               lineHeight: 1.4,
                                             }}
                                           >
-                                            <strong>Respuesta:</strong>{' '}
+                                            <strong>Respuesta de la familia:</strong>{' '}
                                             {detalle.respuestaTexto}
                                           </div>
                                         </div>
@@ -41857,27 +42469,71 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
 
       {pantalla === 'usuarios' && esCoordinadorJefeApp && (
         <section>
-          <div style={cabeceraPantalla}>
-            <div>
-              <h2>Accesos equipo</h2>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              gap: 16,
+              flexWrap: 'wrap',
+              borderRadius: 24,
+              padding: 20,
+              background:
+                'linear-gradient(135deg, #062d3f 0%, #083b4d 58%, #0b5d4f 100%)',
+              border: '1px solid rgba(16,185,129,0.28)',
+              boxShadow: '0 18px 44px rgba(15,23,42,0.16)',
+              color: '#ffffff',
+            }}
+          >
+            <div style={{ minWidth: 0, flex: '1 1 560px' }}>
+              <span
+                style={{
+                  color: '#86efac',
+                  fontWeight: 950,
+                  fontSize: 11,
+                  letterSpacing: '0.1em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                DIRECCIÓN · ACCESOS
+              </span>
+              <h2 style={{ margin: '5px 0 0', color: '#ffffff', fontSize: 30 }}>
+                Accesos equipo
+              </h2>
               {renderAyudaRapidaPantallaApp()}
-              <p style={{ margin: '6px 0 0', color: '#555' }}>
-                Cuentas de coordinación y administración. Los entrenadores se
-                gestionan desde su propia ficha.
+              <p
+                style={{
+                  margin: '8px 0 0',
+                  color: '#cbd5e1',
+                  lineHeight: 1.45,
+                  maxWidth: 780,
+                }}
+              >
+                Cuentas de coordinación y administración. Los entrenadores se gestionan desde su propia ficha.
               </p>
             </div>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={() => setMostrarAltaUsuarioOperativo(true)}
-                style={botonPrincipal}
+                style={{
+                  ...botonPrincipal,
+                  background: '#ffffff',
+                  color: '#064e3b',
+                  border: '1px solid #ffffff',
+                }}
               >
                 + Crear acceso
               </button>
               <button
                 type="button"
                 onClick={cargarUsuariosOperativos}
-                style={botonSecundario}
+                style={{
+                  ...botonSecundario,
+                  background: 'rgba(255,255,255,.10)',
+                  color: '#ffffff',
+                  border: '1px solid rgba(255,255,255,.28)',
+                }}
               >
                 Actualizar
               </button>
@@ -43957,17 +44613,18 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
           <article
             style={{
               ...agendaHero,
-              border: '1px solid rgba(37, 99, 235, 0.16)',
+              border: '1px solid rgba(16,185,129,0.28)',
               background:
-                'linear-gradient(135deg, rgba(239, 246, 255, 0.98), rgba(255, 255, 255, 0.98) 48%, rgba(240, 253, 250, 0.94))',
-              boxShadow: '0 16px 38px rgba(15, 23, 42, 0.07)',
+                'linear-gradient(135deg, #062d3f 0%, #083b4d 58%, #0b5d4f 100%)',
+              boxShadow: '0 18px 44px rgba(15,23,42,0.16)',
+              color: '#ffffff',
             }}
           >
-            <div style={{ minWidth: 0 }}>
+            <div style={{ minWidth: 0, flex: '1 1 440px' }}>
               <p
                 style={{
                   margin: '0 0 5px',
-                  color: '#2563eb',
+                  color: '#86efac',
                   fontWeight: 950,
                   fontSize: 11,
                   letterSpacing: '0.1em',
@@ -43976,14 +44633,14 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               >
                 Dirección · control mensual
               </p>
-              <h2 style={{ margin: 0, color: '#172033' }}>
+              <h2 style={{ margin: 0, color: '#ffffff', fontSize: 30 }}>
                 Cobros entrenadores
               </h2>
               {renderAyudaRapidaPantallaApp()}
               <p
                 style={{
                   margin: '8px 0 0',
-                  color: '#475569',
+                  color: '#cbd5e1',
                   lineHeight: 1.45,
                   maxWidth: 760,
                 }}
@@ -43995,12 +44652,25 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
               <button
                 onClick={() => void cargarCobrosDesdeSemanaActiva()}
-                style={botonSecundario}
+                style={{
+                  ...botonSecundario,
+                  background: 'rgba(255,255,255,0.10)',
+                  color: '#ffffff',
+                  border: '1px solid rgba(255,255,255,0.26)',
+                }}
                 title="Vuelve al mes correspondiente a la semana de trabajo activa"
               >
                 Actualizar
               </button>
-              <button onClick={abrirPdfCobrosConjunto} style={botonPrincipal}>
+              <button
+                onClick={abrirPdfCobrosConjunto}
+                style={{
+                  ...botonPrincipal,
+                  background: '#ffffff',
+                  color: '#064e3b',
+                  boxShadow: 'none',
+                }}
+              >
                 PDF conjunto dirección
               </button>
             </div>
@@ -44039,17 +44709,6 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                   Periodo
                 </p>
                 <h3 style={{ margin: 0, color: '#172033' }}>Mes a revisar</h3>
-                <span
-                  style={{
-                    display: 'block',
-                    marginTop: 4,
-                    color: '#64748b',
-                    fontSize: 11,
-                    fontWeight: 800,
-                  }}
-                >
-                  Al entrar o pulsar Actualizar se usa la semana de trabajo activa.
-                </span>
               </div>
               <span
                 style={{
@@ -44104,248 +44763,6 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               </div>
             </div>
           </article>
-
-          <details
-            style={{
-              ...agendaBloqueBlanco,
-              padding: 0,
-              overflow: 'hidden',
-              border: '1px solid #fed7aa',
-              background:
-                'linear-gradient(135deg, rgba(255,247,237,0.96), rgba(255,255,255,0.99))',
-              boxShadow: '0 10px 28px rgba(15, 23, 42, 0.05)',
-            }}
-          >
-            <summary
-              style={{
-                listStyle: 'none',
-                cursor: 'pointer',
-                padding: '15px 16px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 12,
-              }}
-            >
-              <span style={{ display: 'grid', gap: 3, minWidth: 0 }}>
-                <strong style={{ color: '#9a3412', fontSize: 15 }}>
-                  + Añadir entreno manual
-                </strong>
-                <span
-                  style={{
-                    color: '#78716c',
-                    fontSize: 12,
-                    lineHeight: 1.35,
-                  }}
-                >
-                  Solo para sesiones que no estén registradas en Baby,
-                  Intensivos u Ocio.
-                </span>
-              </span>
-              <span
-                aria-hidden="true"
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 10,
-                  display: 'grid',
-                  placeItems: 'center',
-                  flex: '0 0 auto',
-                  background: '#fff7ed',
-                  border: '1px solid #fdba74',
-                  color: '#c2410c',
-                  fontSize: 18,
-                  fontWeight: 950,
-                }}
-              >
-                +
-              </span>
-            </summary>
-
-            <div
-              style={{
-                padding: '0 16px 16px',
-                borderTop: '1px solid rgba(251, 146, 60, 0.18)',
-              }}
-            >
-              <p
-                style={{
-                  margin: '12px 0',
-                  color: '#78716c',
-                  fontSize: 13,
-                  lineHeight: 1.45,
-                }}
-              >
-                Cuenta como un turno más en el mes del entrenador.
-              </p>
-
-              <div style={gridFormulario}>
-                <label style={labelCampo}>
-                  Entrenador
-                  <select
-                    value={formCobroManual.entrenadorId}
-                    onChange={(e) =>
-                      setFormCobroManual({
-                        ...formCobroManual,
-                        entrenadorId: e.target.value,
-                      })
-                    }
-                    style={selectCampo}
-                  >
-                    <option value="">Elegir entrenador</option>
-                    {entrenadores
-                      .filter((entrenador) => entrenador.activo !== false)
-                      .map((entrenador) => (
-                        <option
-                          key={entrenador.entrenador_id}
-                          value={entrenador.entrenador_id}
-                        >
-                          {entrenador.nombre_completo}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-                <label style={labelCampo}>
-                  Fecha
-                  <input
-                    type="date"
-                    value={formCobroManual.fecha}
-                    onChange={(e) =>
-                      setFormCobroManual({
-                        ...formCobroManual,
-                        fecha: e.target.value,
-                      })
-                    }
-                    style={inputCampo}
-                  />
-                </label>
-                <label style={labelCampo}>
-                  Inicio
-                  <input
-                    type="time"
-                    value={formCobroManual.horaInicio}
-                    onChange={(e) =>
-                      setFormCobroManual({
-                        ...formCobroManual,
-                        horaInicio: e.target.value,
-                      })
-                    }
-                    style={inputCampo}
-                  />
-                </label>
-                <label style={labelCampo}>
-                  Fin
-                  <input
-                    type="time"
-                    value={formCobroManual.horaFin}
-                    onChange={(e) =>
-                      setFormCobroManual({
-                        ...formCobroManual,
-                        horaFin: e.target.value,
-                      })
-                    }
-                    style={inputCampo}
-                  />
-                </label>
-                <label style={labelCampo}>
-                  Modalidad
-                  <select
-                    value={formCobroManual.modalidad}
-                    onChange={(e) =>
-                      setFormCobroManual({
-                        ...formCobroManual,
-                        modalidad: e.target.value,
-                      })
-                    }
-                    style={selectCampo}
-                  >
-                    <option value="BABY">Baby</option>
-                    <option value="INTENSIVOS">Intensivos</option>
-                    <option value="OCIO">Ocio</option>
-                  </select>
-                </label>
-                <label style={labelCampo}>
-                  Nombre / motivo
-                  <input
-                    value={formCobroManual.nombreGrupo}
-                    onChange={(e) =>
-                      setFormCobroManual({
-                        ...formCobroManual,
-                        nombreGrupo: e.target.value,
-                      })
-                    }
-                    placeholder="Apoyo pista / entreno manual / sustitución..."
-                    style={inputCampo}
-                  />
-                </label>
-                <label style={labelCampo}>
-                  Niños
-                  <input
-                    type="number"
-                    value={formCobroManual.totalAlumnos}
-                    onChange={(e) =>
-                      setFormCobroManual({
-                        ...formCobroManual,
-                        totalAlumnos: e.target.value,
-                      })
-                    }
-                    style={inputCampo}
-                  />
-                </label>
-                <label style={labelCampo}>
-                  Importe especial opcional
-                  <input
-                    value={formCobroManual.importeOverride}
-                    onChange={(e) =>
-                      setFormCobroManual({
-                        ...formCobroManual,
-                        importeOverride: e.target.value,
-                      })
-                    }
-                    placeholder="Vacío = tarifa del entrenador"
-                    style={inputCampo}
-                  />
-                </label>
-                <label style={{ ...labelCampo, gridColumn: '1 / -1' }}>
-                  Observaciones
-                  <textarea
-                    value={formCobroManual.observaciones}
-                    onChange={(e) =>
-                      setFormCobroManual({
-                        ...formCobroManual,
-                        observaciones: e.target.value,
-                      })
-                    }
-                    rows={2}
-                    placeholder="Nota para dirección si hace falta..."
-                    style={textareaCampo}
-                  />
-                </label>
-              </div>
-
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 8,
-                  flexWrap: 'wrap',
-                  marginTop: 12,
-                }}
-              >
-                <button
-                  onClick={crearEntrenoManualCobro}
-                  style={botonPrincipal}
-                >
-                  Añadir entreno manual
-                </button>
-                <button
-                  onClick={() => setFormCobroManual(cobroManualInicial())}
-                  style={botonSecundario}
-                >
-                  Limpiar formulario
-                </button>
-              </div>
-            </div>
-          </details>
 
           <section
             style={{
@@ -44721,32 +45138,40 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
 
                   <div
                     style={{
-                      ...gridFormulario,
                       marginTop: 12,
                       padding: 12,
                       borderRadius: 14,
                       background: 'rgba(248, 250, 252, 0.92)',
                       border: '1px solid #e2e8f0',
+                      display: 'grid',
+                      gap: 10,
                     }}
                   >
-                    <label style={labelCampo}>
-                      Tarifa por sesión
-                      <input
-                        type="number"
-                        value={
-                          tarifasEditadasCobros[cobro.entrenador_id] ??
-                          String(cobro.tarifa_por_turno ?? 0)
-                        }
-                        onChange={(e) =>
-                          setTarifasEditadasCobros({
-                            ...tarifasEditadasCobros,
-                            [cobro.entrenador_id]: e.target.value,
-                          })
-                        }
-                        style={inputCampo}
-                      />
-                    </label>
-                    <div style={{ ...labelCampo, justifyContent: 'flex-end' }}>
+                    <div
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'minmax(180px, 1fr) auto',
+                        gap: 8,
+                        alignItems: 'end',
+                      }}
+                    >
+                      <label style={labelCampo}>
+                        Tarifa por sesión
+                        <input
+                          type="number"
+                          value={
+                            tarifasEditadasCobros[cobro.entrenador_id] ??
+                            String(cobro.tarifa_por_turno ?? 0)
+                          }
+                          onChange={(e) =>
+                            setTarifasEditadasCobros({
+                              ...tarifasEditadasCobros,
+                              [cobro.entrenador_id]: e.target.value,
+                            })
+                          }
+                          style={inputCampo}
+                        />
+                      </label>
                       <button
                         onClick={() => guardarTarifaCobro(cobro)}
                         style={botonSecundario}
@@ -44754,15 +45179,31 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                         Guardar tarifa
                       </button>
                     </div>
-                    <div style={{ ...labelCampo, justifyContent: 'flex-end' }}>
+
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 8,
+                        flexWrap: 'wrap',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <button
+                        onClick={() => abrirEntrenoManualCobro(cobro)}
+                        style={
+                          entrenoManualCobroAbiertoId === cobro.entrenador_id
+                            ? botonPrincipal
+                            : botonSecundario
+                        }
+                      >
+                        + Añadir entrenamiento
+                      </button>
                       <button
                         onClick={() => crearAjusteCobro(cobro)}
                         style={botonSecundario}
                       >
                         + Ajuste manual
                       </button>
-                    </div>
-                    <div style={{ ...labelCampo, justifyContent: 'flex-end' }}>
                       <button
                         onClick={() => abrirPdfCobroEntrenador(cobro)}
                         style={botonPrincipal}
@@ -44770,6 +45211,176 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                         PDF individual
                       </button>
                     </div>
+
+                    {entrenoManualCobroAbiertoId === cobro.entrenador_id && (
+                      <section
+                        style={{
+                          marginTop: 2,
+                          paddingTop: 12,
+                          borderTop: '1px solid #e2e8f0',
+                          display: 'grid',
+                          gap: 10,
+                        }}
+                      >
+                        <div>
+                          <strong>Añadir entrenamiento a {cobro.entrenador}</strong>
+                          <p
+                            style={{
+                              margin: '4px 0 0',
+                              color: '#64748b',
+                              fontSize: 12,
+                              lineHeight: 1.4,
+                            }}
+                          >
+                            Solo para una sesión que no esté registrada ya en Baby,
+                            Intensivos u Ocio. Contará como un turno normal del mes.
+                          </p>
+                        </div>
+
+                        <div style={gridFormulario}>
+                          <label style={labelCampo}>
+                            Fecha
+                            <input
+                              type="date"
+                              value={formCobroManual.fecha}
+                              onChange={(e) =>
+                                setFormCobroManual({
+                                  ...formCobroManual,
+                                  fecha: e.target.value,
+                                })
+                              }
+                              style={inputCampo}
+                            />
+                          </label>
+                          <label style={labelCampo}>
+                            Inicio
+                            <input
+                              type="time"
+                              value={formCobroManual.horaInicio}
+                              onChange={(e) =>
+                                setFormCobroManual({
+                                  ...formCobroManual,
+                                  horaInicio: e.target.value,
+                                })
+                              }
+                              style={inputCampo}
+                            />
+                          </label>
+                          <label style={labelCampo}>
+                            Fin
+                            <input
+                              type="time"
+                              value={formCobroManual.horaFin}
+                              onChange={(e) =>
+                                setFormCobroManual({
+                                  ...formCobroManual,
+                                  horaFin: e.target.value,
+                                })
+                              }
+                              style={inputCampo}
+                            />
+                          </label>
+                          <label style={labelCampo}>
+                            Modalidad
+                            <select
+                              value={formCobroManual.modalidad}
+                              onChange={(e) =>
+                                setFormCobroManual({
+                                  ...formCobroManual,
+                                  modalidad: e.target.value,
+                                })
+                              }
+                              style={selectCampo}
+                            >
+                              <option value="BABY">Baby</option>
+                              <option value="INTENSIVOS">Intensivos</option>
+                              <option value="OCIO">Ocio</option>
+                            </select>
+                          </label>
+                          <label style={labelCampo}>
+                            Nombre / motivo
+                            <input
+                              value={formCobroManual.nombreGrupo}
+                              onChange={(e) =>
+                                setFormCobroManual({
+                                  ...formCobroManual,
+                                  nombreGrupo: e.target.value,
+                                })
+                              }
+                              placeholder="Apoyo pista / sustitución / entrenamiento..."
+                              style={inputCampo}
+                            />
+                          </label>
+                          <label style={labelCampo}>
+                            Niños
+                            <input
+                              type="number"
+                              value={formCobroManual.totalAlumnos}
+                              onChange={(e) =>
+                                setFormCobroManual({
+                                  ...formCobroManual,
+                                  totalAlumnos: e.target.value,
+                                })
+                              }
+                              style={inputCampo}
+                            />
+                          </label>
+                          <label style={labelCampo}>
+                            Importe especial opcional
+                            <input
+                              value={formCobroManual.importeOverride}
+                              onChange={(e) =>
+                                setFormCobroManual({
+                                  ...formCobroManual,
+                                  importeOverride: e.target.value,
+                                })
+                              }
+                              placeholder="Vacío = tarifa del entrenador"
+                              style={inputCampo}
+                            />
+                          </label>
+                          <label style={{ ...labelCampo, gridColumn: '1 / -1' }}>
+                            Observaciones
+                            <textarea
+                              value={formCobroManual.observaciones}
+                              onChange={(e) =>
+                                setFormCobroManual({
+                                  ...formCobroManual,
+                                  observaciones: e.target.value,
+                                })
+                              }
+                              rows={2}
+                              placeholder="Nota para dirección si hace falta..."
+                              style={textareaCampo}
+                            />
+                          </label>
+                        </div>
+
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: 8,
+                            flexWrap: 'wrap',
+                          }}
+                        >
+                          <button
+                            onClick={crearEntrenoManualCobro}
+                            style={botonPrincipal}
+                          >
+                            Añadir entrenamiento
+                          </button>
+                          <button
+                            onClick={() => {
+                              setFormCobroManual(cobroManualInicial());
+                              setEntrenoManualCobroAbiertoId('');
+                            }}
+                            style={botonSecundario}
+                          >
+                            Cancelar
+                          </button>
+                        </div>
+                      </section>
+                    )}
                   </div>
 
                   <div
@@ -44866,14 +45477,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                           key={`${detalleCobro.entrenador_id}-${detalleCobro.grupo_id}-${detalleCobro.fecha}-${detalleCobro.hora_inicio}`}
                           style={{
                             ...miniTarjetaBlanca,
-                            border:
-                              detalleCobro.origen_cobro === 'MANUAL'
-                                ? '1px solid #fed7aa'
-                                : '1px solid #e2e8f0',
-                            background:
-                              detalleCobro.origen_cobro === 'MANUAL'
-                                ? '#fff7ed'
-                                : '#fff',
+                            border: '1px solid #e2e8f0',
+                            background: '#fff',
                           }}
                         >
                           <div
@@ -44891,23 +45496,12 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                 {horaCorta(detalleCobro.hora_fin)} ·{' '}
                                 {detalleCobro.modalidad}
                               </strong>
-                              {detalleCobro.origen_cobro === 'MANUAL' && (
-                                <span
-                                  style={{
-                                    marginLeft: 8,
-                                    padding: '3px 6px',
-                                    borderRadius: 999,
-                                    background: '#ffedd5',
-                                    color: '#c2410c',
-                                    fontSize: 10,
-                                    fontWeight: 950,
-                                  }}
-                                >
-                                  MANUAL
-                                </span>
-                              )}
                               <p style={{ margin: '5px 0 0' }}>
-                                {detalleCobro.nombre_grupo} ·{' '}
+                                {detalleCobro.origen_cobro === 'MANUAL' &&
+                                detalleCobro.nombre_grupo === 'Entreno manual'
+                                  ? 'Entrenamiento'
+                                  : detalleCobro.nombre_grupo}{' '}
+                                ·{' '}
                                 {detalleCobro.total_alumnos} niños ·{' '}
                                 {formatearEuros(detalleCobro.importe_turno)}
                               </p>
@@ -44927,7 +45521,12 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                 onClick={() =>
                                   eliminarEntrenoManualCobro(detalleCobro)
                                 }
-                                style={botonPeligroMini}
+                                style={{
+                                  ...botonMini,
+                                  background: '#ffffff',
+                                  color: '#64748b',
+                                  border: '1px solid #cbd5e1',
+                                }}
                               >
                                 Eliminar
                               </button>
