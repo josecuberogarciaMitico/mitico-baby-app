@@ -1662,6 +1662,29 @@ type UltimoListadoAimHarderApp = {
   asistentes: Record<string, DatosContactoAimHarderApp>;
 };
 
+type OcioAimHarderAsistenteApp = {
+  nombre: string;
+  telefono: string;
+  fechaNacimiento: string;
+  clientId: string;
+};
+
+type OcioAimHarderTurnoApp = {
+  fecha: string;
+  horaInicio: string;
+  horaFin: string;
+  claseId: number;
+  claseNombre: string;
+  ocupacion: number;
+  asistentes: OcioAimHarderAsistenteApp[];
+};
+
+type OcioAimHarderSemanaApp = {
+  semanaInicio: string;
+  turnos: OcioAimHarderTurnoApp[];
+  actualizadoAt: string;
+};
+
 type ReporteFormState = {
   nivel: string;
   actitud: string;
@@ -4642,6 +4665,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [ocioSemanaResultados, setOcioSemanaResultados] = useState<
     OcioPrepararResultadoApp[]
   >([]);
+  const [ocioAimHarderSemana, setOcioAimHarderSemana] =
+    useState<OcioAimHarderSemanaApp | null>(null);
+  const [ocioAimHarderCargando, setOcioAimHarderCargando] = useState(false);
+  const [ocioAimHarderMensaje, setOcioAimHarderMensaje] = useState('');
+  const [ocioAimHarderError, setOcioAimHarderError] = useState('');
   const [ocioCambiosPuntuales, setOcioCambiosPuntuales] = useState<
     OcioCambioPuntualApp[]
   >([]);
@@ -9377,6 +9405,310 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
   function cambiarAsistenciaOcioSemana(alumnoId: string, viene: boolean) {
     const clave = claveAsistenciaOcioSemana(alumnoId);
     setOcioSemanaAsistencia((anterior) => ({ ...anterior, [clave]: viene }));
+  }
+
+  function claveTurnoOcioAimHarder(
+    fecha: string,
+    inicio: string,
+    fin: string
+  ) {
+    return `${String(fecha || '').slice(0, 10)}__${horaCorta(
+      inicio
+    )}__${horaCorta(fin)}`;
+  }
+
+  function diaFijoOcioDesdeFecha(
+    fechaIso: string
+  ): '' | 'Jueves' | 'Sábado' | 'Domingo' {
+    if (!fechaIso) return '';
+    const dia = crearFechaAgenda(fechaIso).getDay();
+    if (dia === 4) return 'Jueves';
+    if (dia === 6) return 'Sábado';
+    if (dia === 0) return 'Domingo';
+    return '';
+  }
+
+  function abrirAltaTestDesdeOcioAimHarder(
+    asistente: OcioAimHarderAsistenteApp,
+    turno: OcioAimHarderTurnoApp
+  ) {
+    setFormAltaNivelInicial({
+      ...altaNivelInicialFormVacioApp(),
+      nombre: asistente.nombre || '',
+      fechaNacimiento: asistente.fechaNacimiento || '',
+      telefono: asistente.telefono || '',
+      modalidad: 'OCIO',
+      ocioDiaFijo: diaFijoOcioDesdeFecha(turno.fecha),
+    });
+    setMostrarFormularioAltaNivel(true);
+    setPantalla('administracion');
+
+    if (!asistente.telefono || !asistente.fechaNacimiento) {
+      setError(
+        'AimHarder ha identificado al alumno de Ocio, pero falta teléfono o fecha de nacimiento. Revisa esos datos antes de crear el Alta TEST.'
+      );
+    } else {
+      setError('');
+    }
+
+    window.setTimeout(() => {
+      contenidoPantallaRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 100);
+  }
+
+  function aplicarSemanaOcioDesdeAimHarder(datos: OcioAimHarderSemanaApp) {
+    const semanaActual = lunesSemanaOcioActiva();
+
+    if (!semanaActual || datos.semanaInicio !== semanaActual) {
+      setOcioAimHarderError(
+        'La respuesta de AimHarder pertenece a otra semana. No se ha cambiado quién viene.'
+      );
+      return;
+    }
+
+    const porTurno = new Map<string, OcioAimHarderTurnoApp>();
+    datos.turnos.forEach((turno) => {
+      porTurno.set(
+        claveTurnoOcioAimHarder(
+          turno.fecha,
+          turno.horaInicio,
+          turno.horaFin
+        ),
+        turno
+      );
+    });
+
+    const cambios: Record<string, boolean> = {};
+    const turnosEsperados = new Set<string>();
+    const turnosEncontrados = new Set<string>();
+
+    ocioGrupos.forEach((grupo) => {
+      if (!esTurnoOficialOcio(grupo)) return;
+
+      const fecha = fechaGrupoOcioSemana(grupo);
+      const claveTurno = claveTurnoOcioAimHarder(
+        fecha,
+        grupo.hora_inicio,
+        grupo.hora_fin
+      );
+
+      turnosEsperados.add(claveTurno);
+      const turno = porTurno.get(claveTurno);
+      if (!turno) return;
+
+      turnosEncontrados.add(claveTurno);
+
+      const reservas = new Set(
+        turno.asistentes
+          .map((asistente) =>
+            normalizarNombreFueraPlazoAgenda(asistente.nombre || '')
+          )
+          .filter(Boolean)
+      );
+
+      alumnosGrupoOcioEstable(grupo.grupo_id).forEach((alumno) => {
+        const claveAlumno = normalizarNombreFueraPlazoAgenda(
+          alumno.alumno || ''
+        );
+        cambios[claveAsistenciaOcioSemana(alumno.alumno_id)] =
+          reservas.has(claveAlumno);
+      });
+    });
+
+    setOcioSemanaAsistencia((anterior) => ({
+      ...anterior,
+      ...cambios,
+    }));
+    setOcioAimHarderSemana(datos);
+
+    const conocidos = new Set(
+      ocioAlumnos
+        .map((alumno) =>
+          normalizarNombreFueraPlazoAgenda(alumno.alumno || '')
+        )
+        .filter(Boolean)
+    );
+
+    const nuevos = new Set<string>();
+    datos.turnos.forEach((turno) => {
+      turno.asistentes.forEach((asistente) => {
+        const clave = normalizarNombreFueraPlazoAgenda(
+          asistente.nombre || ''
+        );
+        if (clave && !conocidos.has(clave)) nuevos.add(clave);
+      });
+    });
+
+    const faltan = Math.max(
+      0,
+      turnosEsperados.size - turnosEncontrados.size
+    );
+
+    setOcioAimHarderMensaje(
+      faltan > 0
+        ? `AimHarder actualizado correctamente · ${faltan} turno(s) de Ocio sin coincidencia exacta`
+        : 'AimHarder actualizado correctamente'
+    );
+    setOcioAimHarderError('');
+  }
+
+  async function llamarAimHarderLecturaOcioApp(
+    body: Record<string, unknown>
+  ): Promise<any> {
+    const accessToken = await obtenerAccessTokenSupabaseApp();
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/functions/v1/mitico-aimharder-read`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    const texto = await respuesta.text();
+    let datos: any = {};
+
+    try {
+      datos = texto ? JSON.parse(texto) : {};
+    } catch {
+      throw new Error(
+        `AimHarder devolvió una respuesta no válida (HTTP ${respuesta.status}).`
+      );
+    }
+
+    if (!respuesta.ok) {
+      throw new Error(
+        typeof datos?.error === 'string'
+          ? datos.error
+          : `Error ${respuesta.status} consultando AimHarder.`
+      );
+    }
+
+    return datos;
+  }
+
+  async function actualizarSemanaOcioDesdeAimHarder() {
+    const semanaInicio = lunesSemanaOcioActiva();
+
+    if (!semanaInicio) {
+      setOcioAimHarderError('Selecciona primero la semana de Ocio.');
+      return;
+    }
+
+    setOcioAimHarderCargando(true);
+    setOcioAimHarderMensaje('');
+    setOcioAimHarderError('');
+
+    try {
+      const boxes = await llamarAimHarderLecturaOcioApp({
+        action: 'boxes',
+      });
+      const listaBoxes = Array.isArray(boxes?.boxes) ? boxes.boxes : [];
+      const box =
+        listaBoxes.find((item: any) =>
+          /MITICO|MÍTICO/i.test(String(item?.gym || ''))
+        ) || (listaBoxes.length === 1 ? listaBoxes[0] : null);
+
+      if (!box) {
+        throw new Error(
+          'No puedo identificar de forma inequívoca el centro Mítico en AimHarder.'
+        );
+      }
+
+      const semana = await llamarAimHarderLecturaOcioApp({
+        action: 'week',
+        weekStart: semanaInicio,
+        boxId: Number(box.boid),
+      });
+
+      const clasesOcio = (
+        Array.isArray(semana?.classes) ? semana.classes : []
+      )
+        .filter(
+          (clase: any) =>
+            normalizarModalidadAgenda(
+              String(clase?.modalidad || '')
+            ) === 'OCIO'
+        )
+        .sort((a: any, b: any) =>
+          `${String(a?.date || '')} ${String(
+            a?.time || ''
+          )}`.localeCompare(
+            `${String(b?.date || '')} ${String(b?.time || '')}`
+          )
+        );
+
+      const turnos: OcioAimHarderTurnoApp[] = [];
+
+      for (const clase of clasesOcio) {
+        const fecha = String(clase?.date || '').slice(0, 10);
+        const partesHora = String(clase?.time || '').split('-');
+        const horaInicio = horaCorta(partesHora[0] || '');
+        const horaFin = horaCorta(partesHora[1] || '');
+
+        if (!fecha || !horaInicio || !horaFin) continue;
+
+        const detalle = await llamarAimHarderLecturaOcioApp({
+          action: 'attendees',
+          date: fecha,
+          classId: Number(clase.id),
+          boxId: Number(box.boid),
+        });
+
+        const asistentesRaw = Array.isArray(detalle?.attendees)
+          ? detalle.attendees
+          : [];
+        const ocupacionAim = Number(clase?.ocupation) || 0;
+        const totalLeido = Number(detalle?.total);
+        const totalFinal = Number.isFinite(totalLeido)
+          ? totalLeido
+          : asistentesRaw.length;
+
+        if (
+          totalFinal !== ocupacionAim ||
+          asistentesRaw.length !== ocupacionAim
+        ) {
+          throw new Error(
+            `No cuadra el listado de ${fecha} ${horaInicio}-${horaFin}: AimHarder marca ${ocupacionAim} ocupadas y se han leído ${asistentesRaw.length}. No se ha cambiado Preparar semana.`
+          );
+        }
+
+        turnos.push({
+          fecha,
+          horaInicio,
+          horaFin,
+          claseId: Number(clase.id) || 0,
+          claseNombre: String(clase?.className || ''),
+          ocupacion: ocupacionAim,
+          asistentes: asistentesRaw.map((asistente: any) => ({
+            nombre: String(asistente?.name || '').trim(),
+            telefono: String(asistente?.phone || '').trim(),
+            fechaNacimiento: String(asistente?.birthDate || '').trim(),
+            clientId: String(asistente?.clientId || '').trim(),
+          })),
+        });
+      }
+
+      aplicarSemanaOcioDesdeAimHarder({
+        semanaInicio,
+        turnos,
+        actualizadoAt: new Date().toISOString(),
+      });
+    } catch (e) {
+      setOcioAimHarderError(
+        e instanceof Error
+          ? e.message
+          : 'No se pudo actualizar Ocio desde AimHarder.'
+      );
+    } finally {
+      setOcioAimHarderCargando(false);
+    }
   }
 
   function edadOcioAlumnoEnFecha(alumno: OcioAlumnoApp, fechaIso: string) {
@@ -34448,6 +34780,168 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
 
                 {ocioPanelOperativo === 'semana' && (
                   <>
+                    <article style={agendaBloqueBlanco}>
+                      <div style={agendaCabeceraLinea}>
+                        <div>
+                          <strong style={{ fontSize: 17 }}>
+                            Listados reales de AimHarder
+                          </strong>
+                          <div style={{ marginTop: 4, color: '#64748b' }}>
+                            Actualiza quién viene esta semana sin marcar alumno por alumno.
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={actualizarSemanaOcioDesdeAimHarder}
+                          disabled={ocioAimHarderCargando}
+                          style={botonPrincipal}
+                        >
+                          {ocioAimHarderCargando
+                            ? 'Consultando AimHarder…'
+                            : 'Actualizar semana desde AimHarder'}
+                        </button>
+                      </div>
+
+                      {ocioAimHarderError && (
+                        <div style={{ ...errorCaja, marginTop: 12 }}>
+                          {ocioAimHarderError}
+                        </div>
+                      )}
+
+                      {ocioAimHarderMensaje && !ocioAimHarderError && (
+                        <div style={{ ...avisoCompleto, marginTop: 12 }}>
+                          {ocioAimHarderMensaje}
+                        </div>
+                      )}
+
+                      {ocioAimHarderSemana && (
+                        <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+                          {ocioAimHarderSemana.turnos
+                            .filter(
+                              (turno) =>
+                                diaFijoOcioDesdeFecha(turno.fecha) ===
+                                ocioTurnoVista
+                            )
+                            .map((turno) => {
+                              const conocidos = new Set(
+                                ocioAlumnos
+                                  .map((alumno) =>
+                                    normalizarNombreFueraPlazoAgenda(
+                                      alumno.alumno || ''
+                                    )
+                                  )
+                                  .filter(Boolean)
+                              );
+
+                              return (
+                                <div
+                                  key={`aim-ocio-${turno.fecha}-${turno.horaInicio}-${turno.horaFin}`}
+                                  style={miniTarjetaBlanca}
+                                >
+                                  <div style={agendaCabeceraLinea}>
+                                    <div>
+                                      <strong>
+                                        {formatearFecha(turno.fecha)} ·{' '}
+                                        {turno.horaInicio}-{turno.horaFin}
+                                      </strong>
+                                      <div
+                                        style={{
+                                          marginTop: 3,
+                                          color: '#64748b',
+                                        }}
+                                      >
+                                        {turno.claseNombre || 'Ocio'} ·{' '}
+                                        {turno.asistentes.length} reservado(s)
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {turno.asistentes.length === 0 ? (
+                                    <div
+                                      style={{
+                                        ...agendaVacioMini,
+                                        marginTop: 8,
+                                      }}
+                                    >
+                                      Sin reservas en AimHarder.
+                                    </div>
+                                  ) : (
+                                    <div
+                                      style={{
+                                        display: 'grid',
+                                        gap: 7,
+                                        marginTop: 10,
+                                      }}
+                                    >
+                                      {turno.asistentes.map((asistente) => {
+                                        const clave =
+                                          normalizarNombreFueraPlazoAgenda(
+                                            asistente.nombre || ''
+                                          );
+                                        const existe = conocidos.has(clave);
+
+                                        return (
+                                          <div
+                                            key={`aim-ocio-asistente-${turno.claseId}-${clave}`}
+                                            style={filaAlumnoAsistencia}
+                                          >
+                                            <div>
+                                              <strong>
+                                                {asistente.nombre}
+                                              </strong>
+                                              <div
+                                                style={{
+                                                  marginTop: 3,
+                                                  color: existe
+                                                    ? '#166534'
+                                                    : '#b45309',
+                                                  fontWeight: 800,
+                                                  fontSize: 12,
+                                                }}
+                                              >
+                                                {existe
+                                                  ? 'AimHarder · reservado'
+                                                  : 'NUEVO · pendiente Alta / Test'}
+                                              </div>
+                                            </div>
+
+                                            {!existe && (
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  abrirAltaTestDesdeOcioAimHarder(
+                                                    asistente,
+                                                    turno
+                                                  )
+                                                }
+                                                style={botonPrincipal}
+                                              >
+                                                Crear Alta / Test
+                                              </button>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+
+                          {ocioAimHarderSemana.turnos.filter(
+                            (turno) =>
+                              diaFijoOcioDesdeFecha(turno.fecha) ===
+                              ocioTurnoVista
+                          ).length === 0 && (
+                            <div style={agendaVacioMini}>
+                              AimHarder no ha devuelto ningún turno Ocio para{' '}
+                              {ocioTurnoVista}.
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </article>
+
                     {cambiosOcioSemana.length > 0 && (
                       <details style={avisoNeutral}>
                         <summary
