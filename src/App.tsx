@@ -36329,15 +36329,15 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                 : 'minmax(0, 1fr) auto',
               alignItems: esVistaMovilApp ? 'stretch' : 'end',
               gap: esVistaMovilApp ? 16 : 22,
-              minHeight: esVistaMovilApp ? 250 : 225,
-              padding: esVistaMovilApp ? '22px 18px' : '28px 30px',
+              minHeight: esVistaMovilApp ? 245 : 220,
+              padding: esVistaMovilApp ? '22px 20px' : '28px 30px',
               borderRadius: 24,
               border: '1px solid rgba(255,255,255,.12)',
               backgroundImage: esVistaMovilApp
-                ? `linear-gradient(180deg, rgba(4,39,55,.46) 0%, rgba(4,39,55,.72) 45%, rgba(4,39,55,.96) 100%), url(${FOTO_MITICO_HERO})`
-                : `linear-gradient(90deg, rgba(4,39,55,.90) 0%, rgba(5,50,65,.80) 46%, rgba(6,68,62,.34) 74%, rgba(6,68,62,.12) 100%), url(${FOTO_MITICO_HERO})`,
-              backgroundSize: esVistaMovilApp ? 'auto 112%' : '112% auto',
-              backgroundPosition: esVistaMovilApp ? '64% center' : '54% 40%',
+                ? `linear-gradient(180deg, rgba(4,39,55,.42) 0%, rgba(4,39,55,.70) 46%, rgba(4,39,55,.96) 100%), url('/mitico-entrenador-esqui.jpg')`
+                : `linear-gradient(90deg, rgba(4,39,55,.90) 0%, rgba(5,50,65,.77) 43%, rgba(6,68,62,.30) 70%, rgba(6,68,62,.08) 100%), url('/mitico-entrenador-esqui.jpg')`,
+              backgroundSize: 'cover',
+              backgroundPosition: esVistaMovilApp ? '62% center' : 'center 46%',
               backgroundRepeat: 'no-repeat',
               color: '#ffffff',
               boxShadow: '0 18px 42px rgba(15,23,42,.16)',
