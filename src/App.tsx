@@ -1647,6 +1647,21 @@ type AgendaFormState = {
   texto_listado: string;
 };
 
+type DatosContactoAimHarderApp = {
+  nombre: string;
+  telefono: string;
+  fechaNacimiento: string;
+  clientId: string;
+};
+
+type UltimoListadoAimHarderApp = {
+  fecha: string;
+  horaInicio: string;
+  horaFin: string;
+  modalidad: string;
+  asistentes: Record<string, DatosContactoAimHarderApp>;
+};
+
 type ReporteFormState = {
   nivel: string;
   actitud: string;
@@ -4987,9 +5002,57 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [agendaForm, setAgendaForm] = useState<AgendaFormState>(
     agendaFormInicial()
   );
+  const [ultimoListadoAimHarder, setUltimoListadoAimHarder] =
+    useState<UltimoListadoAimHarderApp | null>(null);
   const [agendaAlumnosSesion, setAgendaAlumnosSesion] = useState<
     AgendaAlumnoSesionApp[]
   >([]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const recibirListadoAimHarder = (evento: Event) => {
+      const detalle = (evento as CustomEvent<any>).detail || {};
+      const modalidad = String(detalle.modalidad || '').trim().toUpperCase();
+      if (modalidad !== 'BABY') return;
+
+      const asistentes: Record<string, DatosContactoAimHarderApp> = {};
+      const filas = Array.isArray(detalle.asistentes) ? detalle.asistentes : [];
+
+      filas.forEach((fila: any) => {
+        const nombre = String(fila?.name || '').trim();
+        const clave = normalizarNombreFueraPlazoAgenda(nombre);
+        if (!clave) return;
+
+        asistentes[clave] = {
+          nombre,
+          telefono: String(fila?.phone || '').trim(),
+          fechaNacimiento: String(fila?.birthDate || '').trim(),
+          clientId: String(fila?.clientId || '').trim(),
+        };
+      });
+
+      setUltimoListadoAimHarder({
+        fecha: String(detalle.fecha || '').slice(0, 10),
+        horaInicio: String(detalle.inicio || '').slice(0, 5),
+        horaFin: String(detalle.fin || '').slice(0, 5),
+        modalidad,
+        asistentes,
+      });
+    };
+
+    window.addEventListener(
+      'mitico:aimharder-attendees',
+      recibirListadoAimHarder as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        'mitico:aimharder-attendees',
+        recibirListadoAimHarder as EventListener
+      );
+    };
+  }, []);
   const [agendaGruposSesion, setAgendaGruposSesion] = useState<
     AgendaGrupoSesionApp[]
   >([]);
@@ -5012,6 +5075,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [agendaRecomendaciones, setAgendaRecomendaciones] = useState<
     AgendaRecomendacionSesionApp[]
   >([]);
+  const [
+    alternativasTurnoAgendaPorAlumno,
+    setAlternativasTurnoAgendaPorAlumno,
+  ] = useState<Record<string, RecomendacionFueraPlazoAgendaApp[]>>({});
+  const [
+    buscandoAlternativasTurnoAgenda,
+    setBuscandoAlternativasTurnoAgenda,
+  ] = useState(false);
   const [fechaResumenDia, setFechaResumenDia] = useState(() =>
     leerStorageApp('mitico_fecha_resumen_dia', fechaIsoHoyApp())
   );
@@ -15055,10 +15126,39 @@ async function abrirGestionOperativaIntensivoDia(
     irAlTrabajoAgenda('formulario');
   }
 
+  function datosAimHarderAlumnoAgenda(
+    alumno: AgendaAlumnoSesionApp
+  ): DatosContactoAimHarderApp | null {
+    if (!ultimoListadoAimHarder) return null;
+
+    const sesionActual = agendaSesionesDirectas.find(
+      (sesion) => sesion.sesion_id === agendaSesionActivaId
+    );
+
+    if (
+      !sesionActual ||
+      ultimoListadoAimHarder.fecha !== sesionActual.fecha ||
+      ultimoListadoAimHarder.horaInicio !==
+        String(sesionActual.hora_inicio || '').slice(0, 5) ||
+      ultimoListadoAimHarder.horaFin !==
+        String(sesionActual.hora_fin || '').slice(0, 5) ||
+      ultimoListadoAimHarder.modalidad !== 'BABY'
+    ) {
+      return null;
+    }
+
+    const clave = normalizarNombreFueraPlazoAgenda(alumno.alumno || '');
+    return ultimoListadoAimHarder.asistentes[clave] || null;
+  }
+
   function abrirAltaTestDesdeAgenda(alumno: AgendaAlumnoSesionApp) {
+    const datosAimHarder = datosAimHarderAlumnoAgenda(alumno);
+
     setFormAltaNivelInicial({
       ...altaNivelInicialFormVacioApp(),
-      nombre: alumno.alumno || '',
+      nombre: alumno.alumno || datosAimHarder?.nombre || '',
+      fechaNacimiento: datosAimHarder?.fechaNacimiento || '',
+      telefono: datosAimHarder?.telefono || '',
       modalidad:
         agendaForm.modalidad === 'OCIO'
           ? 'OCIO'
@@ -15068,7 +15168,17 @@ async function abrirGestionOperativaIntensivoDia(
     });
     setMostrarFormularioAltaNivel(true);
     setPantalla('administracion');
-    setError('');
+
+    if (
+      agendaForm.modalidad === 'BABY' &&
+      (!datosAimHarder?.telefono || !datosAimHarder?.fechaNacimiento)
+    ) {
+      setError(
+        'AimHarder ha identificado al alumno, pero no ha devuelto teléfono y fecha de nacimiento completos. Revisa esos datos antes de crear el Alta TEST.'
+      );
+    } else {
+      setError('');
+    }
 
     window.setTimeout(() => {
       contenidoPantallaRef.current?.scrollIntoView({
@@ -15466,6 +15576,218 @@ async function abrirGestionOperativaIntensivoDia(
     }
   }
 
+  async function buscarAlternativasSemanaParaPropuestaAgenda(
+    dataPedagogica: AgendaRecomendacionSesionApp[],
+    sesionActual: AgendaSesionDirectaApp,
+    perfilesParaRecomendador: PerfilOperativoAlumnoApp[]
+  ) {
+    const gruposActuales = new Map<string, AgendaRecomendacionSesionApp[]>();
+    dataPedagogica.forEach((alumno) => {
+      gruposActuales.set(alumno.grupo_recomendado, [
+        ...(gruposActuales.get(alumno.grupo_recomendado) || []),
+        alumno,
+      ]);
+    });
+
+    const alumnosAReubicar = Array.from(gruposActuales.values())
+      .filter((grupo) => {
+        const validacion = validacionPedagogicaGrupoApp(grupo);
+        return grupo.length === 1 || validacion.estado === 'BLOQUEADO';
+      })
+      .flat();
+
+    if (alumnosAReubicar.length === 0) {
+      setAlternativasTurnoAgendaPorAlumno({});
+      return;
+    }
+
+    setBuscandoAlternativasTurnoAgenda(true);
+
+    try {
+      const agendaActualizada = await consultarSupabase<AgendaSesionDirectaApp>(
+        'v_agenda_sesiones_operativa_app',
+        'select=*&order=fecha.asc,hora_inicio.asc'
+      );
+      setAgendaSesionesDirectas(agendaActualizada);
+
+      const inicioSemanaActual = inicioSemanaAgenda(sesionActual.fecha);
+      const modalidadActual = `${sesionActual.modalidad_codigo || sesionActual.modalidad || ''}`
+        .trim()
+        .toUpperCase();
+
+      const sesionesAlternativas = agendaActualizada.filter((sesion) => {
+        const modalidadSesion = `${sesion.modalidad_codigo || sesion.modalidad || ''}`
+          .trim()
+          .toUpperCase();
+
+        return (
+          sesion.sesion_id !== sesionActual.sesion_id &&
+          inicioSemanaAgenda(sesion.fecha) === inicioSemanaActual &&
+          modalidadSesion === modalidadActual
+        );
+      });
+
+      const candidatosPorAlumno: Record<string, RecomendacionFueraPlazoAgendaApp[]> =
+        Object.fromEntries(
+          alumnosAReubicar.map((alumno) => [alumno.alumno_id, []])
+        );
+
+      for (const sesionAlternativa of sesionesAlternativas) {
+        let gruposEvaluables: AgendaGrupoSesionApp[] = [];
+
+        try {
+          const filtroSesion = encodeURIComponent(`eq.${sesionAlternativa.sesion_id}`);
+          const gruposReales = await consultarSupabase<AgendaGrupoSesionApp>(
+            'v_grupos_sesion_operativa_app',
+            `select=*&sesion_id=${filtroSesion}&order=nombre_grupo.asc`
+          );
+
+          gruposEvaluables = gruposReales.filter((grupo) =>
+            Boolean(grupo.grupo_id)
+          );
+        } catch {
+          gruposEvaluables = [];
+        }
+
+        // Si ese turno todavía no tiene grupos creados, calculamos su propuesta
+        // a partir del listado ya cargado (por ejemplo, desde AimHarder).
+        if (gruposEvaluables.length === 0) {
+          try {
+            const propuestaBase =
+              await ejecutarFuncionConRespuesta<AgendaRecomendacionSesionApp>(
+                'recomendar_grupos_sesion_operativa_app',
+                { p_sesion_id: sesionAlternativa.sesion_id }
+              );
+
+            const esBabyAlternativa = textoSinAcentosGrupoApp(
+              sesionAlternativa.modalidad_codigo ||
+                sesionAlternativa.modalidad ||
+                ''
+            ).includes('baby');
+
+            const propuestaPedagogica =
+              aplicarCinturonPedagogicoAutomaticoAgenda(propuestaBase, {
+                usarPerfilBaby:
+                  esBabyAlternativa && perfilesParaRecomendador.length > 0,
+                perfiles: perfilesParaRecomendador,
+              });
+
+            const propuestaPorGrupo = new Map<
+              string,
+              AgendaRecomendacionSesionApp[]
+            >();
+            propuestaPedagogica.forEach((alumno) => {
+              propuestaPorGrupo.set(alumno.grupo_recomendado, [
+                ...(propuestaPorGrupo.get(alumno.grupo_recomendado) || []),
+                alumno,
+              ]);
+            });
+
+            gruposEvaluables = Array.from(propuestaPorGrupo.entries()).map(
+              ([nombreGrupo, alumnosGrupo]) => {
+                const niveles = Array.from(
+                  new Set(
+                    alumnosGrupo
+                      .map((alumno) => alumno.nivel_resumen)
+                      .filter(Boolean)
+                  )
+                );
+                const pista =
+                  alumnosGrupo[0]?.pista_recomendada ||
+                  alumnosGrupo[0]?.pista_alumno ||
+                  'Pequeña/Grande';
+
+                return {
+                  sesion_id: sesionAlternativa.sesion_id,
+                  grupo_id: `__PROPUESTA__${sesionAlternativa.sesion_id}__${nombreGrupo}`,
+                  nombre_grupo: nombreGrupo,
+                  nivel_grupo: niveles.join('/'),
+                  pista,
+                  punto_encuentro: null,
+                  estado_grupo: 'PROPUESTA',
+                  publicado: false,
+                  trabajo_diario: null,
+                  observaciones_importantes: null,
+                  entrenador_id: null,
+                  entrenador: null,
+                  estado_confirmacion: null,
+                  total_alumnos: alumnosGrupo.length,
+                  alumnos_lista: alumnosGrupo
+                    .map(
+                      (alumno) =>
+                        `${alumno.alumno} · ${alumno.nivel_resumen || ''}`
+                    )
+                    .join(' || '),
+                };
+              }
+            );
+          } catch {
+            gruposEvaluables = [];
+          }
+        }
+
+        for (const alumno of alumnosAReubicar) {
+          // Si el alumno ya aparece en el listado de ese otro turno,
+          // no proponemos duplicarlo.
+          const yaEstaEnTurno = gruposEvaluables.some((grupo) =>
+            String(grupo.alumnos_lista || '')
+              .toLowerCase()
+              .includes(String(alumno.alumno || '').toLowerCase())
+          );
+          if (yaEstaEnTurno) continue;
+
+          gruposEvaluables.forEach((grupo) => {
+            const opcion = evaluarGrupoFueraPlazoAgenda(
+              grupo,
+              sesionAlternativa,
+              alumno.nivel_resumen || 'INICIACION',
+              false
+            );
+
+            if (opcion.estado === 'RECOMENDADO') {
+              const esPropuesta = grupo.grupo_id.startsWith('__PROPUESTA__');
+              candidatosPorAlumno[alumno.alumno_id].push({
+                ...opcion,
+                punto: esPropuesta ? 'Se asignará al crear el grupo' : opcion.punto,
+                entrenador: esPropuesta
+                  ? 'Pendiente de asignar'
+                  : opcion.entrenador,
+                motivo: esPropuesta
+                  ? `${opcion.motivo} Calculado sobre el listado/propuesta de ese turno; el grupo todavía no necesita estar creado.`
+                  : opcion.motivo,
+              });
+            }
+          });
+        }
+      }
+
+      Object.keys(candidatosPorAlumno).forEach((alumnoId) => {
+        candidatosPorAlumno[alumnoId].sort(
+          (a, b) =>
+            b.score - a.score ||
+            a.fecha.localeCompare(b.fecha) ||
+            a.hora_inicio.localeCompare(b.hora_inicio)
+        );
+        candidatosPorAlumno[alumnoId] =
+          candidatosPorAlumno[alumnoId].slice(0, 5);
+      });
+
+      setAlternativasTurnoAgendaPorAlumno(candidatosPorAlumno);
+    } catch (errorAlternativas) {
+      console.warn(
+        'No se pudieron calcular alternativas semanales de la propuesta.',
+        errorAlternativas
+      );
+      setAlternativasTurnoAgendaPorAlumno(
+        Object.fromEntries(
+          alumnosAReubicar.map((alumno) => [alumno.alumno_id, []])
+        )
+      );
+    } finally {
+      setBuscandoAlternativasTurnoAgenda(false);
+    }
+  }
+
   async function generarRecomendacionAgendaSesion(sesionId: string) {
     if (!sesionId) {
       setError('Primero carga o selecciona una sesión.');
@@ -15529,7 +15851,16 @@ async function abrirGestionOperativaIntensivoDia(
         perfiles: perfilesParaRecomendador,
       });
       setAgendaRecomendaciones(dataPedagogica);
+      setAlternativasTurnoAgendaPorAlumno({});
       setDestinoAlumnoAgendaGrupo({});
+
+      if (sesionActual) {
+        await buscarAlternativasSemanaParaPropuestaAgenda(
+          dataPedagogica,
+          sesionActual,
+          perfilesParaRecomendador
+        );
+      }
       // No borramos los grupos manuales: si Jose crea "Grupo B+" antes de generar,
       // debe quedar disponible como destino para mover alumnos.
       setEntrenadoresAgendaGrupo({});
@@ -17122,9 +17453,70 @@ async function abrirGestionOperativaIntensivoDia(
     return normalizarLineasObservacionesGrupoApp(lineas.join('\n'));
   }
 
+  function resolverPuntosAgendaPropuesta() {
+    const usadosReales = new Set(
+      gruposRecursosTurnoAgenda()
+        .map((grupo) => grupo.punto_encuentro || '')
+        .filter(Boolean)
+    );
+    const puntosReservados = new Set<string>();
+    const puntosPorGrupo: Record<string, string> = {};
+
+    gruposRecomendadosAgenda().forEach(([nombreGrupo], indiceGrupo) => {
+      const seleccionado = puntosAgendaGrupo[nombreGrupo] || '';
+      let punto = '';
+
+      if (
+        seleccionado &&
+        !usadosReales.has(seleccionado) &&
+        !puntosReservados.has(seleccionado)
+      ) {
+        punto = seleccionado;
+      }
+
+      if (!punto) {
+        const preferido =
+          puntosEncuentroAgenda[
+            Math.max(0, indiceGrupo) % puntosEncuentroAgenda.length
+          ] || '';
+
+        if (
+          preferido &&
+          !usadosReales.has(preferido) &&
+          !puntosReservados.has(preferido)
+        ) {
+          punto = preferido;
+        }
+      }
+
+      if (!punto) {
+        punto =
+          puntosEncuentroAgenda.find(
+            (opcion) =>
+              !usadosReales.has(opcion) &&
+              !puntosReservados.has(opcion)
+          ) || '';
+      }
+
+      if (punto) {
+        puntosReservados.add(punto);
+        puntosPorGrupo[nombreGrupo] = punto;
+      }
+    });
+
+    return puntosPorGrupo;
+  }
+
   function puntoDisponibleAgendaParaGrupo(
     nombreGrupo: string,
-    indiceGrupoActual: number
+    _indiceGrupoActual: number
+  ) {
+    return resolverPuntosAgendaPropuesta()[nombreGrupo] || '';
+  }
+
+  function puntoAgendaOcupadoPorOtroGrupo(
+    punto: string,
+    nombreGrupo: string
   ) {
     const usadosReales = new Set(
       gruposRecursosTurnoAgenda()
@@ -17132,41 +17524,11 @@ async function abrirGestionOperativaIntensivoDia(
         .filter(Boolean)
     );
 
-    const usadosPropuesta = new Set(
-      Object.entries(puntosAgendaGrupo)
-        .filter(([grupo]) => grupo !== nombreGrupo)
-        .map(([, valor]) => valor)
-        .filter(Boolean)
-    );
+    if (usadosReales.has(punto)) return true;
 
-    const seleccionado = puntosAgendaGrupo[nombreGrupo] || '';
-
-    if (
-      seleccionado &&
-      !usadosReales.has(seleccionado) &&
-      !usadosPropuesta.has(seleccionado)
-    ) {
-      return seleccionado;
-    }
-
-    const preferidoPorIndice =
-      puntosEncuentroAgenda[
-        Math.max(0, indiceGrupoActual) % puntosEncuentroAgenda.length
-      ] || '';
-
-    if (
-      preferidoPorIndice &&
-      !usadosReales.has(preferidoPorIndice) &&
-      !usadosPropuesta.has(preferidoPorIndice)
-    ) {
-      return preferidoPorIndice;
-    }
-
-    return (
-      puntosEncuentroAgenda.find(
-        (punto) =>
-          !usadosReales.has(punto) && !usadosPropuesta.has(punto)
-      ) || ''
+    const puntosResueltos = resolverPuntosAgendaPropuesta();
+    return Object.entries(puntosResueltos).some(
+      ([grupo, valor]) => grupo !== nombreGrupo && valor === punto
     );
   }
 
@@ -17422,53 +17784,7 @@ async function abrirGestionOperativaIntensivoDia(
       if (!validacionOk) return;
     }
 
-    const usadosReales = new Set(
-      gruposRecursosTurnoAgenda()
-        .map((grupo) => grupo.punto_encuentro || '')
-        .filter(Boolean)
-    );
-    const puntosReservados = new Set<string>();
-    const puntosPorGrupo: Record<string, string> = {};
-
-    grupos.forEach(([nombreGrupo], indiceGrupo) => {
-      const seleccionado = puntosAgendaGrupo[nombreGrupo] || '';
-      let punto = '';
-
-      if (
-        seleccionado &&
-        !usadosReales.has(seleccionado) &&
-        !puntosReservados.has(seleccionado)
-      ) {
-        punto = seleccionado;
-      }
-
-      if (!punto) {
-        const preferido =
-          puntosEncuentroAgenda[
-            Math.max(0, indiceGrupo) % puntosEncuentroAgenda.length
-          ] || '';
-        if (
-          preferido &&
-          !usadosReales.has(preferido) &&
-          !puntosReservados.has(preferido)
-        ) {
-          punto = preferido;
-        }
-      }
-
-      if (!punto) {
-        punto =
-          puntosEncuentroAgenda.find(
-            (opcion) =>
-              !usadosReales.has(opcion) && !puntosReservados.has(opcion)
-          ) || '';
-      }
-
-      if (punto) {
-        puntosReservados.add(punto);
-        puntosPorGrupo[nombreGrupo] = punto;
-      }
-    });
+    const puntosPorGrupo = resolverPuntosAgendaPropuesta();
 
     const sinPunto = grupos.find(
       ([nombreGrupo]) => !puntosPorGrupo[nombreGrupo]
@@ -28959,6 +29275,39 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                               · {alumno.origen_nivel || '-'} · Pista{' '}
                               {alumno.pista_recomendada || '-'}
                             </p>
+                            {alumno.estado_en_listado === 'PENDIENTE_TEST' &&
+                              (() => {
+                                const datosAimHarder =
+                                  datosAimHarderAlumnoAgenda(alumno);
+                                if (!datosAimHarder) return null;
+
+                                const datos = [
+                                  datosAimHarder.fechaNacimiento
+                                    ? `Nacimiento ${formatearFecha(
+                                        datosAimHarder.fechaNacimiento
+                                      )}`
+                                    : 'Nacimiento no disponible',
+                                  datosAimHarder.telefono
+                                    ? `Tel. ${datosAimHarder.telefono}`
+                                    : 'Teléfono no disponible',
+                                ];
+
+                                return (
+                                  <p
+                                    style={{
+                                      margin: '5px 0 0',
+                                      color:
+                                        datosAimHarder.fechaNacimiento &&
+                                        datosAimHarder.telefono
+                                          ? '#166534'
+                                          : '#92400e',
+                                      fontWeight: 800,
+                                    }}
+                                  >
+                                    AimHarder · {datos.join(' · ')}
+                                  </p>
+                                );
+                              })()}
                           </div>
                           <div
                             style={{
@@ -29100,9 +29449,16 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                           marginBottom: 10,
                         }}
                       >
-                        <h4 style={{ margin: 0 }}>
-                          Propuesta editable antes de publicar
-                        </h4>
+                        <div>
+                          <h4 style={{ margin: 0 }}>
+                            Propuesta editable antes de publicar
+                          </h4>
+                          {buscandoAlternativasTurnoAgenda && (
+                            <small style={{ color: '#64748b', fontWeight: 700 }}>
+                              Revisando también otros días y turnos de esta semana…
+                            </small>
+                          )}
+                        </div>
                         <button
                           type="button"
                           onClick={crearTodosGruposAgendaDesdeRecomendacion}
@@ -29286,6 +29642,112 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                           </option>
                                         </select>
                                       </label>
+
+                                      {Object.prototype.hasOwnProperty.call(
+                                        alternativasTurnoAgendaPorAlumno,
+                                        alumno.alumno_id
+                                      ) && (
+                                        <div
+                                          style={{
+                                            width: '100%',
+                                            marginTop: 8,
+                                            padding: 10,
+                                            borderRadius: 12,
+                                            border: '1px solid #fdba74',
+                                            background: '#fff7ed',
+                                            color: '#9a3412',
+                                          }}
+                                        >
+                                          <strong>
+                                            ⚠️ Este alumno no tiene una combinación
+                                            publicable automática en este turno.
+                                          </strong>
+
+                                          {buscandoAlternativasTurnoAgenda ? (
+                                            <p style={{ margin: '5px 0 0' }}>
+                                              Buscando otros días y turnos compatibles
+                                              de esta semana...
+                                            </p>
+                                          ) : alternativasTurnoAgendaPorAlumno[
+                                              alumno.alumno_id
+                                            ]?.length > 0 ? (
+                                            <>
+                                              <p
+                                                style={{
+                                                  margin: '5px 0 8px',
+                                                  color: '#7c2d12',
+                                                }}
+                                              >
+                                                Mítico recomienda consultar con la
+                                                familia alguno de estos cambios. No se
+                                                mueve al niño automáticamente.
+                                              </p>
+
+                                              <div
+                                                style={{
+                                                  display: 'grid',
+                                                  gap: 7,
+                                                }}
+                                              >
+                                                {alternativasTurnoAgendaPorAlumno[
+                                                  alumno.alumno_id
+                                                ]
+                                                  .slice(0, 3)
+                                                  .map((opcion) => (
+                                                    <div
+                                                      key={`${alumno.alumno_id}-${opcion.sesion_id}-${opcion.grupo_id}`}
+                                                      style={{
+                                                        padding: 9,
+                                                        borderRadius: 10,
+                                                        background: '#ffffff',
+                                                        border:
+                                                          '1px solid #fed7aa',
+                                                        color: '#431407',
+                                                      }}
+                                                    >
+                                                      <strong>
+                                                        {formatearFecha(opcion.fecha)} ·{' '}
+                                                        {opcion.hora_inicio.slice(
+                                                          0,
+                                                          5
+                                                        )}
+                                                        –
+                                                        {opcion.hora_fin.slice(0, 5)}
+                                                      </strong>
+                                                      <div
+                                                        style={{
+                                                          marginTop: 3,
+                                                          fontSize: 13,
+                                                        }}
+                                                      >
+                                                        {opcion.grupo} · Nivel{' '}
+                                                        {opcion.nivel_grupo} ·{' '}
+                                                        {opcion.pista} ·{' '}
+                                                        {opcion.total_actual} →{' '}
+                                                        {opcion.total_final} niños
+                                                      </div>
+                                                      <div
+                                                        style={{
+                                                          marginTop: 3,
+                                                          fontSize: 12,
+                                                          color: '#7c2d12',
+                                                        }}
+                                                      >
+                                                        {opcion.motivo}
+                                                      </div>
+                                                    </div>
+                                                  ))}
+                                              </div>
+                                            </>
+                                          ) : (
+                                            <p style={{ margin: '5px 0 0' }}>
+                                              No hay otro turno compatible dentro de
+                                              los listados/sesiones creados de esta
+                                              semana. Revisión manual necesaria.
+                                            </p>
+                                          )}
+                                        </div>
+                                      )}
                                     </div>
                                     );
                                   })}
@@ -29355,24 +29817,6 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                     >
                                       {puntosEncuentroAgenda
                                         .filter((punto) => {
-                                          const usadosReales = new Set(
-                                            gruposRecursosTurnoAgenda()
-                                              .map(
-                                                (grupo) =>
-                                                  grupo.punto_encuentro || ''
-                                              )
-                                              .filter(Boolean)
-                                          );
-                                          const usadosPropuesta = new Set(
-                                            Object.entries(puntosAgendaGrupo)
-                                              .filter(
-                                                ([grupo]) =>
-                                                  grupo !== nombreGrupo
-                                              )
-                                              .map(([, valor]) => valor)
-                                              .filter(Boolean)
-                                          );
-
                                           const puntoActual =
                                             puntoDisponibleAgendaParaGrupo(
                                               nombreGrupo,
@@ -29381,8 +29825,10 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
 
                                           return (
                                             punto === puntoActual ||
-                                            (!usadosReales.has(punto) &&
-                                              !usadosPropuesta.has(punto))
+                                            !puntoAgendaOcupadoPorOtroGrupo(
+                                              punto,
+                                              nombreGrupo
+                                            )
                                           );
                                         })
                                         .map((punto) => (
