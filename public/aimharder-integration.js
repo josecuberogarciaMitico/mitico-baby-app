@@ -51,7 +51,26 @@ function setReactTextarea(textarea,value){
   textarea.dispatchEvent(new Event('change',{bubbles:true}));
 }
 
+function emitirDatosAimHarder({fecha,inicio,fin,modalidad,asistentes}){
+  window.dispatchEvent(new CustomEvent('mitico:aimharder-attendees',{
+    detail:{
+      fecha,
+      inicio,
+      fin,
+      modalidad,
+      asistentes:(Array.isArray(asistentes)?asistentes:[]).map(p=>({
+        name:cleanName(p?.name),
+        phone:String(p?.phone||'').trim(),
+        birthDate:String(p?.birthDate||'').trim(),
+        clientId:String(p?.clientId||'').trim(),
+        guest:Boolean(p?.guest),
+      })),
+    },
+  }));
+}
+
 function pintarEstado(el,text,error=false){
+    if(el) el.style.display='';
   el.textContent=text;
   el.style.display='block';
   el.style.marginTop='8px';
@@ -111,6 +130,14 @@ async function traerListado(form,button,status){
       throw new Error(`No cuadra el listado: AimHarder marca ${ocupadas} ocupadas y se han leído ${nombres.length}. No he volcado nada.`);
     }
 
+    emitirDatosAimHarder({
+      fecha,
+      inicio,
+      fin,
+      modalidad:'BABY',
+      asistentes,
+    });
+
     if(ocupadas===0){
       setReactTextarea(textarea,'');
       pintarEstado(status,'Turno encontrado en AimHarder: 0 apuntados. No hay listado que volcar.');
@@ -118,7 +145,18 @@ async function traerListado(form,button,status){
     }
 
     setReactTextarea(textarea,nombres.join('\n'));
-    pintarEstado(status,`${nombres.length}/${ocupadas} nombres cargados desde AimHarder. Revisa el listado y continúa con «1 · Volcar listado y crear sesión» como siempre.`);
+
+    const conContactoCompleto=asistentes.filter(p=>String(p?.phone||'').trim() && String(p?.birthDate||'').trim()).length;
+    const detalleContacto=conContactoCompleto>0
+      ? ` ${conContactoCompleto} asistente(s) incluyen teléfono y fecha de nacimiento para facilitar Altas/Test.`
+      : ' AimHarder no ha entregado todavía teléfono/fecha de nacimiento en esta consulta; los nombres sí se han cargado.';
+
+    // La carga se realiza en segundo plano; los datos de contacto quedan
+    // disponibles para Alta / Test, pero no se muestran en la pantalla de sesión.
+    if(status){
+      status.textContent='';
+      status.style.display='none';
+    }
     textarea.scrollIntoView({behavior:'smooth',block:'center'});
   }catch(e){
     pintarEstado(status,e instanceof Error?e.message:'No se pudo cargar el listado desde AimHarder.',true);
