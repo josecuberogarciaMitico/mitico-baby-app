@@ -417,6 +417,8 @@ type AlumnoResumen = {
   ultima_incidencia: string | null;
   ultima_recomendacion: string | null;
   fecha_nacimiento: string | null;
+  camiseta_entregada: boolean;
+  camiseta_entregada_at: string | null;
 };
 
 type TendenciaRitmoAlumnoApp = {
@@ -4563,6 +4565,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [alumnoEditEstado, setAlumnoEditEstado] = useState(
     'pendiente completar'
   );
+  const [alumnoEditCamiseta, setAlumnoEditCamiseta] = useState(true);
   const [mostrarNuevoAlumnoManual, setMostrarNuevoAlumnoManual] =
     useState(false);
   const [nuevoAlumnoNombre, setNuevoAlumnoNombre] = useState('');
@@ -5117,6 +5120,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     leerStorageApp('mitico_fecha_resumen_dia', fechaIsoHoyApp())
   );
   const [busquedaAlumnoResumenDia, setBusquedaAlumnoResumenDia] = useState('');
+  const [guardandoCamisetaAlumnoId, setGuardandoCamisetaAlumnoId] = useState('');
   const [turnoResumenDiaAbierto, setTurnoResumenDiaAbierto] = useState('');
   const [gruposOperativosResumenDia, setGruposOperativosResumenDia] = useState<
     Record<string, AgendaGrupoSesionApp[]>
@@ -6999,6 +7003,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setAlumnoEditNivel('');
     setAlumnoEditOrigen('Jose / Coordinador');
     setAlumnoEditEstado('pendiente completar');
+    setAlumnoEditCamiseta(true);
   }
 
   async function guardarAlumnoBaseConDatos(
@@ -7030,6 +7035,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_estado_ficha: estado || 'pendiente completar',
       });
 
+      await ejecutarFuncion('actualizar_camiseta_alumno_app', {
+        p_alumno_id: alumnoId,
+        p_entregada: alumnoEditCamiseta,
+      });
+
       cerrarEditorAlumnoBase();
       await cargarAlumnos();
       await cargarAgendaOperativaDirecta();
@@ -7057,6 +7067,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     );
     setAlumnoEditOrigen(alumno.origen_nivel_estimado || 'Jose / Coordinador');
     setAlumnoEditEstado(alumno.estado_ficha || 'pendiente completar');
+    setAlumnoEditCamiseta(alumno.camiseta_entregada !== false);
   }
 
   async function guardarAlumnoBase(alumnoId: string) {
@@ -11781,6 +11792,175 @@ Gracias!`;
     });
   }
 
+  function desglosarEfectivoCobrosApp(importe: number) {
+    const denominaciones = [
+      { centimos: 5000, etiqueta: '50 €', tipo: 'billete' },
+      { centimos: 2000, etiqueta: '20 €', tipo: 'billete' },
+      { centimos: 1000, etiqueta: '10 €', tipo: 'billete' },
+      { centimos: 500, etiqueta: '5 €', tipo: 'billete' },
+      { centimos: 200, etiqueta: '2 €', tipo: 'moneda' },
+      { centimos: 100, etiqueta: '1 €', tipo: 'moneda' },
+      { centimos: 50, etiqueta: '0,50 €', tipo: 'moneda' },
+      { centimos: 20, etiqueta: '0,20 €', tipo: 'moneda' },
+      { centimos: 10, etiqueta: '0,10 €', tipo: 'moneda' },
+      { centimos: 5, etiqueta: '0,05 €', tipo: 'moneda' },
+      { centimos: 2, etiqueta: '0,02 €', tipo: 'moneda' },
+      { centimos: 1, etiqueta: '0,01 €', tipo: 'moneda' },
+    ] as const;
+
+    let restante = Math.max(0, Math.round(Number(importe || 0) * 100));
+
+    return denominaciones.map((denominacion) => {
+      const cantidad = Math.floor(restante / denominacion.centimos);
+      restante -= cantidad * denominacion.centimos;
+
+      return {
+        ...denominacion,
+        cantidad,
+      };
+    });
+  }
+
+  function htmlPreparacionEfectivoCobrosApp(cobrosPdf: CobroMensual[]) {
+    const pagos = cobrosPdf
+      .map((cobro) => ({
+        entrenador: cobro.entrenador,
+        importe: Math.max(0, Number(cobro.total_mes || 0)),
+      }))
+      .filter((pago) => pago.importe > 0);
+
+    const totalEfectivo = pagos.reduce(
+      (total, pago) => total + pago.importe,
+      0
+    );
+
+    const desgloseTotal = new Map<
+      string,
+      { etiqueta: string; tipo: string; cantidad: number; centimos: number }
+    >();
+
+    const filasEntrenadores = pagos
+      .map((pago) => {
+        const desglose = desglosarEfectivoCobrosApp(pago.importe);
+
+        desglose.forEach((fila) => {
+          if (fila.cantidad <= 0) return;
+          const actual = desgloseTotal.get(fila.etiqueta);
+          desgloseTotal.set(fila.etiqueta, {
+            etiqueta: fila.etiqueta,
+            tipo: fila.tipo,
+            centimos: fila.centimos,
+            cantidad: (actual?.cantidad || 0) + fila.cantidad,
+          });
+        });
+
+        const piezas = desglose
+          .filter((fila) => fila.cantidad > 0)
+          .map((fila) => `${fila.cantidad} × ${fila.etiqueta}`)
+          .join(' · ');
+
+        return `
+          <tr>
+            <td><strong>${escaparHtml(pago.entrenador)}</strong></td>
+            <td>${formatearEuros(pago.importe)}</td>
+            <td>${escaparHtml(piezas || 'Sin efectivo')}</td>
+          </tr>
+        `;
+      })
+      .join('');
+
+    const filasDesglose = Array.from(desgloseTotal.values())
+      .sort((a, b) => b.centimos - a.centimos)
+      .map(
+        (fila) => `
+          <tr>
+            <td>${escaparHtml(fila.etiqueta)}</td>
+            <td>${escaparHtml(
+              fila.tipo === 'billete' ? 'Billete' : 'Moneda'
+            )}</td>
+            <td><strong>${fila.cantidad}</strong></td>
+            <td>${formatearEuros((fila.cantidad * fila.centimos) / 100)}</td>
+          </tr>
+        `
+      )
+      .join('');
+
+    const pagosNoPositivos = cobrosPdf.filter(
+      (cobro) => Number(cobro.total_mes || 0) <= 0
+    ).length;
+
+    return `
+      <section class="preparacion-efectivo">
+        <p class="kicker-efectivo">DIRECCIÓN · PREPARACIÓN DE PAGOS</p>
+        <h1>Preparación de efectivo</h1>
+        <p class="subtitulo-efectivo">
+          ${escaparHtml(nombreMes(mesCobros))} ${anioCobros}
+        </p>
+
+        <div class="efectivo-destacado">
+          <span>Total exacto a preparar</span>
+          <strong>${formatearEuros(totalEfectivo)}</strong>
+          <small>${pagos.length} entrenador(es) con importe a pagar</small>
+        </div>
+
+        <div class="nota-efectivo">
+          <strong>Para retirar en el banco:</strong>
+          este desglose está calculado para poder preparar cada pago de entrenador
+          por separado, usando primero billetes de 50 € y completando después con
+          denominaciones menores.
+        </div>
+
+        <h2>Desglose recomendado para pedir al banco</h2>
+        ${
+          filasDesglose
+            ? `
+              <table class="tabla-efectivo">
+                <thead>
+                  <tr>
+                    <th>Denominación</th>
+                    <th>Tipo</th>
+                    <th>Cantidad</th>
+                    <th>Importe</th>
+                  </tr>
+                </thead>
+                <tbody>${filasDesglose}</tbody>
+              </table>
+            `
+            : '<p>No hay efectivo positivo que preparar.</p>'
+        }
+
+        <h2>Preparación por entrenador</h2>
+        ${
+          filasEntrenadores
+            ? `
+              <table class="tabla-efectivo tabla-entrenadores-efectivo">
+                <thead>
+                  <tr>
+                    <th>Entrenador</th>
+                    <th>Total</th>
+                    <th>Composición sugerida</th>
+                  </tr>
+                </thead>
+                <tbody>${filasEntrenadores}</tbody>
+              </table>
+            `
+            : '<p>No hay pagos positivos para este PDF.</p>'
+        }
+
+        ${
+          pagosNoPositivos > 0
+            ? `<p class="pie-efectivo">${pagosNoPositivos} registro(s) con importe 0 € o negativo no requieren efectivo y no se incluyen en el desglose de retirada.</p>`
+            : ''
+        }
+
+        <p class="pie-efectivo">
+          Cálculo orientativo para preparación física de pagos. Los importes
+          individuales siguen siendo los reflejados en el resumen de cobros.
+        </p>
+      </section>
+    `;
+  }
+
   function abrirPdfCobrosConjunto() {
     if (cobrosFiltrados.length === 0) {
       alert('No hay cobros para generar PDF.');
@@ -11799,6 +11979,7 @@ Gracias!`;
         <p><strong>Entrenadores:</strong> ${cobrosFiltrados.length}</p>
       </section>
       ${cobrosFiltrados.map((cobro) => htmlCobroEntrenador(cobro)).join('')}
+      ${htmlPreparacionEfectivoCobrosApp(cobrosFiltrados)}
     `;
 
     setCobroPdfPreview({
@@ -19653,6 +19834,63 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.`
     return String(alumnoFicha?.telefono || '').trim();
   }
 
+  async function actualizarCamisetaAlumnoResumenDia(
+    alumno: AlumnoResumen,
+    entregada: boolean
+  ) {
+    if (!alumno?.alumno_id || guardandoCamisetaAlumnoId) return;
+
+    setGuardandoCamisetaAlumnoId(alumno.alumno_id);
+    setError('');
+
+    const entregadaAt = entregada ? new Date().toISOString() : null;
+
+    try {
+      await ejecutarFuncion('actualizar_camiseta_alumno_app', {
+        p_alumno_id: alumno.alumno_id,
+        p_entregada: entregada,
+      });
+
+      setAlumnos((actuales) =>
+        actuales.map((item) =>
+          item.alumno_id === alumno.alumno_id
+            ? {
+                ...item,
+                camiseta_entregada: entregada,
+                camiseta_entregada_at: entregadaAt,
+              }
+            : item
+        )
+      );
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo actualizar el estado de la camiseta.'
+      );
+    } finally {
+      setGuardandoCamisetaAlumnoId('');
+    }
+  }
+
+  function alumnosCamisetaPendienteResumenDia() {
+    const pendientes = new Map<string, AlumnoResumen>();
+
+    sesionesResumenDia.forEach((sesion: any) => {
+      gruposPublicadosSesionResumenDia(sesion).forEach((grupo: any) => {
+        alumnosGrupoResumenDia(grupo).forEach((alumnoTexto) => {
+          const ficha = fichaAlumnoResumenDiaDesdeTexto(alumnoTexto);
+          if (!ficha || ficha.camiseta_entregada !== false) return;
+          pendientes.set(ficha.alumno_id, ficha);
+        });
+      });
+    });
+
+    return Array.from(pendientes.values()).sort((a, b) =>
+      String(a.alumno || '').localeCompare(String(b.alumno || ''), 'es')
+    );
+  }
+
   function hrefTelefonoAlumnoResumenDia(telefono: string) {
     const limpio = String(telefono || '').replace(/[^+\d]/g, '');
     return limpio ? `tel:${limpio}` : '';
@@ -24560,6 +24798,18 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               #cobro-pdf-preview th, #cobro-pdf-preview td { border: 1px solid #ddd; padding: 7px; text-align: left; }
               #cobro-pdf-preview th { background: #f2f2f2; }
               #cobro-pdf-preview pre { white-space: pre-wrap; background: #f7f7f7; padding: 10px; border-radius: 10px; }
+              #cobro-pdf-preview .preparacion-efectivo { page-break-before: always; break-before: page; padding-top: 8px; }
+              #cobro-pdf-preview .preparacion-efectivo .kicker-efectivo { margin: 0 0 5px; color: #0f766e; font-size: 11px; font-weight: 900; letter-spacing: .1em; }
+              #cobro-pdf-preview .preparacion-efectivo .subtitulo-efectivo { margin-top: 0; color: #475569; font-weight: 700; }
+              #cobro-pdf-preview .efectivo-destacado { display: grid; gap: 4px; border: 2px solid #0f766e; border-radius: 14px; padding: 15px 16px; margin: 16px 0; background: #f0fdfa; }
+              #cobro-pdf-preview .efectivo-destacado span { color: #475569; font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+              #cobro-pdf-preview .efectivo-destacado strong { color: #0f5132; font-size: 27px; }
+              #cobro-pdf-preview .efectivo-destacado small { color: #64748b; }
+              #cobro-pdf-preview .nota-efectivo { border-left: 4px solid #0f9f4d; background: #f8fafc; padding: 11px 13px; margin: 14px 0 18px; line-height: 1.45; }
+              #cobro-pdf-preview .tabla-efectivo { margin-bottom: 22px; }
+              #cobro-pdf-preview .tabla-efectivo th { background: #ecfdf5; color: #14532d; }
+              #cobro-pdf-preview .tabla-entrenadores-efectivo td:last-child { font-size: 11px; line-height: 1.4; }
+              #cobro-pdf-preview .pie-efectivo { margin-top: 12px; color: #64748b; font-size: 11px; line-height: 1.45; }
             `}</style>
 
             <div dangerouslySetInnerHTML={{ __html: cobroPdfPreview.cuerpo }} />
@@ -24727,6 +24977,88 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                 )}
               </div>
             )}
+
+            {(() => {
+              const pendientesCamiseta = alumnosCamisetaPendienteResumenDia();
+
+              return (
+                <div
+                  style={{
+                    display: 'grid',
+                    gap: 9,
+                    padding: '12px 14px',
+                    borderRadius: 16,
+                    border:
+                      pendientesCamiseta.length > 0
+                        ? '1px solid rgba(244,114,182,.72)'
+                        : '1px solid rgba(110,231,183,.42)',
+                    background:
+                      pendientesCamiseta.length > 0
+                        ? 'linear-gradient(135deg,rgba(131,24,67,.42),rgba(80,7,36,.30))'
+                        : 'rgba(6,78,59,.24)',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                      gap: 10,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <div>
+                      <strong
+                        style={{
+                          display: 'block',
+                          color: pendientesCamiseta.length > 0 ? '#fbcfe8' : '#a7f3d0',
+                          fontSize: 13,
+                        }}
+                      >
+                        CAMISETAS ROSAS
+                      </strong>
+                      <span style={{ color: '#ffffff', fontWeight: 900, fontSize: 16 }}>
+                        {pendientesCamiseta.length > 0
+                          ? `${pendientesCamiseta.length} pendiente${
+                              pendientesCamiseta.length === 1 ? '' : 's'
+                            } hoy`
+                          : 'Todo preparado para hoy'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {pendientesCamiseta.length > 0 && (
+                    <div
+                      style={{
+                        display: 'flex',
+                        gap: 7,
+                        flexWrap: 'wrap',
+                      }}
+                    >
+                      {pendientesCamiseta.map((alumno) => (
+                        <span
+                          key={`camiseta-pendiente-${alumno.alumno_id}`}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 6,
+                            padding: '7px 10px',
+                            borderRadius: 999,
+                            background: '#fdf2f8',
+                            color: '#9d174d',
+                            border: '1px solid #f9a8d4',
+                            fontSize: 12,
+                            fontWeight: 900,
+                          }}
+                        >
+                          🎽 {alumno.alumno}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             <div
               style={{
@@ -24957,23 +25289,112 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                           }
                                         >
                                           {(() => {
+                                            const ficha = fichaAlumnoResumenDiaDesdeTexto(alumno);
                                             const telefono = telefonoAlumnoResumenDia(alumno);
                                             const whatsapp = hrefWhatsappAlumnoResumenDia(telefono);
                                             const llamada = hrefTelefonoAlumnoResumenDia(telefono);
+                                            const camisetaPendiente =
+                                              ficha?.camiseta_entregada === false;
+                                            const guardandoCamiseta =
+                                              ficha?.alumno_id === guardandoCamisetaAlumnoId;
 
                                             return (
                                               <div
                                                 style={{
                                                   display: 'grid',
-                                                  gridTemplateColumns: telefono ? 'minmax(0, 1fr) auto' : 'minmax(0, 1fr)',
+                                                  gridTemplateColumns: telefono
+                                                    ? 'minmax(0, 1fr) auto'
+                                                    : 'minmax(0, 1fr)',
                                                   alignItems: 'center',
-                                                  gap: 8,
+                                                  gap: 10,
                                                   minWidth: 0,
                                                   width: '100%',
                                                 }}
                                               >
-                                                <div style={{ minWidth: 0 }}>
-                                                  <strong style={{ color: '#172033' }}>{alumno}</strong>
+                                                <div
+                                                  style={{
+                                                    minWidth: 0,
+                                                    display: 'grid',
+                                                    gap: 6,
+                                                    justifyItems: 'start',
+                                                  }}
+                                                >
+                                                  <strong style={{ color: '#172033' }}>
+                                                    {alumno}
+                                                  </strong>
+
+                                                  {ficha && (
+                                                    <div
+                                                      style={{
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        gap: 6,
+                                                        flexWrap: 'wrap',
+                                                      }}
+                                                    >
+                                                      <button
+                                                        type="button"
+                                                        disabled={guardandoCamiseta}
+                                                        onClick={() =>
+                                                          void actualizarCamisetaAlumnoResumenDia(
+                                                            ficha,
+                                                            camisetaPendiente
+                                                          )
+                                                        }
+                                                        title={
+                                                          camisetaPendiente
+                                                            ? 'Marcar que ya tiene camiseta'
+                                                            : 'Marcar que necesita camiseta para el próximo entrenamiento'
+                                                        }
+                                                        style={{
+                                                          minHeight: 30,
+                                                          padding: '5px 9px',
+                                                          borderRadius: 9,
+                                                          border: camisetaPendiente
+                                                            ? '1px solid #f9a8d4'
+                                                            : '1px solid #bbf7d0',
+                                                          background: camisetaPendiente
+                                                            ? '#fdf2f8'
+                                                            : '#f0fdf4',
+                                                          color: camisetaPendiente
+                                                            ? '#be185d'
+                                                            : '#15803d',
+                                                          fontSize: 11,
+                                                          fontWeight: 900,
+                                                          cursor: guardandoCamiseta
+                                                            ? 'wait'
+                                                            : 'pointer',
+                                                          whiteSpace: 'nowrap',
+                                                          opacity: guardandoCamiseta ? 0.65 : 1,
+                                                        }}
+                                                      >
+                                                        {guardandoCamiseta
+                                                          ? 'Guardando…'
+                                                          : camisetaPendiente
+                                                          ? 'Camiseta: NO'
+                                                          : 'Camiseta: SÍ'}
+                                                      </button>
+
+                                                      {camisetaPendiente && (
+                                                        <span
+                                                          style={{
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            padding: '3px 7px',
+                                                            borderRadius: 999,
+                                                            background: '#fdf2f8',
+                                                            color: '#be185d',
+                                                            border: '1px solid #f9a8d4',
+                                                            fontSize: 10,
+                                                            fontWeight: 950,
+                                                            whiteSpace: 'nowrap',
+                                                          }}
+                                                        >
+                                                          🎽 ENTREGAR
+                                                        </span>
+                                                      )}
+                                                    </div>
+                                                  )}
                                                 </div>
 
                                                 {telefono && (
@@ -41936,6 +42357,19 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                       <option value="Desconocido">Desconocido</option>
                                     </select>
                                   </label>
+                                  <label style={labelCampo}>
+                                    Camiseta rosa
+                                    <select
+                                      value={alumnoEditCamiseta ? 'SI' : 'NO'}
+                                      onChange={(e) =>
+                                        setAlumnoEditCamiseta(e.target.value === 'SI')
+                                      }
+                                      style={selectCampo}
+                                    >
+                                      <option value="SI">Sí · tiene camiseta</option>
+                                      <option value="NO">No · necesita camiseta</option>
+                                    </select>
+                                  </label>
 
                                 </div>
 
@@ -42563,6 +42997,19 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                   Clase de prueba pendiente
                                 </option>
                                 <option value="Desconocido">Desconocido</option>
+                              </select>
+                            </label>
+                            <label style={labelCampo}>
+                              Camiseta rosa
+                              <select
+                                value={alumnoEditCamiseta ? 'SI' : 'NO'}
+                                onChange={(e) =>
+                                  setAlumnoEditCamiseta(e.target.value === 'SI')
+                                }
+                                style={selectCampo}
+                              >
+                                <option value="SI">Sí · tiene camiseta</option>
+                                <option value="NO">No · necesita camiseta</option>
                               </select>
                             </label>
 
