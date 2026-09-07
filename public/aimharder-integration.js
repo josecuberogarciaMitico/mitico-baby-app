@@ -8,7 +8,7 @@ const cleanName=v=>String(v||'').replace(/\s*\[Invitado\]\s*/gi,' ').replace(/\s
 
 async function callAim(body){
   const t=token();
-  if(!t) throw new Error('No encuentro una sesiÃ³n activa de MÃ­tico.');
+  if(!t) throw new Error('No encuentro una sesión activa de Mítico.');
   const r=await fetch(FUNCTION_URL,{
     method:'POST',
     headers:{'Content-Type':'application/json',Authorization:`Bearer ${t}`},
@@ -16,14 +16,14 @@ async function callAim(body){
   });
   const text=await r.text();
   let d={};
-  try{d=text?JSON.parse(text):{}}catch{throw new Error(`AimHarder devolviÃ³ una respuesta no vÃ¡lida (HTTP ${r.status}).`)}
+  try{d=text?JSON.parse(text):{}}catch{throw new Error(`AimHarder devolvió una respuesta no válida (HTTP ${r.status}).`)}
   if(!r.ok) throw new Error(typeof d?.error==='string'?d.error:`Error ${r.status} consultando AimHarder.`);
   return d;
 }
 
 function fechaIsoDesdeFormulario(form){
   const texto=form.textContent||'';
-  const m=texto.match(/D[iÃ­]a seleccionado:\s*(\d{2})\/(\d{2})\/(\d{4})/i) || texto.match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/);
+  const m=texto.match(/D[ií]a seleccionado:\s*(\d{2})\/(\d{2})\/(\d{4})/i) || texto.match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/);
   if(!m) return '';
   return `${m[3]}-${m[2]}-${m[1]}`;
 }
@@ -85,7 +85,7 @@ function pintarEstado(el,text,error=false){
 async function traerListado(form,button,status){
   const modalidad=norm(modalidadDesdeFormulario(form));
   if(modalidad!=='BABY'){
-    pintarEstado(status,'La carga automÃ¡tica desde AimHarder se usa solo en Baby. Ocio e Intensivos mantienen sus flujos actuales.',true);
+    pintarEstado(status,'La carga automática desde AimHarder se usa solo en Baby. Ocio e Intensivos mantienen sus flujos actuales.',true);
     return;
   }
 
@@ -99,14 +99,14 @@ async function traerListado(form,button,status){
 
   button.disabled=true;
   const original=button.textContent;
-  button.textContent='Consultando AimHarderâ€¦';
-  pintarEstado(status,`Buscando Baby ${fecha} Â· ${inicio}â€“${fin}â€¦`);
+  button.textContent='Consultando AimHarder…';
+  pintarEstado(status,`Buscando Baby ${fecha} · ${inicio}–${fin}…`);
 
   try{
     const boxes=await callAim({action:'boxes'});
     const listaBoxes=Array.isArray(boxes?.boxes)?boxes.boxes:[];
-    const box=listaBoxes.find(b=>/MITICO|MÃTICO/i.test(String(b?.gym||''))) || (listaBoxes.length===1?listaBoxes[0]:null);
-    if(!box) throw new Error('No puedo identificar de forma inequÃ­voca el centro MÃ­tico en AimHarder.');
+    const box=listaBoxes.find(b=>/MITICO|MÍTICO/i.test(String(b?.gym||''))) || (listaBoxes.length===1?listaBoxes[0]:null);
+    if(!box) throw new Error('No puedo identificar de forma inequívoca el centro Mítico en AimHarder.');
 
     const semana=await callAim({action:'week',weekStart:fecha,boxId:Number(box.boid)});
     const clases=(Array.isArray(semana?.classes)?semana.classes:[]).filter(item=>{
@@ -115,19 +115,26 @@ async function traerListado(form,button,status){
       return r.inicio===inicio && r.fin===fin;
     });
 
-    if(clases.length===0) throw new Error(`No encuentro en AimHarder un Baby exacto para ${fecha} Â· ${inicio}â€“${fin}. No he rellenado nada.`);
-    if(clases.length>1) throw new Error(`AimHarder devuelve ${clases.length} clases Baby para ese mismo dÃ­a y horario. No voy a adivinar cuÃ¡l es.`);
+    if(clases.length===0) throw new Error(`No encuentro en AimHarder un Baby exacto para ${fecha} · ${inicio}–${fin}. No he rellenado nada.`);
+    if(clases.length>1) throw new Error(`AimHarder devuelve ${clases.length} clases Baby para ese mismo día y horario. No voy a adivinar cuál es.`);
 
     const clase=clases[0];
-    const data=await callAim({action:'attendees',date:fecha,classId:clase.id,boxId:Number(box.boid)});
+    const data=await callAim({
+      action:'attendees',
+      date:fecha,
+      classId:Number(clase.id),
+      boxId:Number(box.boid),
+      className:String(clase?.className||''),
+      time:String(clase?.time||''),
+      timeId:String(clase?.timeid||''),
+      modalidad:'BABY',
+    });
     const asistentes=Array.isArray(data?.attendees)?data.attendees:[];
     const nombres=asistentes.map(p=>cleanName(p?.name)).filter(Boolean);
-    const ocupadas=Number(clase?.ocupation)||0;
-    const total=Number(data?.total);
-    const leidos=Number.isFinite(total)?total:nombres.length;
+    const ocupadas=Number(data?.booking?.reportedOccupation ?? clase?.reportedOccupation ?? clase?.ocupation);
 
-    if(leidos!==ocupadas || nombres.length!==ocupadas){
-      throw new Error(`No cuadra el listado: AimHarder marca ${ocupadas} ocupadas y se han leÃ­do ${nombres.length}. No he volcado nada.`);
+    if(!Number.isFinite(ocupadas) || nombres.length!==ocupadas){
+      throw new Error(`No cuadra el listado: AimHarder marca ${ocupadas} ocupadas y se han leído ${nombres.length}. No he volcado nada.`);
     }
 
     emitirDatosAimHarder({
@@ -148,11 +155,11 @@ async function traerListado(form,button,status){
 
     const conContactoCompleto=asistentes.filter(p=>String(p?.phone||'').trim() && String(p?.birthDate||'').trim()).length;
     const detalleContacto=conContactoCompleto>0
-      ? ` ${conContactoCompleto} asistente(s) incluyen telÃ©fono y fecha de nacimiento para facilitar Altas/Test.`
-      : ' AimHarder no ha entregado todavÃ­a telÃ©fono/fecha de nacimiento en esta consulta; los nombres sÃ­ se han cargado.';
+      ? ` ${conContactoCompleto} asistente(s) incluyen teléfono y fecha de nacimiento para facilitar Altas/Test.`
+      : ' AimHarder no ha entregado todavía teléfono/fecha de nacimiento en esta consulta; los nombres sí se han cargado.';
 
     // La carga se realiza en segundo plano; los datos de contacto quedan
-    // disponibles para Alta / Test, pero no se muestran en la pantalla de sesiÃ³n.
+    // disponibles para Alta / Test, pero no se muestran en la pantalla de sesión.
     if(status){
       status.textContent='';
       status.style.display='none';

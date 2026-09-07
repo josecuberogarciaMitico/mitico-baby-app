@@ -1,5 +1,10 @@
 import React from 'react';
 import { FOTO_MITICO_HERO } from '../assets/imagenes';
+import type {
+  DisponibilidadEntrenador,
+  GrupoEntrenadorApp,
+  ReportePendiente,
+} from '../App';
 
 export function AyudaReporteEntrenador({ nivel }: { nivel?: string | null }) {
   const nivelBase = (nivel || '').toUpperCase().trim() || 'A+';
@@ -144,18 +149,20 @@ export function agruparPorEntrenador(items: DisponibilidadEntrenador[]) {
 export function agruparReportesPorEntrenador(items: ReportePendiente[]) {
   const mapa = new Map<
     string,
-    { entrenador: string; reportes: ReportePendiente[] }
+    { entrenador_id: string; entrenador: string; reportes: ReportePendiente[] }
   >();
 
   items.forEach((item) => {
-    if (!mapa.has(item.entrenador)) {
-      mapa.set(item.entrenador, {
+    const clave = `${item.entrenador_id}::${item.entrenador}`;
+    if (!mapa.has(clave)) {
+      mapa.set(clave, {
+        entrenador_id: item.entrenador_id,
         entrenador: item.entrenador,
         reportes: [],
       });
     }
 
-    mapa.get(item.entrenador)?.reportes.push(item);
+    mapa.get(clave)?.reportes.push(item);
   });
 
   return Array.from(mapa.values());
@@ -2265,4 +2272,3 @@ export class PantallaSegura extends React.Component<
     return this.props.children;
   }
 }
-

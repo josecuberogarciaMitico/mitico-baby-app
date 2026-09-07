@@ -315,7 +315,7 @@ type GrupoPlanning = {
   observaciones_importantes: string | null;
 };
 
-type GrupoEntrenadorApp = {
+export type GrupoEntrenadorApp = {
   entrenador_id: string;
   entrenador: string;
   estado_confirmacion: string;
@@ -669,7 +669,7 @@ type EntrenadorFormState = {
   observaciones: string;
 };
 
-type DisponibilidadEntrenador = {
+export type DisponibilidadEntrenador = {
   id: string;
   semana: string;
   fecha_inicio: string;
@@ -949,7 +949,7 @@ function claveStorageDisponibilidadEditor(semanaInicio: string) {
   return `mitico_disponibilidad_editor_v1_${semanaInicio}`;
 }
 
-type ReportePendiente = {
+export type ReportePendiente = {
   entrenador_id: string;
   entrenador: string;
   fecha: string;
@@ -1259,6 +1259,8 @@ type GrupoIntensivoDiaApp = {
   observaciones_importantes: string | null;
   entrenador_id: string | null;
   entrenador: string | null;
+  entrenador_apoyo_id?: string | null;
+  entrenador_apoyo?: string | null;
   estado_confirmacion: string | null;
   total_alumnos: number;
   alumnos_lista: string | null;
@@ -1661,7 +1663,7 @@ type UltimoListadoAimHarderApp = {
   horaInicio: string;
   horaFin: string;
   modalidad: string;
-  asistentes: Record<string, DatosContactoAimHarderApp>;
+  asistentes: Record<string, DatosContactoAimHarderApp[]>;
 };
 
 type OcioAimHarderAsistenteApp = {
@@ -2120,7 +2122,6 @@ function esRolCoordinacionApp(rol?: string) {
   return (
     rol === 'coordinador_jefe' ||
     rol === 'sub_coordinador' ||
-    rol === 'administracion' ||
     rol === 'coordinador'
   );
 }
@@ -3981,10 +3982,11 @@ function IconoNavegacionApp({ tipo }: { tipo: string }) {
 function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const esCoordinadorApp =
     !perfilUsuario || esRolCoordinacionApp(perfilUsuario.rol);
-  const esEntrenadorApp = Boolean(perfilUsuario && !esCoordinadorApp);
+  const esEntrenadorApp = perfilUsuario?.rol === 'entrenador';
   const esCoordinadorJefeApp =
     !perfilUsuario || puedeVerDireccionApp(perfilUsuario.rol);
   const esAdministracionApp = perfilUsuario?.rol === 'administracion';
+  const tieneSidebarApp = esCoordinadorApp || esAdministracionApp;
   const puedeGestionarAccesosUsuarioApp =
     !perfilUsuario || puedeGestionarAccesosApp(perfilUsuario.rol);
   const entrenadorIdSesionApp = perfilUsuario?.entrenador_id || '';
@@ -4042,7 +4044,13 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     | 'analisis'
     | 'intensivos'
     | 'listados'
-  >(esEntrenadorApp ? 'entrenador' : 'inicio');
+  >(
+    esEntrenadorApp
+      ? 'entrenador'
+      : esAdministracionApp
+      ? 'administracion'
+      : 'inicio'
+  );
 
   const contenidoPantallaRef = useRef<HTMLDivElement | null>(null);
   const [cabeceraIntensivosAyudaApp, setCabeceraIntensivosAyudaApp] = useState<HTMLElement | null>(null);
@@ -4132,6 +4140,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       return;
     }
 
+    if (esAdministracionApp && pantalla !== 'administracion') {
+      setPantalla('administracion');
+      return;
+    }
+
     if (
       esCoordinadorApp &&
       !esCoordinadorJefeApp &&
@@ -4145,6 +4158,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     }
   }, [
     esEntrenadorApp,
+    esAdministracionApp,
     esCoordinadorApp,
     esCoordinadorJefeApp,
     pantalla,
@@ -4662,6 +4676,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [ocioSemanaAsistencia, setOcioSemanaAsistencia] = useState<
     Record<string, boolean>
   >({});
+  const [ocioSemanaAsistenciaManual, setOcioSemanaAsistenciaManual] = useState<
+    Record<string, boolean>
+  >({});
   const [ocioSemanaEntrenadores, setOcioSemanaEntrenadores] = useState<
     Record<string, string>
   >({});
@@ -5049,7 +5066,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       const modalidad = String(detalle.modalidad || '').trim().toUpperCase();
       if (modalidad !== 'BABY') return;
 
-      const asistentes: Record<string, DatosContactoAimHarderApp> = {};
+      const asistentes: Record<string, DatosContactoAimHarderApp[]> = {};
       const filas = Array.isArray(detalle.asistentes) ? detalle.asistentes : [];
 
       filas.forEach((fila: any) => {
@@ -5057,12 +5074,13 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         const clave = normalizarNombreFueraPlazoAgenda(nombre);
         if (!clave) return;
 
-        asistentes[clave] = {
+        const datos: DatosContactoAimHarderApp = {
           nombre,
           telefono: String(fila?.phone || '').trim(),
           fechaNacimiento: String(fila?.birthDate || '').trim(),
           clientId: String(fila?.clientId || '').trim(),
         };
+        asistentes[clave] = [...(asistentes[clave] || []), datos];
       });
 
       setUltimoListadoAimHarder({
@@ -9416,6 +9434,10 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
   function cambiarAsistenciaOcioSemana(alumnoId: string, viene: boolean) {
     const clave = claveAsistenciaOcioSemana(alumnoId);
     setOcioSemanaAsistencia((anterior) => ({ ...anterior, [clave]: viene }));
+    setOcioSemanaAsistenciaManual((anterior) => ({
+      ...anterior,
+      [clave]: true,
+    }));
   }
 
   function claveTurnoOcioAimHarder(
@@ -9481,23 +9503,31 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
     }
 
     const porTurno = new Map<string, OcioAimHarderTurnoApp>();
+    const turnosDuplicados = new Set<string>();
     datos.turnos.forEach((turno) => {
-      porTurno.set(
-        claveTurnoOcioAimHarder(
-          turno.fecha,
-          turno.horaInicio,
-          turno.horaFin
-        ),
-        turno
+      const clave = claveTurnoOcioAimHarder(
+        turno.fecha,
+        turno.horaInicio,
+        turno.horaFin
       );
+      if (porTurno.has(clave)) turnosDuplicados.add(clave);
+      porTurno.set(clave, turno);
     });
+
+    if (turnosDuplicados.size > 0) {
+      setOcioAimHarderError(
+        'AimHarder devuelve varias clases de Ocio para el mismo día y horario. No se ha cambiado Preparar semana para evitar mezclar grupos.'
+      );
+      return;
+    }
 
     const cambios: Record<string, boolean> = {};
     const turnosEsperados = new Set<string>();
     const turnosEncontrados = new Set<string>();
 
-    ocioGrupos.forEach((grupo) => {
-      if (!esTurnoOficialOcio(grupo)) return;
+    let errorIdentidad = '';
+    for (const grupo of ocioGrupos) {
+      if (!esTurnoOficialOcio(grupo)) continue;
 
       const fecha = fechaGrupoOcioSemana(grupo);
       const claveTurno = claveTurnoOcioAimHarder(
@@ -9508,7 +9538,7 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
 
       turnosEsperados.add(claveTurno);
       const turno = porTurno.get(claveTurno);
-      if (!turno) return;
+      if (!turno) continue;
 
       turnosEncontrados.add(claveTurno);
 
@@ -9520,23 +9550,37 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
           .filter(Boolean)
       );
 
-      alumnosGrupoOcioEstable(grupo.grupo_id).forEach((alumno) => {
+      const alumnosGrupo = alumnosGrupoOcioEstable(grupo.grupo_id);
+      const nombresGrupo = new Set<string>();
+      for (const alumno of alumnosGrupo) {
+        const claveNombre = normalizarNombreFueraPlazoAgenda(alumno.alumno || '');
+        if (claveNombre && nombresGrupo.has(claveNombre)) {
+          errorIdentidad = `Hay dos alumnos con el mismo nombre normalizado en ${grupo.nombre_grupo || 'un grupo de Ocio'}. No se ha cambiado Preparar semana; revisa la identidad manualmente.`;
+          break;
+        }
+        if (claveNombre) nombresGrupo.add(claveNombre);
+      }
+
+      if (errorIdentidad) break;
+
+      alumnosGrupo.forEach((alumno) => {
         const claveAlumno = normalizarNombreFueraPlazoAgenda(
           alumno.alumno || ''
         );
-        cambios[claveAsistenciaOcioSemana(alumno.alumno_id)] =
-          reservas.has(claveAlumno);
+        const claveAsistencia = claveAsistenciaOcioSemana(alumno.alumno_id);
+        if (!ocioSemanaAsistenciaManual[claveAsistencia]) {
+          cambios[claveAsistencia] = reservas.has(claveAlumno);
+        }
       });
-    });
+    }
 
-    setOcioSemanaAsistencia((anterior) => ({
-      ...anterior,
-      ...cambios,
-    }));
-    setOcioAimHarderSemana(datos);
+    if (errorIdentidad) {
+      setOcioAimHarderError(errorIdentidad);
+      return;
+    }
 
     const conocidos = new Set(
-      ocioAlumnos
+      [...alumnos, ...ocioAlumnos]
         .map((alumno) =>
           normalizarNombreFueraPlazoAgenda(alumno.alumno || '')
         )
@@ -9558,9 +9602,29 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
       turnosEsperados.size - turnosEncontrados.size
     );
 
+    if (faltan > 0) {
+      setOcioAimHarderError(
+        `Faltan ${faltan} turno(s) de Ocio por identificar exactamente. No se ha cambiado Preparar semana; corrige los horarios o clases antes de reintentar.`
+      );
+      return;
+    }
+
+    setOcioSemanaAsistencia((anterior) => ({
+      ...anterior,
+      ...cambios,
+    }));
+    setOcioAimHarderSemana(datos);
+
+    const cambiosManualesConservados = Object.keys(
+      ocioSemanaAsistenciaManual
+    ).filter(
+      (clave) =>
+        clave.startsWith(`${semanaActual}__`) &&
+        ocioSemanaAsistenciaManual[clave]
+    ).length;
     setOcioAimHarderMensaje(
-      faltan > 0
-        ? `AimHarder actualizado correctamente · ${faltan} turno(s) de Ocio sin coincidencia exacta`
+      cambiosManualesConservados > 0
+        ? `AimHarder actualizado correctamente · ${cambiosManualesConservados} cambio(s) manual(es) conservado(s)`
         : 'AimHarder actualizado correctamente'
     );
     setOcioAimHarderError('');
@@ -9670,19 +9734,23 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
           date: fecha,
           classId: Number(clase.id),
           boxId: Number(box.boid),
+          className: String(clase?.className || ''),
+          time: String(clase?.time || ''),
+          timeId: String(clase?.timeid || ''),
+          modalidad: 'OCIO',
         });
 
         const asistentesRaw = Array.isArray(detalle?.attendees)
           ? detalle.attendees
           : [];
-        const ocupacionAim = Number(clase?.ocupation) || 0;
-        const totalLeido = Number(detalle?.total);
-        const totalFinal = Number.isFinite(totalLeido)
-          ? totalLeido
-          : asistentesRaw.length;
+        const ocupacionAim = Number(
+          detalle?.booking?.reportedOccupation ??
+            clase?.reportedOccupation ??
+            clase?.ocupation
+        );
 
         if (
-          totalFinal !== ocupacionAim ||
+          !Number.isFinite(ocupacionAim) ||
           asistentesRaw.length !== ocupacionAim
         ) {
           throw new Error(
@@ -9859,8 +9927,6 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
       );
 
       for (const grupo of grupos) {
-        if (grupo.cancelado) continue;
-
         resultados.push({
           grupo_estable: grupo.nombre_grupo || 'Grupo Ocio',
           fecha: sesion.fecha,
@@ -15754,7 +15820,8 @@ async function abrirGestionOperativaIntensivoDia(
     }
 
     const clave = normalizarNombreFueraPlazoAgenda(alumno.alumno || '');
-    return ultimoListadoAimHarder.asistentes[clave] || null;
+    const coincidencias = ultimoListadoAimHarder.asistentes[clave] || [];
+    return coincidencias.length === 1 ? coincidencias[0] : null;
   }
 
   function abrirAltaTestDesdeAgenda(alumno: AgendaAlumnoSesionApp) {
@@ -18874,8 +18941,26 @@ async function abrirGestionOperativaIntensivoDia(
       return;
     }
 
+    const indiceOrigen = Math.max(
+      0,
+      agendaGruposSesion.findIndex(
+        (grupo) => grupo.grupo_id === grupoOrigen.grupo_id
+      )
+    );
+    const indiceDestino = Math.max(
+      0,
+      agendaGruposSesion.findIndex(
+        (grupo) => grupo.grupo_id === grupoDestino.grupo_id
+      )
+    );
     const confirmar = window.confirm(
-      `¿Mover a ${alumno.alumno} de ${nombreGrupoVisualApp(grupoOrigen)} a ${nombreGrupoVisualApp(grupoDestino)}?\n\nEl cambio es solo de composición: no cambia el entrenador ni su confirmación.`
+      `¿Mover a ${alumno.alumno} de ${nombreGrupoVisualApp(
+        grupoOrigen,
+        indiceOrigen
+      )} a ${nombreGrupoVisualApp(
+        grupoDestino,
+        indiceDestino
+      )}?\n\nEl cambio es solo de composición: no cambia el entrenador ni su confirmación.`
     );
     if (!confirmar) return;
 
@@ -22406,7 +22491,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
 
     try {
       const data = await ejecutarFuncionConRespuesta<CandidatoEquipoApp>(
-        'obtener_candidatos_equipo_baby_app'
+        'obtener_candidatos_equipo_baby_app',
+        {}
       );
 
       setCandidatosEquipo(
@@ -22587,7 +22673,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
 
     try {
       const data = await ejecutarFuncionConRespuesta<EvaluacionAnualOcioApp>(
-        'obtener_evaluacion_anual_ocio_app'
+        'obtener_evaluacion_anual_ocio_app',
+        {}
       );
 
       setEvaluacionesAnualesOcio(
@@ -22851,10 +22938,12 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
     try {
       const [alumnos, resumen] = await Promise.all([
         ejecutarFuncionConRespuesta<CierreTemporadaAlumnoApp>(
-          'obtener_cierre_temporada_alumnos_v2_app'
+          'obtener_cierre_temporada_alumnos_v2_app',
+          {}
         ),
         ejecutarFuncionConRespuesta<ResumenCierreTemporadaApp>(
-          'obtener_resumen_cierre_temporada_app'
+          'obtener_resumen_cierre_temporada_app',
+          {}
         ),
       ]);
 
@@ -23469,7 +23558,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
 
       setAgendaGruposSesion([]);
       setAgendaGruposRecursosTurno([]);
-      setGruposOperativosResumenDia([]);
+      setGruposOperativosResumenDia({});
       setGruposEntrenador([]);
     } catch (err) {
       setCierreTemporadaError(
@@ -23568,7 +23657,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
 
     try {
       const backup = await ejecutarFuncionAuthJson<any>(
-        'obtener_backup_semanal_app',
+        'obtener_backup_operativa_v2_app',
         { p_semana_inicio: semana }
       );
 
@@ -23624,15 +23713,15 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
       const backup = JSON.parse(contenido);
 
       if (
-        backup?.formato !== 'MITICO_BACKUP_SEMANAL_V1' ||
-        Number(backup?.version) !== 1 ||
+        backup?.formato !== 'MITICO_BACKUP_OPERATIVA_V2' ||
+        Number(backup?.version) !== 2 ||
         !backup?.semana_inicio ||
         !backup?.semana_fin ||
         !backup?.datos ||
         typeof backup.datos !== 'object'
       ) {
         throw new Error(
-          'El archivo no tiene el formato de backup semanal Mítico V1.'
+          'El archivo no tiene el formato de backup operativo Mítico V2.'
         );
       }
 
@@ -23641,6 +23730,11 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
           'El backup no contiene el bloque obligatorio de alumnos.'
         );
       }
+
+      await ejecutarFuncionAuthJson<{ ok: boolean }>(
+        'validar_backup_operativa_v2_app',
+        { p_backup: backup }
+      );
 
       setArchivoBackupRestauracion(archivo.name);
       setBackupRestauracion(backup);
@@ -23656,8 +23750,10 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
   function totalFilasBackupRestauracion(backup: any) {
     if (!backup?.datos || typeof backup.datos !== 'object') return 0;
 
-    return Object.values(backup.datos).reduce(
-      (total: number, valor: any) =>
+    return Object.values(
+      backup.datos as Record<string, unknown>
+    ).reduce<number>(
+      (total, valor) =>
         total + (Array.isArray(valor) ? valor.length : 0),
       0
     );
@@ -23666,7 +23762,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
   async function restaurarBackupSemanal() {
     if (!backupRestauracion || !esCoordinadorJefeApp) return;
 
-    const textoEsperado = `RESTAURAR ${backupRestauracion.semana_inicio}`;
+    const textoEsperado = 'RESTAURAR BACKUP V2';
 
     if (confirmacionBackupRestauracion.trim() !== textoEsperado) {
       setErrorBackupRestauracion(
@@ -23680,20 +23776,18 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
     setResultadoRestauracionBackup('');
 
     try {
-      const data = await ejecutarFuncionConRespuesta<{
-        semana_restaurada: string;
-        tablas_restauradas: number;
+      const data = await ejecutarFuncionAuthJson<{
+        ok: boolean;
+        semana_inicio: string;
         filas_restauradas: number;
-      }>('restaurar_backup_semanal_app', {
+      }>('restaurar_backup_operativa_v2_app', {
         p_backup: backupRestauracion,
         p_confirmacion: textoEsperado,
       });
 
-      const r = data[0];
-
       setResultadoRestauracionBackup(
-        `Backup restaurado · Semana ${r?.semana_restaurada || backupRestauracion.semana_inicio} · ` +
-          `${Number(r?.filas_restauradas || 0)} filas recuperadas.`
+        `Backup V2 restaurado · Semana ${data?.semana_inicio || backupRestauracion.semana_inicio} · ` +
+          `${Number(data?.filas_restauradas || 0)} filas recuperadas.`
       );
 
       window.setTimeout(() => {
@@ -24134,7 +24228,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
 
   return (
     <main
-      className={`mitico-app-shell ${esCoordinadorApp ? 'with-sidebar' : 'trainer-only'} ${esVistaMovilApp ? 'is-mobile' : ''}`}
+      className={`mitico-app-shell ${tieneSidebarApp ? 'with-sidebar' : 'trainer-only'} ${esVistaMovilApp ? 'is-mobile' : ''}`}
       style={layout}
     >
       <header className="mitico-product-header">
@@ -24273,7 +24367,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
           </div>
         )}
 
-        {esCoordinadorApp ? (
+        {tieneSidebarApp ? (
           <nav className="mitico-sidebar" aria-label="Navegación principal">
             {!esAdministracionApp && (
               <>
@@ -28666,7 +28760,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                             color: '#991b1b',
                           }}
                         >
-                          RESTAURAR {backupRestauracion.semana_inicio}
+                          RESTAURAR BACKUP V2
                         </strong>
                         <input
                           value={confirmacionBackupRestauracion}
@@ -28689,7 +28783,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                         disabled={
                           restaurandoBackupSemanal ||
                           confirmacionBackupRestauracion.trim() !==
-                            `RESTAURAR ${backupRestauracion.semana_inicio}`
+                            'RESTAURAR BACKUP V2'
                         }
                         style={{
                           ...botonPrincipal,
@@ -28701,7 +28795,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                           opacity:
                             restaurandoBackupSemanal ||
                             confirmacionBackupRestauracion.trim() !==
-                              `RESTAURAR ${backupRestauracion.semana_inicio}`
+                              'RESTAURAR BACKUP V2'
                               ? 0.5
                               : 1,
                         }}
@@ -36706,11 +36800,11 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               ].map(([titulo, valor, detalle, icono, fondo, accion]) => (
                 <button type="button" className="mitico-home-metric is-clickable" key={String(titulo)} onClick={accion as () => void}>
                   <div className="mitico-home-metric-head">
-                    <span className="mitico-home-metric-icon" style={{ background: String(fondo) }}>{icono}</span>
-                    <span>{titulo}</span>
+                    <span className="mitico-home-metric-icon" style={{ background: String(fondo) }}>{String(icono)}</span>
+                    <span>{String(titulo)}</span>
                   </div>
-                  <strong>{valor}</strong>
-                  <small>{detalle}</small>
+                  <strong>{Number(valor)}</strong>
+                  <small>{String(detalle)}</small>
                 </button>
               ))}
             </div>
@@ -38541,7 +38635,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                       }`}
                       style={bloqueSemanaMovil}
                       onToggle={cerrarAcordeonesHermanos}
-                      defaultOpen={esSemanaVigente}
+                      open={esSemanaVigente || undefined}
                     >
                       <summary
                         className="trainer-week-summary"
@@ -38588,7 +38682,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                 className="trainer-day-accordion"
                                 style={diaEntrenadorCard}
                                     onToggle={cerrarAcordeonesHermanos}
-                                defaultOpen={
+                                open={
                                   dia.fecha === hoyAgendaClave ||
                                   (indiceDia === 0 &&
                                     semana.inicio ===
@@ -38627,7 +38721,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                         className="trainer-shift-accordion"
                                         style={turnoEntrenadorBox}
                                         onToggle={cerrarAcordeonesHermanos}
-                                        defaultOpen={
+                                        open={
                                           (dia.fecha === hoyAgendaClave &&
                                             indiceTurno === 0) ||
                                           (dia.turnos.length === 1 &&
@@ -39266,10 +39360,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
           const totalAmbosPendientes = reportesSemanaCierre.filter(
             (reporte) =>
               reporte.estado_reporte === 'Falta reporte' &&
-              (
-                reporte.estado_reporte === 'Asistencia sin confirmar' ||
-                reporte.estado_asistencia === 'Pendiente'
-              )
+              reporte.estado_asistencia === 'Pendiente'
           ).length;
           const totalEntrenadoresPendientes = new Set(
             reportesSemanaCierre.map((reporte) => reporte.entrenador_id)
@@ -45732,7 +45823,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                 </select>
               </label>
               <div style={{ ...labelCampo, justifyContent: 'flex-end' }}>
-                <button onClick={cargarCobros} style={botonPrincipal}>
+                <button onClick={() => void cargarCobros()} style={botonPrincipal}>
                   Ver mes
                 </button>
               </div>
