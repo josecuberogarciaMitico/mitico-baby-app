@@ -24147,7 +24147,25 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             />
             <div className="mitico-brand-copy">
               <strong>MÍTICO BABY</strong>
-              <span>Coordinación deportiva</span>
+              {esEntrenadorApp ? (
+                <div
+                  style={{
+                    display: 'block',
+                    marginTop: 2,
+                    color: '#34d399',
+                    fontSize: 10,
+                    lineHeight: 1.1,
+                    fontWeight: 950,
+                    letterSpacing: '0.12em',
+                    textTransform: 'uppercase',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  COORDINACIÓN DEPORTIVA
+                </div>
+              ) : (
+                <span>Coordinación deportiva</span>
+              )}
             </div>
           </div>
 
@@ -24187,7 +24205,23 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                 </span>
                 <span className="mitico-user-copy">
                   <strong>{perfilUsuario.nombre}</strong>
-                  <small>{rolUsuarioTextoApp(perfilUsuario.rol)}</small>
+                  {esEntrenadorApp ? (
+                    <span
+                      style={{
+                        display: 'block',
+                        marginTop: 1,
+                        color: '#cbd5e1',
+                        fontSize: 10,
+                        lineHeight: 1.15,
+                        fontWeight: 700,
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      {rolUsuarioTextoApp(perfilUsuario.rol)}
+                    </span>
+                  ) : (
+                    <small>{rolUsuarioTextoApp(perfilUsuario.rol)}</small>
+                  )}
                 </span>
                 <button
                   type="button"
