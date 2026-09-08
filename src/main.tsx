@@ -3,180 +3,138 @@ import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
 
-type PwaUpdateState = {
-  registration: ServiceWorkerRegistration | null
-  visible: boolean
+let registroPwa: ServiceWorkerRegistration | null = null
+let recargandoPorCambioControlador = false
+let ultimaInteraccionPwa = Date.now()
+
+const TIEMPO_INACTIVIDAD_ACTUALIZACION = 30 * 60 * 1000
+
+function registrarInteraccionPwa() {
+  ultimaInteraccionPwa = Date.now()
 }
 
-const pwaUpdateState: PwaUpdateState = {
-  registration: null,
-  visible: false,
+function hayCampoEditableActivo() {
+  const activo = document.activeElement as HTMLElement | null
+  if (!activo) return false
+
+  return (
+    activo.matches('input, textarea, select, [contenteditable="true"]') ||
+    Boolean(activo.closest('[contenteditable="true"]'))
+  )
 }
 
-function obtenerBuildActual() {
-  const scripts = Array.from(
-    document.querySelectorAll<HTMLScriptElement>('script[type="module"][src]')
+function hayEdicionVisiblePosiblementePendiente() {
+  const controles = Array.from(
+    document.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+      'input:not([disabled]):not([readonly]), textarea:not([disabled]):not([readonly]), select:not([disabled])'
+    )
   )
 
-  const principal =
-    scripts.find((script) => script.src.includes('/assets/')) || scripts[0]
+  return controles.some((control) => {
+    const estilo = window.getComputedStyle(control)
+    if (
+      estilo.display === 'none' ||
+      estilo.visibility === 'hidden' ||
+      control.getClientRects().length === 0
+    ) {
+      return false
+    }
 
-  if (!principal) return ''
-  return new URL(principal.src, window.location.href).pathname
-}
-
-async function obtenerBuildPublicado() {
-  try {
-    const url = `/index.html?pwa-check=${Date.now()}`
-    const respuesta = await fetch(url, {
-      cache: 'no-store',
-      headers: {
-        'Cache-Control': 'no-cache',
-      },
-    })
-
-    if (!respuesta.ok) return ''
-
-    const html = await respuesta.text()
-    const documento = new DOMParser().parseFromString(html, 'text/html')
-    const scripts = Array.from(
-      documento.querySelectorAll<HTMLScriptElement>(
-        'script[type="module"][src]'
-      )
-    )
-
-    const principal =
-      scripts.find((script) => script.src.includes('/assets/')) || scripts[0]
-
-    if (!principal) return ''
-    return new URL(principal.getAttribute('src') || '', window.location.href)
-      .pathname
-  } catch {
-    return ''
-  }
-}
-
-function ocultarAvisoActualizacion() {
-  document.getElementById('mitico-pwa-update')?.remove()
-  pwaUpdateState.visible = false
-}
-
-function mostrarAvisoActualizacion() {
-  if (pwaUpdateState.visible) return
-  pwaUpdateState.visible = true
-
-  const aviso = document.createElement('div')
-  aviso.id = 'mitico-pwa-update'
-  aviso.setAttribute('role', 'status')
-  aviso.style.position = 'fixed'
-  aviso.style.left = '12px'
-  aviso.style.right = '12px'
-  aviso.style.bottom = 'calc(12px + env(safe-area-inset-bottom, 0px))'
-  aviso.style.zIndex = '2147483647'
-  aviso.style.maxWidth = '560px'
-  aviso.style.margin = '0 auto'
-  aviso.style.padding = '12px'
-  aviso.style.borderRadius = '16px'
-  aviso.style.border = '1px solid rgba(15, 23, 42, 0.12)'
-  aviso.style.background = '#ffffff'
-  aviso.style.boxShadow = '0 16px 50px rgba(15, 23, 42, 0.20)'
-  aviso.style.fontFamily =
-    "'SF Pro Rounded', 'Aptos', 'Inter', 'Segoe UI', system-ui, sans-serif"
-
-  const fila = document.createElement('div')
-  fila.style.display = 'flex'
-  fila.style.alignItems = 'center'
-  fila.style.justifyContent = 'space-between'
-  fila.style.gap = '12px'
-  fila.style.flexWrap = 'wrap'
-
-  const texto = document.createElement('div')
-  texto.style.flex = '1 1 230px'
-  texto.style.minWidth = '0'
-
-  const titulo = document.createElement('div')
-  titulo.textContent = 'Nueva versión disponible'
-  titulo.style.fontSize = '15px'
-  titulo.style.fontWeight = '850'
-  titulo.style.color = '#172033'
-
-  const detalle = document.createElement('div')
-  detalle.textContent =
-    'Actualiza sin borrar la app ni volver a iniciar sesión.'
-  detalle.style.marginTop = '3px'
-  detalle.style.fontSize = '13px'
-  detalle.style.fontWeight = '650'
-  detalle.style.lineHeight = '1.35'
-  detalle.style.color = '#64748b'
-
-  const boton = document.createElement('button')
-  boton.type = 'button'
-  boton.textContent = 'Actualizar'
-  boton.style.border = '0'
-  boton.style.borderRadius = '12px'
-  boton.style.padding = '10px 14px'
-  boton.style.background = '#6fb52b'
-  boton.style.color = '#ffffff'
-  boton.style.fontSize = '14px'
-  boton.style.fontWeight = '850'
-  boton.style.cursor = 'pointer'
-  boton.style.whiteSpace = 'nowrap'
-
-  boton.addEventListener('click', async () => {
-    boton.disabled = true
-    boton.textContent = 'Actualizando…'
-    boton.style.opacity = '0.75'
-
-    try {
-      const registro =
-        pwaUpdateState.registration ||
-        (await navigator.serviceWorker?.getRegistration())
-
-      if (registro) {
-        await registro.update().catch(() => undefined)
-
-        if (registro.waiting) {
-          registro.waiting.postMessage({ type: 'SKIP_WAITING' })
-          return
-        }
+    if (control instanceof HTMLInputElement) {
+      if (control.type === 'checkbox' || control.type === 'radio') {
+        return control.checked !== control.defaultChecked
       }
 
-      window.location.reload()
-    } catch {
-      window.location.reload()
-    }
-  })
+      if (
+        control.type === 'button' ||
+        control.type === 'submit' ||
+        control.type === 'reset' ||
+        control.type === 'hidden'
+      ) {
+        return false
+      }
 
-  texto.append(titulo, detalle)
-  fila.append(texto, boton)
-  aviso.append(fila)
-  document.body.append(aviso)
+      return control.value !== control.defaultValue
+    }
+
+    if (control instanceof HTMLTextAreaElement) {
+      return control.value !== control.defaultValue
+    }
+
+    const opcionPorDefecto = Array.from(control.options).find(
+      (opcion) => opcion.defaultSelected
+    )
+
+    if (!opcionPorDefecto) {
+      return control.selectedIndex > 0
+    }
+
+    return control.value !== opcionPorDefecto.value
+  })
 }
 
-async function comprobarVersionPublicada() {
-  if (document.visibilityState !== 'visible') return
+function puedeActualizarPorInactividad() {
+  if (document.visibilityState !== 'visible') return false
+  if (Date.now() - ultimaInteraccionPwa < TIEMPO_INACTIVIDAD_ACTUALIZACION) {
+    return false
+  }
+  if (hayCampoEditableActivo()) return false
+  if (hayEdicionVisiblePosiblementePendiente()) return false
+  return true
+}
 
-  const actual = obtenerBuildActual()
-  const publicada = await obtenerBuildPublicado()
+function activarVersionEnEspera(
+  registro: ServiceWorkerRegistration | null | undefined
+) {
+  if (!registro?.waiting || !navigator.serviceWorker.controller) return false
 
-  if (!actual || !publicada) return
+  registro.waiting.postMessage({ type: 'SKIP_WAITING' })
+  return true
+}
 
-  // En desarrollo ambos suelen ser /src/main.tsx.
-  // En producción Vite usa /assets/index-XXXX.js y cambia al publicar.
-  if (actual !== publicada) {
-    mostrarAvisoActualizacion()
+async function comprobarActualizacionPwa(
+  permitirActivacionInmediata: boolean
+) {
+  const registro =
+    registroPwa || (await navigator.serviceWorker.getRegistration())
+
+  if (!registro) return
+
+  registroPwa = registro
+
+  if (permitirActivacionInmediata && activarVersionEnEspera(registro)) {
+    return
+  }
+
+  await registro.update().catch(() => undefined)
+
+  if (permitirActivacionInmediata) {
+    window.setTimeout(() => {
+      activarVersionEnEspera(registro)
+    }, 350)
   }
 }
 
 function prepararActualizacionPwa() {
   if (!('serviceWorker' in navigator)) return
 
-  let recargandoPorCambioControlador = false
+  ;[
+    'pointerdown',
+    'keydown',
+    'touchstart',
+    'input',
+    'change',
+    'wheel',
+  ].forEach((evento) => {
+    window.addEventListener(evento, registrarInteraccionPwa, {
+      passive: true,
+      capture: true,
+    })
+  })
 
   navigator.serviceWorker.addEventListener('controllerchange', () => {
     if (recargandoPorCambioControlador) return
     recargandoPorCambioControlador = true
-    ocultarAvisoActualizacion()
     window.location.reload()
   })
 
@@ -186,11 +144,11 @@ function prepararActualizacionPwa() {
         updateViaCache: 'none',
       })
 
-      pwaUpdateState.registration = registro
+      registroPwa = registro
 
-      if (registro.waiting && navigator.serviceWorker.controller) {
-        mostrarAvisoActualizacion()
-      }
+      // Si una versión nueva quedó preparada en una sesión anterior,
+      // al abrir la app se activa automáticamente.
+      if (activarVersionEnEspera(registro)) return
 
       registro.addEventListener('updatefound', () => {
         const instalando = registro.installing
@@ -201,34 +159,39 @@ function prepararActualizacionPwa() {
             instalando.state === 'installed' &&
             navigator.serviceWorker.controller
           ) {
-            mostrarAvisoActualizacion()
+            // La actualización queda preparada.
+            // No se recarga en mitad del trabajo del usuario.
           }
         })
       })
 
-      // Comprueba el service worker y, además, el build real publicado.
+      // Descarga/prepara la nueva versión si existe.
       await registro.update().catch(() => undefined)
-      await comprobarVersionPublicada()
     } catch (error) {
       console.warn('No se pudo registrar la PWA:', error)
     }
   })
 
-  // Cuando el entrenador vuelve a abrir la PWA, comprueba si hay versión nueva.
+  // Si la app estuvo en segundo plano y el usuario vuelve,
+  // aplica la versión nueva automáticamente.
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      pwaUpdateState.registration?.update().catch(() => undefined)
-      void comprobarVersionPublicada()
-    }
+    if (document.visibilityState !== 'visible') return
+    registrarInteraccionPwa()
+    void comprobarActualizacionPwa(true)
   })
 
   window.addEventListener('focus', () => {
-    void comprobarVersionPublicada()
+    registrarInteraccionPwa()
+    void comprobarActualizacionPwa(true)
   })
 
-  // Comprobación discreta mientras la app permanece abierta.
+  // Mientras la app permanece abierta, comprueba cada 10 minutos.
+  // Si hay una actualización, la prepara en segundo plano.
+  // Si además lleva 30 minutos sin uso y no detectamos edición pendiente,
+  // la activa automáticamente sin necesidad de cerrar la app.
   window.setInterval(() => {
-    void comprobarVersionPublicada()
+    const puedeActivar = puedeActualizarPorInactividad()
+    void comprobarActualizacionPwa(puedeActivar)
   }, 10 * 60 * 1000)
 }
 
