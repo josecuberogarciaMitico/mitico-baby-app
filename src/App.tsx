@@ -1493,6 +1493,22 @@ type EvaluacionAnualOcioApp = {
   comentario_autonomia_final: string | null;
 };
 
+
+type FiltroDiaEvaluacionesOcioApp = 'Todos' | 'Jueves' | 'Sábado' | 'Domingo';
+
+type CorteEvaluacionOcioApp = {
+  snapshot_id: string;
+  alumno_id: string;
+  alumno: string;
+  temporada: string;
+  corte: 'NAVIDAD' | 'FINAL';
+  dia_ocio: string | null;
+  generado_at: string;
+  reportes_ocio: number;
+  nivel_inicial: string | null;
+  nivel_corte: string | null;
+};
+
 type CierreTemporadaAlumnoApp = {
   alumno_id: string;
   alumno: string;
@@ -4047,6 +4063,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     | 'ocioGrupos'
     | 'ocioSemana'
     | 'ocioCambios'
+    | 'ocioEvaluaciones'
     | 'revisionOcio'
     | 'entrenadores'
     | 'usuarios'
@@ -4989,6 +5006,19 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     useState(false);
   const [busquedaEvaluacionAnualOcio, setBusquedaEvaluacionAnualOcio] =
     useState('');
+  const [filtroDiaEvaluacionesOcio, setFiltroDiaEvaluacionesOcio] =
+    useState<FiltroDiaEvaluacionesOcioApp>('Todos');
+  const [evaluacionOcioIndividualSeleccionadoId, setEvaluacionOcioIndividualSeleccionadoId] =
+    useState('');
+  const [cortesEvaluacionOcio, setCortesEvaluacionOcio] = useState<
+    CorteEvaluacionOcioApp[]
+  >([]);
+  const [cortesEvaluacionOcioCargando, setCortesEvaluacionOcioCargando] =
+    useState(false);
+  const [cortesEvaluacionOcioError, setCortesEvaluacionOcioError] =
+    useState('');
+  const [guardandoCorteEvaluacionOcio, setGuardandoCorteEvaluacionOcio] =
+    useState<'NAVIDAD' | 'FINAL' | ''>('');
 
   const [cierreTemporadaAlumnos, setCierreTemporadaAlumnos] = useState<
     CierreTemporadaAlumnoApp[]
@@ -19741,6 +19771,10 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.`
       cargarOcioGrupos();
       cargarOcioCambios();
     }
+    if (pantalla === 'ocioEvaluaciones') {
+      // Solo cargamos el censo Ocio. Las evaluaciones se generan manualmente.
+      cargarOcioAlumnos();
+    }
     if (pantalla === 'revisionOcio') {
       cargarOcioAlumnos();
       cargarOcioGrupos();
@@ -22742,6 +22776,95 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
     );
   }
 
+  function diaOcioAlumnoEvaluacionApp(alumnoId: string) {
+    return (
+      ocioAlumnos.find((alumno) => alumno.alumno_id === alumnoId)?.dia_fijo ||
+      ocioAlumnos.find((alumno) => alumno.alumno_id === alumnoId)?.grupo_dia ||
+      ''
+    );
+  }
+
+  function filasEvaluacionTemporadaOcioApp() {
+    const mapa = new Map(
+      evaluacionesAnualesOcio.map((evaluacion) => [evaluacion.alumno_id, evaluacion])
+    );
+
+    return ocioAlumnos
+      .filter((alumno) => {
+        if (filtroDiaEvaluacionesOcio === 'Todos') return true;
+        return (
+          textoSinAcentosGrupoApp(alumno.dia_fijo || alumno.grupo_dia || '') ===
+          textoSinAcentosGrupoApp(filtroDiaEvaluacionesOcio)
+        );
+      })
+      .map((alumno) => ({
+        alumno,
+        evaluacion: mapa.get(alumno.alumno_id) || null,
+      }))
+      .sort((a, b) => (a.alumno.alumno || '').localeCompare(b.alumno.alumno || ''));
+  }
+
+  async function cargarCortesEvaluacionOcio() {
+    if (!esCoordinadorJefeApp) return;
+    setCortesEvaluacionOcioCargando(true);
+    setCortesEvaluacionOcioError('');
+    try {
+      const data = await ejecutarFuncionConRespuesta<CorteEvaluacionOcioApp>(
+        'obtener_cortes_evaluacion_ocio_app',
+        {}
+      );
+      setCortesEvaluacionOcio(
+        data.map((fila) => ({
+          ...fila,
+          reportes_ocio: Number(fila.reportes_ocio || 0),
+        }))
+      );
+    } catch (err) {
+      setCortesEvaluacionOcio([]);
+      setCortesEvaluacionOcioError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo consultar el estado de los cortes de Ocio.'
+      );
+    } finally {
+      setCortesEvaluacionOcioCargando(false);
+    }
+  }
+
+  async function guardarCorteEvaluacionOcio(corte: 'NAVIDAD' | 'FINAL') {
+    if (!esCoordinadorJefeApp || !evaluacionesAnualesOcioGeneradas) return;
+
+    const existentes = cortesEvaluacionOcio.filter((fila) => fila.corte === corte).length;
+    const mensaje = existentes > 0
+      ? `Ya hay ${existentes} evaluaciones guardadas en el corte ${corte}. Si continúas se actualizará ese mismo corte con la información actual. ¿Continuar?`
+      : `Se guardará el corte ${corte} de todos los alumnos de Ocio de la temporada activa. El filtro de día solo organiza la pantalla y no limita el guardado. ¿Continuar?`;
+
+    if (!window.confirm(mensaje)) return;
+
+    setGuardandoCorteEvaluacionOcio(corte);
+    setCortesEvaluacionOcioError('');
+    try {
+      const resultado = await ejecutarFuncionConRespuesta<{ guardados: number }>(
+        'guardar_corte_evaluacion_ocio_app',
+        { p_corte: corte }
+      );
+      await cargarCortesEvaluacionOcio();
+      alert(
+        `Corte ${corte} guardado correctamente · ${Number(
+          resultado[0]?.guardados || 0
+        )} alumnos.`
+      );
+    } catch (err) {
+      setCortesEvaluacionOcioError(
+        err instanceof Error
+          ? err.message
+          : `No se pudo guardar el corte ${corte}.`
+      );
+    } finally {
+      setGuardandoCorteEvaluacionOcio('');
+    }
+  }
+
   async function cargarEvaluacionesAnualesOcio() {
     if (!esCoordinadorJefeApp) return;
 
@@ -22767,6 +22890,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
         }))
       );
       setEvaluacionesAnualesOcioGeneradas(true);
+      await cargarCortesEvaluacionOcio();
     } catch (err) {
       setEvaluacionesAnualesOcio([]);
       setEvaluacionesAnualesOcioGeneradas(false);
@@ -22781,9 +22905,17 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
   }
 
   function descargarEvaluacionesAnualesOcio() {
-    if (evaluacionesAnualesOcio.length === 0) {
+    if (!evaluacionesAnualesOcioGeneradas) {
       setEvaluacionesAnualesOcioError(
-        'No hay evaluaciones de Ocio para descargar.'
+        'Primero genera las evaluaciones de temporada.'
+      );
+      return;
+    }
+
+    const filasBase = filasEvaluacionTemporadaOcioApp();
+    if (filasBase.length === 0) {
+      setEvaluacionesAnualesOcioError(
+        'No hay alumnos de Ocio en el filtro seleccionado.'
       );
       return;
     }
@@ -22793,54 +22925,61 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
       return `"${texto.replace(/"/g, '""')}"`;
     };
 
-    const temporada = evaluacionesAnualesOcio[0]?.temporada || 'temporada';
+    const temporada = evaluacionesAnualesOcio[0]?.temporada || 'temporada-activa';
     const filas: Array<Array<string | number>> = [
-      [`EVALUACIÓN ANUAL OCIO · ${temporada}`],
+      [`EVALUACIONES DE TEMPORADA OCIO · ${temporada}`],
+      [`Filtro: ${filtroDiaEvaluacionesOcio}`],
       [
-        'Base técnica para preparar después el informe para familias. No es el texto final para padres.',
+        'Base técnica para coordinación. Cada informe para familias sigue siendo individual.',
       ],
       [],
       [
         'Alumno',
+        'Día Ocio',
         'Entrenamientos Ocio',
         'Reportes Ocio',
         'Primer reporte',
         'Último reporte',
         'Nivel inicial',
-        'Nivel final',
+        'Nivel corte',
         'Progresión niveles',
         'Técnica inicial',
-        'Técnica final',
+        'Técnica corte',
         'Autonomía inicial',
-        'Autonomía final',
+        'Autonomía corte',
         'Remontes iniciales',
-        'Remontes finales',
-        'Actitud final',
-        'Pista final',
-        'Recomendación final',
-        'Comentario técnico final',
-        'Comentario autonomía final',
+        'Remontes corte',
+        'Actitud corte',
+        'Pista corte',
+        'Recomendación corte',
+        'Comentario técnico',
+        'Comentario autonomía',
       ],
-      ...evaluacionesAnualesOcio.map((fila) => [
-        fila.alumno,
-        fila.entrenamientos_ocio,
-        fila.reportes_ocio,
-        fila.primer_reporte_fecha ? formatearFecha(fila.primer_reporte_fecha) : '',
-        fila.ultimo_reporte_fecha ? formatearFecha(fila.ultimo_reporte_fecha) : '',
-        fila.nivel_inicial || '',
-        fila.nivel_final || '',
-        fila.niveles_reportados || '',
-        fila.tecnica_inicial || '',
-        fila.tecnica_final || '',
-        fila.autonomia_inicial || '',
-        fila.autonomia_final || '',
-        (fila.remontes_iniciales || []).join(', '),
-        (fila.remontes_finales || []).join(', '),
-        fila.actitud_final || '',
-        fila.pista_final || '',
-        fila.recomendacion_final || '',
-        fila.comentario_tecnica_final || '',
-        fila.comentario_autonomia_final || '',
+      ...filasBase.map(({ alumno, evaluacion }) => [
+        alumno.alumno,
+        alumno.dia_fijo || alumno.grupo_dia || '',
+        evaluacion?.entrenamientos_ocio || 0,
+        evaluacion?.reportes_ocio || 0,
+        evaluacion?.primer_reporte_fecha
+          ? formatearFecha(evaluacion.primer_reporte_fecha)
+          : '',
+        evaluacion?.ultimo_reporte_fecha
+          ? formatearFecha(evaluacion.ultimo_reporte_fecha)
+          : '',
+        evaluacion?.nivel_inicial || '',
+        evaluacion?.nivel_final || '',
+        evaluacion?.niveles_reportados || '',
+        evaluacion?.tecnica_inicial || '',
+        evaluacion?.tecnica_final || '',
+        evaluacion?.autonomia_inicial || '',
+        evaluacion?.autonomia_final || '',
+        (evaluacion?.remontes_iniciales || []).join(', '),
+        (evaluacion?.remontes_finales || []).join(', '),
+        evaluacion?.actitud_final || '',
+        evaluacion?.pista_final || '',
+        evaluacion?.recomendacion_final || '',
+        evaluacion?.comentario_tecnica_final || '',
+        evaluacion?.comentario_autonomia_final || '',
       ]),
     ];
 
@@ -22849,7 +22988,10 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
       filas.map((fila) => fila.map(escaparCsv).join(';')).join('\r\n');
 
     descargarTextoComoArchivo(
-      `evaluacion_anual_ocio_${temporada.replace(/[^0-9A-Za-z_-]/g, '-')}.csv`,
+      `evaluaciones_ocio_${filtroDiaEvaluacionesOcio.toLowerCase()}_${temporada.replace(
+        /[^0-9A-Za-z_-]/g,
+        '-'
+      )}.csv`,
       csv,
       'text/csv;charset=utf-8'
     );
@@ -24464,7 +24606,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     <span>Entrenamientos</span>
                   </button>
                   <button
-                    className={`mitico-nav-item ${['ocioGrupos', 'ocioCambios', 'ocioSemana'].includes(pantalla) ? 'is-active' : ''}`}
+                    className={`mitico-nav-item ${['ocioGrupos', 'ocioCambios', 'ocioSemana', 'ocioEvaluaciones'].includes(pantalla) ? 'is-active' : ''}`}
                     onClick={() => abrirPantallaConScroll('ocioGrupos')}
                   >
                     <IconoNavegacionApp tipo="ocio" />
@@ -26912,374 +27054,6 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                           ))}
                         </tbody>
                       </table>
-                    </div>
-                  </>
-                );
-              })()}
-            </div>
-          </details>
-
-          <details
-            style={{
-              ...tarjeta,
-              marginTop: 16,
-              padding: 0,
-              overflow: 'hidden',
-              border: '1px solid rgba(168,85,247,.2)',
-              background:
-                'linear-gradient(135deg, rgba(250,245,255,.94), #fff 58%, rgba(239,246,255,.72))',
-            }}
-          >
-            <summary
-              style={{
-                listStyle: 'none',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: 12,
-                padding: '16px 18px',
-              }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <p
-                  style={{
-                    ...etiquetaSuperior,
-                    color: '#7e22ce',
-                    margin: '0 0 3px',
-                  }}
-                >
-                  INFORME PARA FAMILIAS · OCIO
-                </p>
-                <h3
-                  style={{
-                    margin: 0,
-                    fontSize: 20,
-                    lineHeight: 1.2,
-                    overflowWrap: 'anywhere',
-                  }}
-                >
-                  Informes anuales Ocio
-                </h3>
-                <p
-                  style={{
-                    margin: '5px 0 0',
-                    color: '#64748b',
-                    fontSize: 13,
-                  }}
-                >
-                  Evolución anual individual preparada para compartir con cada familia
-                </p>
-              </div>
-
-              <span
-                style={{
-                  flex: '0 0 auto',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: 34,
-                  height: 34,
-                  borderRadius: 999,
-                  border: '1px solid #cbd5e1',
-                  background: '#fff',
-                  color: '#334155',
-                  fontWeight: 900,
-                  fontSize: 20,
-                }}
-              >
-                ↕
-              </span>
-            </summary>
-
-            <div
-              style={{
-                padding: '16px 18px 18px',
-                borderTop: '1px solid rgba(168,85,247,.12)',
-              }}
-            >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'flex-start',
-                  justifyContent: 'space-between',
-                  gap: 12,
-                  flexWrap: 'wrap',
-                }}
-              >
-                <p
-                  style={{
-                    margin: 0,
-                    color: '#475569',
-                    lineHeight: 1.45,
-                    flex: '1 1 430px',
-                  }}
-                >
-                  Genera una única lectura de los datos reales de la temporada y, a partir de ella, prepara un informe individual por alumno con nivel, técnica, autonomía, remontes, actitud y siguiente paso. La consulta a Supabase solo se realiza al pulsar el botón de generar o actualizar.
-                </p>
-
-                <button
-                  type="button"
-                  onClick={cargarEvaluacionesAnualesOcio}
-                  disabled={evaluacionesAnualesOcioCargando}
-                  style={{
-                    ...botonPrincipal,
-                    flex: '0 1 220px',
-                    minWidth: 0,
-                    minHeight: 46,
-                    whiteSpace: 'normal',
-                    opacity: evaluacionesAnualesOcioCargando ? 0.65 : 1,
-                  }}
-                >
-                  {evaluacionesAnualesOcioCargando
-                    ? 'Generando...'
-                    : evaluacionesAnualesOcioGeneradas
-                    ? 'Actualizar informes Ocio'
-                    : 'Generar informes Ocio'}
-                </button>
-              </div>
-
-              {evaluacionesAnualesOcioError && (
-                <div style={{ ...errorCaja, marginTop: 12 }}>
-                  {evaluacionesAnualesOcioError}
-                </div>
-              )}
-
-              {evaluacionesAnualesOcioGeneradas &&
-                !evaluacionesAnualesOcioCargando &&
-                !evaluacionesAnualesOcioError &&
-                evaluacionesAnualesOcio.length === 0 && (
-                  <div style={{ ...avisoNeutral, marginTop: 12 }}>
-                    No hay alumnos con reportes de Ocio en la temporada activa.
-                  </div>
-                )}
-
-              {evaluacionesAnualesOcio.length > 0 && (() => {
-                const termino = busquedaEvaluacionAnualOcio.trim().toLowerCase();
-                const filasVisibles = termino
-                  ? evaluacionesAnualesOcio.filter((fila) =>
-                      `${fila.alumno} ${fila.nivel_inicial || ''} ${
-                        fila.nivel_final || ''
-                      } ${fila.autonomia_final || ''}`
-                        .toLowerCase()
-                        .includes(termino)
-                    )
-                  : evaluacionesAnualesOcio;
-                const temporada = evaluacionesAnualesOcio[0]?.temporada || '-';
-
-                return (
-                  <>
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: 'minmax(0, 1fr) minmax(180px, auto)',
-                        gap: 10,
-                        alignItems: 'end',
-                        marginTop: 14,
-                      }}
-                    >
-                      <label style={{ ...labelCampo, minWidth: 0, width: '100%' }}>
-                        Buscar alumno
-                        <input
-                          value={busquedaEvaluacionAnualOcio}
-                          onChange={(e) => setBusquedaEvaluacionAnualOcio(e.target.value)}
-                          placeholder="Nombre, nivel, autonomía..."
-                          style={{
-                            ...inputCampo,
-                            width: '100%',
-                            minWidth: 0,
-                            boxSizing: 'border-box',
-                          }}
-                        />
-                      </label>
-
-                      <button
-                        type="button"
-                        onClick={descargarEvaluacionesAnualesOcio}
-                        style={{
-                          ...botonPrincipal,
-                          width: '100%',
-                          minWidth: 0,
-                          minHeight: 46,
-                          whiteSpace: 'normal',
-                        }}
-                      >
-                        Descargar Excel
-                      </button>
-                    </div>
-
-                    <div
-                      style={{
-                        display: 'flex',
-                        gap: 8,
-                        flexWrap: 'wrap',
-                        marginTop: 12,
-                        padding: '11px 12px',
-                        border: '1px solid #e9d5ff',
-                        borderRadius: 14,
-                        background: '#fff',
-                      }}
-                    >
-                      <strong>Temporada {temporada}</strong>
-                      <span style={{ color: '#64748b' }}>
-                        {filasVisibles.length} alumnos visibles ·{' '}
-                        {evaluacionesAnualesOcio.length} informes preparados en memoria
-                      </span>
-                    </div>
-
-                    <div style={{ display: 'grid', gap: 10, padding: '12px 16px 16px' }}>
-                      {filasVisibles.map((fila) => (
-                        <details
-                          key={`evaluacion-anual-ocio-${fila.alumno_id}`}
-                          style={{
-                            overflow: 'hidden',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: 16,
-                            background: '#fff',
-                          }}
-                        >
-                          <summary
-                            style={{
-                              listStyle: 'none',
-                              cursor: 'pointer',
-                              display: 'grid',
-                              gridTemplateColumns: 'minmax(0, 1fr) auto',
-                              gap: 10,
-                              alignItems: 'center',
-                              padding: '12px 14px',
-                              background: '#fafafa',
-                            }}
-                          >
-                            <div style={{ minWidth: 0 }}>
-                              <strong style={{ overflowWrap: 'anywhere' }}>
-                                {fila.alumno}
-                              </strong>
-                              <span
-                                style={{
-                                  display: 'block',
-                                  marginTop: 3,
-                                  color: '#64748b',
-                                  fontSize: 13,
-                                }}
-                              >
-                                Nivel {fila.nivel_inicial || '-'} →{' '}
-                                {fila.nivel_final || '-'} · {fila.entrenamientos_ocio}{' '}
-                                entrenos · {fila.reportes_ocio} reportes
-                              </span>
-                            </div>
-                            <span style={{ color: '#7e22ce', fontWeight: 900 }}>
-                              Ver progreso
-                            </span>
-                          </summary>
-
-                          <div
-                            style={{
-                              display: 'flex',
-                              justifyContent: 'flex-end',
-                              padding: '12px 14px 0',
-                            }}
-                          >
-                            <button
-                              type="button"
-                              onClick={() => abrirInformeFamiliaOcioApp(fila)}
-                              style={{
-                                ...botonPrincipal,
-                                minHeight: 42,
-                                background: '#0f9f4d',
-                                borderColor: '#0f9f4d',
-                              }}
-                            >
-                              Ver informe familia
-                            </button>
-                          </div>
-
-                          <div
-                            style={{
-                              display: 'grid',
-                              gridTemplateColumns:
-                                'repeat(auto-fit, minmax(min(100%, 210px), 1fr))',
-                              gap: 10,
-                              padding: 14,
-                            }}
-                          >
-                            <div style={miniTarjetaBlanca}>
-                              <strong>Progresión de nivel</strong>
-                              <p style={{ margin: '6px 0 0', color: '#475569' }}>
-                                {fila.niveles_reportados ||
-                                  `${fila.nivel_inicial || '-'} → ${
-                                    fila.nivel_final || '-'
-                                  }`}
-                              </p>
-                            </div>
-
-                            <div style={miniTarjetaBlanca}>
-                              <strong>Técnica</strong>
-                              <p style={{ margin: '6px 0 0', color: '#475569' }}>
-                                {fila.tecnica_inicial || '-'} → {fila.tecnica_final || '-'}
-                              </p>
-                            </div>
-
-                            <div style={miniTarjetaBlanca}>
-                              <strong>Autonomía</strong>
-                              <p style={{ margin: '6px 0 0', color: '#475569' }}>
-                                {fila.autonomia_inicial || '-'} →{' '}
-                                {fila.autonomia_final || '-'}
-                              </p>
-                            </div>
-
-                            <div style={miniTarjetaBlanca}>
-                              <strong>Remontes finales</strong>
-                              <p style={{ margin: '6px 0 0', color: '#475569' }}>
-                                {(fila.remontes_finales || []).join(', ') || '-'}
-                              </p>
-                            </div>
-
-                            <div style={miniTarjetaBlanca}>
-                              <strong>Actitud final</strong>
-                              <p style={{ margin: '6px 0 0', color: '#475569' }}>
-                                {fila.actitud_final || '-'}
-                              </p>
-                            </div>
-
-                            <div style={miniTarjetaBlanca}>
-                              <strong>Último entrenamiento</strong>
-                              <p style={{ margin: '6px 0 0', color: '#475569' }}>
-                                {fila.ultimo_reporte_fecha
-                                  ? formatearFecha(fila.ultimo_reporte_fecha)
-                                  : '-'}
-                              </p>
-                            </div>
-
-                            {(fila.comentario_tecnica_final ||
-                              fila.comentario_autonomia_final ||
-                              fila.recomendacion_final) && (
-                              <div
-                                style={{
-                                  ...miniTarjetaBlanca,
-                                  gridColumn: '1 / -1',
-                                }}
-                              >
-                                <strong>Últimas observaciones útiles</strong>
-                                {fila.comentario_tecnica_final && (
-                                  <p style={{ margin: '7px 0 0', color: '#475569' }}>
-                                    Técnica: {fila.comentario_tecnica_final}
-                                  </p>
-                                )}
-                                {fila.comentario_autonomia_final && (
-                                  <p style={{ margin: '7px 0 0', color: '#475569' }}>
-                                    Autonomía: {fila.comentario_autonomia_final}
-                                  </p>
-                                )}
-                                {fila.recomendacion_final && (
-                                  <p style={{ margin: '7px 0 0', color: '#475569' }}>
-                                    Recomendación: {fila.recomendacion_final}
-                                  </p>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </details>
-                      ))}
                     </div>
                   </>
                 );
@@ -32847,12 +32621,6 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                             Editar ficha / Ocio
                           </button>
                           <button
-                            onClick={() => abrirEvaluacionOcio(alumno)}
-                            style={botonSecundario}
-                          >
-                            Ver evaluación
-                          </button>
-                          <button
                             type="button"
                             onClick={() =>
                               setSelectorIntensivoFichaAbiertoId((actual) =>
@@ -33020,51 +32788,6 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                         </p>
                       )}
 
-                      {evaluacionOcioActivaId === alumno.alumno_id && (
-                        <div style={{ ...miniTarjetaBlanca, marginTop: 12 }}>
-                          <h4 style={{ marginTop: 0 }}>
-                            Vista previa evaluación Ocio
-                          </h4>
-                          <pre
-                            style={{
-                              whiteSpace: 'pre-wrap',
-                              background: '#f8fafc',
-                              padding: 12,
-                              borderRadius: 14,
-                              maxHeight: 360,
-                              overflow: 'auto',
-                            }}
-                          >
-                            {evaluacionOcioTexto}
-                          </pre>
-                          <div
-                            style={{
-                              display: 'flex',
-                              gap: 8,
-                              flexWrap: 'wrap',
-                            }}
-                          >
-                            <button
-                              onClick={copiarEvaluacionOcio}
-                              style={{
-                                ...botonPrincipal,
-                                background: '#16a34a',
-                              }}
-                            >
-                              Copiar para ChatGPT
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEvaluacionOcioActivaId(null);
-                                setEvaluacionOcioTexto('');
-                              }}
-                              style={botonSecundario}
-                            >
-                              Cerrar
-                            </button>
-                          </div>
-                        </div>
-                      )}
                     </article>
                   );
                 })}
@@ -33072,6 +32795,483 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             </section>
           );
         })()}
+
+      {pantalla === 'ocioEvaluaciones' && esCoordinadorJefeApp && (() => {
+        const termino = busquedaEvaluacionAnualOcio.trim().toLowerCase();
+        const filasBase = filasEvaluacionTemporadaOcioApp();
+        const filasVisibles = termino
+          ? filasBase.filter(({ alumno, evaluacion }) =>
+              `${alumno.alumno} ${alumno.dia_fijo || alumno.grupo_dia || ''} ${
+                evaluacion?.nivel_inicial || alumno.nivel_usado || ''
+              } ${evaluacion?.nivel_final || ''} ${evaluacion?.autonomia_final || ''}`
+                .toLowerCase()
+                .includes(termino)
+            )
+          : filasBase;
+        const temporada = evaluacionesAnualesOcio[0]?.temporada || 'Temporada activa';
+        const navidadGuardadas = cortesEvaluacionOcio.filter(
+          (fila) => fila.corte === 'NAVIDAD'
+        ).length;
+        const finalGuardadas = cortesEvaluacionOcio.filter(
+          (fila) => fila.corte === 'FINAL'
+        ).length;
+        const alumnoIndividual = ocioAlumnos.find(
+          (alumno) => alumno.alumno_id === evaluacionOcioIndividualSeleccionadoId
+        );
+
+        return (
+          <section style={{ display: 'grid', gap: 16 }}>
+            <article
+              style={{
+                borderRadius: 24,
+                padding: 20,
+                background:
+                  'linear-gradient(135deg, #062d3f 0%, #083b4d 58%, #0b5d4f 100%)',
+                border: '1px solid rgba(16,185,129,0.28)',
+                boxShadow: '0 18px 44px rgba(15,23,42,0.16)',
+                color: '#ffffff',
+              }}
+            >
+              <p
+                style={{
+                  margin: 0,
+                  color: '#86efac',
+                  fontSize: 11,
+                  fontWeight: 950,
+                  letterSpacing: '.12em',
+                }}
+              >
+                OCIO · EVALUACIONES
+              </p>
+              <h2 style={{ margin: '5px 0 0', color: '#fff', fontSize: 30 }}>
+                Evaluaciones Ocio
+              </h2>
+              {renderAyudaRapidaPantallaApp()}
+              <p style={{ margin: '8px 0 0', color: '#cbd5e1', lineHeight: 1.45 }}>
+                Evaluación puntual cuando una familia la pide y campañas de temporada para Navidad y final. Nada se genera ni se guarda automáticamente.
+              </p>
+              <div style={{ marginTop: 14 }}>
+                <button
+                  type="button"
+                  onClick={() => abrirPantallaConScroll('ocioGrupos')}
+                  style={{
+                    ...botonSecundario,
+                    background: '#ffffff',
+                    color: '#064e3b',
+                    borderColor: '#ffffff',
+                  }}
+                >
+                  Volver a grupos Ocio
+                </button>
+              </div>
+            </article>
+
+            <article style={agendaBloqueBlanco}>
+              <div style={agendaCabeceraLinea}>
+                <div>
+                  <p style={{ ...etiquetaSuperior, color: '#0f766e', margin: '0 0 3px' }}>
+                    EVALUACIÓN INDIVIDUAL PUNTUAL
+                  </p>
+                  <h3 style={{ margin: 0 }}>Una familia te pide una evaluación ahora</h3>
+                  <p style={{ margin: '5px 0 0', color: '#64748b' }}>
+                    Elige al alumno y genera únicamente su base de evaluación Ocio. Es el mismo flujo individual que existía en Fichas, ahora centralizado aquí.
+                  </p>
+                </div>
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: esVistaMovilApp
+                    ? 'minmax(0, 1fr)'
+                    : 'minmax(0, 1fr) minmax(190px, auto)',
+                  gap: 10,
+                  marginTop: 14,
+                  alignItems: 'end',
+                }}
+              >
+                <label style={labelCampo}>
+                  Alumno Ocio
+                  <select
+                    value={evaluacionOcioIndividualSeleccionadoId}
+                    onChange={(e) => {
+                      setEvaluacionOcioIndividualSeleccionadoId(e.target.value);
+                      setEvaluacionOcioActivaId(null);
+                      setEvaluacionOcioTexto('');
+                    }}
+                    style={selectCampo}
+                  >
+                    <option value="">Seleccionar alumno...</option>
+                    {[...ocioAlumnos]
+                      .sort((a, b) => (a.alumno || '').localeCompare(b.alumno || ''))
+                      .map((alumno) => (
+                        <option key={`eval-ind-${alumno.alumno_id}`} value={alumno.alumno_id}>
+                          {alumno.alumno} · {alumno.dia_fijo || alumno.grupo_dia || 'Sin día'}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => alumnoIndividual && abrirEvaluacionOcio(alumnoIndividual)}
+                  disabled={!alumnoIndividual || cargando}
+                  style={{
+                    ...botonPrincipal,
+                    minHeight: 46,
+                    opacity: !alumnoIndividual || cargando ? 0.55 : 1,
+                  }}
+                >
+                  Generar evaluación puntual
+                </button>
+              </div>
+
+              {alumnoIndividual && evaluacionOcioActivaId === alumnoIndividual.alumno_id && (
+                <div style={{ ...miniTarjetaBlanca, marginTop: 14 }}>
+                  <h4 style={{ marginTop: 0 }}>
+                    Vista previa · {alumnoIndividual.alumno}
+                  </h4>
+                  <pre
+                    style={{
+                      whiteSpace: 'pre-wrap',
+                      background: '#f8fafc',
+                      padding: 12,
+                      borderRadius: 14,
+                      maxHeight: 360,
+                      overflow: 'auto',
+                    }}
+                  >
+                    {evaluacionOcioTexto}
+                  </pre>
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      onClick={copiarEvaluacionOcio}
+                      style={{ ...botonPrincipal, background: '#16a34a' }}
+                    >
+                      Copiar para ChatGPT
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEvaluacionOcioActivaId(null);
+                        setEvaluacionOcioTexto('');
+                      }}
+                      style={botonSecundario}
+                    >
+                      Cerrar
+                    </button>
+                  </div>
+                </div>
+              )}
+            </article>
+
+            <article style={agendaBloqueBlanco}>
+              <div style={agendaCabeceraLinea}>
+                <div>
+                  <p style={{ ...etiquetaSuperior, color: '#7e22ce', margin: '0 0 3px' }}>
+                    EVALUACIONES DE TEMPORADA
+                  </p>
+                  <h3 style={{ margin: 0 }}>Navidad y final de temporada</h3>
+                  <p style={{ margin: '5px 0 0', color: '#64748b' }}>
+                    El filtro por día es solo de gestión. La consulta anual se hace una vez al pulsar Generar / actualizar y después se filtra en memoria.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={cargarEvaluacionesAnualesOcio}
+                  disabled={evaluacionesAnualesOcioCargando}
+                  style={{
+                    ...botonPrincipal,
+                    minHeight: 46,
+                    opacity: evaluacionesAnualesOcioCargando ? 0.65 : 1,
+                  }}
+                >
+                  {evaluacionesAnualesOcioCargando
+                    ? 'Generando...'
+                    : evaluacionesAnualesOcioGeneradas
+                    ? 'Actualizar evaluaciones'
+                    : 'Generar evaluaciones'}
+                </button>
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+                  gap: 8,
+                  marginTop: 14,
+                }}
+              >
+                {(['Todos', 'Jueves', 'Sábado', 'Domingo'] as FiltroDiaEvaluacionesOcioApp[]).map(
+                  (dia) => {
+                    const activo = filtroDiaEvaluacionesOcio === dia;
+                    return (
+                      <button
+                        key={`filtro-eval-${dia}`}
+                        type="button"
+                        onClick={() => setFiltroDiaEvaluacionesOcio(dia)}
+                        style={{
+                          minHeight: 42,
+                          padding: '9px 10px',
+                          borderRadius: 13,
+                          border: activo ? '1px solid #7c3aed' : '1px solid #e2e8f0',
+                          background: activo ? '#7c3aed' : '#ffffff',
+                          color: activo ? '#ffffff' : '#475569',
+                          fontWeight: 900,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        {dia}
+                      </button>
+                    );
+                  }
+                )}
+              </div>
+
+              {evaluacionesAnualesOcioError && (
+                <div style={{ ...errorCaja, marginTop: 12 }}>{evaluacionesAnualesOcioError}</div>
+              )}
+              {cortesEvaluacionOcioError && (
+                <div style={{ ...errorCaja, marginTop: 12 }}>{cortesEvaluacionOcioError}</div>
+              )}
+
+              {evaluacionesAnualesOcioGeneradas && (
+                <>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: esVistaMovilApp
+                        ? 'minmax(0, 1fr)'
+                        : 'minmax(0, 1fr) repeat(3, minmax(155px, auto))',
+                      gap: 10,
+                      alignItems: 'end',
+                      marginTop: 14,
+                    }}
+                  >
+                    <label style={labelCampo}>
+                      Buscar alumno
+                      <input
+                        value={busquedaEvaluacionAnualOcio}
+                        onChange={(e) => setBusquedaEvaluacionAnualOcio(e.target.value)}
+                        placeholder="Nombre, nivel, autonomía..."
+                        style={inputCampo}
+                      />
+                    </label>
+                    <button
+                      type="button"
+                      onClick={descargarEvaluacionesAnualesOcio}
+                      style={{ ...botonSecundario, minHeight: 46 }}
+                    >
+                      Descargar {filtroDiaEvaluacionesOcio}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => guardarCorteEvaluacionOcio('NAVIDAD')}
+                      disabled={Boolean(guardandoCorteEvaluacionOcio)}
+                      style={{
+                        ...botonPrincipal,
+                        minHeight: 46,
+                        background: '#2563eb',
+                        opacity: guardandoCorteEvaluacionOcio ? 0.6 : 1,
+                      }}
+                    >
+                      {guardandoCorteEvaluacionOcio === 'NAVIDAD'
+                        ? 'Guardando...'
+                        : 'Guardar corte Navidad'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => guardarCorteEvaluacionOcio('FINAL')}
+                      disabled={Boolean(guardandoCorteEvaluacionOcio)}
+                      style={{
+                        ...botonPrincipal,
+                        minHeight: 46,
+                        background: '#0f766e',
+                        opacity: guardandoCorteEvaluacionOcio ? 0.6 : 1,
+                      }}
+                    >
+                      {guardandoCorteEvaluacionOcio === 'FINAL'
+                        ? 'Guardando...'
+                        : 'Guardar corte Final'}
+                    </button>
+                  </div>
+
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: esVistaMovilApp
+                        ? 'repeat(2, minmax(0, 1fr))'
+                        : 'repeat(4, minmax(0, 1fr))',
+                      gap: 10,
+                      marginTop: 12,
+                    }}
+                  >
+                    <div style={miniTarjetaBlanca}>
+                      <span style={{ color: '#64748b', fontSize: 12, fontWeight: 900 }}>
+                        FILTRO
+                      </span>
+                      <strong style={{ display: 'block', marginTop: 5 }}>
+                        {filtroDiaEvaluacionesOcio}
+                      </strong>
+                    </div>
+                    <div style={miniTarjetaBlanca}>
+                      <span style={{ color: '#64748b', fontSize: 12, fontWeight: 900 }}>
+                        ALUMNOS VISIBLES
+                      </span>
+                      <strong style={{ display: 'block', marginTop: 5, fontSize: 24 }}>
+                        {filasVisibles.length}
+                      </strong>
+                    </div>
+                    <div style={miniTarjetaBlanca}>
+                      <span style={{ color: '#64748b', fontSize: 12, fontWeight: 900 }}>
+                        NAVIDAD
+                      </span>
+                      <strong style={{ display: 'block', marginTop: 5 }}>
+                        {cortesEvaluacionOcioCargando ? '...' : `${navidadGuardadas} guardadas`}
+                      </strong>
+                    </div>
+                    <div style={miniTarjetaBlanca}>
+                      <span style={{ color: '#64748b', fontSize: 12, fontWeight: 900 }}>
+                        FINAL
+                      </span>
+                      <strong style={{ display: 'block', marginTop: 5 }}>
+                        {cortesEvaluacionOcioCargando ? '...' : `${finalGuardadas} guardadas`}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <p style={{ margin: '12px 0 0', color: '#64748b', fontSize: 13 }}>
+                    {temporada} · Los cortes guardan todos los alumnos Ocio y conservan el día que tenían en ese momento.
+                  </p>
+
+                  <div style={{ display: 'grid', gap: 10, marginTop: 14 }}>
+                    {filasVisibles.length === 0 ? (
+                      <div style={avisoNeutral}>No hay alumnos en este filtro.</div>
+                    ) : (
+                      filasVisibles.map(({ alumno, evaluacion }) => (
+                        <details
+                          key={`evaluacion-temporada-ocio-${alumno.alumno_id}`}
+                          style={{
+                            overflow: 'hidden',
+                            border: '1px solid #e2e8f0',
+                            borderRadius: 16,
+                            background: '#fff',
+                          }}
+                        >
+                          <summary
+                            style={{
+                              listStyle: 'none',
+                              cursor: 'pointer',
+                              display: 'grid',
+                              gridTemplateColumns: 'minmax(0, 1fr) auto',
+                              gap: 10,
+                              alignItems: 'center',
+                              padding: '12px 14px',
+                              background: '#fafafa',
+                            }}
+                          >
+                            <div style={{ minWidth: 0 }}>
+                              <strong style={{ overflowWrap: 'anywhere' }}>{alumno.alumno}</strong>
+                              <span style={{ display: 'block', marginTop: 3, color: '#64748b', fontSize: 13 }}>
+                                {alumno.dia_fijo || alumno.grupo_dia || 'Sin día fijo'} ·{' '}
+                                {evaluacion
+                                  ? `Nivel ${evaluacion.nivel_inicial || '-'} → ${
+                                      evaluacion.nivel_final || '-'
+                                    } · ${evaluacion.entrenamientos_ocio} entrenos · ${
+                                      evaluacion.reportes_ocio
+                                    } reportes`
+                                  : 'Sin reportes Ocio todavía'}
+                              </span>
+                            </div>
+                            <span
+                              style={{
+                                color: evaluacion ? '#7e22ce' : '#f97316',
+                                fontWeight: 900,
+                              }}
+                            >
+                              {evaluacion ? 'Ver evolución' : 'Sin datos'}
+                            </span>
+                          </summary>
+
+                          {evaluacion ? (
+                            <div style={{ padding: 14 }}>
+                              <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
+                                <button
+                                  type="button"
+                                  onClick={() => abrirInformeFamiliaOcioApp(evaluacion)}
+                                  style={{
+                                    ...botonPrincipal,
+                                    minHeight: 42,
+                                    background: '#0f9f4d',
+                                    borderColor: '#0f9f4d',
+                                  }}
+                                >
+                                  Generar informe familia
+                                </button>
+                              </div>
+                              <div
+                                style={{
+                                  display: 'grid',
+                                  gridTemplateColumns:
+                                    'repeat(auto-fit, minmax(min(100%, 210px), 1fr))',
+                                  gap: 10,
+                                }}
+                              >
+                                <div style={miniTarjetaBlanca}>
+                                  <strong>Progresión de nivel</strong>
+                                  <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                    {evaluacion.niveles_reportados || `${evaluacion.nivel_inicial || '-'} → ${evaluacion.nivel_final || '-'}`}
+                                  </p>
+                                </div>
+                                <div style={miniTarjetaBlanca}>
+                                  <strong>Técnica</strong>
+                                  <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                    {evaluacion.tecnica_inicial || '-'} → {evaluacion.tecnica_final || '-'}
+                                  </p>
+                                </div>
+                                <div style={miniTarjetaBlanca}>
+                                  <strong>Autonomía</strong>
+                                  <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                    {evaluacion.autonomia_inicial || '-'} → {evaluacion.autonomia_final || '-'}
+                                  </p>
+                                </div>
+                                <div style={miniTarjetaBlanca}>
+                                  <strong>Remontes corte</strong>
+                                  <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                    {(evaluacion.remontes_finales || []).join(', ') || '-'}
+                                  </p>
+                                </div>
+                                <div style={miniTarjetaBlanca}>
+                                  <strong>Actitud corte</strong>
+                                  <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                    {evaluacion.actitud_final || '-'}
+                                  </p>
+                                </div>
+                                <div style={miniTarjetaBlanca}>
+                                  <strong>Último reporte</strong>
+                                  <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                    {evaluacion.ultimo_reporte_fecha
+                                      ? formatearFecha(evaluacion.ultimo_reporte_fecha)
+                                      : '-'}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div style={{ padding: 14 }}>
+                              <div style={avisoNeutral}>
+                                Este alumno está en Ocio pero todavía no tiene reportes Ocio en la temporada activa. No se inventa una evaluación familiar hasta tener datos.
+                              </div>
+                            </div>
+                          )}
+                        </details>
+                      ))
+                    )}
+                  </div>
+                </>
+              )}
+            </article>
+          </section>
+        );
+      })()}
 
       {pantalla === 'ocioGrupos' && (() => {
         const configuracionTurnos = {
@@ -33316,7 +33516,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+                  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
                   gap: 10,
                 }}
               >
@@ -33423,6 +33623,55 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     }}
                   >
                     {configuracionTurnos[ocioTurnoVista].hora}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => abrirPantallaConScroll('ocioEvaluaciones')}
+                  style={{
+                    padding: '12px 14px',
+                    borderRadius: 16,
+                    background: 'rgba(255,255,255,.10)',
+                    border: '1px solid rgba(255,255,255,.18)',
+                    minWidth: 0,
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                    color: '#ffffff',
+                  }}
+                >
+                  <span
+                    style={{
+                      display: 'block',
+                      color: '#cbd5e1',
+                      fontWeight: 800,
+                      fontSize: 10,
+                      textTransform: 'uppercase',
+                      letterSpacing: '.06em',
+                    }}
+                  >
+                    EVALUACIONES
+                  </span>
+                  <strong
+                    style={{
+                      display: 'block',
+                      marginTop: 4,
+                      fontSize: 20,
+                      lineHeight: 1.05,
+                      fontWeight: 950,
+                    }}
+                  >
+                    Temporada
+                  </strong>
+                  <span
+                    style={{
+                      display: 'block',
+                      marginTop: 5,
+                      color: '#d1fae5',
+                      fontSize: 12,
+                    }}
+                  >
+                    Puntual · Navidad · Final
                   </span>
                 </button>
               </div>
