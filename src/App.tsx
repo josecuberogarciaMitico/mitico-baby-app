@@ -1869,6 +1869,23 @@ function nombreAlumnoWhatsappPapis(valor: string | null | undefined) {
     .trim();
 }
 
+function esNombreGrupoParticularApp(
+  nombreGrupo: string | null | undefined
+) {
+  return String(nombreGrupo || '')
+    .trim()
+    .toUpperCase()
+    .startsWith('PARTICULAR ·');
+}
+
+function puntoEncuentroVisibleGrupoApp(
+  nombreGrupo: string | null | undefined,
+  puntoEncuentro: string | null | undefined
+) {
+  if (esNombreGrupoParticularApp(nombreGrupo)) return 'CON JOSE';
+  return String(puntoEncuentro || '').trim() || '-';
+}
+
 function nombreEntrenadorWhatsappPapis(valor: string | null | undefined) {
   return String(valor || '')
     .replace(/^\[TEST[^\]]*\]\s*/i, '')
@@ -15110,11 +15127,15 @@ async function abrirGestionOperativaIntensivoDia(
       )
     ).join(' / ');
 
-    const validacionOk = confirmarCrearGrupoConValidacionPedagogicaApp(
-      alumnosGrupo,
-      nombreGrupo
-    );
-    if (!validacionOk) return;
+    if (!esParticular) {
+      if (!esGrupoParticularAgenda(nombreGrupo)) {
+        const validacionOk = confirmarCrearGrupoConValidacionPedagogicaApp(
+          alumnosGrupo,
+          nombreGrupo
+        );
+        if (!validacionOk) return;
+      }
+    }
 
     const confirmar = window.confirm(
       `¿Preparar ${nombreGrupo} con ${alumnosGrupo.length} alumnos? Después asignarás entrenador, segundo entrenador y punto en Días de entrenamiento.`
@@ -16555,11 +16576,102 @@ async function abrirGestionOperativaIntensivoDia(
     }
   }
 
+  function esGrupoParticularAgenda(nombreGrupo: string | null | undefined) {
+    return esNombreGrupoParticularApp(nombreGrupo);
+  }
+
+  function nombreGrupoParticularAgenda(
+    alumno: AgendaRecomendacionSesionApp
+  ) {
+    return `PARTICULAR · ${alumno.alumno}`;
+  }
+
+  function valorSelectorDestinoAlumnoAgenda(
+    alumno: AgendaRecomendacionSesionApp
+  ) {
+    const destino = destinoActualAlumnoAgenda(alumno);
+    return esGrupoParticularAgenda(destino) ? '__PARTICULAR__' : destino;
+  }
+
+  function etiquetaDiaFechaAgenda(fechaIso: string) {
+    const fecha = new Date(`${fechaIso}T12:00:00`);
+    const dia = fecha
+      .toLocaleDateString('es-ES', { weekday: 'long' })
+      .replace('.', '')
+      .toUpperCase();
+    return `${dia} ${formatearFecha(fechaIso)}`;
+  }
+
   function moverAlumnoAgendaRecomendado(alumnoId: string, destino: string) {
+    const alumno = agendaRecomendaciones.find(
+      (registro) => registro.alumno_id === alumnoId
+    );
+    const destinoReal =
+      destino === '__PARTICULAR__' && alumno
+        ? nombreGrupoParticularAgenda(alumno)
+        : destino;
+
     setDestinoAlumnoAgendaGrupo((anterior) => ({
       ...anterior,
-      [claveAlumnoAgendaRecomendado(alumnoId)]: destino,
+      [claveAlumnoAgendaRecomendado(alumnoId)]: destinoReal,
     }));
+  }
+
+  async function moverAlumnoPropuestaAOtroTurnoAgenda(
+    alumno: AgendaRecomendacionSesionApp,
+    opcion: RecomendacionFueraPlazoAgendaApp
+  ) {
+    const alumnoSesion = agendaAlumnosSesion.find(
+      (registro) => registro.alumno_id === alumno.alumno_id
+    );
+
+    if (!alumnoSesion) {
+      setError('No encuentro al alumno en la sesión actual. Actualiza y vuelve a intentarlo.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Mover a ${alumno.alumno} a ${etiquetaDiaFechaAgenda(opcion.fecha)} · ${opcion.hora_inicio.slice(0, 5)}–${opcion.hora_fin.slice(0, 5)}?
+
+${opcion.grupo} · ${opcion.total_actual} → ${opcion.total_final} niños
+
+Confirma solo si los padres han aceptado el cambio de día/horario.`
+    );
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('mover_alumno_entre_turnos_operativa_app', {
+        p_sesion_alumno_id: alumnoSesion.sesion_alumno_id,
+        p_grupo_destino_id: opcion.grupo_id,
+      });
+
+      await cargarAgendaOperativaDirecta();
+      await cargarDetalleSesionAgenda(agendaSesionActivaId, {
+        preservarPropuesta: true,
+        preservarScroll: true,
+      });
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+      setAgendaRecomendaciones((actuales) =>
+        actuales.filter((registro) => registro.alumno_id !== alumno.alumno_id)
+      );
+      setAlternativasTurnoAgendaPorAlumno((actuales) => {
+        const copia = { ...actuales };
+        delete copia[alumno.alumno_id];
+        return copia;
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo mover al alumno al otro turno.'
+      );
+    } finally {
+      setCargando(false);
+    }
   }
 
   function gruposRecomendadosAgenda() {
@@ -17242,7 +17354,7 @@ async function abrirGestionOperativaIntensivoDia(
           const alumnosChunk = alumnos.slice(inicio, inicio + tamano);
           const nombre =
             tamano === 1
-              ? `REVISIÓN MANUAL · ${banda.label}`
+              ? `REVISAR · ${alumnosChunk[0]?.alumno || banda.label}`
               : `Grupo ${contador++} · Nivel ${banda.label}`;
           alumnosChunk.forEach((alumno, indice) => {
             const perfilAlumno = (opciones?.perfiles || []).find(
@@ -18077,6 +18189,10 @@ async function abrirGestionOperativaIntensivoDia(
     const puntosPorGrupo: Record<string, string> = {};
 
     gruposRecomendadosAgenda().forEach(([nombreGrupo], indiceGrupo) => {
+      if (esGrupoParticularAgenda(nombreGrupo)) {
+        return;
+      }
+
       const seleccionado = puntosAgendaGrupo[nombreGrupo] || '';
       let punto = '';
 
@@ -18221,6 +18337,7 @@ async function abrirGestionOperativaIntensivoDia(
       return;
     }
 
+    const esParticular = esGrupoParticularAgenda(nombreGrupo);
     const entrenadorId = entrenadoresAgendaGrupo[nombreGrupo];
     const entrenadorApoyoId =
       entrenadoresApoyoAgendaGrupo[nombreGrupo] || '';
@@ -18258,12 +18375,14 @@ async function abrirGestionOperativaIntensivoDia(
     const indiceGrupoActual = gruposRecomendadosAgenda().findIndex(
       ([grupo]) => grupo === nombreGrupo
     );
-    const punto = puntoDisponibleAgendaParaGrupo(
-      nombreGrupo,
-      indiceGrupoActual
-    );
+    const punto = esParticular
+      ? ''
+      : puntoDisponibleAgendaParaGrupo(
+          nombreGrupo,
+          indiceGrupoActual
+        );
 
-    if (!punto) {
+    if (!esParticular && !punto) {
       setError(
         `No queda ningún punto de encuentro libre para ${nombreGrupo} en este turno.`
       );
@@ -18284,24 +18403,41 @@ async function abrirGestionOperativaIntensivoDia(
     setError('');
 
     try {
-      const grupoId = await ejecutarFuncionAuthJson<string>(
-        'crear_grupo_sesion_operativa_app',
-        {
-          p_sesion_id: agendaSesionActivaId,
-          p_nombre_grupo: nombreGrupo,
-          p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
-          p_pista: primero.pista_recomendada,
-          p_punto_encuentro: punto,
-          p_trabajo_diario: trabajo,
-          p_observaciones_importantes: combinarObservacionesGrupoApp(
-            observacionesAutomaticasGrupoAgenda(alumnosGrupo),
-            observacionesAgendaGrupo[nombreGrupo] || ''
-          ),
-          p_entrenador_id: entrenadorId,
-          p_alumnos_ids: alumnosGrupo.map((alumno) => alumno.alumno_id),
-          p_publicado: false,
-        }
-      );
+      const grupoId = esParticular
+        ? await ejecutarFuncionAuthJson<string>(
+            'crear_grupo_particular_sesion_operativa_app',
+            {
+              p_sesion_id: agendaSesionActivaId,
+              p_nombre_grupo: nombreGrupo,
+              p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
+              p_pista: primero.pista_recomendada,
+              p_trabajo_diario: trabajo,
+              p_observaciones_importantes: combinarObservacionesGrupoApp(
+                observacionesAutomaticasGrupoAgenda(alumnosGrupo),
+                observacionesAgendaGrupo[nombreGrupo] || ''
+              ),
+              p_entrenador_id: entrenadorId,
+              p_alumno_id: alumnosGrupo[0].alumno_id,
+            }
+          )
+        : await ejecutarFuncionAuthJson<string>(
+            'crear_grupo_sesion_operativa_app',
+            {
+              p_sesion_id: agendaSesionActivaId,
+              p_nombre_grupo: nombreGrupo,
+              p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
+              p_pista: primero.pista_recomendada,
+              p_punto_encuentro: punto,
+              p_trabajo_diario: trabajo,
+              p_observaciones_importantes: combinarObservacionesGrupoApp(
+                observacionesAutomaticasGrupoAgenda(alumnosGrupo),
+                observacionesAgendaGrupo[nombreGrupo] || ''
+              ),
+              p_entrenador_id: entrenadorId,
+              p_alumnos_ids: alumnosGrupo.map((alumno) => alumno.alumno_id),
+              p_publicado: false,
+            }
+          );
 
       if (!grupoId) {
         throw new Error(`No se pudo crear el borrador de ${nombreGrupo}.`);
@@ -18401,7 +18537,8 @@ async function abrirGestionOperativaIntensivoDia(
     const puntosPorGrupo = resolverPuntosAgendaPropuesta();
 
     const sinPunto = grupos.find(
-      ([nombreGrupo]) => !puntosPorGrupo[nombreGrupo]
+      ([nombreGrupo]) =>
+        !esGrupoParticularAgenda(nombreGrupo) && !puntosPorGrupo[nombreGrupo]
     );
     if (sinPunto) {
       setError(
@@ -18436,24 +18573,42 @@ async function abrirGestionOperativaIntensivoDia(
           trabajoAgendaGrupo[nombreGrupo] ||
           trabajoDiarioAutomaticoAgenda(nombreGrupo, alumnosGrupo);
 
-        const grupoId = await ejecutarFuncionAuthJson<string>(
-          'crear_grupo_sesion_operativa_app',
-          {
-            p_sesion_id: agendaSesionActivaId,
-            p_nombre_grupo: nombreGrupo,
-            p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
-            p_pista: primero.pista_recomendada,
-            p_punto_encuentro: puntosPorGrupo[nombreGrupo],
-            p_trabajo_diario: trabajo,
-            p_observaciones_importantes: combinarObservacionesGrupoApp(
-              observacionesAutomaticasGrupoAgenda(alumnosGrupo),
-              observacionesAgendaGrupo[nombreGrupo] || ''
-            ),
-            p_entrenador_id: entrenadorId,
-            p_alumnos_ids: alumnosGrupo.map((alumno) => alumno.alumno_id),
-            p_publicado: false,
-          }
-        );
+        const esParticular = esGrupoParticularAgenda(nombreGrupo);
+        const grupoId = esParticular
+          ? await ejecutarFuncionAuthJson<string>(
+              'crear_grupo_particular_sesion_operativa_app',
+              {
+                p_sesion_id: agendaSesionActivaId,
+                p_nombre_grupo: nombreGrupo,
+                p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
+                p_pista: primero.pista_recomendada,
+                p_trabajo_diario: trabajo,
+                p_observaciones_importantes: combinarObservacionesGrupoApp(
+                  observacionesAutomaticasGrupoAgenda(alumnosGrupo),
+                  observacionesAgendaGrupo[nombreGrupo] || ''
+                ),
+                p_entrenador_id: entrenadorId,
+                p_alumno_id: alumnosGrupo[0].alumno_id,
+              }
+            )
+          : await ejecutarFuncionAuthJson<string>(
+              'crear_grupo_sesion_operativa_app',
+              {
+                p_sesion_id: agendaSesionActivaId,
+                p_nombre_grupo: nombreGrupo,
+                p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
+                p_pista: primero.pista_recomendada,
+                p_punto_encuentro: puntosPorGrupo[nombreGrupo],
+                p_trabajo_diario: trabajo,
+                p_observaciones_importantes: combinarObservacionesGrupoApp(
+                  observacionesAutomaticasGrupoAgenda(alumnosGrupo),
+                  observacionesAgendaGrupo[nombreGrupo] || ''
+                ),
+                p_entrenador_id: entrenadorId,
+                p_alumnos_ids: alumnosGrupo.map((alumno) => alumno.alumno_id),
+                p_publicado: false,
+              }
+            );
 
         if (!grupoId) {
           throw new Error(`No se pudo crear el borrador de ${nombreGrupo}.`);
@@ -22247,7 +22402,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
           (grupo, indice) =>
             `${nombreGrupoVisualApp(grupo, indice)} · ${
               grupo.entrenador || 'Pendiente entrenador'
-            } · Punto ${grupo.punto_encuentro || '-'}`
+            } · ${esNombreGrupoParticularApp(grupo.nombre_grupo) ? 'CON JOSE' : `Punto ${grupo.punto_encuentro || '-'}`}`
         )
         .join(' || ');
     }
@@ -22258,7 +22413,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
           (grupo, indice) =>
             `${nombreGrupoVisualApp(grupo, indice)} · ${
               grupo.entrenadores || 'Pendiente entrenador'
-            } · Punto ${grupo.punto_encuentro || '-'}`
+            } · ${esNombreGrupoParticularApp(grupo.nombre_grupo) ? 'CON JOSE' : `Punto ${grupo.punto_encuentro || '-'}`}`
         )
         .join(' || ');
     }
@@ -22270,7 +22425,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
           (grupo, indice) =>
             `${nombreGrupoVisualApp(grupo, indice)} · ${
               grupo.entrenador || 'Pendiente entrenador'
-            } · Punto ${grupo.punto_encuentro || '-'}`
+            } · ${esNombreGrupoParticularApp(grupo.nombre_grupo) ? 'CON JOSE' : `Punto ${grupo.punto_encuentro || '-'}`}`
         )
         .join(' || ');
     }
@@ -30448,7 +30603,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                               <div>
                                 <strong>
                                   {etiqueta ||
-                                    `${formatearFecha(opcion.fecha)} · ${opcion.hora_inicio?.slice(0, 5)}–${opcion.hora_fin?.slice(0, 5)}`}
+                                    `${etiquetaDiaFechaAgenda(opcion.fecha)} · ${opcion.hora_inicio?.slice(0, 5)}–${opcion.hora_fin?.slice(0, 5)}`}
                                 </strong>
                                 <p style={{ margin: '4px 0 0' }}>
                                   {opcion.grupo} · Nivel {opcion.nivel_grupo} · {opcion.pista}
@@ -30819,14 +30974,19 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                 nombreGrupo,
                                 alumnosGrupo
                               );
-                            const puntoDefecto =
-                              puntosEncuentroAgenda[
-                                indiceGrupoAgenda % puntosEncuentroAgenda.length
-                              ];
-                            const nombreGrupoVisible = nombreGrupoPropuestaApp(
-                              alumnosGrupo,
-                              indiceGrupoAgenda
-                            );
+                            const esParticular =
+                              esGrupoParticularAgenda(nombreGrupo);
+                            const puntoDefecto = esParticular
+                              ? ''
+                              : puntosEncuentroAgenda[
+                                  indiceGrupoAgenda % puntosEncuentroAgenda.length
+                                ];
+                            const nombreGrupoVisible = esParticular
+                              ? nombreGrupo
+                              : nombreGrupoPropuestaApp(
+                                  alumnosGrupo,
+                                  indiceGrupoAgenda
+                                );
                             const observacionesAutoGrupo =
                               observacionesAutomaticasGrupoAgenda(alumnosGrupo);
                             const validacionPedagogicaGrupo =
@@ -30855,35 +31015,50 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                   <strong>Pista:</strong>{' '}
                                   {primero.pista_recomendada}
                                 </p>
-                                <div
-                                  style={{
-                                    ...estiloValidacionPedagogicaApp(
-                                      validacionPedagogicaGrupo.estado
-                                    ),
-                                    marginBottom: 10,
-                                  }}
-                                >
-                                  <strong>
-                                    {validacionPedagogicaGrupo.titulo}
-                                  </strong>
-                                  {validacionPedagogicaGrupo.mensajes.length >
-                                    0 && (
-                                    <ul
-                                      style={{
-                                        margin: '6px 0 0',
-                                        paddingLeft: 18,
-                                      }}
-                                    >
-                                      {validacionPedagogicaGrupo.mensajes.map(
-                                        (mensaje) => (
-                                          <li key={`${nombreGrupo}-${mensaje}`}>
-                                            {mensaje}
-                                          </li>
-                                        )
-                                      )}
-                                    </ul>
-                                  )}
-                                </div>
+                                {esParticular ? (
+                                  <div
+                                    style={{
+                                      ...avisoNeutral,
+                                      marginBottom: 10,
+                                      padding: '9px 11px',
+                                    }}
+                                  >
+                                    <strong>PARTICULAR · 1 alumno</strong>
+                                    <span style={{ marginLeft: 6 }}>
+                                      Sin ratio Baby · encuentro CON JOSE
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <div
+                                    style={{
+                                      ...estiloValidacionPedagogicaApp(
+                                        validacionPedagogicaGrupo.estado
+                                      ),
+                                      marginBottom: 10,
+                                    }}
+                                  >
+                                    <strong>
+                                      {validacionPedagogicaGrupo.titulo}
+                                    </strong>
+                                    {validacionPedagogicaGrupo.mensajes.length >
+                                      0 && (
+                                      <ul
+                                        style={{
+                                          margin: '6px 0 0',
+                                          paddingLeft: 18,
+                                        }}
+                                      >
+                                        {validacionPedagogicaGrupo.mensajes.map(
+                                          (mensaje) => (
+                                            <li key={`${nombreGrupo}-${mensaje}`}>
+                                              {mensaje}
+                                            </li>
+                                          )
+                                        )}
+                                      </ul>
+                                    )}
+                                  </div>
+                                )}
                                 <div
                                   style={{
                                     display: 'grid',
@@ -30958,7 +31133,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                       >
                                         Mover a
                                         <select
-                                          value={destinoActualAlumnoAgenda(
+                                          value={valorSelectorDestinoAlumnoAgenda(
                                             alumno
                                           )}
                                           onChange={(e) =>
@@ -30967,6 +31142,13 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                               e.target.value
                                             )
                                           }
+                                          style={{
+                                            ...selectCampo,
+                                            width: '100%',
+                                            minWidth: 0,
+                                            minHeight: 42,
+                                            height: 42,
+                                          }}
                                         >
                                           {nombresGruposAgendaBase().map(
                                             (grupoDestino) => (
@@ -30978,16 +31160,20 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                               </option>
                                             )
                                           )}
+                                          <option value="__PARTICULAR__">
+                                            Mover a particular · CON JOSE
+                                          </option>
                                           <option value="__NO_CREAR__">
                                             Dejar fuera de momento
                                           </option>
                                         </select>
                                       </label>
 
-                                      {Object.prototype.hasOwnProperty.call(
-                                        alternativasTurnoAgendaPorAlumno,
-                                        alumno.alumno_id
-                                      ) && (
+                                      {!esParticular &&
+                                        Object.prototype.hasOwnProperty.call(
+                                          alternativasTurnoAgendaPorAlumno,
+                                          alumno.alumno_id
+                                        ) && (
                                         <div
                                           style={{
                                             width: '100%',
@@ -31047,7 +31233,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                                       }}
                                                     >
                                                       <strong>
-                                                        {formatearFecha(opcion.fecha)} ·{' '}
+                                                        {etiquetaDiaFechaAgenda(opcion.fecha)} ·{' '}
                                                         {opcion.hora_inicio.slice(
                                                           0,
                                                           5
@@ -31076,6 +31262,23 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                                       >
                                                         {opcion.motivo}
                                                       </div>
+                                                      <button
+                                                        type="button"
+                                                        disabled={cargando}
+                                                        onClick={() =>
+                                                          void moverAlumnoPropuestaAOtroTurnoAgenda(
+                                                            alumno,
+                                                            opcion
+                                                          )
+                                                        }
+                                                        style={{
+                                                          ...botonPrincipal,
+                                                          marginTop: 8,
+                                                          width: '100%',
+                                                        }}
+                                                      >
+                                                        Padres OK · mover a este turno
+                                                      </button>
                                                     </div>
                                                   ))}
                                               </div>
@@ -31142,46 +31345,64 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                         ))}
                                     </select>
                                   </label>
-                                  <label style={labelCampo}>
-                                    Punto encuentro
-                                    <select
-                                      value={puntoDisponibleAgendaParaGrupo(
-                                        nombreGrupo,
-                                        indiceGrupoAgenda
-                                      )}
-                                      onChange={(e) =>
-                                        setPuntosAgendaGrupo({
-                                          ...puntosAgendaGrupo,
-                                          [nombreGrupo]: e.target.value,
-                                        })
-                                      }
+                                  {esParticular ? (
+                                    <div
+                                      style={{
+                                        ...labelCampo,
+                                        padding: '10px 12px',
+                                        border: '1px solid #bfdbfe',
+                                        borderRadius: 12,
+                                        background: '#eff6ff',
+                                        color: '#1e3a8a',
+                                      }}
                                     >
-                                      {puntosEncuentroAgenda
-                                        .filter((punto) => {
-                                          const puntoActual =
-                                            puntoDisponibleAgendaParaGrupo(
-                                              nombreGrupo,
-                                              indiceGrupoAgenda
-                                            );
+                                      Encuentro
+                                      <strong style={{ fontSize: 15 }}>
+                                        CON JOSE
+                                      </strong>
+                                    </div>
+                                  ) : (
+                                    <label style={labelCampo}>
+                                      Punto encuentro
+                                      <select
+                                        value={puntoDisponibleAgendaParaGrupo(
+                                          nombreGrupo,
+                                          indiceGrupoAgenda
+                                        )}
+                                        onChange={(e) =>
+                                          setPuntosAgendaGrupo({
+                                            ...puntosAgendaGrupo,
+                                            [nombreGrupo]: e.target.value,
+                                          })
+                                        }
+                                      >
+                                        {puntosEncuentroAgenda
+                                          .filter((punto) => {
+                                            const puntoActual =
+                                              puntoDisponibleAgendaParaGrupo(
+                                                nombreGrupo,
+                                                indiceGrupoAgenda
+                                              );
 
-                                          return (
-                                            punto === puntoActual ||
-                                            !puntoAgendaOcupadoPorOtroGrupo(
-                                              punto,
-                                              nombreGrupo
-                                            )
-                                          );
-                                        })
-                                        .map((punto) => (
-                                          <option
-                                            key={`punto-agenda-${punto}`}
-                                            value={punto}
-                                          >
-                                            Punto {punto}
-                                          </option>
-                                        ))}
-                                    </select>
-                                  </label>
+                                            return (
+                                              punto === puntoActual ||
+                                              !puntoAgendaOcupadoPorOtroGrupo(
+                                                punto,
+                                                nombreGrupo
+                                              )
+                                            );
+                                          })
+                                          .map((punto) => (
+                                            <option
+                                              key={`punto-agenda-${punto}`}
+                                              value={punto}
+                                            >
+                                              Punto {punto}
+                                            </option>
+                                          ))}
+                                      </select>
+                                    </label>
+                                  )}
                                   <label style={labelCampo}>
                                     Segundo entrenador
                                     <select
@@ -31490,7 +31711,9 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                               <span style={estiloBadgePistaApp(grupo.pista)}>
                                 {etiquetaPistaVisualApp(grupo.pista)}
                               </span>{' '}
-                              · Punto {grupo.punto_encuentro || '-'}
+                              · {esNombreGrupoParticularApp(grupo.nombre_grupo)
+                                ? 'CON JOSE'
+                                : `Punto ${grupo.punto_encuentro || '-'}`}
                             </p>
                             {grupo.alumnos_lista && (
                               <div style={{ display: 'grid', gap: 7, marginTop: 10 }}>
@@ -36900,7 +37123,12 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               <p>
                 <strong>Nivel:</strong> {detalle.nivel_grupo || '-'} ·{' '}
                 <strong>Pista:</strong> {detalle.pista || '-'} ·{' '}
-                <strong>Punto:</strong> {detalle.punto_encuentro || '-'} ·{' '}
+                <strong>Encuentro:</strong>{' '}
+                {puntoEncuentroVisibleGrupoApp(
+                  detalle.nombre_grupo,
+                  detalle.punto_encuentro
+                )}{' '}
+                ·{' '}
                 <strong>Estado:</strong> {detalle.estado_grupo}
               </p>
 
@@ -37046,7 +37274,9 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     <div style={{ textAlign: 'right' }}>
                       <strong>{grupo.total_alumnos} niños</strong>
                       <p style={{ margin: '6px 0' }}>
-                        Punto {grupo.punto_encuentro}
+                        {esNombreGrupoParticularApp(grupo.nombre_grupo)
+                          ? 'CON JOSE'
+                          : `Punto ${grupo.punto_encuentro || '-'}`}
                       </p>
                       <p style={{ margin: '6px 0', fontWeight: 'bold' }}>
                         {grupo.publicado ? 'Publicado' : 'Sin publicar'}
