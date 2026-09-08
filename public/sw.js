@@ -3,8 +3,8 @@ const PREFIJO_CACHES = 'mitico-baby-'
 const SHELL_FALLBACK = '/__mitico_shell__'
 
 self.addEventListener('install', () => {
-  // No hacemos skipWaiting automático:
-  // la versión nueva espera hasta que el usuario pulse “Actualizar”.
+  // La versión nueva queda preparada en waiting.
+  // main.tsx decide cuándo activarla para no interrumpir trabajo.
 })
 
 self.addEventListener('activate', (event) => {
