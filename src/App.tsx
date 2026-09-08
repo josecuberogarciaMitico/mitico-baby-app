@@ -3180,7 +3180,7 @@ function PantallaTestNivelPublicoApp({ token }: { token: string }) {
                 textTransform: 'uppercase',
               }}
             >
-              Mítico Baby · Test inicial
+              MÍTICO · BABY · OCIO · INTENSIVOS · Test inicial
             </p>
 
             <h1
@@ -10196,6 +10196,14 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
         );
       }
 
+      const [anioDia, mesDia] = resultado.fecha.split('-').map(Number);
+      const mesObjetivo = `${anioDia}-${String(mesDia).padStart(2, '0')}`;
+      const semanaObjetivo = inicioSemanaAgenda(resultado.fecha);
+
+      setAnioInicioTemporadaAgenda(mesDia >= 9 ? anioDia : anioDia - 1);
+      setMesAgenda(mesObjetivo);
+      setSemanaAgendaInicio(semanaObjetivo);
+      setAgendaDiaCompactoActivo(resultado.fecha);
       setPantalla('agenda');
       setAgendaSesionActivaId(sesionId);
       setAgendaFiltroAlumnos('TODOS');
@@ -35748,18 +35756,6 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                     >
                                       Abrir grupo
                                     </button>
-
-                                    {!publicado && resultado.grupo_id && (
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          publicarGrupoOcioPreparado(resultado)
-                                        }
-                                        style={botonPrincipal}
-                                      >
-                                        Publicar grupo
-                                      </button>
-                                    )}
 
                                     <button
                                       type="button"
