@@ -1732,6 +1732,12 @@ type OcioAimHarderSemanaApp = {
   actualizadoAt: string;
 };
 
+type OcioAimHarderEstadoAlumnoApp = {
+  alumno: string;
+  nivel: string;
+  resultado: 'EXISTENTE' | 'PENDIENTE_TEST' | string;
+};
+
 
 type BabyAimHarderClaseApp = {
   id: number;
@@ -4783,6 +4789,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [ocioAimHarderCargando, setOcioAimHarderCargando] = useState(false);
   const [ocioAimHarderMensaje, setOcioAimHarderMensaje] = useState('');
   const [ocioAimHarderError, setOcioAimHarderError] = useState('');
+  const [ocioAimHarderEstadoAlumnos, setOcioAimHarderEstadoAlumnos] = useState<
+    Record<string, OcioAimHarderEstadoAlumnoApp>
+  >({});
   const [ocioCambiosPuntuales, setOcioCambiosPuntuales] = useState<
     OcioCambioPuntualApp[]
   >([]);
@@ -9793,24 +9802,6 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
     }));
     setOcioAimHarderSemana(datos);
 
-    const conocidos = new Set(
-      ocioAlumnos
-        .map((alumno) =>
-          normalizarNombreFueraPlazoAgenda(alumno.alumno || '')
-        )
-        .filter(Boolean)
-    );
-
-    const nuevos = new Set<string>();
-    datos.turnos.forEach((turno) => {
-      turno.asistentes.forEach((asistente) => {
-        const clave = normalizarNombreFueraPlazoAgenda(
-          asistente.nombre || ''
-        );
-        if (clave && !conocidos.has(clave)) nuevos.add(clave);
-      });
-    });
-
     const faltan = Math.max(
       0,
       turnosEsperados.size - turnosEncontrados.size
@@ -9963,6 +9954,53 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
           })),
         });
       }
+
+      const estadosAlumnos: Record<string, OcioAimHarderEstadoAlumnoApp> = {};
+      const yaOcio = new Set(
+        ocioAlumnos
+          .map((alumno) =>
+            normalizarNombreFueraPlazoAgenda(alumno.alumno || '')
+          )
+          .filter(Boolean)
+      );
+
+      for (const turno of turnos) {
+        if (turno.asistentes.length === 0) continue;
+
+        const resultados = await ejecutarFuncionConRespuesta<OcioAimHarderEstadoAlumnoApp>(
+          'importar_alumnos_ocio_aimharder_app',
+          {
+            p_texto: turno.asistentes.map((asistente) => asistente.nombre).join('\n'),
+            p_dia_fijo: diaFijoOcioDesdeFecha(turno.fecha) || null,
+            p_hora_inicio: turno.horaInicio,
+            p_hora_fin: turno.horaFin,
+          }
+        );
+
+        for (const resultado of resultados) {
+          const clave = normalizarNombreFueraPlazoAgenda(resultado.alumno || '');
+          if (!clave) continue;
+          estadosAlumnos[clave] = resultado;
+
+          // Si ya existía en la semilla/maestro pero todavía no figuraba en Ocio,
+          // lo activamos en la modalidad actual. No duplicamos ficha ni lo mandamos
+          // a Alta/Test. Los alumnos que ya eran Ocio conservan su grupo/día estable.
+          if (resultado.resultado === 'EXISTENTE' && !yaOcio.has(clave)) {
+            await ejecutarFuncion('crear_alumno_ocio_app', {
+                p_nombre_completo: resultado.alumno,
+                p_nivel_codigo: null,
+                p_fecha_nacimiento: null,
+                p_dia_fijo: diaFijoOcioDesdeFecha(turno.fecha) || null,
+                p_hora_inicio: turno.horaInicio,
+                p_hora_fin: turno.horaFin,
+                p_observaciones: null,
+              });
+          }
+        }
+      }
+
+      setOcioAimHarderEstadoAlumnos(estadosAlumnos);
+      await cargarOcioAlumnos();
 
       aplicarSemanaOcioDesdeAimHarder({
         semanaInicio,
@@ -36802,16 +36840,6 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                 ocioTurnoVista
                             )
                             .map((turno) => {
-                              const conocidos = new Set(
-                                ocioAlumnos
-                                  .map((alumno) =>
-                                    normalizarNombreFueraPlazoAgenda(
-                                      alumno.alumno || ''
-                                    )
-                                  )
-                                  .filter(Boolean)
-                              );
-
                               return (
                                 <div
                                   key={`aim-ocio-${turno.fecha}-${turno.horaInicio}-${turno.horaFin}`}
@@ -36857,7 +36885,10 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                           normalizarNombreFueraPlazoAgenda(
                                             asistente.nombre || ''
                                           );
-                                        const existe = conocidos.has(clave);
+                                        const estadoDetectado =
+                                          ocioAimHarderEstadoAlumnos[clave] || null;
+                                        const existe =
+                                          estadoDetectado?.resultado === 'EXISTENTE';
 
                                         return (
                                           <div
@@ -36879,7 +36910,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                                 }}
                                               >
                                                 {existe
-                                                  ? 'AimHarder · reservado'
+                                                  ? 'CONOCIDO · ficha recuperada'
                                                   : 'NUEVO · pendiente Alta / Test'}
                                               </div>
                                             </div>
