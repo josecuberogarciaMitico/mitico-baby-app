@@ -17,8 +17,7 @@ export function PantallaIntensivos(ctx: any) {
     crearTodosGruposDesdeRecomendacionIntensivo, crearGrupoNormalIntensivo,
     crearGrupoVacioPropuestaIntensivo, generarPlantillaCuatroDiasIntensivo,
     crearPlantillaCuatroDiasIntensivo, cargarEdicionGruposIntensivoDia,
-    abrirGestionOperativaIntensivoDia, configurarWhatsappIntensivoApp,
-    enlaceWhatsappIntensivoApp,
+    abrirGestionOperativaIntensivoDia,
     guardarComposicionDiaIntensivo,
     crearIntensivoDesdeApp, destinoAlumnoRecomendado, diaActivoIntensivoId,
     diaAsistenciaSeleccionadoId, diaEditandoIntensivoId, diaGrupoSeleccionadoId,
@@ -716,8 +715,6 @@ export function PantallaIntensivos(ctx: any) {
                 gestionarPanelControlIntensivoId === intensivo.intensivo_id;
               const panelControl = panelControlDelIntensivo(intensivo.intensivo_id);
               const intensivoCursoAbierto = intensivoCursoAbiertoId === intensivo.intensivo_id;
-              const enlaceWhatsappIntensivo =
-                enlaceWhatsappIntensivoApp(intensivo);
 
               return (
                 <article
@@ -767,28 +764,6 @@ export function PantallaIntensivos(ctx: any) {
                     </div>
 
                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          configurarWhatsappIntensivoApp(intensivo)
-                        }
-                        style={{
-                          ...botonSecundario,
-                          borderColor: enlaceWhatsappIntensivo
-                            ? '#86efac'
-                            : '#fed7aa',
-                          background: enlaceWhatsappIntensivo
-                            ? '#f0fdf4'
-                            : '#fff7ed',
-                          color: enlaceWhatsappIntensivo
-                            ? '#166534'
-                            : '#9a3412',
-                        }}
-                      >
-                        {enlaceWhatsappIntensivo
-                          ? 'WhatsApp papis configurado'
-                          : 'Configurar WhatsApp papis'}
-                      </button>
                       <button
                         type="button"
                         onClick={() => {
