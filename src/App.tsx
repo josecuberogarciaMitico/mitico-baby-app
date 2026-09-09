@@ -673,6 +673,13 @@ type EstadoAccesoEntrenadorApp = {
   ultimo_acceso_at: string | null;
 };
 
+type EstadoAvisosEntrenadorApp = {
+  entrenador_id: string;
+  avisos_activos: boolean;
+  dispositivos_activos: number;
+  ultimo_dispositivo_visto: string | null;
+};
+
 type EntrenadorFormState = {
   id: string | null;
   nombre: string;
@@ -4797,6 +4804,13 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [
     cargandoEstadosAccesoEntrenadores,
     setCargandoEstadosAccesoEntrenadores,
+  ] = useState(false);
+  const [estadosAvisosEntrenadores, setEstadosAvisosEntrenadores] = useState<
+    Record<string, EstadoAvisosEntrenadorApp>
+  >({});
+  const [
+    cargandoEstadosAvisosEntrenadores,
+    setCargandoEstadosAvisosEntrenadores,
   ] = useState(false);
 
   const [disponibilidad, setDisponibilidad] = useState<
@@ -10901,6 +10915,31 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
     return coincideBusqueda && coincideDia && coincideEstado;
   });
 
+  async function cargarEstadosAvisosEntrenadores() {
+    if (!esCoordinadorApp) {
+      setEstadosAvisosEntrenadores({});
+      return;
+    }
+
+    setCargandoEstadosAvisosEntrenadores(true);
+
+    try {
+      const data = await ejecutarFuncionConRespuesta<EstadoAvisosEntrenadorApp>(
+        'obtener_estado_avisos_entrenadores_app',
+        {}
+      );
+
+      setEstadosAvisosEntrenadores(
+        Object.fromEntries(data.map((item) => [item.entrenador_id, item]))
+      );
+    } catch (err) {
+      console.warn('No se pudo cargar el estado de avisos de entrenadores:', err);
+      setEstadosAvisosEntrenadores({});
+    } finally {
+      setCargandoEstadosAvisosEntrenadores(false);
+    }
+  }
+
   async function cargarEntrenadores() {
     setCargando(true);
     setError('');
@@ -10915,6 +10954,10 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
 
       if (puedeGestionarAccesosUsuarioApp) {
         void cargarEstadosAccesoEntrenadores(data);
+      }
+
+      if (esCoordinadorApp) {
+        void cargarEstadosAvisosEntrenadores();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
@@ -45286,6 +45329,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               const gestionandoAcceso =
                 creandoAccesoEntrenadorId === entrenador.entrenador_id ||
                 gestionandoAccesoEntrenadorId === entrenador.entrenador_id;
+              const estadoAvisos =
+                estadosAvisosEntrenadores[entrenador.entrenador_id] || null;
 
               const textoEstadoAcceso =
                 acceso?.estado === 'activo'
@@ -45398,6 +45443,36 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                             {cargandoEstadosAccesoEntrenadores && !acceso
                               ? 'Comprobando acceso…'
                               : textoEstadoAcceso}
+                          </span>
+                        )}
+
+                        {esCoordinadorApp && (
+                          <span
+                            title={
+                              estadoAvisos?.ultimo_dispositivo_visto
+                                ? `Último dispositivo visto: ${new Date(
+                                    estadoAvisos.ultimo_dispositivo_visto
+                                  ).toLocaleString('es-ES')}`
+                                : undefined
+                            }
+                            style={{
+                              ...agendaBadgeModalidad,
+                              background: estadoAvisos?.avisos_activos
+                                ? '#ecfdf5'
+                                : '#fff7ed',
+                              color: estadoAvisos?.avisos_activos
+                                ? '#047857'
+                                : '#9a3412',
+                              borderColor: estadoAvisos?.avisos_activos
+                                ? '#a7f3d0'
+                                : '#fed7aa',
+                            }}
+                          >
+                            {cargandoEstadosAvisosEntrenadores && !estadoAvisos
+                              ? 'Comprobando avisos…'
+                              : estadoAvisos?.avisos_activos
+                              ? 'Avisos OK'
+                              : 'Avisos pendientes'}
                           </span>
                         )}
                       </div>
