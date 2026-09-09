@@ -1,4 +1,26 @@
 import React, { useEffect, useRef, useState } from 'react';
+
+type BeforeInstallPromptEventMitico = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform?: string }>;
+};
+
+let promptPendienteInstalacionPwa: BeforeInstallPromptEventMitico | null = null;
+
+if (typeof window !== 'undefined') {
+  window.addEventListener(
+    'beforeinstallprompt',
+    ((evento: Event) => {
+      evento.preventDefault();
+      promptPendienteInstalacionPwa =
+        evento as BeforeInstallPromptEventMitico;
+    }) as EventListener
+  );
+
+  window.addEventListener('appinstalled', () => {
+    promptPendienteInstalacionPwa = null;
+  });
+}
 import { createPortal } from 'react-dom';
 import './App.css';
 import { FOTO_MITICO_HERO } from './assets/imagenes';
@@ -4231,13 +4253,17 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       Boolean((navigator as any).standalone);
 
     setPwaInstalada(estaInstalada());
+    setPwaInstallPrompt(promptPendienteInstalacionPwa);
 
     const alPrepararInstalacion = (evento: Event) => {
       evento.preventDefault();
-      setPwaInstallPrompt(evento as any);
+      promptPendienteInstalacionPwa =
+        evento as BeforeInstallPromptEventMitico;
+      setPwaInstallPrompt(promptPendienteInstalacionPwa);
     };
 
     const alInstalar = () => {
+      promptPendienteInstalacionPwa = null;
       setPwaInstalada(true);
       setPwaInstallPrompt(null);
       setMostrarAyudaInstalacionPwa(false);
@@ -4270,6 +4296,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           setMostrarAyudaInstalacionPwa(false);
         }
 
+        promptPendienteInstalacionPwa = null;
         setPwaInstallPrompt(null);
         return;
       } catch {
@@ -33063,41 +33090,52 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     style={{ ...buscador, margin: 0, flex: '1 1 260px' }}
                   />
 
-                  {(filtroDiaFichasOcio ||
-                    filtroEstadoFichasOcio !== 'todos') && (
-                    <>
-                      <span
-                        style={{
-                          ...agendaBadgeModalidad,
-                          background: '#ecfdf5',
-                          color: '#047857',
-                          borderColor: '#bbf7d0',
-                        }}
-                      >
-                        {filtroDiaFichasOcio
-                          ? `${filtroDiaFichasOcio} · `
-                          : ''}
-                        {filtroEstadoFichasOcio === 'sin_grupo'
-                          ? 'Sin grupo · '
-                          : filtroEstadoFichasOcio === 'sin_nivel'
-                            ? 'Sin nivel · '
-                            : filtroEstadoFichasOcio === 'revisar_grupo'
-                              ? 'Revisar grupo · '
-                              : ''}
-                        {ocioAlumnosFiltrados.length} fichas
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFiltroDiaFichasOcio('');
-                          setBusquedaOcio('');
-                        }}
-                        style={botonSecundario}
-                      >
-                        Ver todos Ocio
-                      </button>
-                    </>
-                  )}
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 6,
+                      flexWrap: 'wrap',
+                      alignItems: 'center',
+                    }}
+                    aria-label="Filtrar fichas Ocio por día"
+                  >
+                    {[
+                      { valor: '', etiqueta: 'Todos' },
+                      { valor: 'Jueves', etiqueta: 'Jueves' },
+                      { valor: 'Sábado', etiqueta: 'Sábado' },
+                      { valor: 'Domingo', etiqueta: 'Domingo' },
+                    ].map((opcion) => {
+                      const activo = filtroDiaFichasOcio === opcion.valor;
+                      return (
+                        <button
+                          key={opcion.etiqueta}
+                          type="button"
+                          onClick={() =>
+                            setFiltroDiaFichasOcio(
+                              opcion.valor as
+                                | ''
+                                | 'Jueves'
+                                | 'Sábado'
+                                | 'Domingo'
+                            )
+                          }
+                          aria-pressed={activo}
+                          style={{
+                            ...botonSecundario,
+                            minHeight: 38,
+                            padding: '8px 12px',
+                            borderRadius: 12,
+                            background: activo ? '#dcfce7' : '#ffffff',
+                            color: activo ? '#166534' : '#475569',
+                            borderColor: activo ? '#86efac' : '#dbe3ee',
+                            fontWeight: 900,
+                          }}
+                        >
+                          {opcion.etiqueta}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               </article>
 
