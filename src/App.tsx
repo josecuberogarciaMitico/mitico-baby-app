@@ -4715,6 +4715,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [ocioPanelOperativo, setOcioPanelOperativo] = useState<
     'ninguno' | 'cambios' | 'semana' | 'nuevo'
   >('ninguno');
+  const [ocioPestanaProceso, setOcioPestanaProceso] = useState<
+    'colocar' | 'grupos' | 'cambios' | 'semana'
+  >('colocar');
   const [ocioNuevoNombre, setOcioNuevoNombre] = useState('');
   const [ocioNuevoNivel, setOcioNuevoNivel] = useState('');
   const [ocioNuevoAlumnoId, setOcioNuevoAlumnoId] = useState('');
@@ -5152,6 +5155,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     AgendaSesionDirectaApp[]
   >([]);
   const [agendaSesionActivaId, setAgendaSesionActivaId] = useState('');
+  const [agendaPestanaProceso, setAgendaPestanaProceso] = useState<
+    'crear' | 'organizar' | 'publicar'
+  >('crear');
   const [asignacionExcepcionalGrupoAgenda, setAsignacionExcepcionalGrupoAgenda] =
     useState<Record<string, boolean>>({});
   const [agendaFiltroAlumnos, setAgendaFiltroAlumnos] = useState<
@@ -5303,9 +5309,6 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     useState<Record<string, string>>({});
   const [responsablesReporteAgendaGrupo, setResponsablesReporteAgendaGrupo] =
     useState<Record<string, string>>({});
-  const [puntosAgendaGrupo, setPuntosAgendaGrupo] = useState<
-    Record<string, string>
-  >({});
   const [trabajoAgendaGrupo, setTrabajoAgendaGrupo] = useState<
     Record<string, string>
   >({});
@@ -17297,7 +17300,6 @@ async function abrirGestionOperativaIntensivoDia(
       setEntrenadoresAgendaGrupo({});
       setEntrenadoresApoyoAgendaGrupo({});
       setResponsablesReporteAgendaGrupo({});
-      setPuntosAgendaGrupo({});
       setTrabajoAgendaGrupo({});
       setObservacionesAgendaGrupo({});
 
@@ -18975,88 +18977,6 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
     return normalizarLineasObservacionesGrupoApp(lineas.join('\n'));
   }
 
-  function resolverPuntosAgendaPropuesta() {
-    const usadosReales = new Set(
-      gruposRecursosTurnoAgenda()
-        .map((grupo) => grupo.punto_encuentro || '')
-        .filter(Boolean)
-    );
-    const puntosReservados = new Set<string>();
-    const puntosPorGrupo: Record<string, string> = {};
-
-    gruposRecomendadosAgenda().forEach(([nombreGrupo], indiceGrupo) => {
-      if (esGrupoParticularAgenda(nombreGrupo)) {
-        return;
-      }
-
-      const seleccionado = puntosAgendaGrupo[nombreGrupo] || '';
-      let punto = '';
-
-      if (
-        seleccionado &&
-        !usadosReales.has(seleccionado) &&
-        !puntosReservados.has(seleccionado)
-      ) {
-        punto = seleccionado;
-      }
-
-      if (!punto) {
-        const preferido =
-          puntosEncuentroAgenda[
-            Math.max(0, indiceGrupo) % puntosEncuentroAgenda.length
-          ] || '';
-
-        if (
-          preferido &&
-          !usadosReales.has(preferido) &&
-          !puntosReservados.has(preferido)
-        ) {
-          punto = preferido;
-        }
-      }
-
-      if (!punto) {
-        punto =
-          puntosEncuentroAgenda.find(
-            (opcion) =>
-              !usadosReales.has(opcion) &&
-              !puntosReservados.has(opcion)
-          ) || '';
-      }
-
-      if (punto) {
-        puntosReservados.add(punto);
-        puntosPorGrupo[nombreGrupo] = punto;
-      }
-    });
-
-    return puntosPorGrupo;
-  }
-
-  function puntoDisponibleAgendaParaGrupo(
-    nombreGrupo: string,
-    _indiceGrupoActual: number
-  ) {
-    return resolverPuntosAgendaPropuesta()[nombreGrupo] || '';
-  }
-
-  function puntoAgendaOcupadoPorOtroGrupo(
-    punto: string,
-    nombreGrupo: string
-  ) {
-    const usadosReales = new Set(
-      gruposRecursosTurnoAgenda()
-        .map((grupo) => grupo.punto_encuentro || '')
-        .filter(Boolean)
-    );
-
-    if (usadosReales.has(punto)) return true;
-
-    const puntosResueltos = resolverPuntosAgendaPropuesta();
-    return Object.entries(puntosResueltos).some(
-      ([grupo, valor]) => grupo !== nombreGrupo && valor === punto
-    );
-  }
 
   function limpiarPropuestaAgendaTrasCrear(
     gruposCreados: Array<{
@@ -19097,11 +19017,6 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
       nombresCreados.forEach((nombre) => delete copia[nombre]);
       return copia;
     });
-    setPuntosAgendaGrupo((anterior) => {
-      const copia = { ...anterior };
-      nombresCreados.forEach((nombre) => delete copia[nombre]);
-      return copia;
-    });
     setTrabajoAgendaGrupo((anterior) => {
       const copia = { ...anterior };
       nombresCreados.forEach((nombre) => delete copia[nombre]);
@@ -19134,16 +19049,23 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
     }
 
     const esParticular = esGrupoParticularAgenda(nombreGrupo);
-    const entrenadorId = entrenadoresAgendaGrupo[nombreGrupo];
+    const entrenadorId = entrenadoresAgendaGrupo[nombreGrupo] || '';
     const entrenadorApoyoId =
       entrenadoresApoyoAgendaGrupo[nombreGrupo] || '';
 
-    if (!entrenadorId) {
+    // Los grupos normales se crean primero como estructura deportiva.
+    // Entrenador, segundo entrenador y punto de encuentro se completan después,
+    // desde la tarjeta del grupo creado, antes de publicarlo.
+    if (esParticular && !entrenadorId) {
       setError(`Selecciona entrenador para ${nombreGrupo}.`);
       return;
     }
 
-    if (entrenadorApoyoId === entrenadorId) {
+    if (
+      esParticular &&
+      entrenadorApoyoId &&
+      entrenadorApoyoId === entrenadorId
+    ) {
       setError(
         `El segundo entrenador de ${nombreGrupo} no puede ser el mismo que el principal.`
       );
@@ -19155,35 +19077,9 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
       return;
     }
 
-    if (
-      necesitaDosEntrenadoresGrupoApp(alumnosGrupo) &&
-      !entrenadorApoyoId
-    ) {
-      setError(
-        `${nombreGrupo}: ${textoNecesidadDosEntrenadoresApp(alumnosGrupo)}`
-      );
-      return;
-    }
-
     const nivelesGrupo = Array.from(
       new Set(alumnosGrupo.map((alumno) => alumno.nivel_resumen))
     ).join(' / ');
-    const indiceGrupoActual = gruposRecomendadosAgenda().findIndex(
-      ([grupo]) => grupo === nombreGrupo
-    );
-    const punto = esParticular
-      ? ''
-      : puntoDisponibleAgendaParaGrupo(
-          nombreGrupo,
-          indiceGrupoActual
-        );
-
-    if (!esParticular && !punto) {
-      setError(
-        `No queda ningún punto de encuentro libre para ${nombreGrupo} en este turno.`
-      );
-      return;
-    }
     const trabajo =
       trabajoAgendaGrupo[nombreGrupo] ||
       trabajoDiarioAutomaticoAgenda(nombreGrupo, alumnosGrupo);
@@ -19223,13 +19119,13 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
               p_nombre_grupo: nombreGrupo,
               p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
               p_pista: primero.pista_recomendada,
-              p_punto_encuentro: punto,
+              p_punto_encuentro: null,
               p_trabajo_diario: trabajo,
               p_observaciones_importantes: combinarObservacionesGrupoApp(
                 observacionesAutomaticasGrupoAgenda(alumnosGrupo),
                 observacionesAgendaGrupo[nombreGrupo] || ''
               ),
-              p_entrenador_id: entrenadorId,
+              p_entrenador_id: null,
               p_alumnos_ids: alumnosGrupo.map((alumno) => alumno.alumno_id),
               p_publicado: false,
             }
@@ -19239,21 +19135,18 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
         throw new Error(`No se pudo crear el borrador de ${nombreGrupo}.`);
       }
 
-      await ejecutarFuncion('guardar_apoyo_reportes_grupo_app', {
-        p_grupo_id: grupoId,
-        p_entrenador_apoyo_id: entrenadorApoyoId || null,
-        p_responsables: responsablesJsonAgendaApp(
-          nombreGrupo,
-          alumnosGrupo,
-          entrenadorId,
-          entrenadorApoyoId
-        ),
-      });
-
-      await ejecutarFuncion('publicar_grupo_app', {
-        p_grupo_id: grupoId,
-      });
-      await notificarGrupoPublicadoPushApp(grupoId);
+      if (esParticular && entrenadorId) {
+        await ejecutarFuncion('guardar_apoyo_reportes_grupo_app', {
+          p_grupo_id: grupoId,
+          p_entrenador_apoyo_id: entrenadorApoyoId || null,
+          p_responsables: responsablesJsonAgendaApp(
+            nombreGrupo,
+            alumnosGrupo,
+            entrenadorId,
+            entrenadorApoyoId
+          ),
+        });
+      }
 
       limpiarPropuestaAgendaTrasCrear([
         { nombreGrupo, alumnosGrupo },
@@ -19269,7 +19162,7 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
 
       window.requestAnimationFrame(() => {
         document
-          .getElementById('agenda-propuesta-grupos')
+          .getElementById('agenda-grupos-creados')
           ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
     } catch (err) {
@@ -19291,37 +19184,16 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
       return;
     }
 
-    const entrenadoresUsados = new Set<string>();
     for (const [nombreGrupo, alumnosGrupo] of grupos) {
+      const esParticular = esGrupoParticularAgenda(nombreGrupo);
       const entrenadorId = entrenadoresAgendaGrupo[nombreGrupo] || '';
-      const apoyoId = entrenadoresApoyoAgendaGrupo[nombreGrupo] || '';
 
-      if (!entrenadorId) {
+      // Los particulares conservan su lógica propia. Los grupos normales se crean
+      // sin recursos para completar entrenador/punto después.
+      if (esParticular && !entrenadorId) {
         setError(`Selecciona entrenador para ${nombreGrupo} antes de crear todos.`);
         return;
       }
-
-      if (
-        necesitaDosEntrenadoresGrupoApp(alumnosGrupo) &&
-        !apoyoId
-      ) {
-        setError(
-          `${nombreGrupo}: ${textoNecesidadDosEntrenadoresApp(alumnosGrupo)}`
-        );
-        return;
-      }
-
-      if (
-        entrenadoresUsados.has(entrenadorId) ||
-        (apoyoId && entrenadoresUsados.has(apoyoId)) ||
-        (apoyoId && apoyoId === entrenadorId)
-      ) {
-        setError(`Hay un entrenador repetido. Revisa ${nombreGrupo}.`);
-        return;
-      }
-
-      entrenadoresUsados.add(entrenadorId);
-      if (apoyoId) entrenadoresUsados.add(apoyoId);
 
       const validacionOk = confirmarCrearGrupoConValidacionPedagogicaApp(
         alumnosGrupo,
@@ -19330,21 +19202,8 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
       if (!validacionOk) return;
     }
 
-    const puntosPorGrupo = resolverPuntosAgendaPropuesta();
-
-    const sinPunto = grupos.find(
-      ([nombreGrupo]) =>
-        !esGrupoParticularAgenda(nombreGrupo) && !puntosPorGrupo[nombreGrupo]
-    );
-    if (sinPunto) {
-      setError(
-        `No quedan suficientes puntos libres para crear todos. Falta punto para ${sinPunto[0]}.`
-      );
-      return;
-    }
-
     const confirmar = window.confirm(
-      `¿Crear y publicar los ${grupos.length} grupos tal como están ahora?\n\nSe respetarán movimientos de niños, entrenadores, puntos, trabajo diario y observaciones.`
+      `¿Crear los ${grupos.length} grupos propuestos?\n\nSe guardarán como pendientes de publicar. Después podrás asignar entrenador, segundo entrenador y punto de encuentro desde cada grupo.`
     );
     if (!confirmar) return;
 
@@ -19358,7 +19217,7 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
 
     try {
       for (const [nombreGrupo, alumnosGrupo] of grupos) {
-        const entrenadorId = entrenadoresAgendaGrupo[nombreGrupo];
+        const entrenadorId = entrenadoresAgendaGrupo[nombreGrupo] || '';
         const entrenadorApoyoId =
           entrenadoresApoyoAgendaGrupo[nombreGrupo] || '';
         const primero = alumnosGrupo[0];
@@ -19394,13 +19253,13 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
                 p_nombre_grupo: nombreGrupo,
                 p_nivel_grupo: nivelesGrupo || primero.bloque_tecnico,
                 p_pista: primero.pista_recomendada,
-                p_punto_encuentro: puntosPorGrupo[nombreGrupo],
+                p_punto_encuentro: null,
                 p_trabajo_diario: trabajo,
                 p_observaciones_importantes: combinarObservacionesGrupoApp(
                   observacionesAutomaticasGrupoAgenda(alumnosGrupo),
                   observacionesAgendaGrupo[nombreGrupo] || ''
                 ),
-                p_entrenador_id: entrenadorId,
+                p_entrenador_id: null,
                 p_alumnos_ids: alumnosGrupo.map((alumno) => alumno.alumno_id),
                 p_publicado: false,
               }
@@ -19410,21 +19269,18 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
           throw new Error(`No se pudo crear el borrador de ${nombreGrupo}.`);
         }
 
-        await ejecutarFuncion('guardar_apoyo_reportes_grupo_app', {
-          p_grupo_id: grupoId,
-          p_entrenador_apoyo_id: entrenadorApoyoId || null,
-          p_responsables: responsablesJsonAgendaApp(
-            nombreGrupo,
-            alumnosGrupo,
-            entrenadorId,
-            entrenadorApoyoId
-          ),
-        });
-
-        await ejecutarFuncion('publicar_grupo_app', {
-          p_grupo_id: grupoId,
-        });
-        await notificarGrupoPublicadoPushApp(grupoId);
+        if (esParticular && entrenadorId) {
+          await ejecutarFuncion('guardar_apoyo_reportes_grupo_app', {
+            p_grupo_id: grupoId,
+            p_entrenador_apoyo_id: entrenadorApoyoId || null,
+            p_responsables: responsablesJsonAgendaApp(
+              nombreGrupo,
+              alumnosGrupo,
+              entrenadorId,
+              entrenadorApoyoId
+            ),
+          });
+        }
 
         creados.push({ nombreGrupo, alumnosGrupo });
       }
@@ -19434,6 +19290,12 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
       await cargarPlanning();
       await cargarGruposEntrenador();
       await cargarDetalleSesionAgenda(agendaSesionActivaId);
+
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById('agenda-grupos-creados')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
     } catch (err) {
       limpiarPropuestaAgendaTrasCrear(creados);
       await cargarAgendaOperativaDirecta();
@@ -20388,37 +20250,31 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
   }
 
   async function borrarGrupoAgenda(grupo: AgendaGrupoSesionApp) {
+    if (!grupo.grupo_id) return;
+
+    const confirmar = window.confirm(
+      `¿Borrar el grupo ${grupo.nombre_grupo}? Se quitarán sus alumnos del grupo, pero no se borran sus fichas.`
+    );
+    if (!confirmar) return;
+
     setCargando(true);
     setError('');
 
     try {
-      const proteccion = await comprobarGrupoAgendaSinHistoricoReal(
-        grupo.grupo_id
-      );
-
-      if (!proteccion.ok) {
-        setError(proteccion.motivo);
-        return;
-      }
-
-      const confirmar = window.confirm(
-        `¿Borrar el grupo ${grupo.nombre_grupo}? Se quitarán sus alumnos del grupo, pero no se borran sus fichas.`
-      );
-      if (!confirmar) return;
-
       await ejecutarFuncion('borrar_grupo_sesion_operativa_app', {
         p_grupo_id: grupo.grupo_id,
       });
 
+      setAgendaRecomendaciones([]);
       await cargarAgendaOperativaDirecta();
       await cargarDetalleSesionAgenda(grupo.sesion_id);
-      setAgendaRecomendaciones([]);
     } catch (err) {
-      setError(
+      const mensaje =
         err instanceof Error
           ? err.message
-          : 'No se pudo comprobar o borrar el grupo.'
-      );
+          : 'No se pudo borrar el grupo.';
+      setError(mensaje);
+      window.alert(mensaje);
     } finally {
       setCargando(false);
     }
@@ -30812,6 +30668,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     setAgendaFormularioAbierto(false);
                     setAgendaSesionActivaId('');
                     setAgendaRecomendaciones([]);
+                    setAgendaPestanaProceso('crear');
                   }}
                   style={botonSecundario}
                 >
@@ -30961,9 +30818,12 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                       type="button"
                       style={{ ...miniMetrica, cursor: 'pointer', textAlign: 'left' }}
                       onClick={() => {
-                        document
-                          .getElementById('agenda-grupos-creados')
-                          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        setAgendaPestanaProceso('organizar');
+                        requestAnimationFrame(() => {
+                          document
+                            .getElementById('agenda-grupos-creados')
+                            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        });
                       }}
                     >
                       <strong>{agendaGruposSesion.length}</strong>
@@ -31015,6 +30875,98 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     );
                   })()}
 
+                  <div
+                    style={{
+                      marginTop: 16,
+                      padding: 6,
+                      borderRadius: 16,
+                      background: '#eef3f8',
+                      border: '1px solid #dbe4ee',
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                      gap: 6,
+                    }}
+                  >
+                    {([
+                      ['crear', '1', 'Crear grupos'],
+                      ['organizar', '2', 'Organizar'],
+                      ['publicar', '3', 'Publicar'],
+                    ] as const).map(([clave, numero, etiqueta]) => {
+                      const activa = agendaPestanaProceso === clave;
+                      return (
+                        <button
+                          key={`agenda-paso-${clave}`}
+                          type="button"
+                          onClick={() => setAgendaPestanaProceso(clave)}
+                          style={{
+                            border: activa ? '1px solid #2563eb' : '1px solid transparent',
+                            background: activa ? '#ffffff' : 'transparent',
+                            color: activa ? '#0f172a' : '#64748b',
+                            borderRadius: 12,
+                            padding: esVistaMovilApp ? '9px 5px' : '10px 12px',
+                            fontWeight: 900,
+                            cursor: 'pointer',
+                            boxShadow: activa ? '0 4px 12px rgba(37,99,235,.10)' : 'none',
+                            minWidth: 0,
+                          }}
+                        >
+                          <span
+                            style={{
+                              display: 'block',
+                              fontSize: 10,
+                              color: activa ? '#2563eb' : '#94a3b8',
+                              marginBottom: 2,
+                            }}
+                          >
+                            PASO {numero}
+                          </span>
+                          <span style={{ fontSize: esVistaMovilApp ? 12 : 13 }}>
+                            {etiqueta}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div
+                    style={{
+                      marginTop: 8,
+                      padding: '9px 11px',
+                      borderRadius: 11,
+                      background: '#f8fafc',
+                      border: '1px solid #e2e8f0',
+                      color: '#475569',
+                      fontSize: 12,
+                      fontWeight: 750,
+                    }}
+                  >
+                    {agendaPestanaProceso === 'crear'
+                      ? 'Recomienda, revisa la composición y crea los grupos. Entrenador y punto se completan después.'
+                      : agendaPestanaProceso === 'organizar'
+                      ? `${agendaGruposSesion.length} grupos · ${
+                          agendaGruposSesion.filter((grupo) => Boolean(grupo.entrenador_id)).length
+                        } con entrenador · ${
+                          agendaGruposSesion.filter(
+                            (grupo) =>
+                              esNombreGrupoParticularApp(grupo.nombre_grupo) ||
+                              Boolean(grupo.punto_encuentro)
+                          ).length
+                        } con punto preparado`
+                      : `${
+                          agendaGruposSesion.filter((grupo) => grupo.publicado).length
+                        } publicados · ${
+                          agendaGruposSesion.filter(
+                            (grupo) =>
+                              !grupo.publicado &&
+                              Boolean(grupo.entrenador_id) &&
+                              (esNombreGrupoParticularApp(grupo.nombre_grupo) ||
+                                Boolean(grupo.punto_encuentro))
+                          ).length
+                        } listos para publicar`}
+                  </div>
+
+                  {agendaPestanaProceso === 'crear' && (
+                    <>
                   <div
                     style={{
                       display: 'flex',
@@ -31647,7 +31599,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                       >
                         <div>
                           <h4 style={{ margin: 0 }}>
-                            Propuesta editable antes de publicar
+                            Paso 1 · Revisar recomendación y crear grupos
                           </h4>
                           {buscandoAlternativasTurnoAgenda && (
                             <small style={{ color: '#64748b', fontWeight: 700 }}>
@@ -31661,7 +31613,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                           style={botonPrincipal}
                           disabled={cargando}
                         >
-                          Crear todos los grupos
+                          Crear grupos propuestos
                         </button>
                       </div>
                       <div style={{ display: 'grid', gap: 12 }}>
@@ -31676,11 +31628,6 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                               );
                             const esParticular =
                               esGrupoParticularAgenda(nombreGrupo);
-                            const puntoDefecto = esParticular
-                              ? ''
-                              : puntosEncuentroAgenda[
-                                  indiceGrupoAgenda % puntosEncuentroAgenda.length
-                                ];
                             const nombreGrupoVisible = esParticular
                               ? nombreGrupo
                               : nombreGrupoPropuestaApp(
@@ -31997,55 +31944,32 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                   })}
                                 </div>
 
-                                <div style={gridFormulario}>
-                                  <label style={labelCampo}>
-                                    Entrenador
-                                    <select
-                                      value={
-                                        entrenadoresAgendaGrupo[nombreGrupo] ||
-                                        ''
-                                      }
-                                      onChange={(e) =>
-                                        setEntrenadoresAgendaGrupo({
-                                          ...entrenadoresAgendaGrupo,
-                                          [nombreGrupo]: e.target.value,
-                                        })
-                                      }
-                                    >
-                                      <option value="">
-                                        Selecciona entrenador
-                                      </option>
-                                      {entrenadoresDisponiblesSesionActiva()
-                                        .filter((entrenador) => {
-                                          const actual = entrenadoresAgendaGrupo[nombreGrupo] || '';
-                                          const usadosEnOtros = new Set([
-                                            ...Object.entries(entrenadoresAgendaGrupo)
-                                              .filter(([grupo]) => grupo !== nombreGrupo)
-                                              .map(([, id]) => id),
-                                            ...Object.entries(entrenadoresApoyoAgendaGrupo)
-                                              .filter(([grupo]) => grupo !== nombreGrupo)
-                                              .map(([, id]) => id),
-                                            entrenadoresApoyoAgendaGrupo[nombreGrupo] || '',
-                                            ...gruposRecursosTurnoAgenda()
-                                              .flatMap((grupo) => [
-                                                grupo.entrenador_id || '',
-                                                grupo.entrenador_apoyo_id || '',
-                                              ])
-                                              .filter(Boolean),
-                                          ].filter(Boolean));
-                                          return entrenador.entrenador_id === actual || !usadosEnOtros.has(entrenador.entrenador_id);
-                                        })
-                                        .map((entrenador) => (
-                                          <option
-                                            key={entrenador.entrenador_id}
-                                            value={entrenador.entrenador_id}
-                                          >
-                                            {entrenador.nombre_completo}
-                                          </option>
-                                        ))}
-                                    </select>
-                                  </label>
-                                  {esParticular ? (
+                                {esParticular ? (
+                                  <div style={gridFormulario}>
+                                    <label style={labelCampo}>
+                                      Entrenador del particular
+                                      <select
+                                        value={entrenadoresAgendaGrupo[nombreGrupo] || ''}
+                                        onChange={(e) =>
+                                          setEntrenadoresAgendaGrupo({
+                                            ...entrenadoresAgendaGrupo,
+                                            [nombreGrupo]: e.target.value,
+                                          })
+                                        }
+                                      >
+                                        <option value="">Selecciona entrenador</option>
+                                        {entrenadoresDisponiblesSesionActiva().map(
+                                          (entrenador) => (
+                                            <option
+                                              key={`${nombreGrupo}-particular-${entrenador.entrenador_id}`}
+                                              value={entrenador.entrenador_id}
+                                            >
+                                              {entrenador.nombre_completo}
+                                            </option>
+                                          )
+                                        )}
+                                      </select>
+                                    </label>
                                     <div
                                       style={{
                                         ...labelCampo,
@@ -32057,101 +31981,21 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                       }}
                                     >
                                       Encuentro
-                                      <strong style={{ fontSize: 15 }}>
-                                        CON JOSE
-                                      </strong>
+                                      <strong style={{ fontSize: 15 }}>CON JOSE</strong>
                                     </div>
-                                  ) : (
-                                    <label style={labelCampo}>
-                                      Punto encuentro
-                                      <select
-                                        value={puntoDisponibleAgendaParaGrupo(
-                                          nombreGrupo,
-                                          indiceGrupoAgenda
-                                        )}
-                                        onChange={(e) =>
-                                          setPuntosAgendaGrupo({
-                                            ...puntosAgendaGrupo,
-                                            [nombreGrupo]: e.target.value,
-                                          })
-                                        }
-                                      >
-                                        {puntosEncuentroAgenda
-                                          .filter((punto) => {
-                                            const puntoActual =
-                                              puntoDisponibleAgendaParaGrupo(
-                                                nombreGrupo,
-                                                indiceGrupoAgenda
-                                              );
-
-                                            return (
-                                              punto === puntoActual ||
-                                              !puntoAgendaOcupadoPorOtroGrupo(
-                                                punto,
-                                                nombreGrupo
-                                              )
-                                            );
-                                          })
-                                          .map((punto) => (
-                                            <option
-                                              key={`punto-agenda-${punto}`}
-                                              value={punto}
-                                            >
-                                              Punto {punto}
-                                            </option>
-                                          ))}
-                                      </select>
-                                    </label>
-                                  )}
-                                  <label style={labelCampo}>
-                                    Segundo entrenador
-                                    <select
-                                      value={
-                                        entrenadoresApoyoAgendaGrupo[
-                                          nombreGrupo
-                                        ] || ''
-                                      }
-                                      onChange={(e) =>
-                                        setEntrenadoresApoyoAgendaGrupo({
-                                          ...entrenadoresApoyoAgendaGrupo,
-                                          [nombreGrupo]: e.target.value,
-                                        })
-                                      }
-                                    >
-                                      <option value="">
-                                        Sin segundo entrenador
-                                      </option>
-                                      {entrenadoresDisponiblesSesionActiva()
-                                        .filter((entrenador) => {
-                                          const actual = entrenadoresApoyoAgendaGrupo[nombreGrupo] || '';
-                                          const usadosEnOtros = new Set([
-                                            ...Object.entries(entrenadoresAgendaGrupo)
-                                              .filter(([grupo]) => grupo !== nombreGrupo)
-                                              .map(([, id]) => id),
-                                            ...Object.entries(entrenadoresApoyoAgendaGrupo)
-                                              .filter(([grupo]) => grupo !== nombreGrupo)
-                                              .map(([, id]) => id),
-                                            entrenadoresAgendaGrupo[nombreGrupo] || '',
-                                            ...gruposRecursosTurnoAgenda()
-                                              .flatMap((grupo) => [
-                                                grupo.entrenador_id || '',
-                                                grupo.entrenador_apoyo_id || '',
-                                              ])
-                                              .filter(Boolean),
-                                          ].filter(Boolean));
-                                          return entrenador.entrenador_id === actual || !usadosEnOtros.has(entrenador.entrenador_id);
-                                        })
-                                        .map((entrenador) => (
-                                          <option
-                                            key={`${nombreGrupo}-apoyo-${entrenador.entrenador_id}`}
-                                            value={entrenador.entrenador_id}
-                                          >
-                                            {entrenador.nombre_completo}
-                                          </option>
-                                        ))}
-                                    </select>
-                                  </label>
-                                </div>
+                                  </div>
+                                ) : (
+                                  <div
+                                    style={{
+                                      ...avisoNeutral,
+                                      marginBottom: 10,
+                                      fontSize: 13,
+                                      fontWeight: 750,
+                                    }}
+                                  >
+                                    Primero revisa la composición y crea el grupo. Entrenador, apoyo y punto de encuentro se asignan después desde el grupo creado.
+                                  </div>
+                                )}
 
                                 {necesitaDosEntrenadoresGrupoApp(
                                   alumnosGrupo
@@ -32371,7 +32215,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                   }
                                   style={botonPrincipal}
                                 >
-                                  Crear este grupo revisado
+                                  Crear grupo
                                 </button>
                               </article>
                             );
@@ -32381,9 +32225,47 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     </section>
                   )}
 
-                  {agendaGruposSesion.length > 0 && (
+                    </>
+                  )}
+
+                  {agendaPestanaProceso !== 'crear' && agendaGruposSesion.length === 0 && (
+                    <div
+                      style={{
+                        marginTop: 16,
+                        padding: 18,
+                        borderRadius: 14,
+                        border: '1px dashed #cbd5e1',
+                        background: '#f8fafc',
+                        color: '#64748b',
+                        fontWeight: 800,
+                        textAlign: 'center',
+                      }}
+                    >
+                      Todavía no hay grupos creados. Vuelve a “Crear grupos” y crea la propuesta que quieras usar.
+                    </div>
+                  )}
+
+                  {agendaPestanaProceso !== 'crear' && agendaGruposSesion.length > 0 && (
                     <section id="agenda-grupos-creados" style={{ marginTop: 16, scrollMarginTop: 16 }}>
-                      <h4>Grupos creados en este día</h4>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          gap: 10,
+                          flexWrap: 'wrap',
+                          marginBottom: 10,
+                        }}
+                      >
+                        <h4 style={{ margin: 0 }}>
+                          {agendaPestanaProceso === 'organizar'
+                            ? '2 · Organizar grupos'
+                            : '3 · Publicar al entrenador'}
+                        </h4>
+                        <span style={{ color: '#64748b', fontSize: 12, fontWeight: 800 }}>
+                          {agendaGruposSesion.length} {agendaGruposSesion.length === 1 ? 'grupo' : 'grupos'}
+                        </span>
+                      </div>
                       <div style={{ display: 'grid', gap: 10 }}>
                         {agendaGruposSesion.map((grupo, indiceGrupoCreado) => (
                           <article
@@ -32404,7 +32286,15 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                   grupo.entrenador
                                 )} ·{' '}
                                 {grupo.total_alumnos} niños ·{' '}
-                                {grupo.publicado ? 'Publicado' : 'Borrador'}
+                                {grupo.publicado
+                                  ? 'Publicado'
+                                  : agendaPestanaProceso === 'organizar'
+                                  ? 'En preparación'
+                                  : grupo.entrenador_id &&
+                                    (esNombreGrupoParticularApp(grupo.nombre_grupo) ||
+                                      Boolean(grupo.punto_encuentro))
+                                  ? 'Listo para publicar'
+                                  : 'Pendiente'}
                               </span>
                             </div>
                             <p>
@@ -32416,7 +32306,14 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                 : `Punto ${grupo.punto_encuentro || '-'}`}
                             </p>
                             {grupo.alumnos_lista && (
-                              <div style={{ display: 'grid', gap: 7, marginTop: 10 }}>
+                              <div
+                                style={{
+                                  display:
+                                    agendaPestanaProceso === 'publicar' ? 'none' : 'grid',
+                                  gap: 7,
+                                  marginTop: 10,
+                                }}
+                              >
                                 {grupo.alumnos_lista
                                   .split(' || ')
                                   .map((alumnoGrupo, indice) => {
@@ -32609,7 +32506,11 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                             )}
                             <details
                               id={`agenda-trabajo-grupo-${grupo.grupo_id}`}
-                              style={panelTrabajoGrupo}
+                              style={{
+                                ...panelTrabajoGrupo,
+                                display:
+                                  agendaPestanaProceso === 'organizar' ? 'block' : 'none',
+                              }}
                             >
                               <summary
                                 style={{
@@ -32732,7 +32633,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                             >
                               <div
                                 style={{
-                                  display: 'flex',
+                                  display:
+                                    agendaPestanaProceso === 'publicar' ? 'flex' : 'none',
                                   gap: 10,
                                   alignItems: 'center',
                                   justifyContent: 'space-between',
@@ -32760,7 +32662,11 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                       ? `✓ Publicado para ${
                                           grupo.entrenador || 'entrenador asignado'
                                         }`
-                                      : 'En preparación'}
+                                      : grupo.entrenador_id &&
+                                        (esNombreGrupoParticularApp(grupo.nombre_grupo) ||
+                                          Boolean(grupo.punto_encuentro))
+                                      ? '✓ Listo para publicar'
+                                      : 'Pendiente de completar'}
                                   </strong>
                                   <span
                                     style={{
@@ -32773,7 +32679,12 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                   >
                                     {grupo.publicado
                                       ? 'Visible en su Vista entrenador.'
-                                      : 'Todavía no es visible para el entrenador.'}
+                                      : !grupo.entrenador_id
+                                      ? 'Falta asignar entrenador. El grupo ya está creado.'
+                                      : !esNombreGrupoParticularApp(grupo.nombre_grupo) &&
+                                        !grupo.punto_encuentro
+                                      ? 'Falta asignar punto de encuentro. El grupo ya está creado.'
+                                      : 'Todo preparado. Publicar es el último paso.'}
                                   </span>
                                 </div>
 
@@ -32781,19 +32692,32 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                   <button
                                     type="button"
                                     onClick={() => void publicarGrupo(grupo.grupo_id)}
-                                    disabled={cargando || !grupo.entrenador_id}
+                                    disabled={
+                                      cargando ||
+                                      !grupo.entrenador_id ||
+                                      (!esNombreGrupoParticularApp(grupo.nombre_grupo) &&
+                                        !grupo.punto_encuentro)
+                                    }
                                     title={
-                                      grupo.entrenador_id
-                                        ? 'Publicar este grupo para el entrenador'
-                                        : 'Asigna un entrenador antes de publicar'
+                                      !grupo.entrenador_id
+                                        ? 'Asigna un entrenador antes de publicar'
+                                        : !esNombreGrupoParticularApp(grupo.nombre_grupo) &&
+                                          !grupo.punto_encuentro
+                                        ? 'Asigna un punto de encuentro antes de publicar'
+                                        : 'Último paso: publicar este grupo en Vista entrenador'
                                     }
                                     style={{
                                       ...botonPrincipal,
                                       opacity:
-                                        cargando || !grupo.entrenador_id ? 0.55 : 1,
+                                        cargando ||
+                                        !grupo.entrenador_id ||
+                                        (!esNombreGrupoParticularApp(grupo.nombre_grupo) &&
+                                          !grupo.punto_encuentro)
+                                          ? 0.55
+                                          : 1,
                                     }}
                                   >
-                                    Publicar grupo
+                                    Publicar al entrenador
                                   </button>
                                 ) : (
                                   <button
@@ -32802,11 +32726,13 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                     disabled={cargando}
                                     style={botonPeligroMini}
                                   >
-                                    Despublicar grupo
+                                    Retirar de Vista entrenador
                                   </button>
                                 )}
                               </div>
 
+                              {agendaPestanaProceso === 'organizar' && (
+                                <>
                               <label style={labelCampo}>
                                 Entrenador
                                 <select
@@ -33039,11 +32965,15 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                               </label>
 
                               <button
+                                type="button"
+                                disabled={cargando}
                                 onClick={() => borrarGrupoAgenda(grupo)}
                                 style={botonPeligroMini}
                               >
                                 Borrar grupo
                               </button>
+                                </>
+                              )}
                             </div>
                           </article>
                         ))}
@@ -34585,11 +34515,14 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
 
                 <button
                   type="button"
-                  onClick={() =>
-                    document
-                      .getElementById('ocio-grupos-turno-activo')
-                      ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                  }
+                  onClick={() => {
+                    setOcioPestanaProceso('grupos');
+                    setOcioPanelOperativo('ninguno');
+                    window.setTimeout(() =>
+                      document
+                        .getElementById('ocio-grupos-turno-activo')
+                        ?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+                  }}
                   style={{
                     padding: '12px 14px',
                     borderRadius: 16,
@@ -34687,7 +34620,85 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               </div>
             </article>
 
-            {mostrarFormularioOcioGrupo && (
+            <article
+              style={{
+                ...agendaBloqueBlanco,
+                padding: 10,
+                border: '1px solid #dbeafe',
+                background: '#ffffff',
+              }}
+            >
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: esVistaMovilApp
+                    ? 'repeat(2, minmax(0, 1fr))'
+                    : 'repeat(4, minmax(0, 1fr))',
+                  gap: 8,
+                }}
+              >
+                {[
+                  { clave: 'colocar', numero: '1', titulo: 'Colocar alumnos', subtitulo: `${alumnosSinGrupoTurno.length} sin grupo` },
+                  { clave: 'grupos', numero: '2', titulo: 'Grupos estables', subtitulo: `${gruposTurno.length} grupos` },
+                  { clave: 'cambios', numero: '3', titulo: 'Cambios semana', subtitulo: `${cambiosOcioSemana.length} cambios` },
+                  { clave: 'semana', numero: '4', titulo: 'Preparar semana', subtitulo: 'Crear sesiones reales' },
+                ].map((pestana) => {
+                  const activa = ocioPestanaProceso === pestana.clave;
+                  return (
+                    <button
+                      key={`ocio-pestana-${pestana.clave}`}
+                      type="button"
+                      onClick={() => {
+                        const clave = pestana.clave as
+                          | 'colocar'
+                          | 'grupos'
+                          | 'cambios'
+                          | 'semana';
+                        setOcioPestanaProceso(clave);
+                        if (clave === 'colocar') {
+                          if (ocioPanelOperativo !== 'nuevo') {
+                            setOcioPanelOperativo('ninguno');
+                          }
+                        } else if (clave === 'grupos') {
+                          setOcioPanelOperativo('ninguno');
+                        } else if (clave === 'cambios') {
+                          setOcioPanelOperativo('cambios');
+                          cargarOcioCambios();
+                        } else {
+                          setOcioPanelOperativo('semana');
+                          cargarOcioCambios();
+                          cargarEntrenadores();
+                          cargarDisponibilidad();
+                          cargarAgendaOperativaDirecta();
+                        }
+                      }}
+                      style={{
+                        border: activa ? '2px solid #16a34a' : '1px solid #e2e8f0',
+                        background: activa ? '#f0fdf4' : '#ffffff',
+                        color: activa ? '#166534' : '#334155',
+                        borderRadius: 14,
+                        padding: '11px 10px',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        minWidth: 0,
+                      }}
+                    >
+                      <span style={{ fontSize: 11, fontWeight: 950, color: activa ? '#16a34a' : '#94a3b8' }}>
+                        PASO {pestana.numero}
+                      </span>
+                      <strong style={{ display: 'block', marginTop: 3, fontSize: 14 }}>
+                        {pestana.titulo}
+                      </strong>
+                      <span style={{ display: 'block', marginTop: 3, fontSize: 11, color: '#64748b' }}>
+                        {pestana.subtitulo}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </article>
+
+            {(ocioPestanaProceso === 'colocar' || ocioPestanaProceso === 'grupos') && mostrarFormularioOcioGrupo && (
               <article
                 id="ocio-formulario-grupo-estable"
                 style={{ ...tarjetaResaltada, scrollMarginTop: 18 }}
@@ -34861,137 +34872,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               </article>
             )}
 
-            <article
-              style={{
-                ...agendaBloqueBlanco,
-                border: '1px solid #bbf7d0',
-                background: '#f8fffb',
-              }}
-            >
-              <div>
-                <span
-                  style={{
-                    color: '#16a34a',
-                    fontWeight: 900,
-                    fontSize: 12,
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  Orden de trabajo
-                </span>
-                <h3 style={{ margin: '3px 0 0' }}>
-                  Ocio · qué hago primero y qué hago después
-                </h3>
-              </div>
-
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: esVistaMovilApp
-                    ? '1fr'
-                    : 'repeat(4, minmax(0, 1fr))',
-                  gap: 8,
-                  marginTop: 12,
-                }}
-              >
-                {[
-                  {
-                    numero: '1',
-                    titulo: 'Colocar alumnos',
-                    texto: 'Resuelve primero los niños sin grupo estable.',
-                    accion: () =>
-                      document
-                        .getElementById('ocio-alumnos-turno')
-                        ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-                  },
-                  {
-                    numero: '2',
-                    titulo: 'Revisar grupos',
-                    texto: 'Comprueba cómo queda la estructura estable.',
-                    accion: () =>
-                      document
-                        .getElementById('ocio-grupos-turno-activo')
-                        ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
-                  },
-                  {
-                    numero: '3',
-                    titulo: 'Cambios esta semana',
-                    texto: 'Gestiona solo excepciones y cambios puntuales.',
-                    accion: () => {
-                      setOcioPanelOperativo('cambios');
-                      cargarOcioCambios();
-                      window.setTimeout(() =>
-                        document
-                          .getElementById('ocio-panel-operativo')
-                          ?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 70);
-                    },
-                  },
-                  {
-                    numero: '4',
-                    titulo: 'Preparar semana',
-                    texto: 'Cuando todo cuadra, prepara y publica la semana.',
-                    accion: () => {
-                      setOcioPanelOperativo('semana');
-                      cargarOcioCambios();
-                      cargarEntrenadores();
-                      cargarDisponibilidad();
-                      cargarAgendaOperativaDirecta();
-                      window.setTimeout(() =>
-                        document
-                          .getElementById('ocio-panel-operativo')
-                          ?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 70);
-                    },
-                  },
-                ].map((paso) => (
-                  <button
-                    type="button"
-                    key={`paso-ocio-${paso.numero}`}
-                    onClick={paso.accion}
-                    style={{
-                      textAlign: 'left',
-                      border: '1px solid #dcfce7',
-                      background: '#ffffff',
-                      borderRadius: 12,
-                      padding: 11,
-                      cursor: 'pointer',
-                      minWidth: 0,
-                    }}
-                  >
-                    <span
-                      style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        width: 24,
-                        height: 24,
-                        borderRadius: 999,
-                        background: '#16a34a',
-                        color: '#ffffff',
-                        fontWeight: 950,
-                        fontSize: 12,
-                      }}
-                    >
-                      {paso.numero}
-                    </span>
-                    <strong style={{ display: 'block', marginTop: 7 }}>
-                      {paso.titulo}
-                    </strong>
-                    <span
-                      style={{
-                        display: 'block',
-                        marginTop: 3,
-                        color: '#64748b',
-                        fontSize: 12,
-                        lineHeight: 1.35,
-                      }}
-                    >
-                      {paso.texto}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </article>
-
+            {ocioPestanaProceso === 'colocar' && (
+              <>
             <article
               id="ocio-alumnos-turno"
               style={{
@@ -35032,6 +34914,21 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     justifyContent: 'flex-end',
                   }}
                 >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setOcioPanelOperativo('nuevo');
+                      setOcioNuevoNombre('');
+                      setOcioNuevoNivel('');
+                      setOcioNuevoAlumnoId('');
+                      setOcioNuevoSugerencias([]);
+                      setOcioNuevoRecomendaciones([]);
+                    }}
+                    style={botonSecundario}
+                  >
+                    + Añadir alumno
+                  </button>
+
                   <button
                     type="button"
                     onClick={() =>
@@ -35646,6 +35543,10 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               </article>
             )}
 
+              </>
+            )}
+
+            {ocioPestanaProceso === 'grupos' && (
             <article
               id="ocio-grupos-turno-activo"
               style={{ ...agendaBloqueBlanco, scrollMarginTop: 18 }}
@@ -35667,86 +35568,6 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                   </h3>
                 </div>
 
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 8,
-                    flexWrap: 'wrap',
-                    justifyContent: 'flex-end',
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const abrir = ocioPanelOperativo !== 'nuevo';
-                      setOcioPanelOperativo(abrir ? 'nuevo' : 'ninguno');
-                      if (abrir) {
-                        setOcioNuevoNombre('');
-                        setOcioNuevoNivel('');
-                        setOcioNuevoAlumnoId('');
-                        setOcioNuevoSugerencias([]);
-                        setOcioNuevoRecomendaciones([]);
-                        window.setTimeout(() => {
-                          document
-                            .getElementById('ocio-panel-operativo')
-                            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        }, 70);
-                      }
-                    }}
-                    style={
-                      ocioPanelOperativo === 'nuevo'
-                        ? botonPrincipal
-                        : botonSecundario
-                    }
-                  >
-                    Añadir alumno
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOcioPanelOperativo(
-                        ocioPanelOperativo === 'cambios' ? 'ninguno' : 'cambios'
-                      );
-                      cargarOcioCambios();
-                      window.setTimeout(() => {
-                        document
-                          .getElementById('ocio-panel-operativo')
-                          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }, 70);
-                    }}
-                    style={
-                      ocioPanelOperativo === 'cambios'
-                        ? botonPrincipal
-                        : botonSecundario
-                    }
-                  >
-                    Cambios esta semana
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOcioPanelOperativo(
-                        ocioPanelOperativo === 'semana' ? 'ninguno' : 'semana'
-                      );
-                      cargarOcioCambios();
-                      cargarEntrenadores();
-                      cargarDisponibilidad();
-                      cargarAgendaOperativaDirecta();
-                      window.setTimeout(() => {
-                        document
-                          .getElementById('ocio-panel-operativo')
-                          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                      }, 70);
-                    }}
-                    style={
-                      ocioPanelOperativo === 'semana'
-                        ? botonPrincipal
-                        : botonSecundario
-                    }
-                  >
-                    Preparar semana
-                  </button>
-                </div>
               </div>
 
               {gruposTurno.length === 0 ? (
@@ -36173,7 +35994,11 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               )}
             </article>
 
-            {ocioPanelOperativo !== 'ninguno' && (
+            )}
+
+            {((ocioPestanaProceso === 'colocar' && ocioPanelOperativo === 'nuevo') ||
+              (ocioPestanaProceso === 'cambios' && ocioPanelOperativo === 'cambios') ||
+              (ocioPestanaProceso === 'semana' && ocioPanelOperativo === 'semana')) && (
               <section
                 id="ocio-panel-operativo"
                 style={{
@@ -36203,13 +36028,15 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                           : 'Preparar semana'}
                       </h3>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setOcioPanelOperativo('ninguno')}
-                      style={botonSecundario}
-                    >
-                      Cerrar
-                    </button>
+                    {ocioPanelOperativo === 'nuevo' && (
+                      <button
+                        type="button"
+                        onClick={() => setOcioPanelOperativo('ninguno')}
+                        style={botonSecundario}
+                      >
+                        Cerrar
+                      </button>
+                    )}
                   </div>
 
                   {ocioPanelOperativo !== 'nuevo' && (
@@ -36699,6 +36526,162 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     <article style={agendaBloqueBlanco}>
                       <div style={agendaCabeceraLinea}>
                         <div>
+                          <strong style={{ fontSize: 17 }}>
+                            Comprobar esta semana con AimHarder
+                          </strong>
+                          <div style={{ marginTop: 4, color: '#64748b' }}>
+                            Compara las reservas reales con tus grupos estables. Solo necesitas actuar cuando haya una diferencia.
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={actualizarSemanaOcioDesdeAimHarder}
+                          disabled={ocioAimHarderCargando}
+                          style={botonPrincipal}
+                        >
+                          {ocioAimHarderCargando
+                            ? 'Consultando AimHarder…'
+                            : 'Comprobar cambios en AimHarder'}
+                        </button>
+                      </div>
+
+                      {ocioAimHarderError && (
+                        <div style={{ ...errorCaja, marginTop: 12 }}>
+                          {ocioAimHarderError}
+                        </div>
+                      )}
+
+                      {ocioAimHarderMensaje && !ocioAimHarderError && (
+                        <div style={{ ...avisoCompleto, marginTop: 12 }}>
+                          {ocioAimHarderMensaje}
+                        </div>
+                      )}
+
+                      {ocioAimHarderSemana && (
+                        <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
+                          {ocioAimHarderSemana.turnos
+                            .filter(
+                              (turno) =>
+                                diaFijoOcioDesdeFecha(turno.fecha) ===
+                                ocioTurnoVista
+                            )
+                            .map((turno) => {
+                              return (
+                                <div
+                                  key={`aim-ocio-${turno.fecha}-${turno.horaInicio}-${turno.horaFin}`}
+                                  style={miniTarjetaBlanca}
+                                >
+                                  <div style={agendaCabeceraLinea}>
+                                    <div>
+                                      <strong>
+                                        {formatearFecha(turno.fecha)} ·{' '}
+                                        {turno.horaInicio}-{turno.horaFin}
+                                      </strong>
+                                      <div
+                                        style={{
+                                          marginTop: 3,
+                                          color: '#64748b',
+                                        }}
+                                      >
+                                        {turno.claseNombre || 'Ocio'} ·{' '}
+                                        {turno.asistentes.length} reservado(s)
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {turno.asistentes.length === 0 ? (
+                                    <div
+                                      style={{
+                                        ...agendaVacioMini,
+                                        marginTop: 8,
+                                      }}
+                                    >
+                                      Sin reservas en AimHarder.
+                                    </div>
+                                  ) : (
+                                    <div
+                                      style={{
+                                        display: 'grid',
+                                        gap: 7,
+                                        marginTop: 10,
+                                      }}
+                                    >
+                                      {turno.asistentes.map((asistente) => {
+                                        const clave =
+                                          normalizarNombreFueraPlazoAgenda(
+                                            asistente.nombre || ''
+                                          );
+                                        const estadoDetectado =
+                                          ocioAimHarderEstadoAlumnos[clave] || null;
+                                        const existe =
+                                          estadoDetectado?.resultado === 'EXISTENTE';
+
+                                        return (
+                                          <div
+                                            key={`aim-ocio-asistente-${turno.claseId}-${clave}`}
+                                            style={filaAlumnoAsistencia}
+                                          >
+                                            <div>
+                                              <strong>
+                                                {asistente.nombre}
+                                              </strong>
+                                              <div
+                                                style={{
+                                                  marginTop: 3,
+                                                  color: existe
+                                                    ? '#166534'
+                                                    : '#b45309',
+                                                  fontWeight: 800,
+                                                  fontSize: 12,
+                                                }}
+                                              >
+                                                {existe
+                                                  ? 'CONOCIDO · ficha recuperada'
+                                                  : 'NUEVO · pendiente Alta / Test'}
+                                              </div>
+                                            </div>
+
+                                            {!existe && (
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  abrirAltaTestDesdeOcioAimHarder(
+                                                    asistente,
+                                                    turno
+                                                  )
+                                                }
+                                                style={botonPrincipal}
+                                              >
+                                                Crear Alta / Test
+                                              </button>
+                                            )}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+
+                          {ocioAimHarderSemana.turnos.filter(
+                            (turno) =>
+                              diaFijoOcioDesdeFecha(turno.fecha) ===
+                              ocioTurnoVista
+                          ).length === 0 && (
+                            <div style={agendaVacioMini}>
+                              AimHarder no ha devuelto ningún turno Ocio para{' '}
+                              {ocioTurnoVista}.
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </article>
+
+
+                    <article style={agendaBloqueBlanco}>
+                      <div style={agendaCabeceraLinea}>
+                        <div>
                           <h3 style={{ margin: 0 }}>Cambios de esta semana</h3>
                           <p style={{ margin: '5px 0 0', color: '#64748b' }}>
                             Cambios puntuales sin modificar el grupo estable.
@@ -36907,188 +36890,20 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
 
                 {ocioPanelOperativo === 'semana' && (
                   <>
-                    <article style={agendaBloqueBlanco}>
-                      <div style={agendaCabeceraLinea}>
-                        <div>
-                          <strong style={{ fontSize: 17 }}>
-                            Listados reales de AimHarder
-                          </strong>
-                          <div style={{ marginTop: 4, color: '#64748b' }}>
-                            Actualiza quién viene esta semana sin marcar alumno por alumno.
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={actualizarSemanaOcioDesdeAimHarder}
-                          disabled={ocioAimHarderCargando}
-                          style={botonPrincipal}
-                        >
-                          {ocioAimHarderCargando
-                            ? 'Consultando AimHarder…'
-                            : 'Actualizar semana desde AimHarder'}
-                        </button>
-                      </div>
-
-                      {ocioAimHarderError && (
-                        <div style={{ ...errorCaja, marginTop: 12 }}>
-                          {ocioAimHarderError}
-                        </div>
-                      )}
-
-                      {ocioAimHarderMensaje && !ocioAimHarderError && (
-                        <div style={{ ...avisoCompleto, marginTop: 12 }}>
-                          {ocioAimHarderMensaje}
-                        </div>
-                      )}
-
-                      {ocioAimHarderSemana && (
-                        <div style={{ display: 'grid', gap: 10, marginTop: 12 }}>
-                          {ocioAimHarderSemana.turnos
-                            .filter(
-                              (turno) =>
-                                diaFijoOcioDesdeFecha(turno.fecha) ===
-                                ocioTurnoVista
-                            )
-                            .map((turno) => {
-                              return (
-                                <div
-                                  key={`aim-ocio-${turno.fecha}-${turno.horaInicio}-${turno.horaFin}`}
-                                  style={miniTarjetaBlanca}
-                                >
-                                  <div style={agendaCabeceraLinea}>
-                                    <div>
-                                      <strong>
-                                        {formatearFecha(turno.fecha)} ·{' '}
-                                        {turno.horaInicio}-{turno.horaFin}
-                                      </strong>
-                                      <div
-                                        style={{
-                                          marginTop: 3,
-                                          color: '#64748b',
-                                        }}
-                                      >
-                                        {turno.claseNombre || 'Ocio'} ·{' '}
-                                        {turno.asistentes.length} reservado(s)
-                                      </div>
-                                    </div>
-                                  </div>
-
-                                  {turno.asistentes.length === 0 ? (
-                                    <div
-                                      style={{
-                                        ...agendaVacioMini,
-                                        marginTop: 8,
-                                      }}
-                                    >
-                                      Sin reservas en AimHarder.
-                                    </div>
-                                  ) : (
-                                    <div
-                                      style={{
-                                        display: 'grid',
-                                        gap: 7,
-                                        marginTop: 10,
-                                      }}
-                                    >
-                                      {turno.asistentes.map((asistente) => {
-                                        const clave =
-                                          normalizarNombreFueraPlazoAgenda(
-                                            asistente.nombre || ''
-                                          );
-                                        const estadoDetectado =
-                                          ocioAimHarderEstadoAlumnos[clave] || null;
-                                        const existe =
-                                          estadoDetectado?.resultado === 'EXISTENTE';
-
-                                        return (
-                                          <div
-                                            key={`aim-ocio-asistente-${turno.claseId}-${clave}`}
-                                            style={filaAlumnoAsistencia}
-                                          >
-                                            <div>
-                                              <strong>
-                                                {asistente.nombre}
-                                              </strong>
-                                              <div
-                                                style={{
-                                                  marginTop: 3,
-                                                  color: existe
-                                                    ? '#166534'
-                                                    : '#b45309',
-                                                  fontWeight: 800,
-                                                  fontSize: 12,
-                                                }}
-                                              >
-                                                {existe
-                                                  ? 'CONOCIDO · ficha recuperada'
-                                                  : 'NUEVO · pendiente Alta / Test'}
-                                              </div>
-                                            </div>
-
-                                            {!existe && (
-                                              <button
-                                                type="button"
-                                                onClick={() =>
-                                                  abrirAltaTestDesdeOcioAimHarder(
-                                                    asistente,
-                                                    turno
-                                                  )
-                                                }
-                                                style={botonPrincipal}
-                                              >
-                                                Crear Alta / Test
-                                              </button>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-
-                          {ocioAimHarderSemana.turnos.filter(
-                            (turno) =>
-                              diaFijoOcioDesdeFecha(turno.fecha) ===
-                              ocioTurnoVista
-                          ).length === 0 && (
-                            <div style={agendaVacioMini}>
-                              AimHarder no ha devuelto ningún turno Ocio para{' '}
-                              {ocioTurnoVista}.
-                            </div>
-                          )}
-                        </div>
-                      )}
+                    <article
+                      style={{
+                        ...agendaBloqueBlanco,
+                        border: '1px solid #bfdbfe',
+                        background: '#eff6ff',
+                      }}
+                    >
+                      <strong style={{ fontSize: 16 }}>4 · Preparar semana</strong>
+                      <p style={{ margin: '6px 0 0', color: '#475569', lineHeight: 1.45 }}>
+                        Aquí conviertes los grupos estables y los cambios semanales en grupos reales.
+                        La asignación de entrenador, punto de encuentro y publicación se hace después
+                        exactamente igual que Baby desde Entrenamientos → Días de entrenamiento.
+                      </p>
                     </article>
-
-                    {cambiosOcioSemana.length > 0 && (
-                      <details style={avisoNeutral}>
-                        <summary
-                          style={{ cursor: 'pointer', fontWeight: 800 }}
-                        >
-                          Cambios puntuales de esta semana ·{' '}
-                          {cambiosOcioSemana.length}
-                        </summary>
-                        <div
-                          style={{
-                            display: 'grid',
-                            gap: 7,
-                            marginTop: 9,
-                          }}
-                        >
-                          {cambiosOcioSemana.map((cambio) => (
-                            <div
-                              key={`prep-cambio-${cambio.reubicacion_id}`}
-                            >
-                              <strong>{cambio.alumno}</strong> ·{' '}
-                              {cambio.grupo_origen || 'Origen'} →{' '}
-                              {cambio.grupo_destino || 'Destino'}
-                            </div>
-                          ))}
-                        </div>
-                      </details>
-                    )}
 
                     {(() => {
                       const gruposDiaResumen =
@@ -37389,8 +37204,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                       }}
                                     >
                                       {publicado
-                                        ? 'Publicado'
-                                        : 'Preparado · pendiente de publicar'}
+                                        ? 'Publicado en Vista entrenador'
+                                        : 'Preparado · terminar en Días de entrenamiento'}
                                     </div>
                                   </div>
 
@@ -37411,7 +37226,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                       }
                                       style={botonSecundario}
                                     >
-                                      Abrir grupo
+                                      Abrir en Días de entrenamiento
                                     </button>
 
                                     <button
