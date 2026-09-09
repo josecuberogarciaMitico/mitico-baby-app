@@ -5152,6 +5152,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     AgendaSesionDirectaApp[]
   >([]);
   const [agendaSesionActivaId, setAgendaSesionActivaId] = useState('');
+  const [asignacionExcepcionalGrupoAgenda, setAsignacionExcepcionalGrupoAgenda] =
+    useState<Record<string, boolean>>({});
   const [agendaFiltroAlumnos, setAgendaFiltroAlumnos] = useState<
     'TODOS' | 'NUEVO' | 'CONOCIDO'
   >('TODOS');
@@ -19946,7 +19948,8 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
 
   async function cambiarEntrenadorGrupoAgenda(
     grupo: AgendaGrupoSesionApp,
-    nuevoEntrenadorId: string
+    nuevoEntrenadorId: string,
+    esAsignacionExcepcional = false
   ) {
     if (!grupo.grupo_id) return;
 
@@ -20003,18 +20006,22 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
       (entrenador) => entrenador.entrenador_id === nuevoEntrenadorId
     );
 
+    const textoExcepcional = esAsignacionExcepcional
+      ? 'ASIGNACIÓN EXCEPCIONAL: no modifica ni republica la disponibilidad semanal.'
+      : '';
+
     const confirmar = window.confirm(
       grupo.publicado
         ? `¿Cambiar el entrenador de ${grupo.nombre_grupo} a ${
             nuevoEntrenador?.nombre_completo || 'este entrenador'
           }?
 
-El grupo YA está publicado. El entrenador anterior dejará de verlo, el nuevo lo verá como pendiente de confirmar y se intentará avisar a ambos por Push.`
+El grupo YA está publicado. El entrenador anterior dejará de verlo, el nuevo lo verá como pendiente de confirmar y se intentará avisar a ambos por Push.${textoExcepcional}`
         : `¿Cambiar el entrenador de ${grupo.nombre_grupo} a ${
             nuevoEntrenador?.nombre_completo || 'este entrenador'
           }?
 
-El grupo sigue en preparación: este cambio todavía no enviará ningún Push.`
+El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${textoExcepcional}`
     );
 
     if (!confirmar) return;
@@ -20025,10 +20032,15 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.`
     setError('');
 
     try {
-      await ejecutarFuncion('cambiar_entrenador_grupo_app', {
-        p_grupo_id: grupo.grupo_id,
-        p_entrenador_id: nuevoEntrenadorId,
-      });
+      await ejecutarFuncion(
+        esAsignacionExcepcional
+          ? 'cambiar_entrenador_grupo_excepcional_app'
+          : 'cambiar_entrenador_grupo_app',
+        {
+          p_grupo_id: grupo.grupo_id,
+          p_entrenador_id: nuevoEntrenadorId,
+        }
+      );
 
       if (
         grupo.publicado &&
@@ -20049,6 +20061,12 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.`
       await cargarReportesPendientes();
       await cargarPlanning();
       await cargarCobros();
+      if (esAsignacionExcepcional) {
+        setAsignacionExcepcionalGrupoAgenda((actual) => ({
+          ...actual,
+          [grupo.grupo_id]: false,
+        }));
+      }
     } catch (err) {
       setError(
         err instanceof Error
@@ -21558,6 +21576,25 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.`
       (entrenador) =>
         entrenador.entrenador_id === entrenadorActualId ||
         !ocupadosOtrosGrupos.has(entrenador.entrenador_id)
+    );
+  }
+
+  function entrenadoresExcepcionalesCambioGrupoAgenda(
+    grupoId: string,
+    entrenadorActualId?: string | null,
+    entrenadorDelMismoGrupoBloqueadoId?: string | null
+  ) {
+    const ocupadosOtrosGrupos = entrenadoresOcupadosTurnoAgenda(grupoId);
+
+    if (entrenadorDelMismoGrupoBloqueadoId) {
+      ocupadosOtrosGrupos.add(entrenadorDelMismoGrupoBloqueadoId);
+    }
+
+    return entrenadores.filter(
+      (entrenador) =>
+        entrenador.activo &&
+        (entrenador.entrenador_id === entrenadorActualId ||
+          !ocupadosOtrosGrupos.has(entrenador.entrenador_id))
     );
   }
 
@@ -32777,7 +32814,12 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                   onChange={(e) =>
                                     cambiarEntrenadorGrupoAgenda(
                                       grupo,
-                                      e.target.value
+                                      e.target.value,
+                                      Boolean(
+                                        asignacionExcepcionalGrupoAgenda[
+                                          grupo.grupo_id
+                                        ]
+                                      )
                                     )
                                   }
                                   style={selectCampo}
@@ -32801,11 +32843,19 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                     : []
                                   )
                                     .concat(
-                                      entrenadoresDisponiblesCambioGrupoAgenda(
-                                        grupo.grupo_id,
-                                        grupo.entrenador_id,
-                                        grupo.entrenador_apoyo_id
-                                      )
+                                      asignacionExcepcionalGrupoAgenda[
+                                        grupo.grupo_id
+                                      ]
+                                        ? entrenadoresExcepcionalesCambioGrupoAgenda(
+                                            grupo.grupo_id,
+                                            grupo.entrenador_id,
+                                            grupo.entrenador_apoyo_id
+                                          )
+                                        : entrenadoresDisponiblesCambioGrupoAgenda(
+                                            grupo.grupo_id,
+                                            grupo.entrenador_id,
+                                            grupo.entrenador_apoyo_id
+                                          )
                                     )
                                     .filter(
                                       (entrenador, indice, lista) =>
@@ -32825,6 +32875,66 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                     ))}
                                 </select>
                               </label>
+
+                              <div
+                                style={{
+                                  marginTop: -4,
+                                  display: 'flex',
+                                  gap: 8,
+                                  alignItems: 'center',
+                                  flexWrap: 'wrap',
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  disabled={cargando}
+                                  onClick={() =>
+                                    setAsignacionExcepcionalGrupoAgenda((actual) => ({
+                                      ...actual,
+                                      [grupo.grupo_id]: !actual[grupo.grupo_id],
+                                    }))
+                                  }
+                                  style={
+                                    asignacionExcepcionalGrupoAgenda[grupo.grupo_id]
+                                      ? botonPeligroMini
+                                      : botonSecundario
+                                  }
+                                >
+                                  {asignacionExcepcionalGrupoAgenda[grupo.grupo_id]
+                                    ? 'Cancelar excepción'
+                                    : 'Asignación excepcional'}
+                                </button>
+                                {asignacionExcepcionalGrupoAgenda[grupo.grupo_id] && (
+                                  <span
+                                    style={{
+                                      fontSize: 12,
+                                      fontWeight: 700,
+                                      color: '#b45309',
+                                    }}
+                                  >
+                                    Muestra entrenadores activos aunque no hayan enviado
+                                    disponibilidad. No modifica la semana publicada.
+                                  </span>
+                                )}
+                                {grupo.entrenador_id &&
+                                  !entrenadoresDisponiblesSesionActiva().some(
+                                    (entrenador) =>
+                                      entrenador.entrenador_id === grupo.entrenador_id
+                                  ) && (
+                                    <span
+                                      style={{
+                                        padding: '4px 8px',
+                                        borderRadius: 999,
+                                        background: '#fff7ed',
+                                        color: '#c2410c',
+                                        fontSize: 11,
+                                        fontWeight: 800,
+                                      }}
+                                    >
+                                      ASIGNACIÓN EXCEPCIONAL
+                                    </span>
+                                  )}
+                              </div>
 
                               <label style={labelCampo}>
                                 Segundo entrenador
