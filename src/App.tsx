@@ -632,7 +632,7 @@ function ocioGrupoFormInicial(): OcioGrupoFormState {
     horaFin: '20:00',
     nivel: 'A',
     pista: 'Pequeña',
-    punto: '1',
+    punto: '',
     observaciones: '',
   };
 }
@@ -4079,6 +4079,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const esAdministracionApp = perfilUsuario?.rol === 'administracion';
   const puedeGestionarAccesosUsuarioApp =
     !perfilUsuario || puedeGestionarAccesosApp(perfilUsuario.rol);
+  const puedeGestionarWhatsappApp =
+    !perfilUsuario ||
+    perfilUsuario.rol === 'coordinador_jefe' ||
+    perfilUsuario.rol === 'sub_coordinador' ||
+    perfilUsuario.rol === 'coordinador';
   const entrenadorIdSesionApp = perfilUsuario?.entrenador_id || '';
   const [salirActivoCabecera, setSalirActivoCabecera] = useState(false);
   const [pwaInstalada, setPwaInstalada] = useState(false);
@@ -4126,6 +4131,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     | 'revisionOcio'
     | 'entrenadores'
     | 'usuarios'
+    | 'whatsappDireccion'
     | 'administracion'
     | 'disponibilidad'
     | 'reportes'
@@ -4232,7 +4238,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         pantalla === 'informes' ||
         pantalla === 'temporadas' ||
         pantalla === 'analisis' ||
-        pantalla === 'usuarios')
+        pantalla === 'usuarios' ||
+        pantalla === 'whatsappDireccion')
     ) {
       setPantalla('agenda');
     }
@@ -4459,6 +4466,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [whatsappGruposApp, setWhatsappGruposApp] = useState<
     WhatsappGrupoApp[]
   >([]);
+  const [whatsappAdminTipo, setWhatsappAdminTipo] = useState<
+    'BABY' | 'OCIO' | 'INTENSIVOS'
+  >('BABY');
+  const [whatsappAdminIntensivoId, setWhatsappAdminIntensivoId] = useState('');
+  const [whatsappAdminEnlace, setWhatsappAdminEnlace] = useState('');
 
   const [gruposEntrenador, setGruposEntrenador] = useState<
     GrupoEntrenadorApp[]
@@ -4688,7 +4700,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   >('Jueves');
   const [ocioAlumnosTurnoAbierto, setOcioAlumnosTurnoAbierto] =
     useState(false);
-  const [ocioAlumnoRecomendandoId, setOcioAlumnoRecomendandoId] =
+  const [ocioAlumnoPendienteNuevoGrupoId, setOcioAlumnoPendienteNuevoGrupoId] =
     useState('');
   const [ocioGrupoGestionAbiertoId, setOcioGrupoGestionAbiertoId] =
     useState<string>('');
@@ -7527,21 +7539,59 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   function nivelesGrupoEstableOcio(grupo: OcioGrupoApp) {
-    // En Ocio el grupo estable tiene un nivel objetivo propio.
-    // Ese nivel es el que debe mandar en el recomendador de incorporaciones.
-    // Los niveles individuales sirven para avisar de evolución/revisión,
-    // pero no deben bloquear que un niño compatible entre en un grupo cuyo
-    // nivel objetivo sí le corresponde.
-    if (grupo.nivel_grupo) {
-      return [grupo.nivel_grupo];
-    }
-
+    // Ocio conserva el nivel objetivo del grupo, pero también necesita conocer
+    // la composición técnica real. Así no rechazamos, por ejemplo, a un D+
+    // solo porque el grupo esté rotulado como C cuando dentro ya trabaja un D.
     const nivelesMiembros = ocioAlumnos
       .filter((alumno) => alumno.grupo_id === grupo.grupo_id)
       .map((alumno) => alumno.nivel_usado || alumno.nivel || '')
       .filter(Boolean);
 
-    return Array.from(new Set(nivelesMiembros));
+    return Array.from(
+      new Set([grupo.nivel_grupo || '', ...nivelesMiembros].filter(Boolean))
+    );
+  }
+
+  function compatibilidadGrupoEstableOcioApp(
+    grupo: OcioGrupoApp,
+    nivelAlumno: string
+  ) {
+    const niveles = nivelesGrupoEstableOcio(grupo);
+
+    if (niveles.length === 0) {
+      return compatibilidadFueraPlazoAgenda(nivelAlumno, []);
+    }
+
+    // Importante: NO cambiamos el recomendador común Baby/Ocio.
+    // Lo aplicamos contra cada nivel real presente en el grupo y elegimos el
+    // mejor encaje técnico. Esto evita que un rótulo histórico del grupo sea
+    // más restrictivo que su composición real.
+    const prioridad = { RECOMENDADO: 3, REVISAR: 2, NO_ENCAJA: 1 } as const;
+    const evaluaciones = niveles.map((nivelGrupo) => ({
+      nivelGrupo,
+      ...compatibilidadFueraPlazoAgenda(nivelAlumno, [nivelGrupo]),
+    }));
+
+    evaluaciones.sort((a, b) => {
+      const diferenciaEstado = prioridad[b.estado] - prioridad[a.estado];
+      if (diferenciaEstado !== 0) return diferenciaEstado;
+      return b.score - a.score;
+    });
+
+    const mejor = evaluaciones[0];
+    const nivelObjetivo = (grupo.nivel_grupo || '').trim().toUpperCase();
+    const nivelMejor = (mejor.nivelGrupo || '').trim().toUpperCase();
+    const esNivelRealDistintoDelRotulo =
+      Boolean(nivelObjetivo) && nivelMejor !== nivelObjetivo;
+
+    return {
+      estado: mejor.estado,
+      score: mejor.score,
+      motivo:
+        mejor.estado === 'RECOMENDADO' && esNivelRealDistintoDelRotulo
+          ? `Compatible con nivel ${mejor.nivelGrupo} ya presente en el grupo. ${mejor.motivo}`
+          : mejor.motivo,
+    };
   }
 
   function perfilOperativoOcioApp(alumnoId?: string | null) {
@@ -7658,9 +7708,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     alumnoId?: string | null,
     fechaNacimiento?: string | null
   ) {
-    const compatibilidad = compatibilidadFueraPlazoAgenda(
-      nivelAlumno,
-      nivelesGrupoEstableOcio(grupo)
+    const compatibilidad = compatibilidadGrupoEstableOcioApp(
+      grupo,
+      nivelAlumno
     );
 
     const totalActual =
@@ -7797,7 +7847,6 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     if (!confirmar) return;
 
     await asignarAlumnoGrupoOcio(alumno.alumno_id, grupo.grupo_id);
-    setOcioAlumnoRecomendandoId('');
   }
 
   async function buscarFichaNuevoOcio(valor: string) {
@@ -8181,7 +8230,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           nombre: `Grupo ${numeroGrupo}`,
           pista,
           nivelObjetivo: nivelObjetivoGrupoPropuestaOcio(miembros),
-          punto: '5',
+          punto: '',
           alumnoIds: miembros.map((alumno) => alumno.alumno_id),
           aviso: avisoGrupoPropuestaOcio(pista, miembros.length),
         });
@@ -8446,11 +8495,60 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   function abrirNuevoGrupoOcio() {
+    setOcioAlumnoPendienteNuevoGrupoId('');
     setOcioGrupoForm(ocioGrupoFormInicial());
     setMostrarFormularioOcioGrupo(true);
   }
 
+  function abrirNuevoGrupoOcioParaTurno(
+    nivelEntrada: string,
+    alumnoIdPendiente = ''
+  ) {
+    const turno = horarioTurnoOcio(ocioTurnoVista);
+    const nivel = (nivelEntrada || 'INICIACION').trim().toUpperCase();
+    const pista =
+      ordenNivelTrabajoMSZApp(nivel) >= 3 ? 'Grande' : 'Pequeña';
+    const gruposMismoTurno = ocioGrupos.filter(
+      (grupo) =>
+        Boolean(grupo.activo) &&
+        textoSinAcentosGrupoApp(grupo.dia_semana || '') ===
+          textoSinAcentosGrupoApp(ocioTurnoVista) &&
+        (grupo.hora_inicio || '').slice(0, 5) === turno.inicio
+    );
+    const siguienteNumero =
+      gruposMismoTurno.reduce((maximo, grupo) => {
+        const coincidencia = (grupo.nombre_grupo || '').match(/Grupo\s+(\d+)/i);
+        return Math.max(maximo, coincidencia ? Number(coincidencia[1]) : 0);
+      }, 0) + 1;
+
+    setOcioAlumnoPendienteNuevoGrupoId(alumnoIdPendiente);
+    setOcioGrupoForm({
+      id: null,
+      nombre: `Grupo ${siguienteNumero}`,
+      dia: ocioTurnoVista,
+      horaInicio: turno.inicio,
+      horaFin: turno.fin,
+      nivel,
+      pista,
+      punto: '5',
+      observaciones: '',
+    });
+    setMostrarFormularioOcioGrupo(true);
+    enfocarElementoApp('ocio-formulario-grupo-estable', {
+      espera: 80,
+      block: 'start',
+    });
+  }
+
+  function abrirNuevoGrupoOcioParaAlumno(alumno: OcioAlumnoApp) {
+    abrirNuevoGrupoOcioParaTurno(
+      alumno.nivel_usado || alumno.nivel || 'INICIACION',
+      alumno.alumno_id
+    );
+  }
+
   function editarGrupoOcio(grupo: OcioGrupoApp) {
+    setOcioAlumnoPendienteNuevoGrupoId('');
     setOcioGrupoForm({
       id: grupo.grupo_id,
       nombre: grupo.nombre_grupo || '',
@@ -8482,6 +8580,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setCargando(true);
     setError('');
     try {
+      let grupoNuevoId: string | null = null;
+
       if (ocioGrupoForm.id) {
         await ejecutarFuncion('actualizar_grupo_ocio_app', {
           p_grupo_id: ocioGrupoForm.id,
@@ -8495,7 +8595,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           p_observaciones: ocioGrupoForm.observaciones || null,
         });
       } else {
-        await ejecutarFuncionConRespuesta<{ crear_grupo_ocio_app: string }>(
+        grupoNuevoId = await ejecutarFuncionAuthJson<string>(
           'crear_grupo_ocio_app',
           {
             p_anio_inicio: anioInicioTemporadaAgenda,
@@ -8509,9 +8609,27 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
             p_observaciones: ocioGrupoForm.observaciones || null,
           }
         );
+
+        if (
+          !grupoNuevoId ||
+          !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+            grupoNuevoId
+          )
+        ) {
+          throw new Error('No se pudo recuperar el identificador del grupo estable creado.');
+        }
+
+        if (ocioAlumnoPendienteNuevoGrupoId) {
+          await ejecutarFuncion('asignar_alumno_grupo_ocio_app', {
+            p_grupo_id: grupoNuevoId,
+            p_alumno_id: ocioAlumnoPendienteNuevoGrupoId,
+          });
+        }
       }
+
       setMostrarFormularioOcioGrupo(false);
       setOcioGrupoForm(ocioGrupoFormInicial());
+      setOcioAlumnoPendienteNuevoGrupoId('');
       await cargarOcioGrupos();
       await cargarOcioAlumnos();
     } catch (err) {
@@ -8742,9 +8860,17 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     mensaje +=
       'Si alguno llegáis tarde, avisad en este número: Jose +34 647 027 692';
 
+    const contextoWhatsapp = contextoWhatsappOcioGlobalApp();
     abrirPrevisualizacionWhatsapp(
       `WhatsApp padres Ocio · ${dia} ${turno.inicio}-${turno.fin}`,
-      mensaje
+      mensaje,
+      undefined,
+      {
+        clave: contextoWhatsapp.clave,
+        modalidad: contextoWhatsapp.modalidad,
+        referencia: contextoWhatsapp.referencia,
+        enlace: enlaceWhatsappPorClaveApp(contextoWhatsapp.clave),
+      }
     );
   }
 
@@ -8766,9 +8892,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
     if (!nivelActual) return null;
 
-    const compatibilidadActual = compatibilidadFueraPlazoAgenda(
-      nivelActual,
-      nivelesGrupoEstableOcio(grupoActual)
+    const compatibilidadActual = compatibilidadGrupoEstableOcioApp(
+      grupoActual,
+      nivelActual
     );
 
     if (compatibilidadActual.estado === 'RECOMENDADO') return null;
@@ -8816,11 +8942,19 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     mensaje +=
       'Si alguno llegáis tarde, avisad en este número: Jose +34 647 027 692';
 
+    const contextoWhatsapp = contextoWhatsappOcioGlobalApp();
     abrirPrevisualizacionWhatsapp(
       `WhatsApp padres Ocio · ${
         grupo.dia_semana || ''
       } ${horaInicio}-${horaFin}`,
-      mensaje
+      mensaje,
+      undefined,
+      {
+        clave: contextoWhatsapp.clave,
+        modalidad: contextoWhatsapp.modalidad,
+        referencia: contextoWhatsapp.referencia,
+        enlace: enlaceWhatsappPorClaveApp(contextoWhatsapp.clave),
+      }
     );
   }
 
@@ -10060,11 +10194,19 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
   }
 
   function abrirWhatsappSemanaOcio() {
+    const contextoWhatsapp = contextoWhatsappOcioGlobalApp();
     abrirPrevisualizacionWhatsapp(
       `WhatsApp padres Ocio · semana ${rangoSemanaAgenda(
         semanaAgendaActiva || semanaActualAgenda
       )}`,
-      mensajeWhatsappSemanaOcio()
+      mensajeWhatsappSemanaOcio(),
+      undefined,
+      {
+        clave: contextoWhatsapp.clave,
+        modalidad: contextoWhatsapp.modalidad,
+        referencia: contextoWhatsapp.referencia,
+        enlace: enlaceWhatsappPorClaveApp(contextoWhatsapp.clave),
+      }
     );
   }
 
@@ -13417,6 +13559,11 @@ Gracias!`;
     );
   }
 
+  function esEnlaceGrupoWhatsappValido(valor: string | null | undefined) {
+    const limpio = String(valor || '').trim();
+    return /^https:\/\/chat\.whatsapp\.com\//i.test(limpio);
+  }
+
   function enlaceWhatsappSesionApp(sesion: AgendaSesionDirectaApp) {
     return enlaceWhatsappPorClaveApp(
       contextoWhatsappSesionApp(sesion).clave
@@ -13432,94 +13579,56 @@ Gracias!`;
     };
   }
 
-  function enlaceWhatsappIntensivoApp(intensivo: IntensivoApp) {
-    return enlaceWhatsappPorClaveApp(
-      contextoWhatsappIntensivoApp(intensivo).clave
-    );
+  function contextoWhatsappOcioGlobalApp() {
+    return {
+      clave: 'GLOBAL:OCIO',
+      modalidad: 'OCIO',
+      referencia: 'OCIO',
+      nombre: 'WhatsApp familias · Ocio',
+    };
   }
 
-  async function configurarWhatsappIntensivoApp(intensivo: IntensivoApp) {
-    const contexto = contextoWhatsappIntensivoApp(intensivo);
-    const actual = enlaceWhatsappIntensivoApp(intensivo);
+  function contextoWhatsappAdministracionApp() {
+    if (whatsappAdminTipo === 'BABY') {
+      return {
+        clave: 'GLOBAL:BABY',
+        modalidad: 'BABY',
+        referencia: 'BABY',
+        nombre: 'WhatsApp familias · Baby',
+      };
+    }
 
-    const valor = window.prompt(
-      `Grupo de WhatsApp · ${intensivo.intensivo}\n\nPega el enlace del grupo de WhatsApp de este intensivo.\n\nDéjalo vacío para eliminarlo.`,
-      actual
+    if (whatsappAdminTipo === 'OCIO') {
+      return contextoWhatsappOcioGlobalApp();
+    }
+
+    const intensivo = intensivosAltaNivel.find(
+      (item) => item.intensivo_id === whatsappAdminIntensivoId
     );
 
-    if (valor === null) return;
+    if (!intensivo) return null;
 
-    const limpio = valor.trim();
+    return {
+      clave: `INTENSIVO:${intensivo.intensivo_id}`,
+      modalidad: 'INTENSIVOS',
+      referencia: intensivo.intensivo_id,
+      nombre: intensivo.intensivo,
+    };
+  }
 
-    if (!limpio) {
-      if (!actual) return;
-
-      const confirmar = window.confirm(
-        `¿Eliminar el enlace de WhatsApp de ${intensivo.intensivo}?`
-      );
-      if (!confirmar) return;
-
-      try {
-        await ejecutarFuncion('eliminar_whatsapp_grupo_app', {
-          p_clave_grupo: contexto.clave,
-        });
-        await cargarWhatsappGruposApp();
-        setError('');
-      } catch (err) {
-        setError(
-          err instanceof Error
-            ? err.message
-            : 'No se pudo eliminar el enlace de WhatsApp.'
-        );
-      }
+  async function guardarWhatsappAdministracionApp() {
+    if (!puedeGestionarWhatsappApp) {
+      setError('No tienes permiso para gestionar enlaces de WhatsApp.');
       return;
     }
 
-    if (!esEnlaceGrupoWhatsappValido(limpio)) {
-      setError(
-        'El enlace no parece un grupo de WhatsApp válido. Debe empezar por https://chat.whatsapp.com/'
-      );
+    const contexto = contextoWhatsappAdministracionApp();
+    if (!contexto) {
+      setError('Selecciona primero un intensivo.');
       return;
     }
 
-    try {
-      await ejecutarFuncion('guardar_whatsapp_grupo_app', {
-        p_clave_grupo: contexto.clave,
-        p_modalidad: contexto.modalidad,
-        p_referencia: contexto.referencia,
-        p_nombre_grupo: contexto.nombre,
-        p_enlace_whatsapp: limpio,
-      });
-      await cargarWhatsappGruposApp();
-      setError('');
-      alert(`WhatsApp guardado para ${intensivo.intensivo}.`);
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'No se pudo guardar el enlace de WhatsApp.'
-      );
-    }
-  }
-
-  function esEnlaceGrupoWhatsappValido(valor: string) {
-    try {
-      const url = new URL(valor.trim());
-      return (
-        url.protocol === 'https:' &&
-        (url.hostname === 'chat.whatsapp.com' ||
-          url.hostname.endsWith('.whatsapp.com'))
-      );
-    } catch {
-      return false;
-    }
-  }
-
-  async function guardarEnlaceWhatsappPreview() {
-    if (!whatsappPreview?.claveGrupoWhatsapp) return;
-
-    const limpio = String(whatsappPreview.enlaceGrupoWhatsapp || '').trim();
-
+    const limpio = whatsappAdminEnlace.trim();
     if (!limpio) {
       setError('Pega primero el enlace del grupo de WhatsApp.');
       return;
@@ -13532,26 +13641,73 @@ Gracias!`;
       return;
     }
 
+    setCargando(true);
+    setError('');
     try {
       await ejecutarFuncion('guardar_whatsapp_grupo_app', {
-        p_clave_grupo: whatsappPreview.claveGrupoWhatsapp,
-        p_modalidad: whatsappPreview.modalidadGrupoWhatsapp || 'BABY',
-        p_referencia:
-          whatsappPreview.referenciaGrupoWhatsapp ||
-          whatsappPreview.claveGrupoWhatsapp,
-        p_nombre_grupo: whatsappPreview.titulo,
+        p_clave_grupo: contexto.clave,
+        p_modalidad: contexto.modalidad,
+        p_referencia: contexto.referencia,
+        p_nombre_grupo: contexto.nombre,
         p_enlace_whatsapp: limpio,
       });
       await cargarWhatsappGruposApp();
-      setError('');
-      alert('Enlace de WhatsApp guardado para esta modalidad y turno.');
+      alert(`WhatsApp guardado: ${contexto.nombre}.`);
     } catch (err) {
       setError(
         err instanceof Error
           ? err.message
           : 'No se pudo guardar el enlace de WhatsApp.'
       );
+    } finally {
+      setCargando(false);
     }
+  }
+
+  async function eliminarWhatsappAdministracionApp() {
+    if (!puedeGestionarWhatsappApp) {
+      setError('No tienes permiso para gestionar enlaces de WhatsApp.');
+      return;
+    }
+
+    const contexto = contextoWhatsappAdministracionApp();
+    if (!contexto) {
+      setError('Selecciona primero un intensivo.');
+      return;
+    }
+
+    const actual = enlaceWhatsappPorClaveApp(contexto.clave);
+    if (!actual) return;
+
+    if (!window.confirm(`¿Eliminar el enlace de ${contexto.nombre}?`)) return;
+
+    setCargando(true);
+    setError('');
+    try {
+      await ejecutarFuncion('eliminar_whatsapp_grupo_app', {
+        p_clave_grupo: contexto.clave,
+      });
+      await cargarWhatsappGruposApp();
+      setWhatsappAdminEnlace('');
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo eliminar el enlace de WhatsApp.'
+      );
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  function abrirWhatsappAdministracionApp() {
+    const enlace = whatsappAdminEnlace.trim();
+    if (!esEnlaceGrupoWhatsappValido(enlace)) {
+      setError('Guarda primero un enlace de WhatsApp válido.');
+      return;
+    }
+    setError('');
+    window.open(enlace, '_blank', 'noopener,noreferrer');
   }
 
   function abrirGrupoWhatsappDesdePreview() {
@@ -20365,9 +20521,14 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.`
     if (pantalla === 'administracion') {
       cargarAltasNivelInicial();
       cargarIntensivosAltaNivel();
+      cargarWhatsappGruposApp();
     }
     if (pantalla === 'usuarios' && esCoordinadorJefeApp) {
       cargarUsuariosOperativos();
+    }
+    if (pantalla === 'whatsappDireccion' && esCoordinadorJefeApp) {
+      cargarIntensivosAltaNivel();
+      cargarWhatsappGruposApp();
     }
     if (pantalla === 'disponibilidad') cargarDisponibilidad();
     if (pantalla === 'reportes') cargarReportesPendientes();
@@ -20405,6 +20566,31 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.`
     if (pantalla !== 'ocioGrupos') return;
     void cargarResultadosOcioSemanaDesdeSupabase();
   }, [pantalla, semanaAgendaActiva]);
+
+
+  useEffect(() => {
+    if (pantalla !== 'whatsappDireccion') return;
+
+    if (
+      whatsappAdminTipo === 'INTENSIVOS' &&
+      !whatsappAdminIntensivoId &&
+      intensivosAltaNivel.length > 0
+    ) {
+      setWhatsappAdminIntensivoId(intensivosAltaNivel[0].intensivo_id);
+      return;
+    }
+
+    const contexto = contextoWhatsappAdministracionApp();
+    setWhatsappAdminEnlace(
+      contexto ? enlaceWhatsappPorClaveApp(contexto.clave) : ''
+    );
+  }, [
+    pantalla,
+    whatsappAdminTipo,
+    whatsappAdminIntensivoId,
+    whatsappGruposApp,
+    intensivosAltaNivel,
+  ]);
 
   useEffect(() => {
     if (
@@ -25283,6 +25469,9 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                 <button className={`mitico-nav-item ${pantalla === 'usuarios' ? 'is-active' : ''}`} onClick={() => abrirPantallaConScroll('usuarios')}>
                   <IconoNavegacionApp tipo="accesos" /><span>Accesos equipo</span>
                 </button>
+                <button className={`mitico-nav-item ${pantalla === 'whatsappDireccion' ? 'is-active' : ''}`} onClick={() => abrirPantallaConScroll('whatsappDireccion')}>
+                  <IconoNavegacionApp tipo="whatsapp" /><span>WhatsApp</span>
+                </button>
               </div>
             )}
 
@@ -25452,61 +25641,34 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               <div
                 style={{
                   display: 'grid',
-                  gap: 8,
+                  gap: 5,
                   marginBottom: 12,
                   padding: 12,
                   borderRadius: 14,
-                  border: '1px solid #bbf7d0',
-                  background: '#f0fdf4',
+                  border: whatsappPreview.enlaceGrupoWhatsapp
+                    ? '1px solid #bbf7d0'
+                    : '1px solid #fed7aa',
+                  background: whatsappPreview.enlaceGrupoWhatsapp
+                    ? '#f0fdf4'
+                    : '#fff7ed',
                 }}
               >
-                <strong style={{ color: '#166534' }}>
-                  Grupo de WhatsApp de papis
-                </strong>
-                <input
-                  type="url"
-                  value={whatsappPreview.enlaceGrupoWhatsapp || ''}
-                  onChange={(e) =>
-                    setWhatsappPreview({
-                      ...whatsappPreview,
-                      enlaceGrupoWhatsapp: e.target.value,
-                      mensajeGrupoCopiado: false,
-                    })
-                  }
-                  placeholder="https://chat.whatsapp.com/..."
+                <strong
                   style={{
-                    width: '100%',
-                    boxSizing: 'border-box',
-                    borderRadius: 12,
-                    border: '1px solid #86efac',
-                    padding: '10px 12px',
-                    background: '#ffffff',
-                  }}
-                />
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: 8,
-                    flexWrap: 'wrap',
+                    color: whatsappPreview.enlaceGrupoWhatsapp
+                      ? '#166534'
+                      : '#9a3412',
                   }}
                 >
-                  <button
-                    type="button"
-                    onClick={() => void guardarEnlaceWhatsappPreview()}
-                    style={botonSecundario}
-                  >
-                    Guardar / actualizar enlace
-                  </button>
-                  <span
-                    style={{
-                      alignSelf: 'center',
-                      fontSize: 12,
-                      color: '#64748b',
-                    }}
-                  >
-                    Baby y Ocio se guardan una sola vez. En Intensivos, el enlace pertenece a ese curso.
-                  </span>
-                </div>
+                  {whatsappPreview.enlaceGrupoWhatsapp
+                    ? 'Grupo de WhatsApp configurado ✓'
+                    : 'Falta configurar el grupo de WhatsApp'}
+                </strong>
+                <span style={{ fontSize: 12, color: '#64748b' }}>
+                  {whatsappPreview.enlaceGrupoWhatsapp
+                    ? 'El enlace se gestiona únicamente desde Dirección → WhatsApp.'
+                    : 'Ve a Dirección → WhatsApp, guarda el enlace y vuelve a abrir este mensaje.'}
+                </span>
               </div>
             )}
 
@@ -25570,7 +25732,12 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               {whatsappPreview.claveGrupoWhatsapp && (
                 <button
                   onClick={() => void abrirGrupoWhatsappDesdePreview()}
-                  style={botonPrincipal}
+                  disabled={!whatsappPreview.enlaceGrupoWhatsapp}
+                  style={
+                    whatsappPreview.enlaceGrupoWhatsapp
+                      ? botonPrincipal
+                      : { ...botonPrincipal, opacity: 0.5, cursor: 'not-allowed' }
+                  }
                 >
                   Enviar a grupo WhatsApp
                 </button>
@@ -31264,28 +31431,61 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                             ) : (
                               <>
                                 <button
-                                  onClick={() => editarNivelAlumnoAgenda(alumno)}
+                                  onClick={() => {
+                                    const ficha = alumnos.find(
+                                      (item) => item.alumno_id === alumno.alumno_id
+                                    );
+                                    setVistaFichasAlumnos('general');
+                                    setFiltroAlumnos('todos');
+                                    setBusquedaAlumno(
+                                      ficha?.alumno || alumno.alumno || ''
+                                    );
+                                    setPantalla('alumnos');
+                                    window.setTimeout(() => {
+                                      document
+                                        .getElementById('fichas-listado-alumnos')
+                                        ?.scrollIntoView({
+                                          behavior: 'smooth',
+                                          block: 'start',
+                                        });
+                                    }, 80);
+                                  }}
                                   style={botonMini}
                                 >
-                                  Editar nivel
+                                  Ver ficha
                                 </button>
                                 <button
-                                  onClick={() => editarNombreAlumnoAgenda(alumno)}
+                                  onClick={() => {
+                                    const ficha = alumnos.find(
+                                      (item) => item.alumno_id === alumno.alumno_id
+                                    );
+                                    const hrefWhatsapp =
+                                      hrefWhatsappAlumnoResumenDia(
+                                        String(ficha?.telefono || '')
+                                      );
+
+                                    if (!hrefWhatsapp) {
+                                      setError(
+                                        `${alumno.alumno} no tiene un teléfono válido en su ficha.`
+                                      );
+                                      return;
+                                    }
+
+                                    window.open(
+                                      hrefWhatsapp,
+                                      '_blank',
+                                      'noopener,noreferrer'
+                                    );
+                                  }}
                                   style={botonMini}
                                 >
-                                  Editar nombre
+                                  WhatsApp familia
                                 </button>
                                 <button
                                   onClick={() => quitarAlumnoAgenda(alumno)}
                                   style={botonPeligroMini}
                                 >
                                   Quitar sesión
-                                </button>
-                                <button
-                                  onClick={() => borrarAlumnoBaseAgenda(alumno)}
-                                  style={botonPeligroMini}
-                                >
-                                  Borrar ficha
                                 </button>
                               </>
                             )}
@@ -34339,7 +34539,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               </div>
             </article>
 
-            {mostrarFormularioOcioGrupo && ocioGrupoForm.id && (
+            {mostrarFormularioOcioGrupo && (
               <article
                 id="ocio-formulario-grupo-estable"
                 style={{ ...tarjetaResaltada, scrollMarginTop: 18 }}
@@ -34349,10 +34549,14 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     <h3 style={{ margin: 0 }}>
                       {ocioGrupoForm.id
                         ? 'Editar grupo estable'
+                        : ocioAlumnoPendienteNuevoGrupoId
+                        ? 'Crear grupo estable y asignar alumno'
                         : 'Crear grupo estable'}
                     </h3>
                     <p style={{ margin: '5px 0 0', color: '#64748b' }}>
-                      La ficha estable será la base de las semanas de Ocio.
+                      {ocioAlumnoPendienteNuevoGrupoId
+                        ? 'Al guardar, el alumno quedará asignado automáticamente a este grupo estable.'
+                        : 'La ficha estable será la base de las semanas de Ocio.'}
                     </p>
                   </div>
                   <button
@@ -34360,6 +34564,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     onClick={() => {
                       setMostrarFormularioOcioGrupo(false);
                       setOcioGrupoForm(ocioGrupoFormInicial());
+                      setOcioAlumnoPendienteNuevoGrupoId('');
                     }}
                     style={botonSecundario}
                   >
@@ -34490,12 +34695,15 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                   }}
                 >
                   <button onClick={guardarGrupoOcio} style={botonPrincipal}>
-                    Guardar grupo
+                    {ocioAlumnoPendienteNuevoGrupoId
+                      ? 'Crear grupo y asignar alumno'
+                      : 'Guardar grupo'}
                   </button>
                   <button
                     onClick={() => {
                       setMostrarFormularioOcioGrupo(false);
                       setOcioGrupoForm(ocioGrupoFormInicial());
+                      setOcioAlumnoPendienteNuevoGrupoId('');
                     }}
                     style={botonSecundario}
                   >
@@ -34504,6 +34712,137 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                 </div>
               </article>
             )}
+
+            <article
+              style={{
+                ...agendaBloqueBlanco,
+                border: '1px solid #bbf7d0',
+                background: '#f8fffb',
+              }}
+            >
+              <div>
+                <span
+                  style={{
+                    color: '#16a34a',
+                    fontWeight: 900,
+                    fontSize: 12,
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Orden de trabajo
+                </span>
+                <h3 style={{ margin: '3px 0 0' }}>
+                  Ocio · qué hago primero y qué hago después
+                </h3>
+              </div>
+
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: esVistaMovilApp
+                    ? '1fr'
+                    : 'repeat(4, minmax(0, 1fr))',
+                  gap: 8,
+                  marginTop: 12,
+                }}
+              >
+                {[
+                  {
+                    numero: '1',
+                    titulo: 'Colocar alumnos',
+                    texto: 'Resuelve primero los niños sin grupo estable.',
+                    accion: () =>
+                      document
+                        .getElementById('ocio-alumnos-turno')
+                        ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+                  },
+                  {
+                    numero: '2',
+                    titulo: 'Revisar grupos',
+                    texto: 'Comprueba cómo queda la estructura estable.',
+                    accion: () =>
+                      document
+                        .getElementById('ocio-grupos-turno-activo')
+                        ?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+                  },
+                  {
+                    numero: '3',
+                    titulo: 'Cambios esta semana',
+                    texto: 'Gestiona solo excepciones y cambios puntuales.',
+                    accion: () => {
+                      setOcioPanelOperativo('cambios');
+                      cargarOcioCambios();
+                      window.setTimeout(() =>
+                        document
+                          .getElementById('ocio-panel-operativo')
+                          ?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 70);
+                    },
+                  },
+                  {
+                    numero: '4',
+                    titulo: 'Preparar semana',
+                    texto: 'Cuando todo cuadra, prepara y publica la semana.',
+                    accion: () => {
+                      setOcioPanelOperativo('semana');
+                      cargarOcioCambios();
+                      cargarEntrenadores();
+                      cargarDisponibilidad();
+                      cargarAgendaOperativaDirecta();
+                      window.setTimeout(() =>
+                        document
+                          .getElementById('ocio-panel-operativo')
+                          ?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 70);
+                    },
+                  },
+                ].map((paso) => (
+                  <button
+                    type="button"
+                    key={`paso-ocio-${paso.numero}`}
+                    onClick={paso.accion}
+                    style={{
+                      textAlign: 'left',
+                      border: '1px solid #dcfce7',
+                      background: '#ffffff',
+                      borderRadius: 12,
+                      padding: 11,
+                      cursor: 'pointer',
+                      minWidth: 0,
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 24,
+                        height: 24,
+                        borderRadius: 999,
+                        background: '#16a34a',
+                        color: '#ffffff',
+                        fontWeight: 950,
+                        fontSize: 12,
+                      }}
+                    >
+                      {paso.numero}
+                    </span>
+                    <strong style={{ display: 'block', marginTop: 7 }}>
+                      {paso.titulo}
+                    </strong>
+                    <span
+                      style={{
+                        display: 'block',
+                        marginTop: 3,
+                        color: '#64748b',
+                        fontSize: 12,
+                        lineHeight: 1.35,
+                      }}
+                    >
+                      {paso.texto}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </article>
 
             <article
               id="ocio-alumnos-turno"
@@ -34602,14 +34941,22 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                       alumno.nivel_usado || alumno.nivel || 'Sin nivel';
                     const puedeRecomendar =
                       !alumno.grupo_id && gruposTurno.length > 0;
-                    const recomendadorAbierto =
-                      ocioAlumnoRecomendandoId === alumno.alumno_id;
-                    const recomendaciones = recomendadorAbierto
+                    const recomendaciones = puedeRecomendar
                       ? recomendacionesAlumnoSinGrupoOcio(
                           alumno,
                           gruposTurno
                         )
                       : [];
+                    const recomendacionesCompatibles = recomendaciones.filter(
+                      (opcion) => opcion.estado !== 'NO_ENCAJA'
+                    );
+                    const recomendacionesVisibles =
+                      recomendacionesCompatibles.length > 0
+                        ? recomendacionesCompatibles
+                        : recomendaciones.slice(0, 1);
+                    const mejorRecomendacion = recomendacionesCompatibles[0] || null;
+                    const sinEncaje =
+                      puedeRecomendar && recomendacionesCompatibles.length === 0;
 
                     return (
                       <article
@@ -34627,29 +34974,6 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                         }}
                       >
                         <div
-                          role={puedeRecomendar ? 'button' : undefined}
-                          tabIndex={puedeRecomendar ? 0 : undefined}
-                          onClick={() => {
-                            if (!puedeRecomendar) return;
-                            setOcioAlumnoRecomendandoId((actual) =>
-                              actual === alumno.alumno_id
-                                ? ''
-                                : alumno.alumno_id
-                            );
-                          }}
-                          onKeyDown={(e) => {
-                            if (
-                              puedeRecomendar &&
-                              (e.key === 'Enter' || e.key === ' ')
-                            ) {
-                              e.preventDefault();
-                              setOcioAlumnoRecomendandoId((actual) =>
-                                actual === alumno.alumno_id
-                                  ? ''
-                                  : alumno.alumno_id
-                              );
-                            }
-                          }}
                           style={{
                             display: 'grid',
                             gridTemplateColumns: esVistaMovilApp
@@ -34657,9 +34981,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                               : 'minmax(0, 1fr) auto',
                             gap: 8,
                             alignItems: 'center',
-                            cursor: puedeRecomendar
-                              ? 'pointer'
-                              : 'default',
+                            cursor: 'default',
                           }}
                         >
                           <div style={{ minWidth: 0 }}>
@@ -34726,13 +35048,23 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                   padding: '4px 8px',
                                   fontSize: 11,
                                   fontWeight: 900,
-                                  background: '#dbeafe',
-                                  color: '#1d4ed8',
+                                  background: mejorRecomendacion
+                                    ? mejorRecomendacion.estado === 'RECOMENDADO'
+                                      ? '#dbeafe'
+                                      : '#ffedd5'
+                                    : '#fee2e2',
+                                  color: mejorRecomendacion
+                                    ? mejorRecomendacion.estado === 'RECOMENDADO'
+                                      ? '#1d4ed8'
+                                      : '#9a3412'
+                                    : '#b91c1c',
                                 }}
                               >
-                                {recomendadorAbierto
-                                  ? 'Cerrar recomendador'
-                                  : 'Recomendar grupo'}
+                                {mejorRecomendacion
+                                  ? mejorRecomendacion.estado === 'RECOMENDADO'
+                                    ? `Recomendado · ${mejorRecomendacion.grupo.nombre_grupo}`
+                                    : `Revisar · ${mejorRecomendacion.grupo.nombre_grupo}`
+                                  : 'Sin encaje'}
                               </span>
                             )}
 
@@ -34751,7 +35083,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                           </div>
                         </div>
 
-                        {recomendadorAbierto && (
+                        {puedeRecomendar && (
                           <div
                             style={{
                               display: 'grid',
@@ -34764,7 +35096,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                 No hay grupos estables activos en este turno.
                               </div>
                             ) : (
-                              recomendaciones.map((opcion) => (
+                              recomendacionesVisibles.map((opcion) => (
                                 <div
                                   key={`recomendar-${alumno.alumno_id}-${opcion.grupo.grupo_id}`}
                                   style={{
@@ -34845,13 +35177,22 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                               ))
                             )}
 
-                            {recomendaciones.every(
-                              (opcion) =>
-                                opcion.estado === 'NO_ENCAJA'
-                            ) && (
+                            {sinEncaje && (
                               <div style={avisoPendiente}>
-                                Ningún grupo actual encaja por nivel/ratio.
-                                Revisa si necesitas crear otro grupo estable.
+                                <strong>Necesita otro grupo estable.</strong>
+                                <div style={{ marginTop: 4 }}>
+                                  Ningún grupo actual encaja por nivel/ratio con
+                                  el recomendador que ya utilizas.
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    abrirNuevoGrupoOcioParaAlumno(alumno)
+                                  }
+                                  style={{ ...botonPrincipal, marginTop: 9 }}
+                                >
+                                  Crear grupo estable para {alumno.alumno}
+                                </button>
                               </div>
                             )}
                           </div>
@@ -35186,6 +35527,32 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     justifyContent: 'flex-end',
                   }}
                 >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const abrir = ocioPanelOperativo !== 'nuevo';
+                      setOcioPanelOperativo(abrir ? 'nuevo' : 'ninguno');
+                      if (abrir) {
+                        setOcioNuevoNombre('');
+                        setOcioNuevoNivel('');
+                        setOcioNuevoAlumnoId('');
+                        setOcioNuevoSugerencias([]);
+                        setOcioNuevoRecomendaciones([]);
+                        window.setTimeout(() => {
+                          document
+                            .getElementById('ocio-panel-operativo')
+                            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                        }, 70);
+                      }
+                    }}
+                    style={
+                      ocioPanelOperativo === 'nuevo'
+                        ? botonPrincipal
+                        : botonSecundario
+                    }
+                  >
+                    Añadir alumno
+                  </button>
                   <button
                     type="button"
                     onClick={() => {
@@ -36036,8 +36403,23 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                   color: '#991b1b',
                                 }}
                               >
-                                No hay un grupo compatible en el turno
-                                solicitado.
+                                <strong>Sin grupo compatible en este turno.</strong>
+                                <div style={{ marginTop: 4 }}>
+                                  Mantengo intacto el recomendador actual. Si
+                                  este nivel necesita otro grupo, créalo aquí.
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    abrirNuevoGrupoOcioParaTurno(
+                                      ocioNuevoNivel || 'INICIACION',
+                                      ocioNuevoAlumnoId
+                                    )
+                                  }
+                                  style={{ ...botonPrincipal, marginTop: 9 }}
+                                >
+                                  Crear grupo estable para este turno
+                                </button>
                               </div>
                             )}
 
@@ -41242,6 +41624,145 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             </section>
           );
         })()}
+
+      {pantalla === 'whatsappDireccion' && esCoordinadorJefeApp && (
+        <section style={{ display: 'grid', gap: 16, minWidth: 0 }}>
+          <article
+            style={{
+              borderRadius: 24,
+              padding: 20,
+              background:
+                'linear-gradient(135deg, #062d3f 0%, #083b4d 58%, #0b5d4f 100%)',
+              border: '1px solid rgba(16,185,129,0.28)',
+              boxShadow: '0 18px 44px rgba(15,23,42,0.12)',
+              color: '#fff',
+            }}
+          >
+            <p
+              style={{
+                margin: 0,
+                fontSize: 11,
+                fontWeight: 900,
+                letterSpacing: 1.15,
+                color: '#86efac',
+              }}
+            >
+              DIRECCIÓN
+            </p>
+            <h2 style={{ margin: '4px 0 0', fontSize: 30, color: '#ffffff' }}>
+              WhatsApp
+            </h2>
+            {renderAyudaRapidaPantallaApp()}
+            <p style={{ margin: '7px 0 0', color: '#cbd5e1', lineHeight: 1.45, maxWidth: 760 }}>
+              Configura aquí los grupos de familias. Las pantallas de Baby, Ocio e Intensivos solo usan estos enlaces; no se modifican desde la operativa diaria.
+            </p>
+          </article>
+
+          <article style={{ ...tarjeta, border: '1px solid #bbf7d0' }}>
+            <div style={{ display: 'grid', gap: 14 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                {(['BABY', 'OCIO', 'INTENSIVOS'] as const).map((tipo) => (
+                  <button
+                    key={tipo}
+                    type="button"
+                    onClick={() => setWhatsappAdminTipo(tipo)}
+                    style={whatsappAdminTipo === tipo ? botonPrincipal : botonSecundario}
+                  >
+                    {tipo === 'BABY' ? 'Baby' : tipo === 'OCIO' ? 'Ocio' : 'Intensivos'}
+                  </button>
+                ))}
+              </div>
+
+              {whatsappAdminTipo === 'BABY' && (
+                <div style={avisoNeutral}>
+                  <strong>Un único grupo de familias Baby.</strong>
+                  <p style={{ margin: '5px 0 0' }}>
+                    Se muestra el enlace que ya tenías guardado y se seguirá usando en Baby.
+                  </p>
+                </div>
+              )}
+
+              {whatsappAdminTipo === 'OCIO' && (
+                <div style={avisoNeutral}>
+                  <strong>Un único grupo de familias para todo Ocio.</strong>
+                  <p style={{ margin: '5px 0 0' }}>
+                    Jueves, sábado y domingo usan exactamente este mismo enlace.
+                  </p>
+                </div>
+              )}
+
+              {whatsappAdminTipo === 'INTENSIVOS' && (
+                <label style={labelCampo}>
+                  Intensivo
+                  <select
+                    value={whatsappAdminIntensivoId}
+                    onChange={(e) => setWhatsappAdminIntensivoId(e.target.value)}
+                    style={selectCampo}
+                  >
+                    <option value="">Selecciona intensivo</option>
+                    {intensivosAltaNivel.map((intensivo) => (
+                      <option key={intensivo.intensivo_id} value={intensivo.intensivo_id}>
+                        {intensivo.intensivo}
+                        {intensivo.fecha_inicio ? ` · ${formatearFecha(intensivo.fecha_inicio)}` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <small style={{ color: '#64748b' }}>
+                    Cada intensivo tiene su propio grupo de familias.
+                  </small>
+                </label>
+              )}
+
+              <label style={labelCampo}>
+                Enlace del grupo de WhatsApp
+                <input
+                  type="url"
+                  value={whatsappAdminEnlace}
+                  onChange={(e) => setWhatsappAdminEnlace(e.target.value)}
+                  placeholder="https://chat.whatsapp.com/..."
+                  style={inputCampo}
+                  disabled={whatsappAdminTipo === 'INTENSIVOS' && !whatsappAdminIntensivoId}
+                />
+              </label>
+
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  disabled={cargando || (whatsappAdminTipo === 'INTENSIVOS' && !whatsappAdminIntensivoId)}
+                  onClick={() => void guardarWhatsappAdministracionApp()}
+                  style={botonPrincipal}
+                >
+                  Guardar enlace
+                </button>
+                <button
+                  type="button"
+                  disabled={!esEnlaceGrupoWhatsappValido(whatsappAdminEnlace)}
+                  onClick={abrirWhatsappAdministracionApp}
+                  style={botonSecundario}
+                >
+                  Abrir grupo
+                </button>
+                {(() => {
+                  const contexto = contextoWhatsappAdministracionApp();
+                  const existe = contexto
+                    ? Boolean(enlaceWhatsappPorClaveApp(contexto.clave))
+                    : false;
+                  return existe ? (
+                    <button
+                      type="button"
+                      disabled={cargando}
+                      onClick={() => void eliminarWhatsappAdministracionApp()}
+                      style={botonPeligroMini}
+                    >
+                      Eliminar enlace
+                    </button>
+                  ) : null;
+                })()}
+              </div>
+            </div>
+          </article>
+        </section>
+      )}
 
       {pantalla === 'administracion' &&
         puedeVerAdministracionAltasApp(perfilUsuario?.rol) && (
@@ -47784,8 +48305,6 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
           crearPlantillaCuatroDiasIntensivo,
           cargarEdicionGruposIntensivoDia,
           abrirGestionOperativaIntensivoDia,
-          configurarWhatsappIntensivoApp,
-          enlaceWhatsappIntensivoApp,
           guardarComposicionDiaIntensivo,
           crearIntensivoDesdeApp,
           destinoAlumnoRecomendado,
