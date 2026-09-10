@@ -5188,6 +5188,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     useState(false);
   const [babyAimHarderSesionCargandoId, setBabyAimHarderSesionCargandoId] =
     useState('');
+  const [babyAimHarderFormularioCargando, setBabyAimHarderFormularioCargando] =
+    useState(false);
   const [babyAimHarderMensaje, setBabyAimHarderMensaje] = useState('');
   const [babyAimHarderError, setBabyAimHarderError] = useState('');
   const [agendaAlumnosSesion, setAgendaAlumnosSesion] = useState<
@@ -9830,6 +9832,7 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          apikey: SUPABASE_ANON_KEY,
           Authorization: `Bearer ${accessToken}`,
         },
         body: JSON.stringify(body),
@@ -16081,6 +16084,8 @@ async function abrirGestionOperativaIntensivoDia(
     setAgendaRecomendaciones([]);
     setDisponibilidadSesionAgenda([]);
     setContextoRecursosSesionAgenda(null);
+    setBabyAimHarderMensaje('');
+    setBabyAimHarderError('');
     const turnoDefecto = turnosTrabajoDiaAgenda(fecha)[0] || {
       inicio: '18:00',
       fin: '20:00',
@@ -16094,44 +16099,6 @@ async function abrirGestionOperativaIntensivoDia(
       texto_listado: '',
     }));
     irAlTrabajoAgenda('formulario');
-  }
-
-  async function llamarAimHarderBabyActivosApp(
-    body: Record<string, unknown>
-  ): Promise<any> {
-    const accessToken = await obtenerAccessTokenSupabaseApp();
-    const respuesta = await fetch(
-      `${SUPABASE_URL}/functions/v1/mitico-aimharder-baby-read`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
-    const texto = await respuesta.text();
-    let datos: any = {};
-
-    try {
-      datos = texto ? JSON.parse(texto) : {};
-    } catch {
-      throw new Error(
-        `AimHarder devolvió una respuesta Baby no válida (HTTP ${respuesta.status}).`
-      );
-    }
-
-    if (!respuesta.ok) {
-      throw new Error(
-        typeof datos?.error === 'string'
-          ? datos.error
-          : `Error ${respuesta.status} consultando el listado Baby de AimHarder.`
-      );
-    }
-
-    return datos;
   }
 
   function minutosHoraBabyAimHarder(valor: string) {
@@ -16265,13 +16232,16 @@ async function abrirGestionOperativaIntensivoDia(
     clase: BabyAimHarderClaseApp,
     boxId: number
   ): Promise<BabyAimHarderAsistenteActivoApp[]> {
-    const detalle = await llamarAimHarderBabyActivosApp({
+    // ÚNICO MOTOR AIMHARDER: también los asistentes Baby salen de
+    // mitico-aimharder-read, igual que la carga general de la semana.
+    const detalle = await llamarAimHarderLecturaOcioApp({
       action: 'attendees',
       date: String(clase.date || '').slice(0, 10),
       classId: Number(clase.id),
       className: String(clase.className || ''),
       time: String(clase.time || ''),
       timeid: String(clase.timeid || ''),
+      modalidad: 'BABY',
       boxId,
     });
 
@@ -16307,6 +16277,105 @@ async function abrirGestionOperativaIntensivoDia(
         },
       })
     );
+  }
+
+  async function obtenerListadoBabyTurnoAimHarderApp(
+    fecha: string,
+    horaInicio: string,
+    horaFin: string
+  ): Promise<{
+    clase: BabyAimHarderClaseApp;
+    asistentes: BabyAimHarderAsistenteActivoApp[];
+  }> {
+    const fechaLimpia = String(fecha || '').slice(0, 10);
+    const inicio = horaCorta(horaInicio);
+    const fin = horaCorta(horaFin);
+
+    if (!fechaLimpia || !inicio || !fin) {
+      throw new Error(
+        'No puedo identificar con seguridad la fecha y el horario del turno Baby.'
+      );
+    }
+
+    const box = await centroAimHarderBabyApp();
+    const clases = await clasesBabySemanaAimHarderApp(
+      inicioSemanaAgenda(fechaLimpia),
+      Number(box.boid)
+    );
+
+    const candidatas = clases.filter((clase) => {
+      if (String(clase.date || '').slice(0, 10) !== fechaLimpia) return false;
+      try {
+        const horas = horasClaseBabyAimHarder(clase);
+        return horas.inicio === inicio && horas.fin === fin;
+      } catch {
+        return false;
+      }
+    });
+
+    if (candidatas.length === 0) {
+      throw new Error(
+        `No encuentro en AimHarder una única clase Baby para ${fechaAgendaCortaConAnio(
+          fechaLimpia
+        )} · ${inicio}-${fin}. No se ha modificado nada.`
+      );
+    }
+
+    if (candidatas.length > 1) {
+      throw new Error(
+        `AimHarder devuelve ${candidatas.length} clases Baby para ${fechaAgendaCortaConAnio(
+          fechaLimpia
+        )} · ${inicio}-${fin}. No voy a adivinar cuál es.`
+      );
+    }
+
+    const clase = candidatas[0];
+    const asistentes = await asistentesActivosClaseBabyAimHarderApp(
+      clase,
+      Number(box.boid)
+    );
+
+    emitirListadoBabyAimHarderAgenda(clase, asistentes);
+    return { clase, asistentes };
+  }
+
+  async function traerListadoBabyTurnoAgendaDesdeAimHarder() {
+    if (String(agendaForm.modalidad || '').trim().toUpperCase() !== 'BABY') {
+      return;
+    }
+
+    setBabyAimHarderFormularioCargando(true);
+    setBabyAimHarderMensaje('');
+    setBabyAimHarderError('');
+    setError('');
+
+    try {
+      const { asistentes } = await obtenerListadoBabyTurnoAimHarderApp(
+        agendaForm.fecha,
+        agendaForm.hora_inicio,
+        agendaForm.hora_fin
+      );
+      const textoListado = asistentes.map((asistente) => asistente.name).join('\n');
+
+      setAgendaForm((anterior) => ({
+        ...anterior,
+        texto_listado: textoListado,
+      }));
+
+      setBabyAimHarderMensaje(
+        asistentes.length > 0
+          ? `Turno cargado desde AimHarder · ${asistentes.length} alumno(s) activo(s)`
+          : 'Turno encontrado en AimHarder · 0 alumnos activos'
+      );
+    } catch (e) {
+      setBabyAimHarderError(
+        e instanceof Error
+          ? e.message
+          : 'No se pudo traer este turno Baby desde AimHarder.'
+      );
+    } finally {
+      setBabyAimHarderFormularioCargando(false);
+    }
   }
 
   async function cargarSemanaBabyDesdeAimHarder() {
@@ -16469,48 +16538,13 @@ async function abrirGestionOperativaIntensivoDia(
     setBabyAimHarderError('');
 
     try {
-      const box = await centroAimHarderBabyApp();
-      const clases = await clasesBabySemanaAimHarderApp(
-        inicioSemanaAgenda(fecha),
-        Number(box.boid)
+      // Mismo lector exacto que usa el turno individual. No existe un parser
+      // alternativo para Refrescar listado.
+      const { asistentes } = await obtenerListadoBabyTurnoAimHarderApp(
+        fecha,
+        inicioSesion,
+        finSesion
       );
-
-      const candidatas = clases.filter((clase) => {
-        if (String(clase.date || '').slice(0, 10) !== fecha) return false;
-        try {
-          return horasClaseBabyAimHarder(clase).inicio === inicioSesion;
-        } catch {
-          return false;
-        }
-      });
-
-      let clase: BabyAimHarderClaseApp | undefined;
-      if (candidatas.length === 1) {
-        clase = candidatas[0];
-      } else if (candidatas.length > 1) {
-        const porFin = candidatas.filter((c) => {
-          try {
-            return horasClaseBabyAimHarder(c).fin === finSesion;
-          } catch {
-            return false;
-          }
-        });
-        if (porFin.length === 1) clase = porFin[0];
-      }
-
-      if (!clase) {
-        throw new Error(
-          `No puedo identificar una única clase Baby en AimHarder para ${fechaAgendaCortaConAnio(
-            fecha
-          )} a las ${inicioSesion}. No se ha modificado la sesión.`
-        );
-      }
-
-      const asistentes = await asistentesActivosClaseBabyAimHarderApp(
-        clase,
-        Number(box.boid)
-      );
-      emitirListadoBabyAimHarderAgenda(clase, asistentes);
 
       const resultado = await ejecutarFuncionAuthJson<BabyAimHarderRefrescoResultadoApp>(
         'refrescar_sesion_baby_aimharder_app',
@@ -16628,30 +16662,92 @@ async function abrirGestionOperativaIntensivoDia(
       return;
     }
 
-    if (!agendaForm.texto_listado.trim()) {
+    const esBaby =
+      String(agendaForm.modalidad || '').trim().toUpperCase() === 'BABY';
+
+    if (!esBaby && !agendaForm.texto_listado.trim()) {
       setError('Pega el listado de Aimharder antes de crear grupos.');
       return;
     }
 
     setCargando(true);
     setError('');
+    if (esBaby) {
+      setBabyAimHarderFormularioCargando(true);
+      setBabyAimHarderMensaje('');
+      setBabyAimHarderError('');
+    }
 
     try {
-      const resultado = await ejecutarFuncionConRespuesta<{
-        sesion_id: string;
-        total_detectados: number;
-        total_nuevos: number;
-        total_conocidos: number;
-      }>('crear_sesion_operativa_desde_listado_app', {
-        p_fecha: agendaForm.fecha,
-        p_hora_inicio: agendaForm.hora_inicio,
-        p_hora_fin: agendaForm.hora_fin,
-        p_modalidad_codigo: agendaForm.modalidad,
-        p_lugar: agendaForm.lugar,
-        p_texto_listado: agendaForm.texto_listado,
-      });
+      let textoListado = agendaForm.texto_listado.trim();
+      let sesionId = '';
+      let nuevosPendientes = 0;
+      let totalDetectados = 0;
+      let sesionBabyYaExistia = false;
 
-      const sesionId = resultado[0]?.sesion_id;
+      if (esBaby) {
+        // MISMO PROCESO MAESTRO que “Cargar semana Baby desde AimHarder”:
+        // 1) resuelve la clase por fecha + modalidad + horario,
+        // 2) obtiene asistentes con mitico-aimharder-read,
+        // 3) usa la misma RPC de carga inicial, que NO pisa una sesión existente.
+        const { asistentes } = await obtenerListadoBabyTurnoAimHarderApp(
+          agendaForm.fecha,
+          agendaForm.hora_inicio,
+          agendaForm.hora_fin
+        );
+        textoListado = asistentes.map((asistente) => asistente.name).join('\n');
+
+        setAgendaForm((anterior) => ({
+          ...anterior,
+          texto_listado: textoListado,
+        }));
+
+        const resultadoBaby = await ejecutarFuncionAuthJson<{
+          sesion_id?: string | null;
+          creada?: boolean;
+          ya_existia?: boolean;
+          sin_reservas?: boolean;
+          total_actual?: number;
+          total_nuevos?: number;
+          total_conocidos?: number;
+        }>('cargar_sesion_baby_aimharder_inicial_app', {
+          p_fecha: agendaForm.fecha,
+          p_hora_inicio: agendaForm.hora_inicio,
+          p_hora_fin: agendaForm.hora_fin,
+          p_lugar: agendaForm.lugar,
+          p_texto_listado: textoListado,
+        });
+
+        if (resultadoBaby?.sin_reservas || !resultadoBaby?.sesion_id) {
+          throw new Error(
+            'AimHarder no devuelve alumnos activos para este turno Baby. No se ha creado ninguna sesión.'
+          );
+        }
+
+        sesionId = String(resultadoBaby.sesion_id);
+        nuevosPendientes = Number(resultadoBaby.total_nuevos || 0);
+        totalDetectados = Number(resultadoBaby.total_actual || asistentes.length);
+        sesionBabyYaExistia = Boolean(resultadoBaby.ya_existia);
+      } else {
+        const resultado = await ejecutarFuncionConRespuesta<{
+          sesion_id: string;
+          total_detectados: number;
+          total_nuevos: number;
+          total_conocidos: number;
+        }>('crear_sesion_operativa_desde_listado_app', {
+          p_fecha: agendaForm.fecha,
+          p_hora_inicio: agendaForm.hora_inicio,
+          p_hora_fin: agendaForm.hora_fin,
+          p_modalidad_codigo: agendaForm.modalidad,
+          p_lugar: agendaForm.lugar,
+          p_texto_listado: textoListado,
+        });
+
+        sesionId = String(resultado[0]?.sesion_id || '');
+        nuevosPendientes = Number(resultado[0]?.total_nuevos || 0);
+        totalDetectados = Number(resultado[0]?.total_detectados || 0);
+      }
+
       setAgendaFormularioAbierto(false);
       setAgendaForm((anterior) => ({ ...anterior, texto_listado: '' }));
       await cargarAgendaOperativaDirecta();
@@ -16661,17 +16757,27 @@ async function abrirGestionOperativaIntensivoDia(
         await cargarDetalleSesionAgenda(sesionId);
       }
 
-      const nuevosPendientes = Number(resultado[0]?.total_nuevos || 0);
       if (nuevosPendientes > 0) {
         setError(
           `${nuevosPendientes} alumno(s) no están en la semilla. Quedan como PENDIENTE TEST y no entrarán en grupos hasta pasar por Altas/Test.`
         );
       }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
-    }
 
-    setCargando(false);
+      if (esBaby) {
+        setBabyAimHarderMensaje(
+          sesionBabyYaExistia
+            ? `La sesión Baby ya existía y se ha dejado intacta · ${totalDetectados} alumno(s). Usa “Refrescar listado” si quieres sincronizar una sesión ya creada.`
+            : `Sesión Baby creada desde el listado activo de AimHarder · ${totalDetectados} alumno(s)`
+        );
+      }
+    } catch (err) {
+      const mensaje = err instanceof Error ? err.message : 'Error desconocido';
+      if (esBaby) setBabyAimHarderError(mensaje);
+      setError(mensaje);
+    } finally {
+      if (esBaby) setBabyAimHarderFormularioCargando(false);
+      setCargando(false);
+    }
   }
 
   function normalizarNombreFueraPlazoAgenda(valor: string) {
@@ -30207,7 +30313,12 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                         <button
                           type="button"
                           onClick={() => void cargarSemanaBabyDesdeAimHarder()}
-                          disabled={babyAimHarderCargandoSemana || !semanaAgendaActiva}
+                          disabled={
+                            babyAimHarderCargandoSemana ||
+                            babyAimHarderFormularioCargando ||
+                            Boolean(babyAimHarderSesionCargandoId) ||
+                            !semanaAgendaActiva
+                          }
                           style={{
                             ...botonPrincipal,
                             minHeight: 36,
@@ -30606,8 +30717,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                       }
                                       disabled={
                                         babyAimHarderCargandoSemana ||
-                                        babyAimHarderSesionCargandoId ===
-                                          sesion.agendaDirecta?.sesion_id
+                                        babyAimHarderFormularioCargando ||
+                                        Boolean(babyAimHarderSesionCargandoId)
                                       }
                                       style={botonSecundario}
                                     >
@@ -30762,10 +30873,63 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     />
                   </label>
 
+                  {String(agendaForm.modalidad || '').trim().toUpperCase() ===
+                    'BABY' && (
+                    <div style={{ display: 'grid', gap: 8, margin: '10px 0 12px' }}>
+                      <button
+                        type="button"
+                        data-aimharder-native-button="1"
+                        onClick={() =>
+                          void traerListadoBabyTurnoAgendaDesdeAimHarder()
+                        }
+                        disabled={
+                          babyAimHarderFormularioCargando ||
+                          babyAimHarderCargandoSemana ||
+                          Boolean(babyAimHarderSesionCargandoId)
+                        }
+                        style={{
+                          ...botonPrincipal,
+                          width: '100%',
+                          background: '#6fb52b',
+                          opacity:
+                            babyAimHarderFormularioCargando ||
+                            babyAimHarderCargandoSemana ||
+                            Boolean(babyAimHarderSesionCargandoId)
+                              ? 0.65
+                              : 1,
+                        }}
+                      >
+                        {babyAimHarderFormularioCargando
+                          ? 'Consultando AimHarder…'
+                          : 'Traer listado de AimHarder'}
+                      </button>
+                      <small style={{ color: '#64748b', lineHeight: 1.4 }}>
+                        Usa el mismo lector que “Cargar semana Baby desde AimHarder”.
+                        Al volcar se vuelve a comprobar el turno para no usar un listado antiguo.
+                      </small>
+                    </div>
+                  )}
+
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button
+                      type="button"
                       onClick={volcarListadoAgendaOperativa}
-                      style={botonPrincipal}
+                      disabled={
+                        cargando ||
+                        babyAimHarderFormularioCargando ||
+                        babyAimHarderCargandoSemana ||
+                        Boolean(babyAimHarderSesionCargandoId)
+                      }
+                      style={{
+                        ...botonPrincipal,
+                        opacity:
+                          cargando ||
+                          babyAimHarderFormularioCargando ||
+                          babyAimHarderCargandoSemana ||
+                          Boolean(babyAimHarderSesionCargandoId)
+                            ? 0.65
+                            : 1,
+                      }}
                     >
                       1 · Volcar listado y crear sesión
                     </button>
@@ -31729,6 +31893,12 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                       style={{
                                         ...agendaAlumnoLinea,
                                         minWidth: 0,
+                                        display: 'grid',
+                                        gridTemplateColumns: esVistaMovilApp
+                                          ? 'minmax(0, 1fr)'
+                                          : 'minmax(0, 1fr) minmax(200px, 240px)',
+                                        alignItems: 'start',
+                                        gap: esVistaMovilApp ? 10 : 12,
                                       }}
                                     >
                                       <div
@@ -31824,8 +31994,9 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                         <div
                                           style={{
                                             width: '100%',
-                                            marginTop: 8,
-                                            padding: 10,
+                                            gridColumn: '1 / -1',
+                                            marginTop: 2,
+                                            padding: esVistaMovilApp ? 10 : 12,
                                             borderRadius: 12,
                                             border: '1px solid #fdba74',
                                             background: '#fff7ed',
@@ -31833,8 +32004,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                           }}
                                         >
                                           <strong>
-                                            ⚠️ Este alumno no tiene una combinación
-                                            publicable automática en este turno.
+                                            ⚠️ Revisión manual necesaria
                                           </strong>
 
                                           {buscandoAlternativasTurnoAgenda ? (
@@ -31932,9 +32102,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                             </>
                                           ) : (
                                             <p style={{ margin: '5px 0 0' }}>
-                                              No hay otro turno compatible dentro de
-                                              los listados/sesiones creados de esta
-                                              semana. Revisión manual necesaria.
+                                              No hay otro turno compatible esta semana.
                                             </p>
                                           )}
                                         </div>

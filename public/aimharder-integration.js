@@ -1,4 +1,5 @@
 const FUNCTION_URL='https://natxwawulodkoauqkwqz.supabase.co/functions/v1/mitico-aimharder-read';
+const PUBLISHABLE_KEY='sb_publishable_xeLKsuImDbVd9tnoBzSxXw_KAqod1bu';
 const STORAGE_KEY='mitico_auth_session_v1';
 
 const token=()=>{try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'{}')?.access_token||''}catch{return''}};
@@ -8,22 +9,26 @@ const cleanName=v=>String(v||'').replace(/\s*\[Invitado\]\s*/gi,' ').replace(/\s
 
 async function callAim(body){
   const t=token();
-  if(!t) throw new Error('No encuentro una sesiÃ³n activa de MÃ­tico.');
+  if(!t) throw new Error('No encuentro una sesiÃƒÂ³n activa de MÃƒÂ­tico.');
   const r=await fetch(FUNCTION_URL,{
     method:'POST',
-    headers:{'Content-Type':'application/json',Authorization:`Bearer ${t}`},
+    headers:{
+      'Content-Type':'application/json',
+      apikey:PUBLISHABLE_KEY,
+      Authorization:`Bearer ${t}`,
+    },
     body:JSON.stringify(body),
   });
   const text=await r.text();
   let d={};
-  try{d=text?JSON.parse(text):{}}catch{throw new Error(`AimHarder devolviÃ³ una respuesta no vÃ¡lida (HTTP ${r.status}).`)}
+  try{d=text?JSON.parse(text):{}}catch{throw new Error(`AimHarder devolviÃƒÂ³ una respuesta no vÃƒÂ¡lida (HTTP ${r.status}).`)}
   if(!r.ok) throw new Error(typeof d?.error==='string'?d.error:`Error ${r.status} consultando AimHarder.`);
   return d;
 }
 
 function fechaIsoDesdeFormulario(form){
   const texto=form.textContent||'';
-  const m=texto.match(/D[iÃ­]a seleccionado:\s*(\d{2})\/(\d{2})\/(\d{4})/i) || texto.match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/);
+  const m=texto.match(/D[iÃƒÂ­]a seleccionado:\s*(\d{2})\/(\d{2})\/(\d{4})/i) || texto.match(/\b(\d{2})\/(\d{2})\/(\d{4})\b/);
   if(!m) return '';
   return `${m[3]}-${m[2]}-${m[1]}`;
 }
@@ -85,7 +90,7 @@ function pintarEstado(el,text,error=false){
 async function traerListado(form,button,status){
   const modalidad=norm(modalidadDesdeFormulario(form));
   if(modalidad!=='BABY'){
-    pintarEstado(status,'La carga automÃ¡tica desde AimHarder se usa solo en Baby. Ocio e Intensivos mantienen sus flujos actuales.',true);
+    pintarEstado(status,'La carga automÃƒÂ¡tica desde AimHarder se usa solo en Baby. Ocio e Intensivos mantienen sus flujos actuales.',true);
     return;
   }
 
@@ -99,14 +104,14 @@ async function traerListado(form,button,status){
 
   button.disabled=true;
   const original=button.textContent;
-  button.textContent='Consultando AimHarderâ€¦';
-  pintarEstado(status,`Buscando Baby ${fecha} Â· ${inicio}â€“${fin}â€¦`);
+  button.textContent='Consultando AimHarderÃ¢â‚¬Â¦';
+  pintarEstado(status,`Buscando Baby ${fecha} Ã‚Â· ${inicio}Ã¢â‚¬â€œ${fin}Ã¢â‚¬Â¦`);
 
   try{
     const boxes=await callAim({action:'boxes'});
     const listaBoxes=Array.isArray(boxes?.boxes)?boxes.boxes:[];
-    const box=listaBoxes.find(b=>/MITICO|MÃTICO/i.test(String(b?.gym||''))) || (listaBoxes.length===1?listaBoxes[0]:null);
-    if(!box) throw new Error('No puedo identificar de forma inequÃ­voca el centro MÃ­tico en AimHarder.');
+    const box=listaBoxes.find(b=>/MITICO|MÃƒÂTICO/i.test(String(b?.gym||''))) || (listaBoxes.length===1?listaBoxes[0]:null);
+    if(!box) throw new Error('No puedo identificar de forma inequÃƒÂ­voca el centro MÃƒÂ­tico en AimHarder.');
 
     const semana=await callAim({action:'week',weekStart:fecha,boxId:Number(box.boid)});
     const clases=(Array.isArray(semana?.classes)?semana.classes:[]).filter(item=>{
@@ -115,11 +120,19 @@ async function traerListado(form,button,status){
       return r.inicio===inicio && r.fin===fin;
     });
 
-    if(clases.length===0) throw new Error(`No encuentro en AimHarder un Baby exacto para ${fecha} Â· ${inicio}â€“${fin}. No he rellenado nada.`);
-    if(clases.length>1) throw new Error(`AimHarder devuelve ${clases.length} clases Baby para ese mismo dÃ­a y horario. No voy a adivinar cuÃ¡l es.`);
+    if(clases.length===0) throw new Error(`No encuentro en AimHarder un Baby exacto para ${fecha} Ã‚Â· ${inicio}Ã¢â‚¬â€œ${fin}. No he rellenado nada.`);
+    if(clases.length>1) throw new Error(`AimHarder devuelve ${clases.length} clases Baby para ese mismo dÃƒÂ­a y horario. No voy a adivinar cuÃƒÂ¡l es.`);
 
     const clase=clases[0];
-    const data=await callAim({action:'attendees',date:fecha,classId:clase.id,boxId:Number(box.boid)});
+    const data=await callAim({
+      action:'attendees',
+      date:fecha,
+      classId:clase.id,
+      className:String(clase?.className||''),
+      time:String(clase?.time||''),
+      modalidad:'BABY',
+      boxId:Number(box.boid),
+    });
     const asistentes=Array.isArray(data?.attendees)?data.attendees:[];
     const nombres=asistentes.map(p=>cleanName(p?.name)).filter(Boolean);
     const ocupadas=Number(clase?.ocupation)||0;
@@ -127,7 +140,7 @@ async function traerListado(form,button,status){
     const leidos=Number.isFinite(total)?total:nombres.length;
 
     if(leidos!==ocupadas || nombres.length!==ocupadas){
-      throw new Error(`No cuadra el listado: AimHarder marca ${ocupadas} ocupadas y se han leÃ­do ${nombres.length}. No he volcado nada.`);
+      throw new Error(`No cuadra el listado: AimHarder marca ${ocupadas} ocupadas y se han leÃƒÂ­do ${nombres.length}. No he volcado nada.`);
     }
 
     emitirDatosAimHarder({
@@ -148,11 +161,11 @@ async function traerListado(form,button,status){
 
     const conContactoCompleto=asistentes.filter(p=>String(p?.phone||'').trim() && String(p?.birthDate||'').trim()).length;
     const detalleContacto=conContactoCompleto>0
-      ? ` ${conContactoCompleto} asistente(s) incluyen telÃ©fono y fecha de nacimiento para facilitar Altas/Test.`
-      : ' AimHarder no ha entregado todavÃ­a telÃ©fono/fecha de nacimiento en esta consulta; los nombres sÃ­ se han cargado.';
+      ? ` ${conContactoCompleto} asistente(s) incluyen telÃƒÂ©fono y fecha de nacimiento para facilitar Altas/Test.`
+      : ' AimHarder no ha entregado todavÃƒÂ­a telÃƒÂ©fono/fecha de nacimiento en esta consulta; los nombres sÃƒÂ­ se han cargado.';
 
     // La carga se realiza en segundo plano; los datos de contacto quedan
-    // disponibles para Alta / Test, pero no se muestran en la pantalla de sesiÃ³n.
+    // disponibles para Alta / Test, pero no se muestran en la pantalla de sesiÃƒÂ³n.
     if(status){
       status.textContent='';
       status.style.display='none';
@@ -170,6 +183,15 @@ function integrarFormulario(form){
   if(!form || form.dataset.aimharderIntegrado==='1') return;
   const textarea=form.querySelector('#agenda-textarea-listado');
   if(!textarea) return;
+
+  // La versiÃ³n actual de React ya incluye el botÃ³n nativo y comparte el mismo
+  // motor con carga semanal/refresco. Este script queda solo como compatibilidad
+  // para versiones antiguas y nunca debe duplicar el botÃ³n.
+  if(form.querySelector('[data-aimharder-native-button="1"]')){
+    form.dataset.aimharderIntegrado='1';
+    return;
+  }
+
   form.dataset.aimharderIntegrado='1';
 
   textarea.setAttribute('placeholder','Puedes pegar el listado manualmente o traerlo directamente desde AimHarder...');

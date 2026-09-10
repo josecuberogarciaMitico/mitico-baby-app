@@ -1244,7 +1244,21 @@
   }
 
   .trainer-group-card.is-sheet-open .trainer-confirm-button {
-    display: none !important;
+    display: block !important;
+    order: 1;
+    width: 100% !important;
+    min-height: 48px;
+    margin: 0 !important;
+    border: 1px solid #1d4ed8 !important;
+    background: #2563eb !important;
+    color: #ffffff !important;
+    font-size: 15px;
+    font-weight: 900;
+    box-shadow: 0 10px 22px rgba(37, 99, 235, 0.24) !important;
+  }
+
+  .trainer-group-card.is-sheet-open .trainer-group-quick-nav {
+    order: 2;
   }
 }
 
