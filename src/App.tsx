@@ -1437,6 +1437,7 @@ type ReporteDetalleIntensivoApp = {
   incidencia_comentario: string | null;
   recomendacion_proxima_sesion: string | null;
   recomendacion_comentario: string | null;
+  observaciones_generales?: string | null;
   enviado_at: string | null;
 };
 
@@ -3081,24 +3082,24 @@ function PantallaTestNivelPublicoApp({ token }: { token: string }) {
     {
       clave: 'controlVelocidad',
       titulo: '7. En pista, ¿cómo controla la velocidad y la dirección?',
-      ayuda: 'Piensa en cómo esquía durante una bajada normal.',
+      ayuda: 'Marca lo que haga de forma habitual. Ir rápido o bajar solo no significa tener un nivel técnico alto.',
       opciones: [
         ['0', 'Todavía no sabe frenar ni controlar la velocidad'],
         ['A', 'Necesita ayuda o recordatorios constantes para frenar'],
         ['B', 'Controla principalmente haciendo cuña'],
         ['C', 'Controla enlazando giros y elige por dónde bajar'],
-        ['D', 'Controla con paralelo y adapta el giro y la trayectoria'],
+        ['D', 'Mantiene paralelo consolidado y adapta radio y trayectoria sin perder control'],
       ],
     },
     {
       clave: 'tecnica',
       titulo: '8. Si el profesor le propone ejercicios mientras baja, ¿qué es capaz de hacer?',
-      ayuda: 'No pasa nada si no lo sabes: marca la opción más parecida a lo que le hayas visto hacer.',
+      ayuda: 'No pasa nada si no lo sabes. Marca solo algo que le hayas visto hacer varias veces, no un gesto aislado.',
       opciones: [
         ['A', 'No lo sabemos / todavía no sigue ejercicios esquiando'],
         ['B', 'Sigue ejercicios sencillos mientras baja'],
         ['C', 'Puede hacer giros más cortos o más largos cuando se lo piden'],
-        ['D', 'Cambia ritmo y trazado con facilidad y resuelve ejercicios técnicos'],
+        ['D', 'Resuelve ejercicios técnicos de paralelo/cantos y cambia radio o ritmo manteniendo calidad'],
       ],
     },
   ];
@@ -3683,7 +3684,7 @@ const opcionesTecnica = [
   'Inicio de paralelo',
   'Paralelo elemental',
   'Paralelo consolidado',
-  'Viraje conducido / avanzado',
+  'Viraje conducido claro y estable',
 ];
 
 const opcionesPista = ['Pequeña', 'Grande', 'Pequeña/Grande'];
@@ -3886,33 +3887,37 @@ function referenciaTecnicaReporteApp(nivel: string): Array<[string, string]> {
   if (limpio === 'C') {
     return [
       ['Nivel', 'Inicio de paralelo / paralelo elemental.'],
-      ['Técnica', 'Apoyo exterior, postura y continuidad del paralelo.'],
-      ['Autonomía', 'Autónomo en pista grande y remontes.'],
-      ['Siguiente paso', 'C+ cuando el paralelo sea amplio, fluido y estable.'],
+      ['Debe verse', 'El paralelo aparece de forma real en parte del giro y se repite con control; empieza a cargar correctamente el esquí exterior.'],
+      ['Todavía puede fallar', 'Puede reaparecer cuña, perder el paralelo o necesitar una trayectoria amplia para mantener el control.'],
+      ['No basta', 'Bajar pista grande, usar remontes o esquiar con confianza no convierte por sí solo a un alumno en C.'],
+      ['Siguiente paso', 'C+ cuando el paralelo sea habitual, amplio, fluido y estable, con apoyo exterior reconocible.'],
     ];
   }
   if (limpio === 'C+') {
     return [
-      ['Nivel', 'Paralelo amplio y fluido.'],
-      ['Técnica', 'Apoyo exterior, ritmo, trayectoria y primeras sensaciones de canto.'],
-      ['Autonomía', 'Autonomía completa.'],
-      ['Siguiente paso', 'D cuando el paralelo esté consolidado y admita trabajo técnico más exigente.'],
+      ['Nivel', 'Paralelo habitual, fluido y estable.'],
+      ['Debe verse', 'Mantiene paralelo de forma repetida, controla trayectoria y ritmo, y muestra apoyo exterior claro sin depender de la cuña.'],
+      ['Trabajo técnico', 'Empieza a manejar cantos, cambios de radio y ajustes de trayectoria sin perder la calidad básica del paralelo.'],
+      ['No basta', 'Ir rápido, tener muchos días de esquí o autonomía total no justifica C+ si el paralelo no es estable.'],
+      ['Siguiente paso', 'D solo cuando el paralelo esté realmente consolidado y permita variar radio, ritmo y apoyos con calidad repetible.'],
     ];
   }
   if (limpio === 'D') {
     return [
-      ['Nivel', 'Paralelo consolidado y trabajo técnico avanzado.'],
-      ['Técnica', 'Precisión, apoyo exterior, ritmo, coordinación y cantos.'],
-      ['Autonomía', 'Autonomía completa.'],
-      ['Siguiente paso', 'D+ cuando aparezca conducción clara y estable.'],
+      ['Nivel', 'Paralelo consolidado de calidad.'],
+      ['Debe verse', 'Paralelo estable y repetible con control de trayectoria, ritmo, apoyo exterior y cambio de cantos.'],
+      ['Debe resolver', 'Puede modificar radio y ritmo a demanda sin desordenar postura, apoyos ni línea.'],
+      ['No basta', 'Velocidad, valentía, experiencia o autonomía completa no son criterios suficientes para D.'],
+      ['Siguiente paso', 'D+ únicamente cuando exista conducción clara, estable y repetible, no por hacer algún giro conducido aislado.'],
     ];
   }
   if (limpio === 'D+') {
     return [
-      ['Nivel', 'Viraje conducido / avanzado.'],
-      ['Técnica', 'Conducción, presión, cantos, cambios de radio y precisión.'],
-      ['Autonomía', 'Autonomía completa y retos técnicos.'],
-      ['Siguiente paso', 'Refinar técnica y preparación hacia dinámica de competición.'],
+      ['Nivel', 'Viraje conducido claro, estable y repetible.'],
+      ['Debe verse', 'Conduce de forma consistente con control de cantos, presión, apoyo exterior, línea y transición.'],
+      ['Debe resolver', 'Cambia radio, ritmo y trayectoria manteniendo conducción y calidad técnica, no solo velocidad.'],
+      ['No basta', 'Un paralelo muy bueno o algún giro sobre cantos no es D+. La conducción debe aparecer de forma habitual y verificable.'],
+      ['Siguiente paso', 'Refinar precisión, presión, transición, variación de radios y recursos técnicos avanzados.'],
     ];
   }
 
@@ -6801,7 +6806,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_incidencia: formReporte.incidencia,
         p_recomendacion: formReporte.recomendacion,
         p_observaciones:
-          formReporte.observaciones || 'Reporte enviado desde la app',
+          formReporte.observaciones.trim() || null,
       });
 
       await ejecutarFuncion('guardar_ritmo_ultimo_reporte_app', {
@@ -13995,26 +14000,33 @@ Gracias!`;
         `Entrenador: ${reporte.entrenador || '-'}`,
         `Nivel: ${reporte.nivel_reportado || '-'}`,
         `Técnica: ${reporte.tecnica || '-'}${
-          reporte.tecnica_comentario ? ` (${reporte.tecnica_comentario})` : ''
+          !reporte.observaciones_generales && reporte.tecnica_comentario
+            ? ` (${reporte.tecnica_comentario})`
+            : ''
         }`,
         `Actitud: ${reporte.actitud || '-'}${
-          reporte.actitud_comentario ? ` (${reporte.actitud_comentario})` : ''
+          !reporte.observaciones_generales && reporte.actitud_comentario
+            ? ` (${reporte.actitud_comentario})`
+            : ''
         }`,
         `Autonomía: ${reporte.autonomia || '-'}${
-          reporte.autonomia_comentario
+          !reporte.observaciones_generales && reporte.autonomia_comentario
             ? ` (${reporte.autonomia_comentario})`
             : ''
         }`,
         `Incidencia: ${reporte.incidencia || '-'}${
-          reporte.incidencia_comentario
+          !reporte.observaciones_generales && reporte.incidencia_comentario
             ? ` (${reporte.incidencia_comentario})`
             : ''
         }`,
         `Recomendación: ${reporte.recomendacion_proxima_sesion || '-'}${
-          reporte.recomendacion_comentario
+          !reporte.observaciones_generales && reporte.recomendacion_comentario
             ? ` (${reporte.recomendacion_comentario})`
             : ''
         }`,
+        ...(reporte.observaciones_generales
+          ? [`Observación: ${reporte.observaciones_generales}`]
+          : []),
       ].join('\n');
     });
 
@@ -23087,9 +23099,11 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
         </div>
 
         <label style={labelCampo}>
-          Observaciones
+          Observación (opcional)
           <textarea
             value={formReporte.observaciones}
+            maxLength={500}
+            placeholder="Solo si hay algo útil que no queda reflejado arriba. No hace falta repetir nivel, técnica, autonomía o incidencia."
             onChange={(e) =>
               setFormReporte({
                 ...formReporte,
@@ -23098,6 +23112,9 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             }
             style={textarea}
           />
+          <span style={{ fontSize: 11, color: '#64748b', marginTop: 5 }}>
+            {formReporte.observaciones.length}/500 · Una observación breve y concreta es suficiente.
+          </span>
         </label>
 
         <div

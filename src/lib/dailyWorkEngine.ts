@@ -183,6 +183,9 @@ function prioridadSecuenciaPedagogica(ejercicio: EjercicioTecnicoMSZ) {
   if (
     ejercicio.objetivos.includes('equilibrio') ||
     ejercicio.objetivos.includes('postura') ||
+    ejercicio.objetivos.includes('centralidad') ||
+    ejercicio.objetivos.includes('movilidad') ||
+    ejercicio.objetivos.includes('tobillo') ||
     ejercicio.objetivos.includes('confianza')
   ) {
     return 10;
@@ -191,7 +194,9 @@ function prioridadSecuenciaPedagogica(ejercicio: EjercicioTecnicoMSZ) {
   if (
     ejercicio.objetivos.includes('giro') ||
     ejercicio.objetivos.includes('frenada') ||
-    ejercicio.objetivos.includes('apoyo_exterior')
+    ejercicio.objetivos.includes('apoyo_exterior') ||
+    ejercicio.objetivos.includes('independencia_piernas') ||
+    ejercicio.objetivos.includes('angulacion_disociacion')
   ) {
     return 20;
   }
@@ -199,6 +204,8 @@ function prioridadSecuenciaPedagogica(ejercicio: EjercicioTecnicoMSZ) {
   if (
     ejercicio.objetivos.includes('paralelo') ||
     ejercicio.objetivos.includes('cantos') ||
+    ejercicio.objetivos.includes('transicion') ||
+    ejercicio.objetivos.includes('baston') ||
     ejercicio.objetivos.includes('precision')
   ) {
     return 30;
@@ -344,6 +351,13 @@ function detectarObjetivos(input: InputTrabajoDiario): ObjetivoTecnicoMSZ[] {
   if (/cinta|sube solo|entra solo|sale solo/.test(texto))
     objetivos.push('autonomia_cinta');
   if (/equilibr|cae|caida/.test(texto)) objetivos.push('equilibrio');
+  if (/centrad|centralidad|atrasad|retrasad|adelantad/.test(texto)) objetivos.push('centralidad');
+  if (/movilidad|rigid|bloquead/.test(texto)) objetivos.push('movilidad');
+  if (/tobillo|tobillos/.test(texto)) objetivos.push('tobillo');
+  if (/independencia|piernas.*tronco|tronco.*piernas/.test(texto)) objetivos.push('independencia_piernas');
+  if (/angul|disoci|hombros.*quiet|tronco.*estable/.test(texto)) objetivos.push('angulacion_disociacion');
+  if (/transicion|cambio de canto|cambio.*giro|liberar canto|soltar canto/.test(texto)) objetivos.push('transicion');
+  if (/baston|bastones|clavado/.test(texto)) objetivos.push('baston');
 
   if (objetivos.length === 0) {
     objetivos.push('giro', 'equilibrio', 'ritmo');
@@ -423,15 +437,15 @@ function objetivosProgresionPorNivel(
   if (nivel === 'B')
     return ['cuna', 'frenada', 'giro', 'equilibrio', 'dinamica_grupo'];
   if (nivel === 'B+')
-    return ['cuna', 'paralelo', 'giro', 'equilibrio', 'apoyo_exterior'];
+    return ['cuna', 'paralelo', 'giro', 'equilibrio', 'apoyo_exterior', 'centralidad', 'transicion'];
   if (nivel === 'C')
-    return ['paralelo', 'apoyo_exterior', 'postura', 'ritmo', 'equilibrio'];
+    return ['paralelo', 'apoyo_exterior', 'postura', 'ritmo', 'equilibrio', 'centralidad', 'tobillo', 'transicion', 'independencia_piernas'];
   if (nivel === 'C+')
-    return ['paralelo', 'apoyo_exterior', 'ritmo', 'precision', 'cantos'];
+    return ['paralelo', 'apoyo_exterior', 'ritmo', 'precision', 'cantos', 'centralidad', 'tobillo', 'transicion', 'independencia_piernas', 'angulacion_disociacion'];
   if (nivel === 'D')
-    return ['paralelo', 'precision', 'ritmo', 'apoyo_exterior', 'cantos'];
+    return ['paralelo', 'precision', 'ritmo', 'apoyo_exterior', 'cantos', 'centralidad', 'tobillo', 'transicion', 'independencia_piernas', 'angulacion_disociacion', 'baston'];
   if (nivel === 'D+')
-    return ['cantos', 'precision', 'ritmo', 'apoyo_exterior', 'coordinacion'];
+    return ['cantos', 'precision', 'ritmo', 'apoyo_exterior', 'coordinacion', 'centralidad', 'tobillo', 'transicion', 'independencia_piernas', 'angulacion_disociacion', 'baston'];
   return ['giro', 'equilibrio'];
 }
 
@@ -614,17 +628,17 @@ function familiaEjercicio(ejercicio: EjercicioTecnicoMSZ) {
     return 'seguimiento_fila';
   if (['giros-amplios-cuna', 'cuna-pista-grande-controlada'].includes(id))
     return 'cuna_giro';
-  if (['pasillo-ancho', 'pasillo-estrecho', 'cambio-radio', 'conducido-cambio-radio', 'cambio-radio-mismo-ritmo', 'mismo-radio-cambio-ritmo'].includes(id))
+  if (['pasillo-ancho', 'pasillo-estrecho', 'cambio-radio', 'conducido-cambio-radio', 'cambio-radio-mismo-ritmo', 'mismo-radio-cambio-ritmo', 'dos-cortas-una-larga', 'director-radio-ritmo', 'semaforo-radio-ritmo'].includes(id))
     return 'trayectoria_radio';
   if (['avion', 'avion-exterior-bota', 'palmada-rodilla-exterior', 'dos-manos-rodilla-exterior'].includes(id))
     return 'apoyo_exterior_brazos';
-  if (['levantar-interior', 'talon-interior-diagonal', 'giro-interior-levantado'].includes(id))
+  if (['levantar-interior', 'talon-interior-diagonal', 'giro-interior-levantado', 'nuevo-exterior-antes', 'tres-arriba-tres-ligero-tres-normal'].includes(id))
     return 'interior_exterior';
   if (['tip-tap-sin-salto', 'tip-tap-con-salto', 'pasos-activos-diagonal'].includes(id))
     return 'pies_activos';
   if (['bastones-bandeja', 'bastones-bandeja-apoyo', 'bastones-bandeja-extension', 'bastones-manos'].includes(id))
     return 'bastones';
-  if (['derrapaje-lateral', 'derrapaje-recto-derrapaje', 'giro-derrapado-esquis', 'parada-lateral'].includes(id))
+  if (['derrapaje-lateral', 'derrapaje-recto-derrapaje', 'giro-derrapado-esquis', 'parada-lateral', 'plano-canto-plano', 'roll-over-lento', 'derrapar-conducir-derrapar', 'pivotar-cantear-conducir'].includes(id))
     return 'cantos_derrapaje';
 
   return id;
@@ -679,6 +693,8 @@ const PRIORIDAD_POR_FASE: Record<FaseTecnicaMSZ, string[]> = {
   ],
   FUNDAMENTAL: [
     'diagonal-paralela',
+    'nuevo-exterior-antes',
+    'delante-detras-centro',
     'reducir-cuna-progresiva',
     'dos-manos-rodillas-palmada',
     'dos-manos-rodilla-exterior',
@@ -691,6 +707,9 @@ const PRIORIDAD_POR_FASE: Record<FaseTecnicaMSZ, string[]> = {
   ],
   INICIO_PARALELO: [
     'diagonal-paralela',
+    'nuevo-exterior-antes',
+    'tres-arriba-tres-ligero-tres-normal',
+    'delante-detras-centro',
     'paralelo-amplio-fluido',
     'dos-manos-rodilla-exterior',
     'dos-manos-rodillas-palmada',
@@ -702,6 +721,10 @@ const PRIORIDAD_POR_FASE: Record<FaseTecnicaMSZ, string[]> = {
   ],
   PARALELO_ELEMENTAL: [
     'paralelo-amplio-fluido',
+    'plano-canto-plano',
+    'roll-over-lento',
+    'nuevo-exterior-antes',
+    'piernas-dentro-tronco-equilibrado',
     'avion',
     'avion-exterior-bota',
     'talon-interior-diagonal',
@@ -711,6 +734,10 @@ const PRIORIDAD_POR_FASE: Record<FaseTecnicaMSZ, string[]> = {
     'derrapaje-lateral',
   ],
   PARALELO_CONSOLIDADO: [
+    'roll-over-lento',
+    'plano-canto-plano',
+    'derrapar-conducir-derrapar',
+    'piernas-dentro-tronco-equilibrado',
     'avion-exterior-bota',
     'giro-interior-levantado',
     'tip-tap-sin-salto',
@@ -722,6 +749,9 @@ const PRIORIDAD_POR_FASE: Record<FaseTecnicaMSZ, string[]> = {
   ],
   CONDUCIDO: [
     'conducido-amplio',
+    'derrapar-conducir-derrapar',
+    'pivotar-cantear-conducir',
+    'roll-over-lento',
     'conducido-cambio-radio',
     'tip-tap-sin-salto',
     'bastones-bandeja-apoyo',
