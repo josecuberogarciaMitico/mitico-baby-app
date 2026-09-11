@@ -2172,6 +2172,45 @@ type AvisoNuevaAltaAlumnoApp = {
   motivo: 'MISMA_FECHA' | 'NOMBRE_EXACTO' | 'NOMBRE_COMPATIBLE';
 };
 
+type AltaImportadaPegadoApp = {
+  clave: string;
+  nombre: string;
+  fechaNacimiento: string;
+  modalidad: 'BABY' | 'INTENSIVOS' | 'OCIO';
+  telefono: string;
+  ocioDiaFijo: '' | 'Jueves' | 'Sábado' | 'Domingo';
+  filaOrigen: number;
+};
+
+type ResumenImportacionAltasApp = {
+  totalLeidas: number;
+  pendientes: number;
+  yaExistian: number;
+  invalidas: number;
+  sinComprobar: number;
+};
+
+type AltaImportadaIncompletaApp = {
+  filaOrigen: number;
+  texto: string;
+  motivo: string;
+};
+
+type AltaImportadaGestionadaApp = {
+  fila: AltaImportadaPegadoApp;
+  detalle: string;
+};
+
+type DetalleImportacionAltasApp =
+  | ''
+  | 'LEIDAS'
+  | 'NUEVAS'
+  | 'GESTIONADAS'
+  | 'INVALIDAS'
+  | 'SIN_COMPROBAR';
+
+const VERSION_PARSER_ALTAS_IMPORT_APP = '2026-09-12-v5';
+
 type AltaNivelInicialFormApp = {
   nombre: string;
   fechaNacimiento: string;
@@ -2209,6 +2248,404 @@ function altaNivelInicialFormVacioApp(): AltaNivelInicialFormApp {
     telefono: '',
     ocioDiaFijo: '',
   };
+}
+
+function normalizarIdentidadAltaImportadaApp(valor: string | null | undefined) {
+  return String(valor || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizarTelefonoAltaImportadaApp(valor: string | null | undefined) {
+  const digitos = String(valor || '').replace(/\D/g, '');
+  if (digitos.length === 11 && digitos.startsWith('34')) {
+    return digitos.slice(2);
+  }
+  return digitos;
+}
+
+function normalizarModalidadAltaImportadaApp(
+  valor: string | null | undefined
+): 'BABY' | 'INTENSIVOS' | 'OCIO' | '' {
+  const limpia = normalizarIdentidadAltaImportadaApp(valor);
+  if (!limpia) return '';
+
+  // La modalidad debe aparecer como palabra completa.
+  // Antes se usaba `includes('OCIO')`, de modo que valores ajenos como
+  // "SOCIO" podían interpretarse erróneamente como OCIO.
+  const tokens = limpia
+    .split(/[^A-Z0-9]+/)
+    .map((token) => token.trim())
+    .filter(Boolean);
+
+  if (tokens.includes('BABY')) return 'BABY';
+  if (tokens.includes('OCIO')) return 'OCIO';
+  if (tokens.includes('INTENSIVO') || tokens.includes('INTENSIVOS'))
+    return 'INTENSIVOS';
+  return '';
+}
+
+function normalizarDiaOcioAltaImportadaApp(
+  valor: string | null | undefined
+): '' | 'Jueves' | 'Sábado' | 'Domingo' {
+  const limpia = normalizarIdentidadAltaImportadaApp(valor);
+  if (limpia.includes('JUEVES')) return 'Jueves';
+  if (limpia.includes('SABADO')) return 'Sábado';
+  if (limpia.includes('DOMINGO')) return 'Domingo';
+  return '';
+}
+
+function normalizarFechaAltaImportadaApp(
+  valor: string | null | undefined
+): string {
+  const limpia = String(valor || '').trim();
+  if (!limpia) return '';
+
+  const iso = limpia.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/);
+  if (iso) {
+    const [, anio, mes, dia] = iso;
+    return `${anio}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+  }
+
+  const europea = limpia.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/);
+  if (europea) {
+    const [, dia, mes, anio] = europea;
+    return `${anio}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+  }
+
+  const serialExcel = Number(limpia.replace(',', '.'));
+  if (
+    Number.isFinite(serialExcel) &&
+    serialExcel >= 20000 &&
+    serialExcel <= 80000
+  ) {
+    const fecha = new Date(
+      Date.UTC(1899, 11, 30) + Math.round(serialExcel) * 86400000
+    );
+    return fecha.toISOString().slice(0, 10);
+  }
+
+  return '';
+}
+
+function normalizarTelefonoFormularioAltaImportadaApp(
+  valor: string | null | undefined
+) {
+  const texto = String(valor || '')
+    .trim()
+    .replace(/^'+/, '')
+    .replace(/\.0$/, '');
+  const soloTelefono = texto.replace(/[^\d+]/g, '');
+  if (soloTelefono.startsWith('+34') && soloTelefono.length === 12) {
+    return soloTelefono.slice(3);
+  }
+  if (soloTelefono.startsWith('34') && soloTelefono.length === 11) {
+    return soloTelefono.slice(2);
+  }
+  return soloTelefono;
+}
+
+function normalizarCabeceraAltaImportadaApp(valor: string | null | undefined) {
+  return normalizarIdentidadAltaImportadaApp(valor);
+}
+
+function esCabeceraListadoAltasPegadoApp(celdas: string[]) {
+  const cabeceras = celdas.map(normalizarCabeceraAltaImportadaApp);
+  return (
+    cabeceras.some((item) => item.includes('NOMBRE')) &&
+    cabeceras.some((item) => item.includes('MODALIDAD'))
+  );
+}
+
+function parsearListadoAltasPegadoApp(texto: string): {
+  filas: AltaImportadaPegadoApp[];
+  invalidas: number;
+  filasInvalidas: AltaImportadaIncompletaApp[];
+} {
+  const lineas = String(texto || '')
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((linea) => linea.trimEnd())
+    .filter((linea) => linea.trim().length > 0);
+
+  if (lineas.length === 0)
+    return { filas: [], invalidas: 0, filasInvalidas: [] };
+
+  const filasCeldas = lineas.map((linea) =>
+    linea.split('\t').map((celda) => celda.trim())
+  );
+  const hayCabecera = esCabeceraListadoAltasPegadoApp(filasCeldas[0]);
+  const cabeceras = hayCabecera
+    ? filasCeldas[0].map(normalizarCabeceraAltaImportadaApp)
+    : [];
+
+  const indiceCabecera = (predicado: (valor: string) => boolean) =>
+    cabeceras.findIndex(predicado);
+
+  const indiceNombre = hayCabecera
+    ? indiceCabecera(
+        (valor) =>
+          valor === 'NOMBRE' ||
+          valor === 'NOMBRES' ||
+          valor.includes('NOMBRE COMPLETO')
+      )
+    : -1;
+  const indiceApellido1 = hayCabecera
+    ? indiceCabecera(
+        (valor) =>
+          valor.includes('APELLIDO') &&
+          (/^1\b/.test(valor) ||
+            valor.includes('1ER') ||
+            valor.includes('PRIMER'))
+      )
+    : -1;
+  const indiceApellido2 = hayCabecera
+    ? indiceCabecera(
+        (valor) =>
+          valor.includes('APELLIDO') &&
+          (/^2\b/.test(valor) ||
+            valor.includes('2O') ||
+            valor.includes('SEGUNDO'))
+      )
+    : -1;
+  const indiceFecha = hayCabecera
+    ? indiceCabecera(
+        (valor) =>
+          valor.includes('FECHA') &&
+          (valor.includes('NAC') || valor.includes('NACIMIENTO'))
+      )
+    : -1;
+  const indiceTelefono = hayCabecera
+    ? indiceCabecera(
+        (valor) =>
+          valor === 'TEL' ||
+          valor.startsWith('TEL ') ||
+          valor.includes('TELEFONO') ||
+          valor.includes('MOVIL')
+      )
+    : -1;
+  const indiceModalidad = hayCabecera
+    ? indiceCabecera((valor) => valor.includes('MODALIDAD'))
+    : -1;
+  const indiceDiaOcio = hayCabecera
+    ? indiceCabecera(
+        (valor) =>
+          valor === 'DIA' ||
+          (valor.includes('DIA') &&
+            (valor.includes('OCIO') || valor.includes('FIJO')))
+      )
+    : -1;
+
+  const datos = hayCabecera ? filasCeldas.slice(1) : filasCeldas;
+  const clavesVistas = new Set<string>();
+  const filas: AltaImportadaPegadoApp[] = [];
+  const filasInvalidas: AltaImportadaIncompletaApp[] = [];
+
+  datos.forEach((celdas, indice) => {
+    const filaOrigen = indice + (hayCabecera ? 2 : 1);
+
+    let nombre = '';
+    let fechaNacimiento = '';
+    let telefono = '';
+    let modalidad: 'BABY' | 'INTENSIVOS' | 'OCIO' | '' = '';
+    let ocioDiaFijo: '' | 'Jueves' | 'Sábado' | 'Domingo' = '';
+
+    if (hayCabecera) {
+      nombre = [indiceNombre, indiceApellido1, indiceApellido2]
+        .filter((posicion) => posicion >= 0)
+        .map((posicion) => celdas[posicion] || '')
+        .filter(Boolean)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      fechaNacimiento =
+        indiceFecha >= 0
+          ? normalizarFechaAltaImportadaApp(celdas[indiceFecha])
+          : '';
+      telefono =
+        indiceTelefono >= 0
+          ? normalizarTelefonoFormularioAltaImportadaApp(
+              celdas[indiceTelefono]
+            )
+          : '';
+      modalidad =
+        indiceModalidad >= 0
+          ? normalizarModalidadAltaImportadaApp(celdas[indiceModalidad])
+          : '';
+      ocioDiaFijo =
+        indiceDiaOcio >= 0
+          ? normalizarDiaOcioAltaImportadaApp(celdas[indiceDiaOcio])
+          : '';
+    } else {
+      const indiceFechaDetectada = celdas.findIndex(
+        (celda) => Boolean(normalizarFechaAltaImportadaApp(celda))
+      );
+      const modalidadesDetectadas = Array.from(
+        new Set(
+          celdas
+            .map((celda) => normalizarModalidadAltaImportadaApp(celda))
+            .filter(Boolean)
+        )
+      ) as Array<'BABY' | 'INTENSIVOS' | 'OCIO'>;
+      const indiceModalidadDetectada =
+        modalidadesDetectadas.length === 1
+          ? celdas.findIndex(
+              (celda) =>
+                normalizarModalidadAltaImportadaApp(celda) ===
+                modalidadesDetectadas[0]
+            )
+          : -1;
+      const indiceTelefonoDetectado = celdas.findIndex((celda, posicion) => {
+        if (posicion === indiceFechaDetectada) return false;
+        const digitos = normalizarTelefonoAltaImportadaApp(celda);
+        return digitos.length >= 9 && digitos.length <= 12;
+      });
+
+      fechaNacimiento =
+        indiceFechaDetectada >= 0
+          ? normalizarFechaAltaImportadaApp(celdas[indiceFechaDetectada])
+          : '';
+      telefono =
+        indiceTelefonoDetectado >= 0
+          ? normalizarTelefonoFormularioAltaImportadaApp(
+              celdas[indiceTelefonoDetectado]
+            )
+          : '';
+      modalidad =
+        indiceModalidadDetectada >= 0
+          ? normalizarModalidadAltaImportadaApp(
+              celdas[indiceModalidadDetectada]
+            )
+          : '';
+      ocioDiaFijo =
+        celdas
+          .map(normalizarDiaOcioAltaImportadaApp)
+          .find(Boolean) || '';
+
+      const finNombre =
+        indiceFechaDetectada > 0
+          ? indiceFechaDetectada
+          : Math.min(3, celdas.length);
+      nombre = celdas
+        .slice(0, finNombre)
+        .filter(Boolean)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
+    const modalidadesFila = Array.from(
+      new Set(
+        celdas
+          .map((celda) => normalizarModalidadAltaImportadaApp(celda))
+          .filter(Boolean)
+      )
+    );
+
+    if (modalidadesFila.length > 1) {
+      filasInvalidas.push({
+        filaOrigen,
+        texto: celdas.filter(Boolean).join(' · ') || '(fila vacía)',
+        motivo: `Modalidad ambigua: aparecen ${modalidadesFila.join(
+          ' y '
+        )}.`,
+      });
+      return;
+    }
+
+    // La modalidad detectada en TODA la fila es la fuente de verdad.
+    // Esto evita que una columna desplazada o una cabecera irregular deje
+    // OCIO cuando la propia fila contiene BABY.
+    if (modalidadesFila.length === 1) {
+      modalidad = modalidadesFila[0] as 'BABY' | 'INTENSIVOS' | 'OCIO';
+    }
+
+    if (!nombre || !fechaNacimiento || !telefono || !modalidad) {
+      const faltan = [
+        !nombre ? 'nombre' : '',
+        !fechaNacimiento ? 'fecha de nacimiento' : '',
+        !telefono ? 'teléfono' : '',
+        !modalidad ? 'modalidad' : '',
+      ].filter(Boolean);
+
+      filasInvalidas.push({
+        filaOrigen,
+        texto: celdas.filter(Boolean).join(' · ') || '(fila vacía)',
+        motivo: `Falta ${faltan.join(', ')}.`,
+      });
+      return;
+    }
+
+    const nombreNormalizado = normalizarIdentidadAltaImportadaApp(nombre);
+    const telefonoNormalizado =
+      normalizarTelefonoAltaImportadaApp(telefono);
+    const clave = `${nombreNormalizado}|${fechaNacimiento}|${telefonoNormalizado}`;
+
+    if (!nombreNormalizado) {
+      filasInvalidas.push({
+        filaOrigen,
+        texto: celdas.filter(Boolean).join(' · ') || '(sin nombre)',
+        motivo: 'El nombre no se puede interpretar.',
+      });
+      return;
+    }
+
+    if (clavesVistas.has(clave)) {
+      filasInvalidas.push({
+        filaOrigen,
+        texto: celdas.filter(Boolean).join(' · ') || nombre,
+        motivo: 'Fila duplicada dentro del listado pegado.',
+      });
+      return;
+    }
+
+    clavesVistas.add(clave);
+    filas.push({
+      clave,
+      nombre,
+      fechaNacimiento,
+      modalidad,
+      telefono,
+      ocioDiaFijo: modalidad === 'OCIO' ? ocioDiaFijo : '',
+      filaOrigen,
+    });
+  });
+
+  return {
+    filas,
+    invalidas: filasInvalidas.length,
+    filasInvalidas,
+  };
+}
+
+function coincideAltaImportadaConAltaExistenteApp(
+  fila: AltaImportadaPegadoApp,
+  alta: AltaNivelInicialApp
+) {
+  const nombreImportado = normalizarIdentidadAltaImportadaApp(fila.nombre);
+  const nombreExistente = normalizarIdentidadAltaImportadaApp(
+    alta.nombre_completo
+  );
+  const telefonoImportado = normalizarTelefonoAltaImportadaApp(fila.telefono);
+  const telefonoExistente = normalizarTelefonoAltaImportadaApp(alta.telefono);
+  const mismaFecha =
+    Boolean(fila.fechaNacimiento) &&
+    Boolean(alta.fecha_nacimiento) &&
+    fila.fechaNacimiento === alta.fecha_nacimiento;
+  const mismoNombre =
+    Boolean(nombreImportado) && nombreImportado === nombreExistente;
+  const mismoTelefono =
+    Boolean(telefonoImportado) && telefonoImportado === telefonoExistente;
+
+  return (
+    (mismoNombre && mismaFecha) ||
+    (mismoNombre && mismoTelefono) ||
+    (mismaFecha && mismoTelefono)
+  );
 }
 
 function testNivelPublicoRespuestasVaciasApp(): TestNivelPublicoRespuestasApp {
@@ -5388,6 +5825,63 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
   const [detalleRespuestaAlta, setDetalleRespuestaAlta] = useState('');
 
+  const [mostrarImportadorAltas, setMostrarImportadorAltas] = useState(false);
+  const [textoImportarAltas, setTextoImportarAltas] = useState('');
+  const [analizandoImportarAltas, setAnalizandoImportarAltas] = useState(false);
+  const [altasImportadasPendientes, setAltasImportadasPendientes] = useState<
+    AltaImportadaPegadoApp[]
+  >([]);
+  const [resumenImportacionAltas, setResumenImportacionAltas] =
+    useState<ResumenImportacionAltasApp | null>(null);
+  const [mensajeImportacionAltas, setMensajeImportacionAltas] = useState('');
+  const [altaImportadaActivaClave, setAltaImportadaActivaClave] = useState('');
+  const [altasImportadasLeidas, setAltasImportadasLeidas] = useState<
+    AltaImportadaPegadoApp[]
+  >([]);
+  const [altasImportadasGestionadas, setAltasImportadasGestionadas] = useState<
+    AltaImportadaGestionadaApp[]
+  >([]);
+  const [altasImportadasSinComprobar, setAltasImportadasSinComprobar] = useState<
+    AltaImportadaPegadoApp[]
+  >([]);
+  const [altasImportadasInvalidas, setAltasImportadasInvalidas] = useState<
+    AltaImportadaIncompletaApp[]
+  >([]);
+  const [detalleImportacionAltasActivo, setDetalleImportacionAltasActivo] =
+    useState<DetalleImportacionAltasApp>('');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const claveVersion = 'mitico_importador_altas_parser_version';
+    const versionAnterior = window.sessionStorage.getItem(claveVersion);
+
+    if (versionAnterior === VERSION_PARSER_ALTAS_IMPORT_APP) return;
+
+    window.sessionStorage.setItem(
+      claveVersion,
+      VERSION_PARSER_ALTAS_IMPORT_APP
+    );
+
+    setAltasImportadasPendientes([]);
+    setAltasImportadasLeidas([]);
+    setAltasImportadasGestionadas([]);
+    setAltasImportadasSinComprobar([]);
+    setAltasImportadasInvalidas([]);
+    setResumenImportacionAltas(null);
+    setDetalleImportacionAltasActivo('');
+    setAltaImportadaActivaClave('');
+
+    if (textoImportarAltas.trim()) {
+      setMensajeImportacionAltas(
+        'Importador actualizado. Pulsa “Comprobar listado” para recalcular las filas.'
+      );
+    } else {
+      setMensajeImportacionAltas('');
+    }
+  }, []);
+
+
   async function cabecerasSupabaseAutenticadasApp(
     incluirJson = false
   ): Promise<Record<string, string>> {
@@ -6172,6 +6666,230 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     }
   }
 
+
+  async function pegarListadoAltasDesdePortapapelesApp() {
+    setMensajeImportacionAltas('');
+    try {
+      const texto = await navigator.clipboard.readText();
+      if (!texto.trim()) {
+        setMensajeImportacionAltas(
+          'El portapapeles está vacío. También puedes pegar directamente con ⌘V / Ctrl+V.'
+        );
+        return;
+      }
+      setTextoImportarAltas(texto);
+      setAltasImportadasPendientes([]);
+      setResumenImportacionAltas(null);
+      setMensajeImportacionAltas(
+        'Listado pegado. Pulsa “Comprobar listado”.'
+      );
+    } catch {
+      setMensajeImportacionAltas(
+        'El navegador no ha permitido leer el portapapeles. Pega directamente en el cuadro con ⌘V / Ctrl+V.'
+      );
+    }
+  }
+
+  async function analizarListadoAltasPegadoApp() {
+    const parseado = parsearListadoAltasPegadoApp(textoImportarAltas);
+
+    setAltasImportadasPendientes([]);
+    setAltasImportadasLeidas(parseado.filas);
+    setAltasImportadasGestionadas([]);
+    setAltasImportadasSinComprobar([]);
+    setAltasImportadasInvalidas(parseado.filasInvalidas);
+    setDetalleImportacionAltasActivo('');
+    setResumenImportacionAltas(null);
+    setMensajeImportacionAltas('');
+
+    if (parseado.filas.length === 0) {
+      setResumenImportacionAltas({
+        totalLeidas: 0,
+        pendientes: 0,
+        yaExistian: 0,
+        invalidas: parseado.invalidas,
+        sinComprobar: 0,
+      });
+      setDetalleImportacionAltasActivo(
+        parseado.invalidas > 0 ? 'INVALIDAS' : ''
+      );
+      setMensajeImportacionAltas(
+        'No he encontrado filas completas. Pulsa “Filas incompletas” para ver qué falta.'
+      );
+      return;
+    }
+
+    setAnalizandoImportarAltas(true);
+    setError('');
+
+    try {
+      const altasActuales =
+        (await ejecutarFuncionConRespuesta<AltaNivelInicialApp>(
+          'obtener_altas_nivel_inicial_app',
+          {}
+        )) || [];
+
+      setAltasNivelInicial(
+        Array.isArray(altasActuales) ? altasActuales : []
+      );
+
+      const gestionadas: AltaImportadaGestionadaApp[] = [];
+      const pendientesPreliminares = parseado.filas.filter((fila) => {
+        const altaExistente = altasActuales.find((alta) =>
+          coincideAltaImportadaConAltaExistenteApp(fila, alta)
+        );
+
+        if (!altaExistente) return true;
+
+        gestionadas.push({
+          fila,
+          detalle: `Alta/Test ya existente · ${altaExistente.estado}`,
+        });
+        return false;
+      });
+
+      let sinComprobar = 0;
+      const sinComprobarFilas: AltaImportadaPegadoApp[] = [];
+      const pendientesConfirmadas: AltaImportadaPegadoApp[] = [];
+
+      // Reutilizamos exactamente la comprobación oficial que ya usa
+      // “Nueva solicitud”. Se hace por bloques para no lanzar decenas de
+      // peticiones simultáneas cuando se pega un Excel grande.
+      for (let inicio = 0; inicio < pendientesPreliminares.length; inicio += 6) {
+        const bloque = pendientesPreliminares.slice(inicio, inicio + 6);
+        const comprobaciones = await Promise.all(
+          bloque.map(async (fila) => {
+            try {
+              const posibles =
+                (await ejecutarFuncionAuthJson<AvisoNuevaAltaAlumnoApp[]>(
+                  'comprobar_posibles_alumnos_nueva_alta_app',
+                  {
+                    p_nombre_completo: fila.nombre,
+                    p_fecha_nacimiento: fila.fechaNacimiento,
+                  }
+                )) || [];
+
+              const coincidencia = posibles.find(
+                (item) =>
+                  item.motivo === 'NOMBRE_EXACTO' ||
+                  item.motivo === 'NOMBRE_COMPATIBLE'
+              );
+
+              return { fila, coincidencia, comprobada: true };
+            } catch {
+              return { fila, coincidencia: undefined, comprobada: false };
+            }
+          })
+        );
+
+        comprobaciones.forEach(({ fila, coincidencia, comprobada }) => {
+          if (!comprobada) {
+            sinComprobar += 1;
+            sinComprobarFilas.push(fila);
+            return;
+          }
+
+          if (coincidencia) {
+            const fuente =
+              coincidencia.fuente === 'FICHA_MAESTRA'
+                ? 'Ficha existente'
+                : `Alta/Test ${coincidencia.estado || 'existente'}`;
+
+            gestionadas.push({
+              fila,
+              detalle: `${fuente} · coincide con ${coincidencia.alumno}`,
+            });
+            return;
+          }
+
+          pendientesConfirmadas.push(fila);
+        });
+      }
+
+      setAltasImportadasPendientes(pendientesConfirmadas);
+      setAltasImportadasGestionadas(gestionadas);
+      setAltasImportadasSinComprobar(sinComprobarFilas);
+      setResumenImportacionAltas({
+        totalLeidas: parseado.filas.length,
+        pendientes: pendientesConfirmadas.length,
+        yaExistian: gestionadas.length,
+        invalidas: parseado.invalidas,
+        sinComprobar,
+      });
+
+      setDetalleImportacionAltasActivo(
+        pendientesConfirmadas.length > 0
+          ? 'NUEVAS'
+          : gestionadas.length > 0
+          ? 'GESTIONADAS'
+          : parseado.invalidas > 0
+          ? 'INVALIDAS'
+          : sinComprobar > 0
+          ? 'SIN_COMPROBAR'
+          : 'LEIDAS'
+      );
+
+      if (pendientesConfirmadas.length === 0 && sinComprobar === 0) {
+        setMensajeImportacionAltas(
+          'Todo el listado ya está gestionado en la app o en Alta/Test. No hay nadie nuevo que preparar.'
+        );
+      } else if (sinComprobar > 0) {
+        setMensajeImportacionAltas(
+          `Hay ${sinComprobar} fila(s) que no se han podido verificar. Pulsa “Sin comprobar” para ver cuáles son.`
+        );
+      } else {
+        setMensajeImportacionAltas(
+          `${pendientesConfirmadas.length} alumno(s) nuevo(s) pendientes de preparar Alta/Test. Puedes pulsar los contadores para revisar cada grupo.`
+        );
+      }
+    } catch (err: any) {
+      setAltasImportadasPendientes([]);
+      setAltasImportadasGestionadas([]);
+      setAltasImportadasSinComprobar([]);
+      setResumenImportacionAltas(null);
+      setMensajeImportacionAltas('');
+      setError(
+        err?.message ||
+          'No se ha podido comprobar el listado de nuevas altas.'
+      );
+    } finally {
+      setAnalizandoImportarAltas(false);
+    }
+  }
+
+  function abrirAltaTestDesdeImportacionApp(fila: AltaImportadaPegadoApp) {
+    setFormAltaNivelInicial({
+      nombre: fila.nombre,
+      fechaNacimiento: fila.fechaNacimiento,
+      modalidad: fila.modalidad,
+      telefono: fila.telefono,
+      ocioDiaFijo: fila.modalidad === 'OCIO' ? fila.ocioDiaFijo : '',
+    });
+    setAltaImportadaActivaClave(fila.clave);
+    setMostrarFormularioAltaNivel(true);
+    setError('');
+
+    window.setTimeout(() => {
+      enfocarElementoApp('form-alta-nivel-inicial', {
+        block: 'start',
+        abrirDetallesPadre: true,
+      });
+    }, 40);
+  }
+
+  function limpiarImportadorAltasApp() {
+    setTextoImportarAltas('');
+    setAltasImportadasPendientes([]);
+    setAltasImportadasLeidas([]);
+    setAltasImportadasGestionadas([]);
+    setAltasImportadasSinComprobar([]);
+    setAltasImportadasInvalidas([]);
+    setDetalleImportacionAltasActivo('');
+    setResumenImportacionAltas(null);
+    setMensajeImportacionAltas('');
+    setAltaImportadaActivaClave('');
+  }
+
   function enlacePublicoAltaNivel(alta: AltaNivelInicialApp) {
     if (typeof window === 'undefined') return '';
     return `${window.location.origin}${window.location.pathname}?test_nivel=${alta.token_publico}`;
@@ -6252,8 +6970,51 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
             : null,
       });
 
+      const modalidadCreada = formAltaNivelInicial.modalidad;
+      const veniaDeImportacion = Boolean(altaImportadaActivaClave);
+
+      if (altaImportadaActivaClave) {
+        const filaCreada = altasImportadasPendientes.find(
+          (fila) => fila.clave === altaImportadaActivaClave
+        );
+
+        setAltasImportadasPendientes((actual) =>
+          actual.filter((fila) => fila.clave !== altaImportadaActivaClave)
+        );
+
+        if (filaCreada) {
+          setAltasImportadasGestionadas((actual) => [
+            ...actual,
+            {
+              fila: filaCreada,
+              detalle: 'Alta/Test creado ahora · PENDIENTE_ENVIO',
+            },
+          ]);
+        }
+
+        setResumenImportacionAltas((actual) =>
+          actual
+            ? {
+                ...actual,
+                pendientes: Math.max(0, actual.pendientes - 1),
+                yaExistian: actual.yaExistian + 1,
+              }
+            : actual
+        );
+        setMensajeImportacionAltas(
+          `Alta/Test creado para ${nombre}. Ya no aparece como pendiente en el listado pegado.`
+        );
+        setAltaImportadaActivaClave('');
+      }
+
       setFormAltaNivelInicial(altaNivelInicialFormVacioApp());
       setMostrarFormularioAltaNivel(false);
+
+      if (veniaDeImportacion) {
+        setFiltroAltasNivel('PENDIENTE_ENVIO');
+        setFiltroModalidadAltasNivel(modalidadCreada);
+      }
+
       await cargarAltasNivelInicial();
     } catch (err: any) {
       setError(err?.message || 'No se pudo crear el test de nivel.');
@@ -42298,9 +43059,35 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                   </button>
                   <button
                     type="button"
-                    onClick={() =>
-                      setMostrarFormularioAltaNivel(!mostrarFormularioAltaNivel)
-                    }
+                    onClick={() => {
+                      setMostrarImportadorAltas((actual) => !actual);
+                      setMensajeImportacionAltas('');
+                    }}
+                    style={{
+                      ...botonSecundario,
+                      background: mostrarImportadorAltas
+                        ? '#0f766e'
+                        : 'rgba(255,255,255,.10)',
+                      color: '#ffffff',
+                      border: '1px solid rgba(255,255,255,.28)',
+                    }}
+                  >
+                    {mostrarImportadorAltas
+                      ? 'Cerrar importador'
+                      : 'Pegar altas de ventas'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const abrir = !mostrarFormularioAltaNivel;
+                      if (abrir) {
+                        setFormAltaNivelInicial(
+                          altaNivelInicialFormVacioApp()
+                        );
+                        setAltaImportadaActivaClave('');
+                      }
+                      setMostrarFormularioAltaNivel(abrir);
+                    }}
                     style={{
                       ...botonPrincipal,
                       background: '#16a34a',
@@ -42313,8 +43100,585 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               </div>
             </article>
 
+            {mostrarImportadorAltas && (
+              <article
+                style={{
+                  ...tarjeta,
+                  border: '1px solid #99f6e4',
+                  background:
+                    'linear-gradient(135deg, #f0fdfa, #ffffff 58%, #f8fafc)',
+                  display: 'grid',
+                  gap: 14,
+                }}
+              >
+                <div>
+                  <p
+                    style={{
+                      margin: 0,
+                      color: '#0f766e',
+                      fontSize: 11,
+                      fontWeight: 950,
+                      letterSpacing: '.08em',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    PREPARAR ALTAS ANTES DE AIMHARDER
+                  </p>
+                  <h3 style={{ margin: '4px 0 0' }}>
+                    Pegar listado de ventas
+                  </h3>
+                  <p
+                    style={{
+                      margin: '6px 0 0',
+                      color: '#475569',
+                      lineHeight: 1.45,
+                      fontSize: 13,
+                    }}
+                  >
+                    Copia las filas desde Excel y pégalas aquí. La app no crea
+                    ni envía nada: primero comprueba quién ya existe y debajo
+                    muestra solamente los alumnos que todavía necesitan
+                    Alta/Test.
+                  </p>
+                </div>
+
+                <textarea
+                  value={textoImportarAltas}
+                  onChange={(e) => {
+                    setTextoImportarAltas(e.target.value);
+                    setAltasImportadasPendientes([]);
+                    setAltasImportadasLeidas([]);
+                    setAltasImportadasGestionadas([]);
+                    setAltasImportadasSinComprobar([]);
+                    setAltasImportadasInvalidas([]);
+                    setDetalleImportacionAltasActivo('');
+                    setResumenImportacionAltas(null);
+                    setMensajeImportacionAltas('');
+                  }}
+                  rows={7}
+                  placeholder={
+                    'Pega aquí las filas de Excel. Puedes incluir la cabecera:\\nNOMBRE · 1ER APELLIDO · 2º APELLIDO · FECHA NACI · TEL · ... · MODALIDAD'
+                  }
+                  style={{
+                    ...textareaCampo,
+                    minHeight: 150,
+                    fontFamily:
+                      'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+                    fontSize: 13,
+                  }}
+                />
+
+                <div
+                  style={{
+                    display: 'flex',
+                    gap: 8,
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                  }}
+                >
+                  <button
+                    type="button"
+                    onClick={pegarListadoAltasDesdePortapapelesApp}
+                    disabled={analizandoImportarAltas}
+                    style={botonSecundario}
+                  >
+                    Pegar portapapeles
+                  </button>
+                  <button
+                    type="button"
+                    onClick={analizarListadoAltasPegadoApp}
+                    disabled={
+                      analizandoImportarAltas || !textoImportarAltas.trim()
+                    }
+                    style={{
+                      ...botonPrincipal,
+                      opacity:
+                        analizandoImportarAltas || !textoImportarAltas.trim()
+                          ? 0.6
+                          : 1,
+                    }}
+                  >
+                    {analizandoImportarAltas
+                      ? 'Comprobando...'
+                      : 'Comprobar listado'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={limpiarImportadorAltasApp}
+                    disabled={analizandoImportarAltas}
+                    style={botonSecundario}
+                  >
+                    Limpiar
+                  </button>
+                </div>
+
+                {resumenImportacionAltas && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 8,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    {(
+                      [
+                        [
+                          'LEIDAS',
+                          `Leídos: ${resumenImportacionAltas.totalLeidas}`,
+                          '#2563eb',
+                          '#eff6ff',
+                        ],
+                        [
+                          'NUEVAS',
+                          `Nuevos: ${resumenImportacionAltas.pendientes}`,
+                          '#047857',
+                          '#ecfdf5',
+                        ],
+                        [
+                          'GESTIONADAS',
+                          `Ya gestionados: ${resumenImportacionAltas.yaExistian}`,
+                          '#475569',
+                          '#f8fafc',
+                        ],
+                        [
+                          'INVALIDAS',
+                          `Filas incompletas: ${resumenImportacionAltas.invalidas}`,
+                          '#c2410c',
+                          '#fff7ed',
+                        ],
+                        ...(resumenImportacionAltas.sinComprobar > 0
+                          ? [
+                              [
+                                'SIN_COMPROBAR',
+                                `Sin comprobar: ${resumenImportacionAltas.sinComprobar}`,
+                                '#b91c1c',
+                                '#fef2f2',
+                              ],
+                            ]
+                          : []),
+                      ] as Array<
+                        [DetalleImportacionAltasApp, string, string, string]
+                      >
+                    ).map(([tipo, etiqueta, color, fondo]) => {
+                      const activo = detalleImportacionAltasActivo === tipo;
+
+                      return (
+                        <button
+                          key={tipo}
+                          type="button"
+                          aria-pressed={activo}
+                          onClick={() => {
+                            setDetalleImportacionAltasActivo(tipo);
+                            window.setTimeout(() => {
+                              document
+                                .getElementById('resultado-importacion-altas')
+                                ?.scrollIntoView({
+                                  behavior: 'smooth',
+                                  block: 'nearest',
+                                });
+                            }, 0);
+                          }}
+                          style={{
+                            appearance: 'none',
+                            WebkitAppearance: 'none',
+                            border: activo
+                              ? `2px solid ${color}`
+                              : `1px solid ${color}55`,
+                            borderRadius: 999,
+                            padding: '7px 11px',
+                            background: activo ? color : fondo,
+                            color: activo ? '#ffffff' : color,
+                            fontSize: 12,
+                            fontWeight: 900,
+                            fontFamily: 'inherit',
+                            lineHeight: 1.2,
+                            cursor: 'pointer',
+                            pointerEvents: 'auto',
+                            position: 'relative',
+                            zIndex: 2,
+                            boxShadow: activo
+                              ? `0 6px 16px ${color}30`
+                              : 'none',
+                          }}
+                        >
+                          {etiqueta} {activo ? '✓' : '›'}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {mensajeImportacionAltas && (
+                  <div
+                    style={{
+                      padding: '10px 12px',
+                      borderRadius: 12,
+                      background:
+                        resumenImportacionAltas?.pendientes === 0 &&
+                        resumenImportacionAltas?.sinComprobar === 0
+                          ? '#ecfdf5'
+                          : '#eff6ff',
+                      border:
+                        resumenImportacionAltas?.pendientes === 0 &&
+                        resumenImportacionAltas?.sinComprobar === 0
+                          ? '1px solid #a7f3d0'
+                          : '1px solid #bfdbfe',
+                      color:
+                        resumenImportacionAltas?.pendientes === 0 &&
+                        resumenImportacionAltas?.sinComprobar === 0
+                          ? '#047857'
+                          : '#1e40af',
+                      fontWeight: 800,
+                      fontSize: 13,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {mensajeImportacionAltas}
+                  </div>
+                )}
+
+                {resumenImportacionAltas &&
+                  detalleImportacionAltasActivo && (
+                    <section
+                      id="resultado-importacion-altas"
+                      style={{
+                        display: 'grid',
+                        gap: 9,
+                        border: '1px solid #dbeafe',
+                        borderRadius: 16,
+                        padding: 12,
+                        background: '#ffffff',
+                      }}
+                    >
+                      <div>
+                        <strong style={{ fontSize: 15 }}>
+                          {detalleImportacionAltasActivo === 'LEIDAS'
+                            ? `Leídos · ${altasImportadasLeidas.length}`
+                            : detalleImportacionAltasActivo === 'NUEVAS'
+                            ? `Nuevos · ${altasImportadasPendientes.length}`
+                            : detalleImportacionAltasActivo === 'GESTIONADAS'
+                            ? `Ya gestionados · ${altasImportadasGestionadas.length}`
+                            : detalleImportacionAltasActivo === 'INVALIDAS'
+                            ? `Filas incompletas · ${altasImportadasInvalidas.length}`
+                            : `Sin comprobar · ${altasImportadasSinComprobar.length}`}
+                        </strong>
+                        <p
+                          style={{
+                            margin: '3px 0 0',
+                            color: '#64748b',
+                            fontSize: 12,
+                          }}
+                        >
+                          {detalleImportacionAltasActivo === 'NUEVAS'
+                            ? 'Solo estos necesitan preparar un Alta/Test.'
+                            : detalleImportacionAltasActivo === 'GESTIONADAS'
+                            ? 'Estos ya existen o ya tienen un Alta/Test; no se vuelven a enviar.'
+                            : detalleImportacionAltasActivo === 'INVALIDAS'
+                            ? 'Estas filas necesitan corregirse antes de poder comprobarlas.'
+                            : detalleImportacionAltasActivo === 'SIN_COMPROBAR'
+                            ? 'La app no ha podido confirmar estos registros; no se crean por seguridad.'
+                            : 'Todas las filas válidas interpretadas del listado.'}
+                        </p>
+                      </div>
+
+                      {detalleImportacionAltasActivo === 'INVALIDAS' &&
+                        altasImportadasInvalidas.map((fila) => (
+                          <article
+                            key={`invalida-${fila.filaOrigen}-${fila.texto}`}
+                            style={{
+                              border: '1px solid #fed7aa',
+                              borderRadius: 14,
+                              padding: 11,
+                              background: '#fff7ed',
+                            }}
+                          >
+                            <strong style={{ color: '#c2410c' }}>
+                              Fila {fila.filaOrigen}
+                            </strong>
+                            <div
+                              style={{
+                                marginTop: 4,
+                                color: '#9a3412',
+                                fontSize: 12,
+                                fontWeight: 800,
+                              }}
+                            >
+                              {fila.motivo}
+                            </div>
+                            <div
+                              style={{
+                                marginTop: 4,
+                                color: '#64748b',
+                                fontSize: 11,
+                                overflowWrap: 'anywhere',
+                              }}
+                            >
+                              {fila.texto}
+                            </div>
+                          </article>
+                        ))}
+
+                      {detalleImportacionAltasActivo === 'GESTIONADAS' &&
+                        altasImportadasGestionadas.map(({ fila, detalle }) => (
+                          <article
+                            key={`gestionada-${fila.clave}`}
+                            style={{
+                              border: '1px solid #e2e8f0',
+                              borderRadius: 14,
+                              padding: 11,
+                              background: '#f8fafc',
+                            }}
+                          >
+                            <strong
+                              style={{
+                                display: 'block',
+                                color: '#0f172a',
+                                fontSize: 14,
+                              }}
+                            >
+                              {fila.nombre}
+                            </strong>
+                            <span
+                              style={{
+                                display: 'block',
+                                marginTop: 3,
+                                color: '#64748b',
+                                fontSize: 12,
+                              }}
+                            >
+                              {formatearFecha(fila.fechaNacimiento)} ·{' '}
+                              {fila.telefono} · {fila.modalidad}
+                            </span>
+                            <span
+                              style={{
+                                display: 'block',
+                                marginTop: 4,
+                                color: '#047857',
+                                fontSize: 12,
+                                fontWeight: 800,
+                              }}
+                            >
+                              ✓ {detalle}
+                            </span>
+                          </article>
+                        ))}
+
+                      {detalleImportacionAltasActivo === 'SIN_COMPROBAR' &&
+                        altasImportadasSinComprobar.map((fila) => (
+                          <article
+                            key={`sin-comprobar-${fila.clave}`}
+                            style={{
+                              border: '1px solid #fecaca',
+                              borderRadius: 14,
+                              padding: 11,
+                              background: '#fef2f2',
+                            }}
+                          >
+                            <strong
+                              style={{
+                                display: 'block',
+                                color: '#991b1b',
+                                fontSize: 14,
+                              }}
+                            >
+                              {fila.nombre}
+                            </strong>
+                            <span
+                              style={{
+                                display: 'block',
+                                marginTop: 3,
+                                color: '#64748b',
+                                fontSize: 12,
+                              }}
+                            >
+                              {formatearFecha(fila.fechaNacimiento)} ·{' '}
+                              {fila.telefono} · {fila.modalidad}
+                            </span>
+                          </article>
+                        ))}
+
+                      {detalleImportacionAltasActivo === 'NUEVAS' &&
+                        altasImportadasPendientes.map((fila) => (
+                          <article
+                            key={`nueva-${fila.clave}`}
+                            style={{
+                              border: '1px solid #dbeafe',
+                              borderRadius: 16,
+                              padding: 12,
+                              background: '#ffffff',
+                              display: 'flex',
+                              gap: 12,
+                              justifyContent: 'space-between',
+                              alignItems: 'center',
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <div style={{ minWidth: 0, flex: '1 1 300px' }}>
+                              <strong
+                                style={{
+                                  display: 'block',
+                                  color: '#0f172a',
+                                  fontSize: 15,
+                                }}
+                              >
+                                {fila.nombre}
+                              </strong>
+                              <span
+                                style={{
+                                  display: 'block',
+                                  marginTop: 4,
+                                  color: '#64748b',
+                                  fontSize: 12,
+                                  lineHeight: 1.4,
+                                }}
+                              >
+                                {formatearFecha(fila.fechaNacimiento)} ·{' '}
+                                {fila.telefono} · {fila.modalidad}
+                                {fila.modalidad === 'OCIO' && fila.ocioDiaFijo
+                                  ? ` · ${fila.ocioDiaFijo}`
+                                  : ''}
+                              </span>
+                              {fila.modalidad === 'OCIO' &&
+                                !fila.ocioDiaFijo && (
+                                  <span
+                                    style={{
+                                      display: 'block',
+                                      marginTop: 4,
+                                      color: '#b45309',
+                                      fontSize: 12,
+                                      fontWeight: 750,
+                                    }}
+                                  >
+                                    Al abrir el formulario tendrás que
+                                    seleccionar el día fijo de Ocio.
+                                  </span>
+                                )}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                abrirAltaTestDesdeImportacionApp(fila)
+                              }
+                              style={{
+                                ...botonPrincipal,
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              Crear Alta/Test
+                            </button>
+                          </article>
+                        ))}
+
+                      {detalleImportacionAltasActivo === 'LEIDAS' &&
+                        altasImportadasLeidas.map((fila) => {
+                          const gestionada =
+                            altasImportadasGestionadas.find(
+                              (item) => item.fila.clave === fila.clave
+                            );
+                          const esNueva = altasImportadasPendientes.some(
+                            (item) => item.clave === fila.clave
+                          );
+                          const sinComprobar =
+                            altasImportadasSinComprobar.some(
+                              (item) => item.clave === fila.clave
+                            );
+
+                          const estado = gestionada
+                            ? 'Ya gestionado'
+                            : esNueva
+                            ? 'Nuevo'
+                            : sinComprobar
+                            ? 'Sin comprobar'
+                            : 'Leído';
+
+                          return (
+                            <article
+                              key={`leida-${fila.clave}`}
+                              style={{
+                                border: '1px solid #e2e8f0',
+                                borderRadius: 14,
+                                padding: 11,
+                                background: '#ffffff',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                gap: 10,
+                                alignItems: 'flex-start',
+                              }}
+                            >
+                              <div style={{ minWidth: 0 }}>
+                                <strong
+                                  style={{
+                                    display: 'block',
+                                    color: '#0f172a',
+                                    fontSize: 14,
+                                  }}
+                                >
+                                  {fila.nombre}
+                                </strong>
+                                <span
+                                  style={{
+                                    display: 'block',
+                                    marginTop: 3,
+                                    color: '#64748b',
+                                    fontSize: 12,
+                                  }}
+                                >
+                                  {formatearFecha(fila.fechaNacimiento)} ·{' '}
+                                  {fila.telefono} · {fila.modalidad}
+                                </span>
+                                {gestionada && (
+                                  <span
+                                    style={{
+                                      display: 'block',
+                                      marginTop: 3,
+                                      color: '#047857',
+                                      fontSize: 11,
+                                      fontWeight: 800,
+                                    }}
+                                  >
+                                    {gestionada.detalle}
+                                  </span>
+                                )}
+                              </div>
+                              <span
+                                style={{
+                                  flex: '0 0 auto',
+                                  padding: '5px 8px',
+                                  borderRadius: 999,
+                                  fontSize: 11,
+                                  fontWeight: 900,
+                                  background:
+                                    estado === 'Nuevo'
+                                      ? '#ecfdf5'
+                                      : estado === 'Ya gestionado'
+                                      ? '#f1f5f9'
+                                      : estado === 'Sin comprobar'
+                                      ? '#fef2f2'
+                                      : '#eff6ff',
+                                  color:
+                                    estado === 'Nuevo'
+                                      ? '#047857'
+                                      : estado === 'Ya gestionado'
+                                      ? '#475569'
+                                      : estado === 'Sin comprobar'
+                                      ? '#b91c1c'
+                                      : '#1d4ed8',
+                                }}
+                              >
+                                {estado}
+                              </span>
+                            </article>
+                          );
+                        })}
+                    </section>
+                  )}
+              </article>
+            )}
+
             {mostrarFormularioAltaNivel && (
               <article
+                id="form-alta-nivel-inicial"
                 style={{
                   ...tarjeta,
                   border: '1px solid #a5f3fc',
@@ -42322,6 +43686,23 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                 }}
               >
                 <h3 style={{ marginTop: 0 }}>Nueva solicitud</h3>
+                {altaImportadaActivaClave && (
+                  <div
+                    style={{
+                      margin: '-4px 0 12px',
+                      padding: '8px 10px',
+                      borderRadius: 10,
+                      background: '#ecfdf5',
+                      border: '1px solid #a7f3d0',
+                      color: '#047857',
+                      fontSize: 12,
+                      fontWeight: 800,
+                    }}
+                  >
+                    Datos rellenados desde el listado pegado. Revisa y pulsa
+                    “Crear test para familia”.
+                  </div>
+                )}
                 <div style={gridFormulario}>
                   <label style={labelCampo}>
                     Nombre y apellidos
@@ -42435,6 +43816,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     type="button"
                     onClick={() => {
                       setFormAltaNivelInicial(altaNivelInicialFormVacioApp());
+                      setAltaImportadaActivaClave('');
                       setMostrarFormularioAltaNivel(false);
                     }}
                     style={botonSecundario}
