@@ -1504,6 +1504,8 @@ type EvaluacionAnualOcioApp = {
   alumno: string;
   temporada: string;
   entrenamientos_ocio: number;
+  sesiones_ocio_programadas: number;
+  asistencia_ocio_pct: number | null;
   reportes_ocio: number;
   primer_reporte_fecha: string | null;
   ultimo_reporte_fecha: string | null;
@@ -1521,6 +1523,21 @@ type EvaluacionAnualOcioApp = {
   recomendacion_final: string | null;
   comentario_tecnica_final: string | null;
   comentario_autonomia_final: string | null;
+  trabajos_realizados: string | null;
+  observaciones_grupo: string | null;
+  observaciones_reportes: string | null;
+  mejoras_reportadas: string | null;
+  navidad_guardada: boolean;
+  nivel_navidad: string | null;
+  tecnica_navidad: string | null;
+  autonomia_navidad: string | null;
+  remontes_navidad: string[] | null;
+  actitud_navidad: string | null;
+  pista_navidad: string | null;
+  recomendacion_navidad: string | null;
+  trabajos_navidad: string | null;
+  observaciones_grupo_navidad: string | null;
+  observaciones_reportes_navidad: string | null;
 };
 
 
@@ -1801,6 +1818,7 @@ type ReporteFormState = {
   remontes: string;
   incidencia: string;
   recomendacion: string;
+  mejoraHoy: string;
   observaciones: string;
   autonomiaCinta: string;
   cunaFrenada: string;
@@ -4164,17 +4182,34 @@ const opcionesIncidencia = [
   'Otro',
 ];
 
+const opcionesMejoraHoy = [
+  '',
+  'Equilibrio / deslizamiento',
+  'Cuña / frenada',
+  'Control de velocidad',
+  'Giro',
+  'Paralelo',
+  'Apoyo exterior',
+  'Cantos / conducción',
+  'Autonomía',
+  'Remontes',
+  'Actitud / confianza',
+  'Ritmo / fluidez',
+  'Nada destacable · sesión de consolidación',
+];
+
 const opcionesRecomendacion = [
-  'Mantener el mismo nivel',
-  'Subir de nivel',
-  'Bajar de nivel',
-  'Revisar por coordinador',
-  'Necesita apoyo',
-  'Repetir objetivos',
-  'Probar pista grande',
-  'Volver a pista pequeña',
+  'Consolidar lo trabajado',
+  'Progresar un paso técnico',
+  'Revisar nivel',
+  'Trabajar autonomía',
+  'Trabajar control de velocidad',
+  'Trabajar giro',
+  'Trabajar paralelo',
+  'Trabajar apoyo exterior',
+  'Trabajar cantos / conducción',
   'Revisar remontes',
-  'Hacer seguimiento especial',
+  'Seguimiento especial',
 ];
 
 const opcionesEspecialidadEntrenador = [
@@ -4376,7 +4411,8 @@ function reporteInicial(): ReporteFormState {
     ritmoGrupo: '',
     remontes: 'Cinta',
     incidencia: 'Sin incidencia',
-    recomendacion: 'Mantener el mismo nivel',
+    recomendacion: 'Consolidar lo trabajado',
+    mejoraHoy: '',
     observaciones: '',
     autonomiaCinta: '',
     cunaFrenada: '',
@@ -7537,6 +7573,13 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   async function guardarReporteAlumno(alumno: AlumnoReporteEntrenador) {
+    if (!formReporte.mejoraHoy) {
+      setError(
+        'Selecciona qué ha mejorado hoy. Si no hay un avance claro, usa “Nada destacable · sesión de consolidación”.'
+      );
+      return;
+    }
+
     if (!formReporte.ritmoGrupo) {
       setError(
         'Selecciona el ritmo del alumno dentro del grupo antes de guardar el reporte.'
@@ -7566,6 +7609,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_remontes: formReporte.remontes,
         p_incidencia: formReporte.incidencia,
         p_recomendacion: formReporte.recomendacion,
+        p_mejora_hoy: formReporte.mejoraHoy,
         p_observaciones:
           formReporte.observaciones.trim() || null,
       });
@@ -23840,6 +23884,15 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
           />
 
           <CampoSelect
+            label="¿Qué ha mejorado hoy?"
+            value={formReporte.mejoraHoy}
+            opciones={opcionesMejoraHoy}
+            onChange={(valor) =>
+              setFormReporte({ ...formReporte, mejoraHoy: valor })
+            }
+          />
+
+          <CampoSelect
             label="Incidencia"
             value={formReporte.incidencia}
             opciones={opcionesIncidencia}
@@ -23860,11 +23913,11 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
         </div>
 
         <label style={labelCampo}>
-          Observación (opcional)
+          Observación útil para próximas sesiones (opcional)
           <textarea
             value={formReporte.observaciones}
             maxLength={500}
-            placeholder="Solo si hay algo útil que no queda reflejado arriba. No hace falta repetir nivel, técnica, autonomía o incidencia."
+            placeholder="Solo algo que no esté ya arriba: miedo, cansancio, atención, material, comportamiento, reacción a un ejercicio o detalle importante para la próxima sesión."
             onChange={(e) =>
               setFormReporte({
                 ...formReporte,
@@ -23874,7 +23927,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             style={textarea}
           />
           <span style={{ fontSize: 11, color: '#64748b', marginTop: 5 }}>
-            {formReporte.observaciones.length}/500 · Una observación breve y concreta es suficiente.
+            {formReporte.observaciones.length}/500 · No repitas nivel, técnica, autonomía o incidencia. Escribe solo un detalle útil que ayude a entender mejor al niño en la siguiente sesión.
           </span>
         </label>
 
@@ -24764,6 +24817,14 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
         data.map((fila) => ({
           ...fila,
           entrenamientos_ocio: Number(fila.entrenamientos_ocio || 0),
+          sesiones_ocio_programadas: Number(
+            fila.sesiones_ocio_programadas || 0
+          ),
+          asistencia_ocio_pct:
+            fila.asistencia_ocio_pct === null ||
+            fila.asistencia_ocio_pct === undefined
+              ? null
+              : Number(fila.asistencia_ocio_pct),
           reportes_ocio: Number(fila.reportes_ocio || 0),
           remontes_iniciales: Array.isArray(fila.remontes_iniciales)
             ? fila.remontes_iniciales
@@ -24771,6 +24832,10 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
           remontes_finales: Array.isArray(fila.remontes_finales)
             ? fila.remontes_finales
             : [],
+          remontes_navidad: Array.isArray(fila.remontes_navidad)
+            ? fila.remontes_navidad
+            : [],
+          navidad_guardada: Boolean(fila.navidad_guardada),
         }))
       );
       setEvaluacionesAnualesOcioGeneradas(true);
@@ -24821,6 +24886,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
         'Alumno',
         'Día Ocio',
         'Entrenamientos Ocio',
+        'Sesiones Ocio registradas',
+        'Asistencia Ocio %',
         'Reportes Ocio',
         'Primer reporte',
         'Último reporte',
@@ -24838,11 +24905,21 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
         'Recomendación corte',
         'Comentario técnico',
         'Comentario autonomía',
+        'Trabajo diario realizado',
+        'Observaciones individuales',
+        'Observaciones de grupo',
+        'Mejoras reportadas',
+        'Nivel Navidad',
+        'Técnica Navidad',
+        'Autonomía Navidad',
+        'Remontes Navidad',
       ],
       ...filasBase.map(({ alumno, evaluacion }) => [
         alumno.alumno,
         alumno.dia_fijo || alumno.grupo_dia || '',
         evaluacion?.entrenamientos_ocio || 0,
+        evaluacion?.sesiones_ocio_programadas || 0,
+        evaluacion?.asistencia_ocio_pct ?? '',
         evaluacion?.reportes_ocio || 0,
         evaluacion?.primer_reporte_fecha
           ? formatearFecha(evaluacion.primer_reporte_fecha)
@@ -24864,6 +24941,14 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
         evaluacion?.recomendacion_final || '',
         evaluacion?.comentario_tecnica_final || '',
         evaluacion?.comentario_autonomia_final || '',
+        evaluacion?.trabajos_realizados || '',
+        evaluacion?.observaciones_reportes || '',
+        evaluacion?.observaciones_grupo || '',
+        evaluacion?.mejoras_reportadas || '',
+        evaluacion?.nivel_navidad || '',
+        evaluacion?.tecnica_navidad || '',
+        evaluacion?.autonomia_navidad || '',
+        (evaluacion?.remontes_navidad || []).join(', '),
       ]),
     ];
 
@@ -24939,6 +25024,108 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
     return `La referencia disponible de ${etiqueta.toLowerCase()} es “${fin || inicio}”.`;
   }
 
+  function objetivosTrabajoInformeFamiliaOcioApp(valor: string | null | undefined) {
+    const objetivos = String(valor || '')
+      .split(/\r?\n/)
+      .map((linea) => linea.trim())
+      .filter((linea) => /^OBJETIVO\s*·/i.test(linea))
+      .map((linea) => linea.replace(/^OBJETIVO\s*·\s*/i, '').trim())
+      .filter(Boolean);
+
+    return Array.from(new Set(objetivos)).slice(0, 8);
+  }
+
+  function comparativaNavidadInformeFamiliaOcioApp(fila: EvaluacionAnualOcioApp) {
+    if (!fila.navidad_guardada) return '';
+
+    const partes = [
+      fraseComparativaInformeFamiliaOcioApp('Nivel', fila.nivel_navidad, fila.nivel_final),
+      fraseComparativaInformeFamiliaOcioApp('Técnica', fila.tecnica_navidad, fila.tecnica_final),
+      fraseComparativaInformeFamiliaOcioApp('Autonomía', fila.autonomia_navidad, fila.autonomia_final),
+    ];
+
+    const remontesNavidad = (fila.remontes_navidad || []).join(', ');
+    const remontesFinal = (fila.remontes_finales || []).join(', ');
+    if (remontesNavidad || remontesFinal) {
+      partes.push(
+        remontesNavidad && remontesFinal && remontesNavidad !== remontesFinal
+          ? `En Navidad constaban ${remontesNavidad}; actualmente constan ${remontesFinal}.`
+          : `Los remontes registrados se mantienen en ${remontesFinal || remontesNavidad}.`
+      );
+    }
+
+    return partes.join(' ');
+  }
+
+  function mejorasInformeFamiliaOcioApp(valor: string | null | undefined) {
+    return Array.from(
+      new Set(
+        String(valor || '')
+          .split(/\s*[·|→|\n]\s*/g)
+          .map((item) => item.trim())
+          .filter(Boolean)
+          .filter(
+            (item) =>
+              !/nada destacable|sesión de consolidación/i.test(item)
+          )
+      )
+    ).slice(0, 4);
+  }
+
+  function fortalezasInformeFamiliaOcioApp(fila: EvaluacionAnualOcioApp) {
+    const fortalezas = mejorasInformeFamiliaOcioApp(fila.mejoras_reportadas);
+
+    if (/muy buena|buena/i.test(String(fila.actitud_final || ''))) {
+      fortalezas.push('Buena actitud y disposición durante las sesiones');
+    }
+    if (/autónomo total|autónomo en pista grande/i.test(String(fila.autonomia_final || ''))) {
+      fortalezas.push('Autonomía sólida en pista');
+    }
+
+    return Array.from(new Set(fortalezas)).slice(0, 4);
+  }
+
+  function objetivosSiguientePasoInformeFamiliaOcioApp(
+    fila: EvaluacionAnualOcioApp
+  ) {
+    const recomendacion = String(fila.recomendacion_final || '').trim();
+    if (!recomendacion) return [];
+
+    const mapa: Array<[RegExp, string]> = [
+      [/consolidar/i, 'Consolidar lo aprendido hasta que aparezca de forma estable y natural'],
+      [/progresar/i, 'Avanzar un paso técnico manteniendo el control y la calidad del movimiento'],
+      [/revisar nivel/i, 'Revisar el nivel en pista antes de realizar un cambio definitivo'],
+      [/autonom/i, 'Ganar autonomía y necesitar cada vez menos ayuda del entrenador'],
+      [/control de velocidad/i, 'Mejorar el control de velocidad mediante trayectoria y frenada'],
+      [/trabajar giro/i, 'Mejorar la forma, continuidad y control de los giros'],
+      [/trabajar paralelo/i, 'Consolidar el paralelo y mantenerlo con mayor continuidad'],
+      [/apoyo exterior/i, 'Reforzar el apoyo sobre el esquí exterior durante el giro'],
+      [/cantos|conducción/i, 'Mejorar el uso de cantos y la conducción de los esquís'],
+      [/remontes/i, 'Ganar seguridad y autonomía en los remontes'],
+      [/seguimiento especial/i, 'Mantener un seguimiento individual durante las próximas sesiones'],
+    ];
+
+    const encontrado = mapa.find(([patron]) => patron.test(recomendacion));
+    return [encontrado?.[1] || recomendacion];
+  }
+
+  function continuidadInformeFamiliaOcioApp(fila: EvaluacionAnualOcioApp) {
+    const programadas = Number(fila.sesiones_ocio_programadas || 0);
+    const asistidas = Number(fila.entrenamientos_ocio || 0);
+    const pct = fila.asistencia_ocio_pct;
+
+    if (programadas > 0 && pct !== null && pct !== undefined) {
+      const porcentaje = Math.round(Number(pct));
+      return `Ha asistido a ${asistidas} de ${programadas} sesiones de Ocio registradas (${porcentaje}%).`;
+    }
+
+    if (asistidas > 0) {
+      return `Constan ${asistidas} sesiones de Ocio realizadas durante el periodo evaluado.`;
+    }
+
+    return 'Todavía no hay suficientes registros de asistencia para resumir la continuidad.';
+  }
+
   function abrirInformeFamiliaOcioApp(fila: EvaluacionAnualOcioApp) {
     if (typeof window === 'undefined') return;
 
@@ -24959,6 +25146,13 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
       : 'Temporada actual';
     const remontesInicio = (fila.remontes_iniciales || []).join(', ');
     const remontesFinal = (fila.remontes_finales || []).join(', ');
+    const objetivosTrabajados = objetivosTrabajoInformeFamiliaOcioApp(
+      fila.trabajos_realizados
+    );
+    const comparativaNavidad = comparativaNavidadInformeFamiliaOcioApp(fila);
+    const fortalezas = fortalezasInformeFamiliaOcioApp(fila);
+    const proximosObjetivos = objetivosSiguientePasoInformeFamiliaOcioApp(fila);
+    const continuidadTexto = continuidadInformeFamiliaOcioApp(fila);
     const nivelTexto = fraseEvolucionNivelInformeFamiliaOcioApp(fila);
     const tecnicaTexto = fraseComparativaInformeFamiliaOcioApp(
       'Técnica',
@@ -24992,7 +25186,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
     .brand{font-size:12px;font-weight:900;letter-spacing:.14em;color:#86efac;text-transform:uppercase}.hero h1{font-size:34px;margin:8px 0 6px}.hero p{margin:0;color:#dbe7ee;line-height:1.5}
     .content{padding:30px}.intro{font-size:17px;line-height:1.65;color:#334155;margin:0 0 22px}
     .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 24px}.metric{border:1px solid #dbeafe;border-radius:16px;padding:14px;background:#f8fbff}.metric span{display:block;font-size:10px;color:#64748b;font-weight:900;letter-spacing:.08em}.metric strong{display:block;font-size:21px;margin-top:4px}
-    .section{border:1px solid #e2e8f0;border-radius:18px;padding:18px;margin-top:12px}.section h2{font-size:18px;margin:0 0 8px}.section p{margin:0;color:#475569;line-height:1.6}.accent{border-color:#bbf7d0;background:#f0fdf4}.note{margin-top:10px;padding:11px 12px;background:#f8fafc;border-radius:12px;color:#475569;line-height:1.55}
+    .section{border:1px solid #e2e8f0;border-radius:18px;padding:18px;margin-top:12px}.section h2{font-size:18px;margin:0 0 8px}.section p{margin:0;color:#475569;line-height:1.6}.section ul{margin:8px 0 0;padding-left:20px;color:#475569;line-height:1.65}.accent{border-color:#bbf7d0;background:#f0fdf4}.note{margin-top:10px;padding:11px 12px;background:#f8fafc;border-radius:12px;color:#475569;line-height:1.55}
     .footer{padding:0 30px 30px;color:#64748b;font-size:12px;line-height:1.55}.actions{display:flex;gap:10px;justify-content:center;padding:0 30px 30px}.actions button{border:0;border-radius:14px;padding:12px 18px;font-weight:900;cursor:pointer}.print{background:#0f9f4d;color:white}.close{background:#e2e8f0;color:#334155}
     @media(max-width:700px){.hero{padding:24px}.hero h1{font-size:27px}.content{padding:20px}.metrics{grid-template-columns:repeat(2,1fr)}.footer,.actions{padding-left:20px;padding-right:20px}}
     @media print{body{background:#fff}.page{width:100%;margin:0;box-shadow:none;border-radius:0}.actions{display:none}.hero{-webkit-print-color-adjust:exact;print-color-adjust:exact}.accent,.metric{-webkit-print-color-adjust:exact;print-color-adjust:exact}}
@@ -25014,11 +25208,15 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
         <div class="metric"><span>NIVEL ACTUAL</span><strong>${seguro(fila.nivel_final || '—')}</strong></div>
       </div>
       <section class="section accent"><h2>Su evolución esta temporada</h2><p>${seguro(nivelTexto)}</p>${fila.niveles_reportados ? `<div class="note"><strong>Recorrido registrado:</strong> ${seguro(fila.niveles_reportados)}</div>` : ''}</section>
+      ${comparativaNavidad ? `<section class="section accent"><h2>De Navidad a final de temporada</h2><p>${seguro(comparativaNavidad)}</p></section>` : ''}
+      <section class="section"><h2>Asistencia y continuidad</h2><p>${seguro(continuidadTexto)}</p></section>
+      ${objetivosTrabajados.length > 0 ? `<section class="section"><h2>Habilidades trabajadas</h2><p>Durante las sesiones se han trabajado de forma recurrente: ${seguro(objetivosTrabajados.join(' · '))}.</p></section>` : ''}
+      ${fortalezas.length > 0 ? `<section class="section accent"><h2>Fortalezas actuales</h2><ul>${fortalezas.map((item) => `<li>${seguro(item)}</li>`).join('')}</ul></section>` : ''}
       <section class="section"><h2>Técnica</h2><p>${seguro(tecnicaTexto)}</p>${fila.comentario_tecnica_final ? `<div class="note">${seguro(fila.comentario_tecnica_final)}</div>` : ''}</section>
       <section class="section"><h2>Autonomía</h2><p>${seguro(autonomiaTexto)}</p>${fila.comentario_autonomia_final ? `<div class="note">${seguro(fila.comentario_autonomia_final)}</div>` : ''}</section>
       <section class="section"><h2>Remontes y entorno de pista</h2><p>${seguro(remontesTexto)}</p>${fila.pista_final ? `<div class="note"><strong>Última pista registrada:</strong> ${seguro(fila.pista_final)}</div>` : ''}</section>
       <section class="section"><h2>Actitud y adaptación</h2><p>${fila.actitud_final ? `En el último reporte la actitud registrada fue “${seguro(fila.actitud_final)}”.` : 'No hay una valoración final de actitud registrada en los reportes disponibles.'}</p></section>
-      <section class="section accent"><h2>Siguiente paso</h2><p>${fila.recomendacion_final ? seguro(fila.recomendacion_final) : 'Todavía no hay una recomendación final registrada. Coordinación podrá completarla con los próximos reportes.'}</p></section>
+      <section class="section accent"><h2>Próximos objetivos</h2>${proximosObjetivos.length > 0 ? `<ul>${proximosObjetivos.map((item) => `<li>${seguro(item)}</li>`).join('')}</ul>` : '<p>Todavía no hay un objetivo siguiente registrado. Coordinación podrá completarlo con los próximos reportes.</p>'}</section>
     </div>
     <div class="footer">Informe elaborado a partir de los registros reales de entrenamientos y reportes de Mítico Club. Es una síntesis de seguimiento y no sustituye la valoración directa del equipo técnico.</div>
     <div class="actions"><button class="print" onclick="window.print()">Imprimir / guardar PDF</button><button class="close" onclick="window.close()">Cerrar</button></div>
@@ -35045,7 +35243,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               </h2>
               {renderAyudaRapidaPantallaApp()}
               <p style={{ margin: '8px 0 0', color: '#cbd5e1', lineHeight: 1.45 }}>
-                Evaluación puntual cuando una familia la pide y campañas de temporada para Navidad y final. Nada se genera ni se guarda automáticamente.
+                Evaluación puntual cuando una familia la pide y campañas de Navidad y final. La base cruza reportes, trabajo diario y observaciones; el informe final compara con el corte guardado en Navidad. Nada se guarda automáticamente.
               </p>
               <div style={{ marginTop: 14 }}>
                 <button
@@ -35448,6 +35646,40 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                     {evaluacion.ultimo_reporte_fecha
                                       ? formatearFecha(evaluacion.ultimo_reporte_fecha)
                                       : '-'}
+                                  </p>
+                                </div>
+                                <div style={miniTarjetaBlanca}>
+                                  <strong>Asistencia</strong>
+                                  <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                    {evaluacion.sesiones_ocio_programadas > 0
+                                      ? `${evaluacion.entrenamientos_ocio}/${evaluacion.sesiones_ocio_programadas} · ${Math.round(Number(evaluacion.asistencia_ocio_pct || 0))}%`
+                                      : `${evaluacion.entrenamientos_ocio} sesiones registradas`}
+                                  </p>
+                                </div>
+                                <div style={miniTarjetaBlanca}>
+                                  <strong>Mejoras observadas</strong>
+                                  <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                    {mejorasInformeFamiliaOcioApp(
+                                      evaluacion.mejoras_reportadas
+                                    ).join(' · ') || 'Sin mejora específica registrada todavía'}
+                                  </p>
+                                </div>
+                                <div style={miniTarjetaBlanca}>
+                                  <strong>Trabajo diario</strong>
+                                  <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                    {objetivosTrabajoInformeFamiliaOcioApp(
+                                      evaluacion.trabajos_realizados
+                                    ).join(' · ') || 'Sin trabajo diario registrado'}
+                                  </p>
+                                </div>
+                                <div style={miniTarjetaBlanca}>
+                                  <strong>Comparación Navidad</strong>
+                                  <p style={{ margin: '6px 0 0', color: '#475569' }}>
+                                    {evaluacion.navidad_guardada
+                                      ? `${evaluacion.nivel_navidad || '-'} → ${
+                                          evaluacion.nivel_final || '-'
+                                        }`
+                                      : 'Todavía no hay corte de Navidad guardado'}
                                   </p>
                                 </div>
                               </div>
