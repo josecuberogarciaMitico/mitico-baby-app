@@ -106,7 +106,7 @@ function textoGrupoCompleto(input: InputTrabajoDiario) {
 
 function grupoConAtencionOCansancio(input: InputTrabajoDiario) {
   const texto = textoGrupoCompleto(input);
-  return /cansad|fatiga|agotad|atencion baja|atención baja|muy despist|no atiende|demanda alta|necesita mucha atencion|necesita mucha atención/.test(
+  return /cansad|fatiga|agotad|atencion baja|atención baja|muy despist|distra|no atiende|demanda alta|necesita mucha atencion|necesita mucha atención/.test(
     texto
   );
 }
@@ -1210,30 +1210,34 @@ function planInicial(input: InputTrabajoDiario) {
   let final = '';
 
   if (perfilGrupo === 'INICIACION_PURO') {
-    objetivo = 'Confianza, deslizamiento, equilibrio y primeras frenadas en cuña.';
+    objetivo =
+      'Confianza, diversión, equilibrio y primeras sensaciones de deslizamiento y frenada, sin exigir continuidad técnica.';
     organizacion =
-      'Bajadas 1vs1. Mucha demostración y consignas simples. Trabajar entrada/salida de cinta desde el primer día.';
+      'Bloques muy cortos y variados. Alternar 1vs1, juegos y pequeñas pausas de atención. Mucha demostración, una sola consigna cada vez y cero prisa por progresar si están cansados o distraídos.';
     agregar('deslizamiento-profesor');
     agregar('pizza-grande-pequena');
     agregar('semaforo-inicial');
     agregar('gigante-pequeno');
+    agregar('seguir-lider');
     progresion =
-      'Cuando se mantenga de pie y frene con ayuda mínima, empezar dirección sencilla y más autonomía en cinta.';
+      'Progresar solo si siguen atentos y cómodos. Si es su primera vez, repetir confianza, equilibrio, cuña y cinta tantas veces como haga falta antes de pedir giros.';
     final =
-      'Bajada libre muy corta y observada para comprobar confianza y frenada.';
+      'Trenecito muy corto detrás del entrenador o juego guiado de Semáforo. Terminar con control y sensación positiva; no hace falta una bajada libre de evaluación.';
   } else if (perfilGrupo === 'INICIACION_A') {
     objetivo =
-      'Asentar cuña y frenada sin frenar la progresión del A que ya tenga más control.';
+      'Mantener al Iniciación cómodo y jugando mientras el A añade frenada y dirección según su capacidad.';
     organizacion =
-      'Bajadas 1vs1. El Iniciación trabaja base; al A se le añade dirección cuando ya frena. No obligar a los dos a hacer exactamente lo mismo.';
+      'Bloques cortos y variados. El Iniciación trabaja base mediante juegos y descansos de atención; al A se le añade dirección cuando ya frena. No obligar a ambos a sostener la misma exigencia durante dos horas.';
     agregar('pizza-grande-pequena');
     agregar('semaforo-inicial');
+    agregar('gigante-pequeno');
+    agregar('seguir-lider');
     agregar('giro-aislado');
     agregar('seguir-huella');
     progresion =
-      'El A progresa a giros enlazados cuando esté preparado; el Iniciación mantiene equilibrio, cuña y cinta.';
+      'El A progresa a giros enlazados cuando esté preparado; el Iniciación puede repetir juegos de equilibrio, cuña y cinta sin necesidad de subir dificultad.';
     final =
-      'Una bajada observada por niño con su objetivo individual, no una tarea común forzada.';
+      'Trenecito corto o juego guiado para todo el grupo; si algún niño está cansado, cierre sencillo y positivo sin forzar una última bajada técnica.';
   } else if (perfilGrupo === 'A_PREDOMINANTE') {
     objetivo = 'Frenar a demanda y empezar a girar de forma cada vez más autónoma.';
     organizacion =
@@ -1407,7 +1411,11 @@ function planInicial(input: InputTrabajoDiario) {
   const estadoInicial: EstadoSesionTecnicaApp = consolidarInicial
     ? 'CONSOLIDAR'
     : 'PROGRESAR';
-  const cantidadInicial = consolidarInicial ? 3 : 4;
+  const grupoConIniciacion =
+    perfilGrupo === 'INICIACION_PURO' || perfilGrupo === 'INICIACION_A';
+  // En Iniciación damos más variedad lúdica, no más exigencia: cuatro propuestas
+  // cortas para poder rotar cuando baja la atención durante una sesión larga.
+  const cantidadInicial = grupoConIniciacion ? 4 : consolidarInicial ? 3 : 4;
 
   const hayProblemaCuna = alumnos.some((alumno) => {
     const p = alumno.progresionInicial;
@@ -1422,11 +1430,16 @@ function planInicial(input: InputTrabajoDiario) {
     return t && !/^no$|no utilizado/.test(t);
   });
 
+  const primeraBajadaInicial =
+    perfilGrupo === 'INICIACION_PURO' || perfilGrupo === 'INICIACION_A'
+      ? 'PRIMERA BAJADA · Muy corta y guiada. Si es su primera vez con esquís, empezar con desplazamientos y deslizamientos sencillos junto al entrenador; observar confianza y atención sin exigir que baje solo.'
+      : 'PRIMERA BAJADA · Libre/observada para comprobar cómo llega cada niño hoy.';
+
   const bloques = [
     'CALENTAMIENTO · 3–5 min sin esquís: movilidad, equilibrio y activación sencilla al lado de pista.',
     `OBJETIVO · ${objetivo}`,
     `ESTADO · ${textoEstadoSesion(estadoInicial)}`,
-    'PRIMERA BAJADA · Libre/observada para comprobar cómo llega cada niño hoy.',
+    primeraBajadaInicial,
     `ORGANIZACIÓN · ${organizacion}`,
     [
       'TRABAJO',
