@@ -1746,6 +1746,7 @@ type BabyAimHarderClaseApp = {
   timeid?: string;
   className: string;
   modalidad: string;
+  ocupation?: number;
 };
 
 type BabyAimHarderAsistenteActivoApp = {
@@ -1757,6 +1758,21 @@ type BabyAimHarderAsistenteActivoApp = {
   clientId?: string | null;
 };
 
+type BabyAimHarderSafetyApp = {
+  sourceKey?: string;
+  sourceCount?: number;
+  cancelledDetected?: number;
+  cancelledNames?: string[];
+  reportedPublic?: number;
+  reportedTarget?: number | null;
+  safeZero?: boolean;
+};
+
+type BabyAimHarderLecturaApp = {
+  asistentes: BabyAimHarderAsistenteActivoApp[];
+  safety: BabyAimHarderSafetyApp;
+};
+
 type BabyAimHarderRefrescoResultadoApp = {
   sesion_id: string;
   total_actual: number;
@@ -1766,6 +1782,12 @@ type BabyAimHarderRefrescoResultadoApp = {
   nombres_nuevos: string[];
   nombres_retirados: string[];
   nombres_protegidos: string[];
+};
+
+type BabyAimHarderVerificacionRefrescoApp = {
+  totalFinal: number;
+  retiradosExtra: string[];
+  protegidosExtra: string[];
 };
 
 type ReporteFormState = {
@@ -9861,6 +9883,45 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
     return datos;
   }
 
+  async function llamarAimHarderLecturaBabyApp(
+    body: Record<string, unknown>
+  ): Promise<any> {
+    const accessToken = await obtenerAccessTokenSupabaseApp();
+    const respuesta = await fetch(
+      `${SUPABASE_URL}/functions/v1/mitico-aimharder-baby-read`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify(body),
+      }
+    );
+
+    const texto = await respuesta.text();
+    let datos: any = {};
+
+    try {
+      datos = texto ? JSON.parse(texto) : {};
+    } catch {
+      throw new Error(
+        `AimHarder Baby devolvió una respuesta no válida (HTTP ${respuesta.status}).`
+      );
+    }
+
+    if (!respuesta.ok) {
+      throw new Error(
+        typeof datos?.error === 'string'
+          ? datos.error
+          : `Error ${respuesta.status} consultando AimHarder Baby.`
+      );
+    }
+
+    return datos;
+  }
+
   async function actualizarSemanaOcioDesdeAimHarder() {
     const semanaInicio = lunesSemanaOcioActiva();
 
@@ -16173,7 +16234,7 @@ async function abrirGestionOperativaIntensivoDia(
   }
 
   async function centroAimHarderBabyApp() {
-    const boxes = await llamarAimHarderLecturaOcioApp({ action: 'boxes' });
+    const boxes = await llamarAimHarderLecturaBabyApp({ action: 'boxes' });
     const listaBoxes = Array.isArray(boxes?.boxes) ? boxes.boxes : [];
     const box =
       listaBoxes.find((item: any) =>
@@ -16193,16 +16254,14 @@ async function abrirGestionOperativaIntensivoDia(
     semanaInicio: string,
     boxId: number
   ): Promise<BabyAimHarderClaseApp[]> {
-    const semana = await llamarAimHarderLecturaOcioApp({
+    const semana = await llamarAimHarderLecturaBabyApp({
       action: 'week',
       weekStart: semanaInicio,
       boxId,
     });
 
-    const raw = (Array.isArray(semana?.classes) ? semana.classes : []).filter(
-      (clase: any) =>
-        String(clase?.modalidad || '').trim().toUpperCase() === 'BABY'
-    );
+    // Este endpoint es exclusivo de Baby y ya filtra las clases en backend.
+    const raw = Array.isArray(semana?.classes) ? semana.classes : [];
 
     const porIdentidad = new Map<string, BabyAimHarderClaseApp>();
     for (const claseRaw of raw) {
@@ -16231,25 +16290,23 @@ async function abrirGestionOperativaIntensivoDia(
   async function asistentesActivosClaseBabyAimHarderApp(
     clase: BabyAimHarderClaseApp,
     boxId: number
-  ): Promise<BabyAimHarderAsistenteActivoApp[]> {
-    // ÚNICO MOTOR AIMHARDER: también los asistentes Baby salen de
-    // mitico-aimharder-read, igual que la carga general de la semana.
-    const detalle = await llamarAimHarderLecturaOcioApp({
+  ): Promise<BabyAimHarderLecturaApp> {
+    // ÚNICO MOTOR BABY: los tres botones Baby usan exclusivamente
+    // mitico-aimharder-baby-read. Ocio e Intensivos siguen con su lector actual.
+    const detalle = await llamarAimHarderLecturaBabyApp({
       action: 'attendees',
       date: String(clase.date || '').slice(0, 10),
       classId: Number(clase.id),
       className: String(clase.className || ''),
       time: String(clase.time || ''),
       timeid: String(clase.timeid || ''),
-      modalidad: 'BABY',
       boxId,
     });
 
-    const asistentes = Array.isArray(detalle?.attendees)
+    const asistentes = (Array.isArray(detalle?.attendees)
       ? detalle.attendees
-      : [];
-
-    return asistentes
+      : []
+    )
       .map((fila: any) => ({
         name: String(fila?.name || '').trim(),
         guest: Boolean(fila?.guest),
@@ -16259,6 +16316,24 @@ async function abrirGestionOperativaIntensivoDia(
         clientId: fila?.clientId ? String(fila.clientId).trim() : null,
       }))
       .filter((fila: BabyAimHarderAsistenteActivoApp) => Boolean(fila.name));
+
+    const totalLeido = Number(detalle?.total);
+    if (!Number.isFinite(totalLeido) || totalLeido !== asistentes.length) {
+      throw new Error(
+        `AimHarder Baby no cuadra: el backend devuelve ${asistentes.length} nombre(s) y total ${Number.isFinite(totalLeido) ? totalLeido : '?'}. No se ha modificado nada.`
+      );
+    }
+
+    const safety: BabyAimHarderSafetyApp =
+      detalle?.safety && typeof detalle.safety === 'object'
+        ? detalle.safety
+        : {};
+
+    // El campo de ocupación del listado semanal NO se usa para borrar alumnos:
+    // en AimHarder puede venir a 0 aunque existan reservas activas.
+    clase.ocupation = asistentes.length;
+
+    return { asistentes, safety };
   }
 
   function emitirListadoBabyAimHarderAgenda(
@@ -16286,6 +16361,7 @@ async function abrirGestionOperativaIntensivoDia(
   ): Promise<{
     clase: BabyAimHarderClaseApp;
     asistentes: BabyAimHarderAsistenteActivoApp[];
+    safety: BabyAimHarderSafetyApp;
   }> {
     const fechaLimpia = String(fecha || '').slice(0, 10);
     const inicio = horaCorta(horaInicio);
@@ -16330,13 +16406,14 @@ async function abrirGestionOperativaIntensivoDia(
     }
 
     const clase = candidatas[0];
-    const asistentes = await asistentesActivosClaseBabyAimHarderApp(
+    const lectura = await asistentesActivosClaseBabyAimHarderApp(
       clase,
       Number(box.boid)
     );
+    const asistentes = lectura.asistentes;
 
     emitirListadoBabyAimHarderAgenda(clase, asistentes);
-    return { clase, asistentes };
+    return { clase, asistentes, safety: lectura.safety };
   }
 
   async function traerListadoBabyTurnoAgendaDesdeAimHarder() {
@@ -16363,9 +16440,9 @@ async function abrirGestionOperativaIntensivoDia(
       }));
 
       setBabyAimHarderMensaje(
-        asistentes.length > 0
-          ? `Turno cargado desde AimHarder · ${asistentes.length} alumno(s) activo(s)`
-          : 'Turno encontrado en AimHarder · 0 alumnos activos'
+        `✓ TRAER LISTADO · AimHarder: ${asistentes.length} alumno(s) activo(s) · ` +
+          `${asistentes.length > 0 ? 'listado preparado' : 'listado vacío'} · ` +
+          'cancelados excluidos · la sesión NO se ha modificado'
       );
     } catch (e) {
       setBabyAimHarderError(
@@ -16407,6 +16484,8 @@ async function abrirGestionOperativaIntensivoDia(
       let creadas = 0;
       let yaExistentes = 0;
       let sinReservas = 0;
+      let turnosLeidos = 0;
+      let alumnosActivosLeidos = 0;
       const incidencias: string[] = [];
 
       // Una clase Baby operativa se identifica por fecha + hora de inicio.
@@ -16439,11 +16518,14 @@ async function abrirGestionOperativaIntensivoDia(
 
         try {
           const horas = horasClaseBabyAimHarder(clase);
-          const asistentes = await asistentesActivosClaseBabyAimHarderApp(
+          const lectura = await asistentesActivosClaseBabyAimHarderApp(
             clase,
             Number(box.boid)
           );
+          const asistentes = lectura.asistentes;
 
+          turnosLeidos += 1;
+          alumnosActivosLeidos += asistentes.length;
           emitirListadoBabyAimHarderAgenda(clase, asistentes);
 
           if (asistentes.length === 0) {
@@ -16485,17 +16567,14 @@ async function abrirGestionOperativaIntensivoDia(
       await cargarAgendaOperativaDirecta();
       await cargarListados();
 
-      const partes = [`${creadas} sesión(es) nueva(s) cargada(s)`];
-
-      if (yaExistentes > 0) {
-        partes.push(
-          `${yaExistentes} sesión(es) ya existentes dejada(s) intacta(s)`
-        );
-      }
-
-      if (sinReservas > 0) {
-        partes.push(`${sinReservas} turno(s) sin reservas activas`);
-      }
+      const partes = [
+        `✓ CARGAR SEMANA · ${turnosLeidos} turno(s) Baby leído(s)`,
+        `${alumnosActivosLeidos} alumno(s) activo(s) en AimHarder`,
+        `${creadas} sesión(es) nueva(s) creada(s)`,
+        `${yaExistentes} sesión(es) ya existente(s) sin modificar`,
+        `${sinReservas} turno(s) con 0 activos`,
+        'cancelados excluidos',
+      ];
 
       setBabyAimHarderMensaje(partes.join(' · '));
 
@@ -16515,6 +16594,135 @@ async function abrirGestionOperativaIntensivoDia(
     } finally {
       setBabyAimHarderCargandoSemana(false);
     }
+  }
+
+  async function verificarYLimpiarSesionBabyTrasRefrescoAimHarderApp(
+    sesionId: string,
+    asistentes: BabyAimHarderAsistenteActivoApp[],
+    protegidosIniciales: string[]
+  ): Promise<BabyAimHarderVerificacionRefrescoApp> {
+    const filtroSesion = encodeURIComponent(`eq.${sesionId}`);
+    const leerSesion = () =>
+      consultarSupabase<AgendaAlumnoSesionApp>(
+        'v_sesion_alumnos_operativa_app',
+        `select=*&sesion_id=${filtroSesion}&order=orden.asc`
+      );
+
+    const activos = new Set(
+      asistentes
+        .map((asistente) =>
+          normalizarNombreFueraPlazoAgenda(asistente.name || '')
+        )
+        .filter(Boolean)
+    );
+    const protegidos = new Set(
+      (protegidosIniciales || [])
+        .map((nombre) => normalizarNombreFueraPlazoAgenda(nombre || ''))
+        .filter(Boolean)
+    );
+
+    let actuales = await leerSesion();
+    const clavesActuales = new Set(
+      actuales
+        .map((alumno) => normalizarNombreFueraPlazoAgenda(alumno.alumno || ''))
+        .filter(Boolean)
+    );
+
+    // Antes de quitar nada comprobamos que TODOS los activos de AimHarder
+    // estén presentes. Si falta alguno, podría existir una diferencia de nombre
+    // y no sería seguro interpretar otro registro como cancelado.
+    const faltanActivos = asistentes
+      .map((asistente) => asistente.name)
+      .filter(
+        (nombre) =>
+          !clavesActuales.has(normalizarNombreFueraPlazoAgenda(nombre || ''))
+      );
+
+    if (faltanActivos.length > 0) {
+      throw new Error(
+        `Refresco bloqueado: faltan en la sesión ${faltanActivos.length} alumno(s) que AimHarder marca como activo(s): ${faltanActivos.join(
+          ', '
+        )}. No se ha eliminado ningún alumno por seguridad.`
+      );
+    }
+
+    const retiradosExtra: string[] = [];
+    const protegidosExtra: string[] = [];
+
+    for (const alumno of actuales) {
+      const clave = normalizarNombreFueraPlazoAgenda(alumno.alumno || '');
+      if (!clave || activos.has(clave) || protegidos.has(clave)) continue;
+
+      try {
+        // Función ya existente y protegida: rechaza el borrado si el alumno
+        // tiene asistencia real o reporte en esta sesión.
+        await ejecutarFuncion('quitar_alumno_sesion_aimharder_sync_app', {
+          p_sesion_alumno_id: alumno.sesion_alumno_id,
+        });
+        retiradosExtra.push(alumno.alumno);
+      } catch (errorQuitar) {
+        const mensaje =
+          errorQuitar instanceof Error
+            ? errorQuitar.message
+            : 'No se pudo quitar el alumno de la sesión.';
+
+        if (/asistencia real|reporte/i.test(mensaje)) {
+          protegidos.add(clave);
+          protegidosExtra.push(alumno.alumno);
+          continue;
+        }
+
+        throw new Error(
+          `AimHarder ya no incluye a ${alumno.alumno}, pero no se pudo retirarlo automáticamente de la sesión: ${mensaje}`
+        );
+      }
+    }
+
+    actuales = await leerSesion();
+    const clavesFinales = new Set(
+      actuales
+        .map((alumno) => normalizarNombreFueraPlazoAgenda(alumno.alumno || ''))
+        .filter(Boolean)
+    );
+
+    const activosAusentesFinal = asistentes
+      .map((asistente) => asistente.name)
+      .filter(
+        (nombre) =>
+          !clavesFinales.has(normalizarNombreFueraPlazoAgenda(nombre || ''))
+      );
+
+    const sobrantesFinales = actuales.filter((alumno) => {
+      const clave = normalizarNombreFueraPlazoAgenda(alumno.alumno || '');
+      return Boolean(clave) && !activos.has(clave) && !protegidos.has(clave);
+    });
+
+    if (activosAusentesFinal.length > 0 || sobrantesFinales.length > 0) {
+      const partes: string[] = [];
+      if (activosAusentesFinal.length > 0) {
+        partes.push(
+          `faltan activos: ${activosAusentesFinal.join(', ')}`
+        );
+      }
+      if (sobrantesFinales.length > 0) {
+        partes.push(
+          `siguen sobrando: ${sobrantesFinales
+            .map((alumno) => alumno.alumno)
+            .join(', ')}`
+        );
+      }
+      throw new Error(
+        `La sesión no ha quedado sincronizada con AimHarder (${partes.join(
+          ' · '
+        )}). No se muestra el refresco como correcto.`
+      );
+    }
+
+    return {
+      totalFinal: actuales.length,
+      retiradosExtra,
+      protegidosExtra,
+    };
   }
 
   async function refrescarSesionBabyDesdeAimHarder(
@@ -16540,11 +16748,55 @@ async function abrirGestionOperativaIntensivoDia(
     try {
       // Mismo lector exacto que usa el turno individual. No existe un parser
       // alternativo para Refrescar listado.
-      const { asistentes } = await obtenerListadoBabyTurnoAimHarderApp(
+      const { asistentes, safety } = await obtenerListadoBabyTurnoAimHarderApp(
         fecha,
         inicioSesion,
         finSesion
       );
+
+      // PREVUELO ANTI-BORRADO:
+      // antes de tocar la sesión, cualquier alumno que vaya a salir debe aparecer
+      // explícitamente como cancelado en la respuesta de la clase exacta.
+      const existentesAntes = await consultarSupabase<AgendaAlumnoSesionApp>(
+        'v_sesion_alumnos_operativa_app',
+        `select=*&sesion_id=${encodeURIComponent(`eq.${sesionId}`)}&order=orden.asc`
+      );
+      const activosAim = new Set(
+        asistentes
+          .map((a) => normalizarNombreFueraPlazoAgenda(a.name || ''))
+          .filter(Boolean)
+      );
+      const canceladosAim = new Set(
+        (safety.cancelledNames || [])
+          .map((nombre) => normalizarNombreFueraPlazoAgenda(nombre || ''))
+          .filter(Boolean)
+      );
+      const bajasPotenciales = existentesAntes.filter((alumno) => {
+        const clave = normalizarNombreFueraPlazoAgenda(alumno.alumno || '');
+        return Boolean(clave) && !activosAim.has(clave);
+      });
+      const bajasNoJustificadas = bajasPotenciales.filter((alumno) => {
+        const clave = normalizarNombreFueraPlazoAgenda(alumno.alumno || '');
+        return !canceladosAim.has(clave);
+      });
+
+      if (bajasNoJustificadas.length > 0) {
+        throw new Error(
+          `Refresco bloqueado por seguridad: AimHarder no marca como cancelado(s) a ${bajasNoJustificadas
+            .map((alumno) => alumno.alumno)
+            .join(', ')}. No se ha eliminado nadie.`
+        );
+      }
+
+      if (
+        asistentes.length === 0 &&
+        existentesAntes.length > 0 &&
+        safety.safeZero !== true
+      ) {
+        throw new Error(
+          `Refresco bloqueado por seguridad: AimHarder devuelve 0 activos para una sesión que tiene ${existentesAntes.length} alumno(s), pero no acredita que todos estén cancelados. No se ha eliminado nadie.`
+        );
+      }
 
       const resultado = await ejecutarFuncionAuthJson<BabyAimHarderRefrescoResultadoApp>(
         'refrescar_sesion_baby_aimharder_app',
@@ -16554,6 +16806,16 @@ async function abrirGestionOperativaIntensivoDia(
         }
       );
 
+      // Segunda garantía: comprobamos directamente "Alumnos detectados".
+      // Cualquier alumno que ya no esté activo en AimHarder se retira de forma
+      // automática salvo que la función segura detecte asistencia o reporte.
+      const verificacion =
+        await verificarYLimpiarSesionBabyTrasRefrescoAimHarderApp(
+          sesionId,
+          asistentes,
+          resultado?.nombres_protegidos || []
+        );
+
       await cargarAgendaOperativaDirecta();
       await cargarListados();
       await cargarDetalleSesionAgenda(sesionId, {
@@ -16561,27 +16823,66 @@ async function abrirGestionOperativaIntensivoDia(
         preservarScroll: true,
       });
 
-      const nuevos = Number(resultado?.nuevos || 0);
-      const retirados = Number(resultado?.retirados || 0);
-      const protegidos = Number(resultado?.protegidos || 0);
-      const mensajes = [
-        `Listado refrescado · ${Number(resultado?.total_actual || asistentes.length)} alumnos`,
-      ];
-      if (nuevos > 0) {
+      const nombresNuevos = Array.from(
+        new Set((resultado?.nombres_nuevos || []).filter(Boolean))
+      );
+      const nombresRetirados = Array.from(
+        new Set([
+          ...(resultado?.nombres_retirados || []),
+          ...verificacion.retiradosExtra,
+        ].filter(Boolean))
+      );
+      const nombresProtegidos = Array.from(
+        new Set([
+          ...(resultado?.nombres_protegidos || []),
+          ...verificacion.protegidosExtra,
+        ].filter(Boolean))
+      );
+
+      const mensajes = ['✓ REFRESCAR DÍA'];
+
+      if (
+        nombresNuevos.length === 0 &&
+        nombresRetirados.length === 0 &&
+        nombresProtegidos.length === 0
+      ) {
         mensajes.push(
-          `Nuevos: ${(resultado?.nombres_nuevos || []).join(', ')}`
+          `Sin cambios · ${asistentes.length} alumno(s) activo(s) en AimHarder · sesión ya actualizada`
+        );
+      } else {
+        if (nombresRetirados.length > 0) {
+          mensajes.push(
+            `${nombresRetirados.length} ${
+              nombresRetirados.length === 1
+                ? 'cancelación retirada'
+                : 'cancelaciones retiradas'
+            }: ${nombresRetirados.join(', ')}`
+          );
+        }
+
+        if (nombresNuevos.length > 0) {
+          mensajes.push(
+            `${nombresNuevos.length} ${
+              nombresNuevos.length === 1 ? 'alumno añadido' : 'alumnos añadidos'
+            }: ${nombresNuevos.join(', ')}`
+          );
+        }
+
+        if (nombresProtegidos.length > 0) {
+          mensajes.push(
+            `${nombresProtegidos.length} ${
+              nombresProtegidos.length === 1
+                ? 'baja no retirada'
+                : 'bajas no retiradas'
+            } por asistencia/reporte: ${nombresProtegidos.join(', ')}`
+          );
+        }
+
+        mensajes.push(
+          `AimHarder: ${asistentes.length} activo(s) · sesión final: ${verificacion.totalFinal} alumno(s)`
         );
       }
-      if (retirados > 0) {
-        mensajes.push(
-          `Retirados porque ya no figuran: ${(resultado?.nombres_retirados || []).join(', ')}`
-        );
-      }
-      if (protegidos > 0) {
-        mensajes.push(
-          `No se han retirado ${protegidos} alumno(s) porque ya tienen asistencia o reporte: ${(resultado?.nombres_protegidos || []).join(', ')}`
-        );
-      }
+
       setBabyAimHarderMensaje(mensajes.join(' · '));
     } catch (e) {
       setBabyAimHarderError(
@@ -16683,18 +16984,20 @@ async function abrirGestionOperativaIntensivoDia(
       let sesionId = '';
       let nuevosPendientes = 0;
       let totalDetectados = 0;
+      let totalActivosAimHarder = 0;
       let sesionBabyYaExistia = false;
 
       if (esBaby) {
         // MISMO PROCESO MAESTRO que “Cargar semana Baby desde AimHarder”:
         // 1) resuelve la clase por fecha + modalidad + horario,
-        // 2) obtiene asistentes con mitico-aimharder-read,
+        // 2) obtiene asistentes con mitico-aimharder-baby-read,
         // 3) usa la misma RPC de carga inicial, que NO pisa una sesión existente.
         const { asistentes } = await obtenerListadoBabyTurnoAimHarderApp(
           agendaForm.fecha,
           agendaForm.hora_inicio,
           agendaForm.hora_fin
         );
+        totalActivosAimHarder = asistentes.length;
         textoListado = asistentes.map((asistente) => asistente.name).join('\n');
 
         setAgendaForm((anterior) => ({
@@ -16766,8 +17069,11 @@ async function abrirGestionOperativaIntensivoDia(
       if (esBaby) {
         setBabyAimHarderMensaje(
           sesionBabyYaExistia
-            ? `La sesión Baby ya existía y se ha dejado intacta · ${totalDetectados} alumno(s). Usa “Refrescar listado” si quieres sincronizar una sesión ya creada.`
-            : `Sesión Baby creada desde el listado activo de AimHarder · ${totalDetectados} alumno(s)`
+            ? `✓ VOLCAR SESIÓN · AimHarder: ${totalActivosAimHarder} alumno(s) activo(s) · ` +
+                `la sesión ya existía y NO se ha modificado · tiene ${totalDetectados} alumno(s) actualmente · ` +
+                'pulsa “Refrescar listado” para sincronizarla'
+            : `✓ VOLCAR SESIÓN · AimHarder: ${totalActivosAimHarder} alumno(s) activo(s) · ` +
+                `sesión creada con ${totalDetectados} alumno(s) · cancelados excluidos`
         );
       }
     } catch (err) {
@@ -30341,13 +30647,18 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                       {babyAimHarderMensaje && (
                         <div
                           style={{
-                            padding: '8px 10px',
-                            borderRadius: 10,
-                            background: 'rgba(240,253,244,.96)',
-                            border: '1px solid rgba(134,239,172,.7)',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            width: 'fit-content',
+                            maxWidth: '100%',
+                            padding: '5px 8px',
+                            borderRadius: 8,
+                            background: 'rgba(240,253,244,.72)',
+                            border: '1px solid rgba(134,239,172,.55)',
                             color: '#166534',
                             fontSize: 12,
-                            fontWeight: 800,
+                            fontWeight: 700,
+                            lineHeight: 1.25,
                           }}
                         >
                           {babyAimHarderMensaje}
