@@ -1,4 +1,4 @@
-const CACHE_ACTUAL = 'mitico-baby-shell-v2'
+const CACHE_ACTUAL = 'mitico-baby-shell-v3'
 const PREFIJO_CACHES = 'mitico-baby-'
 const SHELL_FALLBACK = '/__mitico_shell__'
 
@@ -113,6 +113,24 @@ async function redPrimero(request) {
   }
 }
 
+async function redPrimeroConCacheRequest(request) {
+  const cache = await caches.open(CACHE_ACTUAL)
+
+  try {
+    const respuesta = await fetch(request, { cache: 'no-store' })
+
+    if (respuesta && respuesta.ok) {
+      await cache.put(request, respuesta.clone())
+    }
+
+    return respuesta
+  } catch (error) {
+    const fallback = await cache.match(request)
+    if (fallback) return fallback
+    throw error
+  }
+}
+
 async function cachePrimero(request) {
   const cache = await caches.open(CACHE_ACTUAL)
   const existente = await cache.match(request)
@@ -158,14 +176,21 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Assets con hash de Vite e iconos: cache primero.
+  // Imágenes públicas: red primero.
+  // Así una foto reemplazada con el mismo nombre se actualiza al volver a tener red,
+  // pero sigue disponible offline mediante la copia cacheada.
+  if (request.destination === 'image') {
+    event.respondWith(redPrimeroConCacheRequest(request))
+    return
+  }
+
+  // Assets con hash de Vite, scripts, estilos y fuentes: cache primero.
   // Al cambiar el hash, se descarga automáticamente el asset nuevo.
   if (
     url.pathname.startsWith('/assets/') ||
     request.destination === 'style' ||
     request.destination === 'script' ||
-    request.destination === 'font' ||
-    request.destination === 'image'
+    request.destination === 'font'
   ) {
     event.respondWith(cachePrimero(request))
   }
