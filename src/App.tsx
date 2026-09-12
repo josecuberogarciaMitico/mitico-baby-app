@@ -40247,8 +40247,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               borderRadius: 24,
               border: '1px solid rgba(255,255,255,.12)',
               backgroundImage: esVistaMovilApp
-                ? `linear-gradient(180deg, rgba(4,39,55,.42) 0%, rgba(4,39,55,.70) 46%, rgba(4,39,55,.96) 100%), url('/mitico-entrenador-esqui.jpg')`
-                : `linear-gradient(90deg, rgba(4,39,55,.90) 0%, rgba(5,50,65,.77) 43%, rgba(6,68,62,.30) 70%, rgba(6,68,62,.08) 100%), url('/mitico-entrenador-esqui.jpg')`,
+                ? `linear-gradient(180deg, rgba(4,39,55,.42) 0%, rgba(4,39,55,.70) 46%, rgba(4,39,55,.96) 100%), url('/mitico-entrenador-esqui-v2.jpg')`
+                : `linear-gradient(90deg, rgba(4,39,55,.90) 0%, rgba(5,50,65,.77) 43%, rgba(6,68,62,.30) 70%, rgba(6,68,62,.08) 100%), url('/mitico-entrenador-esqui-v2.jpg')`,
               backgroundSize: 'cover',
               backgroundPosition: esVistaMovilApp ? '62% center' : 'center 46%',
               backgroundRepeat: 'no-repeat',
