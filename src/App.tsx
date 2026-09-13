@@ -1060,6 +1060,20 @@ function fechaIsoHoyApp() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function fechaIsoMadridApp(fecha = new Date()) {
+  const partes = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(fecha);
+
+  const valor = (tipo: 'year' | 'month' | 'day') =>
+    partes.find((parte) => parte.type === tipo)?.value || '';
+
+  return `${valor('year')}-${valor('month')}-${valor('day')}`;
+}
+
 function leerStorageApp(clave: string, defecto = '') {
   if (typeof window === 'undefined') return defecto;
   return window.localStorage.getItem(clave) || defecto;
@@ -4991,6 +5005,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [tareaEntrenadorAbierta, setTareaEntrenadorAbierta] =
     useState<string | null>(null);
   const [semanaEntrenadorSeleccionada, setSemanaEntrenadorSeleccionada] =
+    useState('');
+  const [semanaVistaEntrenadorCoordinadorForzada, setSemanaVistaEntrenadorCoordinadorForzada] =
     useState('');
   const [diaDisponibilidadAbierto, setDiaDisponibilidadAbierto] =
     useState('');
@@ -12545,26 +12561,20 @@ Gracias!`;
     setDetalle(null);
 
     try {
-      const fechaReferenciaDisponibilidad = new Date();
-      if (
-        fechaReferenciaDisponibilidad.getDay() === 1 &&
-        fechaReferenciaDisponibilidad.getHours() < 6
-      ) {
-        fechaReferenciaDisponibilidad.setDate(
-          fechaReferenciaDisponibilidad.getDate() - 1
-        );
-      }
-
       const semanaOperativaDisponibilidad = inicioSemanaAgenda(
-        claveFechaAgenda(fechaReferenciaDisponibilidad)
+        fechaIsoMadridApp()
       );
 
-      let semanaConsulta = semanaForzada ||
+      let semanaConsulta =
+        semanaForzada ||
         (esCoordinadorApp
-          ? semanaAgendaActiva || semanaOperativaDisponibilidad
+          ? pantalla === 'entrenador'
+            ? semanaVistaEntrenadorCoordinadorForzada ||
+              semanaOperativaDisponibilidad
+            : semanaAgendaActiva || semanaOperativaDisponibilidad
           : semanaEntrenadorSeleccionada || semanaOperativaDisponibilidad);
 
-      if (!esCoordinadorApp && !semanaForzada && !semanaEntrenadorSeleccionada) {
+      if (!esCoordinadorApp && !semanaForzada) {
         const objetivo =
           await ejecutarFuncionAuthJson<{
             semana_inicio: string | null;
@@ -12572,7 +12582,9 @@ Gracias!`;
 
         semanaConsulta =
           objetivo?.semana_inicio || semanaOperativaDisponibilidad;
-        setSemanaPublicadaObjetivoEntrenador(semanaConsulta || '');
+        setSemanaPublicadaObjetivoEntrenador(
+          objetivo?.semana_inicio || ''
+        );
         setSemanaEntrenadorSeleccionada(semanaConsulta || '');
       }
 
@@ -12629,16 +12641,11 @@ Gracias!`;
     setError('');
 
     try {
-      const [anioDia, mesDia] = reporte.fecha.split('-').map(Number);
-      const mesObjetivo = `${anioDia}-${String(mesDia).padStart(2, '0')}`;
       const semanaObjetivo = inicioSemanaAgenda(reporte.fecha);
 
-      // La Vista entrenador del coordinador usa la semana de trabajo activa.
-      // Sincronizamos primero esa semana para que el grupo objetivo no quede
-      // oculto por el filtro semanal de la propia Vista entrenador.
-      setAnioInicioTemporadaAgenda(mesDia >= 9 ? anioDia : anioDia - 1);
-      setMesAgenda(mesObjetivo);
-      setSemanaAgendaInicio(semanaObjetivo);
+      // Abrir una tarea antigua en Vista entrenador no debe mover el calendario
+      // general de coordinación. Forzamos solo esta vista al intervalo del reporte.
+      setSemanaVistaEntrenadorCoordinadorForzada(semanaObjetivo);
       setBusquedaGrupoEntrenador('');
       setTabVistaEntrenador('grupos');
       setPantalla('entrenador');
@@ -22718,24 +22725,20 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
   );
 
   // La vista del entrenador es operativa, no histórica.
-  // En móvil y escritorio muestra la semana vigente publicada y conserva
-  // únicamente tareas anteriores que todavía necesitan una acción.
-  // Ningún dato se elimina de Supabase.
-  const fechaReferenciaVistaEntrenador = new Date();
-  if (
-    fechaReferenciaVistaEntrenador.getDay() === 1 &&
-    fechaReferenciaVistaEntrenador.getHours() < 6
-  ) {
-    fechaReferenciaVistaEntrenador.setDate(
-      fechaReferenciaVistaEntrenador.getDate() - 1
-    );
-  }
+  // El calendario de coordinación puede moverse libremente sin cambiar esta vista.
+  // Solo una apertura explícita desde Cierre semanal puede forzar temporalmente
+  // otra semana para resolver una tarea concreta. Ningún dato se elimina de Supabase.
   const semanaActualVistaEntrenador = inicioSemanaAgenda(
-    claveFechaAgenda(fechaReferenciaVistaEntrenador)
+    fechaIsoMadridApp()
   );
   const semanaVistaEntrenadorInicio = esCoordinadorApp
-    ? semanaAgendaActiva || semanaActualVistaEntrenador
-    : semanaPublicadaObjetivoEntrenador || semanaActualVistaEntrenador;
+    ? semanaVistaEntrenadorCoordinadorForzada || semanaActualVistaEntrenador
+    : semanaActualVistaEntrenador;
+  const semanaDisponibilidadVistaEntrenadorInicio = esCoordinadorApp
+    ? semanaVistaEntrenadorInicio
+    : semanaPublicadaObjetivoEntrenador ||
+      semanaEntrenadorSeleccionada ||
+      semanaActualVistaEntrenador;
   const semanaVistaEntrenadorFin = semanaVistaEntrenadorInicio
     ? claveFechaAgenda(
         new Date(
@@ -22891,7 +22894,8 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
     setDetalle(null);
 
     try {
-      let semanaObjetivo = semanaVistaEntrenadorInicio;
+      let semanaDisponibilidadObjetivo =
+        semanaDisponibilidadVistaEntrenadorInicio;
 
       if (esEntrenadorApp) {
         const objetivo =
@@ -22899,20 +22903,21 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
             semana_inicio: string | null;
           }>('obtener_semana_disponibilidad_objetivo_entrenador_app', {});
 
-        if (objetivo?.semana_inicio) {
-          semanaObjetivo = objetivo.semana_inicio;
-          setSemanaPublicadaObjetivoEntrenador(semanaObjetivo);
-          setSemanaEntrenadorSeleccionada(semanaObjetivo);
-        }
+        semanaDisponibilidadObjetivo =
+          objetivo?.semana_inicio || semanaActualVistaEntrenador;
+        setSemanaPublicadaObjetivoEntrenador(
+          objetivo?.semana_inicio || ''
+        );
+        setSemanaEntrenadorSeleccionada(semanaDisponibilidadObjetivo);
       }
 
       await Promise.all([
         cargarGruposEntrenador(),
-        cargarDisponibilidad(semanaObjetivo || undefined),
+        cargarDisponibilidad(semanaDisponibilidadObjetivo || undefined),
       ]);
 
-      if (esEntrenadorApp && semanaObjetivo) {
-        await cargarEstadoSemanaPushEntrenadorApp(semanaObjetivo);
+      if (esEntrenadorApp && semanaVistaEntrenadorInicio) {
+        await cargarEstadoSemanaPushEntrenadorApp(semanaVistaEntrenadorInicio);
       }
     } catch (err) {
       setError(
@@ -22924,6 +22929,35 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       setCargando(false);
     }
   }
+
+  useEffect(() => {
+    if (!esEntrenadorApp || pantalla !== 'entrenador') return;
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
+    let ultimoRefresco = 0;
+
+    const refrescarAlVolver = () => {
+      if (document.visibilityState !== 'visible') return;
+
+      const ahora = Date.now();
+      if (ahora - ultimoRefresco < 1200) return;
+      ultimoRefresco = ahora;
+
+      // Al volver a la PWA reconsultamos la semana de disponibilidad publicada
+      // y los grupos. Así el lunes no puede quedarse en pantalla una semana vieja
+      // aunque la app llevara abierta desde el domingo o no llegara el Push.
+      void cargarGruposEntrenador();
+      void cargarDisponibilidad();
+    };
+
+    document.addEventListener('visibilitychange', refrescarAlVolver);
+    window.addEventListener('focus', refrescarAlVolver);
+
+    return () => {
+      document.removeEventListener('visibilitychange', refrescarAlVolver);
+      window.removeEventListener('focus', refrescarAlVolver);
+    };
+  }, [esEntrenadorApp, pantalla]);
 
   async function cerrarOrganizacionSemanalPushApp(
     semanaForzada?: string
@@ -22998,8 +23032,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
       return false;
     if (!esCoordinadorApp && !entrenadorIdSesionApp) return false;
     if (
-      semanaVistaEntrenadorInicio &&
-      turno.fecha_inicio !== semanaVistaEntrenadorInicio
+      semanaDisponibilidadVistaEntrenadorInicio &&
+      turno.fecha_inicio !== semanaDisponibilidadVistaEntrenadorInicio
     )
       return false;
 
@@ -26721,7 +26755,10 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                   </button>
                   <button
                     className={`mitico-nav-item ${pantalla === 'entrenador' ? 'is-active' : ''}`}
-                    onClick={() => abrirPantallaConScroll('entrenador')}
+                    onClick={() => {
+                      setSemanaVistaEntrenadorCoordinadorForzada('');
+                      abrirPantallaConScroll('entrenador');
+                    }}
                   >
                     <IconoNavegacionApp tipo="movil" />
                     <span>Vista entrenador</span>
@@ -40647,7 +40684,10 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                 type="button"
                 className="trainer-section-tab trainer-section-tab--availability"
                 aria-pressed={tabVistaEntrenador === 'disponibilidad'}
-                onClick={() => setTabVistaEntrenador('disponibilidad')}
+                onClick={() => {
+                  setTabVistaEntrenador('disponibilidad');
+                  if (esEntrenadorApp) void cargarDisponibilidad();
+                }}
                 style={{
                   minHeight: 46,
                   padding: '10px 13px',
@@ -40740,6 +40780,11 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                       lineHeight: 1.4,
                     }}
                   >
+                    {semanaDisponibilidadVistaEntrenadorInicio
+                      ? `Semana solicitada: ${rangoSemanaAgenda(
+                          semanaDisponibilidadVistaEntrenadorInicio
+                        )}. `
+                      : ''}
                     Responde antes de las 13:00 del lunes para que coordinación pueda organizar los grupos de la semana.
                   </p>
                 </section>
