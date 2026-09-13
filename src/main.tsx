@@ -2,6 +2,8 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { PacoChat } from './screens/PacoChat.tsx'
+import { SecretariaPanel } from './screens/SecretariaPanel.tsx'
 
 let registroPwa: ServiceWorkerRegistration | null = null
 let recargandoPorCambioControlador = false
@@ -200,5 +202,7 @@ prepararActualizacionPwa()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
+    <PacoChat />
+    <SecretariaPanel />
   </StrictMode>,
 )
