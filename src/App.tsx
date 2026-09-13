@@ -443,6 +443,27 @@ type AlumnoResumen = {
   camiseta_entregada_at: string | null;
 };
 
+type HistorialReporteAlumnoFichaApp = {
+  reporte_id: string | null;
+  fecha: string;
+  modalidad: string | null;
+  grupo: string | null;
+  entrenador: string | null;
+  nivel_reportado: string | null;
+  actitud: string | null;
+  tecnica: string | null;
+  pista: string | null;
+  remontes: string[] | null;
+  autonomia: string | null;
+  ritmo_grupo: string | null;
+  mejora_hoy: string | null;
+  incidencia: string | null;
+  recomendacion: string | null;
+  observaciones_generales: string | null;
+  trabajo_diario: string | null;
+  enviado_at: string | null;
+};
+
 type TendenciaRitmoAlumnoApp = {
   alumno_id: string;
   ritmo_tendencia: string | null;
@@ -5214,6 +5235,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [historialAlumnoAbiertoId, setHistorialAlumnoAbiertoId] = useState<
     string | null
   >(null);
+  const [historialReportesFichaPorAlumno, setHistorialReportesFichaPorAlumno] =
+    useState<Record<string, HistorialReporteAlumnoFichaApp[]>>({});
+  const [historialReportesFichaCargandoId, setHistorialReportesFichaCargandoId] =
+    useState<string | null>(null);
 
   const [ocioAlumnos, setOcioAlumnos] = useState<OcioAlumnoApp[]>([]);
   const [ocioGrupos, setOcioGrupos] = useState<OcioGrupoApp[]>([]);
@@ -7603,6 +7628,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       return;
     }
 
+    const observacionUtil = formReporte.observaciones.trim();
+    if (!observacionUtil) {
+      setError(
+        'Escribe una observación útil para próximas sesiones antes de guardar el reporte.'
+      );
+      return;
+    }
+
     const confirmar = window.confirm(`¿Guardar reporte de ${alumno.alumno}?`);
 
     if (!confirmar) return;
@@ -7626,8 +7659,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_incidencia: formReporte.incidencia,
         p_recomendacion: formReporte.recomendacion,
         p_mejora_hoy: formReporte.mejoraHoy,
-        p_observaciones:
-          formReporte.observaciones.trim() || null,
+        p_observaciones: observacionUtil,
       });
 
       await ejecutarFuncion('guardar_ritmo_ultimo_reporte_app', {
@@ -8142,20 +8174,271 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setCargando(false);
   }
 
+  function objetivoTrabajoDiarioFichaApp(valor: string | null | undefined) {
+    const linea = String(valor || '')
+      .split(/\r?\n/)
+      .map((item) => item.trim())
+      .find((item) => /^OBJETIVO\s*·/i.test(item));
+
+    return linea ? linea.replace(/^OBJETIVO\s*·\s*/i, '').trim() : '';
+  }
+
+  function valoresUnicosFichaApp(valores: Array<string | null | undefined>, limite = 5) {
+    return Array.from(
+      new Set(
+        valores
+          .map((valor) => String(valor || '').trim())
+          .filter(Boolean)
+      )
+    ).slice(0, limite);
+  }
+
+  async function cargarHistorialReportesAlumnoFichaApp(
+    alumnoId: string,
+    forzar = false
+  ): Promise<HistorialReporteAlumnoFichaApp[]> {
+    const yaCargado = Object.prototype.hasOwnProperty.call(
+      historialReportesFichaPorAlumno,
+      alumnoId
+    );
+
+    if (!forzar && yaCargado) {
+      return historialReportesFichaPorAlumno[alumnoId] || [];
+    }
+
+    setHistorialReportesFichaCargandoId(alumnoId);
+
+    try {
+      let reportes: HistorialReporteAlumnoFichaApp[] = [];
+
+      try {
+        reportes = await ejecutarFuncionConRespuesta<HistorialReporteAlumnoFichaApp>(
+          'obtener_historial_reportes_alumno_ficha_app',
+          { p_alumno_id: alumnoId }
+        );
+      } catch (errorRpc) {
+        const mensajeRpc =
+          errorRpc instanceof Error ? errorRpc.message : String(errorRpc || '');
+        const funcionNuevaNoDisponible =
+          /PGRST202|schema cache|could not find the function|no se pudo ejecutar obtener_historial_reportes_alumno_ficha_app/i.test(
+            mensajeRpc
+          );
+
+        if (!funcionNuevaNoDisponible) throw errorRpc;
+
+        // Compatibilidad segura: si la función nueva todavía no está aplicada,
+        // mostramos el historial que ya existía sin bloquear Fichas ni reportes.
+        console.warn(
+          'Historial ampliado todavía no disponible; se usa el historial compatible.'
+        );
+        const legacy = await consultarSupabase<{
+          fecha: string;
+          modalidad: string | null;
+          nombre_grupo: string | null;
+          nivel_reportado: string | null;
+          actitud: string | null;
+          tecnica: string | null;
+          pista: string | null;
+          remontes: string[] | null;
+          autonomia: string | null;
+          incidencia: string | null;
+          recomendacion_proxima_sesion: string | null;
+          enviado_at: string | null;
+        }>(
+          'v_historial_reportes_alumno',
+          `select=fecha,modalidad,nombre_grupo,nivel_reportado,actitud,tecnica,pista,remontes,autonomia,incidencia,recomendacion_proxima_sesion,enviado_at&alumno_id=eq.${encodeURIComponent(
+            alumnoId
+          )}&order=fecha.desc,enviado_at.desc`
+        );
+
+        reportes = legacy.map((reporte) => ({
+          reporte_id: null,
+          fecha: reporte.fecha,
+          modalidad: reporte.modalidad,
+          grupo: reporte.nombre_grupo,
+          entrenador: null,
+          nivel_reportado: reporte.nivel_reportado,
+          actitud: reporte.actitud,
+          tecnica: reporte.tecnica,
+          pista: reporte.pista,
+          remontes: reporte.remontes,
+          autonomia: reporte.autonomia,
+          ritmo_grupo: null,
+          mejora_hoy: null,
+          incidencia: reporte.incidencia,
+          recomendacion: reporte.recomendacion_proxima_sesion,
+          observaciones_generales: null,
+          trabajo_diario: null,
+          enviado_at: reporte.enviado_at,
+        }));
+      }
+
+      const ordenados = [...(Array.isArray(reportes) ? reportes : [])].sort(
+        (a, b) => {
+          const porFecha = String(b.fecha || '').localeCompare(
+            String(a.fecha || '')
+          );
+          if (porFecha !== 0) return porFecha;
+          return String(b.enviado_at || '').localeCompare(
+            String(a.enviado_at || '')
+          );
+        }
+      );
+
+      setHistorialReportesFichaPorAlumno((actual) => ({
+        ...actual,
+        [alumnoId]: ordenados,
+      }));
+      return ordenados;
+    } finally {
+      setHistorialReportesFichaCargandoId((actual) =>
+        actual === alumnoId ? null : actual
+      );
+    }
+  }
+
+  async function alternarHistorialAlumnoFichaApp(alumno: AlumnoResumen) {
+    if (historialAlumnoAbiertoId === alumno.alumno_id) {
+      setHistorialAlumnoAbiertoId(null);
+      return;
+    }
+
+    setHistorialAlumnoAbiertoId(alumno.alumno_id);
+    setError('');
+
+    try {
+      await cargarHistorialReportesAlumnoFichaApp(alumno.alumno_id);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : 'Error cargando el historial del alumno.'
+      );
+    }
+  }
+
+  function generarBaseEvaluacionAlumnoFichaApp(
+    alumno: AlumnoResumen,
+    reportes: HistorialReporteAlumnoFichaApp[]
+  ) {
+    const nivelActual =
+      alumno.nivel_actual ||
+      alumno.ultimo_nivel_reportado ||
+      alumno.nivel_estimado ||
+      'Sin nivel confirmado';
+
+    if (reportes.length === 0) {
+      return [
+        'BASE PARA INFORME DE FAMILIA',
+        `Alumno: ${alumno.alumno}`,
+        `Nivel actual de ficha: ${nivelActual}`,
+        '',
+        'Todavía no hay reportes técnicos detallados guardados para este alumno.',
+        'No completar ni inventar información que no esté registrada.',
+      ].join('\n');
+    }
+
+    const reciente = reportes[0];
+    const primero = reportes[reportes.length - 1];
+    const mejoras = valoresUnicosFichaApp(
+      reportes.map((reporte) => reporte.mejora_hoy),
+      5
+    ).filter(
+      (valor) => !/nada destacable|sesión de consolidación/i.test(valor)
+    );
+    const objetivosTrabajados = valoresUnicosFichaApp(
+      reportes.map((reporte) =>
+        objetivoTrabajoDiarioFichaApp(reporte.trabajo_diario)
+      ),
+      5
+    );
+    const observaciones = reportes
+      .filter((reporte) => String(reporte.observaciones_generales || '').trim())
+      .slice(0, 5)
+      .map(
+        (reporte) =>
+          `${formatearFecha(reporte.fecha)} · ${String(
+            reporte.observaciones_generales || ''
+          ).trim()}`
+      );
+    const siguientesPasos = valoresUnicosFichaApp(
+      reportes.map((reporte) => reporte.recomendacion),
+      3
+    );
+
+    const evolucion: string[] = [];
+    if (primero.nivel_reportado || reciente.nivel_reportado) {
+      evolucion.push(
+        `Nivel: ${primero.nivel_reportado || nivelActual} → ${
+          reciente.nivel_reportado || nivelActual
+        }`
+      );
+    }
+    if (primero.tecnica || reciente.tecnica) {
+      evolucion.push(
+        `Técnica: ${primero.tecnica || 'sin dato inicial'} → ${
+          reciente.tecnica || 'sin dato reciente'
+        }`
+      );
+    }
+    if (primero.autonomia || reciente.autonomia) {
+      evolucion.push(
+        `Autonomía: ${primero.autonomia || 'sin dato inicial'} → ${
+          reciente.autonomia || 'sin dato reciente'
+        }`
+      );
+    }
+
+    return [
+      'BASE PARA INFORME DE FAMILIA',
+      `Alumno: ${alumno.alumno}`,
+      `Nivel actual de ficha: ${nivelActual}`,
+      `Periodo: ${formatearFecha(primero.fecha)} - ${formatearFecha(
+        reciente.fecha
+      )}`,
+      `Reportes analizados: ${reportes.length}`,
+      '',
+      'EVOLUCIÓN',
+      ...(evolucion.length > 0
+        ? evolucion.map((linea) => `• ${linea}`)
+        : ['• Sin comparación suficiente todavía.']),
+      '',
+      'MEJORAS DESTACADAS',
+      ...(mejoras.length > 0
+        ? mejoras.map((linea) => `• ${linea}`)
+        : ['• Sesiones centradas en consolidar lo trabajado.']),
+      '',
+      'TRABAJO REALIZADO',
+      ...(objetivosTrabajados.length > 0
+        ? objetivosTrabajados.map((linea) => `• ${linea}`)
+        : ['• Consultar el historial visual para el detalle por sesión.']),
+      '',
+      'OBSERVACIONES ÚTILES DE ENTRENADORES',
+      ...(observaciones.length > 0
+        ? observaciones.map((linea) => `• ${linea}`)
+        : ['• Los reportes anteriores no contienen observaciones escritas.']),
+      '',
+      'PRÓXIMOS PASOS',
+      ...(siguientesPasos.length > 0
+        ? siguientesPasos.map((linea) => `• ${linea}`)
+        : ['• Sin recomendación concreta registrada.']),
+      '',
+      'INSTRUCCIÓN PARA EL TEXTO FINAL',
+      'Redactar para la familia un informe breve, positivo, claro y profesional. No inventar datos. Priorizar evolución, mejoras reales, observaciones útiles y próximos objetivos; no copiar una lista técnica completa de campos.',
+    ].join('\n');
+  }
+
   async function abrirEvaluacionAlumno(alumno: AlumnoResumen) {
     setCargando(true);
     setError('');
     setEvaluacionAlumnoActivaId(alumno.alumno_id);
-    setEvaluacionAlumnoTexto('Cargando evaluación...');
+    setEvaluacionAlumnoTexto('Preparando resumen...');
 
     try {
-      const resultado = await ejecutarFuncionConRespuesta<{ texto: string }>(
-        'extraer_evaluacion_alumno_reportes_app',
-        { p_alumno_id: alumno.alumno_id }
+      const reportes = await cargarHistorialReportesAlumnoFichaApp(
+        alumno.alumno_id
       );
-      const texto =
-        resultado[0]?.texto || `No hay reportes todavía para ${alumno.alumno}.`;
-      setEvaluacionAlumnoTexto(texto);
+      setEvaluacionAlumnoTexto(
+        generarBaseEvaluacionAlumnoFichaApp(alumno, reportes)
+      );
     } catch (err) {
       setEvaluacionAlumnoTexto('');
       setError(
@@ -8172,10 +8455,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     try {
       await navigator.clipboard.writeText(evaluacionAlumnoTexto);
       alert(
-        'Evaluación copiada. Pégala en ChatGPT para convertirla en mensaje bonito para padres.'
+        'Base del informe copiada. Pégala en ChatGPT para convertirla en un texto final para la familia.'
       );
     } catch {
-      window.prompt('Copia esta evaluación:', evaluacionAlumnoTexto);
+      window.prompt('Copia esta base del informe:', evaluacionAlumnoTexto);
     }
   }
 
@@ -23947,11 +24230,11 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
         </div>
 
         <label style={labelCampo}>
-          Observación útil para próximas sesiones (opcional)
+          Observación útil para próximas sesiones (obligatoria)
           <textarea
             value={formReporte.observaciones}
             maxLength={500}
-            placeholder="Solo algo que no esté ya arriba: miedo, cansancio, atención, material, comportamiento, reacción a un ejercicio o detalle importante para la próxima sesión."
+            placeholder="Obligatoria. Añade algo útil que no esté ya arriba: cómo ha respondido, miedo, cansancio, atención, material, comportamiento, reacción a un ejercicio o un detalle importante para la próxima sesión."
             onChange={(e) =>
               setFormReporte({
                 ...formReporte,
@@ -23961,7 +24244,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             style={textarea}
           />
           <span style={{ fontSize: 11, color: '#64748b', marginTop: 5 }}>
-            {formReporte.observaciones.length}/500 · No repitas nivel, técnica, autonomía o incidencia. Escribe solo un detalle útil que ayude a entender mejor al niño en la siguiente sesión.
+            {formReporte.observaciones.length}/500 · Obligatoria. No repitas nivel, técnica, autonomía o incidencia: añade un detalle que ayude al siguiente entrenador y al informe de la familia.
           </span>
         </label>
 
@@ -46415,6 +46698,14 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     !alumno.nivel_actual && Boolean(alumno.nivel_estimado);
                   const historialAbierto =
                     historialAlumnoAbiertoId === alumno.alumno_id;
+                  const historialReportes =
+                    historialReportesFichaPorAlumno[alumno.alumno_id] || [];
+                  const historialCargado = Object.prototype.hasOwnProperty.call(
+                    historialReportesFichaPorAlumno,
+                    alumno.alumno_id
+                  );
+                  const historialCargando =
+                    historialReportesFichaCargandoId === alumno.alumno_id;
 
                   return (
                     <article
@@ -46486,9 +46777,24 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                               fontWeight: 700,
                             }}
                           >
-                            Entrenamientos:{' '}
-                            {alumno.total_entrenamientos_realizados || 0} ·
-                            Origen nivel: {alumno.origen_nivel_estimado || '-'}
+                            {sinReportes
+                              ? `Sin historial técnico detallado todavía${
+                                  nivelPrincipal !== 'SIN NIVEL'
+                                    ? ` · Nivel de ficha ${nivelPrincipal}`
+                                    : ''
+                                }`
+                              : `Reportes técnicos: ${
+                                  alumno.total_reportes || 0
+                                }${
+                                  alumno.ultima_fecha_reporte
+                                    ? ` · Último ${formatearFecha(
+                                        alumno.ultima_fecha_reporte
+                                      )}`
+                                    : ''
+                                }`}
+                            {alumno.origen_nivel_estimado
+                              ? ` · Origen: ${alumno.origen_nivel_estimado}`
+                              : ''}
                           </p>
                           {tendenciaRitmoAlumnoApp(alumno.alumno_id)
                             ?.ritmo_tendencia && (
@@ -46587,9 +46893,9 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                             type="button"
                             onClick={() => abrirEvaluacionAlumno(alumno)}
                             style={botonMini}
-                            title="Previsualizar la evaluación técnica generada desde todos los reportes del alumno."
+                            title="Preparar una base breve para el informe de la familia usando el historial técnico del alumno."
                           >
-                            Ver evaluación
+                            Informe familia
                           </button>
                           <button
                             type="button"
@@ -46865,11 +47171,10 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                           >
                             <div>
                               <h4 style={{ margin: 0 }}>
-                                Vista previa evaluación técnica
+                                Resumen para informe de familia
                               </h4>
                               <p style={{ margin: '6px 0 0', color: '#555' }}>
-                                Revisa el texto antes de copiarlo para dejarlo
-                                bonito para padres.
+                                Una base corta con evolución, mejoras, trabajo realizado y observaciones útiles. El detalle completo queda en el historial.
                               </p>
                             </div>
                             <button
@@ -46889,7 +47194,9 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                             value={evaluacionAlumnoTexto}
                             style={{
                               ...textarea,
-                              minHeight: 260,
+                              minHeight: 220,
+                              width: '100%',
+                              boxSizing: 'border-box',
                               marginTop: 12,
                               whiteSpace: 'pre-wrap',
                             }}
@@ -46908,7 +47215,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                               onClick={copiarEvaluacionAlumnoTexto}
                               style={botonPrincipal}
                             >
-                              Copiar para ChatGPT
+                              Copiar base del informe
                             </button>
                           </div>
                         </div>
@@ -46917,34 +47224,38 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                       <div style={{ marginTop: 12 }}>
                         <button
                           type="button"
-                          onClick={() =>
-                            setHistorialAlumnoAbiertoId(
-                              historialAbierto ? null : alumno.alumno_id
-                            )
-                          }
+                          onClick={() => void alternarHistorialAlumnoFichaApp(alumno)}
                           style={{
                             ...botonSecundario,
                             width: '100%',
                             justifyContent: 'space-between',
                             borderColor: historialAbierto
-                              ? '#bfdbfe'
+                              ? '#86efac'
                               : '#e2e8f0',
                             background: historialAbierto
-                              ? '#eff6ff'
+                              ? '#f0fdf4'
                               : '#ffffff',
                             color: '#0f172a',
                             fontWeight: 900,
                           }}
                         >
                           <span>
-                            {historialAbierto ? '▼' : '▶'} Historial técnico /
-                            último reporte
+                            {historialAbierto ? '▼' : '▶'} Historial de entrenamientos y reportes
                           </span>
                           <span style={{ fontSize: 13, color: '#64748b' }}>
-                            Nivel app {nivelUsadoPorApp} · Último reporte{' '}
-                            {alumno.ultima_fecha_reporte
-                              ? formatearFecha(alumno.ultima_fecha_reporte)
-                              : '-'}
+                            {sinReportes
+                              ? 'Sin reportes técnicos'
+                              : `${alumno.total_reportes || 0} ${
+                                  Number(alumno.total_reportes || 0) === 1
+                                    ? 'reporte'
+                                    : 'reportes'
+                                }${
+                                  alumno.ultima_fecha_reporte
+                                    ? ` · ${formatearFecha(
+                                        alumno.ultima_fecha_reporte
+                                      )}`
+                                    : ''
+                                }`}
                           </span>
                         </button>
 
@@ -46955,141 +47266,27 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                               marginTop: 10,
                               display: 'grid',
                               gap: 12,
-                              border: '1px solid #bfdbfe',
-                              background: '#f8fbff',
+                              border: '1px solid #bbf7d0',
+                              background: '#f8fffb',
                             }}
                           >
                             <div
                               style={{
-                                display: 'grid',
-                                gridTemplateColumns:
-                                  'repeat(auto-fit, minmax(180px, 1fr))',
-                                gap: 10,
+                                display: 'flex',
+                                gap: 8,
+                                flexWrap: 'wrap',
+                                alignItems: 'center',
                               }}
                             >
-                              <div
-                                style={{
-                                  ...miniTarjetaBlanca,
-                                  padding: 12,
-                                  background: '#ffffff',
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    fontSize: 12,
-                                    fontWeight: 900,
-                                    color: '#64748b',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: 0.5,
-                                  }}
-                                >
-                                  Nivel usado por la app
-                                </div>
-                                <div
-                                  style={{
-                                    fontSize: 24,
-                                    fontWeight: 950,
-                                    color: '#0f172a',
-                                    marginTop: 4,
-                                  }}
-                                >
-                                  {nivelUsadoPorApp}
-                                </div>
-                                <div
-                                  style={{
-                                    color: '#64748b',
-                                    fontWeight: 700,
-                                    marginTop: 4,
-                                  }}
-                                >
-                                  Este es el nivel real para recomendador y
-                                  grupos.
-                                </div>
-                              </div>
-
-                              <div
-                                style={{
-                                  ...miniTarjetaBlanca,
-                                  padding: 12,
-                                  background: '#ffffff',
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    fontSize: 12,
-                                    fontWeight: 900,
-                                    color: '#64748b',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: 0.5,
-                                  }}
-                                >
-                                  Último reporte
-                                </div>
-                                <div
-                                  style={{
-                                    fontSize: 24,
-                                    fontWeight: 950,
-                                    color: nivelDifiereUltimoReporte
-                                      ? '#c2410c'
-                                      : '#047857',
-                                    marginTop: 4,
-                                  }}
-                                >
-                                  {alumno.ultimo_nivel_reportado || '-'}
-                                </div>
-                                <div
-                                  style={{
-                                    color: '#64748b',
-                                    fontWeight: 700,
-                                    marginTop: 4,
-                                  }}
-                                >
-                                  {alumno.ultima_fecha_reporte
-                                    ? formatearFecha(
-                                        alumno.ultima_fecha_reporte
-                                      )
-                                    : 'Sin fecha de reporte'}
-                                </div>
-                              </div>
-
-                              <div
-                                style={{
-                                  ...miniTarjetaBlanca,
-                                  padding: 12,
-                                  background: '#ffffff',
-                                }}
-                              >
-                                <div
-                                  style={{
-                                    fontSize: 12,
-                                    fontWeight: 900,
-                                    color: '#64748b',
-                                    textTransform: 'uppercase',
-                                    letterSpacing: 0.5,
-                                  }}
-                                >
-                                  Origen del nivel
-                                </div>
-                                <div
-                                  style={{
-                                    fontSize: 18,
-                                    fontWeight: 900,
-                                    color: '#0f172a',
-                                    marginTop: 6,
-                                  }}
-                                >
-                                  {alumno.origen_nivel_estimado || '-'}
-                                </div>
-                                <div
-                                  style={{
-                                    color: '#64748b',
-                                    fontWeight: 700,
-                                    marginTop: 4,
-                                  }}
-                                >
-                                  Solo avisa si el nivel no está confirmado.
-                                </div>
-                              </div>
+                              <span style={miniBadge}>Nivel actual: {nivelUsadoPorApp}</span>
+                              <span style={miniBadge}>
+                                {alumno.total_reportes || 0} reportes técnicos
+                              </span>
+                              {alumno.ultima_fecha_reporte && (
+                                <span style={miniBadge}>
+                                  Último: {formatearFecha(alumno.ultima_fecha_reporte)}
+                                </span>
+                              )}
                             </div>
 
                             {nivelDifiereUltimoReporte && (
@@ -47103,9 +47300,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                   fontWeight: 800,
                                 }}
                               >
-                                Revisar nivel: el nivel usado por la app no
-                                coincide con el último nivel reportado por
-                                entrenador.
+                                Revisar nivel: el nivel usado por la app no coincide
+                                con el último nivel reportado por entrenador.
                               </div>
                             )}
 
@@ -47120,83 +47316,230 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                   fontWeight: 800,
                                 }}
                               >
-                                Nivel provisional: todavía no hay nivel real
-                                confirmado en ficha. Usar con aviso en grupos.
+                                Nivel provisional: todavía no hay un nivel real
+                                confirmado en ficha.
                               </div>
                             )}
 
-                            <details
-                              style={{
-                                border: '1px solid #e2e8f0',
-                                borderRadius: 16,
-                                padding: 12,
-                                background: '#ffffff',
-                              }}
-                            >
-                              <summary
-                                style={{
-                                  cursor: 'pointer',
-                                  fontWeight: 900,
-                                  color: '#334155',
-                                }}
-                              >
-                                Ver datos históricos del nivel
-                              </summary>
+                            {historialCargando && (
+                              <p style={{ margin: 0, color: '#475569', fontWeight: 700 }}>
+                                Cargando historial...
+                              </p>
+                            )}
+
+                            {!historialCargando && historialCargado && historialReportes.length === 0 && (
                               <div
                                 style={{
-                                  display: 'grid',
-                                  gap: 6,
-                                  marginTop: 10,
+                                  padding: 14,
+                                  borderRadius: 16,
+                                  border: '1px solid #dbeafe',
+                                  background: '#eff6ff',
+                                  color: '#334155',
+                                  lineHeight: 1.5,
                                 }}
                               >
-                                <p style={{ margin: 0 }}>
-                                  <strong>Nivel inicial / estimado:</strong>{' '}
-                                  {alumno.nivel_estimado || '-'}
-                                </p>
-                                <p style={{ margin: 0 }}>
-                                  <strong>Último nivel reportado:</strong>{' '}
-                                  {alumno.ultimo_nivel_reportado || '-'}
-                                </p>
-                                <p style={{ margin: 0 }}>
-                                  <strong>Nivel usado por la app:</strong>{' '}
-                                  {nivelUsadoPorApp}
-                                </p>
-                                <p style={{ margin: 0 }}>
-                                  <strong>Origen:</strong>{' '}
-                                  {alumno.origen_nivel_estimado || '-'}
-                                </p>
+                                <strong>No hay reportes técnicos detallados todavía.</strong>{' '}
+                                {nivelUsadoPorApp !== '-'
+                                  ? `La ficha conserva el nivel ${nivelUsadoPorApp}, pero no mostramos campos vacíos ni inventamos datos que no existen.`
+                                  : 'La ficha todavía no tiene suficiente información técnica registrada.'}
                               </div>
-                            </details>
+                            )}
 
-                            <div
-                              style={{
-                                display: 'grid',
-                                gridTemplateColumns:
-                                  'repeat(auto-fit, minmax(220px, 1fr))',
-                                gap: 8,
-                              }}
-                            >
-                              <p style={{ margin: 0 }}>
-                                <strong>Última modalidad:</strong>{' '}
-                                {alumno.ultima_modalidad || '-'}
-                              </p>
-                              <p style={{ margin: 0 }}>
-                                <strong>Pista:</strong>{' '}
-                                {alumno.ultima_pista || '-'}
-                              </p>
-                              <p style={{ margin: 0 }}>
-                                <strong>Última actitud:</strong>{' '}
-                                {alumno.ultima_actitud || '-'}
-                              </p>
-                              <p style={{ margin: 0 }}>
-                                <strong>Última técnica:</strong>{' '}
-                                {alumno.ultima_tecnica || '-'}
-                              </p>
-                              <p style={{ margin: 0 }}>
-                                <strong>Última recomendación:</strong>{' '}
-                                {alumno.ultima_recomendacion || '-'}
-                              </p>
-                            </div>
+                            {!historialCargando && historialReportes.length > 0 && (
+                              <div style={{ display: 'grid', gap: 10 }}>
+                                {historialReportes.map((reporte, indice) => {
+                                  const objetivoTrabajo = objetivoTrabajoDiarioFichaApp(
+                                    reporte.trabajo_diario
+                                  );
+                                  const remontes = Array.isArray(reporte.remontes)
+                                    ? reporte.remontes.filter(Boolean)
+                                    : [];
+
+                                  return (
+                                    <article
+                                      key={
+                                        reporte.reporte_id ||
+                                        `${alumno.alumno_id}-${reporte.fecha}-${indice}`
+                                      }
+                                      style={{
+                                        border: '1px solid #dbeafe',
+                                        borderRadius: 16,
+                                        padding: 14,
+                                        background: '#ffffff',
+                                        boxShadow: '0 4px 16px rgba(15,23,42,.04)',
+                                      }}
+                                    >
+                                      <div
+                                        style={{
+                                          display: 'flex',
+                                          justifyContent: 'space-between',
+                                          gap: 10,
+                                          alignItems: 'flex-start',
+                                          flexWrap: 'wrap',
+                                        }}
+                                      >
+                                        <div>
+                                          <div
+                                            style={{
+                                              fontSize: 16,
+                                              fontWeight: 950,
+                                              color: '#0f172a',
+                                            }}
+                                          >
+                                            {formatearFecha(reporte.fecha)}
+                                          </div>
+                                          <div
+                                            style={{
+                                              marginTop: 3,
+                                              color: '#64748b',
+                                              fontWeight: 700,
+                                            }}
+                                          >
+                                            {[reporte.modalidad, reporte.grupo]
+                                              .filter(Boolean)
+                                              .join(' · ') || 'Sesión técnica'}
+                                          </div>
+                                          {reporte.entrenador && (
+                                            <div
+                                              style={{
+                                                marginTop: 2,
+                                                color: '#64748b',
+                                                fontSize: 13,
+                                              }}
+                                            >
+                                              Entrenador: {reporte.entrenador}
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        <div
+                                          style={{
+                                            display: 'flex',
+                                            gap: 6,
+                                            flexWrap: 'wrap',
+                                            justifyContent: 'flex-end',
+                                          }}
+                                        >
+                                          {reporte.nivel_reportado && (
+                                            <span style={miniBadge}>
+                                              Nivel {reporte.nivel_reportado}
+                                            </span>
+                                          )}
+                                          {reporte.tecnica && (
+                                            <span style={miniBadge}>{reporte.tecnica}</span>
+                                          )}
+                                        </div>
+                                      </div>
+
+                                      <div
+                                        style={{
+                                          display: 'grid',
+                                          gap: 7,
+                                          marginTop: 12,
+                                          lineHeight: 1.45,
+                                        }}
+                                      >
+                                        {objetivoTrabajo && (
+                                          <p style={{ margin: 0 }}>
+                                            <strong>Trabajo:</strong> {objetivoTrabajo}
+                                          </p>
+                                        )}
+                                        {reporte.mejora_hoy && (
+                                          <p style={{ margin: 0 }}>
+                                            <strong>Mejoró:</strong> {reporte.mejora_hoy}
+                                          </p>
+                                        )}
+                                        {reporte.observaciones_generales && (
+                                          <div
+                                            style={{
+                                              padding: 10,
+                                              borderRadius: 12,
+                                              background: '#f0fdf4',
+                                              border: '1px solid #bbf7d0',
+                                              color: '#166534',
+                                            }}
+                                          >
+                                            <strong>Observación:</strong>{' '}
+                                            {reporte.observaciones_generales}
+                                          </div>
+                                        )}
+                                        {reporte.recomendacion && (
+                                          <p style={{ margin: 0 }}>
+                                            <strong>Siguiente paso:</strong>{' '}
+                                            {reporte.recomendacion}
+                                          </p>
+                                        )}
+                                      </div>
+
+                                      <details
+                                        style={{
+                                          marginTop: 10,
+                                          borderTop: '1px solid #e2e8f0',
+                                          paddingTop: 9,
+                                        }}
+                                      >
+                                        <summary
+                                          style={{
+                                            cursor: 'pointer',
+                                            fontWeight: 850,
+                                            color: '#475569',
+                                          }}
+                                        >
+                                          Ver trabajo del día y datos completos
+                                        </summary>
+
+                                        {reporte.trabajo_diario && (
+                                          <div
+                                            style={{
+                                              marginTop: 10,
+                                              padding: 10,
+                                              borderRadius: 12,
+                                              background: '#f8fafc',
+                                              whiteSpace: 'pre-wrap',
+                                              color: '#334155',
+                                              lineHeight: 1.45,
+                                            }}
+                                          >
+                                            {reporte.trabajo_diario}
+                                          </div>
+                                        )}
+
+                                        <div
+                                          style={{
+                                            display: 'grid',
+                                            gridTemplateColumns:
+                                              'repeat(auto-fit, minmax(180px, 1fr))',
+                                            gap: 7,
+                                            marginTop: 10,
+                                            color: '#334155',
+                                          }}
+                                        >
+                                          {reporte.actitud && (
+                                            <span><strong>Actitud:</strong> {reporte.actitud}</span>
+                                          )}
+                                          {reporte.autonomia && (
+                                            <span><strong>Autonomía:</strong> {reporte.autonomia}</span>
+                                          )}
+                                          {reporte.pista && (
+                                            <span><strong>Pista:</strong> {reporte.pista}</span>
+                                          )}
+                                          {remontes.length > 0 && (
+                                            <span><strong>Remontes:</strong> {remontes.join(', ')}</span>
+                                          )}
+                                          {reporte.ritmo_grupo && (
+                                            <span><strong>Ritmo:</strong> {reporte.ritmo_grupo}</span>
+                                          )}
+                                          {reporte.incidencia &&
+                                            reporte.incidencia !== 'Sin incidencia' && (
+                                              <span><strong>Incidencia:</strong> {reporte.incidencia}</span>
+                                            )}
+                                        </div>
+                                      </details>
+                                    </article>
+                                  );
+                                })}
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
