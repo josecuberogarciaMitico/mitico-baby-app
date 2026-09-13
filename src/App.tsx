@@ -5823,6 +5823,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   >({});
   const [grupoResumenDiaDestacado, setGrupoResumenDiaDestacado] = useState('');
   const [alumnoResumenDiaDestacado, setAlumnoResumenDiaDestacado] = useState('');
+  const [ajustePistaSesionId, setAjustePistaSesionId] = useState('');
+  const [ajustePistaModo, setAjustePistaModo] = useState<'mover' | 'anadir' | ''>('');
+  const [movimientoPistaAlumno, setMovimientoPistaAlumno] = useState('');
+  const [movimientoPistaDestino, setMovimientoPistaDestino] = useState('');
+  const [busquedaPistaAlumno, setBusquedaPistaAlumno] = useState('');
+  const [anadirPistaAlumnoId, setAnadirPistaAlumnoId] = useState('');
+  const [anadirPistaDestino, setAnadirPistaDestino] = useState('');
+  const [guardandoAjustePista, setGuardandoAjustePista] = useState(false);
+  const [mensajeAjustePista, setMensajeAjustePista] = useState('');
   const [busquedaRevisionOcio, setBusquedaRevisionOcio] = useState('');
   const [filtroRevisionOcio, setFiltroRevisionOcio] = useState<
     'todos' | 'cambios' | 'sin_grupo' | 'sin_reportes'
@@ -22390,6 +22399,183 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
     }, 3200);
   }
 
+  function abrirAjustePistaSesion(
+    sesionId: string,
+    modo: 'mover' | 'anadir'
+  ) {
+    const mismaAccion = ajustePistaSesionId === sesionId && ajustePistaModo === modo;
+    if (mismaAccion) {
+      setAjustePistaSesionId('');
+      setAjustePistaModo('');
+      return;
+    }
+
+    setAjustePistaSesionId(sesionId);
+    setAjustePistaModo(modo);
+    setMovimientoPistaAlumno('');
+    setMovimientoPistaDestino('');
+    setBusquedaPistaAlumno('');
+    setAnadirPistaAlumnoId('');
+    setAnadirPistaDestino('');
+    setMensajeAjustePista('');
+    setError('');
+  }
+
+  async function refrescarTrabajoPistaSesion(sesionId: string) {
+    const filtroSesion = encodeURIComponent(`eq.${sesionId}`);
+    const grupos = await consultarSupabase<AgendaGrupoSesionApp>(
+      'v_grupos_sesion_operativa_app',
+      `select=*&sesion_id=${filtroSesion}&order=nombre_grupo.asc`
+    );
+
+    setGruposOperativosResumenDia((actual) => ({
+      ...actual,
+      [sesionId]: grupos,
+    }));
+
+    await Promise.allSettled([
+      cargarPlanning(),
+      cargarGruposEntrenador(),
+      cargarReportesPendientes(),
+      cargarAlumnos(),
+    ]);
+  }
+
+  async function moverAlumnoTrabajoPista(
+    sesionId: string,
+    gruposPublicados: AgendaGrupoSesionApp[]
+  ) {
+    const [grupoOrigenId, alumnoId] = movimientoPistaAlumno.split('::');
+    const grupoDestinoId = movimientoPistaDestino;
+
+    if (!grupoOrigenId || !alumnoId) {
+      setError('Selecciona primero el alumno que quieres mover.');
+      return;
+    }
+    if (!grupoDestinoId) {
+      setError('Selecciona el grupo de destino.');
+      return;
+    }
+    if (grupoOrigenId === grupoDestinoId) {
+      setError('El grupo de destino debe ser diferente del grupo actual.');
+      return;
+    }
+
+    const alumno = alumnos.find((item) => item.alumno_id === alumnoId);
+    const grupoOrigen = gruposPublicados.find((item) => item.grupo_id === grupoOrigenId);
+    const grupoDestino = gruposPublicados.find((item) => item.grupo_id === grupoDestinoId);
+    if (!alumno || !grupoOrigen || !grupoDestino) {
+      setError('No encuentro el alumno o alguno de los grupos. Actualiza y vuelve a intentarlo.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Mover a ${alumno.alumno} de ${nombreGrupoVisualApp(grupoOrigen)} a ${nombreGrupoVisualApp(grupoDestino)}?\n\n` +
+        `El cambio se aplicará a la sesión de hoy. Se moverán asistencia, observaciones operativas y responsable del reporte. El alumno trabajará con el trabajo diario ya revisado del grupo destino.`
+    );
+    if (!confirmar) return;
+
+    setGuardandoAjustePista(true);
+    setError('');
+    setMensajeAjustePista('');
+
+    try {
+      await ejecutarFuncion('mover_alumno_grupo_operativa_app', {
+        p_alumno_id: alumnoId,
+        p_grupo_origen_id: grupoOrigenId,
+        p_grupo_destino_id: grupoDestinoId,
+      });
+
+      await refrescarTrabajoPistaSesion(sesionId);
+      setMensajeAjustePista(
+        `${alumno.alumno} movido a ${nombreGrupoVisualApp(grupoDestino)}. Asistencia, observaciones y responsable de reporte actualizados. Mantiene el trabajo diario del grupo destino.`
+      );
+      setMovimientoPistaAlumno('');
+      setMovimientoPistaDestino('');
+    } catch (err) {
+      const mensaje =
+        err instanceof Error ? err.message : 'No se pudo mover el alumno entre grupos.';
+      setError(mensaje);
+    } finally {
+      setGuardandoAjustePista(false);
+    }
+  }
+
+  async function anadirAlumnoHoyTrabajoPista(
+    sesionId: string,
+    gruposPublicados: AgendaGrupoSesionApp[]
+  ) {
+    const alumno = alumnos.find((item) => item.alumno_id === anadirPistaAlumnoId);
+    const grupoDestino = gruposPublicados.find(
+      (item) => item.grupo_id === anadirPistaDestino
+    );
+
+    if (!alumno) {
+      setError('Busca y selecciona un alumno existente.');
+      return;
+    }
+    if (!grupoDestino?.grupo_id) {
+      setError('Selecciona el grupo donde entrenará hoy.');
+      return;
+    }
+
+    const nivelUsado = String(
+      alumno.nivel_actual ||
+        alumno.ultimo_nivel_reportado ||
+        alumno.nivel_estimado ||
+        'INICIACION'
+    )
+      .trim()
+      .toUpperCase();
+
+    const confirmar = window.confirm(
+      `¿Añadir HOY a ${alumno.alumno} al grupo ${nombreGrupoVisualApp(grupoDestino)}?\n\n` +
+        `Nivel usado: ${nivelUsado}. Se añadirá a esta sesión para asistencia y reporte. No cambia por sí solo su grupo estable.`
+    );
+    if (!confirmar) return;
+
+    setGuardandoAjustePista(true);
+    setError('');
+    setMensajeAjustePista('');
+
+    try {
+      const resultado = await ejecutarFuncionConRespuesta<{
+        alumno_id: string;
+        alumno: string;
+        sesion_id: string;
+        grupo_id: string;
+        grupo: string;
+        nivel_usado: string;
+        resultado: string;
+      }>('incorporar_alumno_fuera_plazo_grupo_app', {
+        p_sesion_id: sesionId,
+        p_grupo_id: grupoDestino.grupo_id,
+        p_alumno_id: alumno.alumno_id,
+        p_nombre_completo: alumno.alumno,
+        p_nivel_codigo: nivelUsado,
+      });
+
+      const incorporado = resultado[0];
+      if (!incorporado) {
+        throw new Error('Supabase no devolvió confirmación de la incorporación.');
+      }
+
+      await refrescarTrabajoPistaSesion(sesionId);
+      setMensajeAjustePista(
+        `${incorporado.alumno} añadido a ${incorporado.grupo} para hoy. Ya queda incluido en asistencia, observaciones y reporte, usando el trabajo diario del grupo.`
+      );
+      setBusquedaPistaAlumno('');
+      setAnadirPistaAlumnoId('');
+      setAnadirPistaDestino('');
+    } catch (err) {
+      const mensaje =
+        err instanceof Error ? err.message : 'No se pudo añadir el alumno a la sesión de hoy.';
+      setError(mensaje);
+    } finally {
+      setGuardandoAjustePista(false);
+    }
+  }
+
   useEffect(() => {
     if (sesionesResumenDia.length === 0) {
       setTurnoResumenDiaAbierto('');
@@ -26473,6 +26659,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
         pasos: [
           'Comprueba fecha, turnos, grupos, alumnos y entrenadores antes de tocar nada.',
           'Resuelve primero alumnos sin grupo, ratios, entrenador pendiente y cualquier incidencia operativa.',
+          'Si la realidad cambia en pista, usa “Mover alumno” o “Añadir alumno hoy”: el listado del entrenador y el responsable del reporte se actualizan con el cambio.',
           'Revisa que el trabajo diario de cada grupo encaje con nivel, pista y evolución reciente.',
           'Deja la información visible para el entrenador preparada antes de dar la jornada por lista.',
         ],
@@ -27918,6 +28105,382 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                           padding: 12,
                         }}
                       >
+                        {(() => {
+                          const sesionOperativaId = String(
+                            sesion.agendaDirecta?.sesion_id ||
+                              sesion.dia?.sesion_id ||
+                              ''
+                          );
+                          const panelActivo =
+                            Boolean(sesionOperativaId) &&
+                            ajustePistaSesionId === sesionOperativaId;
+                          const [grupoOrigenSeleccionado] =
+                            movimientoPistaAlumno.split('::');
+                          const opcionesMovimiento = gruposPublicados.flatMap(
+                            (grupo: any, grupoIndice: number) =>
+                              alumnosGrupoResumenDia(grupo)
+                                .map((alumnoTexto) => {
+                                  const ficha =
+                                    fichaAlumnoResumenDiaDesdeTexto(alumnoTexto);
+                                  if (!ficha?.alumno_id || !grupo.grupo_id) return null;
+                                  return {
+                                    value: `${grupo.grupo_id}::${ficha.alumno_id}`,
+                                    alumno: ficha.alumno,
+                                    grupo: nombreGrupoVisualApp(grupo, grupoIndice),
+                                  };
+                                })
+                                .filter(Boolean)
+                          ) as Array<{
+                            value: string;
+                            alumno: string;
+                            grupo: string;
+                          }>;
+                          const textoBusquedaAlta = textoSinAcentosGrupoApp(
+                            busquedaPistaAlumno.trim()
+                          );
+                          const candidatosAlta = textoBusquedaAlta.length >= 2
+                            ? alumnos
+                                .filter((alumno) =>
+                                  textoSinAcentosGrupoApp(alumno.alumno || '').includes(
+                                    textoBusquedaAlta
+                                  )
+                                )
+                                .slice(0, 12)
+                            : [];
+                          const alumnoAltaSeleccionado = alumnos.find(
+                            (alumno) => alumno.alumno_id === anadirPistaAlumnoId
+                          );
+                          const nivelAltaSeleccionado = alumnoAltaSeleccionado
+                            ? String(
+                                alumnoAltaSeleccionado.nivel_actual ||
+                                  alumnoAltaSeleccionado.ultimo_nivel_reportado ||
+                                  alumnoAltaSeleccionado.nivel_estimado ||
+                                  'INICIACION'
+                              ).toUpperCase()
+                            : '';
+
+                          if (!sesionOperativaId || gruposPublicados.length === 0) {
+                            return null;
+                          }
+
+                          return (
+                            <div
+                              style={{
+                                gridColumn: '1 / -1',
+                                padding: 13,
+                                borderRadius: 16,
+                                border: '1px solid #bae6d3',
+                                background: 'linear-gradient(135deg,#f0fdf4,#f8fafc)',
+                                display: 'grid',
+                                gap: 10,
+                              }}
+                            >
+                              <div
+                                style={{
+                                  display: 'flex',
+                                  justifyContent: 'space-between',
+                                  gap: 10,
+                                  flexWrap: 'wrap',
+                                  alignItems: 'center',
+                                }}
+                              >
+                                <div>
+                                  <strong style={{ color: '#065f46', fontSize: 15 }}>
+                                    Ajustes en pista · hoy
+                                  </strong>
+                                  <p
+                                    style={{
+                                      margin: '3px 0 0',
+                                      color: '#475569',
+                                      fontSize: 12,
+                                      lineHeight: 1.4,
+                                    }}
+                                  >
+                                    Cambios reales del turno. Se actualizan listado, asistencia, observaciones y responsable del reporte. El trabajo diario no se sobrescribe: el alumno usa el del grupo en el que queda hoy.
+                                  </p>
+                                </div>
+                                <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                                  <button
+                                    type="button"
+                                    disabled={guardandoAjustePista}
+                                    onClick={() =>
+                                      abrirAjustePistaSesion(sesionOperativaId, 'mover')
+                                    }
+                                    style={{
+                                      ...botonSecundario,
+                                      minHeight: 38,
+                                      borderColor:
+                                        panelActivo && ajustePistaModo === 'mover'
+                                          ? '#0f766e'
+                                          : '#cbd5e1',
+                                      background:
+                                        panelActivo && ajustePistaModo === 'mover'
+                                          ? '#ecfdf5'
+                                          : '#fff',
+                                    }}
+                                  >
+                                    ⇄ Mover alumno
+                                  </button>
+                                  <button
+                                    type="button"
+                                    disabled={guardandoAjustePista}
+                                    onClick={() =>
+                                      abrirAjustePistaSesion(sesionOperativaId, 'anadir')
+                                    }
+                                    style={{
+                                      ...botonPrincipal,
+                                      minHeight: 38,
+                                    }}
+                                  >
+                                    + Añadir alumno hoy
+                                  </button>
+                                </div>
+                              </div>
+
+                              {panelActivo && mensajeAjustePista && (
+                                <div
+                                  style={{
+                                    padding: '9px 11px',
+                                    borderRadius: 11,
+                                    border: '1px solid #86efac',
+                                    background: '#f0fdf4',
+                                    color: '#166534',
+                                    fontWeight: 850,
+                                    fontSize: 12,
+                                  }}
+                                >
+                                  {mensajeAjustePista}
+                                </div>
+                              )}
+
+                              {panelActivo && ajustePistaModo === 'mover' && (
+                                <div
+                                  style={{
+                                    display: 'grid',
+                                    gridTemplateColumns:
+                                      'repeat(auto-fit,minmax(210px,1fr))',
+                                    gap: 9,
+                                    alignItems: 'end',
+                                  }}
+                                >
+                                  <label style={labelCampo}>
+                                    Alumno que cambia de grupo
+                                    <select
+                                      value={movimientoPistaAlumno}
+                                      onChange={(e) => {
+                                        setMovimientoPistaAlumno(e.target.value);
+                                        setMovimientoPistaDestino('');
+                                        setMensajeAjustePista('');
+                                      }}
+                                      style={inputCampo}
+                                    >
+                                      <option value="">Selecciona alumno…</option>
+                                      {opcionesMovimiento.map((opcion) => (
+                                        <option key={opcion.value} value={opcion.value}>
+                                          {opcion.alumno} · {opcion.grupo}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </label>
+
+                                  <label style={labelCampo}>
+                                    Nuevo grupo
+                                    <select
+                                      value={movimientoPistaDestino}
+                                      onChange={(e) =>
+                                        setMovimientoPistaDestino(e.target.value)
+                                      }
+                                      style={inputCampo}
+                                    >
+                                      <option value="">Selecciona destino…</option>
+                                      {gruposPublicados
+                                        .filter(
+                                          (grupo: any) =>
+                                            grupo.grupo_id &&
+                                            String(grupo.grupo_id) !==
+                                              grupoOrigenSeleccionado
+                                        )
+                                        .map((grupo: any, grupoIndice: number) => (
+                                          <option
+                                            key={grupo.grupo_id}
+                                            value={grupo.grupo_id}
+                                          >
+                                            {nombreGrupoVisualApp(grupo, grupoIndice)} ·{' '}
+                                            {grupo.entrenador ||
+                                              grupo.entrenadores ||
+                                              'Sin entrenador'}
+                                          </option>
+                                        ))}
+                                    </select>
+                                  </label>
+
+                                  <button
+                                    type="button"
+                                    disabled={
+                                      guardandoAjustePista ||
+                                      !movimientoPistaAlumno ||
+                                      !movimientoPistaDestino
+                                    }
+                                    onClick={() =>
+                                      void moverAlumnoTrabajoPista(
+                                        sesionOperativaId,
+                                        gruposPublicados
+                                      )
+                                    }
+                                    style={{
+                                      ...botonPrincipal,
+                                      minHeight: 44,
+                                      opacity:
+                                        guardandoAjustePista ||
+                                        !movimientoPistaAlumno ||
+                                        !movimientoPistaDestino
+                                          ? 0.55
+                                          : 1,
+                                    }}
+                                  >
+                                    {guardandoAjustePista
+                                      ? 'Guardando…'
+                                      : 'Confirmar cambio'}
+                                  </button>
+                                </div>
+                              )}
+
+                              {panelActivo && ajustePistaModo === 'anadir' && (
+                                <div style={{ display: 'grid', gap: 9 }}>
+                                  <div
+                                    style={{
+                                      display: 'grid',
+                                      gridTemplateColumns:
+                                        'repeat(auto-fit,minmax(210px,1fr))',
+                                      gap: 9,
+                                      alignItems: 'end',
+                                    }}
+                                  >
+                                    <label style={labelCampo}>
+                                      Buscar alumno existente
+                                      <input
+                                        type="search"
+                                        value={busquedaPistaAlumno}
+                                        onChange={(e) => {
+                                          setBusquedaPistaAlumno(e.target.value);
+                                          setAnadirPistaAlumnoId('');
+                                          setMensajeAjustePista('');
+                                        }}
+                                        placeholder="Ej. Laura Seves…"
+                                        style={inputCampo}
+                                      />
+                                    </label>
+
+                                    <label style={labelCampo}>
+                                      Alumno
+                                      <select
+                                        value={anadirPistaAlumnoId}
+                                        onChange={(e) =>
+                                          setAnadirPistaAlumnoId(e.target.value)
+                                        }
+                                        style={inputCampo}
+                                      >
+                                        <option value="">
+                                          {textoBusquedaAlta.length < 2
+                                            ? 'Escribe al menos 2 letras…'
+                                            : candidatosAlta.length === 0
+                                            ? 'Sin coincidencias'
+                                            : 'Selecciona alumno…'}
+                                        </option>
+                                        {candidatosAlta.map((alumno) => (
+                                          <option
+                                            key={alumno.alumno_id}
+                                            value={alumno.alumno_id}
+                                          >
+                                            {alumno.alumno} ·{' '}
+                                            {String(
+                                              alumno.nivel_actual ||
+                                                alumno.ultimo_nivel_reportado ||
+                                                alumno.nivel_estimado ||
+                                                'SIN NIVEL'
+                                            ).toUpperCase()}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </label>
+
+                                    <label style={labelCampo}>
+                                      Grupo de hoy
+                                      <select
+                                        value={anadirPistaDestino}
+                                        onChange={(e) =>
+                                          setAnadirPistaDestino(e.target.value)
+                                        }
+                                        style={inputCampo}
+                                      >
+                                        <option value="">Selecciona grupo…</option>
+                                        {gruposPublicados
+                                          .filter((grupo: any) => grupo.grupo_id)
+                                          .map((grupo: any, grupoIndice: number) => (
+                                            <option
+                                              key={grupo.grupo_id}
+                                              value={grupo.grupo_id}
+                                            >
+                                              {nombreGrupoVisualApp(grupo, grupoIndice)} ·{' '}
+                                              {grupo.entrenador ||
+                                                grupo.entrenadores ||
+                                                'Sin entrenador'}
+                                            </option>
+                                          ))}
+                                      </select>
+                                    </label>
+
+                                    <button
+                                      type="button"
+                                      disabled={
+                                        guardandoAjustePista ||
+                                        !anadirPistaAlumnoId ||
+                                        !anadirPistaDestino
+                                      }
+                                      onClick={() =>
+                                        void anadirAlumnoHoyTrabajoPista(
+                                          sesionOperativaId,
+                                          gruposPublicados
+                                        )
+                                      }
+                                      style={{
+                                        ...botonPrincipal,
+                                        minHeight: 44,
+                                        opacity:
+                                          guardandoAjustePista ||
+                                          !anadirPistaAlumnoId ||
+                                          !anadirPistaDestino
+                                            ? 0.55
+                                            : 1,
+                                      }}
+                                    >
+                                      {guardandoAjustePista
+                                        ? 'Añadiendo…'
+                                        : 'Añadir a hoy'}
+                                    </button>
+                                  </div>
+
+                                  {alumnoAltaSeleccionado && (
+                                    <div
+                                      style={{
+                                        padding: '8px 10px',
+                                        borderRadius: 10,
+                                        background: '#fff',
+                                        border: '1px solid #dbeafe',
+                                        color: '#334155',
+                                        fontSize: 12,
+                                      }}
+                                    >
+                                      <strong>{alumnoAltaSeleccionado.alumno}</strong> · nivel usado{' '}
+                                      <strong>{nivelAltaSeleccionado}</strong>. Esta acción lo añade a la sesión de hoy; no cambia automáticamente su grupo estable.
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+
                         {gruposPublicados.length === 0 ? (
                           <div style={tarjetaMovilVacia}>
                             No hay grupos publicados en este turno.
