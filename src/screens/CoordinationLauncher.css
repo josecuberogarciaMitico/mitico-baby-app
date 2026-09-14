@@ -1,0 +1,19 @@
+.mitico-tools { position: fixed; right: max(18px, env(safe-area-inset-right)); bottom: max(18px, calc(env(safe-area-inset-bottom) + 10px)); z-index: 1700; }
+.mitico-tools__fab { position: relative; display: grid; place-items: center; width: 50px; height: 50px; padding: 0; border: 0; border-radius: 50%; background: #111827; color: #fff; box-shadow: 0 12px 32px rgba(15,23,42,.28); cursor: pointer; }
+.mitico-tools__fab > span:first-child { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #43e060; color: #052e16; font-size: 17px; font-weight: 950; line-height: 1; }
+.mitico-tools__fabBadge { position: absolute; top: -5px; right: -5px; display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border: 2px solid #fff; border-radius: 999px; background: #dc2626; color: #fff; font-size: 10px; font-weight: 900; }
+.mitico-tools__menu { position: absolute; right: 0; bottom: 60px; display: grid; gap: 7px; width: min(290px, calc(100vw - 28px)); padding: 8px; border: 1px solid #dbe4ea; border-radius: 18px; background: rgba(255,255,255,.98); box-shadow: 0 18px 48px rgba(15,23,42,.24); backdrop-filter: blur(14px); }
+.mitico-tools__option { display: grid; grid-template-columns: 38px minmax(0,1fr) auto; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: 13px; background: transparent; color: #172033; text-align: left; font: inherit; cursor: pointer; }
+.mitico-tools__option:hover, .mitico-tools__option:focus-visible { background: #f1f5f9; outline: none; }
+.mitico-tools__option > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
+.mitico-tools__option strong { font-size: 14px; }
+.mitico-tools__option small { overflow: hidden; color: #64748b; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.mitico-tools__optionIcon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #dcfce7; color: #166534; font-size: 16px; font-weight: 950; }
+.mitico-tools__optionIcon--paco { background: #111827; color: #43e060; }
+.mitico-tools__badge { display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 900; }
+@media (max-width: 719px) {
+  .mitico-tools { right: max(12px, env(safe-area-inset-right)); bottom: max(82px, calc(env(safe-area-inset-bottom) + 74px)); }
+  .mitico-tools__fab { width: 46px; height: 46px; }
+  .mitico-tools__fab > span:first-child { width: 31px; height: 31px; font-size: 15px; }
+  .mitico-tools__menu { bottom: 56px; width: min(270px, calc(100vw - 24px)); }
+}

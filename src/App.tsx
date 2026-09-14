@@ -217,6 +217,15 @@ import {
   vistaEntrenadorShell,
 } from './lib/appHelpers';
 import { PantallaIntensivos } from './screens/IntensivosScreen';
+import { AdaptiveReportFields } from './screens/AdaptiveReportFields';
+import {
+  evaluacionTecnicaInicial,
+  mejoraLegacy,
+  recomendacionLegacy,
+  resumenEvaluacionTecnica,
+  tecnicaLegacyPorNivel,
+  type EvaluacionTecnicaReporte,
+} from './lib/adaptiveReport';
 import {
   generarTrabajoDiarioInteligenteApp,
   type AlumnoContextoTrabajoDiarioApp,
@@ -462,6 +471,19 @@ type HistorialReporteAlumnoFichaApp = {
   observaciones_generales: string | null;
   trabajo_diario: string | null;
   enviado_at: string | null;
+  evaluacion_tecnica?: EvaluacionTecnicaReporte | null;
+  mejoras_hoy?: string[] | null;
+  prioridades_proxima_sesion?: string[] | null;
+  reporte_version?: number | null;
+};
+
+type ContextoTecnicoReporteApp = {
+  alumno_id: string;
+  reporte_id: string;
+  fecha: string;
+  evaluacion_tecnica: EvaluacionTecnicaReporte | null;
+  mejoras_hoy: string[] | null;
+  prioridades_proxima_sesion: string[] | null;
 };
 
 type TendenciaRitmoAlumnoApp = {
@@ -818,7 +840,8 @@ function sumarDiasEditor(fechaIso: string, dias: number) {
 
 function fechaLimiteAutomaticaDisponibilidadEditor(semanaInicio: string) {
   // Las semanas del calendario de temporada comienzan siempre en lunes.
-  return `${semanaInicio}T13:00`;
+  // La disponibilidad se cierra automáticamente el martes de esa semana a las 13:00.
+  return `${sumarDiasEditor(semanaInicio, 1)}T13:00`;
 }
 
 function formatearFechaHoraDisponibilidadEditor(valor: string) {
@@ -1474,6 +1497,10 @@ type ReporteDetalleIntensivoApp = {
   recomendacion_comentario: string | null;
   observaciones_generales?: string | null;
   enviado_at: string | null;
+  evaluacion_tecnica?: EvaluacionTecnicaReporte | null;
+  mejoras_hoy?: string[] | null;
+  prioridades_proxima_sesion?: string[] | null;
+  reporte_version?: number | null;
 };
 
 type ListadoApp = {
@@ -1846,20 +1873,20 @@ type BabyAimHarderVerificacionRefrescoApp = {
 type ReporteFormState = {
   nivel: string;
   actitud: string;
-  tecnica: string;
   pista: string;
   autonomia: string;
   ritmoGrupo: string;
   remontes: string;
   incidencia: string;
-  recomendacion: string;
-  mejoraHoy: string;
   observaciones: string;
   autonomiaCinta: string;
   cunaFrenada: string;
   giroInicial: string;
   dinamicaAutonoma: string;
   ayudaCunero: string;
+  evaluacionTecnica: EvaluacionTecnicaReporte;
+  mejorasHoy: string[];
+  prioridades: string[];
 };
 
 type ReporteActivo = {
@@ -4151,32 +4178,6 @@ const nivelesDiplomaIntensivo = [
   { id: '0f10c6da-f11f-46dd-8211-1d9e1240e161', codigo: 'D+', orden: 8 },
 ];
 
-const opcionesActitud = [
-  'Muy buena',
-  'Buena',
-  'Correcta',
-  'Disperso',
-  'Se bloquea',
-  'Miedo',
-  'Cansado',
-  'No escucha',
-  'Llora',
-];
-
-const opcionesTecnica = [
-  'Primer contacto / familiarización',
-  'Deslizamiento directo',
-  'Cuña de frenado',
-  'Control de velocidad en cuña',
-  'Giros en cuña',
-  'Giros en cuña encadenados',
-  'Fundamental',
-  'Inicio de paralelo',
-  'Paralelo elemental',
-  'Paralelo consolidado',
-  'Viraje conducido claro y estable',
-];
-
 const opcionesPista = ['Pequeña', 'Grande', 'Pequeña/Grande'];
 
 const opcionesAutonomia = [
@@ -4188,63 +4189,12 @@ const opcionesAutonomia = [
   'Autónomo total',
 ];
 
-const opcionesRitmoGrupo = [
-  'Lento para su nivel',
-  'Adecuado para su nivel',
-  'Rápido para su nivel',
-  'Muy rápido · podría ir con nivel superior',
-];
-
 const opcionesRemontes = [
   'Cinta',
   'Percha',
   'Silla',
   'Cinta y percha',
   'Percha y silla',
-];
-
-const opcionesIncidencia = [
-  'Sin incidencia',
-  'Llanto',
-  'Miedo / bloqueo',
-  'Caída sin importancia',
-  'Caída con revisión',
-  'Se separa del grupo',
-  'No sigue instrucciones',
-  'Problema con material',
-  'Problema con remonte',
-  'Conflicto con compañero',
-  'Otro',
-];
-
-const opcionesMejoraHoy = [
-  '',
-  'Equilibrio / deslizamiento',
-  'Cuña / frenada',
-  'Control de velocidad',
-  'Giro',
-  'Paralelo',
-  'Apoyo exterior',
-  'Cantos / conducción',
-  'Autonomía',
-  'Remontes',
-  'Actitud / confianza',
-  'Ritmo / fluidez',
-  'Nada destacable · sesión de consolidación',
-];
-
-const opcionesRecomendacion = [
-  'Consolidar lo trabajado',
-  'Progresar un paso técnico',
-  'Revisar nivel',
-  'Trabajar autonomía',
-  'Trabajar control de velocidad',
-  'Trabajar giro',
-  'Trabajar paralelo',
-  'Trabajar apoyo exterior',
-  'Trabajar cantos / conducción',
-  'Revisar remontes',
-  'Seguimiento especial',
 ];
 
 const opcionesEspecialidadEntrenador = [
@@ -4440,20 +4390,20 @@ function reporteInicial(): ReporteFormState {
   return {
     nivel: 'B',
     actitud: 'Correcta',
-    tecnica: 'Giros en cuña',
     pista: 'Pequeña',
     autonomia: 'Necesita ayuda puntual',
     ritmoGrupo: '',
     remontes: 'Cinta',
     incidencia: 'Sin incidencia',
-    recomendacion: 'Consolidar lo trabajado',
-    mejoraHoy: '',
     observaciones: '',
     autonomiaCinta: '',
     cunaFrenada: '',
     giroInicial: '',
     dinamicaAutonoma: '',
     ayudaCunero: 'No',
+    evaluacionTecnica: evaluacionTecnicaInicial('B'),
+    mejorasHoy: [],
+    prioridades: [],
   };
 }
 
@@ -5183,6 +5133,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   >([]);
   const [perfilesOperativosAlumnos, setPerfilesOperativosAlumnos] = useState<
     PerfilOperativoAlumnoApp[]
+  >([]);
+  const [contextoTecnicoReportes, setContextoTecnicoReportes] = useState<
+    ContextoTecnicoReporteApp[]
   >([]);
   const [progresionInicialAlumnos, setProgresionInicialAlumnos] = useState<
     ProgresionInicialAlumnoApp[]
@@ -7546,7 +7499,6 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         /[^a-zA-Z0-9_-]/g,
         '-'
       );
-
     enfocarElementoApp(reporteDomId, {
       espera,
       block: 'start',
@@ -7579,6 +7531,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       nivel: nivelFallback,
       pista: pistaFallback,
       observaciones: '',
+      evaluacionTecnica: evaluacionTecnicaInicial(nivelFallback),
     });
 
     enfocarFormularioReporteEntrenador(alumno, 160);
@@ -7601,6 +7554,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         ...actual,
         nivel: nivelPartida,
         pista: pistaPartida,
+        evaluacionTecnica: evaluacionTecnicaInicial(
+          nivelPartida,
+          actual.evaluacionTecnica
+        ),
       }));
 
       enfocarFormularioReporteEntrenador(alumno, 80);
@@ -7623,9 +7580,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   async function guardarReporteAlumno(alumno: AlumnoReporteEntrenador) {
-    if (!formReporte.mejoraHoy) {
+    if (formReporte.mejorasHoy.length === 0) {
       setError(
-        'Selecciona qué ha mejorado hoy. Si no hay un avance claro, usa “Nada destacable · sesión de consolidación”.'
+        'Selecciona qué ha mejorado hoy. Si no hay un avance nuevo, usa “Ha reforzado lo ya aprendido”.'
       );
       return;
     }
@@ -7653,29 +7610,26 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setError('');
 
     try {
-      await ejecutarFuncion('crear_reporte_alumno_app', {
+      await ejecutarFuncion('crear_reporte_adaptativo_app', {
         p_grupo_id: alumno.grupo_id,
         p_alumno_id: alumno.alumno_id,
         p_entrenador_id: alumno.entrenador_id,
         p_actitud: formReporte.actitud,
         p_nivel_reportado: formReporte.nivel,
-        p_tecnica: esNivelAprendizajeInicialApp(formReporte.nivel)
+        p_tecnica_legacy: esNivelAprendizajeInicialApp(formReporte.nivel)
           ? tecnicaInicialDerivadaReporteApp(formReporte)
-          : formReporte.tecnica,
+          : tecnicaLegacyPorNivel(formReporte.nivel),
         p_pista: formReporte.pista,
         p_autonomia: formReporte.autonomia,
         p_remontes: formReporte.remontes,
         p_incidencia: formReporte.incidencia,
-        p_recomendacion: formReporte.recomendacion,
-        p_mejora_hoy: formReporte.mejoraHoy,
+        p_recomendacion_legacy: recomendacionLegacy(formReporte.prioridades),
+        p_mejora_legacy: mejoraLegacy(formReporte.mejorasHoy),
         p_observaciones: observacionUtil,
-      });
-
-      await ejecutarFuncion('guardar_ritmo_ultimo_reporte_app', {
-        p_grupo_id: alumno.grupo_id,
-        p_alumno_id: alumno.alumno_id,
-        p_entrenador_id: alumno.entrenador_id,
         p_ritmo_grupo: formReporte.ritmoGrupo,
+        p_evaluacion_tecnica: formReporte.evaluacionTecnica,
+        p_mejoras_hoy: formReporte.mejorasHoy,
+        p_prioridades: formReporte.prioridades,
       });
 
       if (
@@ -7769,6 +7723,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       perfilesData,
       progresionData,
       trabajosHistoricosData,
+      contextoTecnicoData,
     ] = await Promise.all([
         consultarSupabase<AlumnoResumen>(
           'v_resumen_alumno_v2',
@@ -7790,6 +7745,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           'v_detalle_grupos',
           'select=fecha,modalidad,alumnos_detalle,trabajo_diario&trabajo_diario=not.is.null&order=fecha.desc,hora_inicio.desc&limit=240'
         ).catch(() => [] as TrabajoDiarioHistoricoApp[]),
+        ejecutarFuncionConRespuesta<ContextoTecnicoReporteApp>(
+          'obtener_contexto_tecnico_reportes_app',
+          {}
+        ).catch(() => [] as ContextoTecnicoReporteApp[]),
       ]);
 
     if (Array.isArray(resumenData) && resumenData.length > 0) {
@@ -7806,6 +7765,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     );
     setTrabajosDiariosHistoricos(
       Array.isArray(trabajosHistoricosData) ? trabajosHistoricosData : []
+    );
+    setContextoTecnicoReportes(
+      Array.isArray(contextoTecnicoData) ? contextoTecnicoData : []
     );
   }
 
@@ -7885,6 +7847,22 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const progresion = progresionInicialAlumnos.find(
       (item) => item.alumno_id === alumnoId
     );
+    const contextoTecnico = contextoTecnicoReportes.find(
+      (item) => item.alumno_id === alumnoId
+    );
+    const tecnicaEstructurada = Object.entries(
+      contextoTecnico?.evaluacion_tecnica || {}
+    )
+      .filter(([, valor]) =>
+        valor === 'Necesita mejorar' || valor === 'En desarrollo'
+      )
+      .map(([competencia, valor]) => `${competencia.replaceAll('_', ' ')} ${valor}`)
+      .join(' · ');
+    const prioridadesTecnicas = Array.isArray(
+      contextoTecnico?.prioridades_proxima_sesion
+    )
+      ? contextoTecnico.prioridades_proxima_sesion.join(' · ')
+      : '';
 
     return {
       alumnoId,
@@ -7897,11 +7875,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         progresion?.nivel_reportado ||
         nivelFallback ||
         '',
-      tecnica: resumen?.ultima_tecnica || '',
+      tecnica: [resumen?.ultima_tecnica, tecnicaEstructurada].filter(Boolean).join(' · '),
       actitud: resumen?.ultima_actitud || '',
       autonomia: resumen?.ultima_autonomia || perfil?.autonomia_reciente || '',
       incidencia: resumen?.ultima_incidencia || '',
-      recomendacion: resumen?.ultima_recomendacion || '',
+      recomendacion: [resumen?.ultima_recomendacion, prioridadesTecnicas].filter(Boolean).join(' · '),
       remontes: Array.from(
         new Set([
           ...(Array.isArray(resumen?.ultimos_remontes)
@@ -8222,14 +8200,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
       try {
         reportes = await ejecutarFuncionConRespuesta<HistorialReporteAlumnoFichaApp>(
-          'obtener_historial_reportes_alumno_ficha_app',
+          'obtener_historial_reportes_adaptativo_alumno_app',
           { p_alumno_id: alumnoId }
         );
       } catch (errorRpc) {
         const mensajeRpc =
           errorRpc instanceof Error ? errorRpc.message : String(errorRpc || '');
         const funcionNuevaNoDisponible =
-          /PGRST202|schema cache|could not find the function|no se pudo ejecutar obtener_historial_reportes_alumno_ficha_app/i.test(
+          /PGRST202|schema cache|could not find the function|no se pudo ejecutar obtener_historial_reportes_adaptativo_alumno_app/i.test(
             mensajeRpc
           );
 
@@ -8240,7 +8218,17 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         console.warn(
           'Historial ampliado todavía no disponible; se usa el historial compatible.'
         );
-        const legacy = await consultarSupabase<{
+        let historialCompatibleDisponible = false;
+        try {
+          reportes = await ejecutarFuncionConRespuesta<HistorialReporteAlumnoFichaApp>(
+            'obtener_historial_reportes_alumno_ficha_app',
+            { p_alumno_id: alumnoId }
+          );
+          historialCompatibleDisponible = true;
+        } catch {}
+
+        if (!historialCompatibleDisponible) {
+          const legacy = await consultarSupabase<{
           fecha: string;
           modalidad: string | null;
           nombre_grupo: string | null;
@@ -8260,26 +8248,27 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           )}&order=fecha.desc,enviado_at.desc`
         );
 
-        reportes = legacy.map((reporte) => ({
-          reporte_id: null,
-          fecha: reporte.fecha,
-          modalidad: reporte.modalidad,
-          grupo: reporte.nombre_grupo,
-          entrenador: null,
-          nivel_reportado: reporte.nivel_reportado,
-          actitud: reporte.actitud,
-          tecnica: reporte.tecnica,
-          pista: reporte.pista,
-          remontes: reporte.remontes,
-          autonomia: reporte.autonomia,
-          ritmo_grupo: null,
-          mejora_hoy: null,
-          incidencia: reporte.incidencia,
-          recomendacion: reporte.recomendacion_proxima_sesion,
-          observaciones_generales: null,
-          trabajo_diario: null,
-          enviado_at: reporte.enviado_at,
-        }));
+          reportes = legacy.map((reporte) => ({
+            reporte_id: null,
+            fecha: reporte.fecha,
+            modalidad: reporte.modalidad,
+            grupo: reporte.nombre_grupo,
+            entrenador: null,
+            nivel_reportado: reporte.nivel_reportado,
+            actitud: reporte.actitud,
+            tecnica: reporte.tecnica,
+            pista: reporte.pista,
+            remontes: reporte.remontes,
+            autonomia: reporte.autonomia,
+            ritmo_grupo: null,
+            mejora_hoy: null,
+            incidencia: reporte.incidencia,
+            recomendacion: reporte.recomendacion_proxima_sesion,
+            observaciones_generales: null,
+            trabajo_diario: null,
+            enviado_at: reporte.enviado_at,
+          }));
+        }
       }
 
       const ordenados = [...(Array.isArray(reportes) ? reportes : [])].sort(
@@ -8348,8 +8337,12 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const reciente = reportes[0];
     const primero = reportes[reportes.length - 1];
     const mejoras = valoresUnicosFichaApp(
-      reportes.map((reporte) => reporte.mejora_hoy),
-      5
+      reportes.flatMap((reporte) =>
+        Array.isArray(reporte.mejoras_hoy) && reporte.mejoras_hoy.length
+          ? reporte.mejoras_hoy
+          : [reporte.mejora_hoy]
+      ),
+      8
     ).filter(
       (valor) => !/nada destacable|sesión de consolidación/i.test(valor)
     );
@@ -8369,9 +8362,25 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           ).trim()}`
       );
     const siguientesPasos = valoresUnicosFichaApp(
-      reportes.map((reporte) => reporte.recomendacion),
-      3
+      reportes.flatMap((reporte) =>
+        Array.isArray(reporte.prioridades_proxima_sesion) &&
+        reporte.prioridades_proxima_sesion.length
+          ? reporte.prioridades_proxima_sesion
+          : [reporte.recomendacion]
+      ),
+      8
     );
+    const competenciasReportadas = reportes
+      .filter((reporte) => reporte.evaluacion_tecnica)
+      .slice(0, 5)
+      .map((reporte) => {
+        const resumen = resumenEvaluacionTecnica(
+          reporte.evaluacion_tecnica,
+          reporte.nivel_reportado || nivelActual
+        );
+        return resumen ? `${formatearFecha(reporte.fecha)} · ${resumen}` : '';
+      })
+      .filter(Boolean);
 
     const evolucion: string[] = [];
     if (primero.nivel_reportado || reciente.nivel_reportado) {
@@ -8414,6 +8423,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       ...(mejoras.length > 0
         ? mejoras.map((linea) => `• ${linea}`)
         : ['• Sesiones centradas en consolidar lo trabajado.']),
+      '',
+      'EVOLUCIÓN POR COMPETENCIAS',
+      ...(competenciasReportadas.length > 0
+        ? competenciasReportadas.map((linea) => `• ${linea}`)
+        : ['• Los reportes históricos no contienen valoración por competencias.']),
       '',
       'TRABAJO REALIZADO',
       ...(objetivosTrabajados.length > 0
@@ -9864,14 +9878,37 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setCargando(true);
     setError('');
     try {
-      const resultado = await ejecutarFuncionConRespuesta<{ texto: string }>(
-        'extraer_evaluacion_ocio_app',
-        {
-          p_alumno_id: alumno.alumno_id,
-        }
+      const [resultado, historial] = await Promise.all([
+        ejecutarFuncionConRespuesta<{ texto: string }>(
+          'extraer_evaluacion_ocio_app',
+          { p_alumno_id: alumno.alumno_id }
+        ),
+        cargarHistorialReportesAlumnoFichaApp(alumno.alumno_id, true),
+      ]);
+      const reportesOcio = historial.filter((reporte) =>
+        String(reporte.modalidad || '').toUpperCase().includes('OCIO')
       );
+      const detalleAdaptativo = reportesOcio
+        .filter((reporte) => reporte.evaluacion_tecnica)
+        .map((reporte) => {
+          const competencias = resumenEvaluacionTecnica(
+            reporte.evaluacion_tecnica,
+            reporte.nivel_reportado || alumno.nivel_usado || alumno.nivel || ''
+          );
+          const mejoras = (reporte.mejoras_hoy || []).join(' · ');
+          const prioridades = (reporte.prioridades_proxima_sesion || []).join(' · ');
+          return [
+            `${formatearFecha(reporte.fecha)} · Nivel ${reporte.nivel_reportado || '-'}`,
+            competencias ? `Competencias: ${competencias}` : '',
+            mejoras ? `Mejoras: ${mejoras}` : '',
+            prioridades ? `Próximas prioridades: ${prioridades}` : '',
+          ].filter(Boolean).join('\n');
+        });
+      const base = resultado[0]?.texto || `No hay reportes de Ocio para ${alumno.alumno}.`;
       setEvaluacionOcioTexto(
-        resultado[0]?.texto || `No hay reportes de Ocio para ${alumno.alumno}.`
+        detalleAdaptativo.length
+          ? `${base}\n\nEVOLUCIÓN TÉCNICA POR COMPETENCIAS\n${detalleAdaptativo.join('\n\n')}`
+          : base
       );
     } catch (err) {
       setEvaluacionOcioTexto('');
@@ -13681,8 +13718,13 @@ Gracias!`;
           'select=*&order=intensivo.asc,alumno.asc'
         ),
         consultarSupabase<ReporteDetalleIntensivoApp>(
-          'v_reportes_detalle_intensivo_app',
+          'v_reportes_adaptativo_detalle_intensivo_app',
           'select=*&order=intensivo.asc,alumno.asc,fecha.asc,hora_inicio.asc'
+        ).catch(() =>
+          consultarSupabase<ReporteDetalleIntensivoApp>(
+            'v_reportes_detalle_intensivo_app',
+            'select=*&order=intensivo.asc,alumno.asc,fecha.asc,hora_inicio.asc'
+          )
         ),
         consultarSupabase<PanelControlIntensivoApp>(
           'v_panel_control_intensivo_app',
@@ -15097,6 +15139,16 @@ Gracias!`;
     reportes: ReporteDetalleIntensivoApp[]
   ) {
     const lineasReportes = reportes.map((reporte) => {
+      const competencias = resumenEvaluacionTecnica(
+        reporte.evaluacion_tecnica,
+        reporte.nivel_reportado || ''
+      );
+      const mejoras = Array.isArray(reporte.mejoras_hoy)
+        ? reporte.mejoras_hoy.join(' · ')
+        : '';
+      const prioridades = Array.isArray(reporte.prioridades_proxima_sesion)
+        ? reporte.prioridades_proxima_sesion.join(' · ')
+        : '';
       return [
         `Día ${reporte.numero_dia} · ${formatearFecha(reporte.fecha)} · ${
           reporte.nombre_grupo
@@ -15108,6 +15160,9 @@ Gracias!`;
             ? ` (${reporte.tecnica_comentario})`
             : ''
         }`,
+        ...(competencias ? [`Competencias: ${competencias}`] : []),
+        ...(mejoras ? [`Mejoras: ${mejoras}`] : []),
+        ...(prioridades ? [`Próximas prioridades: ${prioridades}`] : []),
         `Actitud: ${reporte.actitud || '-'}${
           !reporte.observaciones_generales && reporte.actitud_comentario
             ? ` (${reporte.actitud_comentario})`
@@ -24159,6 +24214,9 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
         /[^a-zA-Z0-9_-]/g,
         '-'
       );
+    const grupoDelReporte = gruposEntrenador.find(
+      (grupo) => grupo.grupo_id === alumno.grupo_id
+    );
 
     return (
       <div
@@ -24254,31 +24312,40 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               label="Nivel observado"
               value={formReporte.nivel}
               opciones={opcionesNivel}
-              onChange={(valor) =>
-                setFormReporte({ ...formReporte, nivel: valor })
-              }
+              onChange={(valor) => setFormReporte({
+                ...formReporte,
+                nivel: valor,
+                evaluacionTecnica: evaluacionTecnicaInicial(
+                  valor,
+                  formReporte.evaluacionTecnica
+                ),
+                mejorasHoy: [],
+                prioridades: [],
+              })}
             />
           </div>
 
-          <CampoSelect
-            label="Actitud"
-            value={formReporte.actitud}
-            opciones={opcionesActitud}
-            onChange={(valor) =>
-              setFormReporte({ ...formReporte, actitud: valor })
-            }
-          />
+        </div>
 
-          {!esProgresionInicialReporte && (
-            <CampoSelect
-              label="Técnica"
-              value={formReporte.tecnica}
-              opciones={opcionesTecnica}
-              onChange={(valor) =>
-                setFormReporte({ ...formReporte, tecnica: valor })
-              }
-            />
-          )}
+        <AdaptiveReportFields
+          modalidad={alumno.modalidad}
+          nivel={nivelEfectivoReporte}
+          trabajoDiario={grupoDelReporte?.trabajo_diario}
+          actitud={formReporte.actitud}
+          ritmo={formReporte.ritmoGrupo}
+          incidencia={formReporte.incidencia}
+          evaluacion={formReporte.evaluacionTecnica}
+          mejoras={formReporte.mejorasHoy}
+          prioridades={formReporte.prioridades}
+          onActitud={(valor) => setFormReporte({ ...formReporte, actitud: valor })}
+          onRitmo={(valor) => setFormReporte({ ...formReporte, ritmoGrupo: valor })}
+          onIncidencia={(valor) => setFormReporte({ ...formReporte, incidencia: valor })}
+          onEvaluacion={(valor) => setFormReporte({ ...formReporte, evaluacionTecnica: valor })}
+          onMejoras={(valores) => setFormReporte({ ...formReporte, mejorasHoy: valores })}
+          onPrioridades={(valores) => setFormReporte({ ...formReporte, prioridades: valores })}
+        />
+
+        <div className="trainer-report-grid trainer-report-grid--context" style={gridFormulario}>
 
           {esProgresionInicialReporte && (
             <CampoSelect
@@ -24376,42 +24443,6 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               }
             />
           )}
-
-          <CampoSelect
-            label="Ritmo en el grupo"
-            value={formReporte.ritmoGrupo}
-            opciones={opcionesRitmoGrupo}
-            onChange={(valor) =>
-              setFormReporte({ ...formReporte, ritmoGrupo: valor })
-            }
-          />
-
-          <CampoSelect
-            label="¿Qué ha mejorado hoy?"
-            value={formReporte.mejoraHoy}
-            opciones={opcionesMejoraHoy}
-            onChange={(valor) =>
-              setFormReporte({ ...formReporte, mejoraHoy: valor })
-            }
-          />
-
-          <CampoSelect
-            label="Incidencia"
-            value={formReporte.incidencia}
-            opciones={opcionesIncidencia}
-            onChange={(valor) =>
-              setFormReporte({ ...formReporte, incidencia: valor })
-            }
-          />
-
-          <CampoSelect
-            label="Recomendación"
-            value={formReporte.recomendacion}
-            opciones={opcionesRecomendacion}
-            onChange={(valor) =>
-              setFormReporte({ ...formReporte, recomendacion: valor })
-            }
-          />
 
         </div>
 
@@ -41754,6 +41785,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                       {dia.turnos.map((turno) => {
                                         const respuesta =
                                           turno.respuesta || 'Pendiente';
+                                        const disponibilidadConfirmada =
+                                          respuesta !== 'Pendiente';
 
                                         return (
                                           <div
@@ -41772,6 +41805,9 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                             </div>
                                             <div className="trainer-availability-actions">
                                               <button
+                                                type="button"
+                                                disabled={disponibilidadConfirmada}
+                                                aria-pressed={respuesta === 'Disponible'}
                                                 className={`trainer-soft-button trainer-soft-button--success ${
                                                   respuesta === 'Disponible'
                                                     ? 'is-active'
@@ -41783,10 +41819,23 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                                     'Disponible'
                                                   )
                                                 }
+                                                style={{
+                                                  cursor: disponibilidadConfirmada
+                                                    ? 'default'
+                                                    : 'pointer',
+                                                  opacity:
+                                                    disponibilidadConfirmada &&
+                                                    respuesta !== 'Disponible'
+                                                      ? 0.48
+                                                      : 1,
+                                                }}
                                               >
                                                 Disponible
                                               </button>
                                               <button
+                                                type="button"
+                                                disabled={disponibilidadConfirmada}
+                                                aria-pressed={respuesta === 'No puedo'}
                                                 className={`trainer-soft-button trainer-soft-button--danger ${
                                                   respuesta === 'No puedo'
                                                     ? 'is-active'
@@ -41798,10 +41847,48 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                                     'No puedo'
                                                   )
                                                 }
+                                                style={{
+                                                  cursor: disponibilidadConfirmada
+                                                    ? 'default'
+                                                    : 'pointer',
+                                                  opacity:
+                                                    disponibilidadConfirmada &&
+                                                    respuesta !== 'No puedo'
+                                                      ? 0.48
+                                                      : 1,
+                                                }}
                                               >
                                                 No disponible
                                               </button>
                                             </div>
+
+                                            {disponibilidadConfirmada && (
+                                              <div
+                                                style={{
+                                                  gridColumn: '1 / -1',
+                                                  marginTop: 7,
+                                                  padding: '9px 11px',
+                                                  borderRadius: 11,
+                                                  border: '1px solid #bbf7d0',
+                                                  background: '#f0fdf4',
+                                                  color: '#166534',
+                                                  fontSize: 12,
+                                                  lineHeight: 1.4,
+                                                }}
+                                              >
+                                                <strong>✓ Disponibilidad confirmada</strong>
+                                                <span
+                                                  style={{
+                                                    display: 'block',
+                                                    marginTop: 2,
+                                                    color: '#475569',
+                                                    fontWeight: 700,
+                                                  }}
+                                                >
+                                                  Si necesitas cambiarla, contacta con coordinación.
+                                                </span>
+                                              </div>
+                                            )}
                                           </div>
                                         );
                                       })}
@@ -47917,6 +48004,24 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                   const remontes = Array.isArray(reporte.remontes)
                                     ? reporte.remontes.filter(Boolean)
                                     : [];
+                                  const mejorasReporte =
+                                    Array.isArray(reporte.mejoras_hoy) && reporte.mejoras_hoy.length
+                                      ? reporte.mejoras_hoy
+                                      : reporte.mejora_hoy
+                                        ? [reporte.mejora_hoy]
+                                        : [];
+                                  const prioridadesReporte =
+                                    Array.isArray(reporte.prioridades_proxima_sesion) &&
+                                    reporte.prioridades_proxima_sesion.length
+                                      ? reporte.prioridades_proxima_sesion
+                                      : reporte.recomendacion
+                                        ? [reporte.recomendacion]
+                                        : [];
+                                  const competenciasReporteTexto =
+                                    resumenEvaluacionTecnica(
+                                      reporte.evaluacion_tecnica,
+                                      reporte.nivel_reportado || nivelUsadoPorApp
+                                    );
 
                                   return (
                                     <article
@@ -48007,9 +48112,15 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                             <strong>Trabajo:</strong> {objetivoTrabajo}
                                           </p>
                                         )}
-                                        {reporte.mejora_hoy && (
+                                        {mejorasReporte.length > 0 && (
                                           <p style={{ margin: 0 }}>
-                                            <strong>Mejoró:</strong> {reporte.mejora_hoy}
+                                            <strong>Mejoró:</strong> {mejorasReporte.join(' · ')}
+                                          </p>
+                                        )}
+                                        {competenciasReporteTexto && (
+                                          <p style={{ margin: 0 }}>
+                                            <strong>Competencias:</strong>{' '}
+                                            {competenciasReporteTexto}
                                           </p>
                                         )}
                                         {reporte.observaciones_generales && (
@@ -48026,10 +48137,10 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                             {reporte.observaciones_generales}
                                           </div>
                                         )}
-                                        {reporte.recomendacion && (
+                                        {prioridadesReporte.length > 0 && (
                                           <p style={{ margin: 0 }}>
                                             <strong>Siguiente paso:</strong>{' '}
-                                            {reporte.recomendacion}
+                                            {prioridadesReporte.join(' · ')}
                                           </p>
                                         )}
                                       </div>
@@ -49789,7 +49900,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     <span>
                       {borradorDisponibilidadEditor.fecha_limite_manual
                         ? 'Fecha modificada manualmente.'
-                        : 'Automática: lunes de esta semana a las 13:00.'}
+                        : 'Automática: martes de esta semana a las 13:00.'}
                     </span>
                     {borradorDisponibilidadEditor.fecha_limite_manual && (
                       <button
@@ -49805,7 +49916,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                           }))
                         }
                       >
-                        Usar lunes 13:00
+                        Usar martes 13:00
                       </button>
                     )}
                   </div>

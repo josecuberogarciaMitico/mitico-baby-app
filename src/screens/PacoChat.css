@@ -1,21 +1,5 @@
 .paco-fab {
-  position: fixed;
-  right: max(18px, env(safe-area-inset-right));
-  bottom: max(18px, calc(env(safe-area-inset-bottom) + 10px));
-  z-index: 1500;
-  display: inline-flex;
-  align-items: center;
-  gap: 9px;
-  min-height: 52px;
-  padding: 8px 16px 8px 8px;
-  border: 0;
-  border-radius: 999px;
-  background: #111827;
-  color: #ffffff;
-  font: inherit;
-  font-weight: 800;
-  box-shadow: 0 14px 35px rgba(15, 23, 42, 0.28);
-  cursor: pointer;
+  display: none !important;
 }
 
 .paco-fab__icon {
@@ -37,12 +21,12 @@
 .paco-panel {
   position: fixed;
   right: max(18px, env(safe-area-inset-right));
-  bottom: max(82px, calc(env(safe-area-inset-bottom) + 74px));
-  z-index: 1499;
+  bottom: max(18px, calc(env(safe-area-inset-bottom) + 10px));
+  z-index: 1600;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr) auto;
   width: min(430px, calc(100vw - 36px));
-  height: min(690px, calc(100dvh - 115px));
+  height: min(720px, calc(100dvh - 36px));
   overflow: hidden;
   border: 1px solid #dbe4ea;
   border-radius: 24px;
@@ -230,11 +214,6 @@
 }
 
 @media (max-width: 640px) {
-  .paco-fab {
-    right: 12px;
-    bottom: max(12px, calc(env(safe-area-inset-bottom) + 8px));
-  }
-
   .paco-panel {
     inset: 0;
     width: 100%;
@@ -249,5 +228,9 @@
 
   .paco-mensaje__burbuja {
     max-width: 92%;
+  }
+
+  .paco-composer {
+    padding-bottom: max(12px, calc(env(safe-area-inset-bottom) + 6px));
   }
 }
