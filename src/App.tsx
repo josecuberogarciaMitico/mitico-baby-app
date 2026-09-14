@@ -220,7 +220,9 @@ import { PantallaIntensivos } from './screens/IntensivosScreen';
 import { AdaptiveReportFields } from './screens/AdaptiveReportFields';
 import {
   evaluacionTecnicaInicial,
+  ayudaAutonomiaAdaptada,
   mejoraLegacy,
+  opcionesAutonomiaAdaptada,
   recomendacionLegacy,
   resumenEvaluacionTecnica,
   tecnicaLegacyPorNivel,
@@ -4180,15 +4182,6 @@ const nivelesDiplomaIntensivo = [
 
 const opcionesPista = ['Pequeña', 'Grande', 'Pequeña/Grande'];
 
-const opcionesAutonomia = [
-  'Necesita ayuda constante',
-  'Necesita ayuda puntual',
-  'Autónomo en llano',
-  'Autónomo en pista pequeña',
-  'Autónomo en pista grande',
-  'Autónomo total',
-];
-
 const opcionesRemontes = [
   'Cinta',
   'Percha',
@@ -4391,7 +4384,7 @@ function reporteInicial(): ReporteFormState {
     nivel: 'B',
     actitud: 'Correcta',
     pista: 'Pequeña',
-    autonomia: 'Necesita ayuda puntual',
+    autonomia: '',
     ritmoGrupo: '',
     remontes: 'Cinta',
     incidencia: 'Sin incidencia',
@@ -5078,6 +5071,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     reporteInicial()
   );
   const [nivelPartidaReporte, setNivelPartidaReporte] = useState('');
+  const [guardandoReporte, setGuardandoReporte] = useState(false);
+  const [errorReporte, setErrorReporte] = useState('');
 
   const overlayEntrenadorAbierto = Boolean(
     grupoActivoEntrenador || reporteActivo
@@ -7507,6 +7502,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   async function abrirFormularioReporte(alumno: AlumnoReporteEntrenador) {
+    setErrorReporte('');
     setReporteActivo({
       grupo_id: alumno.grupo_id,
       alumno_id: alumno.alumno_id,
@@ -7553,6 +7549,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       setFormReporte((actual) => ({
         ...actual,
         nivel: nivelPartida,
+        autonomia: '',
         pista: pistaPartida,
         evaluacionTecnica: evaluacionTecnicaInicial(
           nivelPartida,
@@ -7572,6 +7569,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setReporteActivo(null);
     setNivelPartidaReporte('');
     setFormReporte(reporteInicial());
+    setErrorReporte('');
   }
 
   function cerrarGrupoEntrenador() {
@@ -7580,23 +7578,44 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   async function guardarReporteAlumno(alumno: AlumnoReporteEntrenador) {
+    if (guardandoReporte) return;
+
+    const mostrarErrorReporte = (mensaje: string) => {
+      setError(mensaje);
+      setErrorReporte(mensaje);
+      window.setTimeout(() => {
+        document
+          .getElementById('trainer-report-feedback')
+          ?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 0);
+    };
+
+    setErrorReporte('');
+
     if (formReporte.mejorasHoy.length === 0) {
-      setError(
+      mostrarErrorReporte(
         'Selecciona qué ha mejorado hoy. Si no hay un avance nuevo, usa “Ha reforzado lo ya aprendido”.'
       );
       return;
     }
 
     if (!formReporte.ritmoGrupo) {
-      setError(
+      mostrarErrorReporte(
         'Selecciona el ritmo del alumno dentro del grupo antes de guardar el reporte.'
+      );
+      return;
+    }
+
+    if (!formReporte.autonomia) {
+      mostrarErrorReporte(
+        'Selecciona la autonomía observada antes de guardar el reporte.'
       );
       return;
     }
 
     const observacionUtil = formReporte.observaciones.trim();
     if (!observacionUtil) {
-      setError(
+      mostrarErrorReporte(
         'Escribe una observación útil para próximas sesiones antes de guardar el reporte.'
       );
       return;
@@ -7607,7 +7626,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     if (!confirmar) return;
 
     setCargando(true);
+    setGuardandoReporte(true);
     setError('');
+    setErrorReporte('');
 
     try {
       await ejecutarFuncion('crear_reporte_adaptativo_app', {
@@ -7630,38 +7651,26 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_evaluacion_tecnica: formReporte.evaluacionTecnica,
         p_mejoras_hoy: formReporte.mejorasHoy,
         p_prioridades: formReporte.prioridades,
+        p_autonomia_cinta: formReporte.autonomiaCinta || null,
+        p_cuna_frenada: formReporte.cunaFrenada || null,
+        p_giro_inicial: formReporte.giroInicial || null,
+        p_dinamica_autonoma: formReporte.dinamicaAutonoma || null,
+        p_ayuda_cunero: formReporte.ayudaCunero || 'No utilizado',
       });
-
-      if (
-        esNivelAprendizajeInicialApp(
-          formReporte.nivel ||
-            nivelPartidaReporte ||
-            alumno.nivel_alumno ||
-            grupoNivelAFormulario(alumno.nombre_grupo) ||
-            ''
-        )
-      ) {
-        await ejecutarFuncion('guardar_progresion_inicial_reporte_app', {
-          p_grupo_id: alumno.grupo_id,
-          p_alumno_id: alumno.alumno_id,
-          p_entrenador_id: alumno.entrenador_id,
-          p_nivel_reportado: formReporte.nivel,
-          p_autonomia_cinta: formReporte.autonomiaCinta || null,
-          p_cuna_frenada: formReporte.cunaFrenada || null,
-          p_giro_inicial: formReporte.giroInicial || null,
-          p_dinamica_autonoma: formReporte.dinamicaAutonoma || null,
-          p_ayuda_cunero: formReporte.ayudaCunero || 'No',
-        });
-      }
 
       cerrarFormularioReporte();
       await cargarGruposEntrenador();
       await cargarReportesPendientes();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
+      const mensaje =
+        err instanceof Error
+          ? err.message
+          : 'No se pudo guardar el reporte. Vuelve a intentarlo.';
+      mostrarErrorReporte(mensaje);
+    } finally {
+      setGuardandoReporte(false);
+      setCargando(false);
     }
-
-    setCargando(false);
   }
 
   async function cargarAlumnos() {
@@ -9899,6 +9908,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           const prioridades = (reporte.prioridades_proxima_sesion || []).join(' · ');
           return [
             `${formatearFecha(reporte.fecha)} · Nivel ${reporte.nivel_reportado || '-'}`,
+            reporte.autonomia ? `Autonomía: ${reporte.autonomia}` : '',
             competencias ? `Competencias: ${competencias}` : '',
             mejoras ? `Mejoras: ${mejoras}` : '',
             prioridades ? `Próximas prioridades: ${prioridades}` : '',
@@ -12884,10 +12894,15 @@ Gracias!`;
     setCargando(false);
   }
 
-  async function cargarDisponibilidad(semanaForzada?: string) {
-    setCargando(true);
-    setError('');
-    setDetalle(null);
+  async function cargarDisponibilidad(
+    semanaForzada?: string,
+    silencioso = false
+  ) {
+    if (!silencioso) {
+      setCargando(true);
+      setError('');
+      setDetalle(null);
+    }
 
     try {
       const semanaOperativaDisponibilidad = inicioSemanaAgenda(
@@ -12941,15 +12956,19 @@ Gracias!`;
         }))
       );
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'No se pudo cargar la disponibilidad publicada.'
-      );
-      setDisponibilidad([]);
-      setDisponibilidadEditorVista(null);
+      if (silencioso) {
+        console.warn('No se pudo refrescar la disponibilidad publicada.', err);
+      } else {
+        setError(
+          err instanceof Error
+            ? err.message
+            : 'No se pudo cargar la disponibilidad publicada.'
+        );
+        setDisponibilidad([]);
+        setDisponibilidadEditorVista(null);
+      }
     } finally {
-      setCargando(false);
+      if (!silencioso) setCargando(false);
     }
   }
 
@@ -14587,6 +14606,9 @@ Gracias!`;
         p_comentario: turno.comentario || null,
       });
 
+      // Reconciliar siempre con el dato real que verá el entrenador.
+      await cargarDisponibilidad(turno.fecha_inicio, true);
+
 
       try {
         await ejecutarPushMiticoApp('availability_response_updated', {
@@ -15168,11 +15190,7 @@ Gracias!`;
             ? ` (${reporte.actitud_comentario})`
             : ''
         }`,
-        `Autonomía: ${reporte.autonomia || '-'}${
-          !reporte.observaciones_generales && reporte.autonomia_comentario
-            ? ` (${reporte.autonomia_comentario})`
-            : ''
-        }`,
+        `Autonomía: ${reporte.autonomia_comentario || reporte.autonomia || '-'}`,
         `Incidencia: ${reporte.incidencia || '-'}${
           !reporte.observaciones_generales && reporte.incidencia_comentario
             ? ` (${reporte.incidencia_comentario})`
@@ -23483,6 +23501,27 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
     };
   }, [esEntrenadorApp, pantalla]);
 
+  useEffect(() => {
+    if (
+      !esEntrenadorApp ||
+      pantalla !== 'entrenador' ||
+      tabVistaEntrenador !== 'disponibilidad'
+    ) {
+      return;
+    }
+
+    const intervalo = window.setInterval(() => {
+      void cargarDisponibilidad(undefined, true);
+    }, 15000);
+
+    return () => window.clearInterval(intervalo);
+  }, [
+    esEntrenadorApp,
+    pantalla,
+    tabVistaEntrenador,
+    semanaEntrenadorSeleccionada,
+  ]);
+
   async function cerrarOrganizacionSemanalPushApp(
     semanaForzada?: string
   ) {
@@ -24315,6 +24354,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               onChange={(valor) => setFormReporte({
                 ...formReporte,
                 nivel: valor,
+                autonomia: '',
                 evaluacionTecnica: evaluacionTecnicaInicial(
                   valor,
                   formReporte.evaluacionTecnica
@@ -24387,10 +24427,11 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
           <CampoSelect
             label="Autonomía"
             value={formReporte.autonomia}
-            opciones={opcionesAutonomia}
+            opciones={opcionesAutonomiaAdaptada(nivelEfectivoReporte)}
             onChange={(valor) =>
               setFormReporte({ ...formReporte, autonomia: valor })
             }
+            ayuda={ayudaAutonomiaAdaptada(nivelEfectivoReporte)}
           />
 
           {esProgresionInicialReporte && (
@@ -24474,12 +24515,32 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             marginTop: 12,
           }}
         >
+          {errorReporte && (
+            <div
+              id="trainer-report-feedback"
+              role="alert"
+              style={{
+                flexBasis: '100%',
+                padding: '11px 13px',
+                border: '1px solid #fecaca',
+                borderRadius: 12,
+                background: '#fef2f2',
+                color: '#991b1b',
+                fontSize: 13,
+                fontWeight: 800,
+                lineHeight: 1.4,
+              }}
+            >
+              No se ha guardado: {errorReporte}
+            </div>
+          )}
           <button
             type="button"
             onClick={() => guardarReporteAlumno(alumno)}
+            disabled={guardandoReporte}
             style={botonPrincipal}
           >
-            Guardar reporte
+            {guardandoReporte ? 'Guardando…' : 'Guardar reporte'}
           </button>
           <button
             type="button"
@@ -48095,6 +48156,11 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                           )}
                                           {reporte.tecnica && (
                                             <span style={miniBadge}>{reporte.tecnica}</span>
+                                          )}
+                                          {Number(reporte.reporte_version || 1) < 2 && (
+                                            <span style={{ ...miniBadge, background: '#f8fafc', color: '#64748b' }}>
+                                              Formato anterior
+                                            </span>
                                           )}
                                         </div>
                                       </div>

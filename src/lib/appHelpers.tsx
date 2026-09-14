@@ -95,6 +95,7 @@ export function CampoSelect(props: {
   value: string;
   opciones: string[];
   onChange: (valor: string) => void;
+  ayuda?: string;
 }) {
   return (
     <label style={labelCampo}>
@@ -110,6 +111,11 @@ export function CampoSelect(props: {
           </option>
         ))}
       </select>
+      {props.ayuda && (
+        <small style={{ color: '#64748b', fontWeight: 650, lineHeight: 1.35 }}>
+          {props.ayuda}
+        </small>
+      )}
     </label>
   );
 }
@@ -2265,4 +2271,3 @@ export class PantallaSegura extends React.Component<
     return this.props.children;
   }
 }
-
