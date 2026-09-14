@@ -43746,6 +43746,9 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                   const faltanReportes = grupo.reportes.filter(
                     (reporte) => reporte.estado_reporte === 'Falta reporte'
                   );
+                  const entrenadorIdPush =
+                    faltanReportes.find((reporte) => Boolean(reporte.entrenador_id))
+                      ?.entrenador_id || '';
                   const asistenciasSinConfirmar = grupo.reportes.filter(
                     (reporte) =>
                       reporte.estado_reporte === 'Asistencia sin confirmar' ||
@@ -43892,14 +43895,14 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                               type="button"
                               onClick={() =>
                                 void enviarRecordatorioReportesPushApp(
-                                  grupo.entrenador_id,
+                                  entrenadorIdPush,
                                   grupo.entrenador,
                                   semanaAgendaActiva
                                 )
                               }
                               disabled={
                                 enviandoRecordatorioReportesPushId ===
-                                grupo.entrenador_id
+                                entrenadorIdPush
                               }
                               style={{
                                 ...botonPrincipal,
@@ -43909,13 +43912,13 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                 fontWeight: 950,
                                 opacity:
                                   enviandoRecordatorioReportesPushId ===
-                                  grupo.entrenador_id
+                                  entrenadorIdPush
                                     ? 0.65
                                     : 1,
                               }}
                             >
                               {enviandoRecordatorioReportesPushId ===
-                              grupo.entrenador_id
+                              entrenadorIdPush
                                 ? 'Enviando Push...'
                                 : '🔔 Avisar reportes por Push'}
                             </button>
