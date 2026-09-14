@@ -106,6 +106,40 @@ export function opcionesPrioridades(nivel: string) {
   return [...competenciasReporte(nivel).map((item) => item.nombre), 'Autonomía', 'Remontes', 'Control de velocidad', 'Revisar nivel', 'Seguimiento especial'];
 }
 
+export function opcionesAutonomiaAdaptada(nivel: string) {
+  const n = normalizarNivelReporte(nivel);
+  if (n === 'INICIACION' || n === 'A') {
+    return ['', 'Necesita ayuda constante', 'Necesita ayuda puntual', 'Autónomo en llano', 'Autónomo en pista pequeña'];
+  }
+  if (n === 'A+' || n === 'B') {
+    return ['', 'Necesita ayuda constante', 'Necesita ayuda puntual', 'Autónomo en pista pequeña', 'Autónomo en pista grande con supervisión', 'Autónomo en pista grande'];
+  }
+  return ['', 'Necesita supervisión frecuente', 'Necesita supervisión puntual', 'Autónomo en la dinámica del grupo', 'Autónomo en pista y remontes', 'Autonomía completa'];
+}
+
+export function ayudaAutonomiaAdaptada(nivel: string) {
+  const n = normalizarNivelReporte(nivel);
+  if (n === 'INICIACION' || n === 'A') {
+    return 'Valora la ayuda con material, desplazamientos, frenada y cinta.';
+  }
+  if (n === 'A+' || n === 'B') {
+    return 'Valora si se mueve y usa los remontes con seguridad y poca ayuda.';
+  }
+  return 'Valora si sigue la dinámica, los ejercicios y los remontes sin depender del entrenador.';
+}
+
+export function autonomiaLegacy(valor: string) {
+  if (['Necesita ayuda constante', 'Necesita ayuda puntual', 'Autónomo en llano', 'Autónomo en pista pequeña', 'Autónomo en pista grande', 'Autónomo total'].includes(valor)) {
+    return valor;
+  }
+  if (valor === 'Necesita supervisión frecuente') return 'Necesita ayuda constante';
+  if (valor === 'Necesita supervisión puntual') return 'Necesita ayuda puntual';
+  if (valor === 'Autónomo en pista grande con supervisión') return 'Autónomo en pista grande';
+  if (valor === 'Autónomo en la dinámica del grupo') return 'Autónomo en pista grande';
+  if (valor === 'Autónomo en pista y remontes' || valor === 'Autonomía completa') return 'Autónomo total';
+  return 'Necesita ayuda puntual';
+}
+
 export function tecnicaLegacyPorNivel(nivel: string) {
   const n = normalizarNivelReporte(nivel);
   if (n === 'INICIACION') return 'Primer contacto / familiarización';
@@ -151,10 +185,35 @@ export function resumenTrabajoDiario(trabajo: string | null | undefined) {
   if (!trabajo) return [];
   const lineas = trabajo.split('\n').map((linea) => linea.trim()).filter(Boolean);
   const objetivo = lineas.find((linea) => /^OBJETIVO\s*·/i.test(linea));
-  const ejercicios = lineas
-    .filter((linea) => /^•\s+/.test(linea))
-    .map((linea) => linea.replace(/^•\s+/, '').split(/[—:]/)[0].trim())
-    .filter(Boolean);
-  const resumen = [objetivo?.replace(/^OBJETIVO\s*·\s*/i, ''), ...ejercicios].filter(Boolean) as string[];
-  return Array.from(new Set(resumen)).slice(0, 5);
+  const textoObjetivo = objetivo?.replace(/^OBJETIVO\s*·\s*/i, '') || lineas[0] || '';
+  const normalizado = textoObjetivo.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const conceptos: Array<{ nombre: string; patron: RegExp }> = [
+    { nombre: 'Confianza / adaptación', patron: /confianza|adaptaci/ },
+    { nombre: 'Equilibrio / centralidad', patron: /equilibr|central/ },
+    { nombre: 'Flexión-extensión', patron: /flexi|extensi|absor/ },
+    { nombre: 'Cuña / frenada', patron: /cuna|fren/ },
+    { nombre: 'Control de velocidad', patron: /control de velocidad|velocidad/ },
+    { nombre: 'Paralelismo', patron: /paralel/ },
+    { nombre: 'Apoyo exterior / presión', patron: /apoyo exterior|esqui exterior/ },
+    { nombre: 'Rotación de piernas', patron: /rotaci|independencia.*tronco/ },
+    { nombre: 'Canteo', patron: /canteo|cantos/ },
+    { nombre: 'Gestión de presión', patron: /gestion de presion|presiones/ },
+    { nombre: 'Radio / trayectoria', patron: /radio|trayectoria/ },
+    { nombre: 'Transición', patron: /transicion|cambio de giro/ },
+    { nombre: 'Ritmo / coordinación', patron: /ritmo|coordinaci/ },
+    { nombre: 'Uso de bastón', patron: /baston/ },
+    { nombre: 'Conducción', patron: /conducci|conducid/ },
+    { nombre: 'Adaptación al terreno', patron: /terreno|pendiente|tipo de nieve/ },
+    { nombre: 'Autonomía', patron: /autonom/ },
+    { nombre: 'Remontes', patron: /remonte|cinta|percha|silla/ },
+    { nombre: 'Dirección / forma del giro', patron: /direccion|forma del giro/ },
+  ];
+  const encontrados = conceptos
+    .map((concepto) => ({ ...concepto, posicion: normalizado.search(concepto.patron) }))
+    .filter((concepto) => concepto.posicion >= 0)
+    .sort((a, b) => a.posicion - b.posicion)
+    .map((concepto) => concepto.nombre);
+  if (encontrados.length) return Array.from(new Set(encontrados)).slice(0, 4);
+  const palabras = textoObjetivo.split(/\s+/).filter(Boolean);
+  return palabras.length ? [`${palabras.slice(0, 8).join(' ')}${palabras.length > 8 ? '…' : ''}`] : [];
 }
