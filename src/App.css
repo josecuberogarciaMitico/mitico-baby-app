@@ -505,6 +505,46 @@
   }
 }
 
+/* Reporte técnico adaptativo: una columna táctil en móvil. */
+.adaptive-report { display: grid; gap: 14px; margin-top: 14px; }
+.adaptive-report-work { padding: 12px 14px; border: 1px solid #bfdbfe; border-radius: 14px; background: #eff6ff; }
+.adaptive-report-work > span { display: block; margin-bottom: 4px; color: #1d4ed8; font-size: 11px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
+.adaptive-report-work p { margin: 0; color: #1e3a8a; font-size: 13px; font-weight: 750; line-height: 1.45; }
+.adaptive-report-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.adaptive-report-field { display: grid; align-content: start; gap: 6px; min-width: 0; }
+.adaptive-report-field--wide { grid-column: 1 / -1; }
+.adaptive-report-label { color: #172033; font-size: 13px; font-weight: 850; }
+.adaptive-report-field select, .adaptive-report-tech-row select { width: 100%; min-width: 0; min-height: 46px; padding: 10px 36px 10px 11px; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; color: #172033; font: inherit; }
+.adaptive-report-tech { display: grid; gap: 9px; padding: 12px; border: 1px solid #dbe4ea; border-radius: 16px; background: rgba(255,255,255,.74); }
+.adaptive-report-section-title { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 2px 2px 5px; }
+.adaptive-report-section-title strong { font-size: 16px; }
+.adaptive-report-section-title span { color: #64748b; font-size: 11px; font-weight: 750; }
+.adaptive-report-tech-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(170px, .55fr); align-items: center; gap: 12px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 13px; background: #fff; }
+.adaptive-report-tech-row > span { display: grid; gap: 3px; min-width: 0; }
+.adaptive-report-tech-row strong { font-size: 13px; line-height: 1.25; }
+.adaptive-report-tech-row small { color: #64748b; font-size: 11px; line-height: 1.35; }
+.adaptive-report-multiselect { position: relative; width: 100%; min-width: 0; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; }
+.adaptive-report-multiselect summary { display: flex; align-items: center; min-height: 46px; padding: 10px 36px 10px 11px; cursor: pointer; list-style: none; }
+.adaptive-report-multiselect summary::-webkit-details-marker { display: none; }
+.adaptive-report-multiselect summary::after { content: '⌄'; position: absolute; right: 13px; top: 10px; color: #64748b; font-size: 18px; }
+.adaptive-report-multiselect[open] summary::after { content: '⌃'; }
+.adaptive-report-multiselect__list { display: grid; max-height: 290px; overflow-y: auto; border-top: 1px solid #e2e8f0; }
+.adaptive-report-check { display: grid !important; grid-template-columns: 24px minmax(0, 1fr); align-items: center; gap: 9px; min-height: 46px; padding: 8px 11px; border-bottom: 1px solid #f1f5f9; cursor: pointer; }
+.adaptive-report-check input { width: 20px !important; height: 20px; margin: 0; accent-color: #16a34a; }
+.adaptive-report-check span { font-size: 13px; line-height: 1.3; }
+.adaptive-report-selected { color: #475569; font-size: 11px; line-height: 1.4; }
+
+@media (max-width: 719px) {
+  .adaptive-report-grid { grid-template-columns: minmax(0, 1fr); }
+  .adaptive-report-field--wide { grid-column: auto; }
+  .adaptive-report-section-title { align-items: flex-start; flex-direction: column; gap: 2px; }
+  .adaptive-report-tech { padding: 9px; }
+  .adaptive-report-tech-row { grid-template-columns: minmax(0, 1fr); gap: 8px; }
+  .adaptive-report-field select, .adaptive-report-tech-row select, .adaptive-report-multiselect summary { min-height: 48px; font-size: 16px; }
+  .adaptive-report-tech-row strong { font-size: 14px; }
+  .adaptive-report-tech-row small { font-size: 12px; }
+}
+
 @media (min-width: 1040px) {
   .trainer-group-card {
     grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);

@@ -358,6 +358,10 @@ function detectarObjetivos(input: InputTrabajoDiario): ObjetivoTecnicoMSZ[] {
   if (/angul|disoci|hombros.*quiet|tronco.*estable/.test(texto)) objetivos.push('angulacion_disociacion');
   if (/transicion|cambio de canto|cambio.*giro|liberar canto|soltar canto/.test(texto)) objetivos.push('transicion');
   if (/baston|bastones|clavado/.test(texto)) objetivos.push('baston');
+  if (/flexion|extension|gestión de presión|gestion de presion|absor/.test(texto)) {
+    objetivos.push('movilidad');
+    objetivos.push('tobillo');
+  }
 
   if (objetivos.length === 0) {
     objetivos.push('giro', 'equilibrio', 'ritmo');

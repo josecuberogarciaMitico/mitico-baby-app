@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import App from './App.tsx'
+import { CoordinationLauncher } from './screens/CoordinationLauncher.tsx'
 import { PacoChat } from './screens/PacoChat.tsx'
 import { SecretariaPanel } from './screens/SecretariaPanel.tsx'
 
@@ -202,6 +203,7 @@ prepararActualizacionPwa()
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />
+    <CoordinationLauncher />
     <PacoChat />
     <SecretariaPanel />
   </StrictMode>,
