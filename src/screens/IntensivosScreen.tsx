@@ -1,7 +1,7 @@
 import React from 'react';
 import { CampoSelect } from '../lib/appHelpers';
 export function PantallaIntensivos(ctx: any) {
-  const { abrirPanelIntensivo, actualizarDiaIntensivoDesdeApp, actualizarDiplomaIntensivo,
+  const { abrirFichaMaestraAlumnoApp, abrirPanelIntensivo, actualizarDiaIntensivoDesdeApp, actualizarDiplomaIntensivo,
     actualizarNivelAlumnoIntensivo, actualizarRecuperacionIntensivo, agendaBadgeModalidad,
     agendaAlumnoLinea, agendaGrupoLinea, agendaGrupoPropuesta,
     agruparRecomendacionesDia, alumnoSeleccionadoIntensivoId, alumnosDelIntensivo,
@@ -40,7 +40,7 @@ export function PantallaIntensivos(ctx: any) {
     observacionesAutomaticasGrupoIntensivoManual, observacionesPorGrupoRecomendado,
     opcionesEstadoDiplomaIntensivo, opcionesEstadoRecuperacionIntensivo, opcionesNivel,
     opcionesOrigenNivelAlumno, opcionesPistaGrupoIntensivo, opcionesRecomendacionIntensivo,
-    panelControlDelIntensivo, plantillaCuatroSesionesInicial, plantillaCuatroSesionesIntensivo,
+    panelControlDelIntensivo, perfilOperativoAlumnoApp, plantillaCuatroSesionesInicial, plantillaCuatroSesionesIntensivo,
     prepararEdicionDiaIntensivo, prepararCambioRevisionIntensivo,
     analizarRevisionEntreSesionesIntensivo, revisionIntensivoId,
     revisionIntensivoDiaId, revisionIntensivoSugerencias,
@@ -1566,6 +1566,9 @@ export function PantallaIntensivos(ctx: any) {
                       >
                         {alumnosInscritosIntensivo.map((registro) => {
                           const resumenAlumno = resumenAlumnoIntensivo(registro.alumno_id);
+                          const edadFicha = perfilOperativoAlumnoApp?.(
+                            registro.alumno_id
+                          )?.edad_aprox;
                           const resumenFinalAlumno = resumenFinal.find(
                             (item) => item.alumno_id === registro.alumno_id
                           );
@@ -1639,6 +1642,9 @@ export function PantallaIntensivos(ctx: any) {
                                   <div style={{ flex: '1 1 260px' }}>
                                     <strong>{registro.alumno}</strong>
                                     <p style={{ margin: '5px 0 0', color: '#475569' }}>
+                                      {edadFicha !== null && edadFicha !== undefined
+                                        ? `${Number(edadFicha).toFixed(1)} años · `
+                                        : ''}
                                       Nivel {nivelFinal || nivelUsado} · {pistaUsada}
                                     </p>
                                     <p
@@ -1839,6 +1845,19 @@ export function PantallaIntensivos(ctx: any) {
                                       Gestionar recuperación
                                     </button>
                                   )}
+
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      abrirFichaMaestraAlumnoApp?.(
+                                        registro.alumno_id,
+                                        registro.alumno
+                                      )
+                                    }
+                                    style={botonSecundario}
+                                  >
+                                    Ficha maestra e historial
+                                  </button>
 
                                   <button
                                     onClick={() => quitarAlumnoDeIntensivo(registro)}
@@ -3074,11 +3093,18 @@ export function PantallaIntensivos(ctx: any) {
                             '';
                           const nivelConfirmadoActual =
                             registro.nivel_final_confirmado_id || '';
+                          const edadEvaluacion = perfilOperativoAlumnoApp?.(
+                            registro.alumno_id
+                          )?.edad_aprox;
 
                           return (
                             <div key={registro.intensivo_alumno_id} style={miniTarjetaBlanca}>
                               <h4 style={{ marginTop: 0, marginBottom: 8 }}>
                                 {registro.alumno}
+                                {edadEvaluacion !== null &&
+                                edadEvaluacion !== undefined
+                                  ? ` · ${Number(edadEvaluacion).toFixed(1)} años`
+                                  : ''}
                               </h4>
 
                               <div style={{ display: 'grid', gap: 4 }}>
@@ -3167,7 +3193,7 @@ export function PantallaIntensivos(ctx: any) {
                                 return (
                                   <details style={{ marginTop: 12 }}>
                                     <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>
-                                      Ver reportes base del alumno · {reportesAlumno.length} reportes
+                                      Historial técnico exacto · {reportesAlumno.length} reportes
                                     </summary>
                                     <textarea
                                       readOnly
@@ -3177,6 +3203,19 @@ export function PantallaIntensivos(ctx: any) {
                                   </details>
                                 );
                               })()}
+
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  abrirFichaMaestraAlumnoApp?.(
+                                    registro.alumno_id,
+                                    registro.alumno
+                                  )
+                                }
+                                style={{ ...botonSecundario, marginTop: 10 }}
+                              >
+                                Abrir ficha maestra completa
+                              </button>
 
                               <div style={{ ...gridFormulario, marginTop: 12 }}>
                                 <label style={labelCampo}>

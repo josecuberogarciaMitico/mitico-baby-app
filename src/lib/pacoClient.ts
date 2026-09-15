@@ -3,7 +3,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_xeLKsuImDbVd9tnoBzSxXw_KAqod1bu';
 const MITICO_AUTH_STORAGE_KEY = 'mitico_auth_session_v1';
 const PACO_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-api`;
 const PACO_SECRETARIA_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-secretaria`;
-
+const PACO_STUDENT_GUARD_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-student-guard`;
 
 type SesionAuthPaco = {
   access_token?: string;
@@ -240,8 +240,6 @@ async function llamarPaco<T>(
     payload
   );
 
-  // Si la pasarela devuelve 401 aunque el reloj local considerase vigente
-  // el token, renovamos una vez y repetimos la misma petición.
   if (resultado.respuesta.status === 401 && sesion.refresh_token) {
     sesion = await obtenerSesionPacoActiva(true);
     resultado = await hacerPeticionPaco(
@@ -265,15 +263,17 @@ async function llamarPaco<T>(
   return resultado.datos as T;
 }
 
-async function llamarSecretariaPaco(
-  payload: Record<string, unknown>
+async function llamarEndpointPaco(
+  endpoint: string,
+  payload: Record<string, unknown>,
+  mensajeError: string
 ): Promise<PacoResponse> {
   let sesion = await obtenerSesionPacoActiva(false);
   let resultado = await hacerPeticionPaco(
     'POST',
     String(sesion.access_token || ''),
     payload,
-    PACO_SECRETARIA_ENDPOINT
+    endpoint
   );
 
   if (resultado.respuesta.status === 401 && sesion.refresh_token) {
@@ -282,7 +282,7 @@ async function llamarSecretariaPaco(
       'POST',
       String(sesion.access_token || ''),
       payload,
-      PACO_SECRETARIA_ENDPOINT
+      endpoint
     );
   }
 
@@ -290,11 +290,36 @@ async function llamarSecretariaPaco(
     const mensaje =
       resultado.datos?.error ||
       resultado.datos?.message ||
-      'No se pudo conectar con la Secretaría de Paco.';
+      mensajeError;
     throw crearErrorPaco(String(mensaje), resultado.respuesta.status);
   }
 
   return resultado.datos as PacoResponse;
+}
+
+async function llamarSecretariaPaco(
+  payload: Record<string, unknown>
+): Promise<PacoResponse> {
+  return llamarEndpointPaco(
+    PACO_SECRETARIA_ENDPOINT,
+    payload,
+    'No se pudo conectar con la Secretaría de Paco.'
+  );
+}
+
+async function llamarStudentGuardPaco(
+  message: string
+): Promise<PacoResponse | null> {
+  try {
+    return await llamarEndpointPaco(
+      PACO_STUDENT_GUARD_ENDPOINT,
+      { message },
+      'No se pudo comprobar el alumno.'
+    );
+  } catch (error) {
+    console.warn('Paco student guard no disponible:', error);
+    return null;
+  }
 }
 
 export function tokenSesionPacoActual() {
@@ -306,8 +331,12 @@ export async function comprobarAccesoPaco() {
 }
 
 export async function preguntarPaco(message: string) {
+  const alumnoExacto = await llamarStudentGuardPaco(message);
+  if (alumnoExacto?.handled === true) return alumnoExacto;
+
   const secretaria = await llamarSecretariaPaco({ message });
   if (secretaria?.handled === true) return secretaria;
+
   return llamarPaco<PacoResponse>('POST', { message });
 }
 
