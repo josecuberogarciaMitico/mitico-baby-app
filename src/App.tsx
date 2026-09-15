@@ -5187,6 +5187,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     useState<Record<string, HistorialReporteAlumnoFichaApp[]>>({});
   const [historialReportesFichaCargandoId, setHistorialReportesFichaCargandoId] =
     useState<string | null>(null);
+  const [filtroModalidadHistorialFicha, setFiltroModalidadHistorialFicha] =
+    useState<'TODOS' | 'BABY' | 'OCIO' | 'INTENSIVOS'>('TODOS');
 
   const [ocioAlumnos, setOcioAlumnos] = useState<OcioAlumnoApp[]>([]);
   const [ocioGrupos, setOcioGrupos] = useState<OcioGrupoApp[]>([]);
@@ -7949,6 +7951,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     telefono?: string | null
   ) {
     const enlaceWhatsApp = enlaceWhatsAppFamiliaApp(telefono);
+    const edad = edadAproximadaOcio(fechaNacimiento);
 
     return (
       <div style={{ display: 'grid', gap: 7, minWidth: 0 }}>
@@ -7961,6 +7964,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
           <strong>
             {fechaNacimiento ? formatearFecha(fechaNacimiento) : 'Sin registrar'}
           </strong>
+          {edad !== null ? (
+            <>
+              {' '}· Edad: <strong>{edad} años</strong>
+            </>
+          ) : null}
         </span>
 
         {telefono ? (
@@ -8304,13 +8312,16 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     }
   }
 
-  async function alternarHistorialAlumnoFichaApp(alumno: AlumnoResumen) {
+  async function alternarHistorialAlumnoFichaApp(
+    alumno: Pick<AlumnoResumen, 'alumno_id'>
+  ) {
     if (historialAlumnoAbiertoId === alumno.alumno_id) {
       setHistorialAlumnoAbiertoId(null);
       return;
     }
 
     setHistorialAlumnoAbiertoId(alumno.alumno_id);
+    setFiltroModalidadHistorialFicha('TODOS');
     setError('');
 
     try {
@@ -8322,8 +8333,291 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     }
   }
 
+  function modalidadHistorialFichaApp(
+    reporte: HistorialReporteAlumnoFichaApp
+  ): 'BABY' | 'OCIO' | 'INTENSIVOS' | 'OTROS' {
+    const modalidad = textoSinAcentosGrupoApp(reporte.modalidad || '');
+    if (modalidad.includes('OCIO')) return 'OCIO';
+    if (modalidad.includes('INTENS')) return 'INTENSIVOS';
+    if (modalidad.includes('BABY') || modalidad.includes('MITICO')) return 'BABY';
+    return 'OTROS';
+  }
+
+  function filtrarHistorialFichaApp(
+    reportes: HistorialReporteAlumnoFichaApp[]
+  ) {
+    if (filtroModalidadHistorialFicha === 'TODOS') return reportes;
+    return reportes.filter(
+      (reporte) =>
+        modalidadHistorialFichaApp(reporte) === filtroModalidadHistorialFicha
+    );
+  }
+
+  function renderFiltroModalidadHistorialFichaApp(
+    reportes: HistorialReporteAlumnoFichaApp[]
+  ) {
+    const opciones = (
+      ['TODOS', 'BABY', 'OCIO', 'INTENSIVOS'] as const
+    ).map((valor) => ({
+      valor,
+      cantidad:
+        valor === 'TODOS'
+          ? reportes.length
+          : reportes.filter(
+              (reporte) => modalidadHistorialFichaApp(reporte) === valor
+            ).length,
+    }));
+
+    return (
+      <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+        {opciones.map((opcion) => {
+          const activo = filtroModalidadHistorialFicha === opcion.valor;
+          return (
+            <button
+              key={`filtro-historial-${opcion.valor}`}
+              type="button"
+              onClick={() => setFiltroModalidadHistorialFicha(opcion.valor)}
+              style={{
+                ...botonMini,
+                minHeight: 38,
+                background: activo ? '#0f766e' : '#ffffff',
+                color: activo ? '#ffffff' : '#475569',
+                borderColor: activo ? '#0f766e' : '#dbe3ee',
+              }}
+            >
+              {opcion.valor === 'TODOS' ? 'Todos' : opcion.valor} ·{' '}
+              {opcion.cantidad}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
+  function renderHistorialComunFichaApp(
+    alumnoId: string,
+    nivelActual: string
+  ) {
+    const todos = historialReportesFichaPorAlumno[alumnoId] || [];
+    const reportes = filtrarHistorialFichaApp(todos);
+    const cargandoHistorial = historialReportesFichaCargandoId === alumnoId;
+
+    return (
+      <div
+        style={{
+          ...miniTarjetaBlanca,
+          marginTop: 10,
+          display: 'grid',
+          gap: 12,
+          border: '1px solid #bbf7d0',
+          background: '#f8fffb',
+        }}
+      >
+        <div>
+          <strong>Ficha maestra · Historial exacto</strong>
+          <p style={{ margin: '4px 0 0', color: '#64748b' }}>
+            Una única cronología para Baby, Ocio e Intensivos. El detalle permanece
+            cerrado hasta que lo necesitas.
+          </p>
+        </div>
+
+        {renderFiltroModalidadHistorialFichaApp(todos)}
+
+        {cargandoHistorial && (
+          <p style={{ margin: 0, color: '#475569', fontWeight: 700 }}>
+            Cargando historial...
+          </p>
+        )}
+
+        {!cargandoHistorial && todos.length === 0 && (
+          <div style={avisoNeutral}>
+            Todavía no hay reportes técnicos guardados para este alumno.
+          </div>
+        )}
+
+        {!cargandoHistorial && todos.length > 0 && reportes.length === 0 && (
+          <div style={avisoNeutral}>
+            No hay reportes de {filtroModalidadHistorialFicha.toLowerCase()}.
+          </div>
+        )}
+
+        {!cargandoHistorial && reportes.length > 0 && (
+          <div style={{ display: 'grid', gap: 10 }}>
+            {reportes.map((reporte, indice) => {
+              const trabajo = objetivoTrabajoDiarioFichaApp(reporte.trabajo_diario);
+              const mejoras =
+                Array.isArray(reporte.mejoras_hoy) && reporte.mejoras_hoy.length
+                  ? reporte.mejoras_hoy
+                  : reporte.mejora_hoy
+                    ? [reporte.mejora_hoy]
+                    : [];
+              const prioridades =
+                Array.isArray(reporte.prioridades_proxima_sesion) &&
+                reporte.prioridades_proxima_sesion.length
+                  ? reporte.prioridades_proxima_sesion
+                  : reporte.recomendacion
+                    ? [reporte.recomendacion]
+                    : [];
+              const competencias = resumenEvaluacionTecnica(
+                reporte.evaluacion_tecnica,
+                reporte.nivel_reportado || nivelActual
+              );
+              const remontes = Array.isArray(reporte.remontes)
+                ? reporte.remontes.filter(Boolean)
+                : [];
+
+              return (
+                <article
+                  key={
+                    reporte.reporte_id ||
+                    `${alumnoId}-${reporte.fecha}-${reporte.modalidad}-${indice}`
+                  }
+                  style={{
+                    border: '1px solid #dbeafe',
+                    borderRadius: 16,
+                    padding: 14,
+                    background: '#ffffff',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 10,
+                      flexWrap: 'wrap',
+                    }}
+                  >
+                    <div>
+                      <strong>{formatearFecha(reporte.fecha)}</strong>
+                      <div style={{ marginTop: 3, color: '#64748b' }}>
+                        {[reporte.modalidad, reporte.grupo]
+                          .filter(Boolean)
+                          .join(' · ') || 'Sesión técnica'}
+                      </div>
+                      {reporte.entrenador && (
+                        <div style={{ marginTop: 2, color: '#64748b', fontSize: 13 }}>
+                          Entrenador: {reporte.entrenador}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      {reporte.nivel_reportado && (
+                        <span style={miniBadge}>Nivel {reporte.nivel_reportado}</span>
+                      )}
+                      {Number(reporte.reporte_version || 1) < 2 && (
+                        <span
+                          style={{
+                            ...miniBadge,
+                            background: '#f8fafc',
+                            color: '#64748b',
+                          }}
+                        >
+                          Formato anterior
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gap: 7, marginTop: 11 }}>
+                    {trabajo && (
+                      <p style={{ margin: 0 }}>
+                        <strong>Trabajo:</strong> {trabajo}
+                      </p>
+                    )}
+                    {competencias && (
+                      <p style={{ margin: 0 }}>
+                        <strong>Competencias:</strong> {competencias}
+                      </p>
+                    )}
+                    {mejoras.length > 0 && (
+                      <p style={{ margin: 0 }}>
+                        <strong>Mejoró:</strong> {mejoras.join(' · ')}
+                      </p>
+                    )}
+                    {reporte.observaciones_generales && (
+                      <div style={{ ...avisoCompleto, margin: 0 }}>
+                        <strong>Observación:</strong>{' '}
+                        {reporte.observaciones_generales}
+                      </div>
+                    )}
+                    {prioridades.length > 0 && (
+                      <p style={{ margin: 0 }}>
+                        <strong>Siguiente paso:</strong> {prioridades.join(' · ')}
+                      </p>
+                    )}
+                  </div>
+
+                  <details style={{ marginTop: 10 }}>
+                    <summary style={{ cursor: 'pointer', fontWeight: 850 }}>
+                      Ver datos completos y Trabajo diario
+                    </summary>
+                    {reporte.trabajo_diario && (
+                      <pre
+                        style={{
+                          whiteSpace: 'pre-wrap',
+                          maxHeight: 260,
+                          overflow: 'auto',
+                          background: '#f8fafc',
+                          padding: 10,
+                          borderRadius: 10,
+                        }}
+                      >
+                        {reporte.trabajo_diario}
+                      </pre>
+                    )}
+                    <p style={{ margin: '9px 0 0', lineHeight: 1.5 }}>
+                      Actitud: {reporte.actitud || '-'} · Técnica:{' '}
+                      {reporte.tecnica || '-'} · Autonomía:{' '}
+                      {reporte.autonomia || '-'} · Pista: {reporte.pista || '-'} ·
+                      Remontes: {remontes.join(', ') || '-'} · Ritmo:{' '}
+                      {reporte.ritmo_grupo || '-'} · Incidencia:{' '}
+                      {reporte.incidencia || '-'}
+                    </p>
+                  </details>
+                </article>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function resumenCortoEvaluacionFichaApp(texto: string) {
+    if (!texto.trim() || /preparando|cargando/i.test(texto)) return texto;
+    const lineas = texto.split(/\r?\n/).map((linea) => linea.trim());
+    const interesan = [
+      lineas.find((linea) => linea.startsWith('Nivel actual')),
+      lineas.find((linea) => linea.startsWith('Periodo:')),
+      lineas.find((linea) => linea.startsWith('Reportes analizados:')),
+      lineas.find((linea) => linea.startsWith('• Nivel:')),
+      lineas.find((linea) => linea.startsWith('• Técnica:')),
+    ].filter(Boolean) as string[];
+    return interesan.slice(0, 5).join('\n');
+  }
+
+  function abrirFichaMaestraAlumnoApp(alumnoId: string, nombre: string) {
+    const ficha = alumnos.find((item) => item.alumno_id === alumnoId);
+    setVistaFichasAlumnos('general');
+    setFiltroAlumnos('todos');
+    setBusquedaAlumno(ficha?.alumno || nombre || '');
+    setPantalla('alumnos');
+    window.setTimeout(() => {
+      document.getElementById('fichas-listado-alumnos')?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start',
+      });
+    }, 80);
+  }
+
   function generarBaseEvaluacionAlumnoFichaApp(
-    alumno: AlumnoResumen,
+    alumno: Pick<AlumnoResumen, 'alumno'> &
+      Partial<
+        Pick<
+          AlumnoResumen,
+          'nivel_actual' | 'ultimo_nivel_reportado' | 'nivel_estimado'
+        >
+      >,
     reportes: HistorialReporteAlumnoFichaApp[]
   ) {
     const nivelActual =
@@ -9887,38 +10181,21 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setCargando(true);
     setError('');
     try {
-      const [resultado, historial] = await Promise.all([
-        ejecutarFuncionConRespuesta<{ texto: string }>(
-          'extraer_evaluacion_ocio_app',
-          { p_alumno_id: alumno.alumno_id }
-        ),
-        cargarHistorialReportesAlumnoFichaApp(alumno.alumno_id, true),
-      ]);
+      const historial = await cargarHistorialReportesAlumnoFichaApp(
+        alumno.alumno_id,
+        true
+      );
       const reportesOcio = historial.filter((reporte) =>
         String(reporte.modalidad || '').toUpperCase().includes('OCIO')
       );
-      const detalleAdaptativo = reportesOcio
-        .filter((reporte) => reporte.evaluacion_tecnica)
-        .map((reporte) => {
-          const competencias = resumenEvaluacionTecnica(
-            reporte.evaluacion_tecnica,
-            reporte.nivel_reportado || alumno.nivel_usado || alumno.nivel || ''
-          );
-          const mejoras = (reporte.mejoras_hoy || []).join(' · ');
-          const prioridades = (reporte.prioridades_proxima_sesion || []).join(' · ');
-          return [
-            `${formatearFecha(reporte.fecha)} · Nivel ${reporte.nivel_reportado || '-'}`,
-            reporte.autonomia ? `Autonomía: ${reporte.autonomia}` : '',
-            competencias ? `Competencias: ${competencias}` : '',
-            mejoras ? `Mejoras: ${mejoras}` : '',
-            prioridades ? `Próximas prioridades: ${prioridades}` : '',
-          ].filter(Boolean).join('\n');
-        });
-      const base = resultado[0]?.texto || `No hay reportes de Ocio para ${alumno.alumno}.`;
       setEvaluacionOcioTexto(
-        detalleAdaptativo.length
-          ? `${base}\n\nEVOLUCIÓN TÉCNICA POR COMPETENCIAS\n${detalleAdaptativo.join('\n\n')}`
-          : base
+        generarBaseEvaluacionAlumnoFichaApp(
+          {
+            alumno: alumno.alumno,
+            nivel_actual: alumno.nivel_usado || alumno.nivel || null,
+          },
+          reportesOcio
+        )
       );
     } catch (err) {
       setEvaluacionOcioTexto('');
@@ -9929,6 +10206,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       );
     }
     setCargando(false);
+  }
+
+  function abrirCentroEvaluacionOcioDesdeFicha(alumno: OcioAlumnoApp) {
+    setEvaluacionOcioIndividualSeleccionadoId(alumno.alumno_id);
+    setEvaluacionOcioActivaId(null);
+    setEvaluacionOcioTexto('');
+    setPantalla('ocioEvaluaciones');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   async function copiarEvaluacionOcio() {
@@ -24246,6 +24531,10 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
       alumno.nivel_alumno ||
       nivelGrupo ||
       '';
+    // La autonomía mide el funcionamiento dentro de la sesión real. En un grupo
+    // alto debe usar la escala avanzada aunque el nivel individual de partida sea
+    // inferior; la técnica continúa evaluándose con el nivel individual observado.
+    const nivelAutonomiaReporte = nivelGrupo || nivelEfectivoReporte;
     const esProgresionInicialReporte =
       esNivelAprendizajeInicialApp(nivelEfectivoReporte);
     const reporteDomId =
@@ -24427,11 +24716,11 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
           <CampoSelect
             label="Autonomía"
             value={formReporte.autonomia}
-            opciones={opcionesAutonomiaAdaptada(nivelEfectivoReporte)}
+            opciones={opcionesAutonomiaAdaptada(nivelAutonomiaReporte)}
             onChange={(valor) =>
               setFormReporte({ ...formReporte, autonomia: valor })
             }
-            ayuda={ayudaAutonomiaAdaptada(nivelEfectivoReporte)}
+            ayuda={ayudaAutonomiaAdaptada(nivelAutonomiaReporte)}
           />
 
           {esProgresionInicialReporte && (
@@ -25582,6 +25871,19 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
     return orden[limpio] ?? null;
   }
 
+  function recorridoNivelesCompactoOcioApp(
+    valor: string | null | undefined
+  ) {
+    const cambios = String(valor || '')
+      .split('→')
+      .map((nivel) => nivel.trim())
+      .filter(Boolean)
+      .filter((nivel, indice, lista) => indice === 0 || nivel !== lista[indice - 1]);
+
+    if (cambios.length <= 6) return cambios.join(' → ');
+    return [...cambios.slice(0, 3), '…', ...cambios.slice(-2)].join(' → ');
+  }
+
   function fraseEvolucionNivelInformeFamiliaOcioApp(fila: EvaluacionAnualOcioApp) {
     const inicial = fila.nivel_inicial || '';
     const final = fila.nivel_final || '';
@@ -25733,6 +26035,12 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
     }
 
     const seguro = (valor: unknown) => escaparHtml(String(valor ?? ''));
+    const alumnoOcioInforme = ocioAlumnos.find(
+      (alumno) => alumno.alumno_id === fila.alumno_id
+    );
+    const edadInforme = edadAproximadaOcio(
+      alumnoOcioInforme?.fecha_nacimiento
+    );
     const temporada = fila.temporada || '-';
     const periodo = fila.primer_reporte_fecha && fila.ultimo_reporte_fecha
       ? `${formatearFecha(fila.primer_reporte_fecha)} — ${formatearFecha(fila.ultimo_reporte_fecha)}`
@@ -25780,7 +26088,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
     .hero{padding:34px;background:linear-gradient(135deg,#062d3f 0%,#083b4d 58%,#0b5d4f 100%);color:#fff;position:relative}
     .brand{font-size:12px;font-weight:900;letter-spacing:.14em;color:#86efac;text-transform:uppercase}.hero h1{font-size:34px;margin:8px 0 6px}.hero p{margin:0;color:#dbe7ee;line-height:1.5}
     .content{padding:30px}.intro{font-size:17px;line-height:1.65;color:#334155;margin:0 0 22px}
-    .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0 0 24px}.metric{border:1px solid #dbeafe;border-radius:16px;padding:14px;background:#f8fbff}.metric span{display:block;font-size:10px;color:#64748b;font-weight:900;letter-spacing:.08em}.metric strong{display:block;font-size:21px;margin-top:4px}
+    .metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:10px;margin:0 0 24px}.metric{border:1px solid #dbeafe;border-radius:16px;padding:14px;background:#f8fbff}.metric span{display:block;font-size:10px;color:#64748b;font-weight:900;letter-spacing:.08em}.metric strong{display:block;font-size:21px;margin-top:4px}
     .section{border:1px solid #e2e8f0;border-radius:18px;padding:18px;margin-top:12px}.section h2{font-size:18px;margin:0 0 8px}.section p{margin:0;color:#475569;line-height:1.6}.section ul{margin:8px 0 0;padding-left:20px;color:#475569;line-height:1.65}.accent{border-color:#bbf7d0;background:#f0fdf4}.note{margin-top:10px;padding:11px 12px;background:#f8fafc;border-radius:12px;color:#475569;line-height:1.55}
     .footer{padding:0 30px 30px;color:#64748b;font-size:12px;line-height:1.55}.actions{display:flex;gap:10px;justify-content:center;padding:0 30px 30px}.actions button{border:0;border-radius:14px;padding:12px 18px;font-weight:900;cursor:pointer}.print{background:#0f9f4d;color:white}.close{background:#e2e8f0;color:#334155}
     @media(max-width:700px){.hero{padding:24px}.hero h1{font-size:27px}.content{padding:20px}.metrics{grid-template-columns:repeat(2,1fr)}.footer,.actions{padding-left:20px;padding-right:20px}}
@@ -25797,12 +26105,13 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
     <div class="content">
       <p class="intro">${seguro(cobertura)} El objetivo es mostrar de forma clara la evolución observada durante las sesiones y orientar el siguiente paso.</p>
       <div class="metrics">
+        ${edadInforme !== null ? `<div class="metric"><span>EDAD</span><strong>${edadInforme}</strong></div>` : ''}
         <div class="metric"><span>ENTRENAMIENTOS</span><strong>${fila.entrenamientos_ocio}</strong></div>
         <div class="metric"><span>REPORTES</span><strong>${fila.reportes_ocio}</strong></div>
         <div class="metric"><span>NIVEL INICIAL</span><strong>${seguro(fila.nivel_inicial || '—')}</strong></div>
         <div class="metric"><span>NIVEL ACTUAL</span><strong>${seguro(fila.nivel_final || '—')}</strong></div>
       </div>
-      <section class="section accent"><h2>Su evolución esta temporada</h2><p>${seguro(nivelTexto)}</p>${fila.niveles_reportados ? `<div class="note"><strong>Recorrido registrado:</strong> ${seguro(fila.niveles_reportados)}</div>` : ''}</section>
+      <section class="section accent"><h2>Su evolución esta temporada</h2><p>${seguro(nivelTexto)}</p>${fila.niveles_reportados ? `<div class="note"><strong>Cambios de nivel registrados:</strong> ${seguro(recorridoNivelesCompactoOcioApp(fila.niveles_reportados))}</div>` : ''}</section>
       ${comparativaNavidad ? `<section class="section accent"><h2>De Navidad a final de temporada</h2><p>${seguro(comparativaNavidad)}</p></section>` : ''}
       <section class="section"><h2>Asistencia y continuidad</h2><p>${seguro(continuidadTexto)}</p></section>
       ${objetivosTrabajados.length > 0 ? `<section class="section"><h2>Habilidades trabajadas</h2><p>Durante las sesiones se han trabajado de forma recurrente: ${seguro(objetivosTrabajados.join(' · '))}.</p></section>` : ''}
@@ -35893,6 +36202,11 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
               <div style={{ display: 'grid', gap: 12 }}>
                 {ocioAlumnosFiltrados.map((alumno) => {
                   const sinGrupo = !alumno.grupo_id;
+                  const perfilOperativo = perfilOperativoAlumnoApp(
+                    alumno.alumno_id
+                  );
+                  const historialAbierto =
+                    historialAlumnoAbiertoId === alumno.alumno_id;
                   return (
                     <article
                       key={alumno.alumno_id}
@@ -35975,6 +36289,66 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                             ).slice(0, 5)}{' '}
                             · Reportes: {alumno.total_reportes || 0}
                           </p>
+                          {perfilOperativo && (
+                            <div
+                              style={{
+                                display: 'flex',
+                                gap: 6,
+                                flexWrap: 'wrap',
+                                marginTop: 8,
+                              }}
+                            >
+                              {perfilOperativo.autonomia_reciente && (
+                                <span style={miniBadge}>
+                                  Autonomía: {perfilOperativo.autonomia_reciente}
+                                </span>
+                              )}
+                              {perfilOperativo.ritmo_tendencia && (
+                                <span style={miniBadge}>
+                                  Ritmo en su grupo: {perfilOperativo.ritmo_tendencia}
+                                  {perfilOperativo.confianza_ritmo
+                                    ? ` · confianza ${perfilOperativo.confianza_ritmo.toLowerCase()}`
+                                    : ''}
+                                  {perfilOperativo.reportes_ritmo
+                                    ? ` · ${perfilOperativo.reportes_ritmo} reportes`
+                                    : ''}
+                                </span>
+                              )}
+                              {perfilOperativo.demanda_atencion &&
+                                perfilOperativo.demanda_atencion !== 'NORMAL' && (
+                                  <span
+                                    style={{
+                                      ...miniBadge,
+                                      background:
+                                        perfilOperativo.demanda_atencion === 'ALTA'
+                                          ? '#fff1f2'
+                                          : '#fff7ed',
+                                      color:
+                                        perfilOperativo.demanda_atencion === 'ALTA'
+                                          ? '#be123c'
+                                          : '#c2410c',
+                                    }}
+                                  >
+                                    {perfilOperativo.demanda_atencion === 'ALTA'
+                                      ? 'Atención prioritaria'
+                                      : 'Seguimiento puntual'}
+                                  </span>
+                                )}
+                            </div>
+                          )}
+                          {perfilOperativo?.aviso_operativo &&
+                            perfilOperativo.demanda_atencion !== 'NORMAL' && (
+                              <p
+                                style={{
+                                  margin: '7px 0 0',
+                                  color: '#92400e',
+                                  fontWeight: 750,
+                                }}
+                              >
+                                <strong>Motivo del seguimiento:</strong>{' '}
+                                {perfilOperativo.aviso_operativo}
+                              </p>
+                            )}
                         </div>
                         <div
                           style={{
@@ -35989,6 +36363,15 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                             style={botonSecundario}
                           >
                             Editar ficha / Ocio
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              abrirCentroEvaluacionOcioDesdeFicha(alumno)
+                            }
+                            style={botonSecundario}
+                          >
+                            Evaluación / familia
                           </button>
                           <button
                             type="button"
@@ -36158,6 +36541,45 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                         </p>
                       )}
 
+                      <div style={{ marginTop: 12 }}>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void alternarHistorialAlumnoFichaApp(alumno)
+                          }
+                          style={{
+                            ...botonSecundario,
+                            width: '100%',
+                            justifyContent: 'space-between',
+                            borderColor: historialAbierto
+                              ? '#86efac'
+                              : '#e2e8f0',
+                            background: historialAbierto
+                              ? '#f0fdf4'
+                              : '#ffffff',
+                            color: '#0f172a',
+                            fontWeight: 900,
+                          }}
+                        >
+                          <span>
+                            {historialAbierto ? '▼' : '▶'} Ficha maestra e
+                            historial
+                          </span>
+                          <span style={{ fontSize: 13, color: '#64748b' }}>
+                            {alumno.total_reportes || 0}{' '}
+                            {Number(alumno.total_reportes || 0) === 1
+                              ? 'reporte'
+                              : 'reportes'}
+                          </span>
+                        </button>
+
+                        {historialAbierto &&
+                          renderHistorialComunFichaApp(
+                            alumno.alumno_id,
+                            alumno.nivel_usado || alumno.nivel || '-'
+                          )}
+                      </div>
+
                     </article>
                   );
                 })}
@@ -36188,6 +36610,18 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
         const alumnoIndividual = ocioAlumnos.find(
           (alumno) => alumno.alumno_id === evaluacionOcioIndividualSeleccionadoId
         );
+        const edadAlumnoIndividual = alumnoIndividual
+          ? edadAproximadaOcio(alumnoIndividual.fecha_nacimiento)
+          : null;
+        const historialOcioAbierto = Boolean(
+          alumnoIndividual && historialAlumnoAbiertoId === alumnoIndividual.alumno_id
+        );
+        const historialOcioIndividual = alumnoIndividual
+          ? (historialReportesFichaPorAlumno[alumnoIndividual.alumno_id] || []).filter(
+              (reporte) =>
+                String(reporte.modalidad || '').toUpperCase().includes('OCIO')
+            )
+          : [];
 
         return (
           <section style={{ display: 'grid', gap: 16 }}>
@@ -36276,7 +36710,12 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                       .sort((a, b) => (a.alumno || '').localeCompare(b.alumno || ''))
                       .map((alumno) => (
                         <option key={`eval-ind-${alumno.alumno_id}`} value={alumno.alumno_id}>
-                          {alumno.alumno} · {alumno.dia_fijo || alumno.grupo_dia || 'Sin día'}
+                          {alumno.alumno}
+                          {edadAproximadaOcio(alumno.fecha_nacimiento) !== null
+                            ? ` · ${edadAproximadaOcio(alumno.fecha_nacimiento)} años`
+                            : ''}
+                          {' · '}{alumno.nivel_usado || alumno.nivel || 'Sin nivel'}
+                          {' · '}{alumno.dia_fijo || alumno.grupo_dia || 'Sin día'}
                         </option>
                       ))}
                   </select>
@@ -36295,23 +36734,213 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                 </button>
               </div>
 
+              {alumnoIndividual && (
+                <div
+                  style={{
+                    ...miniTarjetaBlanca,
+                    marginTop: 12,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: 10,
+                    alignItems: 'center',
+                    flexWrap: 'wrap',
+                  }}
+                >
+                  <div>
+                    <strong>{alumnoIndividual.alumno}</strong>
+                    <span style={{ display: 'block', marginTop: 4, color: '#64748b' }}>
+                      {edadAlumnoIndividual !== null
+                        ? `${edadAlumnoIndividual} años · `
+                        : ''}
+                      Nivel {alumnoIndividual.nivel_usado || alumnoIndividual.nivel || '-'} ·{' '}
+                      {alumnoIndividual.dia_fijo || alumnoIndividual.grupo_dia || 'Sin día fijo'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      void alternarHistorialAlumnoFichaApp(alumnoIndividual)
+                    }
+                    style={botonSecundario}
+                  >
+                    {historialOcioAbierto ? 'Cerrar historial' : 'Consultar historial exacto'}
+                  </button>
+                </div>
+              )}
+
+              {alumnoIndividual && historialOcioAbierto && (
+                <div
+                  style={{
+                    ...miniTarjetaBlanca,
+                    marginTop: 10,
+                    border: '1px solid #bbf7d0',
+                    background: '#f8fffb',
+                  }}
+                >
+                  <h4 style={{ marginTop: 0 }}>
+                    Historial Ocio · {historialOcioIndividual.length} reportes
+                  </h4>
+                  {historialReportesFichaCargandoId === alumnoIndividual.alumno_id && (
+                    <p style={{ margin: 0 }}>Cargando historial...</p>
+                  )}
+                  {historialReportesFichaCargandoId !== alumnoIndividual.alumno_id &&
+                    historialOcioIndividual.length === 0 && (
+                      <div style={avisoNeutral}>
+                        Todavía no hay reportes de Ocio guardados para este alumno.
+                      </div>
+                    )}
+                  {historialOcioIndividual.length > 0 && (
+                    <div style={{ display: 'grid', gap: 10 }}>
+                      {historialOcioIndividual.map((reporte, indice) => {
+                        const competencias = resumenEvaluacionTecnica(
+                          reporte.evaluacion_tecnica,
+                          reporte.nivel_reportado ||
+                            alumnoIndividual.nivel_usado ||
+                            alumnoIndividual.nivel ||
+                            ''
+                        );
+                        const mejoras =
+                          reporte.mejoras_hoy?.length
+                            ? reporte.mejoras_hoy
+                            : reporte.mejora_hoy
+                              ? [reporte.mejora_hoy]
+                              : [];
+                        const prioridades =
+                          reporte.prioridades_proxima_sesion?.length
+                            ? reporte.prioridades_proxima_sesion
+                            : reporte.recomendacion
+                              ? [reporte.recomendacion]
+                              : [];
+                        return (
+                          <article
+                            key={reporte.reporte_id || `${reporte.fecha}-${indice}`}
+                            style={{
+                              border: '1px solid #dbeafe',
+                              borderRadius: 14,
+                              padding: 12,
+                              background: '#fff',
+                            }}
+                          >
+                            <div
+                              style={{
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                gap: 8,
+                                flexWrap: 'wrap',
+                              }}
+                            >
+                              <strong>{formatearFecha(reporte.fecha)}</strong>
+                              <span style={miniBadge}>
+                                Nivel {reporte.nivel_reportado || '-'}
+                              </span>
+                            </div>
+                            <p style={{ margin: '6px 0 0', color: '#64748b' }}>
+                              {[reporte.grupo, reporte.entrenador]
+                                .filter(Boolean)
+                                .join(' · ')}
+                            </p>
+                            {competencias && (
+                              <p style={{ margin: '8px 0 0' }}>
+                                <strong>Competencias:</strong> {competencias}
+                              </p>
+                            )}
+                            {mejoras.length > 0 && (
+                              <p style={{ margin: '7px 0 0' }}>
+                                <strong>Mejoró:</strong> {mejoras.join(' · ')}
+                              </p>
+                            )}
+                            {reporte.observaciones_generales && (
+                              <div style={{ ...avisoCompleto, marginTop: 8 }}>
+                                <strong>Observación:</strong>{' '}
+                                {reporte.observaciones_generales}
+                              </div>
+                            )}
+                            {prioridades.length > 0 && (
+                              <p style={{ margin: '7px 0 0' }}>
+                                <strong>Siguiente paso:</strong>{' '}
+                                {prioridades.join(' · ')}
+                              </p>
+                            )}
+                            <details style={{ marginTop: 9 }}>
+                              <summary style={{ cursor: 'pointer', fontWeight: 850 }}>
+                                Ver datos completos y Trabajo diario
+                              </summary>
+                              {reporte.trabajo_diario && (
+                                <pre
+                                  style={{
+                                    whiteSpace: 'pre-wrap',
+                                    margin: '9px 0 0',
+                                    maxHeight: 260,
+                                    overflow: 'auto',
+                                    background: '#f8fafc',
+                                    padding: 10,
+                                    borderRadius: 10,
+                                  }}
+                                >
+                                  {reporte.trabajo_diario}
+                                </pre>
+                              )}
+                              <p style={{ margin: '9px 0 0' }}>
+                                Actitud: {reporte.actitud || '-'} · Autonomía:{' '}
+                                {reporte.autonomia || '-'} · Ritmo:{' '}
+                                {reporte.ritmo_grupo || '-'} · Incidencia:{' '}
+                                {reporte.incidencia || '-'}
+                              </p>
+                            </details>
+                          </article>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {alumnoIndividual && evaluacionOcioActivaId === alumnoIndividual.alumno_id && (
                 <div style={{ ...miniTarjetaBlanca, marginTop: 14 }}>
                   <h4 style={{ marginTop: 0 }}>
-                    Vista previa · {alumnoIndividual.alumno}
+                    Resumen familiar · {alumnoIndividual.alumno}
+                    {edadAlumnoIndividual !== null
+                      ? ` · ${edadAlumnoIndividual} años`
+                      : ''}
                   </h4>
+                  <p style={{ color: '#64748b' }}>
+                    Resumen limitado de evolución. El detalle por sesión permanece en el historial.
+                  </p>
                   <pre
                     style={{
                       whiteSpace: 'pre-wrap',
+                      margin: '0 0 12px',
+                      padding: 12,
+                      borderRadius: 12,
+                      background: '#f0fdf4',
+                      color: '#166534',
+                      fontFamily: 'inherit',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {resumenCortoEvaluacionFichaApp(evaluacionOcioTexto)}
+                  </pre>
+                  <details
+                    style={{
                       background: '#f8fafc',
                       padding: 12,
                       borderRadius: 14,
-                      maxHeight: 360,
-                      overflow: 'auto',
                     }}
                   >
-                    {evaluacionOcioTexto}
-                  </pre>
+                    <summary style={{ cursor: 'pointer', fontWeight: 900 }}>
+                      Ver base técnica completa
+                    </summary>
+                    <pre
+                      style={{
+                        whiteSpace: 'pre-wrap',
+                        maxHeight: 360,
+                        overflow: 'auto',
+                        marginBottom: 0,
+                      }}
+                    >
+                      {evaluacionOcioTexto}
+                    </pre>
+                  </details>
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button
                       onClick={copiarEvaluacionOcio}
@@ -36542,6 +37171,9 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                               <strong style={{ overflowWrap: 'anywhere' }}>{alumno.alumno}</strong>
                               <span style={{ display: 'block', marginTop: 3, color: '#64748b', fontSize: 13 }}>
                                 {alumno.dia_fijo || alumno.grupo_dia || 'Sin día fijo'} ·{' '}
+                                {edadAproximadaOcio(alumno.fecha_nacimiento) !== null
+                                  ? `${edadAproximadaOcio(alumno.fecha_nacimiento)} años · `
+                                  : ''}
                                 {evaluacion
                                   ? `Nivel ${evaluacion.nivel_inicial || '-'} → ${
                                       evaluacion.nivel_final || '-'
@@ -36588,7 +37220,9 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                 <div style={miniTarjetaBlanca}>
                                   <strong>Progresión de nivel</strong>
                                   <p style={{ margin: '6px 0 0', color: '#475569' }}>
-                                    {evaluacion.niveles_reportados || `${evaluacion.nivel_inicial || '-'} → ${evaluacion.nivel_final || '-'}`}
+                                    {recorridoNivelesCompactoOcioApp(
+                                      evaluacion.niveles_reportados
+                                    ) || `${evaluacion.nivel_inicial || '-'} → ${evaluacion.nivel_final || '-'}`}
                                   </p>
                                 </div>
                                 <div style={miniTarjetaBlanca}>
@@ -39494,7 +40128,26 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                     key={`prep-int-${grupo.grupo_id}-${alumno.alumno_id}`}
                                     style={filaAlumnoAsistencia}
                                   >
-                                    <strong>{alumno.alumno}</strong>
+                                    <div>
+                                      <strong>{alumno.alumno}</strong>
+                                      <div
+                                        style={{
+                                          marginTop: 3,
+                                          color: '#64748b',
+                                          fontSize: 13,
+                                        }}
+                                      >
+                                        Nivel {alumno.nivel_usado || '-'}
+                                        {alumno.fecha_nacimiento
+                                          ? ` · ${
+                                              edadOcioAlumnoEnFecha(
+                                                alumno,
+                                                fecha
+                                              ) || '-'
+                                            } años`
+                                          : ''}
+                                      </div>
+                                    </div>
                                     <div
                                       style={{
                                         display: 'flex',
@@ -47412,8 +48065,11 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                     !alumno.nivel_actual && Boolean(alumno.nivel_estimado);
                   const historialAbierto =
                     historialAlumnoAbiertoId === alumno.alumno_id;
-                  const historialReportes =
+                  const historialReportesTodos =
                     historialReportesFichaPorAlumno[alumno.alumno_id] || [];
+                  const historialReportes = filtrarHistorialFichaApp(
+                    historialReportesTodos
+                  );
                   const historialCargado = Object.prototype.hasOwnProperty.call(
                     historialReportesFichaPorAlumno,
                     alumno.alumno_id
@@ -47510,33 +48166,6 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                               ? ` · Origen: ${alumno.origen_nivel_estimado}`
                               : ''}
                           </p>
-                          {tendenciaRitmoAlumnoApp(alumno.alumno_id)
-                            ?.ritmo_tendencia && (
-                            <p
-                              style={{
-                                margin: '5px 0 0',
-                                color: '#475569',
-                                fontWeight: 700,
-                              }}
-                            >
-                              Ritmo reciente:{' '}
-                              <strong>
-                                {
-                                  tendenciaRitmoAlumnoApp(alumno.alumno_id)
-                                    ?.ritmo_tendencia
-                                }
-                              </strong>{' '}
-                              ·{' '}
-                              {tendenciaRitmoAlumnoApp(alumno.alumno_id)
-                                ?.reportes_usados || 0}{' '}
-                              reportes · confianza{' '}
-                              {(
-                                tendenciaRitmoAlumnoApp(alumno.alumno_id)
-                                  ?.confianza || 'BAJA'
-                              ).toLowerCase()}
-                            </p>
-                          )}
-
                           {perfilOperativoAlumnoApp(alumno.alumno_id) && (
                             <div
                               style={{
@@ -47546,31 +48175,56 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                 marginTop: 8,
                               }}
                             >
-                              <span style={miniBadge}>
-                                Fuerza:{' '}
-                                {perfilOperativoAlumnoApp(alumno.alumno_id)
-                                  ?.fuerza_nivel || 'SIN DATOS'}
-                              </span>
-                              <span style={miniBadge}>
-                                Atención:{' '}
-                                {perfilOperativoAlumnoApp(alumno.alumno_id)
-                                  ?.demanda_atencion || 'NORMAL'}
-                              </span>
                               {perfilOperativoAlumnoApp(alumno.alumno_id)
-                                ?.edad_aprox !== null &&
+                                ?.autonomia_reciente && (
+                                <span style={miniBadge}>
+                                  Autonomía:{' '}
+                                  {perfilOperativoAlumnoApp(alumno.alumno_id)
+                                    ?.autonomia_reciente}
+                                </span>
+                              )}
+                              {(perfilOperativoAlumnoApp(alumno.alumno_id)
+                                ?.remontes_recientes || []).length > 0 && (
+                                <span style={miniBadge}>
+                                  Remontes:{' '}
+                                  {(
+                                    perfilOperativoAlumnoApp(alumno.alumno_id)
+                                      ?.remontes_recientes || []
+                                  ).join(', ')}
+                                </span>
+                              )}
+                              {perfilOperativoAlumnoApp(alumno.alumno_id)
+                                ?.demanda_atencion &&
                                 perfilOperativoAlumnoApp(alumno.alumno_id)
-                                  ?.edad_aprox !== undefined && (
-                                  <span style={miniBadge}>
-                                    Edad:{' '}
+                                  ?.demanda_atencion !== 'NORMAL' && (
+                                  <span
+                                    style={{
+                                      ...miniBadge,
+                                      background:
+                                        perfilOperativoAlumnoApp(alumno.alumno_id)
+                                          ?.demanda_atencion === 'ALTA'
+                                          ? '#fff1f2'
+                                          : '#fff7ed',
+                                      color:
+                                        perfilOperativoAlumnoApp(alumno.alumno_id)
+                                          ?.demanda_atencion === 'ALTA'
+                                          ? '#be123c'
+                                          : '#c2410c',
+                                    }}
+                                  >
                                     {perfilOperativoAlumnoApp(alumno.alumno_id)
-                                      ?.edad_aprox?.toFixed(1)}
+                                      ?.demanda_atencion === 'ALTA'
+                                      ? 'Atención prioritaria'
+                                      : 'Seguimiento puntual'}
                                   </span>
                                 )}
                             </div>
                           )}
 
                           {perfilOperativoAlumnoApp(alumno.alumno_id)
-                            ?.aviso_operativo && (
+                            ?.aviso_operativo &&
+                            perfilOperativoAlumnoApp(alumno.alumno_id)
+                              ?.demanda_atencion !== 'NORMAL' && (
                             <p
                               style={{
                                 margin: '7px 0 0',
@@ -47579,10 +48233,9 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                 lineHeight: 1.4,
                               }}
                             >
-                              {
-                                perfilOperativoAlumnoApp(alumno.alumno_id)
-                                  ?.aviso_operativo
-                              }
+                              <strong>Motivo del seguimiento:</strong>{' '}
+                              {perfilOperativoAlumnoApp(alumno.alumno_id)
+                                ?.aviso_operativo}
                             </p>
                           )}
                         </div>
@@ -47903,18 +48556,50 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                             </button>
                           </div>
 
-                          <textarea
-                            readOnly
-                            value={evaluacionAlumnoTexto}
+                          <pre
                             style={{
-                              ...textarea,
-                              minHeight: 220,
-                              width: '100%',
-                              boxSizing: 'border-box',
-                              marginTop: 12,
                               whiteSpace: 'pre-wrap',
+                              margin: '12px 0 0',
+                              padding: 12,
+                              borderRadius: 12,
+                              background: '#eff6ff',
+                              color: '#1e40af',
+                              fontFamily: 'inherit',
+                              lineHeight: 1.5,
                             }}
-                          />
+                          >
+                            {resumenCortoEvaluacionFichaApp(
+                              evaluacionAlumnoTexto
+                            )}
+                          </pre>
+
+                          <details
+                            style={{
+                              marginTop: 12,
+                              border: '1px solid #dbeafe',
+                              borderRadius: 14,
+                              background: '#f8fbff',
+                              padding: 12,
+                            }}
+                          >
+                            <summary
+                              style={{ cursor: 'pointer', fontWeight: 900 }}
+                            >
+                              Ver base técnica completa
+                            </summary>
+                            <textarea
+                              readOnly
+                              value={evaluacionAlumnoTexto}
+                              style={{
+                                ...textarea,
+                                minHeight: 220,
+                                width: '100%',
+                                boxSizing: 'border-box',
+                                marginTop: 12,
+                                whiteSpace: 'pre-wrap',
+                              }}
+                            />
+                          </details>
 
                           <div
                             style={{
@@ -47984,6 +48669,16 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                               background: '#f8fffb',
                             }}
                           >
+                            <div>
+                              <strong>Ficha maestra · Historial exacto</strong>
+                              <p style={{ margin: '4px 0 0', color: '#64748b' }}>
+                                Filtra la misma cronología por Baby, Ocio o
+                                Intensivos.
+                              </p>
+                            </div>
+                            {renderFiltroModalidadHistorialFichaApp(
+                              historialReportesTodos
+                            )}
                             <div
                               style={{
                                 display: 'flex',
@@ -48052,10 +48747,17 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                                   lineHeight: 1.5,
                                 }}
                               >
-                                <strong>No hay reportes técnicos detallados todavía.</strong>{' '}
-                                {nivelUsadoPorApp !== '-'
+                                <strong>
+                                  {historialReportesTodos.length === 0
+                                    ? 'No hay reportes técnicos detallados todavía.'
+                                    : `No hay reportes de ${filtroModalidadHistorialFicha.toLowerCase()}.`}
+                                </strong>{' '}
+                                {historialReportesTodos.length === 0 &&
+                                nivelUsadoPorApp !== '-'
                                   ? `La ficha conserva el nivel ${nivelUsadoPorApp}, pero no mostramos campos vacíos ni inventamos datos que no existen.`
-                                  : 'La ficha todavía no tiene suficiente información técnica registrada.'}
+                                  : historialReportesTodos.length === 0
+                                    ? 'La ficha todavía no tiene suficiente información técnica registrada.'
+                                    : 'Selecciona Todos para consultar el resto del historial.'}
                               </div>
                             )}
 
@@ -51449,6 +52151,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
 
       {pantalla === 'intensivos' &&
         PantallaIntensivos({
+          abrirFichaMaestraAlumnoApp,
           abrirPanelIntensivo,
           actualizarDiaIntensivoDesdeApp,
           actualizarDiplomaIntensivo,
@@ -51573,6 +52276,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
           opcionesPistaGrupoIntensivo,
           opcionesRecomendacionIntensivo,
           panelControlDelIntensivo,
+          perfilOperativoAlumnoApp,
           plantillaCuatroSesionesInicial,
           plantillaCuatroSesionesIntensivo,
           prepararEdicionDiaIntensivo,

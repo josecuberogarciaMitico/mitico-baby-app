@@ -56,7 +56,18 @@ const POR_NIVEL: Record<string, CompetenciaTecnicaReporte[]> = {
 
 export function normalizarNivelReporte(nivel: string) {
   const limpio = String(nivel || '').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  return limpio === 'INICIACION' ? 'INICIACION' : POR_NIVEL[limpio] ? limpio : 'B';
+  if (limpio.includes('INICIACION')) return 'INICIACION';
+  if (POR_NIVEL[limpio]) return limpio;
+
+  // Algunas vistas antiguas entregan etiquetas como "Nivel C" o "Grupo D+".
+  // Extraemos el código completo para no degradarlas silenciosamente al fallback B.
+  const codigoEnEtiqueta = limpio.match(
+    /(?:^|[^A-Z+])(D\+|C\+|B\+|A\+|D|C|B|A)(?:$|[^A-Z+])/
+  )?.[1];
+
+  return codigoEnEtiqueta && POR_NIVEL[codigoEnEtiqueta]
+    ? codigoEnEtiqueta
+    : 'B';
 }
 
 export function competenciasReporte(nivel: string) {
