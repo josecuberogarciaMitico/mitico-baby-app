@@ -1,13 +1,10 @@
-export type NivelTecnicoMSZ =
-  | 'INICIACION'
-  | 'A'
-  | 'A+'
-  | 'B'
-  | 'B+'
-  | 'C'
-  | 'C+'
-  | 'D'
-  | 'D+';
+import {
+  TECHNICAL_LEVEL_ORDER,
+  requireTechnicalLevel,
+  type TechnicalLevel,
+} from '../core/levels/levelContract';
+
+export type NivelTecnicoMSZ = TechnicalLevel;
 
 export type FaseTecnicaMSZ =
   | 'FAMILIARIZACION'
@@ -2158,42 +2155,7 @@ export const EJERCICIOS_TECNICOS_MSZ: EjercicioTecnicoMSZ[] = [
 export function normalizarNivelMSZ(
   valor: string | null | undefined
 ): NivelTecnicoMSZ {
-  const limpio = String(valor || '')
-    .toUpperCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .trim();
-
-  const detectado =
-    limpio.match(
-      /(?:^|[^A-Z])(INICIACION|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)(?:$|[^A-Z+])/i
-    )?.[1] || limpio;
-
-  if (detectado === 'INICIACION' || detectado === 'DEBUT') return 'INICIACION';
-  if (detectado === 'B++') return 'B+';
-  if (
-    detectado === 'A' ||
-    detectado === 'A+' ||
-    detectado === 'B' ||
-    detectado === 'B+' ||
-    detectado === 'C' ||
-    detectado === 'C+' ||
-    detectado === 'D' ||
-    detectado === 'D+'
-  ) {
-    return detectado;
-  }
-  return 'A+';
+  return requireTechnicalLevel(valor, 'Motor de trabajo diario');
 }
 
-export const ORDEN_NIVEL_MSZ: Record<NivelTecnicoMSZ, number> = {
-  INICIACION: 0,
-  A: 1,
-  'A+': 2,
-  B: 3,
-  'B+': 4,
-  C: 5,
-  'C+': 6,
-  D: 7,
-  'D+': 8,
-};
+export const ORDEN_NIVEL_MSZ = TECHNICAL_LEVEL_ORDER;

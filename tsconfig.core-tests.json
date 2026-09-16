@@ -1,0 +1,29 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "Node",
+    "lib": ["ES2022", "DOM"],
+    "strict": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "rootDir": ".",
+    "outDir": ".tmp/core-tests"
+  },
+  "include": [
+    "src/core/**/*.ts",
+    "src/features/baby/**/*.ts",
+    "src/features/ocio/**/*.ts",
+    "src/features/intensivos/**/*.ts",
+    "src/features/agenda/**/*.ts",
+    "src/features/seasons/**/*.ts",
+    "src/features/billing/**/*.ts",
+    "src/services/aimharder/**/*.ts",
+    "src/services/auth/authContract.ts",
+    "src/services/auth/authTypes.ts",
+    "tests/core/**/*.ts",
+    "tests/features/**/*.ts",
+    "tests/services/aimharder/**/*.ts",
+    "tests/services/auth/**/*.ts"
+  ]
+}

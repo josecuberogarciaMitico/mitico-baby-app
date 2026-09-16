@@ -1,5 +1,4 @@
-const SUPABASE_URL = 'https://natxwawulodkoauqkwqz.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_xeLKsuImDbVd9tnoBzSxXw_KAqod1bu';
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../config/supabase';
 const MITICO_AUTH_STORAGE_KEY = 'mitico_auth_session_v1';
 const PACO_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-api`;
 const PACO_SECRETARIA_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-secretaria`;

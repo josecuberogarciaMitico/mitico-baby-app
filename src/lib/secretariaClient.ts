@@ -1,7 +1,5 @@
 import { comprobarAccesoPaco, tokenSesionPacoActual } from './pacoClient';
-
-const SUPABASE_URL = 'https://natxwawulodkoauqkwqz.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_xeLKsuImDbVd9tnoBzSxXw_KAqod1bu';
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../config/supabase';
 
 type SecretariaTipo = 'tarea' | 'nota';
 type SecretariaEstado = 'pendiente' | 'en_curso' | 'resuelto' | 'referencia';

@@ -1,9 +1,14 @@
 import React from 'react';
 import { FOTO_MITICO_HERO } from '../assets/imagenes';
+import type { DisponibilidadEntrenador } from '../features/availability/availabilityEditor';
+import type { GrupoEntrenadorApp, ReportePendiente } from '../core/sessions/operationalTypes';
+import {
+  parseTechnicalLevel,
+  type TechnicalLevel,
+} from '../core/levels/levelContract';
 
 export function AyudaReporteEntrenador({ nivel }: { nivel?: string | null }) {
-  const nivelBase = (nivel || '').toUpperCase().trim() || 'A+';
-  const perfil = perfilAyudaReporteEntrenador(nivelBase);
+  const perfil = perfilAyudaReporteEntrenador(nivel);
 
   const filas = [
     ['Nivel', perfil.nivel],
@@ -33,8 +38,21 @@ export function AyudaReporteEntrenador({ nivel }: { nivel?: string | null }) {
   );
 }
 
-export function perfilAyudaReporteEntrenador(nivel: string) {
-  const limpio = nivel.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
+export function perfilAyudaReporteEntrenador(nivel?: string | null) {
+  const parsed = parseTechnicalLevel(nivel);
+
+  if (parsed.status !== 'VALID') {
+    return {
+      nivel: 'Nivel pendiente de revisión.',
+      tecnica: 'No se propone una técnica hasta validar el nivel individual.',
+      autonomia: 'Registrar únicamente lo observado en pista.',
+      remontes: 'Registrar únicamente el remonte utilizado y la ayuda necesaria.',
+      observacion: 'Indicar que el nivel individual requiere revisión de coordinación.',
+      recomendacion: 'Revisar nivel; no utilizar el nivel del grupo como sustituto.',
+    };
+  }
+
+  const limpio: TechnicalLevel = parsed.level;
 
   if (limpio.includes('INICIACION') || limpio === 'A') {
     return {
@@ -378,18 +396,8 @@ export function extraerObservacionesVisualesGrupoApp(texto: string | null | unde
 }
 
 export function grupoNivelAFormulario(nombreGrupo: string) {
-  const texto = nombreGrupo.toUpperCase();
-
-  if (texto.includes('D+')) return 'D+';
-  if (texto.includes('D')) return 'D';
-  if (texto.includes('C+')) return 'C+';
-  if (texto.includes('C')) return 'C';
-  if (texto.includes('B+')) return 'B+';
-  if (texto.includes('B')) return 'B';
-  if (texto.includes('A+')) return 'A+';
-  if (texto.includes('A')) return 'A';
-
-  return 'B';
+  const parsed = parseTechnicalLevel(nombreGrupo);
+  return parsed.status === 'VALID' ? parsed.level : null;
 }
 
 export const layout: React.CSSProperties = {
@@ -844,8 +852,12 @@ export function nivelGeneralGrupoVisual(grupo: GrupoVisualApp) {
   return nivel.replace(/\s*\/\s*/g, ' / ');
 }
 
-export function nombreGrupoVisualApp(grupo: GrupoVisualApp, indice: number) {
-  return `Grupo ${indice + 1} · Nivel ${nivelGeneralGrupoVisual(grupo)}`;
+export function nombreGrupoVisualApp(grupo: GrupoVisualApp, indice?: number) {
+  if (typeof indice === 'number' && Number.isFinite(indice)) {
+    return `Grupo ${indice + 1} · Nivel ${nivelGeneralGrupoVisual(grupo)}`;
+  }
+  const nombre = String(grupo.nombre_grupo || '').trim();
+  return nombre || `Grupo · Nivel ${nivelGeneralGrupoVisual(grupo)}`;
 }
 
 export function nombreGrupoPropuestaApp(alumnosGrupo: { nivel_resumen?: string | null; bloque_tecnico?: string | null }[], indice: number) {

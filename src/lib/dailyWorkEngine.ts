@@ -7,42 +7,13 @@ import {
   type ObjetivoTecnicoMSZ,
   type FaseTecnicaMSZ,
 } from './technicalLibrary';
+import { requireDailyWorkLevels } from '../core/daily-work/dailyWorkLevels';
+import type {
+  AlumnoContextoTrabajoDiarioApp,
+  InputTrabajoDiario,
+} from '../core/daily-work/dailyWorkTypes';
 
-export type ProgresionInicialTrabajoDiarioApp = {
-  autonomiaCinta?: string;
-  cunaFrenada?: string;
-  giroInicial?: string;
-  dinamicaAutonoma?: string;
-  ayudaCunero?: string;
-};
-
-export type AlumnoContextoTrabajoDiarioApp = {
-  alumnoId: string;
-  nombre: string;
-  nivel: string;
-  tecnica?: string;
-  actitud?: string;
-  autonomia?: string;
-  incidencia?: string;
-  recomendacion?: string;
-  remontes?: string[];
-  ritmo?: string;
-  fuerzaNivel?: string;
-  demandaAtencion?: string;
-  observacionOperativa?: string;
-  faseViraje?: string;
-  progresionInicial?: ProgresionInicialTrabajoDiarioApp;
-};
-
-type InputTrabajoDiario = {
-  nombreGrupo: string;
-  modalidad: string;
-  niveles: string[];
-  pista: string;
-  observacionesGrupo: string;
-  alumnos: AlumnoContextoTrabajoDiarioApp[];
-  trabajosRecientes?: string[];
-};
+export type { AlumnoContextoTrabajoDiarioApp } from '../core/daily-work/dailyWorkTypes';
 
 function textoPlano(valor: unknown) {
   return String(valor || '')
@@ -52,12 +23,7 @@ function textoPlano(valor: unknown) {
 }
 
 function nivelesGrupo(input: InputTrabajoDiario) {
-  const desdeAlumnos = input.alumnos
-    .map((alumno) => normalizarNivelMSZ(alumno.nivel))
-    .filter(Boolean);
-  const desdeNivel = input.niveles.map(normalizarNivelMSZ);
-  const todos = desdeAlumnos.length > 0 ? desdeAlumnos : desdeNivel;
-  return todos.length > 0 ? todos : (['A+'] as NivelTecnicoMSZ[]);
+  return requireDailyWorkLevels(input);
 }
 
 function nivelDominante(input: InputTrabajoDiario) {

@@ -1,13 +1,19 @@
-export const ESCALA_TECNICA_REPORTE = [
-  'No trabajado',
-  'Necesita mejorar',
-  'En desarrollo',
-  'Correcto',
-  'Consolidado',
-] as const;
+import {
+  requireTechnicalLevel,
+  type TechnicalLevel,
+} from '../core/levels/levelContract';
+import {
+  TECHNICAL_REPORT_SCALE,
+  type EvaluacionTecnicaReporte,
+  type ValorTecnicoReporte,
+} from '../core/reports/reportTypes';
 
-export type ValorTecnicoReporte = (typeof ESCALA_TECNICA_REPORTE)[number];
-export type EvaluacionTecnicaReporte = Record<string, ValorTecnicoReporte>;
+export type {
+  EvaluacionTecnicaReporte,
+  ValorTecnicoReporte,
+} from '../core/reports/reportTypes';
+
+export const ESCALA_TECNICA_REPORTE = TECHNICAL_REPORT_SCALE;
 
 export type CompetenciaTecnicaReporte = {
   id: string;
@@ -42,7 +48,7 @@ const COMPETENCIAS = {
   adaptacion: C('adaptacion_terreno_velocidad', 'Adaptación a terreno y velocidad', 'Mantiene la técnica cuando cambian la pendiente, la nieve o la velocidad.'),
 } as const;
 
-const POR_NIVEL: Record<string, CompetenciaTecnicaReporte[]> = {
+const POR_NIVEL: Record<TechnicalLevel, CompetenciaTecnicaReporte[]> = {
   INICIACION: [COMPETENCIAS.confianza, COMPETENCIAS.equilibrio, COMPETENCIAS.posicionBasica, COMPETENCIAS.cuna, COMPETENCIAS.direccion],
   A: [COMPETENCIAS.confianza, COMPETENCIAS.equilibrio, COMPETENCIAS.posicionBasica, COMPETENCIAS.cuna, COMPETENCIAS.direccion, COMPETENCIAS.velocidad],
   'A+': [COMPETENCIAS.equilibrio, COMPETENCIAS.cuna, COMPETENCIAS.girosCuna, COMPETENCIAS.velocidad, COMPETENCIAS.flexionBasica, COMPETENCIAS.direccion],
@@ -55,19 +61,7 @@ const POR_NIVEL: Record<string, CompetenciaTecnicaReporte[]> = {
 };
 
 export function normalizarNivelReporte(nivel: string) {
-  const limpio = String(nivel || '').trim().toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  if (limpio.includes('INICIACION')) return 'INICIACION';
-  if (POR_NIVEL[limpio]) return limpio;
-
-  // Algunas vistas antiguas entregan etiquetas como "Nivel C" o "Grupo D+".
-  // Extraemos el código completo para no degradarlas silenciosamente al fallback B.
-  const codigoEnEtiqueta = limpio.match(
-    /(?:^|[^A-Z+])(D\+|C\+|B\+|A\+|D|C|B|A)(?:$|[^A-Z+])/
-  )?.[1];
-
-  return codigoEnEtiqueta && POR_NIVEL[codigoEnEtiqueta]
-    ? codigoEnEtiqueta
-    : 'B';
+  return requireTechnicalLevel(nivel, 'Reporte técnico');
 }
 
 export function competenciasReporte(nivel: string) {
