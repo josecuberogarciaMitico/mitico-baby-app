@@ -218,6 +218,10 @@ import {
 import { PantallaIntensivos } from './screens/IntensivosScreen';
 import { OcioGroupsScreen } from './features/ocio/OcioGroupsScreen';
 import {
+  ocioLevelRange,
+  type OcioWeeklyGroup,
+} from './features/ocio/ocioWeekPlanning';
+import {
   ocioGrupoFormInicial,
   type OcioAlumnoApp,
   type OcioGrupoApp,
@@ -6021,8 +6025,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   function abrirNuevoGrupoOcio() {
+    const turno = horarioTurnoOcio(ocioTurnoVista);
     setOcioAlumnoPendienteNuevoGrupoId('');
-    setOcioGrupoForm(ocioGrupoFormInicial());
+    setOcioGrupoForm({
+      ...ocioGrupoFormInicial(),
+      dia: ocioTurnoVista,
+      horaInicio: turno.inicio,
+      horaFin: turno.fin,
+    });
     setMostrarFormularioOcioGrupo(true);
   }
 
@@ -7415,8 +7425,11 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
     return `OCIO ${dia} · ${nombreEstable}`;
   }
 
-  function trabajoDiarioBaseOcioSemana(grupo: OcioGrupoApp) {
-    const alumnosGrupo = alumnosGrupoOcioEstable(grupo.grupo_id).filter(
+  function trabajoDiarioBaseOcioSemana(
+    grupo: OcioGrupoApp,
+    composicion?: OcioAlumnoApp[]
+  ) {
+    const alumnosGrupo = composicion || alumnosGrupoOcioEstable(grupo.grupo_id).filter(
       (alumno) => alumnoVieneOcioSemana(alumno.alumno_id)
     );
 
@@ -7456,8 +7469,11 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
     return trabajoDiarioBaseOcioSemana(grupo);
   }
 
-  function observacionesBaseOcioSemana(grupo: OcioGrupoApp) {
-    const alumnosGrupo = alumnosGrupoOcioEstable(grupo.grupo_id).filter(
+  function observacionesBaseOcioSemana(
+    grupo: OcioGrupoApp,
+    composicion?: OcioAlumnoApp[]
+  ) {
+    const alumnosGrupo = composicion || alumnosGrupoOcioEstable(grupo.grupo_id).filter(
       (alumno) => alumnoVieneOcioSemana(alumno.alumno_id)
     );
 
@@ -7646,13 +7662,14 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
   }
 
   async function asegurarSesionOcioSemanaCompleta(
-    grupoReferencia: OcioGrupoApp
+    grupoReferencia: OcioGrupoApp | OcioWeeklyGroup,
+    composicionSemanal: OcioWeeklyGroup[] = []
   ) {
-    const dia = (grupoReferencia.dia_semana ||
-      ocioTurnoVista) as 'Jueves' | 'Sábado' | 'Domingo';
-    const fecha = fechaGrupoOcioSemana(grupoReferencia);
-    const inicio = horaCorta(grupoReferencia.hora_inicio);
-    const fin = horaCorta(grupoReferencia.hora_fin);
+    const temporal = 'weeklyGroupId' in grupoReferencia;
+    const dia = (temporal ? ocioTurnoVista : grupoReferencia.dia_semana || ocioTurnoVista) as 'Jueves' | 'Sábado' | 'Domingo';
+    const fecha = temporal ? grupoReferencia.date : fechaGrupoOcioSemana(grupoReferencia);
+    const inicio = horaCorta(temporal ? grupoReferencia.start : grupoReferencia.hora_inicio);
+    const fin = horaCorta(temporal ? grupoReferencia.end : grupoReferencia.hora_fin);
 
     if (!fecha) {
       throw new Error('No se ha podido calcular la fecha de Ocio.');
@@ -7664,7 +7681,8 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
         horaCorta(grupo.hora_fin) === fin
     );
 
-    const alumnosTurno = Array.from(
+    const idsSemanales = new Set(composicionSemanal.flatMap((grupo) => grupo.studentIds));
+    const alumnosTurno = temporal ? ocioAlumnos.filter((alumno) => idsSemanales.has(alumno.alumno_id)) : Array.from(
       new Map(
         gruposTurno
           .flatMap((grupo) =>
@@ -7714,22 +7732,41 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
   }
 
   async function crearGrupoOcioOperativoEnSesion(
-    grupo: OcioGrupoApp,
+    grupo: OcioGrupoApp | OcioWeeklyGroup,
     sesionId: string
   ): Promise<OcioPrepararResultadoApp> {
-    const alumnosPresentes = alumnosGrupoOcioEstable(grupo.grupo_id).filter(
-      (alumno) => alumnoVieneOcioSemana(alumno.alumno_id)
-    );
+    const temporal = 'weeklyGroupId' in grupo;
+    const idsTemporales = new Set(temporal ? grupo.studentIds : []);
+    const alumnosPresentes = temporal
+      ? ocioAlumnos.filter((alumno) => idsTemporales.has(alumno.alumno_id))
+      : alumnosGrupoOcioEstable(grupo.grupo_id).filter((alumno) =>
+          alumnoVieneOcioSemana(alumno.alumno_id)
+        );
+    const grupoBase: OcioGrupoApp = temporal ? {
+      grupo_id: grupo.sourceGroupId || grupo.weeklyGroupId,
+      nombre_grupo: grupo.name,
+      dia_semana: ocioTurnoVista,
+      hora_inicio: grupo.start,
+      hora_fin: grupo.end,
+      nivel_grupo: ocioLevelRange(alumnosPresentes),
+      pista: grupo.piste,
+      punto_encuentro: null,
+      observaciones: null,
+      activo: true,
+      temporada: null,
+      total_alumnos: alumnosPresentes.length,
+      alumnos_lista: null,
+    } : grupo;
 
     if (alumnosPresentes.length === 0) {
-      throw new Error(`No hay alumnos marcados como Viene en ${grupo.nombre_grupo}.`);
+      throw new Error(`No hay alumnos de AimHarder en ${grupoBase.nombre_grupo}.`);
     }
 
-    const nombrePreparado = nombreGrupoSemanalOcio(grupo);
-    const fecha = fechaGrupoOcioSemana(grupo);
+    const nombrePreparado = nombreGrupoSemanalOcio(grupoBase);
+    const fecha = temporal ? grupo.date : fechaGrupoOcioSemana(grupoBase);
     const alumnosIds = alumnosPresentes.map((alumno) => alumno.alumno_id);
-    const trabajoGenerado = trabajoDiarioOcioSemana(grupo);
-    const observacionesGeneradas = observacionesOcioSemana(grupo);
+    const trabajoGenerado = trabajoDiarioBaseOcioSemana(grupoBase, alumnosPresentes);
+    const observacionesGeneradas = observacionesBaseOcioSemana(grupoBase, alumnosPresentes);
 
     const gruposExistentes = await consultarSupabase<AgendaGrupoSesionApp>(
       'v_grupos_sesion_operativa_app',
@@ -7782,7 +7819,7 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
         },
         {
           studentIds: alumnosIds,
-          piste: grupo.pista,
+          piste: grupoBase.pista,
           meetingPoint: null,
           dailyWork: trabajoGenerado,
           observations: observacionesGeneradas,
@@ -7793,8 +7830,8 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
         return {
           grupo_estable: nombrePreparado,
           fecha,
-          hora_inicio: horaCorta(grupo.hora_inicio),
-          hora_fin: horaCorta(grupo.hora_fin),
+          hora_inicio: horaCorta(grupoBase.hora_inicio),
+          hora_fin: horaCorta(grupoBase.hora_fin),
           alumnos: composicion.length,
           entrenador: grupoAnterior.entrenador,
           estado: decision.reason,
@@ -7819,10 +7856,10 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
         p_sesion_id: sesionId,
         p_nombre_grupo: nombrePreparado,
         p_nivel_grupo:
-          grupo.nivel_grupo ||
+          grupoBase.nivel_grupo ||
           alumnosPresentes[0]?.nivel_usado ||
           'Ocio',
-        p_pista: grupo.pista || null,
+        p_pista: grupoBase.pista || null,
         p_punto_encuentro: null,
         p_trabajo_diario: trabajoGenerado,
         p_observaciones_importantes: observacionesGeneradas,
@@ -7839,8 +7876,8 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
     return {
       grupo_estable: nombrePreparado,
       fecha,
-      hora_inicio: horaCorta(grupo.hora_inicio),
-      hora_fin: horaCorta(grupo.hora_fin),
+      hora_inicio: horaCorta(grupoBase.hora_inicio),
+      hora_fin: horaCorta(grupoBase.hora_fin),
       alumnos: alumnosPresentes.length,
       entrenador: null,
       estado: 'Creado como pendiente de entrenador.',
@@ -7997,52 +8034,13 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
     }
   }
 
-  async function publicarGrupoOcioPreparado(
-    resultado: OcioPrepararResultadoApp
-  ) {
-    if (!resultado.grupo_id) {
-      setError('Este grupo todavía no tiene un grupo operativo asociado.');
-      return;
-    }
-
-    const confirmar = window.confirm(
-      `¿Publicar ${resultado.grupo_estable} para ${formatearFecha(
-        resultado.fecha
-      )}?\n\nAl publicarlo aparecerá en la Vista entrenador y seguirá el mismo flujo de confirmación, asistencia, reportes y cobros que Baby.`
-    );
-
-    if (!confirmar) return;
-
-    setCargando(true);
-    setError('');
-
-    try {
-      await ejecutarFuncion(GROUP_OPERATION_RPC.publish, {
-        p_grupo_id: resultado.grupo_id,
-      });
-      await notificarGrupoPublicadoPushApp(resultado.grupo_id);
-
-      await cargarAgendaOperativaDirecta();
-      await cargarPlanning();
-      await cargarGruposEntrenador();
-      await cargarCobros();
-
-      await cargarResultadosOcioSemanaDesdeSupabase();
-    } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'No se pudo publicar el grupo de Ocio.'
-      );
-    }
-
-    setCargando(false);
-  }
-
   async function prepararDiaOcioSemana(
-    dia: 'Jueves' | 'Sábado' | 'Domingo'
+    dia: 'Jueves' | 'Sábado' | 'Domingo',
+    composicionSemanal: OcioWeeklyGroup[] = []
   ) {
-    const gruposConAlumnos = gruposOcioDiaSemana(dia).filter((grupo) =>
+    const gruposConAlumnos: Array<OcioGrupoApp | OcioWeeklyGroup> = composicionSemanal.length > 0
+      ? composicionSemanal.filter((grupo) => grupo.studentIds.length > 0)
+      : gruposOcioDiaSemana(dia).filter((grupo) =>
       alumnosGrupoOcioEstable(grupo.grupo_id).some((alumno) =>
         alumnoVieneOcioSemana(alumno.alumno_id)
       )
@@ -8055,7 +8053,7 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
 
     const totalAlumnosEsperados = new Set(
       gruposConAlumnos.flatMap((grupo) =>
-        alumnosGrupoOcioEstable(grupo.grupo_id)
+        'weeklyGroupId' in grupo ? grupo.studentIds : alumnosGrupoOcioEstable(grupo.grupo_id)
           .filter((alumno) => alumnoVieneOcioSemana(alumno.alumno_id))
           .map((alumno) => alumno.alumno_id)
       )
@@ -8078,9 +8076,10 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
 
     try {
       const grupoReferencia = gruposConAlumnos[0];
-      fechaTurno = fechaGrupoOcioSemana(grupoReferencia);
-      inicioTurno = horaCorta(grupoReferencia.hora_inicio);
-      finTurno = horaCorta(grupoReferencia.hora_fin);
+      const temporal = 'weeklyGroupId' in grupoReferencia;
+      fechaTurno = temporal ? grupoReferencia.date : fechaGrupoOcioSemana(grupoReferencia);
+      inicioTurno = horaCorta(temporal ? grupoReferencia.start : grupoReferencia.hora_inicio);
+      finTurno = horaCorta(temporal ? grupoReferencia.end : grupoReferencia.hora_fin);
 
       if (!fechaTurno) {
         throw new Error(`No se ha podido calcular la fecha de ${dia}.`);
@@ -8106,7 +8105,7 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
         )
       );
 
-      const sesion = await asegurarSesionOcioSemanaCompleta(grupoReferencia);
+      const sesion = await asegurarSesionOcioSemanaCompleta(grupoReferencia, composicionSemanal);
 
       const resultados: OcioPrepararResultadoApp[] = [];
 
@@ -8168,20 +8167,6 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
     }
 
     setCargando(false);
-  }
-
-  async function prepararTodaSemanaOcio() {
-    for (const dia of ['Jueves', 'Sábado', 'Domingo'] as const) {
-      const gruposDia = gruposOcioDiaSemana(dia).filter((grupo) =>
-        alumnosGrupoOcioEstable(grupo.grupo_id).some((alumno) =>
-          alumnoVieneOcioSemana(alumno.alumno_id)
-        )
-      );
-
-      if (gruposDia.length > 0) {
-        await prepararDiaOcioSemana(dia);
-      }
-    }
   }
 
   const cambiosOcioSemana = cambiosOcioSemanaActiva().sort((a, b) =>
@@ -21497,6 +21482,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             abrirAltaTestDesdeOcioAimHarder,
             abrirFormularioCambioOcio,
             abrirGrupoOcioEnTrabajoSemanal,
+            abrirNuevoGrupoOcio,
             abrirNuevoGrupoOcioParaAlumno,
             abrirNuevoGrupoOcioParaTurno,
             abrirPantallaConScroll,
@@ -21617,6 +21603,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             renderAyudaRapidaPantallaApp,
             resultadoPerteneceDiaOcio,
             seleccionarFichaNuevoOcio,
+            semanaActualAgenda,
             semanaAgendaActiva,
             semanasAgenda,
             setAnioInicioTemporadaAgenda,
@@ -21708,6 +21695,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
       {pantalla === 'ocioSemana' && (
         <OcioWeekScreen
           ctx={{
+            abrirGrupoOcioEnTrabajoSemanal,
             abrirWhatsappSemanaOcio,
             agendaBloqueBlanco,
             agendaCabeceraLinea,
@@ -21729,6 +21717,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             cambiosOcioSemana,
             capitalizarPrimera,
             categoriaOcioGrupo,
+            deshacerPreparacionOcio,
             edadOcioAlumnoEnFecha,
             entrenadorSeleccionadoOcioSemana,
             entrenadoresDisponiblesParaTurno,
@@ -21746,6 +21735,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             nombreMesAgendaDesdeClave,
             observacionesAutomaticasGrupoOcio,
             ocioGrupos,
+            ocioAimHarderSemana,
+            ocioAlumnos,
             ocioSemanaResultados,
             ocioTurnoVista,
             opcionesTemporadaAgenda,
@@ -21754,6 +21745,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             prepararGrupoOcioSemana,
             rangoSemanaAgenda,
             renderAyudaRapidaPantallaApp,
+            resultadoPerteneceDiaOcio,
+            semanaActualAgenda,
             semanaAgendaActiva,
             semanasAgenda,
             setAnioInicioTemporadaAgenda,

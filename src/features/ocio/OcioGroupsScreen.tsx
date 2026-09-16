@@ -1,6 +1,11 @@
 import React, { useState } from 'react';
 import type { OcioAlumnoApp, OcioGrupoApp } from './ocioTypes';
 import { OcioRelocationRecommender } from './OcioRelocationRecommender';
+import { OcioWeekPreparationPanel } from './OcioWeekPreparationPanel';
+import {
+  classifyOcioAimHarderStudent,
+  ocioLevelRange,
+} from './ocioWeekPlanning';
 
 type OcioGroupsScreenProps = {
   ctx: Record<string, any>;
@@ -20,6 +25,7 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
     abrirAltaTestDesdeOcioAimHarder,
     abrirFormularioCambioOcio,
     abrirGrupoOcioEnTrabajoSemanal,
+    abrirNuevoGrupoOcio,
     abrirNuevoGrupoOcioParaAlumno,
     abrirNuevoGrupoOcioParaTurno,
     abrirPantallaConScroll,
@@ -80,7 +86,6 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
     fechaGrupoOcioSemana,
     filaAlumnoAsistencia,
     formatearFecha,
-    formatearObservaciones,
     generarPropuestaGruposOcio,
     gridFormulario,
     gridMiniMetricas,
@@ -103,7 +108,6 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
     nombreGrupoSemanalOcio,
     nombreMesAgendaDesdeClave,
     normalizarNombreFueraPlazoAgenda,
-    observacionesOcioSemana,
     ocioAimHarderCargando,
     ocioAimHarderError,
     ocioAimHarderEstadoAlumnos,
@@ -160,7 +164,6 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
     tarjeta,
     tarjetaResaltada,
     textoSinAcentosGrupoApp,
-    trabajoDiarioOcioSemana,
   } = ctx;
 
   return (
@@ -592,8 +595,8 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
                 {[
                   { clave: 'colocar', numero: '1', titulo: 'Colocar alumnos', subtitulo: `${alumnosSinGrupoTurno.length} sin grupo` },
                   { clave: 'grupos', numero: '2', titulo: 'Grupos estables', subtitulo: `${gruposTurno.length} grupos` },
-                  { clave: 'cambios', numero: '3', titulo: 'Cambios semana', subtitulo: `${cambiosOcioSemana.length} cambios` },
-                  { clave: 'semana', numero: '4', titulo: 'Preparar semana', subtitulo: 'Crear sesiones reales' },
+                  { clave: 'cambios', numero: '3', titulo: 'AimHarder', subtitulo: 'Quién viene esta semana' },
+                  { clave: 'semana', numero: '4', titulo: 'Preparar semana', subtitulo: 'Organización temporal' },
                 ].map((pestana) => {
                   const activa = ocioPestanaProceso === pestana.clave;
                   return (
@@ -619,8 +622,6 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
                         } else {
                           setOcioPanelOperativo('semana');
                           cargarOcioCambios();
-                          cargarEntrenadores();
-                          cargarDisponibilidad();
                           cargarAgendaOperativaDirecta();
                         }
                       }}
@@ -783,20 +784,6 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
 
                 </div>
 
-                <label style={{ ...labelCampo, marginTop: 12 }}>
-                  Observaciones de grupo
-                  <textarea
-                    value={ocioGrupoForm.observaciones}
-                    onChange={(e) =>
-                      setOcioGrupoForm({
-                        ...ocioGrupoForm,
-                        observaciones: e.target.value,
-                      })
-                    }
-                    rows={3}
-                  />
-                </label>
-
                 <div
                   style={{
                     display: 'flex',
@@ -857,7 +844,13 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
                     sin grupo estable
                   </p>
                 </div>
-
+                <button
+                  type="button"
+                  onClick={abrirNuevoGrupoOcio}
+                  style={botonPrincipal}
+                >
+                  + Crear grupo estable
+                </button>
                 <div
                   style={{
                     display: 'flex',
@@ -1519,7 +1512,13 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
                     {configuracionTurnos[ocioTurnoVista].hora}
                   </h3>
                 </div>
-
+                <button
+                  type="button"
+                  onClick={abrirNuevoGrupoOcio}
+                  style={botonPrincipal}
+                >
+                  + Crear grupo estable
+                </button>
               </div>
 
               {gruposTurno.length === 0 ? (
@@ -1591,7 +1590,7 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
                               fontSize: 14,
                             }}
                           >
-                            {grupo.nivel_grupo || '-'} · {grupo.pista || '-'}
+                            {ocioLevelRange(miembrosGrupo)} · {grupo.pista || '-'}
                           </div>
                         </div>
                         <strong
@@ -1711,50 +1710,6 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
                                 )}
                               </div>
                             ))}
-                          </div>
-                        </details>
-                      )}
-
-                      {trabajoDiarioOcioSemana(grupo) && (
-                        <details
-                          style={{
-                            ...avisoNeutral,
-                            marginTop: 12,
-                            padding: '9px 11px',
-                          }}
-                        >
-                          <summary
-                            style={{ cursor: 'pointer', fontWeight: 800 }}
-                          >
-                            Trabajo diario previsto
-                          </summary>
-                          <div
-                            style={{
-                              marginTop: 8,
-                              whiteSpace: 'pre-wrap',
-                              lineHeight: 1.5,
-                            }}
-                          >
-                            {trabajoDiarioOcioSemana(grupo)}
-                          </div>
-                        </details>
-                      )}
-
-                      {observacionesOcioSemana(grupo) && (
-                        <details
-                          style={{
-                            ...avisoNeutral,
-                            marginTop: 8,
-                            padding: '9px 11px',
-                          }}
-                        >
-                          <summary
-                            style={{ cursor: 'pointer', fontWeight: 800 }}
-                          >
-                            Observaciones operativas
-                          </summary>
-                          <div style={{ marginTop: 8 }}>
-                            {formatearObservaciones(observacionesOcioSemana(grupo))}
                           </div>
                         </details>
                       )}
@@ -2479,7 +2434,7 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
                       <div style={agendaCabeceraLinea}>
                         <div>
                           <strong style={{ fontSize: 17 }}>
-                            Comprobar esta semana con AimHarder
+                            Actualizar AimHarder · quién viene esta semana
                           </strong>
                           <div style={{ marginTop: 4, color: '#64748b' }}>
                             Compara las reservas reales con tus grupos estables. Solo necesitas actuar cuando haya una diferencia.
@@ -2493,7 +2448,7 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
                         >
                           {ocioAimHarderCargando
                             ? 'Consultando AimHarder…'
-                            : 'Comprobar cambios en AimHarder'}
+                            : 'Actualizar AimHarder'}
                         </button>
                       </div>
 
@@ -2567,6 +2522,17 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
                                           ocioAimHarderEstadoAlumnos[clave] || null;
                                         const existe =
                                           estadoDetectado?.resultado === 'EXISTENTE';
+                                        const alumnoOcio = ocioAlumnos.find(
+                                          (alumno) =>
+                                            normalizarNombreFueraPlazoAgenda(
+                                              alumno.alumno || ''
+                                            ) === clave
+                                        );
+                                        const estadoAlumno =
+                                          classifyOcioAimHarderStudent(
+                                            existe,
+                                            alumnoOcio
+                                          );
 
                                         return (
                                           <div
@@ -2587,8 +2553,10 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
                                                   fontSize: 12,
                                                 }}
                                               >
-                                                {existe
-                                                  ? 'CONOCIDO · ficha recuperada'
+                                                {estadoAlumno === 'PENDING_GROUP'
+                                                  ? 'PENDIENTE DE COLOCAR'
+                                                  : estadoAlumno === 'STABLE'
+                                                  ? 'CONOCIDO · grupo estable conservado'
                                                   : 'NUEVO · pendiente Alta / Test'}
                                               </div>
                                             </div>
@@ -2786,7 +2754,10 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
                         </div>
                       ) : (
                         <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
-                          {cambiosOcioSemana.map((cambio) => (
+                          {cambiosOcioSemana.map((cambio) => {
+                            const cambiaGrupo =
+                              cambio.grupo_origen_id !== cambio.grupo_destino_id;
+                            return (
                             <div
                               key={`cambio-integrado-${cambio.reubicacion_id}`}
                               style={miniTarjetaBlanca}
@@ -2800,9 +2771,15 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
                                       color: '#64748b',
                                     }}
                                   >
-                                    {formatearFecha(cambio.fecha)} ·{' '}
-                                    {cambio.grupo_origen || 'Origen'} →{' '}
-                                    {cambio.grupo_destino || 'Destino'}
+                                    {cambio.origen_dia_semana || 'Origen'}{' '}
+                                    {horaCorta(cambio.origen_hora_inicio)}–
+                                    {horaCorta(cambio.origen_hora_fin)} →{' '}
+                                    {cambio.destino_dia_semana || formatearFecha(cambio.fecha)}{' '}
+                                    {horaCorta(cambio.destino_hora_inicio)}–
+                                    {horaCorta(cambio.destino_hora_fin)}
+                                    {cambiaGrupo
+                                      ? ` · ${cambio.grupo_origen || 'Sin grupo'} → ${cambio.grupo_destino || 'Destino'}`
+                                      : ''}
                                   </div>
                                 </div>
                                 <div
@@ -2833,7 +2810,8 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
                                 </div>
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       )}
                     </article>
@@ -2842,6 +2820,9 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
 
                 {ocioPanelOperativo === 'semana' && (
                   <>
+                    <OcioWeekPreparationPanel ctx={ctx} />
+                    {false && (
+                    <>
                     <article
                       style={{
                         ...agendaBloqueBlanco,
@@ -3219,6 +3200,8 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
                         </div>
 
                       </article>
+                    )}
+                    </>
                     )}
                   </>
                 )}

@@ -1,5 +1,6 @@
 import React from 'react';
 import { OcioRelocationRecommender } from './OcioRelocationRecommender';
+import { OcioWeekPreparationPanel } from './OcioWeekPreparationPanel';
 
 type OcioOperationalScreenProps = {
   ctx: Record<string, any>;
@@ -652,6 +653,8 @@ export function OcioChangesScreen({ ctx }: OcioOperationalScreenProps) {
 }
 
 export function OcioWeekScreen({ ctx }: OcioOperationalScreenProps) {
+  return <OcioWeekPreparationPanel ctx={ctx} />;
+
   const {
     abrirWhatsappSemanaOcio,
     agendaBloqueBlanco,
