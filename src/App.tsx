@@ -529,11 +529,9 @@ import {
 import {
   babyClassHours as horasClaseBabyAimHarder,
   normalizeBabyAttendees,
-  selectMiticoBox,
   uniqueBabyClasses,
 } from './services/aimharder/aimHarderContract';
 import type {
-  AimHarderBox,
   BabyAimHarderAsistenteActivoApp,
   BabyAimHarderClaseApp,
   BabyAimHarderLecturaApp,
@@ -549,11 +547,15 @@ import type {
 } from './services/aimharder/aimHarderContract';
 import {
   buildBabyRefreshSummary,
-  normalizeOcioAimHarderTurn,
   planBabyWeekSlots,
-  planOcioAttendanceFromAimHarder,
   selectExactBabyClass,
 } from './services/aimharder/aimHarderOperations';
+import {
+  buildOcioAimHarderStudentStates,
+  buildOcioAttendanceState,
+  ocioStudentComesFromAimHarder,
+  readOcioAimHarderWeek,
+} from './services/aimharder/ocioAimHarderService';
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './config/supabase';
 import { createSupabaseRestClient } from './services/supabase/restClient';
 import { StudentRecordsScreen } from './features/students/StudentRecordsScreen';
@@ -4812,7 +4814,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     try {
       const data = await consultarSupabase<OcioGrupoApp>(
         'v_ocio_grupos_estables_app',
-        'select=*&order=dia_semana.asc,hora_inicio.asc,nombre_grupo.asc'
+        'select=*&activo=eq.true&order=dia_semana.asc,hora_inicio.asc,nombre_grupo.asc'
       );
       setOcioGrupos(data);
       const recomendaciones =
@@ -5590,11 +5592,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     return ocioAlumnos
       .filter((alumno) => {
         const diaAlumno = textoSinAcentosGrupoApp(
-          alumno.dia_fijo || alumno.grupo_dia || ''
+          alumno.grupo_dia || alumno.dia_fijo || ''
         );
         const inicioAlumno = (
-          alumno.hora_inicio_fija ||
           alumno.grupo_hora_inicio ||
+          alumno.hora_inicio_fija ||
           ''
         ).slice(0, 5);
 
@@ -5704,6 +5706,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
     const gruposExistentes = ocioGrupos.filter(
       (grupo) =>
+        grupo.activo === true &&
         textoSinAcentosGrupoApp(grupo.dia_semana || '') ===
         textoSinAcentosGrupoApp(ocioTurnoVista)
     );
@@ -5924,6 +5927,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
     const gruposExistentes = ocioGrupos.filter(
       (grupo) =>
+        grupo.activo === true &&
         textoSinAcentosGrupoApp(grupo.dia_semana || '') ===
         textoSinAcentosGrupoApp(ocioTurnoVista)
     );
@@ -7136,8 +7140,17 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
   }
 
   function alumnoVieneOcioSemana(alumnoId: string) {
-    const clave = claveAsistenciaOcioSemana(alumnoId);
-    return ocioSemanaAsistencia[clave] !== false;
+    const alumno = ocioAlumnos.find((item) => item.alumno_id === alumnoId);
+    if (!alumno) return false;
+    const turno = horarioTurnoOcio(ocioTurnoVista);
+    return ocioStudentComesFromAimHarder(
+      ocioAimHarderSemana,
+      semanaAgendaActiva || semanaActualAgenda || '',
+      ocioTurnoVista,
+      turno.inicio,
+      turno.fin,
+      alumno.alumno
+    );
   }
 
   function cambiarAsistenciaOcioSemana(alumnoId: string, viene: boolean) {
@@ -7190,7 +7203,8 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
   function aplicarSemanaOcioDesdeAimHarder(datos: OcioAimHarderSemanaApp) {
     const semanaActual = lunesSemanaOcioActiva();
     try {
-      const plan = planOcioAttendanceFromAimHarder(
+      const resultado = buildOcioAttendanceState(
+        ocioSemanaAsistencia,
         semanaActual,
         datos,
         ocioGrupos.filter(esTurnoOficialOcio).map((grupo) => ({
@@ -7204,19 +7218,9 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
           })),
         }))
       );
-      const cambios = Object.fromEntries(
-        Object.entries(plan.changes).map(([alumnoId, viene]) => [
-          claveAsistenciaOcioSemana(alumnoId),
-          viene,
-        ])
-      );
-      setOcioSemanaAsistencia((anterior) => ({ ...anterior, ...cambios }));
+      setOcioSemanaAsistencia(resultado.attendance);
       setOcioAimHarderSemana(datos);
-      setOcioAimHarderMensaje(
-        plan.missingSlots > 0
-          ? `AimHarder actualizado correctamente · ${plan.missingSlots} turno(s) de Ocio sin coincidencia exacta`
-          : 'AimHarder actualizado correctamente'
-      );
+      setOcioAimHarderMensaje(resultado.message);
       setOcioAimHarderError('');
     } catch (errorPlan) {
       setOcioAimHarderError(
@@ -7227,48 +7231,9 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
     }
   }
 
-  async function llamarAimHarderLecturaOcioApp(
-    body: Record<string, unknown>
-  ): Promise<any> {
-    const accessToken = await obtenerAccessTokenSupabaseApp();
-    const respuesta = await fetch(
-      `${SUPABASE_URL}/functions/v1/mitico-aimharder-read`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          apikey: SUPABASE_ANON_KEY,
-          Authorization: `Bearer ${accessToken}`,
-        },
-        body: JSON.stringify(body),
-      }
-    );
-
-    const texto = await respuesta.text();
-    let datos: any = {};
-
-    try {
-      datos = texto ? JSON.parse(texto) : {};
-    } catch {
-      throw new Error(
-        `AimHarder devolvió una respuesta no válida (HTTP ${respuesta.status}).`
-      );
-    }
-
-    if (!respuesta.ok) {
-      throw new Error(
-        typeof datos?.error === 'string'
-          ? datos.error
-          : `Error ${respuesta.status} consultando AimHarder.`
-      );
-    }
-
-    return datos;
-  }
 
   async function actualizarSemanaOcioDesdeAimHarder() {
     const semanaInicio = lunesSemanaOcioActiva();
-
     if (!semanaInicio) {
       setOcioAimHarderError('Selecciona primero la semana de Ocio.');
       return;
@@ -7279,109 +7244,20 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
     setOcioAimHarderError('');
 
     try {
-      const boxes = await llamarAimHarderLecturaOcioApp({
-        action: 'boxes',
-      });
-      const listaBoxes = Array.isArray(boxes?.boxes)
-        ? (boxes.boxes as AimHarderBox[])
-        : [];
-      const box = selectMiticoBox(listaBoxes);
+      const datos = await readOcioAimHarderWeek(semanaInicio);
+      const alumnosMaestroActuales =
+        alumnos.length > 0
+          ? alumnos
+          : await consultarSupabase<AlumnoResumen>(
+              'v_resumen_alumno_v2',
+              'select=*&order=alumno.asc'
+            );
 
-      const semana = await llamarAimHarderLecturaOcioApp({
-        action: 'week',
-        weekStart: semanaInicio,
-        boxId: Number(box.boid),
-      });
-
-      const clasesOcio = (
-        Array.isArray(semana?.classes) ? semana.classes : []
-      )
-        .filter(
-          (clase: any) =>
-            normalizarModalidadAgenda(
-              String(clase?.modalidad || '')
-            ) === 'OCIO'
-        )
-        .sort((a: any, b: any) =>
-          `${String(a?.date || '')} ${String(
-            a?.time || ''
-          )}`.localeCompare(
-            `${String(b?.date || '')} ${String(b?.time || '')}`
-          )
-        );
-
-      const turnos: OcioAimHarderTurnoApp[] = [];
-
-      for (const clase of clasesOcio) {
-        const fecha = String(clase?.date || '').slice(0, 10);
-
-        const detalle = await llamarAimHarderLecturaOcioApp({
-          action: 'attendees',
-          date: fecha,
-          classId: Number(clase.id),
-          boxId: Number(box.boid),
-        });
-
-        const turno = normalizeOcioAimHarderTurn(
-          clase as Record<string, unknown>,
-          detalle?.attendees,
-          detalle?.total
-        );
-        if (turno) turnos.push(turno);
-      }
-
-      const estadosAlumnos: Record<string, OcioAimHarderEstadoAlumnoApp> = {};
-      const yaOcio = new Set(
-        ocioAlumnos
-          .map((alumno) =>
-            normalizarNombreFueraPlazoAgenda(alumno.alumno || '')
-          )
-          .filter(Boolean)
+      setOcioAimHarderEstadoAlumnos(
+        buildOcioAimHarderStudentStates(datos.turnos, alumnosMaestroActuales)
       );
-
-      for (const turno of turnos) {
-        if (turno.asistentes.length === 0) continue;
-
-        const resultados = await ejecutarFuncionConRespuesta<OcioAimHarderEstadoAlumnoApp>(
-          'importar_alumnos_ocio_aimharder_app',
-          {
-            p_texto: turno.asistentes.map((asistente) => asistente.nombre).join('\n'),
-            p_dia_fijo: diaFijoOcioDesdeFecha(turno.fecha) || null,
-            p_hora_inicio: turno.horaInicio,
-            p_hora_fin: turno.horaFin,
-          }
-        );
-
-        for (const resultado of resultados) {
-          const clave = normalizarNombreFueraPlazoAgenda(resultado.alumno || '');
-          if (!clave) continue;
-          estadosAlumnos[clave] = resultado;
-
-          // Si ya existía en la semilla/maestro pero todavía no figuraba en Ocio,
-          // lo activamos en la modalidad actual. No duplicamos ficha ni lo mandamos
-          // a Alta/Test. Los alumnos que ya eran Ocio conservan su grupo/día estable.
-          if (resultado.resultado === 'EXISTENTE' && !yaOcio.has(clave)) {
-            await ejecutarFuncion('crear_alumno_ocio_app', {
-                p_nombre_completo: resultado.alumno,
-                p_nivel_codigo: null,
-                p_fecha_nacimiento: null,
-                p_dia_fijo: diaFijoOcioDesdeFecha(turno.fecha) || null,
-                p_hora_inicio: turno.horaInicio,
-                p_hora_fin: turno.horaFin,
-                p_observaciones: null,
-              });
-          }
-        }
-      }
-
-      setOcioAimHarderEstadoAlumnos(estadosAlumnos);
       await cargarOcioAlumnos();
-
-      aplicarSemanaOcioDesdeAimHarder({
-        semanaInicio,
-        turnos,
-        actualizadoAt: new Date().toISOString(),
-      });
+      aplicarSemanaOcioDesdeAimHarder(datos);
     } catch (e) {
       setOcioAimHarderError(
         e instanceof Error

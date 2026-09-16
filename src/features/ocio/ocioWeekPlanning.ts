@@ -31,14 +31,19 @@ export type OcioWeeklyStableGroup = {
   students: OcioWeeklyStudent[];
 };
 
-export type OcioAimHarderStudentState = 'NEW' | 'PENDING_GROUP' | 'STABLE';
+export type OcioAimHarderStudentState =
+  | 'NEW'
+  | 'OTHER_MODALITY'
+  | 'PENDING_GROUP'
+  | 'STABLE';
 
 export function classifyOcioAimHarderStudent(
   existsInMaster: boolean,
   ocioStudent: { grupo_id: string | null } | null | undefined
 ): OcioAimHarderStudentState {
   if (!existsInMaster) return 'NEW';
-  return ocioStudent?.grupo_id ? 'STABLE' : 'PENDING_GROUP';
+  if (!ocioStudent) return 'OTHER_MODALITY';
+  return ocioStudent.grupo_id ? 'STABLE' : 'PENDING_GROUP';
 }
 
 export function ocioLevelRange(
