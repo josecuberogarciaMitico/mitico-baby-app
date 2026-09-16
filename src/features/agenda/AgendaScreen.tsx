@@ -1,7 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { AlumnoResumen } from '../../core/students/studentTypes';
 import type { EntrenadorResumen } from '../../core/trainers/trainerTypes';
-import type { RecomendacionFueraPlazoAgendaApp } from './agendaTypes';
+import type { AgendaRecomendacionSesionApp, RecomendacionFueraPlazoAgendaApp } from './agendaTypes';
+import { addIsoDays, type BabyRelocationOption, type BabyRelocationStudent } from './agendaRelocation';
+import { loadBabyRelocationOptions, moveBabyStudentBetweenSessions } from '../../services/agenda/agendaRelocationService';
+import { SessionTrainerCoverageLine, WeeklyTrainerSummary } from './AgendaTrainerSummary';
+import {
+  buildWeeklyTrainerLoads,
+  pendingTrainerGroupsInSessions,
+  sessionTrainerCoverage,
+  type AgendaTrainerAssignmentRow,
+} from './agendaTrainerSummary';
 
 type AgendaScreenProps = {
   ctx: Record<string, any>;
@@ -45,7 +54,6 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     agendaTurnoFila,
     agendaVacio,
     agendaVacioMini,
-    alternativasTurnoAgendaPorAlumno,
     alumnoFueraPlazoNivel,
     alumnoFueraPlazoNombre,
     alumnos,
@@ -71,7 +79,6 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     botonPrincipal,
     botonSecundario,
     buildMasterStudentProfile,
-    buscandoAlternativasTurnoAgenda,
     cambiarEntrenadorGrupoAgenda,
     cambiarPuntoGrupoAgenda,
     cambiarSegundoEntrenadorGrupoAgenda,
@@ -135,7 +142,6 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     mostrarAlumnoFueraPlazo,
     moverAlumnoAgendaRecomendado,
     moverAlumnoEntreGruposAgenda,
-    moverAlumnoPropuestaAOtroTurnoAgenda,
     necesitaDosEntrenadoresGrupoApp,
     nombreGrupoPropuestaApp,
     nombreGrupoVisualApp,
@@ -222,6 +228,177 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
         .getElementById('fichas-listado-alumnos')
         ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 80);
+  }
+
+  const [alternativasBabyLocales, setAlternativasBabyLocales] = useState<
+    Record<string, BabyRelocationOption[]>
+  >({});
+  const [buscandoAlternativasBaby, setBuscandoAlternativasBaby] = useState(false);
+  const [moviendoAlumnoTurnoId, setMoviendoAlumnoTurnoId] = useState('');
+  const [agendaTrainerAssignmentRows, setAgendaTrainerAssignmentRows] = useState<
+    AgendaTrainerAssignmentRow[]
+  >([]);
+  const [cargandoResumenEntrenadores, setCargandoResumenEntrenadores] = useState(false);
+
+  const gruposPropuestaActuales = gruposRecomendadosAgenda();
+  const candidatosReubicacionBaby: BabyRelocationStudent[] = [];
+  const candidatosVistos = new Set<string>();
+  gruposPropuestaActuales.forEach(([nombreGrupo, alumnosGrupo]) => {
+    if (esGrupoParticularAgenda(nombreGrupo)) return;
+    const validacion = textoValidacionPedagogicaGrupoApp(alumnosGrupo);
+    if (alumnosGrupo.length !== 1 && validacion.estado !== 'BLOQUEADO') return;
+    alumnosGrupo.forEach((alumno: AgendaRecomendacionSesionApp) => {
+      if (candidatosVistos.has(alumno.alumno_id)) return;
+      candidatosVistos.add(alumno.alumno_id);
+      candidatosReubicacionBaby.push({
+        alumno_id: alumno.alumno_id,
+        alumno: alumno.alumno,
+        nivel_resumen: alumno.nivel_resumen,
+      });
+    });
+  });
+  const firmaCandidatosReubicacion = candidatosReubicacionBaby
+    .map((alumno) => `${alumno.alumno_id}:${alumno.nivel_resumen}`)
+    .sort()
+    .join('|');
+  const firmaGruposAgenda = (agendaGruposSesion || [])
+    .map(
+      (grupo: any) =>
+        `${grupo.grupo_id || ''}:${grupo.entrenador_id || ''}:${grupo.entrenador_apoyo_id || ''}:${grupo.total_alumnos || 0}`
+    )
+    .sort()
+    .join('|');
+
+  async function cargarResumenEntrenadoresSemana() {
+    if (!semanaAgendaActiva) {
+      setAgendaTrainerAssignmentRows([]);
+      return;
+    }
+    const finSemana = addIsoDays(semanaAgendaActiva, 6);
+    setCargandoResumenEntrenadores(true);
+    try {
+      const assignmentRows = await consultarSupabase(
+        'v_grupos_entrenador_app_dos_entrenadores',
+        `select=entrenador_id,entrenador,grupo_id,fecha,hora_inicio,hora_fin,modalidad&fecha=gte.${semanaAgendaActiva}&fecha=lte.${finSemana}&order=fecha.asc,hora_inicio.asc,entrenador.asc`
+      );
+      setAgendaTrainerAssignmentRows(
+        Array.isArray(assignmentRows)
+          ? (assignmentRows as AgendaTrainerAssignmentRow[])
+          : []
+      );
+    } catch (errorResumen) {
+      console.warn('No se pudo cargar el resumen semanal de entrenadores.', errorResumen);
+      setAgendaTrainerAssignmentRows([]);
+    } finally {
+      setCargandoResumenEntrenadores(false);
+    }
+  }
+
+  useEffect(() => {
+    if (pantalla !== 'agenda') return;
+    void cargarResumenEntrenadoresSemana();
+    // La firma refresca el resumen cuando una asignación cambia dentro de la sesión abierta.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pantalla, semanaAgendaActiva, firmaGruposAgenda]);
+
+  useEffect(() => {
+    let cancelado = false;
+    if (!agendaSesionActivaId || !firmaCandidatosReubicacion) {
+      setAlternativasBabyLocales({});
+      setBuscandoAlternativasBaby(false);
+      return () => {
+        cancelado = true;
+      };
+    }
+
+    setBuscandoAlternativasBaby(true);
+    void loadBabyRelocationOptions({
+      sourceSessionId: agendaSesionActivaId,
+      students: candidatosReubicacionBaby,
+    })
+      .then((options) => {
+        if (!cancelado) setAlternativasBabyLocales(options);
+      })
+      .catch((errorAlternativas) => {
+        if (cancelado) return;
+        console.warn(
+          'No se pudieron calcular las alternativas Baby entre turnos.',
+          errorAlternativas
+        );
+        setAlternativasBabyLocales({});
+      })
+      .finally(() => {
+        if (!cancelado) setBuscandoAlternativasBaby(false);
+      });
+
+    return () => {
+      cancelado = true;
+    };
+    // La firma contiene exactamente los alumnos/niveles que necesitan alternativa.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [agendaSesionActivaId, firmaCandidatosReubicacion]);
+
+  const cargasEntrenadoresSemana = semanaAgendaActiva
+    ? buildWeeklyTrainerLoads({
+        weekStart: semanaAgendaActiva,
+        trainers: (entrenadores || []) as EntrenadorResumen[],
+        assignments: agendaTrainerAssignmentRows,
+      })
+    : [];
+  const sesionesSemanaResumenEntrenadores = diasSemanaAgenda.flatMap((dia: any) =>
+    sesionesDelDiaAgenda(dia.fecha)
+  );
+  const gruposPendientesEntrenadorSemana = pendingTrainerGroupsInSessions(
+    sesionesSemanaResumenEntrenadores,
+    agendaTrainerAssignmentRows
+  );
+
+  async function moverAlumnoAlternativaBaby(
+    alumno: AgendaRecomendacionSesionApp,
+    opcion: BabyRelocationOption
+  ) {
+    const alumnoSesion = agendaAlumnosSesion.find(
+      (registro: any) => registro.alumno_id === alumno.alumno_id
+    );
+    if (!alumnoSesion?.sesion_alumno_id) {
+      setError(
+        'No encuentro al alumno en la sesión actual. Actualiza la sesión y vuelve a intentarlo.'
+      );
+      return;
+    }
+
+    const destino = opcion.kind === 'REAL'
+      ? opcion.grupo
+      : `turno ${opcion.hora_inicio.slice(0, 5)}–${opcion.hora_fin.slice(0, 5)} (grupo se recalculará)`;
+    const confirmado = window.confirm(
+      `Padres OK · mover a ${alumno.alumno}\n\n${etiquetaDiaFechaAgenda(opcion.fecha)} · ${opcion.hora_inicio.slice(0, 5)}–${opcion.hora_fin.slice(0, 5)}\n${destino}\n\n¿Confirmas el cambio de turno?`
+    );
+    if (!confirmado) return;
+
+    setMoviendoAlumnoTurnoId(alumno.alumno_id);
+    setError('');
+    try {
+      await moveBabyStudentBetweenSessions({
+        sourceSessionStudentId: alumnoSesion.sesion_alumno_id,
+        targetSessionId: opcion.sesion_id,
+        targetGroupId: opcion.grupo_id,
+      });
+      await Promise.all([
+        cargarAgendaOperativaDirecta(),
+        cargarPlanning(),
+        cargarEntrenadores(),
+      ]);
+      await generarRecomendacionAgendaSesion(agendaSesionActivaId);
+      await cargarResumenEntrenadoresSemana();
+    } catch (errorMovimiento) {
+      setError(
+        errorMovimiento instanceof Error
+          ? errorMovimiento.message
+          : 'No se pudo mover al alumno al otro turno.'
+      );
+    } finally {
+      setMoviendoAlumnoTurnoId('');
+    }
   }
 
   return (
@@ -336,7 +513,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                   >
                     <button
                       type="button"
-                      onClick={() => { cargarAgendaOperativaDirecta(); cargarIntensivos(); cargarPlanning(); cargarListados(); cargarEntrenadores(); }}
+                      onClick={() => { cargarAgendaOperativaDirecta(); cargarIntensivos(); cargarPlanning(); cargarListados(); cargarEntrenadores(); void cargarResumenEntrenadoresSemana(); }}
                       style={{
                         ...botonSecundario,
                         minHeight: 36,
@@ -619,6 +796,12 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                       })}
                     </div>
 
+                    <WeeklyTrainerSummary
+                      loads={cargasEntrenadoresSemana}
+                      pendingGroups={gruposPendientesEntrenadorSemana}
+                      loading={cargandoResumenEntrenadores}
+                    />
+
                     <article
                       id="agenda-dia-seleccionado"
                       style={{
@@ -756,6 +939,12 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                   </span>
                                 </div>
                               </div>
+                              <SessionTrainerCoverageLine
+                                coverage={sessionTrainerCoverage(
+                                  sesion,
+                                  agendaTrainerAssignmentRows
+                                )}
+                              />
                               <div style={agendaAccionesSesion}>
                                 <button
                                   onClick={() =>
@@ -1821,7 +2010,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                           <h4 style={{ margin: 0 }}>
                             Paso 1 · Revisar recomendación y crear grupos
                           </h4>
-                          {buscandoAlternativasTurnoAgenda && (
+                          {buscandoAlternativasBaby && (
                             <small style={{ color: '#64748b', fontWeight: 700 }}>
                               Revisando también otros días y turnos de esta semana…
                             </small>
@@ -2068,7 +2257,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
 
                                       {!esParticular &&
                                         Object.prototype.hasOwnProperty.call(
-                                          alternativasTurnoAgendaPorAlumno,
+                                          alternativasBabyLocales,
                                           alumno.alumno_id
                                         ) && (
                                         <div
@@ -2087,12 +2276,12 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                             ⚠️ Revisión manual necesaria
                                           </strong>
 
-                                          {buscandoAlternativasTurnoAgenda ? (
+                                          {buscandoAlternativasBaby ? (
                                             <p style={{ margin: '5px 0 0' }}>
                                               Buscando otros días y turnos compatibles
                                               de esta semana...
                                             </p>
-                                          ) : alternativasTurnoAgendaPorAlumno[
+                                          ) : alternativasBabyLocales[
                                               alumno.alumno_id
                                             ]?.length > 0 ? (
                                             <>
@@ -2113,13 +2302,13 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                                   gap: 7,
                                                 }}
                                               >
-                                                {alternativasTurnoAgendaPorAlumno[
+                                                {alternativasBabyLocales[
                                                   alumno.alumno_id
                                                 ]
                                                   .slice(0, 3)
                                                   .map((opcion) => (
                                                     <div
-                                                      key={`${alumno.alumno_id}-${opcion.sesion_id}-${opcion.grupo_id}`}
+                                                      key={`${alumno.alumno_id}-${opcion.sesion_id}-${opcion.grupo_id || opcion.grupo}`}
                                                       style={{
                                                         padding: 9,
                                                         borderRadius: 10,
@@ -2138,6 +2327,25 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                                         –
                                                         {opcion.hora_fin.slice(0, 5)}
                                                       </strong>
+                                                      <div
+                                                        style={{
+                                                          marginTop: 4,
+                                                          display: 'flex',
+                                                          gap: 6,
+                                                          flexWrap: 'wrap',
+                                                        }}
+                                                      >
+                                                        {opcion.mismo_dia && (
+                                                          <span style={{ fontSize: 11, fontWeight: 900, color: '#166534' }}>
+                                                            MISMO DÍA
+                                                          </span>
+                                                        )}
+                                                        {opcion.kind === 'PROPOSAL' && (
+                                                          <span style={{ fontSize: 11, fontWeight: 900, color: '#1d4ed8' }}>
+                                                            GRUPO PROPUESTO
+                                                          </span>
+                                                        )}
+                                                      </div>
                                                       <div
                                                         style={{
                                                           marginTop: 3,
@@ -2161,9 +2369,12 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                                       </div>
                                                       <button
                                                         type="button"
-                                                        disabled={cargando}
+                                                        disabled={
+                                                          cargando ||
+                                                          moviendoAlumnoTurnoId === alumno.alumno_id
+                                                        }
                                                         onClick={() =>
-                                                          void moverAlumnoPropuestaAOtroTurnoAgenda(
+                                                          void moverAlumnoAlternativaBaby(
                                                             alumno,
                                                             opcion
                                                           )
@@ -2174,7 +2385,9 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                                           width: '100%',
                                                         }}
                                                       >
-                                                        Padres OK · mover a este turno
+                                                        {moviendoAlumnoTurnoId === alumno.alumno_id
+                                                          ? 'Moviendo…'
+                                                          : 'Padres OK · mover a este turno'}
                                                       </button>
                                                     </div>
                                                   ))}
