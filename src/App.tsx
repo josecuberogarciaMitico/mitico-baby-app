@@ -13893,19 +13893,6 @@ async function abrirGestionOperativaIntensivoDia(
       return;
     }
 
-    const pendientesTest = agendaAlumnosSesion.filter(
-      (alumno) => alumno.estado_en_listado === 'PENDIENTE_TEST'
-    );
-
-    if (pendientesTest.length > 0) {
-      setError(
-        `Hay ${pendientesTest.length} alumno(s) nuevos pendientes de Altas/Test. Resuélvelos antes de generar grupos: ${pendientesTest
-          .map((alumno) => alumno.alumno)
-          .join(', ')}`
-      );
-      return;
-    }
-
     setCargando(true);
     setError('');
 
@@ -15234,14 +15221,6 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
     const entrenadorApoyoId =
       entrenadoresApoyoAgendaGrupo[nombreGrupo] || '';
 
-    // Los grupos normales se crean primero como estructura deportiva.
-    // Entrenador, segundo entrenador y punto de encuentro se completan después,
-    // desde la tarjeta del grupo creado, antes de publicarlo.
-    if (esParticular && !entrenadorId) {
-      setError(`Selecciona entrenador para ${nombreGrupo}.`);
-      return;
-    }
-
     if (
       esParticular &&
       entrenadorApoyoId &&
@@ -15266,11 +15245,10 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
       trabajoDiarioAutomaticoAgenda(nombreGrupo, alumnosGrupo);
     const primero = alumnosGrupo[0];
 
-    const validacionOk = confirmarCrearGrupoConValidacionPedagogicaApp(
-      alumnosGrupo,
-      nombreGrupo
-    );
-    if (!validacionOk) return;
+    if (
+      !esParticular &&
+      !confirmarCrearGrupoConValidacionPedagogicaApp(alumnosGrupo, nombreGrupo)
+    ) return;
 
     setCargando(true);
     setError('');
@@ -15289,7 +15267,7 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
                 observacionesAutomaticasGrupoAgenda(alumnosGrupo),
                 observacionesAgendaGrupo[nombreGrupo] || ''
               ),
-              p_entrenador_id: entrenadorId,
+              p_entrenador_id: entrenadorId || null,
               p_alumno_id: alumnosGrupo[0].alumno_id,
             }
           )
@@ -15366,21 +15344,10 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
     }
 
     for (const [nombreGrupo, alumnosGrupo] of grupos) {
-      const esParticular = esGrupoParticularAgenda(nombreGrupo);
-      const entrenadorId = entrenadoresAgendaGrupo[nombreGrupo] || '';
-
-      // Los particulares conservan su lógica propia. Los grupos normales se crean
-      // sin recursos para completar entrenador/punto después.
-      if (esParticular && !entrenadorId) {
-        setError(`Selecciona entrenador para ${nombreGrupo} antes de crear todos.`);
-        return;
-      }
-
-      const validacionOk = confirmarCrearGrupoConValidacionPedagogicaApp(
-        alumnosGrupo,
-        nombreGrupo
-      );
-      if (!validacionOk) return;
+      if (
+        !esGrupoParticularAgenda(nombreGrupo) &&
+        !confirmarCrearGrupoConValidacionPedagogicaApp(alumnosGrupo, nombreGrupo)
+      ) return;
     }
 
     const confirmar = window.confirm(
@@ -15423,7 +15390,7 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
                   observacionesAutomaticasGrupoAgenda(alumnosGrupo),
                   observacionesAgendaGrupo[nombreGrupo] || ''
                 ),
-                p_entrenador_id: entrenadorId,
+                p_entrenador_id: entrenadorId || null,
                 p_alumno_id: alumnosGrupo[0].alumno_id,
               }
             )

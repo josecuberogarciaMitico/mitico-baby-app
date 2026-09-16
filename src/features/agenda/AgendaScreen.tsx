@@ -211,6 +211,19 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     volcarListadoAgendaOperativa,
   } = ctx;
 
+  function abrirFichaAlumnoDesdeAgenda(alumnoId: string, nombreAlumno: string) {
+    const ficha = alumnos.find((item) => item.alumno_id === alumnoId);
+    setVistaFichasAlumnos('general');
+    setFiltroAlumnos('todos');
+    setBusquedaAlumno(ficha?.alumno || nombreAlumno);
+    setPantalla('alumnos');
+    window.setTimeout(() => {
+      document
+        .getElementById('fichas-listado-alumnos')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }
+
   return (
     <>
       {pantalla === 'agenda' && (
@@ -1678,25 +1691,12 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                             ) : (
                               <>
                                 <button
-                                  onClick={() => {
-                                    const ficha = alumnos.find(
-                                      (item) => item.alumno_id === alumno.alumno_id
-                                    );
-                                    setVistaFichasAlumnos('general');
-                                    setFiltroAlumnos('todos');
-                                    setBusquedaAlumno(
-                                      ficha?.alumno || alumno.alumno || ''
-                                    );
-                                    setPantalla('alumnos');
-                                    window.setTimeout(() => {
-                                      document
-                                        .getElementById('fichas-listado-alumnos')
-                                        ?.scrollIntoView({
-                                          behavior: 'smooth',
-                                          block: 'start',
-                                        });
-                                    }, 80);
-                                  }}
+                                  onClick={() =>
+                                    abrirFichaAlumnoDesdeAgenda(
+                                      alumno.alumno_id,
+                                      alumno.alumno
+                                    )
+                                  }
                                   style={botonMini}
                                 >
                                   Ver ficha
@@ -1963,7 +1963,31 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                           overflowWrap: 'anywhere',
                                         }}
                                       >
-                                        <strong>{alumno.alumno}</strong>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            abrirFichaAlumnoDesdeAgenda(
+                                              alumno.alumno_id,
+                                              alumno.alumno
+                                            )
+                                          }
+                                          title="Abrir ficha y contacto de la familia"
+                                          style={{
+                                            border: 0,
+                                            padding: 0,
+                                            background: 'transparent',
+                                            color: '#0f172a',
+                                            font: 'inherit',
+                                            fontWeight: 900,
+                                            textAlign: 'left',
+                                            cursor: 'pointer',
+                                            textDecoration: 'underline',
+                                            textDecorationColor: '#93c5fd',
+                                            textUnderlineOffset: 3,
+                                          }}
+                                        >
+                                          {alumno.alumno}
+                                        </button>
                                         <p
                                           style={{
                                             margin: '4px 0 0',
