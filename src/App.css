@@ -928,20 +928,14 @@
 
 @media (max-width: 719px) {
   .trainer-report-form--inline {
-    display: none !important;
+    /* El grupo móvil ya vive en un portal propio y desplazable. Mantener el
+       reporte dentro de la tarjeta evita que Safari pierda el segundo portal
+       al actualizar la asistencia o el estado del alumno. */
+    display: block !important;
   }
 
   .trainer-report-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 2147483647;
-    display: flex;
-    width: 100%;
-    height: 100dvh;
-    min-width: 0;
-    background: #f8fafc;
-    overflow: hidden;
-    isolation: isolate;
+    display: none !important;
   }
 
   .trainer-report-form--sheet {
