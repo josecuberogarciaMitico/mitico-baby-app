@@ -237,7 +237,10 @@ import {
   ayudaAutonomiaAdaptada,
   mejoraLegacy,
   opcionesAutonomiaAdaptada,
+  prepareTrainerReportOpening,
   recomendacionLegacy,
+  reportTechnicalLevelForRender,
+  requireReportTechnicalLevel,
   resumenEvaluacionTecnica,
   tecnicaLegacyPorNivel,
   type EvaluacionTecnicaReporte,
@@ -639,7 +642,7 @@ import type {
 type ModalidadAnalisisAdminApp = 'BABY' | 'OCIO' | 'INTENSIVOS';
 
 
-const opcionesNivel = [...TECHNICAL_LEVELS];
+const opcionesNivel = ['', ...TECHNICAL_LEVELS];
 const opcionesPista = ['Pequeña', 'Grande', 'Pequeña/Grande'];
 const opcionesRemontes = [
   'Cinta',
@@ -879,6 +882,7 @@ type ReporteFormState = {
 type ReporteActivo = {
   grupo_id: string;
   alumno_id: string;
+  entrenador_id: string;
 };
 
 type GrupoActivoEntrenador = {
@@ -1703,6 +1707,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [nivelPartidaReporte, setNivelPartidaReporte] = useState('');
   const [guardandoReporte, setGuardandoReporte] = useState(false);
   const [errorReporte, setErrorReporte] = useState('');
+  const aperturaReporteIdRef = useRef(0);
 
   const overlayEntrenadorAbierto = Boolean(
     grupoActivoEntrenador || reporteActivo
@@ -4054,12 +4059,43 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
   async function abrirFormularioReporte(alumno: AlumnoReporteEntrenador) {
     setErrorReporte('');
+    const aperturaId = ++aperturaReporteIdRef.current;
+    const apertura = prepareTrainerReportOpening({
+      alumnoId: alumno.alumno_id,
+      grupoId: alumno.grupo_id,
+      entrenadorId: alumno.entrenador_id,
+      individualLevel: alumno.nivel_alumno,
+    });
     const pistaFallback =
       alumno.pista_alumno && alumno.pista_alumno !== '-'
         ? alumno.pista_alumno
         : alumno.nombre_grupo.toLowerCase().includes('grande')
           ? 'Grande'
           : 'Pequeña';
+
+    if (apertura.status === 'INVALID_IDENTIFIERS') {
+      const mensaje =
+        'No se puede abrir el reporte porque faltan los identificadores del alumno, grupo o entrenador. Actualiza la vista y vuelve a intentarlo.';
+      setError(mensaje);
+      setErrorReporte(mensaje);
+      return;
+    }
+
+    // El formulario y el portal móvil se abren antes de esperar a la RPC.
+    // Si falta nivel individual, el entrenador podrá seleccionarlo en la ficha.
+    const nivelIndividualInicial = apertura.level;
+    setReporteActivo(apertura.activeReport);
+    setNivelPartidaReporte(nivelIndividualInicial || '');
+    setFormReporte({
+      ...reporteInicial(),
+      nivel: nivelIndividualInicial || '',
+      pista: pistaFallback,
+      observaciones: '',
+      evaluacionTecnica: nivelIndividualInicial
+        ? evaluacionTecnicaInicial(nivelIndividualInicial)
+        : {},
+    });
+    enfocarFormularioReporteEntrenador(alumno, 80);
 
     let nivelSesion: string | null = null;
     let pistaPartida = pistaFallback;
@@ -4082,37 +4118,34 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       console.warn('No se pudo cargar el nivel de partida del reporte.', err);
     }
 
+    if (aperturaReporteIdRef.current !== aperturaId) return;
+
     const nivelResuelto = resolveSessionOperationalLevel({
       currentLevel: alumno.nivel_alumno,
       sessionLevel: nivelSesion,
       sessionLevelKind: nivelSesion ? 'UNKNOWN' : 'SNAPSHOT',
     });
 
-    if (!nivelResuelto.level) {
-      const mensaje =
-        nivelResuelto.issues.join(' ') ||
-        'El alumno no tiene un nivel técnico individual válido. Revisa su ficha antes de crear el reporte.';
-      setError(mensaje);
-      setErrorReporte(mensaje);
-      return;
-    }
+    setNivelPartidaReporte(nivelResuelto.level || '');
+    setFormReporte((actual) => {
+      const nivelElegido = reportTechnicalLevelForRender(actual.nivel);
+      if (nivelElegido || !nivelResuelto.level) {
+        return pistaPartida === actual.pista
+          ? actual
+          : { ...actual, pista: pistaPartida };
+      }
 
-    setReporteActivo({
-      grupo_id: alumno.grupo_id,
-      alumno_id: alumno.alumno_id,
+      return {
+        ...actual,
+        nivel: nivelResuelto.level,
+        pista: pistaPartida,
+        evaluacionTecnica: evaluacionTecnicaInicial(nivelResuelto.level),
+      };
     });
-    setNivelPartidaReporte(nivelResuelto.level);
-    setFormReporte({
-      ...reporteInicial(),
-      nivel: nivelResuelto.level,
-      pista: pistaPartida,
-      observaciones: '',
-      evaluacionTecnica: evaluacionTecnicaInicial(nivelResuelto.level),
-    });
-    enfocarFormularioReporteEntrenador(alumno, 80);
   }
 
   function cerrarFormularioReporte() {
+    aperturaReporteIdRef.current += 1;
     setReporteActivo(null);
     setNivelPartidaReporte('');
     setFormReporte(reporteInicial());
@@ -4138,6 +4171,16 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     };
 
     setErrorReporte('');
+
+    let nivelReporte: TechnicalLevel;
+    try {
+      nivelReporte = requireReportTechnicalLevel(formReporte.nivel);
+    } catch {
+      mostrarErrorReporte(
+        'Selecciona un único nivel observado válido antes de guardar el reporte.'
+      );
+      return;
+    }
 
     if (formReporte.mejorasHoy.length === 0) {
       mostrarErrorReporte(
@@ -4183,10 +4226,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_alumno_id: alumno.alumno_id,
         p_entrenador_id: alumno.entrenador_id,
         p_actitud: formReporte.actitud,
-        p_nivel_reportado: formReporte.nivel,
-        p_tecnica_legacy: esNivelAprendizajeInicialApp(formReporte.nivel)
+        p_nivel_reportado: nivelReporte,
+        p_tecnica_legacy: esNivelAprendizajeInicialApp(nivelReporte)
           ? tecnicaInicialDerivadaReporteApp(formReporte)
-          : tecnicaLegacyPorNivel(formReporte.nivel),
+          : tecnicaLegacyPorNivel(nivelReporte),
         p_pista: formReporte.pista,
         p_autonomia: formReporte.autonomia,
         p_remontes: formReporte.remontes,
@@ -18530,7 +18573,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
   function formularioAbierto(alumno: AlumnoReporteEntrenador) {
     return (
       reporteActivo?.grupo_id === alumno.grupo_id &&
-      reporteActivo?.alumno_id === alumno.alumno_id
+      reporteActivo?.alumno_id === alumno.alumno_id &&
+      reporteActivo?.entrenador_id === alumno.entrenador_id
     );
   }
 
@@ -18538,7 +18582,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
     ? alumnosReporteEntrenador.find(
         (alumno) =>
           alumno.grupo_id === reporteActivo.grupo_id &&
-          alumno.alumno_id === reporteActivo.alumno_id
+          alumno.alumno_id === reporteActivo.alumno_id &&
+          alumno.entrenador_id === reporteActivo.entrenador_id
       ) || null
     : null;
 

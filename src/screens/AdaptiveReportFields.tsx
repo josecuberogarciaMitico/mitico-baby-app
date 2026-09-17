@@ -5,6 +5,7 @@ import {
   opcionesIncidenciaAdaptada,
   opcionesMejoras,
   opcionesPrioridades,
+  reportTechnicalLevelForRender,
   resumenTrabajoDiario,
   type EvaluacionTecnicaReporte,
   type ValorTecnicoReporte,
@@ -59,8 +60,21 @@ export function AdaptiveReportFields(props: {
   onMejoras: (valores: string[]) => void;
   onPrioridades: (valores: string[]) => void;
 }) {
-  const competencias = competenciasReporte(props.nivel);
+  const nivel = reportTechnicalLevelForRender(props.nivel);
   const trabajo = resumenTrabajoDiario(props.trabajoDiario);
+
+  if (!nivel) {
+    return (
+      <section className="adaptive-report" role="status">
+        <div className="adaptive-report-work">
+          <span>Nivel observado pendiente</span>
+          <p>Selecciona un nivel individual válido para mostrar la evaluación técnica.</p>
+        </div>
+      </section>
+    );
+  }
+
+  const competencias = competenciasReporte(nivel);
   return (
     <section className="adaptive-report">
       <div className="adaptive-report-work">
@@ -98,8 +112,8 @@ export function AdaptiveReportFields(props: {
       </div>
 
       <div className="adaptive-report-grid">
-        <MultiDesplegable label="Qué ha mejorado hoy" opciones={opcionesMejoras(props.nivel)} valores={props.mejoras} onChange={props.onMejoras} />
-        <MultiDesplegable label="Próximas prioridades / recomendación" opciones={opcionesPrioridades(props.nivel)} valores={props.prioridades} onChange={props.onPrioridades} />
+        <MultiDesplegable label="Qué ha mejorado hoy" opciones={opcionesMejoras(nivel)} valores={props.mejoras} onChange={props.onMejoras} />
+        <MultiDesplegable label="Próximas prioridades / recomendación" opciones={opcionesPrioridades(nivel)} valores={props.prioridades} onChange={props.onPrioridades} />
         <label className="adaptive-report-field adaptive-report-field--wide">
           <span className="adaptive-report-label">Incidencia</span>
           <select value={props.incidencia} onChange={(e) => props.onIncidencia(e.target.value)}>

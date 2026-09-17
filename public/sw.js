@@ -1,4 +1,11 @@
-const CACHE_ACTUAL = 'mitico-baby-shell-v3'
+try {
+  importScripts('/sw-build-version.js')
+} catch {
+  // En desarrollo local puede no existir hasta ejecutar el build.
+}
+
+const BUILD_ACTUAL = String(self.__MITICO_BUILD_ID__ || 'sin-build')
+const CACHE_ACTUAL = `mitico-baby-shell-${BUILD_ACTUAL}`
 const PREFIJO_CACHES = 'mitico-baby-'
 const SHELL_FALLBACK = '/__mitico_shell__'
 
@@ -166,8 +173,11 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Manifest: también red primero.
-  if (url.pathname === '/manifest.webmanifest') {
+  // Manifest y versión PWA: siempre red primero.
+  if (
+    url.pathname === '/manifest.webmanifest' ||
+    url.pathname === '/sw-build-version.js'
+  ) {
     event.respondWith(
       fetch(request, { cache: 'no-store' }).catch(() =>
         caches.match(request)

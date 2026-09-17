@@ -1,4 +1,5 @@
 import {
+  parseTechnicalLevel,
   requireTechnicalLevel,
   type TechnicalLevel,
 } from '../core/levels/levelContract';
@@ -14,6 +15,68 @@ export type {
 } from '../core/reports/reportTypes';
 
 export const ESCALA_TECNICA_REPORTE = TECHNICAL_REPORT_SCALE;
+
+/**
+ * El render del formulario debe ser tolerante: una etiqueta vacía, desconocida
+ * o compuesta de grupo no puede derribar la pantalla del entrenador.
+ */
+export function reportTechnicalLevelForRender(
+  value: unknown
+): TechnicalLevel | null {
+  const parsed = parseTechnicalLevel(value);
+  return parsed.status === 'VALID' ? parsed.level : null;
+}
+
+/** El guardado sigue siendo estricto y solo acepta un nivel individual oficial. */
+export function requireReportTechnicalLevel(value: unknown): TechnicalLevel {
+  return requireTechnicalLevel(value, 'Reporte técnico');
+}
+
+export type TrainerReportOpening =
+  | {
+      status: 'READY';
+      activeReport: {
+        alumno_id: string;
+        grupo_id: string;
+        entrenador_id: string;
+      };
+      level: TechnicalLevel | null;
+    }
+  | {
+      status: 'INVALID_IDENTIFIERS';
+      missing: Array<'alumno_id' | 'grupo_id' | 'entrenador_id'>;
+    };
+
+/**
+ * Prepara el estado visible antes de consultar el nivel de la sesión. El nivel
+ * agregado del grupo es solo contexto y nunca sustituye al nivel individual.
+ */
+export function prepareTrainerReportOpening(input: {
+  alumnoId: unknown;
+  grupoId: unknown;
+  entrenadorId: unknown;
+  individualLevel: unknown;
+}): TrainerReportOpening {
+  const alumnoId = String(input.alumnoId || '').trim();
+  const grupoId = String(input.grupoId || '').trim();
+  const entrenadorId = String(input.entrenadorId || '').trim();
+  const missing: Array<'alumno_id' | 'grupo_id' | 'entrenador_id'> = [];
+
+  if (!alumnoId) missing.push('alumno_id');
+  if (!grupoId) missing.push('grupo_id');
+  if (!entrenadorId) missing.push('entrenador_id');
+  if (missing.length) return { status: 'INVALID_IDENTIFIERS', missing };
+
+  return {
+    status: 'READY',
+    activeReport: {
+      alumno_id: alumnoId,
+      grupo_id: grupoId,
+      entrenador_id: entrenadorId,
+    },
+    level: reportTechnicalLevelForRender(input.individualLevel),
+  };
+}
 
 export type CompetenciaTecnicaReporte = {
   id: string;

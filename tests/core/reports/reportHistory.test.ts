@@ -6,6 +6,11 @@ import {
   type ReportHistoryFilter,
 } from '../../../src/core/reports/reportHistory';
 import type { HistorialReporteAlumnoFichaApp } from '../../../src/core/reports/reportTypes';
+import {
+  prepareTrainerReportOpening,
+  reportTechnicalLevelForRender,
+  requireReportTechnicalLevel,
+} from '../../../src/lib/adaptiveReport';
 
 function equal<T>(actual: T, expected: T, label: string) {
   if (!Object.is(actual, expected)) {
@@ -89,4 +94,65 @@ test('el informe familiar usa el último reporte como nivel y limita el detalle'
   equal(value.includes('Nivel actual de ficha: C'), true, 'precedencia reporte');
   equal((value.match(/• Objetivo/g) || []).length, 5, 'máximo trabajo diario');
   equal((value.match(/• 2026-/g) || []).length, 5, 'máximo observaciones');
+});
+
+test('el render de reportes tolera etiquetas mixtas sin inventar nivel', () => {
+  equal(reportTechnicalLevelForRender('B+ / C'), null, 'B+ / C');
+  equal(reportTechnicalLevelForRender('C+ / D+'), null, 'C+ / D+');
+  equal(reportTechnicalLevelForRender('C+, D+'), null, 'C+, D+');
+  equal(reportTechnicalLevelForRender(''), null, 'vacío');
+  equal(reportTechnicalLevelForRender('C+'), 'C+', 'C+ individual');
+});
+
+test('el guardado de reportes exige un único nivel individual', () => {
+  equal(requireReportTechnicalLevel('D+'), 'D+', 'D+ válido');
+
+  let thrown = false;
+  try {
+    requireReportTechnicalLevel('C+ / D+');
+  } catch {
+    thrown = true;
+  }
+  equal(thrown, true, 'mezcla bloqueada');
+});
+
+test('BABY prepara el formulario antes de consultar el nivel de sesión', () => {
+  const apertura = prepareTrainerReportOpening({
+    alumnoId: 'alumno-baby',
+    grupoId: 'grupo-baby',
+    entrenadorId: 'entrenador-baby',
+    individualLevel: 'INICIACION',
+  });
+
+  equal(apertura.status, 'READY', 'apertura inmediata');
+  if (apertura.status === 'READY') {
+    equal(apertura.level, 'INICIACION', 'nivel individual');
+    equal(apertura.activeReport.alumno_id, 'alumno-baby', 'alumno activo');
+    equal(apertura.activeReport.entrenador_id, 'entrenador-baby', 'entrenador activo');
+  }
+});
+
+test('BABY sin nivel abre el selector y no usa una etiqueta de grupo', () => {
+  const apertura = prepareTrainerReportOpening({
+    alumnoId: 'alumno-baby',
+    grupoId: 'grupo-baby',
+    entrenadorId: 'entrenador-baby',
+    individualLevel: 'C+ / D+',
+  });
+
+  equal(apertura.status, 'READY', 'apertura sin nivel');
+  if (apertura.status === 'READY') {
+    equal(apertura.level, null, 'nivel pendiente de selección');
+  }
+});
+
+test('la apertura bloquea filas sin identidad operativa completa', () => {
+  const apertura = prepareTrainerReportOpening({
+    alumnoId: '',
+    grupoId: 'grupo-baby',
+    entrenadorId: 'entrenador-baby',
+    individualLevel: 'A',
+  });
+
+  equal(apertura.status, 'INVALID_IDENTIFIERS', 'identidad incompleta');
 });

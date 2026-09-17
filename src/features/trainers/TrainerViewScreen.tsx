@@ -5,6 +5,7 @@ import {
   ayudaAutonomiaAdaptada,
   evaluacionTecnicaInicial,
   opcionesAutonomiaAdaptada,
+  reportTechnicalLevelForRender,
 } from '../../lib/adaptiveReport';
 import type { AlumnoReporteEntrenador } from '../../core/sessions/operationalTypes';
 
@@ -185,15 +186,14 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
   ) {
     const esSheet = modo === 'sheet';
     const nivelEfectivoReporte =
-      formReporte.nivel ||
-      nivelPartidaReporte ||
-      alumno.nivel_alumno ||
-      nivelGrupo ||
-      '';
+      reportTechnicalLevelForRender(formReporte.nivel) ||
+      reportTechnicalLevelForRender(nivelPartidaReporte) ||
+      reportTechnicalLevelForRender(alumno.nivel_alumno);
     // La autonomía mide el funcionamiento dentro de la sesión real. En un grupo
     // alto debe usar la escala avanzada aunque el nivel individual de partida sea
     // inferior; la técnica continúa evaluándose con el nivel individual observado.
-    const nivelAutonomiaReporte = nivelGrupo || nivelEfectivoReporte;
+    const nivelAutonomiaReporte =
+      reportTechnicalLevelForRender(nivelGrupo) || nivelEfectivoReporte;
     const esProgresionInicialReporte =
       esNivelAprendizajeInicialApp(nivelEfectivoReporte);
     const reporteDomId =
@@ -226,7 +226,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
               <h3>{alumno.alumno}</h3>
               <p>
                 {alumno.nombre_grupo}
-                {alumno.nivel_alumno ? ` · Nivel ${alumno.nivel_alumno}` : ''}
+                {nivelEfectivoReporte ? ` · Nivel ${nivelEfectivoReporte}` : ''}
               </p>
             </div>
             <button
@@ -253,27 +253,27 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
             Ver referencia técnica del nivel
           </summary>
           <div style={{ padding: '10px 12px 12px' }}>
-            {referenciaTecnicaReporteApp(
-              formReporte.nivel || alumno.nivel_alumno || nivelGrupo || ''
-            ).map(([titulo, texto], indice) => (
-              <div
-                key={titulo}
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: '112px 1fr',
-                  gap: 10,
-                  padding: '8px 0',
-                  borderTop: indice === 0 ? 'none' : '1px solid #e5edf8',
-                }}
-              >
-                <strong style={{ color: '#1e3a8a', fontSize: 12 }}>
-                  {titulo}
-                </strong>
-                <span style={{ color: '#475569', fontSize: 12, lineHeight: 1.4 }}>
-                  {texto}
-                </span>
-              </div>
-            ))}
+            {referenciaTecnicaReporteApp(nivelEfectivoReporte || '').map(
+              ([titulo, texto], indice) => (
+                <div
+                  key={titulo}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: '112px 1fr',
+                    gap: 10,
+                    padding: '8px 0',
+                    borderTop: indice === 0 ? 'none' : '1px solid #e5edf8',
+                  }}
+                >
+                  <strong style={{ color: '#1e3a8a', fontSize: 12 }}>
+                    {titulo}
+                  </strong>
+                  <span style={{ color: '#475569', fontSize: 12, lineHeight: 1.4 }}>
+                    {texto}
+                  </span>
+                </div>
+              )
+            )}
           </div>
         </details>
 
@@ -293,47 +293,78 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                 fontWeight: 900,
               }}
             >
-              Nivel de partida · {nivelPartidaReporte || alumno.nivel_alumno || 'Sin nivel'}
+              Nivel de partida ·{' '}
+              {nivelPartidaReporte ||
+                reportTechnicalLevelForRender(alumno.nivel_alumno) ||
+                'Sin nivel individual válido'}
             </div>
             <CampoSelect
               label="Nivel observado"
               value={formReporte.nivel}
               opciones={opcionesNivel}
-              onChange={(valor) => setFormReporte({
-                ...formReporte,
-                nivel: valor,
-                autonomia: '',
-                evaluacionTecnica: evaluacionTecnicaInicial(
-                  valor,
-                  formReporte.evaluacionTecnica
-                ),
-                mejorasHoy: [],
-                prioridades: [],
-              })}
+              onChange={(valor) => {
+                const nivelSeleccionado = reportTechnicalLevelForRender(valor);
+                setFormReporte({
+                  ...formReporte,
+                  nivel: nivelSeleccionado || '',
+                  autonomia: '',
+                  evaluacionTecnica: nivelSeleccionado
+                    ? evaluacionTecnicaInicial(
+                        nivelSeleccionado,
+                        formReporte.evaluacionTecnica
+                      )
+                    : {},
+                  mejorasHoy: [],
+                  prioridades: [],
+                });
+              }}
             />
           </div>
 
         </div>
 
-        <AdaptiveReportFields
-          modalidad={alumno.modalidad}
-          nivel={nivelEfectivoReporte}
-          trabajoDiario={grupoDelReporte?.trabajo_diario}
-          actitud={formReporte.actitud}
-          ritmo={formReporte.ritmoGrupo}
-          incidencia={formReporte.incidencia}
-          evaluacion={formReporte.evaluacionTecnica}
-          mejoras={formReporte.mejorasHoy}
-          prioridades={formReporte.prioridades}
-          onActitud={(valor) => setFormReporte({ ...formReporte, actitud: valor })}
-          onRitmo={(valor) => setFormReporte({ ...formReporte, ritmoGrupo: valor })}
-          onIncidencia={(valor) => setFormReporte({ ...formReporte, incidencia: valor })}
-          onEvaluacion={(valor) => setFormReporte({ ...formReporte, evaluacionTecnica: valor })}
-          onMejoras={(valores) => setFormReporte({ ...formReporte, mejorasHoy: valores })}
-          onPrioridades={(valores) => setFormReporte({ ...formReporte, prioridades: valores })}
-        />
+        {!nivelEfectivoReporte && (
+          <div
+            role="status"
+            style={{
+              marginTop: 12,
+              padding: '11px 13px',
+              border: '1px solid #fde68a',
+              borderRadius: 12,
+              background: '#fffbeb',
+              color: '#92400e',
+              fontSize: 13,
+              fontWeight: 800,
+              lineHeight: 1.4,
+            }}
+          >
+            Selecciona “Nivel observado” para cargar los campos técnicos del alumno.
+            El nivel del grupo ({nivelGrupo || 'sin etiqueta'}) no se usará como nivel individual.
+          </div>
+        )}
 
-        <div className="trainer-report-grid trainer-report-grid--context" style={gridFormulario}>
+        {nivelEfectivoReporte && (
+          <AdaptiveReportFields
+            modalidad={alumno.modalidad}
+            nivel={nivelEfectivoReporte}
+            trabajoDiario={grupoDelReporte?.trabajo_diario}
+            actitud={formReporte.actitud}
+            ritmo={formReporte.ritmoGrupo}
+            incidencia={formReporte.incidencia}
+            evaluacion={formReporte.evaluacionTecnica}
+            mejoras={formReporte.mejorasHoy}
+            prioridades={formReporte.prioridades}
+            onActitud={(valor) => setFormReporte({ ...formReporte, actitud: valor })}
+            onRitmo={(valor) => setFormReporte({ ...formReporte, ritmoGrupo: valor })}
+            onIncidencia={(valor) => setFormReporte({ ...formReporte, incidencia: valor })}
+            onEvaluacion={(valor) => setFormReporte({ ...formReporte, evaluacionTecnica: valor })}
+            onMejoras={(valores) => setFormReporte({ ...formReporte, mejorasHoy: valores })}
+            onPrioridades={(valores) => setFormReporte({ ...formReporte, prioridades: valores })}
+          />
+        )}
+
+        {nivelEfectivoReporte && (
+          <div className="trainer-report-grid trainer-report-grid--context" style={gridFormulario}>
 
           {esProgresionInicialReporte && (
             <CampoSelect
@@ -433,7 +464,8 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
             />
           )}
 
-        </div>
+          </div>
+        )}
 
         <label style={labelCampo}>
           Observación útil para próximas sesiones (obligatoria)
