@@ -4,10 +4,8 @@ import type { EntrenadorResumen } from '../../core/trainers/trainerTypes';
 import type { AgendaRecomendacionSesionApp, RecomendacionFueraPlazoAgendaApp } from './agendaTypes';
 import { addIsoDays, type BabyRelocationOption, type BabyRelocationStudent } from './agendaRelocation';
 import { loadBabyRelocationOptions, moveBabyStudentBetweenSessions } from '../../services/agenda/agendaRelocationService';
-import { SessionTrainerCoverageLine, WeeklyTrainerSummary } from './AgendaTrainerSummary';
+import { SessionTrainerCoverageLine } from './AgendaTrainerSummary';
 import {
-  buildWeeklyTrainerLoads,
-  pendingTrainerGroupsInSessions,
   sessionTrainerCoverage,
   type AgendaTrainerAssignmentRow,
 } from './agendaTrainerSummary';
@@ -238,7 +236,6 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
   const [agendaTrainerAssignmentRows, setAgendaTrainerAssignmentRows] = useState<
     AgendaTrainerAssignmentRow[]
   >([]);
-  const [cargandoResumenEntrenadores, setCargandoResumenEntrenadores] = useState(false);
 
   const gruposPropuestaActuales = gruposRecomendadosAgenda();
   const candidatosReubicacionBaby: BabyRelocationStudent[] = [];
@@ -269,13 +266,12 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     .sort()
     .join('|');
 
-  async function cargarResumenEntrenadoresSemana() {
+  async function cargarAsignacionesEntrenadoresSemana() {
     if (!semanaAgendaActiva) {
       setAgendaTrainerAssignmentRows([]);
       return;
     }
     const finSemana = addIsoDays(semanaAgendaActiva, 6);
-    setCargandoResumenEntrenadores(true);
     try {
       const assignmentRows = await consultarSupabase(
         'v_grupos_entrenador_app_dos_entrenadores',
@@ -287,17 +283,15 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
           : []
       );
     } catch (errorResumen) {
-      console.warn('No se pudo cargar el resumen semanal de entrenadores.', errorResumen);
+      console.warn('No se pudieron cargar las asignaciones semanales de entrenadores.', errorResumen);
       setAgendaTrainerAssignmentRows([]);
-    } finally {
-      setCargandoResumenEntrenadores(false);
     }
   }
 
   useEffect(() => {
     if (pantalla !== 'agenda') return;
-    void cargarResumenEntrenadoresSemana();
-    // La firma refresca el resumen cuando una asignación cambia dentro de la sesión abierta.
+    void cargarAsignacionesEntrenadoresSemana();
+    // La firma refresca las asignaciones cuando cambian dentro de la sesión abierta.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pantalla, semanaAgendaActiva, firmaGruposAgenda]);
 
@@ -338,21 +332,6 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agendaSesionActivaId, firmaCandidatosReubicacion]);
 
-  const cargasEntrenadoresSemana = semanaAgendaActiva
-    ? buildWeeklyTrainerLoads({
-        weekStart: semanaAgendaActiva,
-        trainers: (entrenadores || []) as EntrenadorResumen[],
-        assignments: agendaTrainerAssignmentRows,
-      })
-    : [];
-  const sesionesSemanaResumenEntrenadores = diasSemanaAgenda.flatMap((dia: any) =>
-    sesionesDelDiaAgenda(dia.fecha)
-  );
-  const gruposPendientesEntrenadorSemana = pendingTrainerGroupsInSessions(
-    sesionesSemanaResumenEntrenadores,
-    agendaTrainerAssignmentRows
-  );
-
   async function moverAlumnoAlternativaBaby(
     alumno: AgendaRecomendacionSesionApp,
     opcion: BabyRelocationOption
@@ -389,7 +368,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
         cargarEntrenadores(),
       ]);
       await generarRecomendacionAgendaSesion(agendaSesionActivaId);
-      await cargarResumenEntrenadoresSemana();
+      await cargarAsignacionesEntrenadoresSemana();
     } catch (errorMovimiento) {
       setError(
         errorMovimiento instanceof Error
@@ -513,7 +492,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                   >
                     <button
                       type="button"
-                      onClick={() => { cargarAgendaOperativaDirecta(); cargarIntensivos(); cargarPlanning(); cargarListados(); cargarEntrenadores(); void cargarResumenEntrenadoresSemana(); }}
+                      onClick={() => { cargarAgendaOperativaDirecta(); cargarIntensivos(); cargarPlanning(); cargarListados(); cargarEntrenadores(); void cargarAsignacionesEntrenadoresSemana(); }}
                       style={{
                         ...botonSecundario,
                         minHeight: 36,
@@ -796,12 +775,6 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                       })}
                     </div>
 
-                    <WeeklyTrainerSummary
-                      loads={cargasEntrenadoresSemana}
-                      pendingGroups={gruposPendientesEntrenadorSemana}
-                      loading={cargandoResumenEntrenadores}
-                    />
-
                     <article
                       id="agenda-dia-seleccionado"
                       style={{
@@ -944,6 +917,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                   sesion,
                                   agendaTrainerAssignmentRows
                                 )}
+                                publishedGroups={Number(sesion.publicados || 0)}
                               />
                               <div style={agendaAccionesSesion}>
                                 <button

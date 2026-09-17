@@ -1,6 +1,4 @@
-import type { EntrenadorResumen } from '../../core/trainers/trainerTypes';
 import type { SesionAgendaOperativa } from './agendaTypes';
-import { addIsoDays } from './agendaRelocation';
 
 export type AgendaTrainerAssignmentRow = {
   entrenador_id: string;
@@ -19,12 +17,6 @@ export type SessionTrainerCoverage = {
   trainerNames: string[];
 };
 
-export type WeeklyTrainerLoad = {
-  trainerId: string;
-  trainerName: string;
-  turns: number;
-  doubles: string[];
-};
 
 function normalize(value: unknown) {
   return String(value || '')
@@ -43,13 +35,6 @@ function canonicalModality(value: unknown) {
   return normalized;
 }
 
-function shortDay(dateIso: string) {
-  const value = new Date(`${dateIso}T12:00:00`).toLocaleDateString('es-ES', {
-    weekday: 'short',
-  });
-  const clean = value.replace('.', '');
-  return clean.charAt(0).toUpperCase() + clean.slice(1);
-}
 
 function sameSession(
   row: Pick<AgendaTrainerAssignmentRow, 'fecha' | 'hora_inicio' | 'hora_fin' | 'modalidad'>,
@@ -80,55 +65,4 @@ export function sessionTrainerCoverage(
     pendingGroups: Math.max(0, totalGroups - assignedGroupIds.size),
     trainerNames,
   };
-}
-
-export function buildWeeklyTrainerLoads(input: {
-  weekStart: string;
-  trainers: EntrenadorResumen[];
-  assignments: AgendaTrainerAssignmentRow[];
-}): WeeklyTrainerLoad[] {
-  const weekEnd = addIsoDays(input.weekStart, 6);
-  const activeTrainers = input.trainers
-    .filter((trainer) => trainer.activo !== false)
-    .slice()
-    .sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo, 'es'));
-
-  return activeTrainers.map((trainer) => {
-    const rows = input.assignments.filter(
-      (row) =>
-        row.entrenador_id === trainer.entrenador_id &&
-        row.fecha >= input.weekStart &&
-        row.fecha <= weekEnd
-    );
-    const slots = new Map<string, AgendaTrainerAssignmentRow>();
-    rows.forEach((row) => {
-      slots.set(`${row.fecha}|${row.hora_inicio}|${row.hora_fin}`, row);
-    });
-
-    const byDate = new Map<string, number>();
-    slots.forEach((row) => {
-      byDate.set(row.fecha, (byDate.get(row.fecha) || 0) + 1);
-    });
-    const doubles = Array.from(byDate.entries())
-      .filter(([, count]) => count >= 2)
-      .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
-      .map(([date, count]) => `${shortDay(date)} x${count}`);
-
-    return {
-      trainerId: trainer.entrenador_id,
-      trainerName: trainer.nombre_completo,
-      turns: slots.size,
-      doubles,
-    };
-  });
-}
-
-export function pendingTrainerGroupsInSessions(
-  sessions: SesionAgendaOperativa[],
-  assignments: AgendaTrainerAssignmentRow[]
-) {
-  return sessions.reduce(
-    (total, session) => total + sessionTrainerCoverage(session, assignments).pendingGroups,
-    0
-  );
 }

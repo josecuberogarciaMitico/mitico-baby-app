@@ -116,13 +116,10 @@ import {
   type BabyRelocationOption,
 } from '../../../src/features/agenda/agendaRelocation';
 import {
-  buildWeeklyTrainerLoads,
-  pendingTrainerGroupsInSessions,
   sessionTrainerCoverage,
   type AgendaTrainerAssignmentRow,
 } from '../../../src/features/agenda/agendaTrainerSummary';
 import type { AgendaGrupoSesionApp, AgendaRecomendacionSesionApp, SesionAgendaOperativa } from '../../../src/features/agenda/agendaTypes';
-import type { EntrenadorResumen } from '../../../src/core/trainers/trainerTypes';
 
 test('reubicación Baby prioriza siempre el mismo día antes que otro día', () => {
   const sameDay = {
@@ -199,22 +196,6 @@ test('ratio Baby impide recomendar un quinto niño en pequeña con un entrenador
   );
 });
 
-test('resumen semanal cuenta turnos distintos, dobles y entrenadores con cero', () => {
-  const trainers = [
-    { entrenador_id: 'e1', nombre_completo: 'CARLOS', activo: true },
-    { entrenador_id: 'e2', nombre_completo: 'GUILLE', activo: true },
-  ] as EntrenadorResumen[];
-  const assignments = [
-    { entrenador_id: 'e1', entrenador: 'CARLOS', grupo_id: 'g1', fecha: '2026-09-19', hora_inicio: '09:45', hora_fin: '11:45', modalidad: 'BABY' },
-    { entrenador_id: 'e1', entrenador: 'CARLOS', grupo_id: 'g2', fecha: '2026-09-19', hora_inicio: '09:45', hora_fin: '11:45', modalidad: 'BABY' },
-    { entrenador_id: 'e1', entrenador: 'CARLOS', grupo_id: 'g3', fecha: '2026-09-19', hora_inicio: '12:00', hora_fin: '14:00', modalidad: 'BABY' },
-  ] as AgendaTrainerAssignmentRow[];
-  const loads = buildWeeklyTrainerLoads({ weekStart: '2026-09-14', trainers, assignments });
-  equal(loads.find((item) => item.trainerId === 'e1')?.turns, 2, 'dos turnos, no tres grupos');
-  equal(loads.find((item) => item.trainerId === 'e1')?.doubles.length, 1, 'doble sábado');
-  equal(loads.find((item) => item.trainerId === 'e2')?.turns, 0, 'entrenador sin turno visible');
-});
-
 test('cobertura por tarjeta muestra pendientes y nombres sin abrir sesión', () => {
   const session = {
     id: 'operativa-s1', fecha: '2026-09-19', hora_inicio: '09:45', hora_fin: '11:45', modalidad: 'BABY',
@@ -228,7 +209,6 @@ test('cobertura por tarjeta muestra pendientes y nombres sin abrir sesión', () 
   equal(coverage.assignedGroups, 1, 'un grupo cubierto');
   equal(coverage.pendingGroups, 1, 'un pendiente');
   equal(coverage.trainerNames.join(','), 'CARLOS', 'nombre visible');
-  equal(pendingTrainerGroupsInSessions([session], rows), 1, 'pendiente semanal');
 });
 
 
