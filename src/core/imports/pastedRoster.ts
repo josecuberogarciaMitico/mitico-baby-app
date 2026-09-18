@@ -87,8 +87,8 @@ function fallbackPlainCandidates(value: string): Array<{ value: string; guestHin
     .replace(MARKDOWN_IMAGE, '\n')
     .replace(/\*\*/g, '')
     .replace(METADATA_ANYWHERE, (match) => `\n${match}`)
-    .replace(/(\d{2}\/\d{2}\/\d{4})(?=[A-ZÁÉÍÓÚÜÑ])/g, '$1\n');
-
+      .replace(/(\d{2})\/(\d{2})\/(\d{4})(?=[A-Za-zÁÉÍÓÚÑáéíóúñ])/g, '$1\n');
+      
   return prepared
     .split('\n')
     .map((line) => line.trim())
