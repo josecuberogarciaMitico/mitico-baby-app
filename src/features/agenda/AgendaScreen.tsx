@@ -5,6 +5,7 @@ import type { AgendaRecomendacionSesionApp, RecomendacionFueraPlazoAgendaApp } f
 import { addIsoDays, type BabyRelocationOption, type BabyRelocationStudent } from './agendaRelocation';
 import { loadBabyRelocationOptions, moveBabyStudentBetweenSessions } from '../../services/agenda/agendaRelocationService';
 import { SessionTrainerCoverageLine } from './AgendaTrainerSummary';
+import { pendingAgendaStudents } from './agendaSessions';
 import {
   sessionTrainerCoverage,
   type AgendaTrainerAssignmentRow,
@@ -383,30 +384,15 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     }
   }
 
-  // Alumnos que están en el listado de la sesión (agendaAlumnosSesion) pero
-  // cuyo nombre no aparece en ningún grupo ya creado (alumnos_lista de
-  // agendaGruposSesion). Solo tiene sentido una vez hay algún grupo creado:
-  // si todavía no se ha creado ninguno, "pendiente de colocar" no aporta
-  // nada nuevo sobre el paso "Crear grupos".
-  const alumnosPendientesColocar: any[] =
-    agendaGruposSesion.length === 0
-      ? []
-      : (() => {
-          const colocados = new Set<string>();
-          (agendaGruposSesion as any[]).forEach((grupo) => {
-            String(grupo.alumnos_lista || '')
-              .split(' || ')
-              .forEach((nombreListado: string) => {
-                const normalizado =
-                  normalizarNombreFueraPlazoAgenda(nombreListado);
-                if (normalizado) colocados.add(normalizado);
-              });
-          });
-          return (agendaAlumnosSesion as any[]).filter(
-            (alumno) =>
-              !colocados.has(normalizarNombreFueraPlazoAgenda(alumno.alumno))
-          );
-        })();
+  // Alumnos que están en el listado de la sesión pero no aparecen en ningún
+  // grupo ya creado. La comparación usa el MISMO normalizador de alumnos que
+  // el resto de Agenda, para ignorar metadatos persistidos en alumnos_lista
+  // (nivel, pista, etiquetas TEST, etc.) y no generar falsos pendientes.
+  const alumnosPendientesColocar: any[] = pendingAgendaStudents(
+    agendaAlumnosSesion as any[],
+    agendaGruposSesion as any[],
+    normalizarNombreAlumnoAgendaApp
+  );
 
   // Reutiliza el mismo recomendador de "alumno fuera de plazo" (grupos ya
   // creados de este turno y de otros turnos de la semana) para un alumno que
@@ -925,6 +911,12 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                           {sesionesDia.map((sesion) => (
                             <article
                               key={sesion.id}
+                              data-agenda-session-date={sesion.fecha}
+                              data-agenda-session-time={`${String(
+                                sesion.hora_inicio || ''
+                              ).slice(0, 5)} - ${String(
+                                sesion.hora_fin || ''
+                              ).slice(0, 5)}`}
                               style={{
                                 ...agendaSesionCardModalidad(sesion.modalidad),
                                 borderRadius: 16,

@@ -2,6 +2,29 @@ import type { GrupoPlanning } from '../../core/sessions/operationalTypes';
 import type { GrupoIntensivoDiaApp, IntensivoAlumnoApp, IntensivoApp, IntensivoDiaApp } from '../intensivos/intensiveTypes';
 import type { AgendaGrupoSesionApp, AgendaSesionDirectaApp, ListadoApp, SesionAgendaOperativa } from './agendaTypes';
 
+export function pendingAgendaStudents<T extends { alumno?: string | null }>(
+  students: T[],
+  groups: Array<{ alumnos_lista?: string | null }>,
+  normalizeName: (value: string | null | undefined) => string
+): T[] {
+  if (groups.length === 0) return [];
+
+  const placed = new Set<string>();
+  groups.forEach((group) => {
+    String(group.alumnos_lista || '')
+      .split(' || ')
+      .forEach((rawName) => {
+        const normalized = normalizeName(rawName);
+        if (normalized) placed.add(normalized);
+      });
+  });
+
+  return students.filter((student) => {
+    const normalized = normalizeName(student.alumno);
+    return !normalized || !placed.has(normalized);
+  });
+}
+
 export function buildAgendaOperationalSessions(input: {
   directSessions: AgendaSesionDirectaApp[];
   directGroups: AgendaGrupoSesionApp[];

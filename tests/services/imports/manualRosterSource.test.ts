@@ -113,3 +113,18 @@ void testAsync('Baby manual solo sustituye el lector cuando el volcado está arm
   await call('boxes');
   equal(externalCalls, 2, 'tras consumir vuelve al lector automático');
 });
+
+
+test('metadata explícita de tarjeta resuelve fecha y horario aunque el textContent venga concatenado', () => {
+  const date = parseManualBabyDateFromText(
+    '2026-09-18',
+    'Viernes 18/09/2026BABY · Madrid SnowZone18:00 - 20:00 · Publicado'
+  );
+  const times = parseManualBabyTimesFromText(
+    '18:00 - 20:00',
+    'BABY · Madrid SnowZone18:00 - 20:00 · Publicado'
+  );
+  equal(date, '2026-09-18', 'fecha desde data-agenda-session-date');
+  equal(times.start, '18:00', 'inicio desde data-agenda-session-time');
+  equal(times.end, '20:00', 'fin desde data-agenda-session-time');
+});
