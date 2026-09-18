@@ -10854,14 +10854,14 @@ Gracias!`;
     window.open(enlace, '_blank', 'noopener,noreferrer');
   }
 
-  function mensajeWhatsAppPapisSesionActual() {
-    const sesion = agendaSesionesDirectas.find(
-      (item) => item.sesion_id === agendaSesionActivaId
-    );
-
-    if (!sesion) return '';
-
-    const grupos = agendaGruposSesion.filter((grupo) => grupo.grupo_id);
+  // Extraído de mensajeWhatsAppPapisSesionActual para poder generar el mismo
+  // mensaje también para una sesión que NO está abierta (tarjeta del día),
+  // sin depender de agendaSesionActivaId/agendaGruposSesion.
+  function construirMensajeWhatsAppPapisSesion(
+    sesion: AgendaSesionDirectaApp,
+    gruposSesion: AgendaGrupoSesionApp[]
+  ) {
+    const grupos = gruposSesion.filter((grupo) => grupo.grupo_id);
     if (grupos.length === 0) return '';
 
     const diaTexto = capitalizarPrimera(
@@ -10914,6 +10914,16 @@ Gracias!`;
     return mensaje;
   }
 
+  function mensajeWhatsAppPapisSesionActual() {
+    const sesion = agendaSesionesDirectas.find(
+      (item) => item.sesion_id === agendaSesionActivaId
+    );
+
+    if (!sesion) return '';
+
+    return construirMensajeWhatsAppPapisSesion(sesion, agendaGruposSesion);
+  }
+
   function copiarMensajeWhatsAppPapisSesionActual() {
     const mensaje = mensajeWhatsAppPapisSesionActual();
     if (!mensaje) {
@@ -10944,6 +10954,66 @@ Gracias!`;
     }
 
     abrirPrevisualizacionWhatsapp(titulo, mensaje);
+  }
+
+  // Igual que copiarMensajeWhatsAppPapisSesionActual, pero para una sesión
+  // que todavía no está abierta (tarjeta del día en el listado de la
+  // agenda). Reutiliza los grupos ya cargados si esa sesión ya es la activa;
+  // si no, los consulta puntualmente (misma vista que cargarDetalleSesionAgenda).
+  async function enviarWhatsAppPapisSesionTarjeta(
+    sesion: SesionAgendaOperativa
+  ) {
+    const sesionDirecta = sesion.agendaDirecta;
+    if (!sesionDirecta) {
+      setError('Este WhatsApp solo está disponible para sesiones operativas.');
+      return;
+    }
+
+    setError('');
+
+    try {
+      const grupos =
+        agendaSesionActivaId === sesionDirecta.sesion_id &&
+        agendaGruposSesion.length > 0
+          ? agendaGruposSesion
+          : await consultarSupabase<AgendaGrupoSesionApp>(
+              'v_grupos_sesion_operativa_app',
+              `select=*&sesion_id=${encodeURIComponent(
+                `eq.${sesionDirecta.sesion_id}`
+              )}&order=nombre_grupo.asc`
+            );
+
+      const mensaje = construirMensajeWhatsAppPapisSesion(
+        sesionDirecta,
+        grupos
+      );
+      if (!mensaje) {
+        setError('Esta sesión todavía no tiene grupos creados.');
+        return;
+      }
+
+      const titulo = `WhatsApp papis · ${
+        sesionDirecta.modalidad
+      } ${sesionDirecta.hora_inicio.slice(
+        0,
+        5
+      )}-${sesionDirecta.hora_fin.slice(0, 5)}`;
+      const contexto = contextoWhatsappSesionApp(sesionDirecta);
+
+      abrirPrevisualizacionWhatsapp(titulo, mensaje, undefined, {
+        clave: contexto.clave,
+        modalidad: contexto.modalidad,
+        referencia: contexto.referencia,
+        nombre: contexto.nombre,
+        enlace: enlaceWhatsappSesionApp(sesionDirecta),
+      });
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo preparar el WhatsApp de esta sesión.'
+      );
+    }
   }
 
   function generarTrabajoDiarioAutomaticoGrupo(
@@ -13360,12 +13430,20 @@ async function abrirGestionOperativaIntensivoDia(
     };
   }
 
-  async function analizarEncajeAlumnoFueraPlazoAgenda() {
+  async function analizarEncajeAlumnoFueraPlazoAgenda(overrides?: {
+    nombre?: string;
+    nivel?: string;
+    alumnoId?: string;
+  }) {
     if (!agendaSesionActivaId) {
       setError('Abre primero la sesión donde se ha apuntado el niño.');
       return;
     }
-    const nombre = alumnoFueraPlazoNombre.trim();
+    // overrides permite invocar el análisis en el mismo evento en el que se
+    // rellenan alumnoFueraPlazoNombre/Nivel/AlumnoId (p.ej. desde "Pendientes
+    // de colocar"), sin depender de que el estado de React ya se haya
+    // actualizado cuando esta función lee sus valores.
+    const nombre = (overrides?.nombre ?? alumnoFueraPlazoNombre).trim();
     if (!nombre) {
       setError('Escribe el nombre y apellidos del niño.');
       return;
@@ -13391,8 +13469,9 @@ async function abrirGestionOperativaIntensivoDia(
       const nivelFicha = fichaExistente
         ? buildMasterStudentProfile(fichaExistente).level.level
         : null;
+      const nivelSolicitado = overrides?.nivel ?? alumnoFueraPlazoNivel;
       const nivelAnalizado = parseTechnicalLevel(
-        alumnoFueraPlazoNivel || nivelFicha
+        nivelSolicitado || nivelFicha
       );
       if (nivelAnalizado.status !== 'VALID') {
         throw new Error(
@@ -13407,9 +13486,9 @@ async function abrirGestionOperativaIntensivoDia(
           setAlumnoFueraPlazoNombre(fichaExistente.alumno);
         }
       } else {
-        setAlumnoFueraPlazoAlumnoId('');
+        setAlumnoFueraPlazoAlumnoId(overrides?.alumnoId ?? '');
       }
-      if (!alumnoFueraPlazoNivel) setAlumnoFueraPlazoNivel(nivelDetectado);
+      if (!nivelSolicitado) setAlumnoFueraPlazoNivel(nivelDetectado);
 
       // Refrescamos la agenda completa al analizar. Así las alternativas de la
       // semana no dependen de una copia antigua cargada al abrir la pantalla.
@@ -21139,6 +21218,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             entrenadoresDisponiblesCambioGrupoAgenda,
             entrenadoresDisponiblesSesionActiva,
             entrenadoresExcepcionalesCambioGrupoAgenda,
+            enviarWhatsAppPapisSesionTarjeta,
             errorIncorporacionFueraPlazo,
             esCoordinadorApp,
             esGrupoParticularAgenda,
