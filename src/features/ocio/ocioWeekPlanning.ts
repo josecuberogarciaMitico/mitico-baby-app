@@ -130,7 +130,7 @@ export function addEmptyOcioWeeklyGroup(
 export function validateOcioWeeklyGroups(groups: OcioWeeklyGroup[]): void {
   const nonEmpty = groups.filter((group) => group.studentIds.length > 0);
   if (nonEmpty.length === 0) {
-    throw new Error('No hay alumnos de AimHarder colocados para volcar.');
+    throw new Error('No hay alumnos del listado colocados para volcar.');
   }
 
   const all = nonEmpty.flatMap((group) => group.studentIds);

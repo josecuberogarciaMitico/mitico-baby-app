@@ -85,3 +85,12 @@ test('normaliza el listado sin convertir metadatos en alumnos', () => {
   );
   equal(names.join(','), 'ANA TEST,BEA TEST', 'nombres');
 });
+
+test('acepta el bloque copiado con imágenes e Invitado sin meter metadatos', () => {
+  const names = extractRosterNamesFromListText(
+    '**ANA TEST [Invitado]**\nReserva el **01/01/2026** a las **10:30**\n' +
+      '[image](https://aimharder.com/Images/checkGreen.svg)**BEA TEST**\n' +
+      'Última reserva: **31/12/2025**'
+  );
+  equal(names.join(','), 'ANA TEST,BEA TEST', 'nombres');
+});

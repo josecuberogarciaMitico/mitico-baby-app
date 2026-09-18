@@ -21,11 +21,13 @@
     "src/features/billing/**/*.ts",
     "src/services/aimharder/aimHarderContract.ts",
     "src/services/aimharder/aimHarderOperations.ts",
+    "src/services/imports/manualRosterSource.ts",
     "src/services/auth/authContract.ts",
     "src/services/auth/authTypes.ts",
     "tests/core/**/*.ts",
     "tests/features/**/*.ts",
     "tests/services/aimharder/**/*.ts",
+    "tests/services/imports/**/*.ts",
     "tests/services/auth/**/*.ts"
   ]
 }

@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { OcioAlumnoApp, OcioGrupoApp, OcioPrepararResultadoApp } from './ocioTypes';
+import { applyOcioRelocationsToStableGroup } from './ocioRelocation';
 import {
   addEmptyOcioWeeklyGroup,
   buildOcioWeeklyGroups,
@@ -19,9 +20,10 @@ export function OcioWeekPreparationPanel({ ctx }: Props) {
     agendaCabeceraLinea,
     agendaVacioMini,
     alumnoVieneOcioSemana,
-    alumnosGrupoOcioEstable,
+    abrirGrupoOcioEnTrabajoSemanal,
     botonPrincipal,
     botonSecundario,
+    cambiosOcioSemana = [],
     deshacerPreparacionOcio,
     fechaGrupoOcioSemana,
     formatearFecha,
@@ -36,7 +38,6 @@ export function OcioWeekPreparationPanel({ ctx }: Props) {
     semanaAgendaActiva,
     semanaActualAgenda,
     tarjeta,
-    abrirGrupoOcioEnTrabajoSemanal,
   } = ctx;
 
   const stableGroups = useMemo(
@@ -56,9 +57,23 @@ export function OcioWeekPreparationPanel({ ctx }: Props) {
           start: horaCorta(group.hora_inicio),
           end: horaCorta(group.hora_fin),
           piste: group.pista,
-          students: alumnosGrupoOcioEstable(group.grupo_id) as OcioAlumnoApp[],
+          // La composición de esta semana parte de los grupos estables, pero
+          // aplica antes las entradas/salidas de los cambios puntuales. No se
+          // modifica el grupo estable del alumno.
+          students: applyOcioRelocationsToStableGroup(
+            group.grupo_id,
+            ocioAlumnos as OcioAlumnoApp[],
+            cambiosOcioSemana
+          ) as OcioAlumnoApp[],
         })),
-    [ocioGrupos, ocioTurnoVista, semanaAgendaActiva, semanaActualAgenda]
+    [
+      ocioGrupos,
+      ocioAlumnos,
+      cambiosOcioSemana,
+      ocioTurnoVista,
+      semanaAgendaActiva,
+      semanaActualAgenda,
+    ]
   );
 
   const attendanceKey = stableGroups
@@ -78,8 +93,8 @@ export function OcioWeekPreparationPanel({ ctx }: Props) {
   }, [initialGroups]);
 
   const weekStart = semanaAgendaActiva || semanaActualAgenda || '';
-  const aimHarderReady = ocioAimHarderSemana?.semanaInicio === weekStart;
-  const exactAimHarderSlot = stableGroups.every((group) =>
+  const rosterReady = ocioAimHarderSemana?.semanaInicio === weekStart;
+  const exactRosterSlot = stableGroups.every((group) =>
     ocioAimHarderSemana?.turnos?.some(
       (turn: any) =>
         turn.fecha === group.date &&
@@ -87,6 +102,8 @@ export function OcioWeekPreparationPanel({ ctx }: Props) {
         horaCorta(turn.horaFin) === group.end
     )
   );
+  const sourceLabel =
+    ocioAimHarderSemana?.origen === 'MANUAL' ? 'listado pegado' : 'AimHarder';
   const studentsById = new Map(
     (ocioAlumnos as OcioAlumnoApp[]).map((student) => [student.alumno_id, student])
   );
@@ -121,12 +138,12 @@ export function OcioWeekPreparationPanel({ ctx }: Props) {
     }
   }
 
-  if (!aimHarderReady || !exactAimHarderSlot) {
+  if (!rosterReady || !exactRosterSlot) {
     return (
       <article style={agendaBloqueBlanco}>
-        <strong>Primero actualiza AimHarder para este día y horario.</strong>
+        <strong>Primero consulta AimHarder o pega el listado de este día y horario.</strong>
         <p style={{ margin: '6px 0 0', color: '#64748b' }}>
-          Preparar semana solo cargará las reservas reales de la semana seleccionada.
+          Preparar semana solo cargará los alumnos reales de la semana seleccionada.
         </p>
       </article>
     );
@@ -139,7 +156,7 @@ export function OcioWeekPreparationPanel({ ctx }: Props) {
           <div>
             <strong style={{ fontSize: 17 }}>Composición temporal · {ocioTurnoVista}</strong>
             <p style={{ margin: '5px 0 0', color: '#64748b' }}>
-              {comingCount} alumnos de AimHarder. Moverlos aquí no cambia sus grupos estables.
+              {comingCount} alumnos de {sourceLabel}. Moverlos aquí no cambia sus grupos estables.
             </p>
           </div>
           <button type="button" onClick={addTemporaryGroup} style={botonSecundario}>
