@@ -8,7 +8,7 @@ import {
   seasonStartForAgenda,
   turnosTrabajoDiaAgenda,
 } from '../../../src/features/agenda/agendaCalendar';
-import { buildAgendaOperationalSessions } from '../../../src/features/agenda/agendaSessions';
+import { buildAgendaOperationalSessions, pendingAgendaStudents } from '../../../src/features/agenda/agendaSessions';
 import type { AgendaSesionDirectaApp, ListadoApp } from '../../../src/features/agenda/agendaTypes';
 import type { GrupoPlanning } from '../../../src/core/sessions/operationalTypes';
 import type { IntensivoAlumnoApp, IntensivoApp, IntensivoDiaApp } from '../../../src/features/intensivos/intensiveTypes';
@@ -230,4 +230,62 @@ test('cobertura reconoce INTENSIVO e Intensivos como la misma modalidad', () => 
     { entrenador_id: 'e1', entrenador: 'CARLOS', grupo_id: 'g1', fecha: '2026-09-19', hora_inicio: '15:00', hora_fin: '17:00', modalidad: 'Intensivos' },
   ] as AgendaTrainerAssignmentRow[];
   equal(sessionTrainerCoverage(session, rows).assignedGroups, 1, 'intensivo cubierto');
+});
+
+
+test('pendientes de colocar no confunde el nivel guardado con parte del nombre', () => {
+  const normalize = (value: string | null | undefined) =>
+    String(value || '')
+      .replace(/\s*·\s*(?:INICIACI[ÓO]N|DEBUT|A\+?|B\+{0,2}|C\+?|D\+?)(?:\s*·.*)?$/i, '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+
+  const students = [
+    { alumno: 'PENELOPE MARIA DE BEDOYA CORROCHANO' },
+    { alumno: 'PABLO SINDE ANDRES' },
+    { alumno: 'MAURO PEINADO GUTIERREZ' },
+    { alumno: 'ÍÑIGO ARAMENDI CASARES' },
+  ];
+  const groups = [
+    {
+      alumnos_lista:
+        'MAURO PEINADO GUTIERREZ · INICIACION || PABLO SINDE ANDRES · INICIACION || PENELOPE MARIA DE BEDOYA CORROCHANO · INICIACION || ÍÑIGO ARAMENDI CASARES · INICIACION',
+    },
+  ];
+
+  equal(
+    pendingAgendaStudents(students, groups, normalize).length,
+    0,
+    'los cuatro alumnos ya colocados no vuelven a salir como pendientes'
+  );
+});
+
+test('pendientes de colocar conserva solo el alumno realmente fuera de grupos', () => {
+  const normalize = (value: string | null | undefined) =>
+    String(value || '')
+      .split('·')[0]
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .trim();
+
+  const students = [
+    { alumno: 'PABLO SINDE ANDRES' },
+    { alumno: 'MAURO PEINADO GUTIERREZ' },
+    { alumno: 'JOAQUIN GARCIA' },
+  ];
+  const groups = [
+    {
+      alumnos_lista:
+        'PABLO SINDE ANDRES · INICIACION || MAURO PEINADO GUTIERREZ · INICIACION',
+    },
+  ];
+
+  const pending = pendingAgendaStudents(students, groups, normalize);
+  equal(pending.length, 1, 'solo un pendiente real');
+  equal(pending[0].alumno, 'JOAQUIN GARCIA', 'alumno pendiente correcto');
 });
