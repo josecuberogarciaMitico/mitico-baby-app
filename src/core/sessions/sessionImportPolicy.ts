@@ -1,5 +1,5 @@
 import { normalizeRosterName } from './rosterSync';
-import { parseTechnicalLevel } from '../levels/levelContract';
+import { parsePastedRoster } from '../imports/pastedRoster';
 
 export type ExistingSessionImportState = {
   sessionId: string;
@@ -33,31 +33,7 @@ function uniqueNormalizedNames(names: string[]): {
 }
 
 export function extractRosterNamesFromListText(value: string): string[] {
-  const prepared = String(value || '')
-    .replace(/\\r\\n|\\r/g, '\n')
-    .replace(/\r\n?|\n/g, '\n')
-    .replace(/(\d{2}\/\d{2}\/\d{4})([A-ZÁÉÍÓÚÜÑ])/g, '$1\n$2')
-    .replace(
-      /(Reserva el|Última reserva:|Ultima reserva:|Termina tarifa el)/gi,
-      '\n$1'
-    );
-  const ignored = /^(RESERVA |ULTIMA RESERVA|ÚLTIMA RESERVA|TERMINA TARIFA|TARIFA|INSCRIPCION|INSCRIPCIÓN|PAGO|BONO|OBSERVACION|OBSERVACIÓN|FECHA|ULTIMO|ÚLTIMO)/;
-
-  return prepared
-    .split('\n')
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => {
-      const normalized = normalizeRosterName(line);
-      if (!normalized || ignored.test(normalized) || /\d/.test(normalized)) return '';
-      const parts = normalized.split(/\s+/);
-      const last = parts[parts.length - 1];
-      if (parts.length > 1 && parseTechnicalLevel(last).status === 'VALID') {
-        parts.pop();
-      }
-      return parts.join(' ').trim();
-    })
-    .filter((name) => name.length >= 5 && name.split(/\s+/).length >= 2);
+  return parsePastedRoster(value).names;
 }
 
 export function decideSessionRosterImport(
