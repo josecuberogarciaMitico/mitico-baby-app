@@ -18,6 +18,8 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
   const [agendaPestanaProceso, setAgendaPestanaProceso] = useState<
     'crear' | 'organizar' | 'publicar'
   >('crear');
+  const [agendaMostrarPendientesColocar, setAgendaMostrarPendientesColocar] =
+    useState(false);
   const {
     abrirAltaTestDesdeAgenda,
     abrirFormularioAgendaDia,
@@ -105,6 +107,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     entrenadoresDisponiblesCambioGrupoAgenda,
     entrenadoresDisponiblesSesionActiva,
     entrenadoresExcepcionalesCambioGrupoAgenda,
+    enviarWhatsAppPapisSesionTarjeta,
     errorIncorporacionFueraPlazo,
     esCoordinadorApp,
     esGrupoParticularAgenda,
@@ -378,6 +381,55 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     } finally {
       setMoviendoAlumnoTurnoId('');
     }
+  }
+
+  // Alumnos que están en el listado de la sesión (agendaAlumnosSesion) pero
+  // cuyo nombre no aparece en ningún grupo ya creado (alumnos_lista de
+  // agendaGruposSesion). Solo tiene sentido una vez hay algún grupo creado:
+  // si todavía no se ha creado ninguno, "pendiente de colocar" no aporta
+  // nada nuevo sobre el paso "Crear grupos".
+  const alumnosPendientesColocar: any[] =
+    agendaGruposSesion.length === 0
+      ? []
+      : (() => {
+          const colocados = new Set<string>();
+          (agendaGruposSesion as any[]).forEach((grupo) => {
+            String(grupo.alumnos_lista || '')
+              .split(' || ')
+              .forEach((nombreListado: string) => {
+                const normalizado =
+                  normalizarNombreFueraPlazoAgenda(nombreListado);
+                if (normalizado) colocados.add(normalizado);
+              });
+          });
+          return (agendaAlumnosSesion as any[]).filter(
+            (alumno) =>
+              !colocados.has(normalizarNombreFueraPlazoAgenda(alumno.alumno))
+          );
+        })();
+
+  // Reutiliza el mismo recomendador de "alumno fuera de plazo" (grupos ya
+  // creados de este turno y de otros turnos de la semana) para un alumno que
+  // YA está en el listado de esta sesión pero no está en ningún grupo.
+  function abrirBusquedaGrupoParaAlumnoPendiente(alumno: any) {
+    setAgendaPestanaProceso('crear');
+    setMostrarAlumnoFueraPlazo(true);
+    setAlumnoFueraPlazoNombre(alumno.alumno);
+    setAlumnoFueraPlazoNivel(alumno.nivel_usado || '');
+    setAlumnoFueraPlazoAlumnoId(alumno.alumno_id);
+    setRecomendacionesFueraPlazo([]);
+
+    requestAnimationFrame(() => {
+      document
+        .getElementById('agenda-alumno-fuera-plazo')
+        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    void analizarEncajeAlumnoFueraPlazoAgenda({
+      nombre: alumno.alumno,
+      nivel: alumno.nivel_usado || '',
+      alumnoId: alumno.alumno_id,
+    });
   }
 
   return (
@@ -920,6 +972,20 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                 publishedGroups={Number(sesion.publicados || 0)}
                               />
                               <div style={agendaAccionesSesion}>
+                                {sesion.origen === 'operativa' &&
+                                  sesion.totalGrupos > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        void enviarWhatsAppPapisSesionTarjeta(
+                                          sesion
+                                        )
+                                      }
+                                      style={botonSecundario}
+                                    >
+                                      WhatsApp papis
+                                    </button>
+                                  )}
                                 <button
                                   onClick={() =>
                                     abrirSesionAgenda(
@@ -1264,6 +1330,45 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                       </strong>
                       <span>conocidos</span>
                     </button>
+                    {agendaGruposSesion.length > 0 && (
+                      <button
+                        type="button"
+                        style={{
+                          ...miniMetrica,
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          border: alumnosPendientesColocar.length
+                            ? '1px solid #fdba74'
+                            : miniMetrica.border,
+                          background: alumnosPendientesColocar.length
+                            ? '#fff7ed'
+                            : miniMetrica.background,
+                        }}
+                        onClick={() => {
+                          setAgendaPestanaProceso('crear');
+                          setAgendaMostrarPendientesColocar(true);
+                          requestAnimationFrame(() => {
+                            document
+                              .getElementById('agenda-pendientes-colocar')
+                              ?.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'start',
+                              });
+                          });
+                        }}
+                      >
+                        <strong
+                          style={
+                            alumnosPendientesColocar.length
+                              ? { color: '#c2410c' }
+                              : undefined
+                          }
+                        >
+                          {alumnosPendientesColocar.length}
+                        </strong>
+                        <span>pendientes de colocar</span>
+                      </button>
+                    )}
                   </div>
                     );
                   })()}
@@ -1408,6 +1513,106 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                       + Alumno fuera de plazo
                     </button>
                   </div>
+
+                  {agendaGruposSesion.length > 0 &&
+                    alumnosPendientesColocar.length > 0 && (
+                      <section
+                        id="agenda-pendientes-colocar"
+                        style={{
+                          ...avisoNeutral,
+                          marginTop: 10,
+                          border: '1px solid #fdba74',
+                          background: '#fff7ed',
+                          scrollMarginTop: 16,
+                        }}
+                      >
+                        <div style={agendaCabeceraLinea}>
+                          <div>
+                            <strong>
+                              Pendientes de colocar ·{' '}
+                              {alumnosPendientesColocar.length}
+                            </strong>
+                            <p style={{ margin: '4px 0 0', color: '#9a3412' }}>
+                              Están en el listado de esta sesión pero todavía
+                              no están en ningún grupo creado.
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            style={botonMini}
+                            onClick={() =>
+                              setAgendaMostrarPendientesColocar(
+                                (actual: boolean) => !actual
+                              )
+                            }
+                          >
+                            {agendaMostrarPendientesColocar
+                              ? 'Ocultar'
+                              : 'Ver'}
+                          </button>
+                        </div>
+
+                        {agendaMostrarPendientesColocar && (
+                          <div
+                            style={{ display: 'grid', gap: 8, marginTop: 12 }}
+                          >
+                            {alumnosPendientesColocar.map((alumno) => (
+                              <div
+                                key={alumno.sesion_alumno_id}
+                                style={agendaAlumnoLinea}
+                              >
+                                <div>
+                                  <strong>{alumno.alumno}</strong>
+                                  <p style={{ margin: '4px 0 0' }}>
+                                    {alumno.estado_en_listado} · Nivel:{' '}
+                                    <strong>
+                                      {alumno.nivel_usado || 'SIN NIVEL'}
+                                    </strong>
+                                  </p>
+                                </div>
+                                <div
+                                  style={{
+                                    display: 'flex',
+                                    gap: 8,
+                                    flexWrap: 'wrap',
+                                    justifyContent: 'flex-end',
+                                  }}
+                                >
+                                  {alumno.estado_en_listado ===
+                                  'PENDIENTE_TEST' ? (
+                                    <button
+                                      onClick={() =>
+                                        abrirAltaTestDesdeAgenda(alumno)
+                                      }
+                                      style={botonPrincipal}
+                                    >
+                                      Crear Alta / Test
+                                    </button>
+                                  ) : (
+                                    <button
+                                      onClick={() =>
+                                        abrirBusquedaGrupoParaAlumnoPendiente(
+                                          alumno
+                                        )
+                                      }
+                                      style={botonPrincipal}
+                                    >
+                                      Buscar grupo (turno o semana)
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => quitarAlumnoAgenda(alumno)}
+                                    style={botonPeligroMini}
+                                  >
+                                    Quitar sesión
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </section>
+                    )}
 
                   {mostrarAlumnoFueraPlazo && (
                     <section
