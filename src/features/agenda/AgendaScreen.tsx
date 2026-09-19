@@ -58,6 +58,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     alumnoFueraPlazoNivel,
     alumnoFueraPlazoNombre,
     alumnos,
+    alumnosDelGrupoCreadoApp,
     analizandoFueraPlazo,
     analizarEncajeAlumnoFueraPlazoAgenda,
     anioInicioTemporadaAgenda,
@@ -130,6 +131,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     gruposAgendaManuales,
     gruposRecomendadosAgenda,
     gruposRecursosTurnoAgenda,
+    guardarRepartoManualGrupoAgenda,
     guardarTrabajoObservacionesGrupoAgenda,
     hrefWhatsappAlumnoResumenDia,
     incorporandoFueraPlazo,
@@ -170,9 +172,12 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     refrescarSesionBabyDesdeAimHarder,
     regenerarTrabajoGrupoIntensivoAgenda,
     renderAyudaRapidaPantallaApp,
+    responsableManualGrupoCreadoApp,
     responsableReporteAgendaApp,
+    responsablesManualesGrupoAgenda,
     responsablesReporteAgendaGrupo,
     restaurarVieneIntensivoDesdeAgenda,
+    setResponsablesManualesGrupoAgenda,
     selectCampo,
     selectCampoAgenda,
     semanaAgendaActiva,
@@ -3549,6 +3554,89 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                     ))}
                                 </select>
                               </label>
+
+                              {grupo.entrenador_id &&
+                                grupo.entrenador_apoyo_id && (
+                                  <details
+                                    style={{
+                                      ...avisoNeutral,
+                                      marginBottom: 10,
+                                    }}
+                                  >
+                                    <summary
+                                      style={{
+                                        cursor: 'pointer',
+                                        fontWeight: 900,
+                                      }}
+                                    >
+                                      Reparto manual de reportes / niños
+                                    </summary>
+                                    <div
+                                      style={{
+                                        display: 'grid',
+                                        gap: 8,
+                                        marginTop: 10,
+                                      }}
+                                    >
+                                      {alumnosDelGrupoCreadoApp(
+                                        grupo.grupo_id
+                                      ).map((alumno) => (
+                                        <label
+                                          key={`${grupo.grupo_id}-reparto-${alumno.alumno_id}`}
+                                          style={labelCampo}
+                                        >
+                                          {alumno.alumno}
+                                          <select
+                                            value={responsableManualGrupoCreadoApp(
+                                              grupo.grupo_id,
+                                              alumno.alumno_id,
+                                              alumno.entrenador_id
+                                            )}
+                                            onChange={(e) =>
+                                              setResponsablesManualesGrupoAgenda(
+                                                {
+                                                  ...responsablesManualesGrupoAgenda,
+                                                  [`${grupo.grupo_id}__${alumno.alumno_id}`]:
+                                                    e.target.value,
+                                                }
+                                              )
+                                            }
+                                            style={selectCampo}
+                                          >
+                                            <option value={grupo.entrenador_id}>
+                                              {entrenadores.find(
+                                                (entrenador) =>
+                                                  entrenador.entrenador_id ===
+                                                  grupo.entrenador_id
+                                              )?.nombre_completo ||
+                                                'Entrenador principal'}
+                                            </option>
+                                            <option
+                                              value={grupo.entrenador_apoyo_id}
+                                            >
+                                              {entrenadores.find(
+                                                (entrenador) =>
+                                                  entrenador.entrenador_id ===
+                                                  grupo.entrenador_apoyo_id
+                                              )?.nombre_completo ||
+                                                'Segundo entrenador'}
+                                            </option>
+                                          </select>
+                                        </label>
+                                      ))}
+                                    </div>
+                                    <button
+                                      type="button"
+                                      disabled={cargando}
+                                      onClick={() =>
+                                        guardarRepartoManualGrupoAgenda(grupo)
+                                      }
+                                      style={{ ...botonSecundario, marginTop: 10 }}
+                                    >
+                                      Guardar reparto manual
+                                    </button>
+                                  </details>
+                                )}
 
                               <label style={labelCampo}>
                                 Punto de encuentro

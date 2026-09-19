@@ -2372,6 +2372,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     useState<Record<string, string>>({});
   const [responsablesReporteAgendaGrupo, setResponsablesReporteAgendaGrupo] =
     useState<Record<string, string>>({});
+  const [responsablesManualesGrupoAgenda, setResponsablesManualesGrupoAgenda] =
+    useState<Record<string, string>>({});
   const [trabajoAgendaGrupo, setTrabajoAgendaGrupo] = useState<
     Record<string, string>
   >({});
@@ -14340,6 +14342,97 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
     );
   }
 
+  function alumnosDelGrupoCreadoApp(grupoId: string) {
+    const vistos = new Set<string>();
+    return alumnosReporteEntrenador
+      .filter((alumno) => alumno.grupo_id === grupoId)
+      .filter((alumno) => {
+        if (vistos.has(alumno.alumno_id)) return false;
+        vistos.add(alumno.alumno_id);
+        return true;
+      })
+      .sort((a, b) => a.alumno.localeCompare(b.alumno, 'es'));
+  }
+
+  function responsableManualGrupoCreadoApp(
+    grupoId: string,
+    alumnoId: string,
+    entrenadorIdActual: string | null
+  ) {
+    const clave = `${grupoId}__${alumnoId}`;
+    return responsablesManualesGrupoAgenda[clave] || entrenadorIdActual || '';
+  }
+
+  async function guardarRepartoManualGrupoAgenda(
+    grupo: AgendaGrupoSesionApp
+  ) {
+    if (!grupo.grupo_id || !grupo.entrenador_apoyo_id) return;
+
+    const alumnosGrupo = alumnosDelGrupoCreadoApp(grupo.grupo_id);
+    if (alumnosGrupo.length === 0) {
+      setError(
+        'No se encontró la lista de niños de este grupo. Actualiza la página e inténtalo de nuevo.'
+      );
+      return;
+    }
+
+    const responsables = alumnosGrupo.map((alumno) => ({
+      alumno_id: alumno.alumno_id,
+      entrenador_id: responsableManualGrupoCreadoApp(
+        grupo.grupo_id,
+        alumno.alumno_id,
+        alumno.entrenador_id
+      ),
+    }));
+
+    if (responsables.some((responsable) => !responsable.entrenador_id)) {
+      setError('Falta asignar entrenador a algún niño del reparto.');
+      return;
+    }
+
+    const confirmar = window.confirm(
+      `¿Guardar este reparto manual de niños para ${grupo.nombre_grupo}?`
+    );
+
+    if (!confirmar) return;
+
+    setCargando(true);
+    setError('');
+
+    try {
+      await ejecutarFuncion('guardar_apoyo_reportes_grupo_app', {
+        p_grupo_id: grupo.grupo_id,
+        p_entrenador_apoyo_id: grupo.entrenador_apoyo_id,
+        p_responsables: responsables,
+      });
+
+      setResponsablesManualesGrupoAgenda((actual) => {
+        const copia = { ...actual };
+        Object.keys(copia)
+          .filter((clave) => clave.startsWith(`${grupo.grupo_id}__`))
+          .forEach((clave) => delete copia[clave]);
+        return copia;
+      });
+
+      if (agendaSesionActivaId) {
+        await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      }
+      await cargarAgendaOperativaDirecta();
+      await cargarGruposEntrenador();
+      await cargarReportesPendientes();
+      await cargarPlanning();
+      await cargarCobros();
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Error guardando el reparto manual de reportes'
+      );
+    }
+
+    setCargando(false);
+  }
+
   function ajusteAutonomiaPerfilIntensivoApp(
     perfil?: PerfilOperativoAlumnoApp
   ) {
@@ -21167,6 +21260,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             alumnoFueraPlazoNivel,
             alumnoFueraPlazoNombre,
             alumnos,
+            alumnosDelGrupoCreadoApp,
             analizandoFueraPlazo,
             analizarEncajeAlumnoFueraPlazoAgenda,
             anioInicioTemporadaAgenda,
@@ -21240,6 +21334,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             gruposAgendaManuales,
             gruposRecomendadosAgenda,
             gruposRecursosTurnoAgenda,
+            guardarRepartoManualGrupoAgenda,
             guardarTrabajoObservacionesGrupoAgenda,
             hrefWhatsappAlumnoResumenDia,
             incorporandoFueraPlazo,
@@ -21281,9 +21376,12 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             refrescarSesionBabyDesdeAimHarder,
             regenerarTrabajoGrupoIntensivoAgenda,
             renderAyudaRapidaPantallaApp,
+            responsableManualGrupoCreadoApp,
             responsableReporteAgendaApp,
+            responsablesManualesGrupoAgenda,
             responsablesReporteAgendaGrupo,
             restaurarVieneIntensivoDesdeAgenda,
+            setResponsablesManualesGrupoAgenda,
             selectCampo,
             selectCampoAgenda,
             semanaAgendaActiva,
