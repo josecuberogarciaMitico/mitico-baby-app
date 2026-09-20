@@ -179,6 +179,74 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
     enfocarElementoApp(detalle, { block: 'start' });
   };
 
+  const CLAVE_GRUPOS_VISTOS_ENTRENADOR = 'mitico_grupos_vistos_entrenador';
+
+  const grupoYaVistoPorEntrenador = (
+    entrenadorId: string,
+    grupoId: string
+  ) => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const guardado = window.localStorage.getItem(
+        CLAVE_GRUPOS_VISTOS_ENTRENADOR
+      );
+      if (!guardado) return false;
+      const vistos: string[] = JSON.parse(guardado);
+      return vistos.includes(`${entrenadorId}:${grupoId}`);
+    } catch {
+      return false;
+    }
+  };
+
+  const marcarGrupoVistoPorEntrenador = (
+    entrenadorId: string,
+    grupoId: string
+  ) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const clave = `${entrenadorId}:${grupoId}`;
+      const guardado = window.localStorage.getItem(
+        CLAVE_GRUPOS_VISTOS_ENTRENADOR
+      );
+      const vistos: string[] = guardado ? JSON.parse(guardado) : [];
+      if (!vistos.includes(clave)) {
+        vistos.push(clave);
+        window.localStorage.setItem(
+          CLAVE_GRUPOS_VISTOS_ENTRENADOR,
+          JSON.stringify(vistos)
+        );
+      }
+    } catch {
+      // Si el almacenamiento local no está disponible, simplemente no se recuerda.
+    }
+  };
+
+  const manejarAperturaTurno =
+    (gruposTurnoActual: { grupo_id: string; entrenador_id: string }[]) =>
+    (event: React.SyntheticEvent<HTMLDetailsElement>) => {
+      cerrarAcordeonesHermanos(event);
+
+      if (event.target !== event.currentTarget) return;
+      if (!event.currentTarget.open) return;
+      if (gruposTurnoActual.length !== 1) return;
+
+      const [grupoUnico] = gruposTurnoActual;
+      if (
+        !grupoYaVistoPorEntrenador(
+          grupoUnico.entrenador_id,
+          grupoUnico.grupo_id
+        )
+      ) {
+        return;
+      }
+
+      setSeccionGrupoEntrenador('asistencia');
+      setGrupoActivoEntrenador({
+        grupo_id: grupoUnico.grupo_id,
+        entrenador_id: grupoUnico.entrenador_id,
+      });
+    };
+
   function renderFormularioReporteEntrenador(
     alumno: AlumnoReporteEntrenador,
     nivelGrupo: string,
@@ -1433,20 +1501,37 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
 
           {tabVistaEntrenador === 'grupos' &&
             gruposSemanalVistaEntrenador.map((bloqueEntrenador) => (
-              <article
+              <details
                 key={bloqueEntrenador.entrenador_id}
+                className="trainer-entrenador-block"
                 style={tarjetaEntrenadorMovil}
+                open
               >
-                <header style={cabeceraEntrenadorMovil}>
+                <summary
+                  className="trainer-entrenador-summary"
+                  style={{
+                    ...cabeceraEntrenadorMovil,
+                    justifyContent: 'flex-start',
+                  }}
+                  onClick={enfocarAcordeonEntrenadorAlAbrir}
+                >
                   <div>
                     <p style={{ ...etiquetaSuperior, color: '#0f9f4d' }}>ENTRENADOR</p>
                     <h3 style={{ margin: 0 }}>{bloqueEntrenador.entrenador}</h3>
                   </div>
-                  <div style={contadorGrandeMovil}>
+                  <div
+                    style={{
+                      ...contadorGrandeMovil,
+                      background: 'linear-gradient(135deg, #14532d, #16a34a)',
+                      boxShadow: '0 10px 22px rgba(22,163,74,0.18)',
+                      marginLeft: 'auto',
+                      flexShrink: 0,
+                    }}
+                  >
                     <strong>{bloqueEntrenador.total_grupos}</strong>
                     <span>grupos</span>
                   </div>
-                </header>
+                </summary>
 
                 {(pendientesEntrenadorVista(
                   bloqueEntrenador.entrenador_id
@@ -1985,7 +2070,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                       }`}
                       style={bloqueSemanaMovil}
                       onToggle={cerrarAcordeonesHermanos}
-                      open={esSemanaVigente}
+                      open={false}
                     >
                       <summary
                         className="trainer-week-summary"
@@ -2031,13 +2116,8 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                                 key={`${bloqueEntrenador.entrenador_id}-${semana.inicio}-${dia.fecha}`}
                                 className="trainer-day-accordion"
                                 style={diaEntrenadorCard}
-                                    onToggle={cerrarAcordeonesHermanos}
-                                open={
-                                  dia.fecha === hoyAgendaClave ||
-                                  (indiceDia === 0 &&
-                                    semana.inicio ===
-                                      semanaVistaEntrenadorInicio)
-                                }
+                                onToggle={cerrarAcordeonesHermanos}
+                                open={false}
                               >
                                 <summary
                                   className="trainer-accordion-summary"
@@ -2070,13 +2150,10 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                                         key={`${dia.fecha}-${turno.hora_inicio}-${turno.hora_fin}`}
                                         className="trainer-shift-accordion"
                                         style={turnoEntrenadorBox}
-                                        onToggle={cerrarAcordeonesHermanos}
-                                        open={
-                                          (dia.fecha === hoyAgendaClave &&
-                                            indiceTurno === 0) ||
-                                          (dia.turnos.length === 1 &&
-                                            indiceTurno === 0)
-                                        }
+                                        onToggle={manejarAperturaTurno(
+                                          gruposTurno
+                                        )}
+                                        open={false}
                                       >
                                         <summary
                                           className="trainer-shift-summary"
@@ -2394,6 +2471,10 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                                                   type="button"
                                                   className="trainer-open-group-button"
                                                   onClick={() => {
+                                                    marcarGrupoVistoPorEntrenador(
+                                                      grupo.entrenador_id,
+                                                      grupo.grupo_id
+                                                    );
                                                     setSeccionGrupoEntrenador(
                                                       'asistencia'
                                                     );
@@ -2692,7 +2773,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                     </details>
                   );
                 })}
-              </article>
+              </details>
             ))}
         </section>
       )}

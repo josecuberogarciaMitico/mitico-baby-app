@@ -214,6 +214,7 @@
 }
 
 .trainer-toolbar,
+.trainer-entrenador-block,
 .trainer-week-block,
 .trainer-day-accordion,
 .trainer-shift-accordion,
@@ -438,6 +439,7 @@
     font-size: 13px;
   }
 
+  .trainer-entrenador-block,
   .trainer-week-block,
   .trainer-day-accordion,
   .trainer-shift-accordion,
@@ -611,6 +613,42 @@
 
 .trainer-week-block > .trainer-day-grid {
   margin-top: 10px;
+}
+
+.trainer-entrenador-summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-width: 0;
+}
+
+.trainer-entrenador-summary::-webkit-details-marker {
+  display: none;
+}
+
+.trainer-entrenador-summary::after {
+  content: '›';
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+  font-size: 23px;
+  line-height: 1;
+  transform: rotate(90deg);
+  transition: transform 0.16s ease;
+}
+
+.trainer-entrenador-block[open] > .trainer-entrenador-summary::after {
+  transform: rotate(-90deg);
 }
 
 /* =========================================================
