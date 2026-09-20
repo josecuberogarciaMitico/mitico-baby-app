@@ -2569,8 +2569,6 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
 
                                                           {alumno.entrenador_id ===
                                                             grupo.entrenador_id &&
-                                                            alumno.estado_asistencia ===
-                                                              'Presente' &&
                                                             alumno.estado_reporte ===
                                                               'Falta reporte' &&
                                                             !formularioAbierto(
