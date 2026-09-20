@@ -247,6 +247,29 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
       });
     };
 
+  const textoRecordatorioDisponibilidad = (editor: any) => {
+    const fechaLimite: string | null | undefined = editor?.fecha_limite;
+    if (!fechaLimite) {
+      return 'Responde cuanto antes para que coordinación pueda organizar los grupos de la semana.';
+    }
+
+    const [fechaSolo, horaSolo] = fechaLimite.split('T');
+    const horaLimite = horaSolo || '13:00';
+    const diaLimite = capitalizarPrimera(
+      new Date(`${fechaSolo}T00:00:00`).toLocaleDateString('es-ES', {
+        weekday: 'long',
+      })
+    );
+    const fechaLimiteFormateada = formatearFecha(fechaSolo);
+    const limiteHaPasado = new Date(fechaLimite).getTime() < Date.now();
+
+    if (limiteHaPasado) {
+      return `La disponibilidad de esta semana se cerró el ${diaLimite} ${fechaLimiteFormateada} a las ${horaLimite}. Si necesitas comunicar algún cambio, contacta con Jose por privado.`;
+    }
+
+    return `Responde antes de las ${horaLimite} del ${diaLimite} ${fechaLimiteFormateada} para que coordinación pueda organizar los grupos de la semana.`;
+  };
+
   function renderFormularioReporteEntrenador(
     alumno: AlumnoReporteEntrenador,
     nivelGrupo: string,
@@ -1011,24 +1034,6 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                         justifyContent: esVistaMovilApp ? 'stretch' : 'flex-end',
                       }}
                     >
-                      {gruposPublicados > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => setTabVistaEntrenador('grupos')}
-                          style={{
-                            ...botonPrincipal,
-                            minHeight: 40,
-                            width: esVistaMovilApp ? '100%' : 'auto',
-                            padding: '8px 12px',
-                            borderRadius: 12,
-                            background: '#0f766e',
-                            borderColor: '#0f766e',
-                          }}
-                        >
-                          Ver mis grupos
-                        </button>
-                      )}
-
                       {!pushActivo && permiso !== 'denied' && (
                         <button
                           type="button"
@@ -1232,7 +1237,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                           semanaDisponibilidadVistaEntrenadorInicio
                         )}. `
                       : ''}
-                    Responde antes de las 13:00 del lunes para que coordinación pueda organizar los grupos de la semana.
+                    {textoRecordatorioDisponibilidad(disponibilidadEditorVista)}
                   </p>
                 </section>
 
