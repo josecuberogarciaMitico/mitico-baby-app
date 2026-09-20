@@ -4061,6 +4061,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
   async function abrirFormularioReporte(alumno: AlumnoReporteEntrenador) {
     setErrorReporte('');
+
+    if (alumno.estado_asistencia !== 'Presente') {
+      const mensaje =
+        'Solo se puede rellenar el reporte de un niño una vez marcado como Presente.';
+      setError(mensaje);
+      setErrorReporte(mensaje);
+      return;
+    }
+
     const aperturaId = ++aperturaReporteIdRef.current;
     const apertura = prepareTrainerReportOpening({
       alumnoId: alumno.alumno_id,
