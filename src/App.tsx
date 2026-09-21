@@ -18086,7 +18086,6 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
   }
 
   const disponibilidadVistaEntrenador = disponibilidad.filter((turno) => {
-    if (!turno.aviso_enviado) return false;
     if (
       !esCoordinadorApp &&
       entrenadorIdSesionApp &&
