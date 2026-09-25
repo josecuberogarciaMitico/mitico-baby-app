@@ -969,20 +969,6 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                 publishedGroups={Number(sesion.publicados || 0)}
                               />
                               <div style={agendaAccionesSesion}>
-                                {sesion.origen === 'operativa' &&
-                                  sesion.totalGrupos > 0 && (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        void enviarWhatsAppPapisSesionTarjeta(
-                                          sesion
-                                        )
-                                      }
-                                      style={botonSecundario}
-                                    >
-                                      WhatsApp papis
-                                    </button>
-                                  )}
                                 <button
                                   onClick={() =>
                                     abrirSesionAgenda(
@@ -1018,6 +1004,20 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                       sesion.agendaDirecta?.sesion_id
                                         ? 'Refrescando…'
                                         : 'Refrescar listado'}
+                                    </button>
+                                  )}
+                                {sesion.origen === 'operativa' &&
+                                  sesion.totalGrupos > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() =>
+                                        void enviarWhatsAppPapisSesionTarjeta(
+                                          sesion
+                                        )
+                                      }
+                                      style={botonSecundario}
+                                    >
+                                      WhatsApp papis
                                     </button>
                                   )}
                                 {sesion.origen === 'operativa' &&
