@@ -302,6 +302,7 @@ import {
   requireOperationalStudentLevel,
   requireValidGroupMove,
 } from './core/groups/groupOperations';
+import { studentObservationWithLevelReview } from './core/groups/levelReviewNotice';
 import {
   babyGroupMaximum,
   babyLowGroupNeedsSupport,
@@ -14775,7 +14776,7 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
       return `${nombre}: NUEVO · Sin historial. Revisar nivel y adaptación en primera bajada.`;
     }
 
-    if (revisarNivel) {
+    if (revisarNivel && !(Number(resumen?.total_reportes ?? 0) > 0)) {
       return `${nombre}: REVISAR NIVEL · validar en primera bajada`;
     }
 
@@ -14811,7 +14812,7 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
       220
     );
 
-    return `${nombre}: ${detalle || 'Nada relevante'}`;
+    return studentObservationWithLevelReview(nombre, detalle, revisarNivel);
   }
 
   function limpiarTextoObservacionesGrupoApp(texto: string | null | undefined) {
@@ -15103,10 +15104,6 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
       return `${nombre}: NUEVO · Sin historial. Revisar nivel y adaptación en primera bajada.`;
     }
 
-    if (revisarNivel) {
-      return `${nombre}: REVISAR NIVEL · validar en primera bajada`;
-    }
-
     const partes: string[] = [];
 
     const incidencia = `${resumen?.ultima_incidencia || ''}`.trim();
@@ -15137,7 +15134,7 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
       220
     );
 
-    return `${nombre}: ${detalle || 'Nada relevante'}`;
+    return studentObservationWithLevelReview(nombre, detalle, revisarNivel);
   }
 
   function observacionesAutomaticasGrupoOcio(alumnosGrupo: OcioAlumnoApp[]) {

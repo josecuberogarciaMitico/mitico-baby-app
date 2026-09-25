@@ -27,6 +27,7 @@ function cleanVisibleName(value: string): { name: string; guest: boolean } {
   const guest = /\[\s*invitado\s*\]/i.test(raw);
   let name = raw
     .replace(GUEST_MARKER, ' ')
+    .replace(/^\([^)]*\)\s*/, '')
     .replace(/^[-–—•·✓✔︎✔️\s]+/, '')
     .replace(/\s+/g, ' ')
     .trim();
