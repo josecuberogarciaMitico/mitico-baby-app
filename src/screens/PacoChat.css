@@ -58,6 +58,32 @@
   font-size: 12px;
 }
 
+/* NUEVO: agrupa el botÃ³n de voz junto al de cerrar */
+.paco-panel__acciones {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+/* NUEVO: botÃ³n para activar/desactivar que Paco hable en voz alta */
+.paco-panel__voz {
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.paco-panel__voz--activa {
+  background: #43e060;
+  color: #052e16;
+}
+
 .paco-panel__close {
   width: 36px;
   height: 36px;
@@ -173,7 +199,8 @@
 
 .paco-composer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  /* NUEVO: tercera columna para el botÃ³n del micrÃ³fono (auto = solo si existe) */
+  grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 9px;
   padding: 11px 12px max(11px, env(safe-area-inset-bottom));
   border-top: 1px solid #e2e8f0;
@@ -211,6 +238,26 @@
   font: inherit;
   font-weight: 900;
   cursor: pointer;
+}
+
+/* NUEVO: botÃ³n de micrÃ³fono â€” mÃ¡s estrecho que el de enviar */
+.paco-composer__mic {
+  min-width: 48px;
+  width: 48px;
+  background: #eef2f6;
+  color: #172033;
+  font-size: 18px;
+}
+
+.paco-composer__mic--activo {
+  background: #ef4444;
+  color: #ffffff;
+  animation: paco-mic-pulso 1.4s ease-in-out infinite;
+}
+
+@keyframes paco-mic-pulso {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
 }
 
 @media (max-width: 640px) {

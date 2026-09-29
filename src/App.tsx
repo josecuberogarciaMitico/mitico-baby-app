@@ -13129,6 +13129,7 @@ async function abrirGestionOperativaIntensivoDia(
     setBabyAimHarderMensaje,
     setBabyAimHarderError,
     obtenerListadoBabyTurnoAimHarderApp,
+    buscarDatosContactoBabyAimHarderApp,
     traerListadoBabyTurnoAgendaDesdeAimHarder,
     cargarSemanaBabyDesdeAimHarder,
     refrescarSesionBabyDesdeAimHarder,
@@ -13195,8 +13196,13 @@ async function abrirGestionOperativaIntensivoDia(
     return ultimoListadoAimHarder.asistentes[clave] || null;
   }
 
-  function abrirAltaTestDesdeAgenda(alumno: AgendaAlumnoSesionApp) {
-    const datosAimHarder = datosAimHarderAlumnoAgenda(alumno);
+  async function abrirAltaTestDesdeAgenda(alumno: AgendaAlumnoSesionApp) {
+    let datosAimHarder = datosAimHarderAlumnoAgenda(alumno);
+    const sesionAlta = agendaSesionesDirectas.find((sesion) => sesion.sesion_id === agendaSesionActivaId);
+    if (sesionAlta && String(sesionAlta.modalidad || '').trim().toUpperCase() === 'BABY' && (!datosAimHarder?.telefono || !datosAimHarder?.fechaNacimiento)) {
+      // El último listado en memoria no es de este turno: se consulta al momento.
+      datosAimHarder = (await buscarDatosContactoBabyAimHarderApp(sesionAlta.fecha, sesionAlta.hora_inicio, sesionAlta.hora_fin, alumno.alumno || '')) || datosAimHarder;
+    }
 
     setFormAltaNivelInicial({
       ...altaNivelInicialFormVacioApp(),

@@ -23,10 +23,41 @@ const ATAJOS_PACO = [
   '¿Hay cambios de nivel que tenga que revisar?',
   '¿Qué tengo pendiente en Secretaría?',
   'Apunta una tarea en Secretaría',
+  '¿Es viable la semana que viene?',
 ];
 
 function crearIdPaco() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+// ---------------------------------------------------------------------------
+// NOTA DE ESTA REVISIÓN (Claude, 29/09/2026)
+// Añadido: voz. Habla con Paco con el micrófono y, si activas el altavoz,
+// Paco te contesta hablando. Todo con las funciones de voz que ya trae el
+// propio navegador (Web Speech API): no se contrata ningún servicio nuevo,
+// así que no añade coste. Si el navegador del usuario no las soporta, los
+// botones de voz simplemente no aparecen y todo lo demás sigue igual.
+// ---------------------------------------------------------------------------
+
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: any) => void) | null;
+  onerror: ((event: any) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+function obtenerConstructorReconocimiento(): (new () => SpeechRecognitionLike) | null {
+  if (typeof window === 'undefined') return null;
+  const w = window as any;
+  return w.SpeechRecognition || w.webkitSpeechRecognition || null;
+}
+
+function soportaVozHablada() {
+  return typeof window !== 'undefined' && 'speechSynthesis' in window;
 }
 
 export function PacoChat() {
@@ -34,6 +65,8 @@ export function PacoChat() {
   const [abierto, setAbierto] = useState(false);
   const [texto, setTexto] = useState('');
   const [cargando, setCargando] = useState(false);
+  const [escuchando, setEscuchando] = useState(false);
+  const [vozActiva, setVozActiva] = useState(false);
   const [mensajes, setMensajes] = useState<MensajePaco[]>([
     {
       id: 'paco-bienvenida',
@@ -45,6 +78,11 @@ export function PacoChat() {
 
   const ultimoTokenComprobado = useRef('');
   const finalMensajesRef = useRef<HTMLDivElement | null>(null);
+  const reconocimientoRef = useRef<SpeechRecognitionLike | null>(null);
+
+  const ConstructorReconocimiento = obtenerConstructorReconocimiento();
+  const soportaEscucha = !!ConstructorReconocimiento;
+  const soportaHabla = soportaVozHablada();
 
   useEffect(() => {
     let cancelado = false;
@@ -124,10 +162,39 @@ export function PacoChat() {
     finalMensajesRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [mensajes, cargando]);
 
+  // Al cerrar el panel o desmontar: para el micrófono y calla a Paco.
+  useEffect(() => {
+    if (!abierto) {
+      reconocimientoRef.current?.stop();
+      if (soportaHabla) window.speechSynthesis.cancel();
+    }
+  }, [abierto, soportaHabla]);
+
+  useEffect(() => {
+    return () => {
+      reconocimientoRef.current?.stop();
+      if (soportaHabla) window.speechSynthesis.cancel();
+    };
+  }, [soportaHabla]);
+
   if (!autorizado) return null;
 
   const añadirMensaje = (mensaje: MensajePaco) => {
     setMensajes((actuales) => [...actuales, mensaje]);
+  };
+
+  const hablar = (texto: string) => {
+    if (!vozActiva || !soportaHabla || !texto) return;
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(texto);
+      utterance.lang = 'es-ES';
+      utterance.rate = 1;
+      window.speechSynthesis.speak(utterance);
+    } catch {
+      // Si falla la síntesis de voz, Paco simplemente se queda mudo esta vez;
+      // el mensaje de texto ya se ha mostrado igualmente.
+    }
   };
 
   const procesarRespuesta = (respuesta: {
@@ -140,15 +207,19 @@ export function PacoChat() {
       window.dispatchEvent(new CustomEvent('mitico:secretaria-updated'));
     }
 
+    const textoRespuesta =
+      respuesta.answer ||
+      respuesta.error ||
+      'No he podido preparar una respuesta.';
+
     añadirMensaje({
       id: crearIdPaco(),
       autor: 'paco',
-      texto:
-        respuesta.answer ||
-        respuesta.error ||
-        'No he podido preparar una respuesta.',
+      texto: textoRespuesta,
       choices: respuesta.choices || [],
     });
+
+    hablar(textoRespuesta);
   };
 
   const enviarTexto = async (mensajeForzado?: string) => {
@@ -225,6 +296,37 @@ export function PacoChat() {
     }
   };
 
+  const alternarEscucha = () => {
+    if (!ConstructorReconocimiento) return;
+
+    if (escuchando) {
+      reconocimientoRef.current?.stop();
+      return;
+    }
+
+    if (soportaHabla) window.speechSynthesis.cancel();
+
+    const reconocimiento = new ConstructorReconocimiento();
+    reconocimiento.lang = 'es-ES';
+    reconocimiento.continuous = false;
+    reconocimiento.interimResults = false;
+
+    reconocimiento.onresult = (event: any) => {
+      const dicho = String(event?.results?.[0]?.[0]?.transcript || '').trim();
+      if (dicho) void enviarTexto(dicho);
+    };
+    reconocimiento.onerror = () => {
+      setEscuchando(false);
+    };
+    reconocimiento.onend = () => {
+      setEscuchando(false);
+    };
+
+    reconocimientoRef.current = reconocimiento;
+    setEscuchando(true);
+    reconocimiento.start();
+  };
+
   const onSubmit = (event: FormEvent) => {
     event.preventDefault();
     void enviarTexto();
@@ -252,14 +354,35 @@ export function PacoChat() {
               <strong>Paco Mitiquín</strong>
               <span>Asistente del coordinador jefe · lectura + Secretaría</span>
             </div>
-            <button
-              type="button"
-              className="paco-panel__close"
-              onClick={() => setAbierto(false)}
-              aria-label="Cerrar"
-            >
-              ×
-            </button>
+            <div className="paco-panel__acciones">
+              {soportaHabla && (
+                <button
+                  type="button"
+                  className={`paco-panel__voz${vozActiva ? ' paco-panel__voz--activa' : ''}`}
+                  onClick={() => {
+                    if (vozActiva) window.speechSynthesis.cancel();
+                    setVozActiva((valor) => !valor);
+                  }}
+                  aria-pressed={vozActiva}
+                  aria-label={
+                    vozActiva
+                      ? 'Desactivar que Paco hable en voz alta'
+                      : 'Activar que Paco hable en voz alta'
+                  }
+                  title={vozActiva ? 'Paco habla: activado' : 'Paco habla: desactivado'}
+                >
+                  {vozActiva ? '🔊' : '🔇'}
+                </button>
+              )}
+              <button
+                type="button"
+                className="paco-panel__close"
+                onClick={() => setAbierto(false)}
+                aria-label="Cerrar"
+              >
+                ×
+              </button>
+            </div>
           </header>
 
           <div className="paco-atajos" aria-label="Consultas rápidas">
@@ -312,10 +435,23 @@ export function PacoChat() {
           </div>
 
           <form className="paco-composer" onSubmit={onSubmit}>
+            {soportaEscucha && (
+              <button
+                type="button"
+                className={`paco-composer__mic${escuchando ? ' paco-composer__mic--activo' : ''}`}
+                onClick={alternarEscucha}
+                disabled={cargando}
+                aria-pressed={escuchando}
+                aria-label={escuchando ? 'Dejar de escuchar' : 'Hablarle a Paco'}
+                title={escuchando ? 'Escuchando… toca para parar' : 'Hablarle a Paco'}
+              >
+                {escuchando ? '⏺️' : '🎤'}
+              </button>
+            )}
             <textarea
               value={texto}
               onChange={(event) => setTexto(event.target.value)}
-              placeholder="Escribe a Paco…"
+              placeholder={escuchando ? 'Escuchando…' : 'Escribe a Paco…'}
               rows={2}
               maxLength={3000}
               disabled={cargando}

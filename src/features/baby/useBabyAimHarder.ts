@@ -282,6 +282,39 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
     return { clase, asistentes, safety: lectura.safety };
   }
 
+  // Datos de contacto (teléfono y fecha de nacimiento) de un niño de un turno
+  // Baby concreto, leídos al momento de AimHarder. Se usa al pulsar
+  // "Crear Alta / Test" cuando el último listado en memoria no es de ese turno
+  // (p. ej. tras "Cargar semana", que lee varios turnos, o tras recargar).
+  async function buscarDatosContactoBabyAimHarderApp(
+    fecha: string,
+    horaInicio: string,
+    horaFin: string,
+    nombreAlumno: string
+  ): Promise<DatosContactoAimHarderApp | null> {
+    const clave = normalizarNombreFueraPlazoAgenda(nombreAlumno || '');
+    if (!clave) return null;
+    try {
+      const { asistentes } = await obtenerListadoBabyTurnoAimHarderApp(
+        fecha,
+        horaInicio,
+        horaFin
+      );
+      const encontrado = asistentes.find(
+        (asistente) => normalizarNombreFueraPlazoAgenda(asistente.name) === clave
+      );
+      if (!encontrado) return null;
+      return {
+        nombre: String(encontrado.name || '').trim(),
+        telefono: String(encontrado.phone || '').trim(),
+        fechaNacimiento: String(encontrado.birthDate || '').trim(),
+        clientId: String(encontrado.clientId || '').trim(),
+      };
+    } catch {
+      return null;
+    }
+  }
+
   async function traerListadoBabyTurnoAgendaDesdeAimHarder() {
     if (String(agendaForm.modalidad || '').trim().toUpperCase() !== 'BABY') {
       return;
@@ -709,6 +742,7 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
     setBabyAimHarderMensaje,
     setBabyAimHarderError,
     obtenerListadoBabyTurnoAimHarderApp,
+    buscarDatosContactoBabyAimHarderApp,
     traerListadoBabyTurnoAgendaDesdeAimHarder,
     cargarSemanaBabyDesdeAimHarder,
     refrescarSesionBabyDesdeAimHarder,
