@@ -349,6 +349,9 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
 
       let creadas = 0;
       let yaExistentes = 0;
+      let refrescadas = 0;
+      let yaAlDia = 0;
+      let alumnosAnadidos = 0;
       let sinReservas = 0;
       let turnosLeidos = 0;
       let alumnosActivosLeidos = 0;
@@ -378,9 +381,9 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
             continue;
           }
 
-          // IMPORTANTE: carga inicial ≠ refresco.
           // Esta RPC crea SOLO si no existe ya una sesión Baby con la misma
-          // fecha + hora de inicio. Si existe, la deja totalmente intacta.
+          // fecha + hora de inicio. Si existe, devuelve su id sin tocarla y
+          // abajo se refresca con el mismo candado que "Refrescar listado".
           const resultado =
             await ejecutarFuncionAuthJson<{
               sesion_id?: string | null;
@@ -397,6 +400,21 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
 
           if (resultado?.creada) {
             creadas += 1;
+          } else if (resultado?.ya_existia && resultado.sesion_id) {
+            // La sesión ya existía: se refresca con el mismo candado de
+            // seguridad que "Refrescar listado". Si no hay cambios, no se toca.
+            const refresco = await aplicarListadoAimHarderEnSesionBabyApp(
+              resultado.sesion_id,
+              asistentes,
+              lectura.safety,
+              { omitirSiSinCambios: true }
+            );
+            if (refresco.sinCambios) {
+              yaAlDia += 1;
+            } else {
+              refrescadas += 1;
+              alumnosAnadidos += refresco.anadidos;
+            }
           } else if (resultado?.ya_existia) {
             yaExistentes += 1;
           }
@@ -416,7 +434,11 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
         `✓ CARGAR SEMANA · ${turnosLeidos} turno(s) Baby leído(s)`,
         `${alumnosActivosLeidos} alumno(s) activo(s) en AimHarder`,
         `${creadas} sesión(es) nueva(s) creada(s)`,
-        `${yaExistentes} sesión(es) ya existente(s) sin modificar`,
+        `${refrescadas} sesión(es) actualizada(s) (${alumnosAnadidos} alumno(s) añadido(s))`,
+        `${yaAlDia} sesión(es) ya al día`,
+        ...(yaExistentes > 0
+          ? [`${yaExistentes} sesión(es) ya existente(s) sin modificar`]
+          : []),
         `${sinReservas} turno(s) con 0 activos`,
         'cancelados excluidos',
       ];
@@ -544,6 +566,81 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
     };
   }
 
+  // Refresco seguro de una sesión Baby YA EXISTENTE con el listado de AimHarder.
+  // Lo usan "Refrescar listado" (una sesión) y "Cargar semana" (todas las
+  // sesiones ya creadas de la semana). Mismo candado anti-borrado en ambos.
+  async function aplicarListadoAimHarderEnSesionBabyApp(
+    sesionId: string,
+    asistentes: BabyAimHarderAsistenteActivoApp[],
+    safety: BabyAimHarderSafetyApp,
+    opciones: { omitirSiSinCambios?: boolean } = {}
+  ): Promise<{
+    sinCambios: boolean;
+    anadidos: number;
+    resultado: BabyAimHarderRefrescoResultadoApp | null;
+    verificacion: BabyAimHarderVerificacionRefrescoApp | null;
+  }> {
+    // PREVUELO ANTI-BORRADO:
+    // antes de tocar la sesión, cualquier alumno que vaya a salir debe aparecer
+    // explícitamente como cancelado en la respuesta de la clase exacta.
+    const existentesAntes = await consultarSupabase<AgendaAlumnoSesionApp>(
+      'v_sesion_alumnos_operativa_app',
+      `select=*&sesion_id=${encodeURIComponent(`eq.${sesionId}`)}&order=orden.asc`
+    );
+    const preflight = assessRosterRefresh(
+      existentesAntes.map((alumno) => ({
+        id: alumno.sesion_alumno_id,
+        name: alumno.alumno,
+      })),
+      {
+        activeNames: asistentes.map((asistente) => asistente.name),
+        cancelledNames: safety.cancelledNames || [],
+        safeZero: safety.safeZero === true,
+      }
+    );
+
+    if (preflight.status === 'BLOCKED') {
+      throw new Error(
+        `Refresco bloqueado por seguridad: ${preflight.issues.join(
+          ' '
+        )} No se ha eliminado nadie.`
+      );
+    }
+
+    if (
+      opciones.omitirSiSinCambios &&
+      preflight.additions.length === 0 &&
+      preflight.removals.length === 0
+    ) {
+      return { sinCambios: true, anadidos: 0, resultado: null, verificacion: null };
+    }
+
+    const resultado = await ejecutarFuncionAuthJson<BabyAimHarderRefrescoResultadoApp>(
+      'refrescar_sesion_baby_aimharder_app',
+      {
+        p_sesion_id: sesionId,
+        p_texto_listado: asistentes.map((a) => a.name).join('\n'),
+      }
+    );
+
+    // Segunda garantía: comprobamos directamente "Alumnos detectados".
+    // Cualquier alumno que ya no esté activo en AimHarder se retira de forma
+    // automática salvo que la función segura detecte asistencia o reporte.
+    const verificacion =
+      await verificarYLimpiarSesionBabyTrasRefrescoAimHarderApp(
+        sesionId,
+        asistentes,
+        resultado?.nombres_protegidos || []
+      );
+
+    return {
+      sinCambios: false,
+      anadidos: preflight.additions.length,
+      resultado,
+      verificacion,
+    };
+  }
+
   async function refrescarSesionBabyDesdeAimHarder(
     sesion: SesionAgendaOperativa
   ) {
@@ -573,50 +670,12 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
         finSesion
       );
 
-      // PREVUELO ANTI-BORRADO:
-      // antes de tocar la sesión, cualquier alumno que vaya a salir debe aparecer
-      // explícitamente como cancelado en la respuesta de la clase exacta.
-      const existentesAntes = await consultarSupabase<AgendaAlumnoSesionApp>(
-        'v_sesion_alumnos_operativa_app',
-        `select=*&sesion_id=${encodeURIComponent(`eq.${sesionId}`)}&order=orden.asc`
-      );
-      const preflight = assessRosterRefresh(
-        existentesAntes.map((alumno) => ({
-          id: alumno.sesion_alumno_id,
-          name: alumno.alumno,
-        })),
-        {
-          activeNames: asistentes.map((asistente) => asistente.name),
-          cancelledNames: safety.cancelledNames || [],
-          safeZero: safety.safeZero === true,
-        }
-      );
-
-      if (preflight.status === 'BLOCKED') {
-        throw new Error(
-          `Refresco bloqueado por seguridad: ${preflight.issues.join(
-            ' '
-          )} No se ha eliminado nadie.`
-        );
+      const { resultado, verificacion } =
+        await aplicarListadoAimHarderEnSesionBabyApp(sesionId, asistentes, safety);
+      if (!verificacion) {
+        // No ocurre: sin omitirSiSinCambios siempre se refresca y verifica.
+        throw new Error('No se pudo verificar el refresco de la sesión Baby.');
       }
-
-      const resultado = await ejecutarFuncionAuthJson<BabyAimHarderRefrescoResultadoApp>(
-        'refrescar_sesion_baby_aimharder_app',
-        {
-          p_sesion_id: sesionId,
-          p_texto_listado: asistentes.map((a) => a.name).join('\n'),
-        }
-      );
-
-      // Segunda garantía: comprobamos directamente "Alumnos detectados".
-      // Cualquier alumno que ya no esté activo en AimHarder se retira de forma
-      // automática salvo que la función segura detecte asistencia o reporte.
-      const verificacion =
-        await verificarYLimpiarSesionBabyTrasRefrescoAimHarderApp(
-          sesionId,
-          asistentes,
-          resultado?.nombres_protegidos || []
-        );
 
       await cargarAgendaOperativaDirecta();
       await cargarListados();
