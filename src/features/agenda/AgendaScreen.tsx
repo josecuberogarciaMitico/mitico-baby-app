@@ -4,6 +4,7 @@ import type { EntrenadorResumen } from '../../core/trainers/trainerTypes';
 import type { AgendaRecomendacionSesionApp, RecomendacionFueraPlazoAgendaApp } from './agendaTypes';
 import { addIsoDays, type BabyRelocationOption, type BabyRelocationStudent } from './agendaRelocation';
 import { loadBabyRelocationOptions, moveBabyStudentBetweenSessions } from '../../services/agenda/agendaRelocationService';
+import { addLateStudentToSession } from '../../services/agenda/lateStudentSessionService';
 import { SessionTrainerCoverageLine } from './AgendaTrainerSummary';
 import { pendingAgendaStudents } from './agendaSessions';
 import {
@@ -56,6 +57,8 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     agendaVacio,
     agendaVacioMini,
     alumnoFueraPlazoNivel,
+    alumnoFueraPlazoAlumnoId,
+    cargarDetalleSesionAgenda,
     alumnoFueraPlazoNombre,
     alumnos,
     alumnosDelGrupoCreadoApp,
@@ -242,6 +245,62 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
   >({});
   const [buscandoAlternativasBaby, setBuscandoAlternativasBaby] = useState(false);
   const [moviendoAlumnoTurnoId, setMoviendoAlumnoTurnoId] = useState('');
+  const [anadiendoFueraPlazoSesion, setAnadiendoFueraPlazoSesion] = useState(false);
+  const [avisoFueraPlazoSesion, setAvisoFueraPlazoSesion] = useState<{
+    ok: boolean;
+    texto: string;
+  } | null>(null);
+
+  // "+ Alumno fuera de plazo" sin grupo: lo añade a la sesión (pendiente de
+  // colocar). Para cuando la sesión aún no tiene grupos o no encaja en ninguno.
+  async function anadirAlumnoFueraPlazoASesionSinGrupo() {
+    const nombre = String(alumnoFueraPlazoNombre || '').trim();
+    const nivel = String(alumnoFueraPlazoNivel || '').trim();
+    if (!agendaSesionActivaId) {
+      setAvisoFueraPlazoSesion({ ok: false, texto: 'Abre primero la sesión donde se ha apuntado el niño.' });
+      return;
+    }
+    if (!nombre || !nivel) {
+      setAvisoFueraPlazoSesion({ ok: false, texto: 'Escribe el nombre y elige el nivel antes de añadirlo.' });
+      return;
+    }
+    if (
+      !window.confirm(
+        `${nombre} · ${nivel}\n\nSe añade a esta sesión SIN grupo (quedará pendiente de colocar).\nDespués genera o revisa los grupos. ¿Continuar?`
+      )
+    ) {
+      return;
+    }
+    setAnadiendoFueraPlazoSesion(true);
+    setAvisoFueraPlazoSesion(null);
+    try {
+      const resultado = await addLateStudentToSession({
+        sessionId: agendaSesionActivaId,
+        studentId: alumnoFueraPlazoAlumnoId || null,
+        fullName: nombre,
+        level: nivel,
+      });
+      await cargarAgendaOperativaDirecta();
+      await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      setAvisoFueraPlazoSesion({
+        ok: true,
+        texto:
+          resultado.resultado === 'YA_ESTABA_EN_SESION'
+            ? `${resultado.alumno} ya estaba en esta sesión. No se ha duplicado.`
+            : `${resultado.alumno} añadido a la sesión (pendiente de colocar en grupo).`,
+      });
+    } catch (errorAnadir) {
+      setAvisoFueraPlazoSesion({
+        ok: false,
+        texto:
+          errorAnadir instanceof Error
+            ? errorAnadir.message
+            : 'No se pudo añadir el alumno a la sesión.',
+      });
+    } finally {
+      setAnadiendoFueraPlazoSesion(false);
+    }
+  }
   const [agendaTrainerAssignmentRows, setAgendaTrainerAssignmentRows] = useState<
     AgendaTrainerAssignmentRow[]
   >([]);
@@ -1754,6 +1813,31 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                       >
                         {analizandoFueraPlazo ? 'Analizando…' : 'Analizar encaje'}
                       </button>
+
+                      <button
+                        type="button"
+                        style={{ ...botonSecundario, marginTop: 10, marginLeft: 8 }}
+                        disabled={anadiendoFueraPlazoSesion || incorporandoFueraPlazo}
+                        onClick={() => void anadirAlumnoFueraPlazoASesionSinGrupo()}
+                      >
+                        {anadiendoFueraPlazoSesion ? 'Añadiendo…' : 'Añadir a la sesión sin grupo'}
+                      </button>
+
+                      {avisoFueraPlazoSesion && (
+                        <div
+                          style={{
+                            marginTop: 10,
+                            padding: '10px 12px',
+                            borderRadius: 12,
+                            fontWeight: 700,
+                            border: avisoFueraPlazoSesion.ok ? '1px solid #bbf7d0' : '1px solid #fecaca',
+                            background: avisoFueraPlazoSesion.ok ? '#f0fdf4' : '#fff7f7',
+                            color: avisoFueraPlazoSesion.ok ? '#166534' : '#991b1b',
+                          }}
+                        >
+                          {avisoFueraPlazoSesion.texto}
+                        </div>
+                      )}
 
                       {errorIncorporacionFueraPlazo && (
                         <div style={{ marginTop: 10, padding: '10px 12px', border: '1px solid #fecaca', background: '#fff7f7', color: '#991b1b', borderRadius: 12, fontWeight: 700 }}>

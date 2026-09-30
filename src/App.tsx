@@ -21197,6 +21197,8 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             agendaVacioMini,
             alternativasTurnoAgendaPorAlumno,
             alumnoFueraPlazoNivel,
+            alumnoFueraPlazoAlumnoId,
+            cargarDetalleSesionAgenda,
             alumnoFueraPlazoNombre,
             alumnos,
             alumnosDelGrupoCreadoApp,

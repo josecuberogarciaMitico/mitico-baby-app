@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import type { DetalleImportacionAltasApp } from '../../core/enrolment/enrolmentTypes';
+import { buscarContactoAimHarderPorNombre } from '../../services/aimharder/aimHarderContactService';
 
 type AdminEnrolmentScreenProps = {
   ctx: Record<string, any>;
@@ -94,6 +95,46 @@ export function AdminEnrolmentScreen({ ctx }: AdminEnrolmentScreenProps) {
     totalModalidadAltasNivelApp,
     validarAltaNivelInicial,
   } = ctx;
+
+  // Alta/Test: si falta teléfono o fecha de nacimiento (p. ej. tras pegar un
+  // listado), se buscan por nombre en la copia de AimHarder. Solo rellena
+  // campos vacíos: nunca pisa lo que ya esté escrito.
+  const [avisoContactoAimHarder, setAvisoContactoAimHarder] = useState('');
+  const nombreAltaForm = String(formAltaNivelInicial?.nombre || '').trim();
+  const faltaContactoAlta =
+    !String(formAltaNivelInicial?.telefono || '').trim() ||
+    !String(formAltaNivelInicial?.fechaNacimiento || '').trim();
+  useEffect(() => {
+    setAvisoContactoAimHarder('');
+    if (!mostrarFormularioAltaNivel || !faltaContactoAlta) return;
+    if (nombreAltaForm.split(/\s+/).length < 2) return;
+    let cancelado = false;
+    const temporizador = window.setTimeout(async () => {
+      try {
+        const contacto = await buscarContactoAimHarderPorNombre(nombreAltaForm);
+        if (cancelado || !contacto) return;
+        setFormAltaNivelInicial((actual: any) => {
+          if (String(actual?.nombre || '').trim() !== nombreAltaForm) return actual;
+          return {
+            ...actual,
+            telefono: String(actual?.telefono || '').trim() || contacto.telefono || '',
+            fechaNacimiento:
+              String(actual?.fechaNacimiento || '').trim() ||
+              String(contacto.fecha_nacimiento || '').slice(0, 10),
+          };
+        });
+        if (contacto.telefono || contacto.fecha_nacimiento) {
+          setAvisoContactoAimHarder('Teléfono y fecha de nacimiento traídos de AimHarder. Revísalos.');
+        }
+      } catch {
+        // Sin datos de AimHarder: el formulario queda como estaba.
+      }
+    }, 500);
+    return () => {
+      cancelado = true;
+      window.clearTimeout(temporizador);
+    };
+  }, [mostrarFormularioAltaNivel, nombreAltaForm, faltaContactoAlta]);
 
   return (
     <>
@@ -821,6 +862,22 @@ export function AdminEnrolmentScreen({ ctx }: AdminEnrolmentScreenProps) {
                   >
                     Datos rellenados desde el listado pegado. Revisa y pulsa
                     “Crear test para familia”.
+                  </div>
+                )}
+                {avisoContactoAimHarder && (
+                  <div
+                    style={{
+                      margin: '-4px 0 12px',
+                      padding: '8px 10px',
+                      borderRadius: 10,
+                      background: '#ecfdf5',
+                      border: '1px solid #a7f3d0',
+                      color: '#047857',
+                      fontSize: 12,
+                      fontWeight: 800,
+                    }}
+                  >
+                    {avisoContactoAimHarder}
                   </div>
                 )}
                 <div style={gridFormulario}>
