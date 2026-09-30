@@ -971,7 +971,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                 if (cerrada && gruposPublicados === 0) {
                   titulo = 'Organización semanal terminada';
                   detalle =
-                    'Esta semana no tienes grupos asignados. Gracias por tu disponibilidad; no necesitas estar pendiente.';
+                    'Esta semana no tienes grupos asignados. Gracias por tu disponibilidad. Si surge algo durante la semana, aparecerá aquí y coordinación se pondrá en contacto contigo.';
                 }
 
                 const pushActivo = Boolean(estado?.push_activo);
@@ -1248,23 +1248,17 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                     }}
                   >
                     {semanaDisponibilidadVistaEntrenadorInicio
-                      ? `Semana solicitada: ${rangoSemanaAgenda(
+                      ? `Próxima semana solicitada: ${rangoSemanaAgenda(
                           semanaDisponibilidadVistaEntrenadorInicio
                         )}. `
                       : ''}
-                    {textoRecordatorioDisponibilidad(disponibilidadEditorVista)}
+                    {disponibilidadVistaEntrenador.length === 0
+                      ? ''
+                      : totalDisponibilidadPendienteVistaEntrenador === 0
+                      ? '✓ Ya has enviado tu disponibilidad de esta semana. Te avisaremos en cuanto haya grupos publicados para ti.'
+                      : textoRecordatorioDisponibilidad(disponibilidadEditorVista)}
                   </p>
                 </section>
-
-                {disponibilidadSemanalVistaEntrenador.filter((grupo) =>
-                  grupo.entrenador
-                    .toLowerCase()
-                    .includes(busquedaGrupoEntrenador.toLowerCase())
-                ).length === 0 && (
-                  <div style={agendaVacio}>
-                    Todavía no hay disponibilidad publicada para esta semana.
-                  </div>
-                )}
 
                 {disponibilidadSemanalVistaEntrenador
                   .filter((grupo) =>
@@ -1503,17 +1497,21 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
             !error && (
               <article style={tarjetaMovilVacia}>
                 <h3 style={{ marginTop: 0 }}>
-                  {tabVistaEntrenador === 'disponibilidad' &&
-                  disponibilidadEditorVista?.gestionada &&
-                  !disponibilidadEditorVista.existe
-                    ? 'Disponibilidad pendiente de publicación'
+                  {tabVistaEntrenador === 'disponibilidad'
+                    ? disponibilidadEditorVista?.estado === 'sin_publicar'
+                      ? 'Disponibilidad pendiente de publicación'
+                      : disponibilidadEditorVista?.estado === 'publicado'
+                      ? 'Sin turnos para ti esta semana'
+                      : 'Disponibilidad todavía no preparada'
                     : 'Sin datos en esta pestaña'}
                 </h3>
                 <p style={{ marginBottom: 0 }}>
-                  {tabVistaEntrenador === 'disponibilidad' &&
-                  disponibilidadEditorVista?.gestionada &&
-                  !disponibilidadEditorVista.existe
-                    ? 'Jose está preparando la semana. Los turnos aparecerán aquí únicamente cuando publique la versión definitiva.'
+                  {tabVistaEntrenador === 'disponibilidad'
+                    ? disponibilidadEditorVista?.estado === 'sin_publicar'
+                      ? 'Jose está preparando la semana. Los turnos aparecerán aquí únicamente cuando publique la versión definitiva.'
+                      : disponibilidadEditorVista?.estado === 'publicado'
+                      ? 'Esta semana no tienes turnos de disponibilidad que responder.'
+                      : 'Jose todavía no ha empezado a preparar la disponibilidad de esta semana. En cuanto la publique, aquí podrás decir qué turnos puedes cubrir.'
                     : 'La semana está limpia. La disponibilidad y los grupos aparecerán cuando Jose los publique. Las tareas anteriores pendientes seguirán visibles hasta completarlas.'}
                 </p>
               </article>
