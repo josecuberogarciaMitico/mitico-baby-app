@@ -514,6 +514,7 @@ import type {
   CobroMensual,
   CobroPdfPreviewState,
 } from './features/billing/billingTypes';
+import { descargarPdfCobroPreview } from './features/billing/cobroPdfDownload';
 import type {
   BorradorDisponibilidadEditor,
   DisponibilidadEntrenador,
@@ -20782,12 +20783,14 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
           body * { visibility: hidden !important; }
           #cobro-pdf-preview, #cobro-pdf-preview * { visibility: visible !important; }
           #cobro-pdf-preview { position: absolute !important; left: 0 !important; top: 0 !important; width: 100% !important; padding: 0 !important; box-shadow: none !important; border: 0 !important; }
+          .cobro-pdf-overlay { position: static !important; overflow: visible !important; padding: 0 !important; background: none !important; }
           .no-imprimir-cobro { display: none !important; }
         }
       `}</style>
 
       {cobroPdfPreview && (
         <div
+          className="cobro-pdf-overlay"
           style={{
             position: 'fixed',
             inset: 0,
@@ -20825,16 +20828,22 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                 <p style={etiquetaSuperior}>PREVISUALIZACIÓN PDF</p>
                 <h2 style={{ margin: 0 }}>{cobroPdfPreview.titulo}</h2>
                 <p style={{ margin: '6px 0 0', color: '#dbeafe' }}>
-                  Revisa el resumen. Luego pulsa imprimir y en Mac guarda como
-                  PDF.
+                  Revisa el resumen y pulsa «Descargar PDF» para guardarlo o
+                  enviarlo.
                 </p>
               </div>
               <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 <button
-                  onClick={imprimirCobroPdfPreview}
+                  onClick={() => void descargarPdfCobroPreview(cobroPdfPreview.titulo)}
                   style={botonPrincipal}
                 >
-                  Imprimir / guardar PDF
+                  Descargar PDF
+                </button>
+                <button
+                  onClick={imprimirCobroPdfPreview}
+                  style={botonSecundario}
+                >
+                  Imprimir
                 </button>
                 <button
                   onClick={() => setCobroPdfPreview(null)}
