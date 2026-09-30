@@ -8,6 +8,7 @@ import {
   reportTechnicalLevelForRender,
 } from '../../lib/adaptiveReport';
 import type { AlumnoReporteEntrenador } from '../../core/sessions/operationalTypes';
+import { DictationButton } from '../../components/reports/DictationButton';
 
 type TrainerViewScreenProps = {
   ctx: Record<string, any>;
@@ -16,6 +17,7 @@ type TrainerViewScreenProps = {
 export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
   const [tareaEntrenadorAbierta, setTareaEntrenadorAbierta] = useState<string | null>(null);
   const [diaDisponibilidadAbierto, setDiaDisponibilidadAbierto] = useState('');
+  const [dictandoObservacion, setDictandoObservacion] = useState(false);
   const {
     abrirFormularioReporte,
     abrirGrupoDesdeTareaEntrenador,
@@ -563,6 +565,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
           <textarea
             value={formReporte.observaciones}
             maxLength={500}
+            readOnly={dictandoObservacion}
             placeholder="Obligatoria. Añade algo útil que no esté ya arriba: cómo ha respondido, miedo, cansancio, atención, material, comportamiento, reacción a un ejercicio o un detalle importante para la próxima sesión."
             onChange={(e) =>
               setFormReporte({
@@ -571,6 +574,18 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
               })
             }
             style={textarea}
+          />
+          <DictationButton
+            value={formReporte.observaciones}
+            maxLength={500}
+            disabled={guardandoReporte}
+            onListeningChange={setDictandoObservacion}
+            onChange={(texto) =>
+              setFormReporte((actual: typeof formReporte) => ({
+                ...actual,
+                observaciones: texto,
+              }))
+            }
           />
           <span style={{ fontSize: 11, color: '#64748b', marginTop: 5 }}>
             {formReporte.observaciones.length}/500 · Obligatoria. No repitas nivel, técnica, autonomía o incidencia: añade un detalle que ayude al siguiente entrenador y al informe de la familia.

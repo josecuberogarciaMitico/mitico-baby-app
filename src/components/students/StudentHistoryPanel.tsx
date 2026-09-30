@@ -161,6 +161,8 @@ export function StudentHistoryPanel({
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {report.nivel_reportado && <span style={badge}>Nivel {report.nivel_reportado}</span>}
+                    {report.pista && <span style={badge}>Pista {report.pista.toLowerCase()}</span>}
+                    {lifts.length > 0 && <span style={badge}>{lifts.join(', ')}</span>}
                     {report.tecnica && <span style={badge}>{report.tecnica}</span>}
                     {Number(report.reporte_version || 1) < 2 && <span style={{ ...badge, background: '#f8fafc' }}>Formato anterior</span>}
                   </div>
@@ -168,6 +170,7 @@ export function StudentHistoryPanel({
 
                 <div style={{ display: 'grid', gap: 7, marginTop: 11, lineHeight: 1.45 }}>
                   {dailyObjective && <p style={{ margin: 0 }}><strong>Trabajo:</strong> {dailyObjective}</p>}
+                  {report.autonomia && <p style={{ margin: 0 }}><strong>Autonomía:</strong> {report.autonomia}</p>}
                   {skills && <p style={{ margin: 0 }}><strong>Competencias:</strong> {skills}</p>}
                   {improvements.length > 0 && <p style={{ margin: 0 }}><strong>Mejoró:</strong> {improvements.join(' · ')}</p>}
                   {report.observaciones_generales && (

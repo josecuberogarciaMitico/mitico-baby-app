@@ -4260,3 +4260,78 @@ section:has(input[placeholder^='Buscar entrenador, teléfono, email o especialid
 .flow-help-compact > summary::-webkit-details-marker {
   display: none;
 }
+
+/* =========================================================
+   DICTADO POR VOZ · OBSERVACIÓN DEL REPORTE
+   Botón «Dictar» debajo del campo de observación
+   (src/components/reports/DictationButton.tsx).
+   ========================================================= */
+
+.trainer-report-dictation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  margin-top: 8px;
+}
+
+.trainer-report-dictation__button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 8px 14px;
+  border: 1px solid #bfd3f5;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #1e3a8a;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.trainer-report-dictation__button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.trainer-report-dictation__button.is-listening {
+  border-color: #fca5a5;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.trainer-report-dictation__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.trainer-report-dictation__button.is-listening .trainer-report-dictation__dot {
+  animation: trainer-report-dictation-pulse 1s ease-in-out infinite;
+}
+
+.trainer-report-dictation__hint {
+  flex: 1 1 180px;
+  min-width: 0;
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+@keyframes trainer-report-dictation-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trainer-report-dictation__button.is-listening .trainer-report-dictation__dot {
+    animation: none;
+  }
+}
