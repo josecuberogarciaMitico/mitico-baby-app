@@ -570,6 +570,8 @@ import { ManagementReportsScreen } from './features/reports/ManagementReportsScr
 import { TrainerViewScreen } from './features/trainers/TrainerViewScreen';
 import { TrainerManagementScreen } from './features/trainers/TrainerManagementScreen';
 import { AdminEnrolmentScreen } from './features/admin/AdminEnrolmentScreen';
+import { AltasPendientesBadge, AltasRespondidasAviso } from './features/admin/AltasRespondidasAviso';
+import { useAltasRespondidasAviso } from './features/admin/useAltasRespondidasAviso';
 import { UserAccessScreen } from './features/admin/UserAccessScreen';
 import { DailySummaryScreen } from './features/dashboard/DailySummaryScreen';
 import { HomeScreen } from './features/dashboard/HomeScreen';
@@ -2424,6 +2426,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   >({});
 
   const [detalleRespuestaAlta, setDetalleRespuestaAlta] = useState('');
+  const avisoAltasRespondidas = useAltasRespondidasAviso({
+    activo: perfilUsuario?.rol === 'coordinador_jefe',
+    altas: altasNivelInicial,
+    obtener: () => ejecutarFuncionConRespuesta<AltaNivelInicialApp>('obtener_altas_nivel_inicial_app', {}),
+  });
 
   const [textoImportarAltas, setTextoImportarAltas] = useState('');
   const [analizandoImportarAltas, setAnalizandoImportarAltas] = useState(false);
@@ -20177,6 +20184,10 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
       className={`mitico-app-shell ${esCoordinadorApp ? 'with-sidebar' : 'trainer-only'} ${esVistaMovilApp ? 'is-mobile' : ''}`}
       style={layout}
     >
+      <AltasRespondidasAviso
+        aviso={avisoAltasRespondidas}
+        onVer={() => { setFiltroAltasNivel('RESPONDIDO'); setFiltroModalidadAltasNivel('TODAS'); if (pantalla === 'administracion') void cargarAltasNivelInicial(); abrirPantallaConScroll('administracion'); }}
+      />
       <header className="mitico-product-header">
         <div className="mitico-topbar">
           <div className="mitico-brand-block">
@@ -20406,7 +20417,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
                       onClick={() => abrirPantallaConScroll('administracion')}
                     >
                       <IconoNavegacionApp tipo="altas" />
-                      <span>Altas / Test</span>
+                      <span>Altas / Test<AltasPendientesBadge total={avisoAltasRespondidas.pendientes} /></span>
                     </button>
                   )}
                 </div>
