@@ -448,6 +448,75 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     }
   }
 
+  // Cambio de turno MANUAL (decide coordinación): mueve al niño a cualquier
+  // turno Baby de la semana SIN grupo. Allí queda pendiente de colocar y se
+  // decide el grupo (y si hace falta un segundo entrenador). Mismo RPC que
+  // "Padres OK · mover a este turno", sin grupo destino.
+  const [turnoManualPorAlumno, setTurnoManualPorAlumno] = useState<Record<string, string>>({});
+  const turnosBabySemanaManual: { sesionId: string; etiqueta: string }[] = (
+    diasSemanaAgenda as any[]
+  ).flatMap((dia: any) =>
+    (sesionesDelDiaAgenda(dia.fecha) as any[])
+      .filter(
+        (sesion: any) =>
+          sesion.origen === 'operativa' &&
+          sesion.agendaDirecta?.sesion_id &&
+          sesion.agendaDirecta.sesion_id !== agendaSesionActivaId &&
+          String(sesion.modalidad || '').trim().toUpperCase() === 'BABY'
+      )
+      .map((sesion: any) => ({
+        sesionId: sesion.agendaDirecta.sesion_id,
+        etiqueta: `${etiquetaDiaFechaAgenda(sesion.fecha)} · ${String(sesion.hora_inicio || '').slice(0, 5)}–${String(sesion.hora_fin || '').slice(0, 5)} · ${Number(sesion.totalAlumnos || 0)} niños`,
+      }))
+  );
+
+  async function moverAlumnoTurnoManualBaby(alumno: AgendaRecomendacionSesionApp) {
+    const sesionDestinoId = turnoManualPorAlumno[alumno.alumno_id] || '';
+    const destino = turnosBabySemanaManual.find((turno) => turno.sesionId === sesionDestinoId);
+    if (!destino) {
+      setError('Elige primero el turno al que quieres mover al niño.');
+      return;
+    }
+    const alumnoSesion = agendaAlumnosSesion.find(
+      (registro: any) => registro.alumno_id === alumno.alumno_id
+    );
+    if (!alumnoSesion?.sesion_alumno_id) {
+      setError('No encuentro al alumno en la sesión actual. Actualiza la sesión y vuelve a intentarlo.');
+      return;
+    }
+    if (
+      !window.confirm(
+        `Mover a ${alumno.alumno}\n\n${destino.etiqueta}\n\nEntra en ese turno SIN grupo: allí lo colocas en el grupo que quieras (y pones 2 entrenadores si hace falta).\n\n¿Confirmas el cambio de turno?`
+      )
+    ) {
+      return;
+    }
+    setMoviendoAlumnoTurnoId(alumno.alumno_id);
+    setError('');
+    try {
+      await moveBabyStudentBetweenSessions({
+        sourceSessionStudentId: alumnoSesion.sesion_alumno_id,
+        targetSessionId: sesionDestinoId,
+        targetGroupId: null,
+      });
+      await Promise.all([
+        cargarAgendaOperativaDirecta(),
+        cargarPlanning(),
+        cargarEntrenadores(),
+      ]);
+      await generarRecomendacionAgendaSesion(agendaSesionActivaId);
+      await cargarAsignacionesEntrenadoresSemana();
+    } catch (errorMovimiento) {
+      setError(
+        errorMovimiento instanceof Error
+          ? errorMovimiento.message
+          : 'No se pudo mover al alumno al otro turno.'
+      );
+    } finally {
+      setMoviendoAlumnoTurnoId('');
+    }
+  }
+
   // Alumnos que están en el listado de la sesión pero no aparecen en ningún
   // grupo ya creado. La comparación usa el MISMO normalizador de alumnos que
   // el resto de Agenda, para ignorar metadatos persistidos en alumnos_lista
@@ -2657,6 +2726,52 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                             <p style={{ margin: '5px 0 0' }}>
                                               No hay otro turno compatible esta semana.
                                             </p>
+                                          )}
+
+                                          {turnosBabySemanaManual.length > 0 && (
+                                            <div
+                                              style={{
+                                                marginTop: 10,
+                                                paddingTop: 10,
+                                                borderTop: '1px dashed #fdba74',
+                                                display: 'grid',
+                                                gap: 6,
+                                              }}
+                                            >
+                                              <strong style={{ fontSize: 13 }}>
+                                                O elige tú el turno (entra sin grupo y lo colocas allí)
+                                              </strong>
+                                              <select
+                                                value={turnoManualPorAlumno[alumno.alumno_id] || ''}
+                                                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                                                  setTurnoManualPorAlumno((anterior: Record<string, string>) => ({
+                                                    ...anterior,
+                                                    [alumno.alumno_id]: e.target.value,
+                                                  }))
+                                                }
+                                              >
+                                                <option value="">Selecciona turno de esta semana</option>
+                                                {turnosBabySemanaManual.map((turno) => (
+                                                  <option key={turno.sesionId} value={turno.sesionId}>
+                                                    {turno.etiqueta}
+                                                  </option>
+                                                ))}
+                                              </select>
+                                              <button
+                                                type="button"
+                                                disabled={
+                                                  cargando ||
+                                                  moviendoAlumnoTurnoId === alumno.alumno_id ||
+                                                  !turnoManualPorAlumno[alumno.alumno_id]
+                                                }
+                                                onClick={() => void moverAlumnoTurnoManualBaby(alumno)}
+                                                style={{ ...botonSecundario, width: '100%' }}
+                                              >
+                                                {moviendoAlumnoTurnoId === alumno.alumno_id
+                                                  ? 'Moviendo…'
+                                                  : 'Padres OK · mover a ese turno (decido yo)'}
+                                              </button>
+                                            </div>
                                           )}
                                         </div>
                                       )}
