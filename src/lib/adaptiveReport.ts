@@ -1,6 +1,8 @@
 import {
   parseTechnicalLevel,
   requireTechnicalLevel,
+  TECHNICAL_LEVEL_ORDER,
+  TECHNICAL_LEVELS,
   type TechnicalLevel,
 } from '../core/levels/levelContract';
 import {
@@ -284,4 +286,341 @@ export function resumenTrabajoDiario(trabajo: string | null | undefined) {
   if (encontrados.length) return Array.from(new Set(encontrados)).slice(0, 4);
   const palabras = textoObjetivo.split(/\s+/).filter(Boolean);
   return palabras.length ? [`${palabras.slice(0, 8).join(' ')}${palabras.length > 8 ? '…' : ''}`] : [];
+}
+
+// ---------------------------------------------------------------------------
+// Reporte por focos (versión 3). Aprobado por Jose el 01/10/2026.
+// Cada nivel tiene 3-4 FOCOS (lo que se exige en ese nivel y cuenta para subir)
+// elegidos entre SUS competencias de POR_NIVEL; el resto del nivel es BASE.
+// Se guarda con los mismos ids y la misma escala que ya acepta Supabase, así que
+// todos los consumidores actuales (historial, trabajo diario, evaluaciones)
+// siguen funcionando sin cambios en la base de datos.
+// ---------------------------------------------------------------------------
+
+export type CriterioFoco = { id: string; aVeces: string; loConsigue: string };
+
+const F = (id: string, aVeces: string, loConsigue: string): CriterioFoco => ({ id, aVeces, loConsigue });
+
+export const FOCOS_POR_NIVEL: Record<TechnicalLevel, CriterioFoco[]> = {
+  INICIACION: [
+    F('confianza_adaptacion', 'Se queda con el grupo con ayuda', 'Sigue al entrenador con tranquilidad, sin la familia'),
+    F('equilibrio_deslizamiento', 'Se desliza recto con ayuda', 'Se desliza recto en la pendiente suave sin caerse'),
+    F('cuna_frenada', 'Abre la cuña con ayuda', 'Abre la cuña cuando se le pide'),
+    F('direccion_giro', 'Mira hacia donde va', 'Se orienta hacia donde se le indica'),
+  ],
+  A: [
+    F('cuna_frenada', 'Frena con ayuda o solo a veces', 'Frena en cuña a demanda'),
+    F('control_velocidad', 'Controla solo en lo más suave', 'Controla la velocidad en cuña en pista pequeña'),
+    F('direccion_giro', 'Gira solo hacia un lado', 'Gira a ambos lados'),
+  ],
+  'A+': [
+    F('giros_cuna_encadenados', 'Enlaza 2-3 giros y para', 'Encadena giros en cuña sin pararse'),
+    F('control_velocidad', 'A ratos baja recto', 'Controla la velocidad con los giros, sin bajar recto'),
+    F('flexion_extension_basica', 'Va rígido en algunos giros', 'Acompaña los giros flexionando las piernas'),
+  ],
+  B: [
+    F('giros_cuna_encadenados', 'Encadena solo en la parte fácil', 'Giros en cuña encadenados en toda la pista grande'),
+    F('control_velocidad', 'Se le escapa en lo inclinado', 'Controla la velocidad en pista grande'),
+    F('apoyo_exterior_presion', 'Carga solo hacia un lado', 'Empieza a cargar el esquí de fuera en los dos lados'),
+    F('radio_trayectoria', 'Hace siempre el mismo giro', 'Hace giros del tamaño que se le pide'),
+  ],
+  'B+': [
+    F('paralelismo', 'Junta al final de algún giro', 'Junta los esquís en diagonales y al final del giro'),
+    F('apoyo_exterior_presion', 'La cuña se cierra solo a veces', 'La cuña se cierra al cargar el esquí exterior'),
+    F('equilibrio_centralidad', 'Se va atrás en lo inclinado', 'Va centrado, sin echarse atrás'),
+    F('transicion', 'Para o abre mucha cuña al cambiar', 'Pasa de un giro a otro sin parar'),
+  ],
+  C: [
+    F('paralelismo', 'Aparece en algún giro suelto', 'El paralelo aparece en parte del giro y se repite con control'),
+    F('apoyo_exterior_presion', 'Carga tarde o poco', 'Carga correctamente el esquí exterior'),
+    F('rotacion_piernas', 'El tronco acompaña el giro', 'Gira con las piernas y el tronco estable'),
+    F('flexion_extension', 'Flexiona solo a veces', 'Flexiona y extiende para cambiar de giro'),
+  ],
+  'C+': [
+    F('paralelismo', 'Vuelve la cuña en lo difícil', 'Paralelo habitual, fluido y estable, sin cuña'),
+    F('canteo', 'Agarra en algún giro', 'Usa los cantos: el esquí agarra y dirige'),
+    F('radio_trayectoria', 'Le cuesta variar el giro', 'Cambia el tamaño del giro a demanda'),
+    F('uso_baston', 'Lo usa solo a veces', 'Usa el bastón para marcar el cambio de giro'),
+  ],
+  D: [
+    F('flexion_extension_presion', 'Absorbe solo en terreno fácil', 'Gestiona la presión y absorbe el terreno'),
+    F('angulacion_inclinacion', 'Se inclina con todo el cuerpo', 'Angula para sujetar el giro'),
+    F('ritmo_coordinacion', 'Se desordena al cambiar', 'Cambia ritmo y radio sin desordenar postura ni apoyos'),
+    F('adaptacion_terreno_velocidad', 'Mantiene solo en terreno conocido', 'Mantiene la técnica con otra nieve, pendiente o velocidad'),
+  ],
+  'D+': [
+    F('conduccion_presion', 'Algún giro conducido aislado', 'Conduce sobre los cantos de forma habitual, sin derrapar'),
+    F('transicion', 'Cambio de cantos brusco', 'Cambio de cantos limpio y fluido'),
+    F('flexion_extension_presion', 'Presión irregular en el giro', 'Presión regulada durante todo el giro'),
+    F('radio_trayectoria', 'Pierde la conducción al variar', 'Cambia radio y trayectoria sin perder la conducción'),
+  ],
+};
+
+/** Escala de 3 pasos que ve el entrenador, guardada con valores que Supabase ya acepta. */
+export const PASOS_REPORTE: Array<{ etiqueta: string; valor: ValorTecnicoReporte }> = [
+  { etiqueta: 'Todavía no', valor: 'Necesita mejorar' },
+  { etiqueta: 'A veces', valor: 'En desarrollo' },
+  { etiqueta: 'Lo consigue', valor: 'Consolidado' },
+];
+
+export type HabilidadNivel = CompetenciaTecnicaReporte & {
+  foco: boolean;
+  aVeces?: string;
+  loConsigue?: string;
+};
+
+/** Competencias del nivel con los focos primero (en su orden) y después la base. */
+export function habilidadesDelNivel(nivel: string): HabilidadNivel[] {
+  const level = normalizarNivelReporte(nivel);
+  const focos = FOCOS_POR_NIVEL[level];
+  const todas = POR_NIVEL[level];
+  const porId = new Map(todas.map((c) => [c.id, c]));
+  const deFoco: HabilidadNivel[] = focos
+    .filter((f) => porId.has(f.id))
+    .map((f) => ({ ...(porId.get(f.id) as CompetenciaTecnicaReporte), foco: true, aVeces: f.aVeces, loConsigue: f.loConsigue }));
+  const ids = new Set(focos.map((f) => f.id));
+  const base: HabilidadNivel[] = todas.filter((c) => !ids.has(c.id)).map((c) => ({ ...c, foco: false }));
+  return [...deFoco, ...base];
+}
+
+// Conceptos que reconoce resumenTrabajoDiario → competencias que los representan.
+const CONCEPTO_A_COMPETENCIAS: Record<string, string[]> = {
+  'Confianza / adaptación': ['confianza_adaptacion'],
+  'Equilibrio / centralidad': ['equilibrio_deslizamiento', 'equilibrio_centralidad'],
+  'Flexión-extensión': ['posicion_flexion_basica', 'flexion_extension_basica', 'flexion_extension', 'flexion_extension_presion'],
+  'Cuña / frenada': ['cuna_frenada'],
+  'Control de velocidad': ['control_velocidad'],
+  Paralelismo: ['paralelismo'],
+  'Apoyo exterior / presión': ['apoyo_exterior_presion'],
+  'Rotación de piernas': ['rotacion_piernas'],
+  Canteo: ['canteo'],
+  'Gestión de presión': ['flexion_extension_presion', 'conduccion_presion'],
+  'Radio / trayectoria': ['radio_trayectoria'],
+  Transición: ['transicion'],
+  'Ritmo / coordinación': ['ritmo_coordinacion'],
+  'Uso de bastón': ['uso_baston'],
+  Conducción: ['conduccion_presion'],
+  'Adaptación al terreno': ['adaptacion_terreno_velocidad'],
+  'Dirección / forma del giro': ['direccion_giro', 'giros_cuna_encadenados'],
+};
+
+/**
+ * Ids de las habilidades del nivel que corresponden al trabajo de hoy.
+ * Si el trabajo diario no permite identificar ninguna, se proponen los focos.
+ */
+export function habilidadesDelTrabajoDeHoy(nivel: string, trabajoDiario: string | null | undefined): string[] {
+  const habilidades = habilidadesDelNivel(nivel);
+  const delNivel = new Set(habilidades.map((h) => h.id));
+  const ids = new Set<string>();
+  resumenTrabajoDiario(trabajoDiario).forEach((concepto) => {
+    (CONCEPTO_A_COMPETENCIAS[concepto] || []).forEach((id) => {
+      if (delNivel.has(id)) ids.add(id);
+    });
+  });
+  if (ids.size === 0) return habilidades.filter((h) => h.foco).map((h) => h.id);
+  return habilidades.filter((h) => ids.has(h.id)).map((h) => h.id);
+}
+
+/** Niveles anterior y siguiente para la pregunta «¿En qué nivel le has visto hoy?». */
+export function nivelesVecinos(nivel: string): { anterior: TechnicalLevel | null; actual: TechnicalLevel | null; siguiente: TechnicalLevel | null } {
+  const actual = reportTechnicalLevelForRender(nivel);
+  if (!actual) return { anterior: null, actual: null, siguiente: null };
+  const orden = TECHNICAL_LEVELS.indexOf(actual);
+  return {
+    anterior: orden > 0 ? TECHNICAL_LEVELS[orden - 1] : null,
+    actual,
+    siguiente: orden < TECHNICAL_LEVELS.length - 1 ? TECHNICAL_LEVELS[orden + 1] : null,
+  };
+}
+
+/** Remonte propuesto cuando el reporte se abre (el entrenador puede cambiarlo). */
+export function remontesPorDefecto(nivel: string | null | undefined): string {
+  const level = reportTechnicalLevelForRender(nivel);
+  if (!level) return 'Cinta';
+  return TECHNICAL_LEVELS.indexOf(level) <= TECHNICAL_LEVELS.indexOf('A+') ? 'Cinta' : 'Percha y silla';
+}
+
+const RITMO_POR_COMPARACION = {
+  menor: 'Lento para su nivel',
+  igual: 'Adecuado para su nivel',
+  mayor: 'Muy rápido · podría ir con nivel superior',
+} as const;
+
+/** El ritmo deja de preguntarse: se deduce del nivel elegido frente al nivel de partida. */
+export function ritmoDesdeNivel(nivelElegido: string, nivelPartida: string | null | undefined): string {
+  const elegido = reportTechnicalLevelForRender(nivelElegido);
+  const partida = reportTechnicalLevelForRender(nivelPartida);
+  if (!elegido || !partida) return RITMO_POR_COMPARACION.igual;
+  const diferencia = TECHNICAL_LEVEL_ORDER[elegido] - TECHNICAL_LEVEL_ORDER[partida];
+  if (diferencia < 0) return RITMO_POR_COMPARACION.menor;
+  if (diferencia > 0) return RITMO_POR_COMPARACION.mayor;
+  return RITMO_POR_COMPARACION.igual;
+}
+
+const CUNA_INICIACION: Partial<Record<ValorTecnicoReporte, string>> = {
+  'Necesita mejorar': 'No abre cuña',
+  'En desarrollo': 'Abre cuña con ayuda',
+  Consolidado: 'Cuña funcional',
+};
+const CUNA_A_EN_ADELANTE: Partial<Record<ValorTecnicoReporte, string>> = {
+  'Necesita mejorar': 'Abre cuña con ayuda',
+  'En desarrollo': 'Frena con ayuda',
+  Consolidado: 'Frena a demanda',
+};
+const DIRECCION_A_GIRO: Partial<Record<ValorTecnicoReporte, string>> = {
+  'Necesita mejorar': 'No gira',
+  'En desarrollo': 'Gira solo hacia un lado',
+  Consolidado: 'Giros aislados',
+};
+
+/** Opción con texto visible y valor guardado (para botones). */
+export type OpcionReporte = { etiqueta: string; valor: string };
+
+/**
+ * Actitud general (obligatoria, una sola). Se guarda con valores que la base
+ * de datos ya acepta: «Regular» se guarda como «Correcta».
+ */
+export const ACTITUD_GENERAL: OpcionReporte[] = [
+  { etiqueta: 'Muy buena', valor: 'Muy buena' },
+  { etiqueta: 'Buena', valor: 'Buena' },
+  { etiqueta: 'Regular', valor: 'Correcta' },
+];
+
+/** «¿Algo a destacar?» (opcional, varias). Mismos valores para Baby y Ocio. */
+export function opcionesActitudDestacar(modalidad: string): OpcionReporte[] {
+  const ocio = esOcio(modalidad);
+  return [
+    { etiqueta: 'Cansado', valor: 'Cansado' },
+    { etiqueta: 'Disperso', valor: 'Disperso' },
+    { etiqueta: 'Miedo', valor: 'Miedo' },
+    { etiqueta: 'Se bloquea', valor: 'Se bloquea' },
+    { etiqueta: ocio ? 'No sigue consignas' : 'No escucha', valor: 'No escucha' },
+    ...(ocio ? [] : [{ etiqueta: 'Llora', valor: 'Llora' }]),
+  ];
+}
+
+// Si hay algo a destacar, la columna «actitud» (un solo valor) guarda lo más
+// importante, para que sigan funcionando los avisos de coordinación que ya la leen.
+const PRIORIDAD_ACTITUD_DESTACADA = ['Llora', 'Miedo', 'Se bloquea', 'No escucha', 'Disperso', 'Cansado'];
+
+export function actitudParaGuardar(general: string, destacar: string[] | undefined): string {
+  const marcadas = new Set(destacar || []);
+  return PRIORIDAD_ACTITUD_DESTACADA.find((valor) => marcadas.has(valor)) || general;
+}
+
+/**
+ * Autonomía en 3 pasos, igual para todos. «Va solo» se guarda con el valor
+ * de autonomía que corresponde al nivel del grupo.
+ */
+export function opcionesAutonomiaPasos(nivel: string | null | undefined): OpcionReporte[] {
+  const level = reportTechnicalLevelForRender(nivel);
+  const orden = level ? TECHNICAL_LEVELS.indexOf(level) : -1;
+  const vaSolo =
+    orden <= 0
+      ? 'Autónomo en llano'
+      : orden <= TECHNICAL_LEVELS.indexOf('A+')
+        ? 'Autónomo en pista pequeña'
+        : orden <= TECHNICAL_LEVELS.indexOf('C')
+          ? 'Autónomo en pista grande'
+          : 'Autónomo total';
+  return [
+    { etiqueta: 'Necesita ayuda constante', valor: 'Necesita ayuda constante' },
+    { etiqueta: 'Necesita ayuda a ratos', valor: 'Necesita ayuda puntual' },
+    { etiqueta: 'Va solo', valor: vaSolo },
+  ];
+}
+
+export type EnvioReporteFocos = {
+  nivel: TechnicalLevel;
+  /** Valor único para la columna «actitud». */
+  actitud: string;
+  /** Actitud general + lo marcado en «¿Algo a destacar?» (vacío si no se marcó nada). */
+  actitudDetalle: string[];
+  ritmoGrupo: string;
+  remontes: string;
+  mejorasHoy: string[];
+  prioridades: string[];
+  cunaFrenada: string;
+  giroInicial: string;
+  /** Solo las habilidades valoradas del nivel elegido. */
+  evaluacionTecnica: EvaluacionTecnicaReporte;
+};
+
+/**
+ * Valida el reporte por focos y calcula los campos que Supabase sigue
+ * necesitando (ritmo, mejoras, prioridades y progresión inicial), para no
+ * cambiar la función de guardado ni romper a quien lee esas columnas.
+ */
+export function prepararEnvioReporteFocos(
+  form: {
+    nivel: string;
+    actitud: string;
+    actitudDestacar?: string[];
+    autonomia: string;
+    incidencia: string;
+    observaciones: string;
+    remontes: string;
+    cunaFrenada: string;
+    giroInicial: string;
+    evaluacionTecnica: EvaluacionTecnicaReporte;
+  },
+  nivelPartida: string | null | undefined
+): { ok: true; envio: EnvioReporteFocos } | { ok: false; error: string } {
+  const nivel = reportTechnicalLevelForRender(form.nivel);
+  if (!nivel) return { ok: false, error: 'Indica en qué nivel le has visto hoy.' };
+
+  const habilidades = habilidadesDelNivel(nivel);
+  const valoradas = habilidades.filter((h) => {
+    const valor = form.evaluacionTecnica[h.id];
+    return Boolean(valor) && valor !== 'No trabajado';
+  });
+  if (valoradas.length === 0) return { ok: false, error: 'Valora al menos una habilidad de las que has visto hoy.' };
+  if (!ACTITUD_GENERAL.some((o) => o.valor === form.actitud)) return { ok: false, error: 'Selecciona la actitud.' };
+  if (!String(form.autonomia || '').trim()) return { ok: false, error: 'Selecciona la autonomía observada.' };
+  if (!String(form.incidencia || '').trim()) return { ok: false, error: 'Has marcado que ha pasado algo: elige qué ha pasado.' };
+  if (!String(form.observaciones || '').trim()) return { ok: false, error: 'Escribe una observación antes de guardar el reporte.' };
+
+  const valor = (id: string) => form.evaluacionTecnica[id];
+  const conValor = (v: ValorTecnicoReporte) => valoradas.filter((h) => valor(h.id) === v).map((h) => h.nombre);
+  const consigue = conValor('Consolidado');
+  const aVeces = conValor('En desarrollo');
+  const mejorasHoy = consigue.length ? consigue : aVeces.length ? aVeces : ['Ha reforzado lo ya aprendido'];
+
+  const prioridades = valoradas
+    .filter((h) => h.foco && valor(h.id) !== 'Consolidado')
+    .map((h) => h.nombre);
+  const partida = reportTechnicalLevelForRender(nivelPartida);
+  if (partida && partida !== nivel) prioridades.push('Revisar nivel');
+
+  let cunaFrenada = form.cunaFrenada || '';
+  const cuna = valor('cuna_frenada');
+  if (cuna && cuna !== 'No trabajado') {
+    cunaFrenada = (nivel === 'INICIACION' ? CUNA_INICIACION : CUNA_A_EN_ADELANTE)[cuna] || cunaFrenada;
+  }
+  let giroInicial = form.giroInicial || '';
+  const direccion = valor('direccion_giro');
+  if (direccion && direccion !== 'No trabajado') giroInicial = DIRECCION_A_GIRO[direccion] || giroInicial;
+  const encadenados = valor('giros_cuna_encadenados');
+  if (encadenados === 'Consolidado') giroInicial = 'Enlaza giros en cuña';
+  else if (encadenados === 'En desarrollo' || encadenados === 'Necesita mejorar') giroInicial = 'Giros aislados';
+
+  return {
+    ok: true,
+    envio: {
+      nivel,
+      actitud: actitudParaGuardar(form.actitud, form.actitudDestacar),
+      actitudDetalle: form.actitudDestacar && form.actitudDestacar.length
+        ? [form.actitud, ...form.actitudDestacar]
+        : [],
+      ritmoGrupo: ritmoDesdeNivel(nivel, nivelPartida),
+      remontes: form.remontes || remontesPorDefecto(nivel),
+      mejorasHoy,
+      prioridades,
+      cunaFrenada,
+      giroInicial,
+      evaluacionTecnica: Object.fromEntries(
+        valoradas.map((h) => [h.id, form.evaluacionTecnica[h.id]])
+      ) as EvaluacionTecnicaReporte,
+    },
+  };
 }

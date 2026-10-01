@@ -233,14 +233,12 @@ import {
 } from './features/ocio/ocioTypes';
 import { AdaptiveReportFields } from './screens/AdaptiveReportFields';
 import {
-  evaluacionTecnicaInicial,
   ayudaAutonomiaAdaptada,
   mejoraLegacy,
   opcionesAutonomiaAdaptada,
+  prepararEnvioReporteFocos,
   prepareTrainerReportOpening,
   recomendacionLegacy,
-  reportTechnicalLevelForRender,
-  requireReportTechnicalLevel,
   resumenEvaluacionTecnica,
   tecnicaLegacyPorNivel,
   type EvaluacionTecnicaReporte,
@@ -868,6 +866,7 @@ type FiltroDiaEvaluacionesOcioApp = 'Todos' | 'Jueves' | 'Sábado' | 'Domingo';
 type ReporteFormState = {
   nivel: string;
   actitud: string;
+  actitudDestacar: string[];
   pista: string;
   autonomia: string;
   ritmoGrupo: string;
@@ -1103,12 +1102,13 @@ function referenciaTecnicaReporteApp(nivel: string): Array<[string, string]> {
 
 function reporteInicial(): ReporteFormState {
   return {
-    nivel: 'B',
-    actitud: 'Correcta',
+    nivel: '',
+    actitud: '',
+    actitudDestacar: [],
     pista: 'Pequeña',
     autonomia: '',
     ritmoGrupo: '',
-    remontes: 'Cinta',
+    remontes: '',
     incidencia: 'Sin incidencia',
     observaciones: '',
     autonomiaCinta: '',
@@ -1116,7 +1116,7 @@ function reporteInicial(): ReporteFormState {
     giroInicial: '',
     dinamicaAutonoma: '',
     ayudaCunero: 'No',
-    evaluacionTecnica: evaluacionTecnicaInicial('B'),
+    evaluacionTecnica: {},
     mejorasHoy: [],
     prioridades: [],
   };
@@ -4096,15 +4096,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     const nivelIndividualInicial = apertura.level;
     setReporteActivo(apertura.activeReport);
     setNivelPartidaReporte(nivelIndividualInicial || '');
-    setFormReporte({
-      ...reporteInicial(),
-      nivel: nivelIndividualInicial || '',
-      pista: pistaFallback,
-      observaciones: '',
-      evaluacionTecnica: nivelIndividualInicial
-        ? evaluacionTecnicaInicial(nivelIndividualInicial)
-        : {},
-    });
+    setFormReporte({ ...reporteInicial(), pista: pistaFallback });
     enfocarFormularioReporteEntrenador(alumno, 80);
 
     let nivelSesion: string | null = null;
@@ -4137,21 +4129,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     });
 
     setNivelPartidaReporte(nivelResuelto.level || '');
-    setFormReporte((actual) => {
-      const nivelElegido = reportTechnicalLevelForRender(actual.nivel);
-      if (nivelElegido || !nivelResuelto.level) {
-        return pistaPartida === actual.pista
-          ? actual
-          : { ...actual, pista: pistaPartida };
-      }
-
-      return {
-        ...actual,
-        nivel: nivelResuelto.level,
-        pista: pistaPartida,
-        evaluacionTecnica: evaluacionTecnicaInicial(nivelResuelto.level),
-      };
-    });
+    setFormReporte((actual) =>
+      pistaPartida === actual.pista ? actual : { ...actual, pista: pistaPartida }
+    );
   }
 
   function cerrarFormularioReporte() {
@@ -4182,44 +4162,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
     setErrorReporte('');
 
-    let nivelReporte: TechnicalLevel;
-    try {
-      nivelReporte = requireReportTechnicalLevel(formReporte.nivel);
-    } catch {
-      mostrarErrorReporte(
-        'Selecciona un único nivel observado válido antes de guardar el reporte.'
-      );
+    // Reporte por focos: valida y calcula ritmo, mejoras, prioridades y progresión inicial.
+    const preparado = prepararEnvioReporteFocos(formReporte, nivelPartidaReporte);
+    if (!preparado.ok) {
+      mostrarErrorReporte(preparado.error);
       return;
     }
-
-    if (formReporte.mejorasHoy.length === 0) {
-      mostrarErrorReporte(
-        'Selecciona qué ha mejorado hoy. Si no hay un avance nuevo, usa “Ha reforzado lo ya aprendido”.'
-      );
-      return;
-    }
-
-    if (!formReporte.ritmoGrupo) {
-      mostrarErrorReporte(
-        'Selecciona el ritmo del alumno dentro del grupo antes de guardar el reporte.'
-      );
-      return;
-    }
-
-    if (!formReporte.autonomia) {
-      mostrarErrorReporte(
-        'Selecciona la autonomía observada antes de guardar el reporte.'
-      );
-      return;
-    }
-
+    const envio = preparado.envio;
+    const nivelReporte: TechnicalLevel = envio.nivel;
     const observacionUtil = formReporte.observaciones.trim();
-    if (!observacionUtil) {
-      mostrarErrorReporte(
-        'Escribe una observación útil para próximas sesiones antes de guardar el reporte.'
-      );
-      return;
-    }
 
     const confirmar = window.confirm(`¿Guardar reporte de ${alumno.alumno}?`);
 
@@ -4235,27 +4186,29 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_grupo_id: alumno.grupo_id,
         p_alumno_id: alumno.alumno_id,
         p_entrenador_id: alumno.entrenador_id,
-        p_actitud: formReporte.actitud,
+        p_actitud: envio.actitud,
         p_nivel_reportado: nivelReporte,
         p_tecnica_legacy: esNivelAprendizajeInicialApp(nivelReporte)
-          ? tecnicaInicialDerivadaReporteApp(formReporte)
+          ? tecnicaInicialDerivadaReporteApp({ ...formReporte, ...envio })
           : tecnicaLegacyPorNivel(nivelReporte),
         p_pista: formReporte.pista,
         p_autonomia: formReporte.autonomia,
-        p_remontes: formReporte.remontes,
+        p_remontes: envio.remontes,
         p_incidencia: formReporte.incidencia,
-        p_recomendacion_legacy: recomendacionLegacy(formReporte.prioridades),
-        p_mejora_legacy: mejoraLegacy(formReporte.mejorasHoy),
+        p_recomendacion_legacy: recomendacionLegacy(envio.prioridades),
+        p_mejora_legacy: mejoraLegacy(envio.mejorasHoy),
         p_observaciones: observacionUtil,
-        p_ritmo_grupo: formReporte.ritmoGrupo,
-        p_evaluacion_tecnica: formReporte.evaluacionTecnica,
-        p_mejoras_hoy: formReporte.mejorasHoy,
-        p_prioridades: formReporte.prioridades,
+        p_ritmo_grupo: envio.ritmoGrupo,
+        p_evaluacion_tecnica: envio.evaluacionTecnica,
+        p_mejoras_hoy: envio.mejorasHoy,
+        p_prioridades: envio.prioridades,
         p_autonomia_cinta: formReporte.autonomiaCinta || null,
-        p_cuna_frenada: formReporte.cunaFrenada || null,
-        p_giro_inicial: formReporte.giroInicial || null,
+        p_cuna_frenada: envio.cunaFrenada || null,
+        p_giro_inicial: envio.giroInicial || null,
         p_dinamica_autonoma: formReporte.dinamicaAutonoma || null,
         p_ayuda_cunero: formReporte.ayudaCunero || 'No utilizado',
+        // Solo se envía si se ha marcado «¿Algo a destacar?» (requiere la migración 2026-10-01).
+        ...(envio.actitudDetalle.length ? { p_actitud_detalle: envio.actitudDetalle } : {}),
       });
 
       cerrarFormularioReporte();

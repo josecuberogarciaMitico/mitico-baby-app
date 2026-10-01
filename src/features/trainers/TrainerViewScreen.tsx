@@ -1,11 +1,16 @@
 import React, { useState } from 'react';
-import { CampoSelect } from '../../lib/appHelpers';
-import { AdaptiveReportFields } from '../../screens/AdaptiveReportFields';
+import {
+  AdaptiveReportFields,
+  BotonesOpcion,
+  IncidenciaReporteFields,
+} from '../../screens/AdaptiveReportFields';
 import {
   ayudaAutonomiaAdaptada,
-  evaluacionTecnicaInicial,
-  opcionesAutonomiaAdaptada,
+  habilidadesDelNivel,
+  opcionesAutonomiaPasos,
+  remontesPorDefecto,
   reportTechnicalLevelForRender,
+  ritmoDesdeNivel,
 } from '../../lib/adaptiveReport';
 import type { AlumnoReporteEntrenador } from '../../core/sessions/operationalTypes';
 import { DictationButton } from '../../components/reports/DictationButton';
@@ -285,10 +290,14 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
     modo: 'inline' | 'sheet'
   ) {
     const esSheet = modo === 'sheet';
+    // El nivel ya no viene preseleccionado: el entrenador lo elige en el reporte.
+    // Mientras no lo elija, cabecera y referencia usan el nivel de partida.
     const nivelEfectivoReporte =
       reportTechnicalLevelForRender(formReporte.nivel) ||
       reportTechnicalLevelForRender(nivelPartidaReporte) ||
       reportTechnicalLevelForRender(alumno.nivel_alumno);
+    const remontesVisibles =
+      formReporte.remontes || remontesPorDefecto(nivelEfectivoReporte);
     // La autonomía mide el funcionamiento dentro de la sesión real. En un grupo
     // alto debe usar la escala avanzada aunque el nivel individual de partida sea
     // inferior; la técnica continúa evaluándose con el nivel individual observado.
@@ -304,6 +313,28 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
     const grupoDelReporte = gruposEntrenador.find(
       (grupo) => grupo.grupo_id === alumno.grupo_id
     );
+
+    const cambiarNivelReporte = (valor: string) => {
+      const nivelSeleccionado = reportTechnicalLevelForRender(valor);
+      if (!nivelSeleccionado || nivelSeleccionado === formReporte.nivel) return;
+      // Se conservan las valoraciones de habilidades que también existen en el nuevo nivel.
+      const idsNivel = new Set(habilidadesDelNivel(nivelSeleccionado).map((h) => h.id));
+      const nivelAutonomia =
+        reportTechnicalLevelForRender(nivelGrupo) || nivelSeleccionado;
+      setFormReporte({
+        ...formReporte,
+        nivel: nivelSeleccionado,
+        ritmoGrupo: ritmoDesdeNivel(nivelSeleccionado, nivelPartidaReporte),
+        autonomia: opcionesAutonomiaPasos(nivelAutonomia).some((o) => o.valor === formReporte.autonomia)
+          ? formReporte.autonomia
+          : '',
+        evaluacionTecnica: Object.fromEntries(
+          Object.entries(formReporte.evaluacionTecnica || {}).filter(([id]) => idsNivel.has(id))
+        ),
+        mejorasHoy: [],
+        prioridades: [],
+      });
+    };
 
     return (
       <div
@@ -377,195 +408,91 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
           </div>
         </details>
 
-        <div className="trainer-report-grid" style={gridFormulario}>
-          <div>
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                marginBottom: 8,
-                padding: '5px 9px',
-                borderRadius: 999,
-                background: '#eaf2ff',
-                border: '1px solid #c9dcff',
-                color: '#2453b3',
-                fontSize: 12,
-                fontWeight: 900,
-              }}
-            >
-              Nivel de partida ·{' '}
-              {nivelPartidaReporte ||
-                reportTechnicalLevelForRender(alumno.nivel_alumno) ||
-                'Sin nivel individual válido'}
-            </div>
-            <CampoSelect
-              label="Nivel observado"
-              value={formReporte.nivel}
-              opciones={opcionesNivel}
-              onChange={(valor) => {
-                const nivelSeleccionado = reportTechnicalLevelForRender(valor);
-                setFormReporte({
-                  ...formReporte,
-                  nivel: nivelSeleccionado || '',
-                  autonomia: '',
-                  evaluacionTecnica: nivelSeleccionado
-                    ? evaluacionTecnicaInicial(
-                        nivelSeleccionado,
-                        formReporte.evaluacionTecnica
-                      )
-                    : {},
-                  mejorasHoy: [],
-                  prioridades: [],
-                });
-              }}
-            />
-          </div>
-
-        </div>
-
-        {!nivelEfectivoReporte && (
-          <div
-            role="status"
-            style={{
-              marginTop: 12,
-              padding: '11px 13px',
-              border: '1px solid #fde68a',
-              borderRadius: 12,
-              background: '#fffbeb',
-              color: '#92400e',
-              fontSize: 13,
-              fontWeight: 800,
-              lineHeight: 1.4,
-            }}
-          >
-            Selecciona “Nivel observado” para cargar los campos técnicos del alumno.
-            El nivel del grupo ({nivelGrupo || 'sin etiqueta'}) no se usará como nivel individual.
-          </div>
-        )}
-
-        {nivelEfectivoReporte && (
-          <AdaptiveReportFields
-            modalidad={alumno.modalidad}
-            nivel={nivelEfectivoReporte}
-            trabajoDiario={grupoDelReporte?.trabajo_diario}
-            actitud={formReporte.actitud}
-            ritmo={formReporte.ritmoGrupo}
-            incidencia={formReporte.incidencia}
-            evaluacion={formReporte.evaluacionTecnica}
-            mejoras={formReporte.mejorasHoy}
-            prioridades={formReporte.prioridades}
-            onActitud={(valor) => setFormReporte({ ...formReporte, actitud: valor })}
-            onRitmo={(valor) => setFormReporte({ ...formReporte, ritmoGrupo: valor })}
-            onIncidencia={(valor) => setFormReporte({ ...formReporte, incidencia: valor })}
-            onEvaluacion={(valor) => setFormReporte({ ...formReporte, evaluacionTecnica: valor })}
-            onMejoras={(valores) => setFormReporte({ ...formReporte, mejorasHoy: valores })}
-            onPrioridades={(valores) => setFormReporte({ ...formReporte, prioridades: valores })}
-          />
-        )}
-
-        {nivelEfectivoReporte && (
-          <div className="trainer-report-grid trainer-report-grid--context" style={gridFormulario}>
-
-          {esProgresionInicialReporte && (
-            <CampoSelect
-              label="Cuña y frenada"
-              value={formReporte.cunaFrenada}
-              opciones={['', ...opcionesCunaFrenadaInicialApp]}
-              onChange={(valor) =>
-                setFormReporte({
-                  ...formReporte,
-                  cunaFrenada: valor,
-                })
-              }
-            />
-          )}
-
-          {esProgresionInicialReporte && (
-            <CampoSelect
-              label="Giro"
-              value={formReporte.giroInicial}
-              opciones={['', ...opcionesGiroInicialApp]}
-              onChange={(valor) =>
-                setFormReporte({
-                  ...formReporte,
-                  giroInicial: valor,
-                })
-              }
-            />
-          )}
-
-          <CampoSelect
+        <details className="report-focus-today">
+          <summary>
+            <span>Pista {String(formReporte.pista || '').toLowerCase()}</span>
+            <span>{remontesVisibles}</span>
+            <em>Cambiar si hoy fue distinto</em>
+          </summary>
+          <BotonesOpcion
             label="Pista"
-            value={formReporte.pista}
             opciones={opcionesPista}
-            onChange={(valor) =>
-              setFormReporte({ ...formReporte, pista: valor })
-            }
+            valor={formReporte.pista}
+            onChange={(valor) => setFormReporte({ ...formReporte, pista: valor })}
           />
-
-          <CampoSelect
-            label="Autonomía"
-            value={formReporte.autonomia}
-            opciones={opcionesAutonomiaAdaptada(nivelAutonomiaReporte)}
-            onChange={(valor) =>
-              setFormReporte({ ...formReporte, autonomia: valor })
-            }
-            ayuda={ayudaAutonomiaAdaptada(nivelAutonomiaReporte)}
-          />
-
-          {esProgresionInicialReporte && (
-            <CampoSelect
-              label="Autonomía en cinta"
-              value={formReporte.autonomiaCinta}
-              opciones={['', ...opcionesAutonomiaCintaInicialApp]}
-              onChange={(valor) =>
-                setFormReporte({
-                  ...formReporte,
-                  autonomiaCinta: valor,
-                })
-              }
-            />
-          )}
-
-          {esProgresionInicialReporte && (
-            <CampoSelect
-              label="Funcionamiento en pista"
-              value={formReporte.dinamicaAutonoma}
-              opciones={['', ...opcionesDinamicaAutonomaInicialApp]}
-              onChange={(valor) =>
-                setFormReporte({
-                  ...formReporte,
-                  dinamicaAutonoma: valor,
-                })
-              }
-            />
-          )}
-
-          <CampoSelect
+          <BotonesOpcion
             label="Remontes"
-            value={formReporte.remontes}
             opciones={opcionesRemontes}
-            onChange={(valor) =>
-              setFormReporte({ ...formReporte, remontes: valor })
-            }
+            valor={remontesVisibles}
+            onChange={(valor) => setFormReporte({ ...formReporte, remontes: valor })}
+          />
+        </details>
+
+        <AdaptiveReportFields
+          modalidad={alumno.modalidad}
+          nivel={formReporte.nivel}
+          nivelPartida={nivelPartidaReporte}
+          trabajoDiario={grupoDelReporte?.trabajo_diario}
+          actitud={formReporte.actitud}
+          actitudDestacar={formReporte.actitudDestacar || []}
+          evaluacion={formReporte.evaluacionTecnica}
+          referenciaNivel={referenciaTecnicaReporteApp(formReporte.nivel || '')}
+          onNivel={cambiarNivelReporte}
+          onActitud={(valor) => setFormReporte({ ...formReporte, actitud: valor })}
+          onActitudDestacar={(valores) => setFormReporte({ ...formReporte, actitudDestacar: valores })}
+          onEvaluacion={(valor) => setFormReporte({ ...formReporte, evaluacionTecnica: valor })}
+        />
+
+        <div className="report-focus">
+          <BotonesOpcion
+            label="Autonomía"
+            obligatorio
+            opciones={opcionesAutonomiaPasos(nivelAutonomiaReporte)}
+            valor={formReporte.autonomia}
+            ayuda={ayudaAutonomiaAdaptada(nivelAutonomiaReporte || '')}
+            onChange={(valor) => setFormReporte({ ...formReporte, autonomia: valor })}
           />
 
           {esProgresionInicialReporte && (
-            <CampoSelect
-              label="¿Ha usado cuñero?"
-              value={formReporte.ayudaCunero}
-              opciones={opcionesAyudaCuneroInicialApp}
-              onChange={(valor) =>
-                setFormReporte({
-                  ...formReporte,
-                  ayudaCunero: valor,
-                })
-              }
-            />
+            <details className="report-focus-optional">
+              <summary>Cinta y funcionamiento en pista (opcional)</summary>
+              <BotonesOpcion
+                label="Autonomía en cinta"
+                opciones={opcionesAutonomiaCintaInicialApp}
+                valor={formReporte.autonomiaCinta}
+                onChange={(valor) =>
+                  setFormReporte({
+                    ...formReporte,
+                    autonomiaCinta: formReporte.autonomiaCinta === valor ? '' : valor,
+                  })
+                }
+              />
+              <BotonesOpcion
+                label="Funcionamiento en pista"
+                opciones={opcionesDinamicaAutonomaInicialApp}
+                valor={formReporte.dinamicaAutonoma}
+                onChange={(valor) =>
+                  setFormReporte({
+                    ...formReporte,
+                    dinamicaAutonoma: formReporte.dinamicaAutonoma === valor ? '' : valor,
+                  })
+                }
+              />
+              <BotonesOpcion
+                label="¿Ha usado cuñero?"
+                opciones={opcionesAyudaCuneroInicialApp}
+                valor={formReporte.ayudaCunero}
+                onChange={(valor) => setFormReporte({ ...formReporte, ayudaCunero: valor })}
+              />
+            </details>
           )}
 
-          </div>
-        )}
+          <IncidenciaReporteFields
+            modalidad={alumno.modalidad}
+            incidencia={formReporte.incidencia}
+            onIncidencia={(valor) => setFormReporte({ ...formReporte, incidencia: valor })}
+          />
+        </div>
 
         <label style={labelCampo}>
           Observación útil para próximas sesiones (obligatoria)
