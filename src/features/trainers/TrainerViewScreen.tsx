@@ -134,6 +134,13 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
     vistaEntrenadorShell,
   } = ctx;
 
+  const fechaConDiaEntrenador = (fecha: string) =>
+    `${capitalizarPrimera(
+      new Date(`${fecha}T00:00:00`).toLocaleDateString('es-ES', {
+        weekday: 'long',
+      })
+    )} ${formatearFecha(fecha)}`;
+
   const gestionarDiaDisponibilidad = (
     claveDia: string,
     event: React.SyntheticEvent<HTMLDetailsElement>
@@ -1837,7 +1844,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                                           color: '#64748b',
                                         }}
                                       >
-                                        {formatearFecha(grupo.fecha)} ·{' '}
+                                        {fechaConDiaEntrenador(grupo.fecha)} ·{' '}
                                         {grupo.hora_inicio.slice(0, 5)}–
                                         {grupo.hora_fin.slice(0, 5)}
                                       </span>
@@ -1893,7 +1900,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                                           color: '#64748b',
                                         }}
                                       >
-                                        {formatearFecha(reporte.fecha)} ·{' '}
+                                        {fechaConDiaEntrenador(reporte.fecha)} ·{' '}
                                         {reporte.hora_inicio.slice(0, 5)}–
                                         {reporte.hora_fin.slice(0, 5)}
                                       </span>
@@ -1951,7 +1958,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                                         }}
                                       >
                                         {reporte.nombre_grupo} ·{' '}
-                                        {formatearFecha(reporte.fecha)} ·{' '}
+                                        {fechaConDiaEntrenador(reporte.fecha)} ·{' '}
                                         {reporte.hora_inicio.slice(0, 5)}–
                                         {reporte.hora_fin.slice(0, 5)}
                                       </span>
