@@ -37,6 +37,8 @@ export type HistorialReporteAlumnoFichaApp = {
   mejoras_hoy?: string[] | null;
   prioridades_proxima_sesion?: string[] | null;
   reporte_version?: number | null;
+  /** Detalle de actitud («¿Algo a destacar?»). Solo si el historial lo devuelve. */
+  actitud_comentario?: string | null;
 };
 
 export type ContextoTecnicoReporteApp = {

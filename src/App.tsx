@@ -563,6 +563,8 @@ import {
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from './config/supabase';
 import { createSupabaseRestClient } from './services/supabase/restClient';
 import { StudentRecordsScreen } from './features/students/StudentRecordsScreen';
+import { StudentFichaSheet } from './features/students/StudentFichaSheet';
+import { abrirFichaAlumno } from './features/students/studentFichaStore';
 import { ReportsScreen } from './features/reports/ReportsScreen';
 import { ManagementReportsScreen } from './features/reports/ManagementReportsScreen';
 import { TrainerViewScreen } from './features/trainers/TrainerViewScreen';
@@ -4730,18 +4732,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
 
-  function abrirFichaMaestraAlumnoApp(alumnoId: string, nombre: string) {
-    const ficha = alumnos.find((item) => item.alumno_id === alumnoId);
-    setVistaFichasAlumnos('general');
-    setFiltroAlumnos('todos');
-    setBusquedaAlumno(ficha?.alumno || nombre || '');
-    setPantalla('alumnos');
-    window.setTimeout(() => {
-      document.getElementById('fichas-listado-alumnos')?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'start',
-      });
-    }, 80);
+  // Fase 2: la ficha única se abre encima de la pantalla actual (Intensivos).
+  function abrirFichaMaestraAlumnoApp(alumnoId: string, _nombre: string) {
+    abrirFichaAlumno(alumnoId);
   }
 
   function generarBaseEvaluacionAlumnoFichaApp(
@@ -20137,6 +20130,9 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
       className={`mitico-app-shell ${esCoordinadorApp ? 'with-sidebar' : 'trainer-only'} ${esVistaMovilApp ? 'is-mobile' : ''}`}
       style={layout}
     >
+      {esCoordinadorApp && (
+        <StudentFichaSheet alumnos={alumnos} ocioAlumnos={ocioAlumnos} historialPorAlumno={historialReportesFichaPorAlumno} cargandoHistorialId={historialReportesFichaCargandoId} cargarHistorial={cargarHistorialReportesAlumnoFichaApp} formatDate={formatearFecha} cargarAlumnos={cargarAlumnos} />
+      )}
       <AltasRespondidasAviso
         aviso={avisoAltasRespondidas}
         onVer={() => { setFiltroAltasNivel('RESPONDIDO'); setFiltroModalidadAltasNivel('TODAS'); if (pantalla === 'administracion') void cargarAltasNivelInicial(); abrirPantallaConScroll('administracion'); }}

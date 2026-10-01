@@ -7,6 +7,7 @@ import { loadBabyRelocationOptions, moveBabyStudentBetweenSessions } from '../..
 import { addLateStudentToSession } from '../../services/agenda/lateStudentSessionService';
 import { SessionTrainerCoverageLine } from './AgendaTrainerSummary';
 import { pendingAgendaStudents } from './agendaSessions';
+import { abrirFichaAlumno } from '../students/studentFichaStore';
 import {
   sessionTrainerCoverage,
   type AgendaTrainerAssignmentRow,
@@ -227,17 +228,9 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     volcarListadoAgendaOperativa,
   } = ctx;
 
-  function abrirFichaAlumnoDesdeAgenda(alumnoId: string, nombreAlumno: string) {
-    const ficha = alumnos.find((item) => item.alumno_id === alumnoId);
-    setVistaFichasAlumnos('general');
-    setFiltroAlumnos('todos');
-    setBusquedaAlumno(ficha?.alumno || nombreAlumno);
-    setPantalla('alumnos');
-    window.setTimeout(() => {
-      document
-        .getElementById('fichas-listado-alumnos')
-        ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 80);
+  // Fase 2: abre la ficha única encima de la Agenda, sin salir de ella.
+  function abrirFichaAlumnoDesdeAgenda(alumnoId: string, _nombreAlumno: string) {
+    abrirFichaAlumno(alumnoId);
   }
 
   const [alternativasBabyLocales, setAlternativasBabyLocales] = useState<

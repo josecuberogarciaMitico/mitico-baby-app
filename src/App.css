@@ -4398,3 +4398,59 @@ section:has(input[placeholder^='Buscar entrenador, teléfono, email o especialid
   .trainer-report-form .report-focus-seg button { font-size: 14px !important; }
   .trainer-report-form .report-focus-other-level { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* =========================================================
+   FICHA ÚNICA DEL ALUMNO · FASE 2 · 01/10/2026
+   Panel encima de la pantalla actual, igual para Baby, Ocio e
+   Intensivos. En móvil ocupa toda la pantalla.
+   ========================================================= */
+
+.ficha-overlay { position: fixed; inset: 0; z-index: 2000; display: flex; justify-content: flex-end; background: rgba(15, 23, 42, .45); }
+.ficha-sheet { width: min(760px, 100%); height: 100%; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box; padding: 0 16px 32px; background: #f8fafc; color: #0f172a; display: grid; align-content: start; gap: 14px; box-shadow: -18px 0 40px rgba(15, 23, 42, .18); }
+.ficha-top { position: sticky; top: 0; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; padding: 12px 0 10px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; }
+.ficha-top input { min-width: 0; min-height: 42px; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 12px; font: inherit; font-size: 15px; background: #fff; }
+.ficha-close { min-height: 42px; padding: 8px 14px; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; font: inherit; font-weight: 800; cursor: pointer; }
+.ficha-results { grid-column: 1 / -1; list-style: none; margin: 0; padding: 4px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; display: grid; }
+.ficha-results button { width: 100%; display: flex; justify-content: space-between; gap: 10px; padding: 10px; border: 0; border-radius: 9px; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.ficha-results button:hover, .ficha-results button:focus-visible { background: #eff6ff; }
+.ficha-results span { color: #64748b; font-size: 13px; font-weight: 700; }
+.ficha-head { display: grid; gap: 8px; }
+.ficha-head h2 { margin: 2px 0 0; font-size: 22px; line-height: 1.2; overflow-wrap: anywhere; }
+.ficha-kicker { color: #0f766e; font-size: 11px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.ficha-hint { margin: 0; color: #64748b; font-size: 12px; line-height: 1.4; }
+.ficha-warn { margin: 0; padding: 9px 11px; border: 1px solid #fed7aa; border-radius: 11px; background: #fff7ed; color: #9a3412; font-size: 13px; font-weight: 800; }
+.ficha-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ficha-chip { display: inline-flex; align-items: center; min-height: 28px; padding: 3px 10px; border-radius: 999px; background: #e2e8f0; color: #334155; font-size: 12px; font-weight: 850; text-decoration: none; }
+.ficha-chip.is-level { background: #0f2a3d; color: #fff; }
+.ficha-chip.is-link { background: #dcfce7; color: #166534; }
+.ficha-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.ficha-stats > div { display: grid; gap: 2px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
+.ficha-stats b { font-size: 18px; font-variant-numeric: tabular-nums; }
+.ficha-stats span { color: #64748b; font-size: 12px; font-weight: 700; }
+.ficha-skills { display: grid; gap: 6px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; }
+.ficha-skills__title { display: grid; gap: 2px; margin-bottom: 4px; }
+.ficha-skills__title h3 { margin: 0; font-size: 16px; }
+.ficha-skill { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 8px 4px; border-top: 1px solid #f1f5f9; }
+.ficha-skill__name { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; min-width: 0; }
+.ficha-skill__name strong { font-size: 14px; }
+.ficha-state { padding: 3px 9px; border-radius: 999px; font-size: 11px; font-weight: 900; white-space: nowrap; background: #f1f5f9; color: #64748b; }
+.ficha-skill.is-conseguido .ficha-state { background: #dcfce7; color: #166534; }
+.ficha-skill.is-va_apareciendo .ficha-state { background: #e0f2fe; color: #075985; }
+.ficha-skill.is-todavia_no .ficha-state { background: #fef3c7; color: #92400e; }
+.ficha-dots { display: inline-flex; gap: 4px; min-width: 24px; justify-content: flex-end; }
+.ficha-dots i { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+.ficha-dots i.p2 { background: #16a34a; }
+.ficha-dots i.p1 { background: #86efac; }
+.ficha-dots i.p0 { background: #f59e0b; }
+.ficha-report-skills { display: flex; flex-wrap: wrap; gap: 6px; }
+.ficha-step { padding: 3px 9px; border-radius: 999px; font-size: 12px; background: #f1f5f9; color: #334155; }
+.ficha-step.p2 { background: #dcfce7; color: #14532d; }
+.ficha-step.p1 { background: #ecfdf5; color: #166534; }
+.ficha-step.p0 { background: #fef3c7; color: #78350f; }
+
+@media (max-width: 640px) {
+  .ficha-sheet { width: 100%; padding: 0 12px 28px; box-shadow: none; }
+  .ficha-skill { grid-template-columns: minmax(0, 1fr) auto; }
+  .ficha-dots { grid-column: 1 / -1; justify-content: flex-start; }
+  .ficha-top input { font-size: 16px; }
+}

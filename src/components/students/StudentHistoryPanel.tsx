@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react';
-import { resumenEvaluacionTecnica } from '../../lib/adaptiveReport';
+import { competenciasReporte } from '../../lib/adaptiveReport';
+import { ETIQUETA_PASO, puntosDeValor } from '../../core/reports/skillProgress';
 import {
   extractDailyWorkObjective,
   filterReportHistory,
@@ -73,9 +74,9 @@ export function StudentHistoryPanel({
   return (
     <div style={panel}>
       <div>
-        <strong>Ficha maestra · Historial exacto</strong>
+        <strong>Historial de entrenamientos</strong>
         <p style={{ margin: '4px 0 0', color: '#64748b' }}>
-          Una única cronología para Baby, Ocio e Intensivos. El detalle permanece cerrado hasta que lo necesitas.
+          Baby, Ocio e Intensivos juntos, del más reciente al más antiguo. Técnica en 3 pasos: Todavía no · A veces · Lo consigue.
         </p>
       </div>
 
@@ -141,10 +142,14 @@ export function StudentHistoryPanel({
             const priorities = Array.isArray(report.prioridades_proxima_sesion) && report.prioridades_proxima_sesion.length
               ? report.prioridades_proxima_sesion
               : report.recomendacion ? [report.recomendacion] : [];
-            const skills = resumenEvaluacionTecnica(
-              report.evaluacion_tecnica,
-              report.nivel_reportado || currentLevel
+            // Escala de 3 pasos (Todavía no / A veces / Lo consigue); «Correcto» antiguo = A veces.
+            const nombres = new Map(
+              competenciasReporte(report.nivel_reportado || currentLevel).map((c) => [c.id, c.nombre])
             );
+            const skills = Object.entries(report.evaluacion_tecnica || {})
+              .map(([id, valor]) => ({ id, nombre: nombres.get(id) || id.replaceAll('_', ' '), puntos: puntosDeValor(valor) }))
+              .filter((item) => item.puntos !== null);
+            const actitud = [report.actitud, report.actitud_comentario].filter(Boolean).join(' · ');
 
             return (
               <article
@@ -171,7 +176,16 @@ export function StudentHistoryPanel({
                 <div style={{ display: 'grid', gap: 7, marginTop: 11, lineHeight: 1.45 }}>
                   {dailyObjective && <p style={{ margin: 0 }}><strong>Trabajo:</strong> {dailyObjective}</p>}
                   {report.autonomia && <p style={{ margin: 0 }}><strong>Autonomía:</strong> {report.autonomia}</p>}
-                  {skills && <p style={{ margin: 0 }}><strong>Competencias:</strong> {skills}</p>}
+                  {skills.length > 0 && (
+                    <div className="ficha-report-skills">
+                      {skills.map((item) => (
+                        <span key={item.id} className={`ficha-step p${item.puntos}`}>
+                          {item.nombre}: <b>{ETIQUETA_PASO[item.puntos as 0 | 1 | 2]}</b>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {actitud && <p style={{ margin: 0 }}><strong>Actitud:</strong> {actitud}</p>}
                   {improvements.length > 0 && <p style={{ margin: 0 }}><strong>Mejoró:</strong> {improvements.join(' · ')}</p>}
                   {report.observaciones_generales && (
                     <div style={{ ...notice, borderColor: '#bbf7d0', background: '#f0fdf4', color: '#166534', padding: 10 }}>
@@ -191,7 +205,7 @@ export function StudentHistoryPanel({
                     </div>
                   )}
                   <p style={{ margin: '10px 0 0', lineHeight: 1.5 }}>
-                    Actitud: {report.actitud || '-'} · Técnica: {report.tecnica || '-'} · Autonomía: {report.autonomia || '-'} · Pista: {report.pista || '-'} · Remontes: {lifts.join(', ') || '-'} · Ritmo: {report.ritmo_grupo || '-'} · Incidencia: {report.incidencia || '-'}
+                    Actitud: {actitud || '-'} · Técnica: {report.tecnica || '-'} · Autonomía: {report.autonomia || '-'} · Pista: {report.pista || '-'} · Remontes: {lifts.join(', ') || '-'} · Ritmo: {report.ritmo_grupo || '-'} · Incidencia: {report.incidencia || '-'}
                   </p>
                 </details>
               </article>

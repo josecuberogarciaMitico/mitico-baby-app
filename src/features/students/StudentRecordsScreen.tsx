@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { FamilyEvaluationDraftPanel } from '../../components/evaluations/FamilyEvaluationDraftPanel';
-import { StudentHistoryPanel } from '../../components/students/StudentHistoryPanel';
+import { abrirFichaAlumno } from './studentFichaStore';
 import { buildMasterStudentProfile } from '../../core/students/masterStudent';
 import type { IntensivoAlumnoApp } from '../intensivos/intensiveTypes';
 
@@ -1031,6 +1031,14 @@ export function StudentRecordsScreen({ ctx }: StudentRecordsScreenProps) {
                               marginTop: 12,
                             }}
                           >
+                            <button
+                              type="button"
+                              onClick={() => abrirFichaAlumno(registro.alumno_id)}
+                              style={botonMini}
+                            >
+                              Ver ficha e historial
+                            </button>
+
                             {fichaMaestra && (
                               <button
                                 type="button"
@@ -1868,26 +1876,21 @@ export function StudentRecordsScreen({ ctx }: StudentRecordsScreenProps) {
                       )}
 
                       <div style={{ marginTop: 12 }}>
+                        {/* Fase 2: la misma ficha única para Baby, Ocio e Intensivos. */}
                         <button
                           type="button"
-                          onClick={() => void alternarHistorialAlumnoFichaApp(alumno)}
+                          onClick={() => abrirFichaAlumno(alumno.alumno_id)}
                           style={{
                             ...botonSecundario,
                             width: '100%',
                             justifyContent: 'space-between',
-                            borderColor: historialAbierto
-                              ? '#86efac'
-                              : '#e2e8f0',
-                            background: historialAbierto
-                              ? '#f0fdf4'
-                              : '#ffffff',
+                            borderColor: '#e2e8f0',
+                            background: '#ffffff',
                             color: '#0f172a',
                             fontWeight: 900,
                           }}
                         >
-                          <span>
-                            {historialAbierto ? '▼' : '▶'} Historial de entrenamientos y reportes
-                          </span>
+                          <span>▶ Ver ficha e historial</span>
                           <span style={{ fontSize: 13, color: '#64748b' }}>
                             {sinReportes
                               ? 'Sin reportes técnicos'
@@ -1904,22 +1907,6 @@ export function StudentRecordsScreen({ ctx }: StudentRecordsScreenProps) {
                                 }`}
                           </span>
                         </button>
-
-                        {historialAbierto && (
-                          <StudentHistoryPanel
-                            studentId={alumno.alumno_id}
-                            reports={historialReportesTodos}
-                            filter={filtroModalidadHistorialFicha}
-                            onFilterChange={setFiltroModalidadHistorialFicha}
-                            loading={historialCargando}
-                            currentLevel={nivelUsadoPorApp}
-                            formatDate={formatearFecha}
-                            totalReports={Number(alumno.total_reportes || 0)}
-                            lastReportDate={alumno.ultima_fecha_reporte}
-                            levelReviewRequired={nivelDifiereUltimoReporte}
-                            provisionalLevel={nivelProvisional}
-                          />
-                        )}
                       </div>
                     </article>
                   );

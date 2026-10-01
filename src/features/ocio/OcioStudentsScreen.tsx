@@ -1,5 +1,5 @@
 import React from 'react';
-import { StudentHistoryPanel } from '../../components/students/StudentHistoryPanel';
+import { abrirFichaAlumno } from '../students/studentFichaStore';
 
 type OcioStudentsScreenProps = {
   ctx: Record<string, any>;
@@ -906,29 +906,21 @@ export function OcioStudentsScreen({ ctx }: OcioStudentsScreenProps) {
                       )}
 
                       <div style={{ marginTop: 12 }}>
+                        {/* Fase 2: la misma ficha única para Baby, Ocio e Intensivos. */}
                         <button
                           type="button"
-                          onClick={() =>
-                            void alternarHistorialAlumnoFichaApp(alumno)
-                          }
+                          onClick={() => abrirFichaAlumno(alumno.alumno_id)}
                           style={{
                             ...botonSecundario,
                             width: '100%',
                             justifyContent: 'space-between',
-                            borderColor: historialAbierto
-                              ? '#86efac'
-                              : '#e2e8f0',
-                            background: historialAbierto
-                              ? '#f0fdf4'
-                              : '#ffffff',
+                            borderColor: '#e2e8f0',
+                            background: '#ffffff',
                             color: '#0f172a',
                             fontWeight: 900,
                           }}
                         >
-                          <span>
-                            {historialAbierto ? '▼' : '▶'} Ficha maestra e
-                            historial
-                          </span>
+                          <span>▶ Ver ficha e historial</span>
                           <span style={{ fontSize: 13, color: '#64748b' }}>
                             {alumno.total_reportes || 0}{' '}
                             {Number(alumno.total_reportes || 0) === 1
@@ -936,29 +928,6 @@ export function OcioStudentsScreen({ ctx }: OcioStudentsScreenProps) {
                               : 'reportes'}
                           </span>
                         </button>
-
-                        {historialAbierto && (
-                          <StudentHistoryPanel
-                            studentId={alumno.alumno_id}
-                            reports={
-                              historialReportesFichaPorAlumno[
-                                alumno.alumno_id
-                              ] || []
-                            }
-                            filter={filtroModalidadHistorialFicha}
-                            onFilterChange={setFiltroModalidadHistorialFicha}
-                            loading={
-                              historialReportesFichaCargandoId ===
-                              alumno.alumno_id
-                            }
-                            currentLevel={
-                              alumno.nivel_usado || alumno.nivel || 'SIN NIVEL'
-                            }
-                            formatDate={formatearFecha}
-                            totalReports={Number(alumno.total_reportes || 0)}
-                            lastReportDate={alumno.ultimo_reporte_fecha}
-                          />
-                        )}
                       </div>
 
                     </article>
