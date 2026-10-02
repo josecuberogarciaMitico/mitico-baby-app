@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { formatoGrabacion, transcribirNotaDeVoz } from '../../services/transcription/transcriptionService';
 import {
   appendDictation,
   dictationErrorMessage,
@@ -125,41 +126,10 @@ export function DictationButton(props: {
     []
   );
 
-  if (esIphoneAppInstalada()) {
-    // Se enfoca el campo dentro del propio toque: así iOS abre el teclado.
-    const abrirTeclado = () => {
-      const campo = botonRef.current
-        ?.closest('.report-focus-note, label')
-        ?.querySelector('textarea') as HTMLTextAreaElement | null;
-      if (campo) {
-        campo.focus();
-        const fin = campo.value.length;
-        campo.setSelectionRange(fin, fin);
-      }
-      setMessage('Pulsa el micrófono del teclado (abajo a la derecha) y habla.');
-    };
-    return (
-      <div className="trainer-report-dictation">
-        <button
-          type="button"
-          ref={botonRef}
-          className="trainer-report-dictation__button"
-          onClick={abrirTeclado}
-          disabled={props.disabled}
-        >
-          <span className="trainer-report-dictation__icon" aria-hidden="true">
-            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="9" y="3" width="6" height="11" rx="3" />
-              <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-            </svg>
-          </span>
-          Dictar
-        </button>
-        <span className="trainer-report-dictation__hint" role="status">
-          {message || 'Se abre el teclado: pulsa su micrófono y habla.'}
-        </span>
-      </div>
-    );
+  // iPhone con la app instalada (donde el dictado del navegador no oye) o
+  // navegadores sin dictado: se graba la voz y se transcribe en el servidor (Groq).
+  if (esIphoneAppInstalada() || !Recognition) {
+    return formatoGrabacion() ? <GrabadorNotaVoz {...props} /> : null;
   }
 
   if (!Recognition) return null;
@@ -303,6 +273,189 @@ export function DictationButton(props: {
         {listening
           ? 'Escuchando… Habla y pulsa «Parar dictado» al terminar.'
           : message || 'Habla y se escribe aquí. Puedes corregirlo antes de guardar.'}
+      </span>
+    </div>
+  );
+}
+
+const MAXIMO_GRABACION_MS = 90000;
+
+/**
+ * Botón Dictar por grabación: pulsas, hablas, pulsas «Parar» y en un par de
+ * segundos aparece el texto (Edge Function mitico-transcribir → Groq, gratis).
+ */
+function GrabadorNotaVoz(props: {
+  value: string;
+  maxLength: number;
+  onChange: (value: string) => void;
+  onListeningChange?: (listening: boolean) => void;
+  disabled?: boolean;
+}) {
+  const [estado, setEstado] = useState<'listo' | 'grabando' | 'transcribiendo'>('listo');
+  const [message, setMessage] = useState('');
+  const grabadorRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const trozosRef = useRef<Blob[]>([]);
+  const baseRef = useRef('');
+  const limiteRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const montadoRef = useRef(true);
+  const onChangeRef = useRef(props.onChange);
+  const onListeningRef = useRef(props.onListeningChange);
+  onChangeRef.current = props.onChange;
+  onListeningRef.current = props.onListeningChange;
+  const ocupado = estado !== 'listo';
+
+  useEffect(() => {
+    onListeningRef.current?.(ocupado);
+    if (!ocupado) return;
+    cambiarDictadosEscuchando(1);
+    return () => cambiarDictadosEscuchando(-1);
+  }, [ocupado]);
+  const hayOtroDictado = useHayOtroDictado(ocupado);
+
+  function soltarMicrofono() {
+    if (limiteRef.current) clearTimeout(limiteRef.current);
+    limiteRef.current = null;
+    // Importante en iPhone: cerrar el micrófono del todo para poder volver a grabar.
+    streamRef.current?.getTracks().forEach((pista) => pista.stop());
+    streamRef.current = null;
+  }
+
+  useEffect(() => {
+    montadoRef.current = true;
+    return () => {
+      montadoRef.current = false;
+      const grabador = grabadorRef.current;
+      if (grabador) {
+        grabador.ondataavailable = null;
+        grabador.onstop = null;
+        if (grabador.state !== 'inactive') {
+          try {
+            grabador.stop();
+          } catch {
+            /* ya parado */
+          }
+        }
+      }
+      grabadorRef.current = null;
+      soltarMicrofono();
+      onListeningRef.current?.(false);
+    };
+  }, []);
+
+  async function empezar() {
+    const formato = formatoGrabacion();
+    if (!formato || ocupado) return;
+    setMessage('');
+    baseRef.current = props.value;
+    trozosRef.current = [];
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({
+        audio: { echoCancellation: true, noiseSuppression: true },
+      });
+    } catch (error) {
+      const nombre = (error as { name?: string })?.name || '';
+      setMessage(
+        nombre === 'NotAllowedError'
+          ? 'El iPhone no deja usar el micrófono. Ajustes → Mítico/Safari → Micrófono: Permitir. (NotAllowedError)'
+          : `No se puede abrir el micrófono. (${nombre || 'error'})`
+      );
+      return;
+    }
+    if (!montadoRef.current) {
+      stream.getTracks().forEach((pista) => pista.stop());
+      return;
+    }
+    streamRef.current = stream;
+    let grabador: MediaRecorder;
+    try {
+      grabador = new MediaRecorder(stream, { mimeType: formato.mimeType });
+    } catch {
+      grabador = new MediaRecorder(stream);
+    }
+    grabadorRef.current = grabador;
+    grabador.ondataavailable = (evento) => {
+      if (evento.data && evento.data.size > 0) trozosRef.current.push(evento.data);
+    };
+    grabador.onstop = () => {
+      soltarMicrofono();
+      grabadorRef.current = null;
+      const tipo = grabador.mimeType || formato.mimeType;
+      const audio = new Blob(trozosRef.current, { type: tipo });
+      trozosRef.current = [];
+      void transcribir(audio, tipo.includes('mp4') ? 'm4a' : formato.extension);
+    };
+    grabador.start();
+    setEstado('grabando');
+    limiteRef.current = setTimeout(parar, MAXIMO_GRABACION_MS);
+  }
+
+  function parar() {
+    const grabador = grabadorRef.current;
+    if (!grabador || grabador.state === 'inactive') return;
+    setEstado('transcribiendo');
+    try {
+      grabador.stop();
+    } catch {
+      soltarMicrofono();
+      setEstado('listo');
+    }
+  }
+
+  async function transcribir(audio: Blob, extension: string) {
+    if (!montadoRef.current) return;
+    if (audio.size < 1500) {
+      setEstado('listo');
+      setMessage('No se ha oído nada. Pulsa Dictar y habla cerca del móvil.');
+      return;
+    }
+    setEstado('transcribiendo');
+    try {
+      const texto = await transcribirNotaDeVoz(audio, `nota.${extension}`);
+      if (!montadoRef.current) return;
+      if (!texto) {
+        setMessage('No se ha entendido nada. Prueba otra vez.');
+      } else {
+        const unido = appendDictation(baseRef.current, texto, props.maxLength);
+        onChangeRef.current(unido.text);
+        setMessage(unido.truncated ? `Se ha llegado al máximo de ${props.maxLength} caracteres.` : '');
+      }
+    } catch (error) {
+      if (montadoRef.current) setMessage(error instanceof Error ? error.message : 'No se ha podido transcribir.');
+    } finally {
+      if (montadoRef.current) setEstado('listo');
+    }
+  }
+
+  const grabando = estado === 'grabando';
+  return (
+    <div className="trainer-report-dictation">
+      <button
+        type="button"
+        className={`trainer-report-dictation__button${grabando ? ' is-listening' : ''}`}
+        onClick={grabando ? parar : () => void empezar()}
+        disabled={estado === 'transcribiendo' || ((props.disabled || hayOtroDictado) && !grabando)}
+        aria-pressed={grabando}
+      >
+        <span className="trainer-report-dictation__icon" aria-hidden="true">
+          {grabando ? (
+            <svg viewBox="0 0 24 24" width="20" height="20"><rect x="6" y="6" width="12" height="12" rx="2" fill="currentColor" /></svg>
+          ) : (
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="3" width="6" height="11" rx="3" />
+              <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+            </svg>
+          )}
+        </span>
+        {grabando ? 'Parar y escribir' : estado === 'transcribiendo' ? 'Escribiendo…' : 'Dictar'}
+      </button>
+      <span className="trainer-report-dictation__hint" role="status">
+        {grabando
+          ? 'Grabando… Habla y pulsa «Parar y escribir» al terminar.'
+          : estado === 'transcribiendo'
+            ? 'Pasando tu voz a texto…'
+            : message || 'Habla y se escribe aquí. Puedes corregirlo antes de guardar.'}
       </span>
     </div>
   );
