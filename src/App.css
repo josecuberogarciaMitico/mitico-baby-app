@@ -4470,3 +4470,46 @@ section:has(input[placeholder^='Buscar entrenador, teléfono, email o especialid
 .ficha-report-skills { flex-direction: column; align-items: flex-start; }
 .ficha-report-skill { display: grid; gap: 2px; }
 .ficha-report-note { color: #475569; font-size: 13px; line-height: 1.4; padding-left: 8px; }
+
+/* =========================================================
+   BOTÓN DICTAR CÓMODO · 02/10/2026
+   Más grande y fácil de pulsar con el dedo, icono de micrófono,
+   estado «escuchando» muy visible. En el móvil ocupa todo el ancho.
+   ========================================================= */
+
+.trainer-report-dictation__button {
+  min-height: 48px;
+  padding: 10px 18px;
+  gap: 10px;
+  font-size: 15px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background-color .15s ease, transform .08s ease;
+}
+.trainer-report-dictation__button:active { transform: scale(.97); }
+.trainer-report-dictation__button .trainer-report-dictation__dot { display: none; }
+.trainer-report-dictation__icon { display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 50%; background: #1e3a8a; color: #fff; }
+.trainer-report-dictation__button.is-listening {
+  border-color: #dc2626;
+  background: #dc2626;
+  color: #fff;
+  box-shadow: 0 0 0 0 rgba(220, 38, 38, .45);
+  animation: trainer-report-dictation-ring 1.4s ease-out infinite;
+}
+.trainer-report-dictation__button.is-listening .trainer-report-dictation__icon { background: #fff; color: #dc2626; }
+@keyframes trainer-report-dictation-ring {
+  0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, .45); }
+  100% { box-shadow: 0 0 0 12px rgba(220, 38, 38, 0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .trainer-report-dictation__button.is-listening { animation: none; }
+}
+@media (max-width: 640px) {
+  .trainer-report-dictation { display: grid; gap: 6px; }
+  .trainer-report-form .trainer-report-dictation__button { width: 100%; justify-content: center; min-height: 52px; font-size: 16px; border-radius: 14px; }
+  .trainer-report-dictation__hint { text-align: center; }
+}
+.trainer-report-form .report-focus-note textarea { font-weight: 500; color: #0f172a; }
+.trainer-report-form .report-focus-note textarea::placeholder { font-weight: 400; color: #94a3b8; }
