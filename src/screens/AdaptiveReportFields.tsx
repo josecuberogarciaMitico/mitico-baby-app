@@ -4,6 +4,7 @@ import {
   ACTITUD_GENERAL,
   NOTA_HABILIDAD_MAX,
   NOTA_HABILIDAD_MIN,
+  notaObligatoria,
   PASOS_REPORTE,
   habilidadesDelNivel,
   habilidadesDelTrabajoDeHoy,
@@ -112,7 +113,8 @@ function FilaHabilidad(props: {
 }) {
   const { habilidad } = props;
   const [dictando, setDictando] = useState(false);
-  const notaCorta = props.nota.trim().length < NOTA_HABILIDAD_MIN;
+  const obligatoria = notaObligatoria(props.valor);
+  const notaCorta = obligatoria && props.nota.trim().length < NOTA_HABILIDAD_MIN;
   const indice = PASOS_REPORTE.findIndex((paso) => paso.valor === props.valor);
   return (
     <div className={`report-focus-skill${indice < 0 ? ' is-untouched' : ''}`}>
@@ -145,14 +147,15 @@ function FilaHabilidad(props: {
         <div className="report-focus-note">
           <label>
             <span>
-              ¿Qué has visto en {habilidad.nombre.toLowerCase()}? <span className="report-focus-req">*</span>
+              ¿Qué has visto en {habilidad.nombre.toLowerCase()}?{' '}
+              {obligatoria ? <span className="report-focus-req">*</span> : <span className="report-focus-hint">(opcional)</span>}
             </span>
             <textarea
               value={props.nota}
               maxLength={NOTA_HABILIDAD_MAX}
               readOnly={dictando}
               rows={2}
-              placeholder="Con tus palabras: qué hace bien, qué le falta, en qué momento…"
+              placeholder={obligatoria ? 'Con tus palabras: qué le falta, en qué momento le cuesta…' : 'Opcional: algún detalle de cómo lo consigue.'}
               onChange={(e) => props.onNota(e.target.value)}
             />
           </label>
@@ -276,7 +279,7 @@ export function AdaptiveReportFields(props: {
               </span>
             ))}
             <span className="report-focus-hint">
-              Al guardar, {nombreNivel(nivel)} queda como nivel del alumno (como hasta ahora) y coordinación lo verá como «Revisar nivel».
+              Al guardar, {nombreNivel(nivel)} queda como nivel del alumno y coordinación recibirá un aviso para confirmarlo o deshacerlo.
             </span>
           </div>
         )}
@@ -294,7 +297,7 @@ export function AdaptiveReportFields(props: {
               <span>Trabajo de hoy</span>
               {trabajo.length ? <p>{trabajo.join(' · ')}</p> : <p>Sin trabajo diario definido: salen los focos del nivel.</p>}
             </div>
-            <span className="report-focus-hint">Salen los focos del nivel y lo trabajado hoy. Valora lo que hayas visto y escribe o dicta una nota en cada una; si no has podido verla, déjala sin tocar.</span>
+            <span className="report-focus-hint">Salen los focos del nivel y lo trabajado hoy. Valora lo que hayas visto. Con «Todavía no» y «A veces» escribe o dicta qué le falta; si no has podido verla, déjala sin tocar.</span>
             <div className="report-focus-skills">{visibles.map(fila)}</div>
           </>
         )}

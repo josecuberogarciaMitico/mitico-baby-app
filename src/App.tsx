@@ -564,6 +564,7 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from './config/supabase';
 import { createSupabaseRestClient } from './services/supabase/restClient';
 import { StudentRecordsScreen } from './features/students/StudentRecordsScreen';
 import { StudentFichaSheet } from './features/students/StudentFichaSheet';
+import { CoordinationAlerts } from './features/reports/CoordinationAlerts';
 import { abrirFichaAlumno } from './features/students/studentFichaStore';
 import { ReportsScreen } from './features/reports/ReportsScreen';
 import { ManagementReportsScreen } from './features/reports/ManagementReportsScreen';
@@ -20134,6 +20135,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
       className={`mitico-app-shell ${esCoordinadorApp ? 'with-sidebar' : 'trainer-only'} ${esVistaMovilApp ? 'is-mobile' : ''}`}
       style={layout}
     >
+      {esCoordinadorApp && !esAdministracionApp && <CoordinationAlerts onNivelCambiado={() => void cargarAlumnos()} />}
       {esCoordinadorApp && (
         <StudentFichaSheet alumnos={alumnos} ocioAlumnos={ocioAlumnos} historialPorAlumno={historialReportesFichaPorAlumno} cargandoHistorialId={historialReportesFichaCargandoId} cargarHistorial={cargarHistorialReportesAlumnoFichaApp} formatDate={formatearFecha} cargarAlumnos={cargarAlumnos} />
       )}

@@ -548,7 +548,13 @@ export type EnvioReporteFocos = {
   notasHabilidades: Record<string, string>;
 };
 
-/** Nota por habilidad (02/10/2026): obligatoria en cada habilidad valorada. */
+/**
+ * Nota por habilidad (02/10/2026): obligatoria con «Todavía no» y «A veces»;
+ * opcional con «Lo consigue» (decisión de Jose: si ya lo consigue, sobra explicarlo).
+ */
+export function notaObligatoria(valor: ValorTecnicoReporte | undefined): boolean {
+  return Boolean(valor) && valor !== 'Consolidado' && valor !== 'No trabajado';
+}
 export const NOTA_HABILIDAD_MIN = 10;
 export const NOTA_HABILIDAD_MAX = 300;
 
@@ -588,7 +594,7 @@ export function prepararEnvioReporteFocos(
   const notas = form.notasHabilidades || {};
   for (const h of valoradas) {
     const nota = String(notas[h.id] || '').trim();
-    if (nota.length < NOTA_HABILIDAD_MIN) {
+    if (notaObligatoria(form.evaluacionTecnica[h.id]) && nota.length < NOTA_HABILIDAD_MIN) {
       return { ok: false, error: `Escribe una nota en «${h.nombre}»: qué has visto hoy, con tus palabras.` };
     }
     if (nota.length > NOTA_HABILIDAD_MAX) {
@@ -638,7 +644,9 @@ export function prepararEnvioReporteFocos(
         valoradas.map((h) => [h.id, form.evaluacionTecnica[h.id]])
       ) as EvaluacionTecnicaReporte,
       notasHabilidades: Object.fromEntries(
-        valoradas.map((h) => [h.id, String(notas[h.id] || '').trim()])
+        valoradas
+          .map((h) => [h.id, String(notas[h.id] || '').trim()] as [string, string])
+          .filter(([, nota]) => nota.length > 0)
       ),
     },
   };

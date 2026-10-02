@@ -4517,3 +4517,31 @@ section:has(input[placeholder^='Buscar entrenador, teléfono, email o especialid
 /* Medidor de volumen mientras se graba una nota de voz (02/10/2026). */
 .trainer-report-dictation__nivel { display: block; width: 100%; height: 8px; border-radius: 999px; background: #fee2e2; overflow: hidden; }
 .trainer-report-dictation__nivel i { display: block; height: 100%; background: #dc2626; border-radius: 999px; transition: width .1s linear; }
+
+/* =========================================================
+   AVISOS DE REPORTES PARA COORDINACIÓN · FASE 3 · 02/10/2026
+   Pastilla arriba a la derecha que se abre en un panel.
+   ========================================================= */
+.mitico-avisos-reportes { position: fixed; top: 112px; right: max(18px, env(safe-area-inset-right)); z-index: 1680; display: grid; justify-items: end; gap: 8px; width: min(400px, calc(100vw - 28px)); pointer-events: none; }
+.mitico-avisos-reportes > * { pointer-events: auto; }
+.mitico-avisos-reportes__pastilla { min-height: 40px; padding: 8px 14px; border: 0; border-radius: 999px; background: #b45309; color: #fff; font: inherit; font-size: 14px; font-weight: 850; box-shadow: 0 10px 28px rgba(15, 23, 42, .25); cursor: pointer; touch-action: manipulation; }
+.mitico-avisos-reportes__panel { box-sizing: border-box; width: 100%; max-height: min(70vh, 560px); overflow-y: auto; overscroll-behavior: contain; padding: 12px; border: 1px solid #fde68a; border-left: 4px solid #d97706; border-radius: 16px; background: #fff; color: #172033; box-shadow: 0 18px 48px rgba(15, 23, 42, .22); }
+.mitico-avisos-reportes__panel header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+.mitico-avisos-reportes__cerrar { width: 32px; height: 32px; border: 0; border-radius: 8px; background: transparent; color: #64748b; font-size: 20px; cursor: pointer; }
+.mitico-avisos-reportes__error { margin: 0 0 8px; padding: 8px 10px; border-radius: 10px; background: #fef2f2; color: #991b1b; font-size: 13px; font-weight: 700; }
+.mitico-avisos-reportes ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.mitico-avisos-reportes li { display: grid; gap: 4px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; font-size: 13px; line-height: 1.35; }
+.mitico-avisos-reportes li strong { font-size: 14px; overflow-wrap: anywhere; }
+.mitico-avisos-reportes li > span { color: #475569; }
+.mitico-avisos-reportes__tipo { justify-self: start; padding: 2px 8px; border-radius: 999px; background: #e0f2fe; color: #075985 !important; font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; }
+.mitico-avisos-reportes li.is-incidencia .mitico-avisos-reportes__tipo { background: #fee2e2; color: #991b1b !important; }
+.mitico-avisos-reportes li.is-candidato .mitico-avisos-reportes__tipo { background: #dcfce7; color: #166534 !important; }
+.mitico-avisos-reportes__acciones { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px; }
+.mitico-avisos-reportes__acciones button, .mitico-avisos-reportes__acciones select { min-height: 36px; padding: 6px 12px; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; color: #172033; font: inherit; font-size: 13px; font-weight: 800; cursor: pointer; }
+.mitico-avisos-reportes__acciones button.is-ok { border-color: #16a34a; background: #16a34a; color: #fff; }
+.mitico-avisos-reportes__acciones button:disabled { opacity: .55; cursor: wait; }
+.mitico-avisos-reportes__nota { color: #92400e; font-size: 12px; font-weight: 700; align-self: center; }
+@media (max-width: 719px) {
+  .mitico-avisos-reportes { top: max(76px, calc(env(safe-area-inset-top) + 68px)); right: max(12px, env(safe-area-inset-right)); width: calc(100vw - 24px); }
+  .mitico-avisos-reportes__acciones button, .mitico-avisos-reportes__acciones select { min-height: 42px; font-size: 14px; }
+}

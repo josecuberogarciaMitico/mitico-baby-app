@@ -183,12 +183,15 @@ test('autonomía en 3 pasos coherentes, «Va solo» según el nivel', () => {
   equal(opcionesAutonomiaPasos('D')[2].valor, 'Autónomo total', 'D');
 });
 
-test('notas por habilidad: obligatorias en cada habilidad valorada; la observación es opcional', () => {
+test('notas por habilidad: obligatorias con «Todavía no» y «A veces», opcionales con «Lo consigue»; la observación es opcional', () => {
   const sinNota = prepararSinNotas({ ...base, notasHabilidades: { paralelismo: 'Ya junta en la parte fácil' } }, 'C');
   equal(sinNota.ok, false, 'falta la nota de rotación');
   if (!sinNota.ok) equal(sinNota.error.includes('Rotación de piernas'), true, 'dice qué habilidad');
-  const corta = prepararSinNotas({ ...base, notasHabilidades: { paralelismo: 'bien', rotacion_piernas: 'El tronco acompaña el giro' } }, 'C');
+  const corta = prepararSinNotas({ ...base, notasHabilidades: { paralelismo: 'Ya junta los esquís', rotacion_piernas: 'bien' } }, 'C');
   equal(corta.ok, false, '«bien» no basta');
+  const sinNotaLoConsigue = prepararSinNotas({ ...base, notasHabilidades: { rotacion_piernas: 'El tronco acompaña el giro' } }, 'C');
+  if (!sinNotaLoConsigue.ok) throw new Error(sinNotaLoConsigue.error);
+  equal('paralelismo' in sinNotaLoConsigue.envio.notasHabilidades, false, 'con «Lo consigue» la nota es opcional y no se envía vacía');
   const ok = prepararSinNotas({ ...base, observaciones: '', notasHabilidades: { paralelismo: '  Ya junta en la parte fácil ', rotacion_piernas: 'El tronco acompaña el giro', canteo: 'no es de C' } }, 'C');
   if (!ok.ok) throw new Error(ok.error);
   equal(ok.envio.notasHabilidades.paralelismo, 'Ya junta en la parte fácil', 'se recorta');
