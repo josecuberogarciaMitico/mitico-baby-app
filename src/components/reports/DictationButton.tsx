@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import {
   appendDictation,
   dictationErrorMessage,
@@ -43,23 +43,25 @@ function speechRecognitionConstructor(): SpeechRecognitionConstructor | null {
   return w.SpeechRecognition || w.webkitSpeechRecognition || null;
 }
 
-// Solo puede haber un dictado activo a la vez (el móvil solo tiene un micrófono
-// y el navegador no admite dos reconocimientos simultáneos). Si se empieza otro,
-// el anterior se corta y se deja limpio.
-let dictadoActivo: { dueno: object; cancelar: () => void } | null = null;
-
-function esMovil(): boolean {
-  if (typeof navigator === 'undefined') return false;
-  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+// Solo un dictado a la vez: mientras uno escucha, los demás botones «Dictar» se
+// desactivan (no se toca la grabación; solo se evita pulsar dos a la vez).
+let dictadosEscuchando = 0;
+const avisos = new Set<() => void>();
+function cambiarDictadosEscuchando(delta: number) {
+  dictadosEscuchando = Math.max(0, dictadosEscuchando + delta);
+  avisos.forEach((fn) => fn());
 }
-
-// Si el navegador no avisa de que ha terminado tras «Parar», se corta igualmente.
-const ESPERA_TRAS_PARAR_MS = 1500;
-// Nunca más de 2 minutos escuchando sin parar.
-const MAXIMO_ESCUCHANDO_MS = 120000;
-// Las palabras provisionales se pasan al campo como mucho 4 veces por segundo
-// (cada cambio redibuja la pantalla del reporte; en el móvil la bloqueaba).
-const INTERVALO_PROVISIONAL_MS = 250;
+function useHayOtroDictado(propio: boolean): boolean {
+  const total = useSyncExternalStore(
+    (fn) => {
+      avisos.add(fn);
+      return () => avisos.delete(fn);
+    },
+    () => dictadosEscuchando,
+    () => 0
+  );
+  return total - (propio ? 1 : 0) > 0;
+}
 
 export function DictationButton(props: {
   value: string;
@@ -72,92 +74,28 @@ export function DictationButton(props: {
   const [message, setMessage] = useState('');
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const baseRef = useRef('');
-  const pendienteRef = useRef<string | null>(null);
-  const temporizadorTextoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const temporizadorPararRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const temporizadorMaximoRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const montadoRef = useRef(true);
-  const duenoRef = useRef({});
   const onChangeRef = useRef(props.onChange);
   const onListeningRef = useRef(props.onListeningChange);
   onChangeRef.current = props.onChange;
   onListeningRef.current = props.onListeningChange;
 
   const Recognition = speechRecognitionConstructor();
-  const movil = esMovil();
 
   useEffect(() => {
     onListeningRef.current?.(listening);
+    if (!listening) return;
+    cambiarDictadosEscuchando(1);
+    return () => cambiarDictadosEscuchando(-1);
   }, [listening]);
-
-  function volcarTexto() {
-    if (temporizadorTextoRef.current) {
-      clearTimeout(temporizadorTextoRef.current);
-      temporizadorTextoRef.current = null;
-    }
-    if (pendienteRef.current !== null && montadoRef.current) {
-      onChangeRef.current(pendienteRef.current);
-    }
-    pendienteRef.current = null;
-  }
-
-  function limpiarTemporizadores() {
-    if (temporizadorPararRef.current) clearTimeout(temporizadorPararRef.current);
-    if (temporizadorMaximoRef.current) clearTimeout(temporizadorMaximoRef.current);
-    temporizadorPararRef.current = null;
-    temporizadorMaximoRef.current = null;
-  }
-
-  /** Deja todo como antes de dictar: sin micrófono, campo editable, botón «Dictar». */
-  function terminar(recognition: SpeechRecognitionLike | null, cortar: boolean) {
-    if (recognition && recognitionRef.current !== recognition) return;
-    limpiarTemporizadores();
-    volcarTexto();
-    if (recognition) {
-      recognition.onresult = null;
-      recognition.onerror = null;
-      recognition.onend = null;
-      if (cortar) {
-        try {
-          recognition.abort();
-        } catch {
-          /* el navegador ya lo había cerrado */
-        }
-      }
-    }
-    recognitionRef.current = null;
-    if (dictadoActivo?.dueno === duenoRef.current) dictadoActivo = null;
-    if (montadoRef.current) setListening(false);
-  }
-
-  function cancelarEste() {
-    terminar(recognitionRef.current, true);
-  }
+  const hayOtroDictado = useHayOtroDictado(listening);
 
   useEffect(
-    () => {
-      montadoRef.current = true;
-      return () => {
-        // Si se cierra el reporte mientras se dicta, se corta el micrófono.
-        const recognition = recognitionRef.current;
-        limpiarTemporizadores();
-        if (temporizadorTextoRef.current) clearTimeout(temporizadorTextoRef.current);
-        if (recognition) {
-          recognition.onresult = null;
-          recognition.onerror = null;
-          recognition.onend = null;
-          try {
-            recognition.abort();
-          } catch {
-            /* ya cerrado */
-          }
-        }
-        recognitionRef.current = null;
-        if (dictadoActivo?.dueno === duenoRef.current) dictadoActivo = null;
-        montadoRef.current = false;
-        // Deja el campo editable aunque se cierre en mitad del dictado.
-        onListeningRef.current?.(false);
-      };
+    () => () => {
+      // Si se cierra el reporte mientras se dicta, se corta el micrófono.
+      recognitionRef.current?.abort();
+      recognitionRef.current = null;
+      // Deja el campo editable aunque se cierre en mitad del dictado.
+      onListeningRef.current?.(false);
     },
     []
   );
@@ -166,21 +104,15 @@ export function DictationButton(props: {
 
   function start() {
     if (!Recognition || recognitionRef.current) return;
-    // Si había otro dictado abierto (otra habilidad u observación), se corta.
-    if (dictadoActivo && dictadoActivo.dueno !== duenoRef.current) dictadoActivo.cancelar();
     setMessage('');
     baseRef.current = props.value;
-    pendienteRef.current = null;
 
     const recognition = new Recognition();
     recognition.lang = 'es-ES';
-    // En el móvil el modo continuo falla (repite texto o no termina nunca):
-    // allí se dicta frase a frase y se para solo al dejar de hablar.
-    recognition.continuous = !movil;
+    recognition.continuous = true;
     recognition.interimResults = true;
 
     recognition.onresult = (event) => {
-      if (recognitionRef.current !== recognition) return;
       const finales: string[] = [];
       const provisionales: string[] = [];
       for (let i = 0; i < event.results.length; i += 1) {
@@ -194,33 +126,27 @@ export function DictationButton(props: {
         [...finales, ...provisionales].join(' '),
         props.maxLength
       );
-      pendienteRef.current = merged.text;
-      if (provisionales.length === 0) {
-        volcarTexto();
-      } else if (!temporizadorTextoRef.current) {
-        temporizadorTextoRef.current = setTimeout(volcarTexto, INTERVALO_PROVISIONAL_MS);
-      }
+      onChangeRef.current(merged.text);
       if (merged.truncated) {
         setMessage(`Se ha llegado al máximo de ${props.maxLength} caracteres.`);
-        stop();
+        recognition.stop();
       }
     };
 
     recognition.onerror = (event) => {
       const texto = dictationErrorMessage(event.error);
-      if (texto && montadoRef.current) setMessage(texto);
-      // Algunos móviles no avisan del final tras un error: se cierra aquí.
-      if (event.error && event.error !== 'no-speech') terminar(recognition, true);
+      if (texto) setMessage(texto);
     };
 
-    recognition.onend = () => terminar(recognition, false);
+    recognition.onend = () => {
+      recognitionRef.current = null;
+      setListening(false);
+    };
 
     try {
       recognition.start();
       recognitionRef.current = recognition;
-      dictadoActivo = { dueno: duenoRef.current, cancelar: cancelarEste };
       setListening(true);
-      temporizadorMaximoRef.current = setTimeout(() => stop(), MAXIMO_ESCUCHANDO_MS);
     } catch {
       recognitionRef.current = null;
       setListening(false);
@@ -229,20 +155,7 @@ export function DictationButton(props: {
   }
 
   function stop() {
-    const recognition = recognitionRef.current;
-    if (!recognition) {
-      setListening(false);
-      return;
-    }
-    try {
-      recognition.stop();
-    } catch {
-      terminar(recognition, true);
-      return;
-    }
-    // Si el navegador no avisa de que ha terminado (pasa en iPhone), se corta igual.
-    if (temporizadorPararRef.current) clearTimeout(temporizadorPararRef.current);
-    temporizadorPararRef.current = setTimeout(() => terminar(recognition, true), ESPERA_TRAS_PARAR_MS);
+    recognitionRef.current?.stop();
   }
 
   return (
@@ -251,7 +164,7 @@ export function DictationButton(props: {
         type="button"
         className={`trainer-report-dictation__button${listening ? ' is-listening' : ''}`}
         onClick={listening ? stop : start}
-        disabled={props.disabled && !listening}
+        disabled={(props.disabled || hayOtroDictado) && !listening}
         aria-pressed={listening}
       >
         <span className="trainer-report-dictation__icon" aria-hidden="true">
@@ -268,9 +181,7 @@ export function DictationButton(props: {
       </button>
       <span className="trainer-report-dictation__hint" role="status">
         {listening
-          ? movil
-            ? 'Escuchando… Habla; se para solo al terminar la frase.'
-            : 'Escuchando… Habla y pulsa «Parar dictado» al terminar.'
+          ? 'Escuchando… Habla y pulsa «Parar dictado» al terminar.'
           : message || 'Habla y se escribe aquí. Puedes corregirlo antes de guardar.'}
       </span>
     </div>
