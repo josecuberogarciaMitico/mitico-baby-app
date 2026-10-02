@@ -27,6 +27,8 @@ type SpeechRecognitionLike = {
   onresult: ((event: SpeechResultEventLike) => void) | null;
   onerror: ((event: SpeechErrorEventLike) => void) | null;
   onend: (() => void) | null;
+  onstart?: (() => void) | null;
+  onaudiostart?: (() => void) | null;
   start: () => void;
   stop: () => void;
   abort: () => void;
@@ -73,6 +75,11 @@ export function DictationButton(props: {
   const [listening, setListening] = useState(false);
   const [message, setMessage] = useState('');
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const botonRef = useRef<HTMLButtonElement | null>(null);
+  // Vigilancia: si el micrófono no llega a arrancar, o si tras «Parar» el móvil
+  // no avisa del final, se libera el botón y se ofrece el micro del teclado.
+  const vigilanciaRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pasosRef = useRef<string[]>([]);
   const baseRef = useRef('');
   const onChangeRef = useRef(props.onChange);
   const onListeningRef = useRef(props.onListeningChange);
@@ -92,6 +99,7 @@ export function DictationButton(props: {
   useEffect(
     () => () => {
       // Si se cierra el reporte mientras se dicta, se corta el micrófono.
+      if (vigilanciaRef.current) clearTimeout(vigilanciaRef.current);
       recognitionRef.current?.abort();
       recognitionRef.current = null;
       // Deja el campo editable aunque se cierre en mitad del dictado.
@@ -101,6 +109,34 @@ export function DictationButton(props: {
   );
 
   if (!Recognition) return null;
+
+  function limpiarVigilancia() {
+    if (vigilanciaRef.current) clearTimeout(vigilanciaRef.current);
+    vigilanciaRef.current = null;
+  }
+
+  /** Libera el botón y el campo aunque el navegador no haya avisado. */
+  function liberar(recognition: SpeechRecognitionLike, mensaje: string) {
+    if (recognitionRef.current !== recognition) return;
+    limpiarVigilancia();
+    recognition.onresult = null;
+    recognition.onerror = null;
+    recognition.onend = null;
+    try {
+      recognition.abort();
+    } catch {
+      /* ya estaba cerrado */
+    }
+    recognitionRef.current = null;
+    setListening(false);
+    setMessage(mensaje);
+    console.warn('[Dictado] liberado sin respuesta del navegador. Pasos:', pasosRef.current.join(' > '));
+    // Deja el cursor en el campo para poder usar el micrófono del teclado.
+    const campo = botonRef.current
+      ?.closest('.report-focus-note, label')
+      ?.querySelector('textarea') as HTMLTextAreaElement | null;
+    campo?.focus();
+  }
 
   function start() {
     if (!Recognition || recognitionRef.current) return;
@@ -112,7 +148,16 @@ export function DictationButton(props: {
     recognition.continuous = true;
     recognition.interimResults = true;
 
+    pasosRef.current = ['inicio'];
+    recognition.onstart = () => pasosRef.current.push('start');
+    recognition.onaudiostart = () => {
+      pasosRef.current.push('audio');
+      limpiarVigilancia();
+    };
+
     recognition.onresult = (event) => {
+      limpiarVigilancia();
+      if (!pasosRef.current.includes('texto')) pasosRef.current.push('texto');
       const finales: string[] = [];
       const provisionales: string[] = [];
       for (let i = 0; i < event.results.length; i += 1) {
@@ -134,11 +179,13 @@ export function DictationButton(props: {
     };
 
     recognition.onerror = (event) => {
+      pasosRef.current.push(`error:${event.error}`);
       const texto = dictationErrorMessage(event.error);
-      if (texto) setMessage(texto);
+      if (texto) setMessage(`${texto} (${event.error})`);
     };
 
     recognition.onend = () => {
+      limpiarVigilancia();
       recognitionRef.current = null;
       setListening(false);
     };
@@ -147,6 +194,15 @@ export function DictationButton(props: {
       recognition.start();
       recognitionRef.current = recognition;
       setListening(true);
+      // Si en 5 s no arranca el micrófono ni llega texto, no se deja colgado.
+      vigilanciaRef.current = setTimeout(
+        () =>
+          liberar(
+            recognition,
+            'Este móvil no ha empezado a escuchar. Pulsa el micrófono del teclado para dictar.'
+          ),
+        5000
+      );
     } catch {
       recognitionRef.current = null;
       setListening(false);
@@ -155,13 +211,23 @@ export function DictationButton(props: {
   }
 
   function stop() {
-    recognitionRef.current?.stop();
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+    limpiarVigilancia();
+    try {
+      recognition.stop();
+    } catch {
+      /* se libera abajo */
+    }
+    // Si el móvil no avisa del final en 1,5 s, se libera igualmente.
+    vigilanciaRef.current = setTimeout(() => liberar(recognition, ''), 1500);
   }
 
   return (
     <div className="trainer-report-dictation">
       <button
         type="button"
+        ref={botonRef}
         className={`trainer-report-dictation__button${listening ? ' is-listening' : ''}`}
         onClick={listening ? stop : start}
         disabled={(props.disabled || hayOtroDictado) && !listening}
