@@ -4513,3 +4513,7 @@ section:has(input[placeholder^='Buscar entrenador, teléfono, email o especialid
 }
 .trainer-report-form .report-focus-note textarea { font-weight: 500; color: #0f172a; }
 .trainer-report-form .report-focus-note textarea::placeholder { font-weight: 400; color: #94a3b8; }
+
+/* Medidor de volumen mientras se graba una nota de voz (02/10/2026). */
+.trainer-report-dictation__nivel { display: block; width: 100%; height: 8px; border-radius: 999px; background: #fee2e2; overflow: hidden; }
+.trainer-report-dictation__nivel i { display: block; height: 100%; background: #dc2626; border-radius: 999px; transition: width .1s linear; }

@@ -293,6 +293,11 @@ function GrabadorNotaVoz(props: {
 }) {
   const [estado, setEstado] = useState<'listo' | 'grabando' | 'transcribiendo'>('listo');
   const [message, setMessage] = useState('');
+  const [nivel, setNivel] = useState(0);
+  // Medidor de volumen: enseña que el micrófono oye y detecta grabaciones mudas.
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const animacionRef = useRef<number | null>(null);
+  const picoRef = useRef(0);
   const grabadorRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const trozosRef = useRef<Blob[]>([]);
@@ -313,7 +318,53 @@ function GrabadorNotaVoz(props: {
   }, [ocupado]);
   const hayOtroDictado = useHayOtroDictado(ocupado);
 
+  function pararMedidor() {
+    if (animacionRef.current !== null) cancelAnimationFrame(animacionRef.current);
+    animacionRef.current = null;
+    const ctx = audioCtxRef.current;
+    audioCtxRef.current = null;
+    if (ctx) void ctx.close().catch(() => undefined);
+    if (montadoRef.current) setNivel(0);
+  }
+
+  function empezarMedidor(stream: MediaStream) {
+    picoRef.current = 0;
+    try {
+      const Ctx =
+        window.AudioContext ||
+        (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!Ctx) return;
+      const ctx = new Ctx();
+      audioCtxRef.current = ctx;
+      void ctx.resume().catch(() => undefined);
+      const analizador = ctx.createAnalyser();
+      analizador.fftSize = 1024;
+      ctx.createMediaStreamSource(stream).connect(analizador);
+      const muestras = new Uint8Array(analizador.fftSize);
+      let ultimoPintado = 0;
+      const medir = (t: number) => {
+        analizador.getByteTimeDomainData(muestras);
+        let suma = 0;
+        for (let i = 0; i < muestras.length; i += 1) {
+          const v = (muestras[i] - 128) / 128;
+          suma += v * v;
+        }
+        const rms = Math.sqrt(suma / muestras.length);
+        if (rms > picoRef.current) picoRef.current = rms;
+        if (t - ultimoPintado > 120 && montadoRef.current) {
+          ultimoPintado = t;
+          setNivel(Math.min(1, rms * 6));
+        }
+        animacionRef.current = requestAnimationFrame(medir);
+      };
+      animacionRef.current = requestAnimationFrame(medir);
+    } catch {
+      audioCtxRef.current = null;
+    }
+  }
+
   function soltarMicrofono() {
+    pararMedidor();
     if (limiteRef.current) clearTimeout(limiteRef.current);
     limiteRef.current = null;
     // Importante en iPhone: cerrar el micrófono del todo para poder volver a grabar.
@@ -368,6 +419,7 @@ function GrabadorNotaVoz(props: {
       return;
     }
     streamRef.current = stream;
+    empezarMedidor(stream);
     let grabador: MediaRecorder;
     try {
       grabador = new MediaRecorder(stream, { mimeType: formato.mimeType });
@@ -379,7 +431,17 @@ function GrabadorNotaVoz(props: {
       if (evento.data && evento.data.size > 0) trozosRef.current.push(evento.data);
     };
     grabador.onstop = () => {
+      // -1 = no se pudo medir (no se bloquea); si se midió y casi no hubo sonido, es una grabación muda.
+      const pico = audioCtxRef.current ? picoRef.current : -1;
       soltarMicrofono();
+      if (pico >= 0 && pico < 0.012) {
+        trozosRef.current = [];
+        grabadorRef.current = null;
+        setEstado('listo');
+        setMessage('No llega sonido del micrófono. Cierra la app del todo y vuelve a abrirla; si sigue igual, reinicia el iPhone.');
+        console.warn('[Dictado] grabación muda, pico', pico);
+        return;
+      }
       grabadorRef.current = null;
       const tipo = grabador.mimeType || formato.mimeType;
       const audio = new Blob(trozosRef.current, { type: tipo });
@@ -450,6 +512,11 @@ function GrabadorNotaVoz(props: {
         </span>
         {grabando ? 'Parar y escribir' : estado === 'transcribiendo' ? 'Escribiendo…' : 'Dictar'}
       </button>
+      {grabando && (
+        <span className="trainer-report-dictation__nivel" aria-hidden="true">
+          <i style={{ width: `${Math.round(nivel * 100)}%` }} />
+        </span>
+      )}
       <span className="trainer-report-dictation__hint" role="status">
         {grabando
           ? 'Grabando… Habla y pulsa «Parar y escribir» al terminar.'
