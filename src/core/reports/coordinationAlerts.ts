@@ -3,7 +3,8 @@
  * Lógica pura (sin navegador) a partir de las filas de obtener_avisos_reportes_app.
  *  - nivel: un entrenador ha marcado otro nivel («Revisar nivel») → Confirmar / Deshacer.
  *  - candidato: tiene todos los focos de su nivel conseguidos → candidato a subir.
- *  - incidencia: el entrenador marcó «¿Ha pasado algo? Sí».
+ * Las incidencias NO generan aviso (decisión de Jose, 02/10: «muy pesado e innecesario»);
+ * se siguen guardando y se ven en el historial de la ficha.
  */
 import { TECHNICAL_LEVELS } from '../levels/levelContract';
 import { FOCOS_POR_NIVEL, reportTechnicalLevelForRender } from '../../lib/adaptiveReport';
@@ -46,18 +47,9 @@ export type AvisoCoordinacion =
       sube: boolean;
       puedeDeshacer: boolean;
     })
-  | (Base & { tipo: 'candidato'; nivel: string; siguiente: string; focos: number })
-  | (Base & {
-      tipo: 'incidencia';
-      reporteId: string;
-      fecha: string;
-      entrenador: string | null;
-      modalidad: string | null;
-      incidencia: string;
-    });
+  | (Base & { tipo: 'candidato'; nivel: string; siguiente: string; focos: number });
 
 export const DIAS_AVISO_NIVEL = 30;
-export const DIAS_AVISO_INCIDENCIA = 14;
 
 function diasEntre(fechaIso: string, hoyIso: string): number {
   const a = Date.parse(`${fechaIso}T00:00:00Z`);
@@ -89,7 +81,6 @@ export function construirAvisos(
   candidatosVistos: Set<string> = new Set()
 ): AvisoCoordinacion[] {
   const avisosNivel: AvisoCoordinacion[] = [];
-  const avisosIncidencia: AvisoCoordinacion[] = [];
   const conNivelPendiente = new Set<string>();
 
   filas.forEach((f) => {
@@ -115,25 +106,6 @@ export function construirAvisos(
           puedeDeshacer: Boolean(f.es_ultimo_del_alumno),
         });
       }
-    }
-    const incidencia = String(f.incidencia || '').trim();
-    if (
-      incidencia &&
-      incidencia !== 'Sin incidencia' &&
-      !f.incidencia_revisada_at &&
-      diasEntre(f.fecha, hoyIso) <= DIAS_AVISO_INCIDENCIA
-    ) {
-      avisosIncidencia.push({
-        tipo: 'incidencia',
-        id: `inc:${f.reporte_id}`,
-        reporteId: f.reporte_id,
-        alumnoId: f.alumno_id,
-        alumno: nombre,
-        fecha: f.fecha,
-        entrenador: f.entrenador,
-        modalidad: f.modalidad,
-        incidencia: String(f.incidencia_comentario || '').trim() || incidencia,
-      });
     }
   });
 
@@ -175,5 +147,5 @@ export function construirAvisos(
     });
   });
 
-  return [...avisosNivel, ...avisosIncidencia, ...avisosCandidato];
+  return [...avisosNivel, ...avisosCandidato];
 }

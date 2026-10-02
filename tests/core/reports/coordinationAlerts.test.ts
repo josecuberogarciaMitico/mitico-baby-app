@@ -49,13 +49,8 @@ test('nivel anterior deducido del ritmo si no hay reporte previo', () => {
   equal(nivelAnteriorDeFila(fila({ nivel_reportado: 'C', nivel_anterior: null })), null, 'sin pistas');
 });
 
-test('incidencia sin revisar de los últimos 14 días', () => {
-  const avisos = construirAvisos([fila({ incidencia: 'Otro', incidencia_comentario: 'Molestia física' })], HOY);
-  equal(avisos.length, 1, 'uno');
-  if (avisos[0].tipo !== 'incidencia') throw new Error('tipo');
-  equal(avisos[0].incidencia, 'Molestia física', 'usa el detalle');
-  equal(construirAvisos([fila({ incidencia: 'Caída sin importancia', incidencia_revisada_at: '2026-10-02T10:00:00Z' })], HOY).length, 0, 'vista');
-  equal(construirAvisos([fila({ incidencia: 'Caída sin importancia', fecha: '2026-09-10' })], HOY).length, 0, 'antigua');
+test('las incidencias ya no generan aviso (decisión de Jose)', () => {
+  equal(construirAvisos([fila({ incidencia: 'Caída sin importancia' })], HOY).length, 0, 'sin aviso');
 });
 
 test('candidato a subir: todos los focos conseguidos en su nivel', () => {

@@ -16,7 +16,6 @@ import { abrirFichaAlumno } from '../students/studentFichaStore';
  * Fase 3 (02/10/2026): avisos flotantes de reportes para coordinación.
  * Un botón pequeño arriba a la derecha («N avisos») que se abre en un panel con:
  *  - cambios de nivel marcados por entrenadores → Confirmar / Deshacer;
- *  - incidencias → Visto;
  *  - candidatos a subir (todos los focos conseguidos) → Visto.
  * Se actualiza cada minuto y al volver a la app. Solo lectura salvo esas marcas.
  */
@@ -105,9 +104,7 @@ export function CoordinationAlerts(props: { onNivelCambiado?: () => void }) {
     }
     setOcupado(aviso.id);
     try {
-      if (aviso.tipo === 'incidencia') {
-        await revisarAvisoReporte(aviso.reporteId, 'incidencia_vista');
-      } else if (tipo === 'confirmar') {
+      if (tipo === 'confirmar') {
         await revisarAvisoReporte(aviso.reporteId, 'confirmar_nivel');
       } else {
         const nivel = aviso.nivelAnterior || nivelElegido[aviso.id];
@@ -184,19 +181,6 @@ export function CoordinationAlerts(props: { onNivelCambiado?: () => void }) {
                       ) : (
                         <span className="mitico-avisos-reportes__nota">Hay un reporte posterior: cámbialo desde su ficha.</span>
                       )}
-                      <button type="button" onClick={() => abrirFichaAlumno(aviso.alumnoId)}>Ficha</button>
-                    </div>
-                  </>
-                )}
-                {aviso.tipo === 'incidencia' && (
-                  <>
-                    <span className="mitico-avisos-reportes__tipo">Ha pasado algo</span>
-                    <strong>{aviso.alumno}: {aviso.incidencia}</strong>
-                    <span>{aviso.entrenador || 'Entrenador'} · {aviso.modalidad || ''} · {fechaCorta(aviso.fecha)}</span>
-                    <div className="mitico-avisos-reportes__acciones">
-                      <button type="button" className="is-ok" disabled={ocupado === aviso.id} onClick={() => void accion(aviso, 'visto')}>
-                        Visto
-                      </button>
                       <button type="button" onClick={() => abrirFichaAlumno(aviso.alumnoId)}>Ficha</button>
                     </div>
                   </>
