@@ -147,7 +147,12 @@ export function StudentHistoryPanel({
               competenciasReporte(report.nivel_reportado || currentLevel).map((c) => [c.id, c.nombre])
             );
             const skills = Object.entries(report.evaluacion_tecnica || {})
-              .map(([id, valor]) => ({ id, nombre: nombres.get(id) || id.replaceAll('_', ' '), puntos: puntosDeValor(valor) }))
+              .map(([id, valor]) => ({
+                id,
+                nombre: nombres.get(id) || id.replaceAll('_', ' '),
+                puntos: puntosDeValor(valor),
+                nota: String(report.notas_habilidades?.[id] || '').trim(),
+              }))
               .filter((item) => item.puntos !== null);
             const actitud = [report.actitud, report.actitud_comentario].filter(Boolean).join(' · ');
 
@@ -179,9 +184,12 @@ export function StudentHistoryPanel({
                   {skills.length > 0 && (
                     <div className="ficha-report-skills">
                       {skills.map((item) => (
-                        <span key={item.id} className={`ficha-step p${item.puntos}`}>
-                          {item.nombre}: <b>{ETIQUETA_PASO[item.puntos as 0 | 1 | 2]}</b>
-                        </span>
+                        <div key={item.id} className="ficha-report-skill">
+                          <span className={`ficha-step p${item.puntos}`}>
+                            {item.nombre}: <b>{ETIQUETA_PASO[item.puntos as 0 | 1 | 2]}</b>
+                          </span>
+                          {item.nota && <span className="ficha-report-note">«{item.nota}»</span>}
+                        </div>
                       ))}
                     </div>
                   )}

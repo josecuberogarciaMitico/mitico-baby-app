@@ -544,7 +544,13 @@ export type EnvioReporteFocos = {
   giroInicial: string;
   /** Solo las habilidades valoradas del nivel elegido. */
   evaluacionTecnica: EvaluacionTecnicaReporte;
+  /** Nota del entrenador por cada habilidad valorada {id: texto}. */
+  notasHabilidades: Record<string, string>;
 };
+
+/** Nota por habilidad (02/10/2026): obligatoria en cada habilidad valorada. */
+export const NOTA_HABILIDAD_MIN = 10;
+export const NOTA_HABILIDAD_MAX = 300;
 
 /**
  * Valida el reporte por focos y calcula los campos que Supabase sigue
@@ -563,6 +569,7 @@ export function prepararEnvioReporteFocos(
     cunaFrenada: string;
     giroInicial: string;
     evaluacionTecnica: EvaluacionTecnicaReporte;
+    notasHabilidades?: Record<string, string>;
   },
   nivelPartida: string | null | undefined
 ): { ok: true; envio: EnvioReporteFocos } | { ok: false; error: string } {
@@ -578,7 +585,16 @@ export function prepararEnvioReporteFocos(
   if (!ACTITUD_GENERAL.some((o) => o.valor === form.actitud)) return { ok: false, error: 'Selecciona la actitud.' };
   if (!String(form.autonomia || '').trim()) return { ok: false, error: 'Selecciona la autonomía observada.' };
   if (!String(form.incidencia || '').trim()) return { ok: false, error: 'Has marcado que ha pasado algo: elige qué ha pasado.' };
-  if (!String(form.observaciones || '').trim()) return { ok: false, error: 'Escribe una observación antes de guardar el reporte.' };
+  const notas = form.notasHabilidades || {};
+  for (const h of valoradas) {
+    const nota = String(notas[h.id] || '').trim();
+    if (nota.length < NOTA_HABILIDAD_MIN) {
+      return { ok: false, error: `Escribe una nota en «${h.nombre}»: qué has visto hoy, con tus palabras.` };
+    }
+    if (nota.length > NOTA_HABILIDAD_MAX) {
+      return { ok: false, error: `La nota de «${h.nombre}» es demasiado larga (máximo ${NOTA_HABILIDAD_MAX} caracteres).` };
+    }
+  }
 
   const valor = (id: string) => form.evaluacionTecnica[id];
   const conValor = (v: ValorTecnicoReporte) => valoradas.filter((h) => valor(h.id) === v).map((h) => h.nombre);
@@ -621,6 +637,9 @@ export function prepararEnvioReporteFocos(
       evaluacionTecnica: Object.fromEntries(
         valoradas.map((h) => [h.id, form.evaluacionTecnica[h.id]])
       ) as EvaluacionTecnicaReporte,
+      notasHabilidades: Object.fromEntries(
+        valoradas.map((h) => [h.id, String(notas[h.id] || '').trim()])
+      ),
     },
   };
 }

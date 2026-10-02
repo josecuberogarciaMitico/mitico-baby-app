@@ -4454,3 +4454,19 @@ section:has(input[placeholder^='Buscar entrenador, teléfono, email o especialid
   .ficha-dots { grid-column: 1 / -1; justify-content: flex-start; }
   .ficha-top input { font-size: 16px; }
 }
+
+/* =========================================================
+   NOTAS POR HABILIDAD · 02/10/2026
+   Nota obligatoria (con Dictar) en cada habilidad valorada del
+   reporte; en la ficha e historial se muestran sus notas.
+   ========================================================= */
+
+.report-focus-note { display: grid; gap: 6px; padding-top: 4px; }
+.trainer-report-form .report-focus-note label { display: grid; gap: 4px; color: #334155; font-size: 12px; font-weight: 800; }
+.trainer-report-form .report-focus-note textarea { min-height: 56px; padding: 8px 10px; border: 1px solid #cbd5e1; border-radius: 10px; background: #fff; font: inherit; font-size: 14px; line-height: 1.4; resize: vertical; }
+.report-focus-hint.is-pending { color: #b45309; font-weight: 700; }
+.ficha-skill__notes { grid-column: 1 / -1; order: 1; display: grid; gap: 3px; margin: 0; padding: 0 0 0 10px; border-left: 3px solid #e2e8f0; list-style: none; color: #475569; font-size: 12px; line-height: 1.4; }
+.ficha-skill__notes b { color: #334155; margin-right: 4px; }
+.ficha-report-skills { flex-direction: column; align-items: flex-start; }
+.ficha-report-skill { display: grid; gap: 2px; }
+.ficha-report-note { color: #475569; font-size: 13px; line-height: 1.4; padding-left: 8px; }

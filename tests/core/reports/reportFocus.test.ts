@@ -8,7 +8,7 @@ import {
   nivelesVecinos,
   opcionesActitudDestacar,
   opcionesAutonomiaPasos,
-  prepararEnvioReporteFocos,
+  prepararEnvioReporteFocos as prepararSinNotas,
   remontesPorDefecto,
   ritmoDesdeNivel,
 } from '../../../src/lib/adaptiveReport';
@@ -24,6 +24,16 @@ function equal<T>(actual: T, expected: T, label: string) {
 function test(name: string, run: () => void) {
   run();
   console.log(`OK  ${name}`);
+}
+
+// Las notas por habilidad son obligatorias (02/10): por defecto se rellenan
+// para cada habilidad valorada; un test concreto comprueba que faltan.
+type FormPrueba = Parameters<typeof prepararSinNotas>[0];
+function prepararEnvioReporteFocos(form: FormPrueba, partida: string) {
+  const notas = form.notasHabilidades ?? Object.fromEntries(
+    Object.keys(form.evaluacionTecnica || {}).map((id) => [id, 'Nota de prueba con detalle'])
+  );
+  return prepararSinNotas({ ...form, notasHabilidades: notas }, partida);
 }
 
 const base = {
@@ -116,7 +126,6 @@ test('validaciones con mensajes claros', () => {
     [{ actitud: '' }, 'actitud'],
     [{ autonomia: '' }, 'autonomía'],
     [{ incidencia: '' }, 'ha pasado'],
-    [{ observaciones: '  ' }, 'observación'],
   ];
   casos.forEach(([cambio, palabra]) => {
     const r = prepararEnvioReporteFocos({ ...base, ...cambio }, 'C');
@@ -172,4 +181,18 @@ test('autonomía en 3 pasos coherentes, «Va solo» según el nivel', () => {
   equal(opcionesAutonomiaPasos('A+')[2].valor, 'Autónomo en pista pequeña', 'A+');
   equal(opcionesAutonomiaPasos('B')[2].valor, 'Autónomo en pista grande', 'B');
   equal(opcionesAutonomiaPasos('D')[2].valor, 'Autónomo total', 'D');
+});
+
+test('notas por habilidad: obligatorias en cada habilidad valorada; la observación es opcional', () => {
+  const sinNota = prepararSinNotas({ ...base, notasHabilidades: { paralelismo: 'Ya junta en la parte fácil' } }, 'C');
+  equal(sinNota.ok, false, 'falta la nota de rotación');
+  if (!sinNota.ok) equal(sinNota.error.includes('Rotación de piernas'), true, 'dice qué habilidad');
+  const corta = prepararSinNotas({ ...base, notasHabilidades: { paralelismo: 'bien', rotacion_piernas: 'El tronco acompaña el giro' } }, 'C');
+  equal(corta.ok, false, '«bien» no basta');
+  const ok = prepararSinNotas({ ...base, observaciones: '', notasHabilidades: { paralelismo: '  Ya junta en la parte fácil ', rotacion_piernas: 'El tronco acompaña el giro', canteo: 'no es de C' } }, 'C');
+  if (!ok.ok) throw new Error(ok.error);
+  equal(ok.envio.notasHabilidades.paralelismo, 'Ya junta en la parte fácil', 'se recorta');
+  equal('canteo' in ok.envio.notasHabilidades, false, 'solo notas de habilidades valoradas');
+  const larga = prepararSinNotas({ ...base, notasHabilidades: { paralelismo: 'x'.repeat(301), rotacion_piernas: 'El tronco acompaña el giro' } }, 'C');
+  equal(larga.ok, false, 'máximo 300');
 });

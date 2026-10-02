@@ -76,3 +76,12 @@ test('resumen de cabecera', () => {
   equal(r.focos, 3, 'A tiene 3 focos');
   equal(r.focosConseguidos, 1, 'cuña conseguida');
 });
+
+test('las notas del entrenador acompañan a cada valoración', () => {
+  const r = reporte('2026-10-02', 'C', { paralelismo: 'En desarrollo' });
+  (r as any).notas_habilidades = { paralelismo: '  Ya junta en la parte fácil ' };
+  const p = progresoHabilidadesNivel([r, reporte('2026-10-01', 'C', { paralelismo: 'Necesita mejorar' })], 'C');
+  const par = p.find((x) => x.habilidad.id === 'paralelismo');
+  equal(par?.valoraciones[0].nota, 'Ya junta en la parte fácil', 'nota recortada');
+  equal(par?.valoraciones[1].nota, undefined, 'sin nota');
+});

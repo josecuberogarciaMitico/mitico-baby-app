@@ -41,6 +41,8 @@ export type ValoracionHabilidad = {
   fecha: string;
   puntos: PuntosHabilidad;
   modalidad: string | null;
+  /** Nota del entrenador ese día (si la escribió). */
+  nota?: string;
 };
 
 /** Estado a partir de las valoraciones (cualquier orden; una por día, la más reciente). */
@@ -86,7 +88,8 @@ export function progresoHabilidadesNivel(
     const valoraciones: ValoracionHabilidad[] = [];
     delNivel.forEach((r) => {
       const puntos = puntosDeValor(r.evaluacion_tecnica?.[habilidad.id]);
-      if (puntos !== null && r.fecha) valoraciones.push({ fecha: r.fecha, puntos, modalidad: r.modalidad });
+      const nota = String(r.notas_habilidades?.[habilidad.id] || '').trim();
+      if (puntos !== null && r.fecha) valoraciones.push({ fecha: r.fecha, puntos, modalidad: r.modalidad, ...(nota ? { nota } : {}) });
     });
     return { habilidad, estado: estadoHabilidad(valoraciones), valoraciones: valoracionesPorDia(valoraciones) };
   });

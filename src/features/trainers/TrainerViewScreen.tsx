@@ -331,6 +331,9 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
         evaluacionTecnica: Object.fromEntries(
           Object.entries(formReporte.evaluacionTecnica || {}).filter(([id]) => idsNivel.has(id))
         ),
+        notasHabilidades: Object.fromEntries(
+          Object.entries(formReporte.notasHabilidades || {}).filter(([id]) => idsNivel.has(id))
+        ),
         mejorasHoy: [],
         prioridades: [],
       });
@@ -436,6 +439,13 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
           actitud={formReporte.actitud}
           actitudDestacar={formReporte.actitudDestacar || []}
           evaluacion={formReporte.evaluacionTecnica}
+          notas={formReporte.notasHabilidades || {}}
+          onNota={(id, texto) =>
+            setFormReporte((actual: typeof formReporte) => ({
+              ...actual,
+              notasHabilidades: { ...(actual.notasHabilidades || {}), [id]: texto },
+            }))
+          }
           referenciaNivel={referenciaTecnicaReporteApp(formReporte.nivel || '')}
           onNivel={cambiarNivelReporte}
           onActitud={(valor) => setFormReporte({ ...formReporte, actitud: valor })}
@@ -495,12 +505,12 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
         </div>
 
         <label style={labelCampo}>
-          Observación útil para próximas sesiones (obligatoria)
+          Algo más para el siguiente entrenador (opcional)
           <textarea
             value={formReporte.observaciones}
             maxLength={500}
             readOnly={dictandoObservacion}
-            placeholder="Obligatoria. Añade algo útil que no esté ya arriba: cómo ha respondido, miedo, cansancio, atención, material, comportamiento, reacción a un ejercicio o un detalle importante para la próxima sesión."
+            placeholder="Opcional. Lo que no encaje en ninguna habilidad: cómo ha respondido, miedo, cansancio, atención, material o un detalle importante para la próxima sesión."
             onChange={(e) =>
               setFormReporte({
                 ...formReporte,
@@ -522,7 +532,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
             }
           />
           <span style={{ fontSize: 11, color: '#64748b', marginTop: 5 }}>
-            {formReporte.observaciones.length}/500 · Obligatoria. No repitas nivel, técnica, autonomía o incidencia: añade un detalle que ayude al siguiente entrenador y al informe de la familia.
+            {formReporte.observaciones.length}/500 · Opcional. Lo de cada habilidad ya va en su nota.
           </span>
         </label>
 

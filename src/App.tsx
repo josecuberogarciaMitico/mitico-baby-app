@@ -869,6 +869,7 @@ type ReporteFormState = {
   nivel: string;
   actitud: string;
   actitudDestacar: string[];
+  notasHabilidades: Record<string, string>;
   pista: string;
   autonomia: string;
   ritmoGrupo: string;
@@ -1107,6 +1108,7 @@ function reporteInicial(): ReporteFormState {
     nivel: '',
     actitud: '',
     actitudDestacar: [],
+    notasHabilidades: {},
     pista: 'Pequeña',
     autonomia: '',
     ritmoGrupo: '',
@@ -4211,6 +4213,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         p_ayuda_cunero: formReporte.ayudaCunero || 'No utilizado',
         // Solo se envía si se ha marcado «¿Algo a destacar?» (requiere la migración 2026-10-01).
         ...(envio.actitudDetalle.length ? { p_actitud_detalle: envio.actitudDetalle } : {}),
+        // Notas por habilidad (requiere la migración 20261002_000001).
+        ...(Object.keys(envio.notasHabilidades).length ? { p_notas_habilidades: envio.notasHabilidades } : {}),
       });
 
       cerrarFormularioReporte();

@@ -176,6 +176,15 @@ export function StudentFichaSheet(props: Props) {
                 </span>
               </div>
               <span className="ficha-state">{ETIQUETA_ESTADO[estado]}</span>
+              {valoraciones.some((v) => v.nota) && (
+                <ul className="ficha-skill__notes">
+                  {valoraciones.filter((v) => v.nota).slice(0, 2).map((v) => (
+                    <li key={v.fecha}>
+                      <b>{props.formatDate(v.fecha)}</b> {v.nota}
+                    </li>
+                  ))}
+                </ul>
+              )}
               <span className="ficha-dots" aria-label={valoraciones.map((v) => `${props.formatDate(v.fecha)}: ${ETIQUETA_PASO[v.puntos]}`).join(', ') || 'Sin valorar'}>
                 {valoraciones.slice(0, 5).reverse().map((v) => (
                   <i key={v.fecha} className={`p${v.puntos}`} title={`${props.formatDate(v.fecha)} · ${ETIQUETA_PASO[v.puntos]}`} />

@@ -39,6 +39,8 @@ export type HistorialReporteAlumnoFichaApp = {
   reporte_version?: number | null;
   /** Detalle de actitud («¿Algo a destacar?»). Solo si el historial lo devuelve. */
   actitud_comentario?: string | null;
+  /** Nota del entrenador por habilidad {id: texto} (desde el 02/10/2026). */
+  notas_habilidades?: Record<string, string> | null;
 };
 
 export type ContextoTecnicoReporteApp = {
