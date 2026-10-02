@@ -65,6 +65,23 @@ function useHayOtroDictado(propio: boolean): boolean {
   return total - (propio ? 1 : 0) > 0;
 }
 
+/**
+ * iPhone/iPad con la app instalada en la pantalla de inicio: Apple no deja que
+ * el dictado del navegador use el micrófono (empieza pero nunca escucha). Ahí el
+ * botón abre el teclado en el campo para usar su micrófono, que sí funciona.
+ */
+function esIphoneAppInstalada(): boolean {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const esIOS =
+    /iPhone|iPad|iPod/i.test(ua) ||
+    (/Macintosh/i.test(ua) && (navigator.maxTouchPoints || 0) > 1);
+  const instalada =
+    (navigator as Navigator & { standalone?: boolean }).standalone === true ||
+    (typeof window.matchMedia === 'function' && window.matchMedia('(display-mode: standalone)').matches);
+  return esIOS && instalada;
+}
+
 export function DictationButton(props: {
   value: string;
   maxLength: number;
@@ -107,6 +124,43 @@ export function DictationButton(props: {
     },
     []
   );
+
+  if (esIphoneAppInstalada()) {
+    // Se enfoca el campo dentro del propio toque: así iOS abre el teclado.
+    const abrirTeclado = () => {
+      const campo = botonRef.current
+        ?.closest('.report-focus-note, label')
+        ?.querySelector('textarea') as HTMLTextAreaElement | null;
+      if (campo) {
+        campo.focus();
+        const fin = campo.value.length;
+        campo.setSelectionRange(fin, fin);
+      }
+      setMessage('Pulsa el micrófono del teclado (abajo a la derecha) y habla.');
+    };
+    return (
+      <div className="trainer-report-dictation">
+        <button
+          type="button"
+          ref={botonRef}
+          className="trainer-report-dictation__button"
+          onClick={abrirTeclado}
+          disabled={props.disabled}
+        >
+          <span className="trainer-report-dictation__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="3" width="6" height="11" rx="3" />
+              <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
+            </svg>
+          </span>
+          Dictar
+        </button>
+        <span className="trainer-report-dictation__hint" role="status">
+          {message || 'Se abre el teclado: pulsa su micrófono y habla.'}
+        </span>
+      </div>
+    );
+  }
 
   if (!Recognition) return null;
 
