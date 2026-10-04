@@ -1,5 +1,6 @@
 import {
   decidePreparedGroupRefresh,
+  moveLeavesSingleBabyStudent,
   requireAttendanceState,
   requireValidGroupMove,
 } from '../../../src/core/groups/groupOperations';
@@ -47,4 +48,13 @@ test('bloquea reemplazo con entrenador o edición manual', () => {
     dailyWork: 'Trabajo editado', hasReports: false, hasRealAttendance: false,
   }, { studentIds: ['a', 'b'], dailyWork: 'Trabajo' });
   equal(decision.action, 'BLOCK', 'acción');
+});
+
+test('detecta cuando mover deja un grupo Baby publicado con 1 alumno', () => {
+  const base = { sessionModality: 'Baby', sourceGroupName: 'REVISAR · OLIVIA', sourcePublished: true, sourceTotalStudents: 2 };
+  equal(moveLeavesSingleBabyStudent(base), true, 'grupo Baby de 2 publicado');
+  equal(moveLeavesSingleBabyStudent({ ...base, sourceTotalStudents: 3 }), false, 'grupo de 3');
+  equal(moveLeavesSingleBabyStudent({ ...base, sourcePublished: false }), false, 'no publicado');
+  equal(moveLeavesSingleBabyStudent({ ...base, sessionModality: 'Ocio' }), false, 'Ocio no aplica');
+  equal(moveLeavesSingleBabyStudent({ ...base, sourceGroupName: 'PARTICULAR · X' }), false, 'ya particular');
 });

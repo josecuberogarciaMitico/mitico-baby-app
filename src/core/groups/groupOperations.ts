@@ -6,10 +6,33 @@ export const GROUP_OPERATION_RPC = {
   confirmTrainer: 'confirmar_grupo_entrenador_app',
   markAttendance: 'marcar_asistencia_alumno_app',
   moveStudent: 'mover_alumno_grupo_operativa_app',
+  moveStudentLeavingPrivate: 'mover_alumno_grupo_operativa_particular_app',
   updateDailyWork: 'actualizar_trabajo_observaciones_grupo_app',
   create: 'crear_grupo_sesion_operativa_app',
   remove: 'borrar_grupo_sesion_operativa_app',
 } as const;
+
+/**
+ * Trabajo en pista: indica si mover un alumno dejaría el grupo Baby publicado
+ * de origen con 1 solo alumno. En ese caso coordinación debe confirmar que el
+ * grupo pasa a «PARTICULAR · <alumno que se queda>» (única composición de 1
+ * que admite la regla de ratio Baby en Supabase).
+ */
+export function moveLeavesSingleBabyStudent(input: {
+  sessionModality: string | null | undefined;
+  sourceGroupName: string | null | undefined;
+  sourcePublished: boolean | null | undefined;
+  sourceTotalStudents: number | null | undefined;
+}): boolean {
+  const modality = String(input.sessionModality || '').trim().toUpperCase();
+  const name = String(input.sourceGroupName || '').trim().toUpperCase();
+  return (
+    modality.includes('BABY') &&
+    Boolean(input.sourcePublished) &&
+    Number(input.sourceTotalStudents || 0) === 2 &&
+    !name.startsWith('PARTICULAR ·')
+  );
+}
 
 export type AttendanceState = 'Pendiente' | 'Presente' | 'Ausente';
 

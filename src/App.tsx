@@ -296,6 +296,7 @@ import {
 import {
   GROUP_OPERATION_RPC,
   decidePreparedGroupRefresh,
+  moveLeavesSingleBabyStudent,
   requireAttendanceState,
   requireOperationalStudentLevel,
   requireValidGroupMove,
@@ -2376,7 +2377,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [grupoResumenDiaDestacado, setGrupoResumenDiaDestacado] = useState('');
   const [alumnoResumenDiaDestacado, setAlumnoResumenDiaDestacado] = useState('');
   const [ajustePistaSesionId, setAjustePistaSesionId] = useState('');
-  const [ajustePistaModo, setAjustePistaModo] = useState<'mover' | 'anadir' | ''>('');
+  const [ajustePistaModo, setAjustePistaModo] = useState<'mover' | 'anadir' | 'entrenadores' | ''>('');
   const [movimientoPistaAlumno, setMovimientoPistaAlumno] = useState('');
   const [movimientoPistaDestino, setMovimientoPistaDestino] = useState('');
   const [busquedaPistaAlumno, setBusquedaPistaAlumno] = useState('');
@@ -17033,7 +17034,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
 
   function abrirAjustePistaSesion(
     sesionId: string,
-    modo: 'mover' | 'anadir'
+    modo: 'mover' | 'anadir' | 'entrenadores'
   ) {
     const mismaAccion = ajustePistaSesionId === sesionId && ajustePistaModo === modo;
     if (mismaAccion) {
@@ -17075,7 +17076,8 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
 
   async function moverAlumnoTrabajoPista(
     sesionId: string,
-    gruposPublicados: AgendaGrupoSesionApp[]
+    gruposPublicados: AgendaGrupoSesionApp[],
+    modalidadSesion = ''
   ) {
     const [grupoOrigenId, alumnoId] = movimientoPistaAlumno.split('::');
     const grupoDestinoId = movimientoPistaDestino;
@@ -17101,9 +17103,18 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       return;
     }
 
+    const origenQuedaSolo = moveLeavesSingleBabyStudent({
+      sessionModality: modalidadSesion,
+      sourceGroupName: grupoOrigen.nombre_grupo,
+      sourcePublished: grupoOrigen.publicado,
+      sourceTotalStudents: grupoOrigen.total_alumnos,
+    });
     const confirmar = window.confirm(
       `¿Mover a ${alumno.alumno} de ${nombreGrupoVisualApp(grupoOrigen)} a ${nombreGrupoVisualApp(grupoDestino)}?\n\n` +
-        `El cambio se aplicará a la sesión de hoy. Se moverán asistencia, observaciones operativas y responsable del reporte. El alumno trabajará con el trabajo diario ya revisado del grupo destino.`
+        `El cambio se aplicará a la sesión de hoy. Se moverán asistencia, observaciones operativas y responsable del reporte. El alumno trabajará con el trabajo diario ya revisado del grupo destino.` +
+        (origenQuedaSolo
+          ? `\n\nATENCIÓN: ${nombreGrupoVisualApp(grupoOrigen)} se queda con 1 solo alumno. Pasará a ser clase PARTICULAR con el mismo entrenador.`
+          : '')
     );
     if (!confirmar) return;
 
@@ -17117,11 +17128,16 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
         sourceGroupId: grupoOrigenId,
         targetGroupId: grupoDestinoId,
       });
-      await ejecutarFuncion(GROUP_OPERATION_RPC.moveStudent, {
-        p_alumno_id: movimiento.studentId,
-        p_grupo_origen_id: movimiento.sourceGroupId,
-        p_grupo_destino_id: movimiento.targetGroupId,
-      });
+      await ejecutarFuncion(
+        origenQuedaSolo
+          ? GROUP_OPERATION_RPC.moveStudentLeavingPrivate
+          : GROUP_OPERATION_RPC.moveStudent,
+        {
+          p_alumno_id: movimiento.studentId,
+          p_grupo_origen_id: movimiento.sourceGroupId,
+          p_grupo_destino_id: movimiento.targetGroupId,
+        }
+      );
 
       await refrescarTrabajoPistaSesion(sesionId);
       setMensajeAjustePista(
@@ -20911,7 +20927,10 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             buildMasterStudentProfile,
             busquedaAlumnoResumenDia,
             busquedaPistaAlumno,
+            cambiarEntrenadorGrupoAgenda,
+            cambiarSegundoEntrenadorGrupoAgenda,
             claveDomAlumnoResumenDia,
+            entrenadores,
             fechaResumenDiaActiva,
             fichaAlumnoResumenDiaDesdeTexto,
             formatearObservaciones,
@@ -20933,6 +20952,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             movimientoPistaDestino,
             nombreGrupoVisualApp,
             pantalla,
+            refrescarTrabajoPistaSesion,
             renderAyudaRapidaPantallaApp,
             resultadosBusquedaAlumnoResumenDia,
             sesionesResumenDia,

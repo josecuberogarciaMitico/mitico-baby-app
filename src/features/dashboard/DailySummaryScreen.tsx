@@ -1,4 +1,5 @@
 import React from 'react';
+import { TrackTrainerAdjustPanel } from './TrackTrainerAdjustPanel';
 
 type DailySummaryScreenProps = {
   ctx: Record<string, any>;
@@ -25,7 +26,10 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
     buildMasterStudentProfile,
     busquedaAlumnoResumenDia,
     busquedaPistaAlumno,
+    cambiarEntrenadorGrupoAgenda,
+    cambiarSegundoEntrenadorGrupoAgenda,
     claveDomAlumnoResumenDia,
+    entrenadores,
     fechaResumenDiaActiva,
     fichaAlumnoResumenDiaDesdeTexto,
     formatearObservaciones,
@@ -47,6 +51,7 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
     movimientoPistaDestino,
     nombreGrupoVisualApp,
     pantalla,
+    refrescarTrabajoPistaSesion,
     renderAyudaRapidaPantallaApp,
     resultadosBusquedaAlumnoResumenDia,
     sesionesResumenDia,
@@ -567,6 +572,29 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                   >
                                     + Añadir alumno hoy
                                   </button>
+                                  {sesion.origen !== 'intensivo' && (
+                                  <button
+                                    type="button"
+                                    disabled={guardandoAjustePista}
+                                    onClick={() =>
+                                      abrirAjustePistaSesion(sesionOperativaId, 'entrenadores')
+                                    }
+                                    style={{
+                                      ...botonSecundario,
+                                      minHeight: 38,
+                                      borderColor:
+                                        panelActivo && ajustePistaModo === 'entrenadores'
+                                          ? '#0f766e'
+                                          : '#cbd5e1',
+                                      background:
+                                        panelActivo && ajustePistaModo === 'entrenadores'
+                                          ? '#ecfdf5'
+                                          : '#fff',
+                                    }}
+                                  >
+                                    👥 Entrenadores
+                                  </button>
+                                  )}
                                 </div>
                               </div>
 
@@ -657,7 +685,8 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                     onClick={() =>
                                       void moverAlumnoTrabajoPista(
                                         sesionOperativaId,
-                                        gruposPublicados
+                                        gruposPublicados,
+                                        String(sesion.modalidad || '')
                                       )
                                     }
                                     style={{
@@ -676,6 +705,24 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                       : 'Confirmar cambio'}
                                   </button>
                                 </div>
+                              )}
+
+                              {panelActivo && ajustePistaModo === 'entrenadores' && sesion.origen !== 'intensivo' && (
+                                <TrackTrainerAdjustPanel
+                                  grupos={gruposPublicados}
+                                  entrenadores={entrenadores || []}
+                                  nombreGrupoVisual={nombreGrupoVisualApp}
+                                  onCambiarPrincipal={async (grupo, entrenadorId, excepcional) => {
+                                    await cambiarEntrenadorGrupoAgenda(grupo, entrenadorId, excepcional);
+                                    await refrescarTrabajoPistaSesion(sesionOperativaId);
+                                  }}
+                                  onCambiarApoyo={async (grupo, entrenadorId) => {
+                                    await cambiarSegundoEntrenadorGrupoAgenda(grupo, entrenadorId);
+                                    await refrescarTrabajoPistaSesion(sesionOperativaId);
+                                  }}
+                                  labelCampo={labelCampo}
+                                  inputCampo={inputCampo}
+                                />
                               )}
 
                               {panelActivo && ajustePistaModo === 'anadir' && (
