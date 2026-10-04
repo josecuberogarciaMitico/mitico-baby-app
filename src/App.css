@@ -4545,3 +4545,22 @@ section:has(input[placeholder^='Buscar entrenador, teléfono, email o especialid
   .mitico-avisos-reportes { top: max(76px, calc(env(safe-area-inset-top) + 68px)); right: max(12px, env(safe-area-inset-right)); width: calc(100vw - 24px); }
   .mitico-avisos-reportes__acciones button, .mitico-avisos-reportes__acciones select { min-height: 42px; font-size: 14px; }
 }
+
+/* =====================================
+   Bloqueo de scroll en movil (grupo / reporte abiertos)
+   App.tsx fija el body con position: fixed + top negativo mientras hay un
+   grupo o reporte de entrenador abierto. En iPhone (sobre todo con la app
+   instalada y tras usar el teclado) esa tecnica puede dejar la pagina sin
+   scroll al cerrar. Aqui se anula SOLO el movimiento del body (position/top/
+   left/right/width inline) y se mantiene el overflow: hidden, de modo que la
+   pagina nunca se desplaza ni hay nada que restaurar.
+   ===================================== */
+@media (max-width: 719px) {
+  body[style*="position: fixed"] {
+    position: static !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    width: auto !important;
+  }
+}
