@@ -1723,37 +1723,68 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     grupoActivoEntrenador || reporteActivo
   );
 
+  // Bloqueo de scroll del fondo en móvil mientras hay una hoja de grupo o de
+  // reporte abierta. Se sincroniza con lo que HAY en pantalla (no solo con el
+  // estado): si la hoja ya no existe, el bloqueo se libera siempre. Solo usa
+  // overflow: hidden (no mueve el body), así no hay nada que restaurar.
+  const bloqueoScrollMovilRef = useRef<string | null>(null);
+
+  function sincronizarBloqueoScrollMovil() {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+    const body = document.body;
+    const hojaAbierta = Boolean(
+      document.querySelector(
+        '.trainer-group-card.is-sheet-open, .trainer-report-overlay'
+      )
+    );
+    const bloquear =
+      overlayEntrenadorAbierto &&
+      hojaAbierta &&
+      window.matchMedia('(max-width: 719px)').matches;
+
+    if (bloquear) {
+      if (bloqueoScrollMovilRef.current === null) {
+        bloqueoScrollMovilRef.current = body.style.overflow;
+        body.style.overflow = 'hidden';
+      }
+      return;
+    }
+
+    if (bloqueoScrollMovilRef.current !== null) {
+      body.style.overflow = bloqueoScrollMovilRef.current;
+      bloqueoScrollMovilRef.current = null;
+    }
+
+    // Red de seguridad: restos del bloqueo antiguo (body fijado) sin hoja abierta.
+    if (body.style.position === 'fixed') {
+      ['position', 'top', 'left', 'right', 'width', 'overflow'].forEach(
+        (propiedad) => body.style.removeProperty(propiedad)
+      );
+    }
+  }
+
+  const sincronizarBloqueoScrollMovilRef = useRef(sincronizarBloqueoScrollMovil);
+  sincronizarBloqueoScrollMovilRef.current = sincronizarBloqueoScrollMovil;
+
+  // Tras cada render: la hoja entra o sale del DOM con el estado.
   useEffect(() => {
-    if (!overlayEntrenadorAbierto || typeof window === 'undefined') return;
-    if (!window.matchMedia('(max-width: 719px)').matches) return;
+    sincronizarBloqueoScrollMovilRef.current();
+  });
 
-    const scrollY = window.scrollY;
-    const estilosPrevios = {
-      position: document.body.style.position,
-      top: document.body.style.top,
-      left: document.body.style.left,
-      right: document.body.style.right,
-      width: document.body.style.width,
-      overflow: document.body.style.overflow,
-    };
-
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${scrollY}px`;
-    document.body.style.left = '0';
-    document.body.style.right = '0';
-    document.body.style.width = '100%';
-    document.body.style.overflow = 'hidden';
-
+  // Al volver a la app (iPhone/PWA) y al desmontar, se comprueba y se libera.
+  useEffect(() => {
+    const comprobar = () => sincronizarBloqueoScrollMovilRef.current();
+    document.addEventListener('visibilitychange', comprobar);
+    window.addEventListener('pageshow', comprobar);
     return () => {
-      document.body.style.position = estilosPrevios.position;
-      document.body.style.top = estilosPrevios.top;
-      document.body.style.left = estilosPrevios.left;
-      document.body.style.right = estilosPrevios.right;
-      document.body.style.width = estilosPrevios.width;
-      document.body.style.overflow = estilosPrevios.overflow;
-      window.scrollTo({ top: scrollY, behavior: 'auto' });
+      document.removeEventListener('visibilitychange', comprobar);
+      window.removeEventListener('pageshow', comprobar);
+      if (bloqueoScrollMovilRef.current !== null) {
+        document.body.style.overflow = bloqueoScrollMovilRef.current;
+        bloqueoScrollMovilRef.current = null;
+      }
     };
-  }, [overlayEntrenadorAbierto]);
+  }, []);
 
   const [modalidadAnalisisAdmin, setModalidadAnalisisAdmin] =
     useState<ModalidadAnalisisAdminApp>('BABY');
