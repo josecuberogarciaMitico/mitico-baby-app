@@ -1,5 +1,5 @@
 import { applyOcioRelocationsToStableGroup } from '../../src/features/ocio/ocioRelocation';
-import { buildOcioWeeklyGroups } from '../../src/features/ocio/ocioWeekPlanning';
+import { buildBabyToOcioRequest, buildOcioWeeklyGroups, buildPassToOcioRequest, classifyOcioAimHarderStudent, OCIO_FIXED_TURNS } from '../../src/features/ocio/ocioWeekPlanning';
 
 function equal<T>(actual: T, expected: T, label: string) {
   if (!Object.is(actual, expected)) {
@@ -67,4 +67,30 @@ test('el grupo semanal final filtra sobre el roster real pegado', () => {
   );
   equal(groups.length, 1, 'grupos');
   equal(groups[0].studentIds.join(','), 'a', 'asistente real');
+});
+
+test('pasar a Ocio reutiliza la ficha con su nombre exacto y el turno del listado', () => {
+  const req = buildPassToOcioRequest({ fichaName: ' NUO CHEN ', fixedDay: 'Sábado', startTime: '9:45', endTime: '11:45:00' });
+  equal(req.p_nombre_completo, 'NUO CHEN', 'nombre exacto de ficha');
+  equal(req.p_dia_fijo, 'Sábado', 'día');
+  equal(req.p_hora_inicio, '09:45', 'hora inicio');
+  equal(req.p_hora_fin, '11:45', 'hora fin');
+  equal(req.p_nivel_codigo, null, 'no pisa el nivel');
+  let fallo = false;
+  try { buildPassToOcioRequest({ fichaName: 'X', fixedDay: 'Lunes', startTime: '18:00', endTime: '20:00' }); } catch { fallo = true; }
+  equal(fallo, true, 'día no Ocio rechazado');
+  equal(classifyOcioAimHarderStudent(true, null), 'OTHER_MODALITY', 'antes: fuera de Ocio');
+  equal(classifyOcioAimHarderStudent(true, { grupo_id: null }), 'PENDING_GROUP', 'después: pendiente de colocar');
+});
+
+test('pasar de Baby a Ocio va por ID de ficha y con un turno fijo real', () => {
+  const req = buildBabyToOcioRequest('id-ficha', 1);
+  equal(req.p_alumno_id, 'id-ficha', 'id');
+  equal(req.p_dia_fijo, 'Sábado', 'día');
+  equal(req.p_hora_inicio, '09:45', 'inicio');
+  equal(req.p_hora_fin, '11:45', 'fin');
+  equal(OCIO_FIXED_TURNS.length, 3, 'tres turnos');
+  let fallo = false;
+  try { buildBabyToOcioRequest('id', 7); } catch { fallo = true; }
+  equal(fallo, true, 'turno inexistente rechazado');
 });

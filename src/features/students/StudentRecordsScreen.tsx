@@ -3,6 +3,7 @@ import { FamilyEvaluationDraftPanel } from '../../components/evaluations/FamilyE
 import { abrirFichaAlumno } from './studentFichaStore';
 import { buildMasterStudentProfile } from '../../core/students/masterStudent';
 import type { IntensivoAlumnoApp } from '../intensivos/intensiveTypes';
+import { buildBabyToOcioRequest, OCIO_FIXED_TURNS } from '../ocio/ocioWeekPlanning';
 
 type StudentRecordsScreenProps = {
   ctx: Record<string, any>;
@@ -102,6 +103,30 @@ export function StudentRecordsScreen({ ctx }: StudentRecordsScreenProps) {
     tarjeta,
     vistaFichasAlumnos,
   } = ctx;
+  const [pasarOcioAbiertoId, setPasarOcioAbiertoId] = useState('');
+  const [pasarOcioTurno, setPasarOcioTurno] = useState(1);
+  const [pasandoAOcioId, setPasandoAOcioId] = useState('');
+
+  async function pasarFichaAOcio(alumno: { alumno_id: string; alumno: string }) {
+    try {
+      const peticion = buildBabyToOcioRequest(alumno.alumno_id, pasarOcioTurno);
+      const confirmar = window.confirm(
+        `¿Pasar a ${alumno.alumno} a Ocio?\n\n` +
+          `Turno fijo: ${peticion.p_dia_fijo} ${peticion.p_hora_inicio}-${peticion.p_hora_fin}.\n` +
+          `Conserva su ficha, nivel e historial. Dejará de salir en «Alumnos Baby» y aparecerá en Ocio sin grupo: después colócalo en su grupo estable.`
+      );
+      if (!confirmar) return;
+      setPasandoAOcioId(alumno.alumno_id);
+      ctx.setError('');
+      await ctx.ejecutarFuncion('pasar_alumno_baby_a_ocio_app', peticion);
+      setPasarOcioAbiertoId('');
+      await Promise.allSettled([cargarAlumnos(), ctx.cargarOcioAlumnos()]);
+    } catch (err) {
+      ctx.setError(err instanceof Error ? err.message : 'No se pudo pasar el alumno a Ocio.');
+    } finally {
+      setPasandoAOcioId('');
+    }
+  }
 
   return (
     <>
@@ -1622,6 +1647,17 @@ export function StudentRecordsScreen({ ctx }: StudentRecordsScreenProps) {
                           </button>
                           <button
                             type="button"
+                            onClick={() =>
+                              setPasarOcioAbiertoId((actual) =>
+                                actual === alumno.alumno_id ? '' : alumno.alumno_id
+                              )
+                            }
+                            style={botonMini}
+                          >
+                            Pasar a Ocio
+                          </button>
+                          <button
+                            type="button"
                             onClick={() => borrarAlumnoBase(alumno)}
                             style={botonPeligroMini}
                             title="Eliminar la ficha completa del alumno y sus datos asociados."
@@ -1630,6 +1666,45 @@ export function StudentRecordsScreen({ ctx }: StudentRecordsScreenProps) {
                           </button>
                         </div>
                       </div>
+
+                      {pasarOcioAbiertoId === alumno.alumno_id && (
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: 8,
+                            flexWrap: 'wrap',
+                            alignItems: 'flex-end',
+                            marginTop: 10,
+                            padding: 10,
+                            borderRadius: 12,
+                            border: '1px solid #bbf7d0',
+                            background: '#f0fdf4',
+                          }}
+                        >
+                          <label style={{ ...labelCampo, flex: '1 1 220px', minWidth: 0 }}>
+                            Turno fijo de Ocio
+                            <select
+                              value={pasarOcioTurno}
+                              onChange={(e) => setPasarOcioTurno(Number(e.target.value))}
+                              style={{ ...selectCampo, width: '100%', minWidth: 0 }}
+                            >
+                              {OCIO_FIXED_TURNS.map((turno, indice) => (
+                                <option key={turno.day} value={indice}>
+                                  {turno.day} · {turno.start}-{turno.end}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                          <button
+                            type="button"
+                            disabled={Boolean(pasandoAOcioId)}
+                            onClick={() => void pasarFichaAOcio(alumno)}
+                            style={botonPrincipal}
+                          >
+                            {pasandoAOcioId === alumno.alumno_id ? 'Pasando…' : 'Confirmar paso a Ocio'}
+                          </button>
+                        </div>
+                      )}
 
                       {selectorIntensivoFichaAbiertoId === alumno.alumno_id && (
                         <div

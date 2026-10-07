@@ -46,6 +46,63 @@ export function classifyOcioAimHarderStudent(
   return ocioStudent.grupo_id ? 'STABLE' : 'PENDING_GROUP';
 }
 
+/**
+ * «Pasar a Ocio» desde el listado AimHarder de la semana: un niño que ya tiene
+ * ficha (p. ej. de Baby) pero no es alumno de Ocio. Se usa el nombre EXACTO de
+ * su ficha para que crear_alumno_ocio_app reutilice esa ficha (conserva nivel,
+ * fecha de nacimiento e historial) en vez de crear una nueva.
+ */
+export function buildPassToOcioRequest(input: {
+  fichaName: string | null | undefined;
+  fixedDay: string | null | undefined;
+  startTime: string | null | undefined;
+  endTime: string | null | undefined;
+}) {
+  const name = String(input.fichaName || '').trim();
+  if (!name) throw new Error('No encuentro la ficha del alumno. Actualiza el listado y vuelve a intentarlo.');
+  const day = String(input.fixedDay || '').trim();
+  if (!['Jueves', 'Sábado', 'Domingo'].includes(day)) {
+    throw new Error('No puedo saber el día fijo de Ocio de este turno.');
+  }
+  const time = (value: string | null | undefined) => {
+    const match = String(value || '').trim().match(/^(\d{1,2}):(\d{2})/);
+    return match ? `${match[1].padStart(2, '0')}:${match[2]}` : null;
+  };
+  return {
+    p_nombre_completo: name,
+    p_nivel_codigo: null,
+    p_fecha_nacimiento: null,
+    p_dia_fijo: day,
+    p_hora_inicio: time(input.startTime),
+    p_hora_fin: time(input.endTime),
+    p_observaciones: null,
+  };
+}
+
+/** Turnos fijos de Ocio (los mismos que tienen hoy los grupos estables). */
+export const OCIO_FIXED_TURNS = [
+  { day: 'Jueves', start: '18:00', end: '20:00' },
+  { day: 'Sábado', start: '09:45', end: '11:45' },
+  { day: 'Domingo', start: '12:00', end: '14:00' },
+] as const;
+
+/**
+ * Fichas → Alumnos Baby → «Pasar a Ocio». Va por ID de ficha (no por nombre),
+ * así nunca se crea un duplicado. La RPC además da de baja BABY en la temporada.
+ */
+export function buildBabyToOcioRequest(studentId: string | null | undefined, turnIndex: number) {
+  const id = String(studentId || '').trim();
+  if (!id) throw new Error('Falta la ficha del alumno.');
+  const turn = OCIO_FIXED_TURNS[turnIndex];
+  if (!turn) throw new Error('Elige el turno de Ocio.');
+  return {
+    p_alumno_id: id,
+    p_dia_fijo: turn.day,
+    p_hora_inicio: turn.start,
+    p_hora_fin: turn.end,
+  };
+}
+
 export function ocioLevelRange(
   students: Array<Pick<OcioWeeklyStudent, 'nivel' | 'nivel_usado'>>
 ): string {

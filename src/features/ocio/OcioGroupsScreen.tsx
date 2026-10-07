@@ -3,6 +3,7 @@ import type { OcioAlumnoApp, OcioGrupoApp } from './ocioTypes';
 import { OcioRelocationRecommender } from './OcioRelocationRecommender';
 import { OcioWeekPreparationPanel } from './OcioWeekPreparationPanel';
 import {
+  buildPassToOcioRequest,
   classifyOcioAimHarderStudent,
   ocioLevelRange,
 } from './ocioWeekPlanning';
@@ -118,6 +119,33 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
     textoSinAcentosGrupoApp,
     anioInicioTemporadaAgenda,
   } = ctx;
+  const [pasandoAOcio, setPasandoAOcio] = useState('');
+
+  async function pasarAlumnoAOcio(fichaNombre: string, turno: any) {
+    try {
+      const peticion = buildPassToOcioRequest({
+        fichaName: fichaNombre,
+        fixedDay: diaFijoOcioDesdeFecha(turno.fecha),
+        startTime: turno.horaInicio,
+        endTime: turno.horaFin,
+      });
+      const confirmar = window.confirm(
+        `¿Pasar a ${peticion.p_nombre_completo} a Ocio?\n\n` +
+          `Se usa su ficha actual (conserva nivel, fecha de nacimiento e historial). ` +
+          `Turno fijo: ${peticion.p_dia_fijo} ${peticion.p_hora_inicio || ''}-${peticion.p_hora_fin || ''}.\n` +
+          `Después tendrás que colocarlo en su grupo estable.`
+      );
+      if (!confirmar) return;
+      setPasandoAOcio(peticion.p_nombre_completo);
+      ctx.setError('');
+      await ctx.ejecutarFuncion('crear_alumno_ocio_app', peticion);
+      await ctx.cargarOcioAlumnos();
+    } catch (err) {
+      ctx.setError(err instanceof Error ? err.message : 'No se pudo pasar el alumno a Ocio.');
+    } finally {
+      setPasandoAOcio('');
+    }
+  }
 
   if (pantalla !== 'ocioGrupos') return null;
 
@@ -1455,6 +1483,22 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
                                         style={botonPrincipal}
                                       >
                                         Crear Alta / Test
+                                      </button>
+                                    )}
+
+                                    {estadoAlumno === 'OTHER_MODALITY' && (
+                                      <button
+                                        type="button"
+                                        disabled={Boolean(pasandoAOcio)}
+                                        onClick={() =>
+                                          void pasarAlumnoAOcio(
+                                            estadoDetectado?.alumno || asistente.nombre,
+                                            turno
+                                          )
+                                        }
+                                        style={botonSecundario}
+                                      >
+                                        {pasandoAOcio ? 'Pasando…' : 'Pasar a Ocio'}
                                       </button>
                                     )}
 
