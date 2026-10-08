@@ -4,6 +4,7 @@ const PACO_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-api`;
 const PACO_SECRETARIA_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-secretaria`;
 const PACO_STUDENT_GUARD_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-student-guard`;
 const PACO_LIVE_TOKEN_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-live-token`;
+const PACO_ALTAS_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-altas`;
 
 type SesionAuthPaco = {
   access_token?: string;
@@ -62,6 +63,18 @@ export type PacoContinuation =
   | {
       kind: 'secretary_cleanup_resolved_confirm';
       count: number;
+    }
+  // Altas de test: los datos de cada boton los rellena y valida el servidor.
+  | {
+      kind:
+        | 'alta_create_confirm'
+        | 'alta_cancel'
+        | 'alta_dismiss'
+        | 'alta_open'
+        | 'alta_pick_level'
+        | 'alta_validate_add'
+        | 'alta_add';
+      [clave: string]: unknown;
     };
 
 export type PacoChoice = {
@@ -88,6 +101,15 @@ export type PacoResponse = {
   mode?: string;
   secretary_changed?: boolean;
   handled?: boolean;
+  alta_draft?: unknown;
+  alta_changed?: boolean;
+};
+
+export type PacoAvisoAlta = {
+  id: string;
+  nombre: string;
+  answer: string;
+  choices: PacoChoice[];
 };
 
 let refrescoSesionPacoEnCurso: Promise<SesionAuthPaco> | null = null;
@@ -330,7 +352,77 @@ export async function comprobarAccesoPaco() {
   return llamarPaco<PacoStatus>('GET');
 }
 
+// ---- Altas de test (funcion aislada mitico-paco-altas) ----------------------
+// El borrador de un alta a medias (faltan datos) se guarda aqui unos minutos
+// para que el usuario pueda ir completandolo en mensajes sucesivos, tambien
+// por voz.
+const VIGENCIA_BORRADOR_ALTA_MS = 15 * 60 * 1000;
+let borradorAlta: { datos: unknown; hasta: number } | null = null;
+
+function borradorAltaVigente() {
+  if (borradorAlta && borradorAlta.hasta > Date.now()) return borradorAlta.datos;
+  borradorAlta = null;
+  return null;
+}
+
+function guardarBorradorAlta(respuesta: PacoResponse | null) {
+  borradorAlta =
+    respuesta?.alta_draft && typeof respuesta.alta_draft === 'object'
+      ? {
+          datos: respuesta.alta_draft,
+          hasta: Date.now() + VIGENCIA_BORRADOR_ALTA_MS,
+        }
+      : null;
+}
+
+function parecePeticionAlta(message: string) {
+  const n = message
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase();
+  return /\baltas?\b|\btests?\b|nivel inicial/.test(n);
+}
+
+async function llamarAltasPaco(
+  payload: Record<string, unknown>
+): Promise<PacoResponse | null> {
+  try {
+    return await llamarEndpointPaco(
+      PACO_ALTAS_ENDPOINT,
+      payload,
+      'No se pudo conectar con las altas de Paco.'
+    );
+  } catch (error) {
+    const status = (error as Error & { status?: number })?.status;
+    if (status === 401 || status === 403) throw error;
+    console.warn('Paco altas no disponible:', error);
+    return null;
+  }
+}
+
+// Altas respondidas por las familias que esperan decision (para avisar).
+export async function comprobarAltasRespondidasPaco(): Promise<PacoAvisoAlta[]> {
+  const respuesta = (await llamarEndpointPaco(
+    PACO_ALTAS_ENDPOINT,
+    { check: 'respondidas' },
+    'No se pudo comprobar las altas.'
+  )) as unknown as { items?: PacoAvisoAlta[] };
+  return Array.isArray(respuesta?.items) ? respuesta.items : [];
+}
+
 export async function preguntarPaco(message: string) {
+  // Altas de test: si el mensaje habla de altas/tests (o hay un alta a medias)
+  // se atiende PRIMERO aqui, sola, para que Secretaria no la apunte como tarea.
+  const borrador = borradorAltaVigente();
+  if (borrador || parecePeticionAlta(message)) {
+    const altas = await llamarAltasPaco({ message, alta_draft: borrador });
+    if (altas?.handled === true) {
+      guardarBorradorAlta(altas);
+      return altas;
+    }
+    borradorAlta = null;
+  }
+
   // Las dos comprobaciones rapidas se lanzan a la vez (antes iban una detras
   // de otra). El orden de prioridad es el mismo: primero alumno exacto,
   // luego Secretaria, y si ninguna lo gestiona, el Paco de siempre.
@@ -345,6 +437,18 @@ export async function preguntarPaco(message: string) {
 }
 
 export async function continuarPaco(continuation: PacoContinuation) {
+  if (continuation.kind.startsWith('alta_')) {
+    const altas = await llamarAltasPaco({ continuation });
+    if (altas?.handled === true) {
+      guardarBorradorAlta(altas);
+      return altas;
+    }
+    borradorAlta = null;
+    return {
+      ok: false,
+      error: 'No he podido completar esa acción de altas. Inténtelo de nuevo.',
+    } as PacoResponse;
+  }
   if (continuation.kind.startsWith('secretary_')) {
     const secretaria = await llamarSecretariaPaco({ continuation });
     if (secretaria?.handled === true) return secretaria;

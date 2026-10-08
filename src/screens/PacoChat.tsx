@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   comprobarAccesoPaco,
+  comprobarAltasRespondidasPaco,
   continuarPaco,
   preguntarPaco,
   tokenSesionPacoActual,
+  type PacoAvisoAlta,
   type PacoChoice,
   type PacoContinuation,
 } from '../lib/pacoClient';
@@ -71,6 +73,29 @@ const ATAJOS_PACO = [
   '¿Es viable la semana que viene?',
 ];
 
+const CLAVE_ALTAS_AVISADAS = 'mitico_paco_altas_avisadas_v1';
+
+function leerAltasAvisadas(): Set<string> {
+  try {
+    const raw = window.localStorage.getItem(CLAVE_ALTAS_AVISADAS);
+    const lista = raw ? JSON.parse(raw) : [];
+    return new Set(Array.isArray(lista) ? lista.map(String) : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function guardarAltasAvisadas(ids: Set<string>) {
+  try {
+    window.localStorage.setItem(
+      CLAVE_ALTAS_AVISADAS,
+      JSON.stringify(Array.from(ids).slice(-200))
+    );
+  } catch {
+    // Sin almacenamiento (modo privado): como mucho se repetira el aviso.
+  }
+}
+
 function crearIdPaco() {
   return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
@@ -114,16 +139,18 @@ export function PacoChat() {
   const [vozActiva, setVozActiva] = useState(false);
   const [llamadaActiva, setLlamadaActiva] = useState(false);
   const [etapa, setEtapa] = useState(0);
+  const [avisosAltas, setAvisosAltas] = useState<PacoAvisoAlta[]>([]);
   const [mensajes, setMensajes] = useState<MensajePaco[]>([
     {
       id: 'paco-bienvenida',
       autor: 'paco',
       texto:
-        'A sus órdenes, señor Cubero. Soy Paco: puedo consultar Mítico, repasarle la semana y llevarle la Secretaría (tareas y notas, siempre con confirmación). Usted manda, yo me encargo de que parezca fácil.',
+        'A sus órdenes, señor Cubero. Soy Paco: puedo consultar Mítico, repasarle la semana y llevarle la Secretaría y las altas de test (siempre con confirmación). Usted manda, yo me encargo de que parezca fácil.',
     },
   ]);
 
   const ultimoTokenComprobado = useRef('');
+  const altasAvisadasRef = useRef<Set<string> | null>(null);
   const finalMensajesRef = useRef<HTMLDivElement | null>(null);
   const reconocimientoRef = useRef<SpeechRecognitionLike | null>(null);
 
@@ -237,6 +264,74 @@ export function PacoChat() {
     };
   }, [soportaHabla]);
 
+  // Avisos de Paco: cuando una familia responde un test de nivel, Paco lo
+  // detecta (cada minuto y al volver a la ventana) y propone validar el nivel
+  // y añadirla a los listados. Nada se escribe hasta que el usuario confirma.
+  useEffect(() => {
+    if (!autorizado) return;
+    if (!altasAvisadasRef.current) altasAvisadasRef.current = leerAltasAvisadas();
+    let cancelado = false;
+    let enCurso = false;
+
+    const revisar = async () => {
+      if (enCurso || document.visibilityState !== 'visible') return;
+      enCurso = true;
+      try {
+        const items = await comprobarAltasRespondidasPaco();
+        if (cancelado) return;
+        const vistas = altasAvisadasRef.current ?? new Set<string>();
+        const nuevos = items.filter((item) => !vistas.has(item.id));
+        if (nuevos.length > 0) {
+          setAvisosAltas((actuales) => {
+            const ya = new Set(actuales.map((a) => a.id));
+            const anadir = nuevos.filter((n) => !ya.has(n.id));
+            return anadir.length > 0 ? [...actuales, ...anadir] : actuales;
+          });
+        }
+      } catch {
+        // Sin conexion o sin permiso: simplemente no hay aviso esta vez.
+      } finally {
+        enCurso = false;
+      }
+    };
+
+    void revisar();
+    const intervalo = window.setInterval(() => void revisar(), 60_000);
+    const alVolver = () => {
+      if (document.visibilityState === 'visible') void revisar();
+    };
+    document.addEventListener('visibilitychange', alVolver);
+    window.addEventListener('focus', alVolver);
+
+    return () => {
+      cancelado = true;
+      window.clearInterval(intervalo);
+      document.removeEventListener('visibilitychange', alVolver);
+      window.removeEventListener('focus', alVolver);
+    };
+  }, [autorizado]);
+
+  // Al abrir el panel, los avisos pendientes pasan a la conversacion.
+  useEffect(() => {
+    if (!abierto || avisosAltas.length === 0) return;
+    const pendientes = avisosAltas;
+    setAvisosAltas([]);
+    setMensajes((actuales) => [
+      ...actuales,
+      ...pendientes.map((p) => ({
+        id: crearIdPaco(),
+        autor: 'paco' as const,
+        texto: p.answer,
+        choices: p.choices,
+        escribir: true,
+      })),
+    ]);
+    const vistas = altasAvisadasRef.current ?? leerAltasAvisadas();
+    pendientes.forEach((p) => vistas.add(p.id));
+    altasAvisadasRef.current = vistas;
+    guardarAltasAvisadas(vistas);
+  }, [abierto, avisosAltas]);
+
   if (!autorizado) return null;
 
   const añadirMensaje = (mensaje: MensajePaco) => {
@@ -262,9 +357,13 @@ export function PacoChat() {
     error?: string;
     choices?: PacoChoice[];
     secretary_changed?: boolean;
+    alta_changed?: boolean;
   }) => {
     if (respuesta.secretary_changed) {
       window.dispatchEvent(new CustomEvent('mitico:secretaria-updated'));
+    }
+    if (respuesta.alta_changed) {
+      window.dispatchEvent(new CustomEvent('mitico:altas-updated'));
     }
 
     const textoRespuesta =
@@ -407,6 +506,26 @@ export function PacoChat() {
         </span>
         <span className="paco-fab__label">Paco</span>
       </button>
+
+      {!abierto && avisosAltas.length > 0 && (
+        <button
+          type="button"
+          className="paco-aviso"
+          onClick={() => setAbierto(true)}
+          aria-label="Abrir Paco para revisar el test respondido"
+        >
+          <span className="paco-aviso__orbe" aria-hidden="true" />
+          <span className="paco-aviso__texto">
+            <strong>Paco</strong>
+            <span>
+              {avisosAltas.length === 1
+                ? `${avisosAltas[0].nombre} ha respondido el test`
+                : `${avisosAltas.length} tests respondidos`}
+            </span>
+          </span>
+          <span className="paco-aviso__ver">Ver</span>
+        </button>
+      )}
 
       {abierto && (
         <section className="paco-panel" aria-label="Paco Mitiquín">
