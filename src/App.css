@@ -4427,6 +4427,24 @@ section:has(input[placeholder^='Buscar entrenador, teléfono, email o especialid
 .ficha-stats > div { display: grid; gap: 2px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 12px; background: #fff; }
 .ficha-stats b { font-size: 18px; font-variant-numeric: tabular-nums; }
 .ficha-stats span { color: #64748b; font-size: 12px; font-weight: 700; }
+.ficha-letter-open { justify-self: start; min-height: 44px; padding: 10px 16px; border: 1px solid #bbf7d0; border-radius: 12px; background: #f0fdf4; color: #166534; font-size: 14px; font-weight: 850; cursor: pointer; }
+.ficha-letter-open:disabled { opacity: .5; cursor: default; }
+.ficha-letter { display: grid; gap: 12px; padding: 14px; border: 1px solid #bbf7d0; border-radius: 14px; background: #f8fffa; }
+.ficha-letter__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ficha-letter__head h3 { margin: 0; font-size: 16px; }
+.ficha-letter__close { width: 36px; height: 36px; border: 0; border-radius: 10px; background: #e2e8f0; color: #334155; font-size: 20px; line-height: 1; cursor: pointer; }
+.ficha-letter__step { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: start; }
+.ficha-letter__step > div { display: grid; gap: 6px; min-width: 0; }
+.ficha-letter__num { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 999px; background: #0f2a3d; color: #fff; font-size: 13px; font-weight: 900; }
+.ficha-letter__actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.ficha-letter__btn { display: inline-flex; align-items: center; justify-content: center; min-height: 44px; padding: 10px 16px; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; color: #0f172a; font-size: 14px; font-weight: 850; text-decoration: none; cursor: pointer; }
+.ficha-letter__btn.is-primary { border-color: #0f9f4d; background: #0f9f4d; color: #fff; }
+.ficha-letter__btn:disabled { opacity: .5; cursor: default; }
+.ficha-letter__text, .ficha-letter__manual { width: 100%; box-sizing: border-box; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; color: #0f172a; font: inherit; font-size: 16px; line-height: 1.45; resize: vertical; }
+.ficha-letter__manual { font-size: 13px; background: #f8fafc; }
+.ficha-letter__check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #334155; }
+.ficha-letter__check input { width: 20px; height: 20px; }
+.ficha-letter__aviso { margin: 0; padding: 9px 11px; border-radius: 11px; background: #ecfeff; color: #155e75; font-size: 13px; font-weight: 800; }
 .ficha-skills { display: grid; gap: 6px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; }
 .ficha-skills__title { display: grid; gap: 2px; margin-bottom: 4px; }
 .ficha-skills__title h3 { margin: 0; font-size: 16px; }

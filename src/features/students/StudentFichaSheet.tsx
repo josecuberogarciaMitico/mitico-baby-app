@@ -14,6 +14,7 @@ import {
   resumenProgreso,
 } from '../../core/reports/skillProgress';
 import { cerrarFichaAlumno, abrirFichaAlumno, useFichaAlumnoAbierta } from './studentFichaStore';
+import { FamilyLetterPanel } from './FamilyLetterPanel';
 
 /**
  * Ficha única del alumno (fase 2, 01/10/2026). La misma para Baby, Ocio e
@@ -41,6 +42,7 @@ export function StudentFichaSheet(props: Props) {
   const [busqueda, setBusqueda] = useState('');
   const [filtro, setFiltro] = useState<ReportHistoryFilter>('TODOS');
   const [errorCarga, setErrorCarga] = useState('');
+  const [cartaAbierta, setCartaAbierta] = useState(false);
   // App crea la función en cada render: se guarda en una ref para cargar
   // solo cuando cambia el alumno abierto.
   const cargarHistorialRef = useRef(props.cargarHistorial);
@@ -62,6 +64,7 @@ export function StudentFichaSheet(props: Props) {
     setFiltro('TODOS');
     setBusqueda('');
     setErrorCarga('');
+    setCartaAbierta(false);
     cargarHistorialRef.current(alumnoId).catch((err) =>
       setErrorCarga(err instanceof Error ? err.message : 'No se pudo cargar el historial.')
     );
@@ -159,6 +162,18 @@ export function StudentFichaSheet(props: Props) {
           <div><b>{reportes[0]?.fecha ? props.formatDate(reportes[0].fecha) : '—'}</b><span>último</span></div>
           <div><b>{nivel ? `${resumen.focosConseguidos}/${resumen.focos}` : '—'}</b><span>focos conseguidos</span></div>
         </div>
+
+        {cartaAbierta ? (
+          <FamilyLetterPanel
+            alumnoId={alumnoId}
+            datos={{ nombre, edad: perfil?.age ?? null, nivel, reportes, progreso, formatDate: props.formatDate }}
+            onClose={() => setCartaAbierta(false)}
+          />
+        ) : (
+          <button type="button" className="ficha-letter-open" onClick={() => setCartaAbierta(true)} disabled={reportes.length === 0}>
+            ✉️ Carta para la familia
+          </button>
+        )}
 
         <section className="ficha-skills" aria-label="Habilidades del nivel">
           <div className="ficha-skills__title">
