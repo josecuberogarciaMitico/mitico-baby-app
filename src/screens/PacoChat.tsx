@@ -7,6 +7,7 @@ import {
   type PacoChoice,
   type PacoContinuation,
 } from '../lib/pacoClient';
+import { PacoVoz } from './PacoVoz';
 import './PacoChat.css';
 
 type MensajePaco = {
@@ -14,7 +15,51 @@ type MensajePaco = {
   autor: 'paco' | 'usuario';
   texto: string;
   choices?: PacoChoice[];
+  escribir?: boolean;
 };
+
+const ETAPAS_PENSANDO = [
+  'Analizando la petici\u00f3n',
+  'Consultando M\u00edtico',
+  'Cruzando datos',
+  'Preparando la respuesta',
+];
+
+// Efecto de escritura: el texto aparece de golpe en el servidor, pero se
+// muestra letra a letra para que se sienta inmediato y m\u00e1s vivo.
+function TextoEscrito({
+  texto,
+  animar,
+  alAvanzar,
+}: {
+  texto: string;
+  animar: boolean;
+  alAvanzar?: () => void;
+}) {
+  const [largo, setLargo] = useState(animar ? 0 : texto.length);
+
+  useEffect(() => {
+    const reducido =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    if (!animar || reducido) {
+      setLargo(texto.length);
+      return;
+    }
+    let actual = 0;
+    const paso = Math.max(2, Math.ceil(texto.length / 70));
+    const id = window.setInterval(() => {
+      actual = Math.min(texto.length, actual + paso);
+      setLargo(actual);
+      alAvanzar?.();
+      if (actual >= texto.length) window.clearInterval(id);
+    }, 18);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [texto, animar]);
+
+  return <>{texto.slice(0, largo)}</>;
+}
 
 const ATAJOS_PACO = [
   'Dame un resumen operativo de hoy',
@@ -67,12 +112,14 @@ export function PacoChat() {
   const [cargando, setCargando] = useState(false);
   const [escuchando, setEscuchando] = useState(false);
   const [vozActiva, setVozActiva] = useState(false);
+  const [llamadaActiva, setLlamadaActiva] = useState(false);
+  const [etapa, setEtapa] = useState(0);
   const [mensajes, setMensajes] = useState<MensajePaco[]>([
     {
       id: 'paco-bienvenida',
       autor: 'paco',
       texto:
-        'Soy Paco Mitiquín. Puedo consultar Mítico y también gestionar tu Secretaría: guardar tareas y notas, revisar pendientes, cambiar estados y preparar borrados con confirmación.',
+        'A sus órdenes, señor Cubero. Soy Paco: puedo consultar Mítico, repasarle la semana y llevarle la Secretaría (tareas y notas, siempre con confirmación). Usted manda, yo me encargo de que parezca fácil.',
     },
   ]);
 
@@ -162,11 +209,24 @@ export function PacoChat() {
     finalMensajesRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [mensajes, cargando]);
 
+  // Mientras Paco trabaja, va cambiando el mensaje de estado.
+  useEffect(() => {
+    if (!cargando) {
+      setEtapa(0);
+      return;
+    }
+    const id = window.setInterval(() => {
+      setEtapa((actual) => Math.min(actual + 1, ETAPAS_PENSANDO.length - 1));
+    }, 1400);
+    return () => window.clearInterval(id);
+  }, [cargando]);
+
   // Al cerrar el panel o desmontar: para el micrófono y calla a Paco.
   useEffect(() => {
     if (!abierto) {
       reconocimientoRef.current?.stop();
       if (soportaHabla) window.speechSynthesis.cancel();
+      setLlamadaActiva(false);
     }
   }, [abierto, soportaHabla]);
 
@@ -217,6 +277,7 @@ export function PacoChat() {
       autor: 'paco',
       texto: textoRespuesta,
       choices: respuesta.choices || [],
+      escribir: true,
     });
 
     hablar(textoRespuesta);
@@ -350,11 +411,27 @@ export function PacoChat() {
       {abierto && (
         <section className="paco-panel" aria-label="Paco Mitiquín">
           <header className="paco-panel__header">
-            <div>
-              <strong>Paco Mitiquín</strong>
-              <span>Asistente del coordinador jefe · lectura + Secretaría</span>
+            <div className="paco-panel__titulo">
+              <span className="paco-orbe" aria-hidden="true" />
+              <div className="paco-panel__textos">
+                <strong>Paco Mitiquín</strong>
+                <span>Sistema activo</span>
+              </div>
             </div>
             <div className="paco-panel__acciones">
+              <button
+                type="button"
+                className="paco-panel__voz paco-panel__llamar"
+                onClick={() => {
+                  reconocimientoRef.current?.stop();
+                  if (soportaHabla) window.speechSynthesis.cancel();
+                  setLlamadaActiva(true);
+                }}
+                aria-label="Llamar a Paco por voz"
+                title="Hablar con Paco en tiempo real"
+              >
+                📞
+              </button>
               {soportaHabla && (
                 <button
                   type="button"
@@ -404,7 +481,15 @@ export function PacoChat() {
                 key={mensaje.id}
                 className={`paco-mensaje paco-mensaje--${mensaje.autor}`}
               >
-                <div className="paco-mensaje__burbuja">{mensaje.texto}</div>
+                <div className="paco-mensaje__burbuja">
+                  <TextoEscrito
+                    texto={mensaje.texto}
+                    animar={mensaje.escribir === true}
+                    alAvanzar={() =>
+                      finalMensajesRef.current?.scrollIntoView({ block: 'end' })
+                    }
+                  />
+                </div>
 
                 {mensaje.choices && mensaje.choices.length > 0 && (
                   <div className="paco-mensaje__choices">
@@ -426,7 +511,14 @@ export function PacoChat() {
             {cargando && (
               <article className="paco-mensaje paco-mensaje--paco">
                 <div className="paco-mensaje__burbuja paco-mensaje__pensando">
-                  Paco está revisando Mítico…
+                  <span className="paco-escaner" aria-hidden="true">
+                    <i />
+                    <i />
+                    <i />
+                    <i />
+                    <i />
+                  </span>
+                  <span>{ETAPAS_PENSANDO[etapa]}</span>
                 </div>
               </article>
             )}
@@ -474,6 +566,19 @@ export function PacoChat() {
               Enviar
             </button>
           </form>
+
+          {llamadaActiva && (
+            <PacoVoz
+              onCerrar={() => setLlamadaActiva(false)}
+              onTurno={(autor, textoTurno) =>
+                añadirMensaje({
+                  id: crearIdPaco(),
+                  autor,
+                  texto: textoTurno,
+                })
+              }
+            />
+          )}
         </section>
       )}
     </>

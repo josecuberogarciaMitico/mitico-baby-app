@@ -3,6 +3,7 @@ const MITICO_AUTH_STORAGE_KEY = 'mitico_auth_session_v1';
 const PACO_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-api`;
 const PACO_SECRETARIA_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-secretaria`;
 const PACO_STUDENT_GUARD_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-student-guard`;
+const PACO_LIVE_TOKEN_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-live-token`;
 
 type SesionAuthPaco = {
   access_token?: string;
@@ -330,10 +331,14 @@ export async function comprobarAccesoPaco() {
 }
 
 export async function preguntarPaco(message: string) {
-  const alumnoExacto = await llamarStudentGuardPaco(message);
+  // Las dos comprobaciones rapidas se lanzan a la vez (antes iban una detras
+  // de otra). El orden de prioridad es el mismo: primero alumno exacto,
+  // luego Secretaria, y si ninguna lo gestiona, el Paco de siempre.
+  const [alumnoExacto, secretaria] = await Promise.all([
+    llamarStudentGuardPaco(message),
+    llamarSecretariaPaco({ message }),
+  ]);
   if (alumnoExacto?.handled === true) return alumnoExacto;
-
-  const secretaria = await llamarSecretariaPaco({ message });
   if (secretaria?.handled === true) return secretaria;
 
   return llamarPaco<PacoResponse>('POST', { message });
@@ -345,4 +350,24 @@ export async function continuarPaco(continuation: PacoContinuation) {
     if (secretaria?.handled === true) return secretaria;
   }
   return llamarPaco<PacoResponse>('POST', { continuation });
+}
+
+export type PacoLiveSetup = {
+  ok: boolean;
+  token?: string;
+  model?: string;
+  voice?: string;
+  systemInstruction?: string;
+  error?: string;
+};
+
+// Pide al servidor una clave TEMPORAL de un solo uso para hablar con Gemini
+// en directo. La clave real de Gemini nunca sale de Supabase.
+export async function pedirSesionVozPaco(): Promise<PacoLiveSetup> {
+  const respuesta = await llamarEndpointPaco(
+    PACO_LIVE_TOKEN_ENDPOINT,
+    {},
+    'No se pudo preparar la voz de Paco.'
+  );
+  return respuesta as unknown as PacoLiveSetup;
 }

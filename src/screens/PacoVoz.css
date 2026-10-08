@@ -1,0 +1,446 @@
+/* Llamada de voz con Paco. Se dibuja encima del panel del chat. */
+
+.paco-voz {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+  gap: 8px;
+  padding: 16px 16px max(16px, env(safe-area-inset-bottom));
+  background: radial-gradient(ellipse at 50% 28%, #0a2f45 0%, #06121f 55%, #02060d 100%);
+  color: #ffffff;
+  --hc: #22d3ee;
+  --hl: #e6fdff;
+}
+
+.paco-voz--hablando {
+  --hc: #5eead4;
+  --hl: #ffffff;
+}
+
+.paco-voz--pensando {
+  --hc: #fbbf24;
+  --hl: #fff7e0;
+}
+
+.paco-voz--error {
+  --hc: #f87171;
+  --hl: #ffe4e4;
+}
+
+.paco-voz__cabecera {
+  display: grid;
+  gap: 2px;
+  text-align: center;
+}
+
+.paco-voz__cabecera strong {
+  font-size: 16px;
+}
+
+.paco-voz__cabecera strong {
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.paco-voz__cabecera span {
+  color: var(--hc);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ---------- Holograma ---------- */
+
+.paco-voz__avatar {
+  --boca: 0;
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.paco-voz__avatar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.045) 0,
+    rgba(255, 255, 255, 0.045) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+.paco-voz__avatar::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 28%;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.07), transparent);
+  animation: paco-barrido 5.5s linear infinite;
+}
+
+.paco-avatar {
+  width: min(300px, 100%);
+  height: auto;
+  max-height: 100%;
+  overflow: visible;
+  color: var(--hc);
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--hc) 55%, transparent));
+  animation: paco-parpadeo-holo 7s steps(1) infinite;
+}
+
+.paco-hud__stop-color {
+  stop-color: var(--hc);
+}
+
+.paco-hud__stop-luz {
+  stop-color: var(--hl);
+}
+
+.paco-hud__haz {
+  fill: url(#pv-haz);
+  opacity: 0.55;
+}
+
+.paco-hud__base {
+  fill: none;
+  stroke: var(--hc);
+  stroke-width: 2;
+  opacity: 0.85;
+}
+
+.paco-hud__base--b {
+  opacity: 0.45;
+}
+
+.paco-hud__aura {
+  fill: url(#pv-aura);
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scale(calc(1 + var(--boca) * 0.05));
+}
+
+.paco-hud__esquina {
+  fill: none;
+  stroke: var(--hc);
+  stroke-width: 2;
+  opacity: 0.5;
+}
+
+.paco-hud__giro {
+  transform-box: view-box;
+  transform-origin: 140px 140px;
+  animation: paco-giro 70s linear infinite;
+}
+
+.paco-hud__giro--inverso {
+  animation: paco-giro 38s linear infinite reverse;
+}
+
+.paco-hud__giro--rapido {
+  animation: paco-giro 16s linear infinite;
+}
+
+.paco-hud__ticks {
+  fill: none;
+  stroke: var(--hc);
+  stroke-width: 7;
+  stroke-dasharray: 1.5 9.5;
+  opacity: 0.55;
+}
+
+.paco-hud__arcos {
+  fill: none;
+  stroke: var(--hc);
+  stroke-width: 2.5;
+  stroke-dasharray: 110 42 40 42 70 54 90 40;
+  opacity: 0.8;
+}
+
+.paco-hud__arco-fino {
+  fill: none;
+  stroke: var(--hc);
+  stroke-width: 1.2;
+  stroke-dasharray: 3 7;
+  opacity: 0.5;
+}
+
+.paco-hud__barra {
+  --v: 0;
+  stroke: var(--hc);
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  transform-box: fill-box;
+  transform-origin: 50% 100%;
+  transform: scaleY(calc(0.14 + var(--v) * 1.15));
+  animation: paco-brillo 2.4s ease-in-out infinite;
+}
+
+.paco-hud__anillo-int {
+  fill: none;
+  stroke: var(--hc);
+  stroke-width: 1.6;
+  stroke-dasharray: 36 9 12 9;
+  opacity: 0.75;
+}
+
+.paco-hud__nucleo {
+  transform-box: view-box;
+  transform-origin: 140px 140px;
+  transform: scale(calc(1 + var(--boca) * 0.1));
+}
+
+.paco-hud__cristal {
+  fill: color-mix(in srgb, var(--hc) 8%, transparent);
+  stroke: var(--hc);
+  stroke-width: 1.5;
+  opacity: 0.9;
+}
+
+.paco-hud__orbe {
+  fill: url(#pv-nucleo);
+}
+
+.paco-hud__onda-caja {
+  transform-box: view-box;
+  transform-origin: 140px 140px;
+  transform: scaleY(calc(0.12 + var(--boca) * 1.6));
+}
+
+.paco-hud__onda {
+  fill: none;
+  stroke: var(--hl);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  animation: paco-onda 1.8s linear infinite;
+}
+
+.paco-hud__onda--b {
+  stroke: var(--hc);
+  opacity: 0.7;
+  animation-duration: 2.7s;
+  animation-direction: reverse;
+}
+
+.paco-hud__scan {
+  fill: none;
+  stroke: var(--hl);
+  stroke-width: 0.8;
+  opacity: 0.35;
+}
+
+.paco-hud__reflejo {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.paco-hud__centro {
+  fill: var(--hl);
+  opacity: 0.9;
+}
+
+.paco-hud__pensando {
+  fill: var(--hc);
+  opacity: 0;
+}
+
+/* Estados */
+
+.paco-voz--escuchando .paco-hud__giro--rapido {
+  animation-duration: 10s;
+}
+
+.paco-voz--hablando .paco-hud__giro {
+  animation-duration: 28s;
+}
+
+.paco-voz--hablando .paco-hud__giro--rapido {
+  animation-duration: 6s;
+}
+
+.paco-voz--pensando .paco-hud__giro {
+  animation-duration: 8s;
+}
+
+.paco-voz--pensando .paco-hud__giro--inverso {
+  animation-duration: 5s;
+}
+
+.paco-voz--pensando .paco-hud__giro--rapido {
+  animation-duration: 2.4s;
+}
+
+.paco-voz--pensando .paco-hud__pensando {
+  opacity: 1;
+  animation: paco-pensando 1.1s ease-in-out infinite;
+}
+
+.paco-voz--pensando .paco-hud__onda-caja {
+  transform: scaleY(0.5);
+}
+
+.paco-voz--error .paco-hud__giro {
+  animation-play-state: paused;
+}
+
+@keyframes paco-giro {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes paco-onda {
+  from { transform: translateX(0); }
+  to { transform: translateX(-40px); }
+}
+
+@keyframes paco-brillo {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+@keyframes paco-barrido {
+  from { transform: translateY(-110%); }
+  to { transform: translateY(380%); }
+}
+
+@keyframes paco-parpadeo-holo {
+  0%, 93%, 96%, 100% { opacity: 1; }
+  94% { opacity: 0.82; }
+  95% { opacity: 0.95; }
+}
+
+@keyframes paco-pensando {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+}
+
+/* ---------- Subtitulos ---------- */
+
+.paco-voz__subtitulos {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 4px;
+  text-align: center;
+}
+
+.paco-voz__subtitulos p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.paco-voz__usuario {
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.paco-voz__paco {
+  color: #f8fafc;
+}
+
+.paco-voz__ayuda {
+  color: #94a3b8;
+}
+
+.paco-voz__error {
+  color: #fca5a5;
+}
+
+/* ---------- Botones de confirmacion ---------- */
+
+.paco-voz__opciones {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.paco-voz__opciones button {
+  min-width: 96px;
+  padding: 9px 14px;
+  border: 1px solid #94a3b8;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #0f172a;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.paco-voz__opciones button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+/* ---------- Controles ---------- */
+
+.paco-voz__controles {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+}
+
+.paco-voz__btn {
+  min-height: 48px;
+  padding: 0 20px;
+  border: 0;
+  border-radius: 999px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.paco-voz__btn:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.paco-voz__btn--empezar {
+  background: #43e060;
+  color: #052e16;
+}
+
+.paco-voz__btn--colgar {
+  background: #ef4444;
+  color: #ffffff;
+}
+
+.paco-voz__btn--silencio {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.paco-voz__btn--activo {
+  background: #f59e0b;
+  color: #1c1917;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paco-avatar,
+  .paco-voz__avatar::before,
+  .paco-hud__giro,
+  .paco-hud__onda,
+  .paco-hud__barra,
+  .paco-voz--pensando .paco-hud__pensando {
+    animation: none !important;
+  }
+}

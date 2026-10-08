@@ -1,3 +1,5 @@
+/* Paco Mitiquin - tema holograma (estilo Jarvis). */
+
 .paco-fab {
   display: none !important;
 }
@@ -8,8 +10,8 @@
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: #43e060;
-  color: #052e16;
+  background: #22d3ee;
+  color: #021018;
   font-size: 18px;
   font-weight: 900;
 }
@@ -19,6 +21,12 @@
 }
 
 .paco-panel {
+  --j-acento: #22d3ee;
+  --j-acento-2: #38bdf8;
+  --j-linea: rgba(34, 211, 238, 0.3);
+  --j-vidrio: rgba(10, 34, 52, 0.72);
+  --j-texto: #dff7ff;
+  --j-suave: #8bbccb;
   position: fixed;
   right: max(18px, env(safe-area-inset-right));
   bottom: max(18px, calc(env(safe-area-inset-bottom) + 10px));
@@ -28,37 +36,138 @@
   width: min(430px, calc(100vw - 36px));
   height: min(720px, calc(100dvh - 36px));
   overflow: hidden;
-  border: 1px solid #dbe4ea;
-  border-radius: 24px;
-  background: #f8fafc;
-  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.3);
+  border: 1px solid var(--j-linea);
+  border-radius: 20px;
+  background: radial-gradient(120% 70% at 50% 0%, #0a2c43 0%, #05121e 55%, #030a12 100%);
+  color: var(--j-texto);
+  box-shadow:
+    0 0 0 1px rgba(34, 211, 238, 0.08),
+    0 0 44px rgba(34, 211, 238, 0.2),
+    0 24px 70px rgba(0, 0, 0, 0.65);
+}
+
+/* Lineas de escaneo del holograma */
+.paco-panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.025) 0,
+    rgba(255, 255, 255, 0.025) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+/* Esquinas tipo pantalla HUD */
+.paco-panel::before {
+  content: '';
+  position: absolute;
+  inset: 6px;
+  z-index: 1;
+  pointer-events: none;
+  background:
+    linear-gradient(#22d3ee, #22d3ee) top left / 16px 2px no-repeat,
+    linear-gradient(#22d3ee, #22d3ee) top left / 2px 16px no-repeat,
+    linear-gradient(#22d3ee, #22d3ee) top right / 16px 2px no-repeat,
+    linear-gradient(#22d3ee, #22d3ee) top right / 2px 16px no-repeat,
+    linear-gradient(#22d3ee, #22d3ee) bottom left / 16px 2px no-repeat,
+    linear-gradient(#22d3ee, #22d3ee) bottom left / 2px 16px no-repeat,
+    linear-gradient(#22d3ee, #22d3ee) bottom right / 16px 2px no-repeat,
+    linear-gradient(#22d3ee, #22d3ee) bottom right / 2px 16px no-repeat;
+  opacity: 0.55;
 }
 
 .paco-panel__header {
+  position: relative;
+  z-index: 2;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 17px 18px 15px;
-  background: #111827;
+  padding: 16px 16px 14px 18px;
+  border-bottom: 1px solid var(--j-linea);
+  background: linear-gradient(180deg, rgba(34, 211, 238, 0.14), rgba(34, 211, 238, 0.02));
   color: #ffffff;
 }
 
-.paco-panel__header div {
+.paco-panel__titulo {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+}
+
+.paco-panel__textos {
   display: grid;
   gap: 4px;
+  min-width: 0;
 }
 
-.paco-panel__header strong {
-  font-size: 18px;
+.paco-panel__textos strong {
+  font-size: 15px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  text-shadow: 0 0 12px rgba(34, 211, 238, 0.6);
 }
 
-.paco-panel__header span {
-  color: #cbd5e1;
-  font-size: 12px;
+.paco-panel__textos span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--j-acento);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
-/* NUEVO: agrupa el botÃ³n de voz junto al de cerrar */
+.paco-panel__textos span::before {
+  content: '';
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ade80;
+  box-shadow: 0 0 8px #4ade80;
+  animation: paco-latido 2s ease-in-out infinite;
+}
+
+/* Mini nucleo animado de la cabecera */
+.paco-orbe {
+  position: relative;
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  margin: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, #e6fdff 0 14%, #22d3ee 15% 42%, rgba(34, 211, 238, 0.18) 43% 100%);
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.7);
+}
+
+.paco-orbe::before,
+.paco-orbe::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+}
+
+.paco-orbe::before {
+  inset: -6px;
+  border: 2px dashed rgba(34, 211, 238, 0.75);
+  animation: paco-giro-orbe 9s linear infinite;
+}
+
+.paco-orbe::after {
+  inset: -11px;
+  border: 1.5px solid transparent;
+  border-top-color: #22d3ee;
+  border-bottom-color: #22d3ee;
+  animation: paco-giro-orbe 5s linear infinite reverse;
+}
+
 .paco-panel__acciones {
   display: flex;
   align-items: center;
@@ -66,43 +175,56 @@
   flex: 0 0 auto;
 }
 
-/* NUEVO: botÃ³n para activar/desactivar que Paco hable en voz alta */
-.paco-panel__voz {
+.paco-panel__voz,
+.paco-panel__close {
+  display: grid;
+  place-items: center;
   width: 36px;
   height: 36px;
-  border: 0;
+  border: 1px solid var(--j-linea);
   border-radius: 12px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  background: rgba(34, 211, 238, 0.08);
+  color: var(--j-acento);
   font-size: 16px;
   line-height: 1;
   cursor: pointer;
-}
-
-.paco-panel__voz--activa {
-  background: #43e060;
-  color: #052e16;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
 .paco-panel__close {
-  width: 36px;
-  height: 36px;
-  border: 0;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-  font-size: 26px;
-  line-height: 1;
-  cursor: pointer;
+  font-size: 24px;
 }
 
+.paco-panel__voz:hover,
+.paco-panel__close:hover {
+  background: rgba(34, 211, 238, 0.2);
+  box-shadow: 0 0 14px rgba(34, 211, 238, 0.35);
+}
+
+.paco-panel__voz--activa {
+  background: var(--j-acento);
+  color: #021018;
+}
+
+.paco-panel__llamar {
+  border-color: rgba(74, 222, 128, 0.7);
+  background: linear-gradient(135deg, #34d399, #22d3ee);
+  color: #021018;
+  box-shadow: 0 0 16px rgba(52, 211, 153, 0.55);
+  animation: paco-llamar 2.6s ease-in-out infinite;
+}
+
+/* ---------- Atajos ---------- */
+
 .paco-atajos {
+  position: relative;
+  z-index: 2;
   display: flex;
   gap: 7px;
   padding: 10px 12px;
   overflow-x: auto;
-  border-bottom: 1px solid #e2e8f0;
-  background: #ffffff;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.14);
+  background: rgba(2, 10, 18, 0.45);
   scrollbar-width: none;
 }
 
@@ -112,35 +234,49 @@
 
 .paco-atajos button {
   flex: 0 0 auto;
-  padding: 7px 10px;
-  border: 1px solid #d7e0e7;
+  padding: 7px 11px;
+  border: 1px solid var(--j-linea);
   border-radius: 999px;
-  background: #ffffff;
-  color: #334155;
+  background: rgba(34, 211, 238, 0.06);
+  color: #bfefff;
   font: inherit;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.paco-atajos button:hover:not(:disabled) {
+  border-color: var(--j-acento);
+  background: rgba(34, 211, 238, 0.16);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.3);
 }
 
 .paco-atajos button:disabled,
 .paco-mensaje__choices button:disabled,
 .paco-composer button:disabled {
   cursor: default;
-  opacity: 0.55;
+  opacity: 0.45;
 }
 
+/* ---------- Mensajes ---------- */
+
 .paco-mensajes {
+  position: relative;
+  z-index: 2;
   min-height: 0;
-  padding: 14px;
+  padding: 16px 14px;
   overflow-y: auto;
   overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34, 211, 238, 0.4) transparent;
 }
 
 .paco-mensaje {
   display: grid;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 14px;
+  animation: paco-aparece 0.35s ease both;
 }
 
 .paco-mensaje--usuario {
@@ -152,31 +288,63 @@
 }
 
 .paco-mensaje__burbuja {
-  max-width: 88%;
-  padding: 11px 13px;
-  border-radius: 16px;
+  max-width: 90%;
+  padding: 11px 14px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   font-size: 14px;
-  line-height: 1.45;
+  line-height: 1.5;
 }
 
 .paco-mensaje--paco .paco-mensaje__burbuja {
-  border: 1px solid #e2e8f0;
-  border-bottom-left-radius: 5px;
-  background: #ffffff;
-  color: #172033;
+  border: 1px solid var(--j-linea);
+  border-left: 3px solid var(--j-acento);
+  border-radius: 4px 16px 16px 16px;
+  background: var(--j-vidrio);
+  color: var(--j-texto);
+  box-shadow: 0 0 22px rgba(34, 211, 238, 0.08), inset 0 0 18px rgba(34, 211, 238, 0.04);
+  backdrop-filter: blur(6px);
 }
 
 .paco-mensaje--usuario .paco-mensaje__burbuja {
-  border-bottom-right-radius: 5px;
-  background: #111827;
+  border: 1px solid rgba(56, 189, 248, 0.55);
+  border-radius: 16px 4px 16px 16px;
+  background: linear-gradient(135deg, rgba(34, 211, 238, 0.3), rgba(37, 99, 235, 0.22));
   color: #ffffff;
 }
 
 .paco-mensaje__pensando {
-  color: #64748b !important;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--j-suave) !important;
+  font-size: 12px !important;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
+
+.paco-escaner {
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  height: 18px;
+}
+
+.paco-escaner i {
+  display: block;
+  width: 3px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--j-acento);
+  box-shadow: 0 0 8px var(--j-acento);
+  transform-origin: 50% 100%;
+  animation: paco-escaner 0.9s ease-in-out infinite;
+}
+
+.paco-escaner i:nth-child(2) { animation-delay: 0.12s; }
+.paco-escaner i:nth-child(3) { animation-delay: 0.24s; }
+.paco-escaner i:nth-child(4) { animation-delay: 0.36s; }
+.paco-escaner i:nth-child(5) { animation-delay: 0.48s; }
 
 .paco-mensaje__choices {
   display: flex;
@@ -186,25 +354,34 @@
 
 .paco-mensaje__choices button {
   min-width: 92px;
-  padding: 8px 13px;
-  border: 1px solid #94a3b8;
-  border-radius: 12px;
-  background: #ffffff;
-  color: #0f172a;
+  padding: 8px 14px;
+  border: 1px solid var(--j-acento);
+  border-radius: 10px;
+  background: rgba(34, 211, 238, 0.1);
+  color: #d9faff;
   font: inherit;
   font-size: 13px;
-  font-weight: 800;
+  font-weight: 700;
   cursor: pointer;
+  transition: background 0.2s ease, box-shadow 0.2s ease;
 }
 
+.paco-mensaje__choices button:hover:not(:disabled) {
+  background: rgba(34, 211, 238, 0.25);
+  box-shadow: 0 0 14px rgba(34, 211, 238, 0.4);
+}
+
+/* ---------- Escribir a Paco ---------- */
+
 .paco-composer {
+  position: relative;
+  z-index: 2;
   display: grid;
-  /* NUEVO: tercera columna para el botÃ³n del micrÃ³fono (auto = solo si existe) */
   grid-template-columns: auto minmax(0, 1fr) auto;
   gap: 9px;
-  padding: 11px 12px max(11px, env(safe-area-inset-bottom));
-  border-top: 1px solid #e2e8f0;
-  background: #ffffff;
+  padding: 12px 12px max(12px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--j-linea);
+  background: rgba(2, 10, 18, 0.7);
 }
 
 .paco-composer textarea {
@@ -213,51 +390,99 @@
   max-height: 120px;
   resize: vertical;
   box-sizing: border-box;
-  padding: 11px 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 14px;
+  padding: 11px 13px;
+  border: 1px solid var(--j-linea);
+  border-radius: 12px;
   outline: none;
-  background: #ffffff;
-  color: #0f172a;
+  background: rgba(8, 30, 46, 0.85);
+  color: var(--j-texto);
+  caret-color: var(--j-acento);
   font: inherit;
   font-size: 14px;
 }
 
+.paco-composer textarea::placeholder {
+  color: #5f8da0;
+}
+
 .paco-composer textarea:focus {
-  border-color: #64748b;
-  box-shadow: 0 0 0 3px rgba(100, 116, 139, 0.12);
+  border-color: var(--j-acento);
+  box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.14), 0 0 18px rgba(34, 211, 238, 0.25);
 }
 
 .paco-composer button {
   align-self: stretch;
   min-width: 72px;
   border: 0;
-  border-radius: 14px;
-  background: #43e060;
-  color: #052e16;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #22d3ee, #38bdf8);
+  color: #021018;
   font: inherit;
   font-weight: 900;
+  letter-spacing: 0.04em;
   cursor: pointer;
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.4);
 }
 
-/* NUEVO: botÃ³n de micrÃ³fono â€” mÃ¡s estrecho que el de enviar */
 .paco-composer__mic {
   min-width: 48px;
   width: 48px;
-  background: #eef2f6;
-  color: #172033;
+  border: 1px solid var(--j-linea) !important;
+  background: rgba(34, 211, 238, 0.08) !important;
+  color: var(--j-acento);
   font-size: 18px;
+  box-shadow: none !important;
 }
 
 .paco-composer__mic--activo {
-  background: #ef4444;
+  border-color: #f87171 !important;
+  background: rgba(239, 68, 68, 0.85) !important;
   color: #ffffff;
   animation: paco-mic-pulso 1.4s ease-in-out infinite;
+}
+
+/* ---------- Animaciones ---------- */
+
+@keyframes paco-giro-orbe {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes paco-latido {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes paco-llamar {
+  0%, 100% { box-shadow: 0 0 10px rgba(52, 211, 153, 0.45); }
+  50% { box-shadow: 0 0 22px rgba(52, 211, 153, 0.9); }
+}
+
+@keyframes paco-aparece {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes paco-escaner {
+  0%, 100% { transform: scaleY(0.25); opacity: 0.5; }
+  50% { transform: scaleY(1); opacity: 1; }
 }
 
 @keyframes paco-mic-pulso {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.6; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .paco-orbe::before,
+  .paco-orbe::after,
+  .paco-panel__textos span::before,
+  .paco-panel__llamar,
+  .paco-mensaje,
+  .paco-escaner i,
+  .paco-composer__mic--activo {
+    animation: none !important;
+  }
 }
 
 @media (max-width: 640px) {
@@ -270,11 +495,11 @@
   }
 
   .paco-panel__header {
-    padding-top: max(17px, env(safe-area-inset-top));
+    padding-top: max(16px, env(safe-area-inset-top));
   }
 
   .paco-mensaje__burbuja {
-    max-width: 92%;
+    max-width: 94%;
   }
 
   .paco-composer {
