@@ -5,6 +5,8 @@ import {
   continuarPaco,
   preguntarPaco,
   tokenSesionPacoActual,
+  urlWhatsappTestNivel,
+  type PacoAccion,
   type PacoAvisoAlta,
   type PacoChoice,
   type PacoContinuation,
@@ -17,6 +19,7 @@ type MensajePaco = {
   autor: 'paco' | 'usuario';
   texto: string;
   choices?: PacoChoice[];
+  acciones?: PacoAccion[];
   escribir?: boolean;
 };
 
@@ -358,7 +361,16 @@ export function PacoChat() {
     choices?: PacoChoice[];
     secretary_changed?: boolean;
     alta_changed?: boolean;
+    actions?: PacoAccion[];
+    silent?: boolean;
   }) => {
+    if (respuesta.silent) {
+      if (respuesta.alta_changed) {
+        window.dispatchEvent(new CustomEvent('mitico:altas-updated'));
+      }
+      return;
+    }
+
     if (respuesta.secretary_changed) {
       window.dispatchEvent(new CustomEvent('mitico:secretaria-updated'));
     }
@@ -376,6 +388,7 @@ export function PacoChat() {
       autor: 'paco',
       texto: textoRespuesta,
       choices: respuesta.choices || [],
+      acciones: respuesta.actions || [],
       escribir: true,
     });
 
@@ -417,6 +430,20 @@ export function PacoChat() {
     } finally {
       setCargando(false);
     }
+  };
+
+  // Al pulsar "Abrir WhatsApp" el navegador abre WhatsApp (el usuario pulsa
+  // Enviar alli). Igual que el boton de Altas / Test, el alta se marca como
+  // enviada en ese momento.
+  const marcarTestEnviado = (accion: PacoAccion) => {
+    void continuarPaco({ kind: 'alta_mark_sent', id: accion.alta_id })
+      .then((respuesta) => {
+        if (respuesta?.answer) procesarRespuesta(respuesta);
+        else if (respuesta?.alta_changed) {
+          window.dispatchEvent(new CustomEvent('mitico:altas-updated'));
+        }
+      })
+      .catch(() => undefined);
   };
 
   const enviarContinuacion = async (choice: PacoChoice) => {
@@ -621,6 +648,22 @@ export function PacoChat() {
                       >
                         {choice.label}
                       </button>
+                    ))}
+                  </div>
+                )}
+                {mensaje.acciones && mensaje.acciones.length > 0 && (
+                  <div className="paco-mensaje__choices">
+                    {mensaje.acciones.map((accion) => (
+                      <a
+                        key={`${mensaje.id}-wa-${accion.alta_id}`}
+                        className="paco-accion-wa"
+                        href={urlWhatsappTestNivel(accion)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => marcarTestEnviado(accion)}
+                      >
+                        Abrir WhatsApp · {accion.nombre}
+                      </a>
                     ))}
                   </div>
                 )}

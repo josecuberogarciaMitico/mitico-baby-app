@@ -73,7 +73,9 @@ export type PacoContinuation =
         | 'alta_open'
         | 'alta_pick_level'
         | 'alta_validate_add'
-        | 'alta_add';
+        | 'alta_add'
+        | 'alta_whatsapp'
+        | 'alta_mark_sent';
       [clave: string]: unknown;
     };
 
@@ -103,6 +105,18 @@ export type PacoResponse = {
   handled?: boolean;
   alta_draft?: unknown;
   alta_changed?: boolean;
+  actions?: PacoAccion[];
+  silent?: boolean;
+};
+
+// Boton que abre WhatsApp con el mensaje del test ya escrito. Paco NO envia
+// nada: el navegador abre WhatsApp y el usuario pulsa Enviar alli.
+export type PacoAccion = {
+  type: 'whatsapp';
+  alta_id: string;
+  nombre: string;
+  telefono: string;
+  token: string;
 };
 
 export type PacoAvisoAlta = {
@@ -401,6 +415,29 @@ async function llamarAltasPaco(
 }
 
 // Altas respondidas por las familias que esperan decision (para avisar).
+// Mismo criterio que normalizeWhatsappPhone de la app: 9 digitos que empiezan
+// por 6-9 son moviles de Espana (se antepone 34).
+function telefonoWhatsapp(valor: string) {
+  const digitos = String(valor || '').replace(/\D/g, '');
+  if (digitos.length === 9 && /^[6789]/.test(digitos)) return `34${digitos}`;
+  return digitos;
+}
+
+// Mismo texto y mismo enlace que el boton "Enviar por WhatsApp" de Altas / Test
+// (App.tsx -> enviarAltaNivelWhatsapp). Si cambias alli el texto, cambialo aqui.
+export function urlWhatsappTestNivel(accion: PacoAccion) {
+  const telefono = telefonoWhatsapp(accion.telefono);
+  if (!telefono || typeof window === 'undefined') return '';
+  const enlace = `${window.location.origin}${window.location.pathname}?test_nivel=${accion.token}`;
+  const nombrePila =
+    accion.nombre.trim().split(/\\s+/)[0] || accion.nombre; // igual que App.tsx (usa /\\s+/)
+  const texto =
+    `Hola familia, para preparar correctamente el grupo de ${nombrePila} necesitamos una pequeña valoración de su experiencia esquiando.\n\n` +
+    `No tenéis que conocer su nivel: son 8 preguntas de respuesta cerrada sobre lo que le habéis visto hacer y se tarda aproximadamente 2 minutos.\n\n` +
+    `${enlace}\n\nMuchas gracias.`;
+  return `https://wa.me/${telefono}?text=${encodeURIComponent(texto)}`;
+}
+
 export async function comprobarAltasRespondidasPaco(): Promise<PacoAvisoAlta[]> {
   const respuesta = (await llamarEndpointPaco(
     PACO_ALTAS_ENDPOINT,
