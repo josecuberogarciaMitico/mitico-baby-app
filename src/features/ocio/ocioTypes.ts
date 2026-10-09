@@ -38,6 +38,9 @@ export type OcioGrupoApp = {
   temporada: string | null;
   total_alumnos: number;
   alumnos_lista: string | null;
+  // Solo Ocio: entrenador fijo del grupo estable (migración 20261009_000001).
+  entrenador_fijo_id?: string | null;
+  entrenador_fijo?: string | null;
 };
 
 export type OcioGrupoPropuestaApp = {

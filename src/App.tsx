@@ -221,6 +221,7 @@ import {
   ocioLevelRange,
   type OcioWeeklyGroup,
 } from './features/ocio/ocioWeekPlanning';
+import { aplicarEntrenadoresFijosOcio } from './features/ocio/ocioFixedTrainer';
 import {
   ocioGrupoFormInicial,
   type OcioAlumnoApp,
@@ -8060,6 +8061,7 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
         );
       }
 
+      await aplicarEntrenadoresFijosOcio(gruposConAlumnos, resultados, ejecutarFuncionAuthJson, ocioGrupos);
       await cargarAgendaOperativaDirecta();
       await cargarResultadosOcioSemanaDesdeSupabase();
       await cargarPlanning();
@@ -21586,6 +21588,7 @@ A quienes tengan grupos se les confirmará que ya están preparados. A quienes n
             diaFijoOcioDesdeFecha,
             ejecutarFuncion,
             cargarOcioAlumnos,
+            entrenadores, cargarOcioGrupos,
             setError,
             edadAproximadaOcio,
             edadOcioAlumnoEnFecha,

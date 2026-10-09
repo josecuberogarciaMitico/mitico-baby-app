@@ -7,6 +7,7 @@ import {
   classifyOcioAimHarderStudent,
   ocioLevelRange,
 } from './ocioWeekPlanning';
+import { OCIO_FIXED_TRAINER_RPC } from './ocioFixedTrainer';
 
 type OcioGroupsScreenProps = {
   ctx: Record<string, any>;
@@ -120,6 +121,27 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
     anioInicioTemporadaAgenda,
   } = ctx;
   const [pasandoAOcio, setPasandoAOcio] = useState('');
+  const [guardandoFijoGrupoId, setGuardandoFijoGrupoId] = useState('');
+
+  // Solo Ocio. Guarda el entrenador fijo del grupo estable; los cambios de una
+  // semana concreta se hacen en Días de entrenamiento y no tocan este valor.
+  async function cambiarEntrenadorFijoGrupo(grupo: OcioGrupoApp, entrenadorId: string) {
+    try {
+      setGuardandoFijoGrupoId(grupo.grupo_id);
+      ctx.setError('');
+      await ctx.ejecutarFuncion(OCIO_FIXED_TRAINER_RPC.save, {
+        p_grupo_id: grupo.grupo_id,
+        p_entrenador_id: entrenadorId || null,
+      });
+      await ctx.cargarOcioGrupos();
+    } catch (err) {
+      ctx.setError(
+        err instanceof Error ? err.message : 'No se pudo guardar el entrenador fijo.'
+      );
+    } finally {
+      setGuardandoFijoGrupoId('');
+    }
+  }
 
   async function pasarAlumnoAOcio(fichaNombre: string, turno: any) {
     try {
@@ -896,6 +918,55 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
                         {miembrosGrupo.length}
                       </strong>
                     </div>
+
+                    <label
+                      style={{
+                        display: 'grid',
+                        gap: 4,
+                        marginTop: 10,
+                        fontSize: 13,
+                        fontWeight: 800,
+                        color: '#334155',
+                      }}
+                    >
+                      Entrenador fijo
+                      <select
+                        value={grupo.entrenador_fijo_id || ''}
+                        disabled={guardandoFijoGrupoId === grupo.grupo_id}
+                        onChange={(e) =>
+                          void cambiarEntrenadorFijoGrupo(grupo, e.target.value)
+                        }
+                      >
+                        <option value="">Sin entrenador fijo</option>
+                        {grupo.entrenador_fijo_id &&
+                          !((ctx.entrenadores || []) as Array<{ entrenador_id: string }>).some(
+                            (entrenador) =>
+                              entrenador.entrenador_id === grupo.entrenador_fijo_id
+                          ) && (
+                            <option value={grupo.entrenador_fijo_id}>
+                              {grupo.entrenador_fijo || 'Entrenador fijo actual'}
+                            </option>
+                          )}
+                        {((ctx.entrenadores || []) as Array<{
+                          entrenador_id: string;
+                          nombre_completo: string;
+                          activo: boolean;
+                        }>)
+                          .filter(
+                            (entrenador) =>
+                              entrenador.activo ||
+                              entrenador.entrenador_id === grupo.entrenador_fijo_id
+                          )
+                          .map((entrenador) => (
+                            <option
+                              key={entrenador.entrenador_id}
+                              value={entrenador.entrenador_id}
+                            >
+                              {entrenador.nombre_completo}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
 
                     <div style={{ display: 'grid', gap: 8, marginTop: 12 }}>
                       {miembrosGrupo.length === 0 ? (

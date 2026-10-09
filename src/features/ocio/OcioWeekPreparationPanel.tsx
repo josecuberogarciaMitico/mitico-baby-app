@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import type { OcioAlumnoApp, OcioGrupoApp, OcioPrepararResultadoApp } from './ocioTypes';
 import { applyOcioRelocationsToStableGroup } from './ocioRelocation';
 import {
@@ -9,6 +9,10 @@ import {
   weeklyLevelRange,
   type OcioWeeklyGroup,
 } from './ocioWeekPlanning';
+import {
+  getOcioFixedTrainerNotices,
+  subscribeOcioFixedTrainerNotices,
+} from './ocioFixedTrainer';
 
 type Props = {
   ctx: Record<string, any>;
@@ -39,6 +43,12 @@ export function OcioWeekPreparationPanel({ ctx }: Props) {
     semanaActualAgenda,
     tarjeta,
   } = ctx;
+
+  const fixedTrainerNotices = useSyncExternalStore(
+    subscribeOcioFixedTrainerNotices,
+    getOcioFixedTrainerNotices,
+    getOcioFixedTrainerNotices
+  );
 
   const stableGroups = useMemo(
     () =>
@@ -268,6 +278,24 @@ export function OcioWeekPreparationPanel({ ctx }: Props) {
                       {formatearFecha(result.fecha)} · {result.hora_inicio}–{result.hora_fin} ·{' '}
                       {result.alumnos} alumnos
                     </div>
+                    <div style={{ marginTop: 4, color: '#334155', fontWeight: 700 }}>
+                      Entrenador: {result.entrenador || 'pendiente'}
+                    </div>
+                    {result.grupo_id && fixedTrainerNotices[result.grupo_id] && (
+                      <div
+                        style={{
+                          marginTop: 6,
+                          padding: '7px 10px',
+                          borderRadius: 10,
+                          border: '1px solid #fdba74',
+                          background: '#fff7ed',
+                          color: '#9a3412',
+                          fontWeight: 700,
+                        }}
+                      >
+                        {fixedTrainerNotices[result.grupo_id]}
+                      </div>
+                    )}
                   </div>
                   <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
                     <button
