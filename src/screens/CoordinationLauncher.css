@@ -1,19 +1,284 @@
-.mitico-tools { position: fixed; right: max(18px, env(safe-area-inset-right)); bottom: max(18px, calc(env(safe-area-inset-bottom) + 10px)); z-index: 1700; }
-.mitico-tools__fab { position: relative; display: grid; place-items: center; width: 50px; height: 50px; padding: 0; border: 0; border-radius: 50%; background: #111827; color: #fff; box-shadow: 0 12px 32px rgba(15,23,42,.28); cursor: pointer; }
-.mitico-tools__fab > span:first-child { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: #43e060; color: #052e16; font-size: 17px; font-weight: 950; line-height: 1; }
-.mitico-tools__fabBadge { position: absolute; top: -5px; right: -5px; display: grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border: 2px solid #fff; border-radius: 999px; background: #dc2626; color: #fff; font-size: 10px; font-weight: 900; }
-.mitico-tools__menu { position: absolute; right: 0; bottom: 60px; display: grid; gap: 7px; width: min(290px, calc(100vw - 28px)); padding: 8px; border: 1px solid #dbe4ea; border-radius: 18px; background: rgba(255,255,255,.98); box-shadow: 0 18px 48px rgba(15,23,42,.24); backdrop-filter: blur(14px); }
-.mitico-tools__option { display: grid; grid-template-columns: 38px minmax(0,1fr) auto; align-items: center; gap: 10px; width: 100%; padding: 9px 10px; border: 0; border-radius: 13px; background: transparent; color: #172033; text-align: left; font: inherit; cursor: pointer; }
-.mitico-tools__option:hover, .mitico-tools__option:focus-visible { background: #f1f5f9; outline: none; }
-.mitico-tools__option > span:nth-child(2) { display: grid; gap: 2px; min-width: 0; }
-.mitico-tools__option strong { font-size: 14px; }
-.mitico-tools__option small { overflow: hidden; color: #64748b; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.mitico-tools__optionIcon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #dcfce7; color: #166534; font-size: 16px; font-weight: 950; }
-.mitico-tools__optionIcon--paco { background: #111827; color: #43e060; }
-.mitico-tools__badge { display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px; border-radius: 999px; background: #dc2626; color: #fff; font-size: 11px; font-weight: 900; }
+/* Boton de herramientas (antes la "M") y su menu - estilo holograma Jarvis, igual que Paco. */
+
+.mitico-tools {
+  position: fixed;
+  right: max(18px, env(safe-area-inset-right));
+  bottom: max(18px, calc(env(safe-area-inset-bottom) + 10px));
+  z-index: 1700;
+}
+
+.mitico-tools__fab {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 38%, #0b3550 0%, #05121e 72%);
+  box-shadow:
+    0 0 0 1px rgba(34, 211, 238, 0.4),
+    0 0 26px rgba(34, 211, 238, 0.35),
+    0 14px 34px rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.mitico-tools__fab:hover,
+.mitico-tools__fab:focus-visible {
+  outline: none;
+  transform: scale(1.05);
+  box-shadow:
+    0 0 0 1px rgba(34, 211, 238, 0.7),
+    0 0 34px rgba(34, 211, 238, 0.55),
+    0 14px 34px rgba(0, 0, 0, 0.45);
+}
+
+/* Anillos que giran alrededor del nucleo */
+.mitico-tools__fab::before,
+.mitico-tools__fab::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.mitico-tools__fab::before {
+  inset: -6px;
+  border: 1.5px solid transparent;
+  border-top-color: #22d3ee;
+  border-bottom-color: #22d3ee;
+  animation: mitico-tools-giro 6s linear infinite;
+}
+
+.mitico-tools__fab::after {
+  inset: 3px;
+  border: 1.5px dashed rgba(34, 211, 238, 0.55);
+  animation: mitico-tools-giro 14s linear infinite reverse;
+}
+
+.mitico-tools__nucleo {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, #e6fdff 0 14%, #22d3ee 15% 45%, rgba(34, 211, 238, 0.2) 46% 100%);
+  box-shadow: 0 0 16px rgba(34, 211, 238, 0.85);
+  animation: mitico-tools-latido 2.8s ease-in-out infinite;
+  transition: transform 0.25s ease, opacity 0.2s ease;
+}
+
+.mitico-tools__cruz {
+  position: absolute;
+  color: #22d3ee;
+  font-size: 26px;
+  font-weight: 300;
+  line-height: 1;
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.6);
+  transition: transform 0.25s ease, opacity 0.2s ease;
+  text-shadow: 0 0 12px rgba(34, 211, 238, 0.8);
+}
+
+.mitico-tools__fab[aria-expanded='true'] .mitico-tools__nucleo {
+  opacity: 0;
+  transform: scale(0.3);
+}
+
+.mitico-tools__fab[aria-expanded='true'] .mitico-tools__cruz {
+  opacity: 1;
+  transform: rotate(0) scale(1);
+}
+
+.mitico-tools__fabBadge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  display: grid;
+  place-items: center;
+  min-width: 21px;
+  height: 21px;
+  padding: 0 5px;
+  border: 2px solid #05121e;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 900;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.7);
+}
+
+/* Menu de cristal */
+.mitico-tools__menu {
+  position: absolute;
+  right: 0;
+  bottom: 72px;
+  display: grid;
+  gap: 6px;
+  width: min(310px, calc(100vw - 28px));
+  padding: 10px;
+  border: 1px solid rgba(34, 211, 238, 0.32);
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(10, 44, 67, 0.96), rgba(4, 14, 24, 0.97));
+  color: #dff7ff;
+  box-shadow:
+    0 0 34px rgba(34, 211, 238, 0.18),
+    0 22px 56px rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transform-origin: bottom right;
+  animation: mitico-tools-abre 0.22s ease-out;
+}
+
+.mitico-tools__titulo {
+  padding: 4px 8px 6px;
+  color: #22d3ee;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.mitico-tools__option {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  animation: mitico-tools-sube 0.3s ease-out both;
+  animation-delay: calc(var(--i, 0) * 70ms + 40ms);
+}
+
+.mitico-tools__option:hover,
+.mitico-tools__option:focus-visible {
+  border-color: rgba(34, 211, 238, 0.45);
+  background: rgba(34, 211, 238, 0.12);
+  outline: none;
+}
+
+.mitico-tools__option > span:nth-child(2) {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.mitico-tools__option strong {
+  color: #ffffff;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+}
+
+.mitico-tools__option small {
+  overflow: hidden;
+  color: #8bbccb;
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mitico-tools__optionIcon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(34, 211, 238, 0.45);
+  border-radius: 50%;
+  background: rgba(34, 211, 238, 0.08);
+  color: #22d3ee;
+  box-shadow: 0 0 14px rgba(34, 211, 238, 0.18);
+}
+
+.mitico-tools__miniOrbe {
+  position: relative;
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 45%, #e6fdff 0 16%, #22d3ee 17% 48%, rgba(34, 211, 238, 0.2) 49% 100%);
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.8);
+}
+
+.mitico-tools__miniOrbe::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border: 1.5px dashed rgba(34, 211, 238, 0.7);
+  border-radius: 50%;
+  animation: mitico-tools-giro 9s linear infinite;
+}
+
+.mitico-tools__badge {
+  display: grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #ef4444;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 900;
+  box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+}
+
+@keyframes mitico-tools-giro {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes mitico-tools-latido {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.12); }
+}
+
+@keyframes mitico-tools-abre {
+  from { opacity: 0; transform: translateY(10px) scale(0.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes mitico-tools-sube {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mitico-tools__fab::before,
+  .mitico-tools__fab::after,
+  .mitico-tools__nucleo,
+  .mitico-tools__miniOrbe::before,
+  .mitico-tools__menu,
+  .mitico-tools__option {
+    animation: none !important;
+  }
+}
+
 @media (max-width: 719px) {
-  .mitico-tools { right: max(12px, env(safe-area-inset-right)); bottom: max(82px, calc(env(safe-area-inset-bottom) + 74px)); }
-  .mitico-tools__fab { width: 46px; height: 46px; }
-  .mitico-tools__fab > span:first-child { width: 31px; height: 31px; font-size: 15px; }
-  .mitico-tools__menu { bottom: 56px; width: min(270px, calc(100vw - 24px)); }
+  .mitico-tools {
+    right: max(14px, env(safe-area-inset-right));
+    bottom: max(82px, calc(env(safe-area-inset-bottom) + 74px));
+  }
+
+  .mitico-tools__fab {
+    width: 52px;
+    height: 52px;
+  }
+
+  .mitico-tools__nucleo {
+    width: 21px;
+    height: 21px;
+  }
+
+  .mitico-tools__menu {
+    bottom: 66px;
+    width: min(300px, calc(100vw - 28px));
+  }
 }

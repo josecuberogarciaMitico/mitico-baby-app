@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   actualizarEntradaSecretaria,
   crearEntradaSecretaria,
@@ -97,6 +97,7 @@ export function SecretariaPanel() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [form, setForm] = useState<FormSecretaria>(FORM_INICIAL);
   const [guardando, setGuardando] = useState(false);
+  const reintentosAcceso = useRef(0);
 
   const cargar = useCallback(async (silencioso = false) => {
     if (!silencioso) setCargando(true);
@@ -124,6 +125,7 @@ export function SecretariaPanel() {
         estado?.access === 'coordinador_jefe' &&
         estado?.profile?.rol === 'coordinador_jefe';
 
+      reintentosAcceso.current = 0;
       setAutorizado(accesoValido);
       if (!accesoValido) {
         setAbierto(false);
@@ -134,9 +136,19 @@ export function SecretariaPanel() {
       // Si después falla la carga de datos, mantenemos el botón visible
       // y mostramos el error dentro del panel para poder diagnosticarlo.
       await cargar(true);
-    } catch {
-      setAutorizado(false);
-      setAbierto(false);
+    } catch (err) {
+      // Solo se oculta Secretaría si el servidor dice claramente que no hay
+      // permiso (401/403). Un fallo puntual de red o un servidor lento no
+      // debe hacer desaparecer el botón.
+      const status = (err as { status?: number } | null)?.status;
+      if (status === 401 || status === 403) {
+        setAutorizado(false);
+        setAbierto(false);
+      } else if (reintentosAcceso.current < 3) {
+        // Fallo puntual (red/servidor lento): se reintenta en unos segundos.
+        reintentosAcceso.current += 1;
+        window.setTimeout(() => void comprobarAcceso(), 4000);
+      }
     }
   }, [cargar]);
 

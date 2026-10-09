@@ -32,7 +32,7 @@
   bottom: max(18px, calc(env(safe-area-inset-bottom) + 10px));
   z-index: 1600;
   display: grid;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
   width: min(430px, calc(100vw - 36px));
   height: min(720px, calc(100dvh - 36px));
   overflow: hidden;
@@ -609,4 +609,100 @@
 
 .paco-accion-wa:hover {
   filter: brightness(1.08);
+}
+
+/* Respuesta redactada para una familia (boton Copiar) */
+.paco-borrador {
+  margin-top: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(34, 211, 238, 0.45);
+  background: rgba(6, 24, 38, 0.72);
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.18) inset;
+}
+
+.paco-borrador__texto {
+  margin: 0 0 10px;
+  color: #e6fbff;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+
+.paco-borrador__copiar {
+  padding: 9px 16px;
+  border: 0;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #22d3ee, #0ea5e9);
+  color: #04202b;
+  font-size: 13px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 0 14px rgba(34, 211, 238, 0.45);
+}
+
+.paco-borrador__copiar:hover {
+  filter: brightness(1.08);
+}
+
+
+/* ---------- Avisos push de Paco ---------- */
+
+.paco-push {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  padding: 9px 14px;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.14);
+  background: rgba(34, 211, 238, 0.06);
+  color: var(--j-suave);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.paco-push span {
+  flex: 1 1 200px;
+}
+
+.paco-push button {
+  flex: 0 0 auto;
+  padding: 7px 12px;
+  border: 1px solid var(--j-acento);
+  border-radius: 999px;
+  background: rgba(34, 211, 238, 0.14);
+  color: #dff7ff;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.paco-push button:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+
+.paco-push--ok {
+  background: rgba(34, 211, 238, 0.03);
+}
+
+.paco-push__nota {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  padding: 6px 14px;
+  color: #bfefff;
+  font-size: 12px;
+  border-bottom: 1px solid rgba(34, 211, 238, 0.14);
+}
+
+.paco-pushzona {
+  position: relative;
+  z-index: 2;
+  min-height: 0;
 }

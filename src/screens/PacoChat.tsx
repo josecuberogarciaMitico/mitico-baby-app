@@ -11,7 +11,17 @@ import {
   type PacoChoice,
   type PacoContinuation,
 } from '../lib/pacoClient';
+import {
+  activarAvisosPush,
+  estadoAvisosPush,
+  listarAvisosPaco,
+  marcarAvisosLeidos,
+  probarAvisoPush,
+  type AvisoPaco,
+  type EstadoAvisosPush,
+} from '../lib/avisosPacoClient';
 import { PacoVoz } from './PacoVoz';
+import { RespuestasPanel } from './RespuestasPanel';
 import './PacoChat.css';
 
 type MensajePaco = {
@@ -20,6 +30,8 @@ type MensajePaco = {
   texto: string;
   choices?: PacoChoice[];
   acciones?: PacoAccion[];
+  // Respuesta redactada para una familia (se muestra aparte, con boton Copiar).
+  borrador?: string;
   escribir?: boolean;
 };
 
@@ -143,6 +155,11 @@ export function PacoChat() {
   const [llamadaActiva, setLlamadaActiva] = useState(false);
   const [etapa, setEtapa] = useState(0);
   const [avisosAltas, setAvisosAltas] = useState<PacoAvisoAlta[]>([]);
+  const [avisosResumen, setAvisosResumen] = useState<AvisoPaco[]>([]);
+  const [pushEstado, setPushEstado] = useState<EstadoAvisosPush | null>(null);
+  const [pushOcupado, setPushOcupado] = useState(false);
+  const [pushNota, setPushNota] = useState('');
+  const [copiadoId, setCopiadoId] = useState<string | null>(null);
   const [mensajes, setMensajes] = useState<MensajePaco[]>([
     {
       id: 'paco-bienvenida',
@@ -335,6 +352,112 @@ export function PacoChat() {
     guardarAltasAvisadas(vistas);
   }, [abierto, avisosAltas]);
 
+  // Avisos de Paco (p.ej. resumen de disponibilidad del martes a las 13:00).
+  // El servidor los genera solo; aqui se recogen al abrir la app, al volver a
+  // la ventana y cada minuto. Al abrir Paco pasan a la conversacion.
+  useEffect(() => {
+    if (!autorizado) return;
+    let cancelado = false;
+    let enCurso = false;
+
+    const revisar = async () => {
+      if (enCurso || document.visibilityState !== 'visible') return;
+      enCurso = true;
+      try {
+        const items = await listarAvisosPaco();
+        if (cancelado || items.length === 0) return;
+        setAvisosResumen((actuales) => {
+          const ya = new Set(actuales.map((a) => a.id));
+          const nuevos = items.filter((i) => !ya.has(i.id));
+          return nuevos.length > 0 ? [...actuales, ...nuevos] : actuales;
+        });
+      } catch {
+        // Sin conexion o sin permiso: no hay aviso esta vez.
+      } finally {
+        enCurso = false;
+      }
+    };
+
+    void revisar();
+    const intervalo = window.setInterval(() => void revisar(), 60_000);
+    const alVolver = () => {
+      if (document.visibilityState === 'visible') void revisar();
+    };
+    document.addEventListener('visibilitychange', alVolver);
+    window.addEventListener('focus', alVolver);
+    return () => {
+      cancelado = true;
+      window.clearInterval(intervalo);
+      document.removeEventListener('visibilitychange', alVolver);
+      window.removeEventListener('focus', alVolver);
+    };
+  }, [autorizado]);
+
+  useEffect(() => {
+    if (!abierto || avisosResumen.length === 0) return;
+    const pendientes = avisosResumen;
+    setAvisosResumen([]);
+    setMensajes((actuales) => [
+      ...actuales,
+      ...pendientes.map((p) => ({
+        id: crearIdPaco(),
+        autor: 'paco' as const,
+        texto: p.cuerpo,
+        escribir: true,
+      })),
+    ]);
+    void marcarAvisosLeidos(pendientes.map((p) => p.id)).catch(() => undefined);
+  }, [abierto, avisosResumen]);
+
+  // Estado de los avisos push en ESTE movil (solo al abrir Paco).
+  useEffect(() => {
+    if (!abierto || !autorizado) return;
+    let cancelado = false;
+    estadoAvisosPush()
+      .then((e) => {
+        if (!cancelado) setPushEstado(e);
+      })
+      .catch(() => {
+        if (!cancelado) setPushEstado(null);
+      });
+    return () => {
+      cancelado = true;
+    };
+  }, [abierto, autorizado]);
+
+  const activarAvisos = async () => {
+    setPushOcupado(true);
+    setPushNota('');
+    try {
+      const e = await activarAvisosPush();
+      setPushEstado(e);
+      setPushNota(
+        e === 'activo'
+          ? 'Listo: este móvil recibirá los avisos de Paco.'
+          : e === 'bloqueado'
+            ? 'El móvil tiene bloqueadas las notificaciones para esta app. Actívalas en Ajustes.'
+            : 'No se ha podido activar. Inténtalo de nuevo.'
+      );
+    } catch (err) {
+      setPushNota(err instanceof Error ? err.message : 'No se ha podido activar.');
+    } finally {
+      setPushOcupado(false);
+    }
+  };
+
+  const probarAvisos = async () => {
+    setPushOcupado(true);
+    setPushNota('');
+    try {
+      const ok = await probarAvisoPush();
+      setPushNota(ok ? 'Aviso de prueba enviado: debería llegarle en unos segundos.' : 'No se pudo enviar la prueba.');
+    } catch (err) {
+      setPushNota(err instanceof Error ? err.message : 'No se pudo enviar la prueba.');
+    } finally {
+      setPushOcupado(false);
+    }
+  };
+
   if (!autorizado) return null;
 
   const añadirMensaje = (mensaje: MensajePaco) => {
@@ -363,6 +486,7 @@ export function PacoChat() {
     alta_changed?: boolean;
     actions?: PacoAccion[];
     silent?: boolean;
+    respuesta_familia?: { texto: string };
   }) => {
     if (respuesta.silent) {
       if (respuesta.alta_changed) {
@@ -389,10 +513,15 @@ export function PacoChat() {
       texto: textoRespuesta,
       choices: respuesta.choices || [],
       acciones: respuesta.actions || [],
+      borrador: respuesta.respuesta_familia?.texto,
       escribir: true,
     });
 
-    hablar(textoRespuesta);
+    hablar(
+      respuesta.respuesta_familia
+        ? 'Ya tiene la respuesta para la familia en pantalla, señor Cubero.'
+        : textoRespuesta
+    );
   };
 
   const enviarTexto = async (mensajeForzado?: string) => {
@@ -444,6 +573,32 @@ export function PacoChat() {
         }
       })
       .catch(() => undefined);
+  };
+
+  // Copia la respuesta para pegarla en WhatsApp. Si el navegador no deja usar
+  // el portapapeles, se selecciona el texto para copiarlo a mano.
+  const copiarBorrador = async (id: string, textoCopia: string) => {
+    let copiado = false;
+    try {
+      await navigator.clipboard.writeText(textoCopia);
+      copiado = true;
+    } catch {
+      try {
+        const area = document.createElement('textarea');
+        area.value = textoCopia;
+        area.setAttribute('readonly', '');
+        area.style.position = 'fixed';
+        area.style.opacity = '0';
+        document.body.appendChild(area);
+        area.select();
+        copiado = document.execCommand('copy');
+        document.body.removeChild(area);
+      } catch {
+        copiado = false;
+      }
+    }
+    setCopiadoId(copiado ? id : null);
+    if (copiado) window.setTimeout(() => setCopiadoId((x) => (x === id ? null : x)), 2500);
   };
 
   const enviarContinuacion = async (choice: PacoChoice) => {
@@ -554,6 +709,24 @@ export function PacoChat() {
         </button>
       )}
 
+      {!abierto && avisosAltas.length === 0 && avisosResumen.length > 0 && (
+        <button
+          type="button"
+          className="paco-aviso"
+          onClick={() => setAbierto(true)}
+          aria-label="Abrir Paco para ver el aviso"
+        >
+          <span className="paco-aviso__orbe" aria-hidden="true" />
+          <span className="paco-aviso__texto">
+            <strong>Paco</strong>
+            <span>
+              {avisosResumen.length === 1 ? avisosResumen[0].titulo : `${avisosResumen.length} avisos nuevos`}
+            </span>
+          </span>
+          <span className="paco-aviso__ver">Ver</span>
+        </button>
+      )}
+
       {abierto && (
         <section className="paco-panel" aria-label="Paco Mitiquín">
           <header className="paco-panel__header">
@@ -608,6 +781,34 @@ export function PacoChat() {
             </div>
           </header>
 
+          <div className="paco-pushzona">
+          {pushEstado && pushEstado !== 'activo' && (
+            <div className="paco-push">
+              <span>
+                {pushEstado === 'no_soportado'
+                  ? 'Para recibir avisos de Paco en el móvil, instala Mítico Baby en la pantalla de inicio y ábrela desde su icono.'
+                  : pushEstado === 'bloqueado'
+                    ? 'Las notificaciones están bloqueadas para esta app. Actívalas en los Ajustes del móvil.'
+                    : 'Active los avisos para que Paco le escriba al móvil (p. ej. el resumen de disponibilidad del martes).'}
+              </span>
+              {pushEstado === 'inactivo' && (
+                <button type="button" disabled={pushOcupado} onClick={() => void activarAvisos()}>
+                  {pushOcupado ? 'Activando…' : 'Activar avisos en este móvil'}
+                </button>
+              )}
+            </div>
+          )}
+          {pushEstado === 'activo' && (
+            <div className="paco-push paco-push--ok">
+              <span>Avisos de Paco activados en este móvil.</span>
+              <button type="button" disabled={pushOcupado} onClick={() => void probarAvisos()}>
+                {pushOcupado ? 'Enviando…' : 'Enviar prueba'}
+              </button>
+            </div>
+          )}
+          {pushNota && <p className="paco-push__nota">{pushNota}</p>}
+          </div>
+
           <div className="paco-atajos" aria-label="Consultas rápidas">
             {ATAJOS_PACO.map((atajo) => (
               <button
@@ -636,6 +837,19 @@ export function PacoChat() {
                     }
                   />
                 </div>
+
+                {mensaje.borrador && (
+                  <div className="paco-borrador">
+                    <p className="paco-borrador__texto">{mensaje.borrador}</p>
+                    <button
+                      type="button"
+                      className="paco-borrador__copiar"
+                      onClick={() => void copiarBorrador(mensaje.id, mensaje.borrador || '')}
+                    >
+                      {copiadoId === mensaje.id ? 'Copiado' : 'Copiar respuesta'}
+                    </button>
+                  </div>
+                )}
 
                 {mensaje.choices && mensaje.choices.length > 0 && (
                   <div className="paco-mensaje__choices">
@@ -743,6 +957,9 @@ export function PacoChat() {
           )}
         </section>
       )}
+
+      {/* Seccion "Respuestas": mensajes a familias y entrenadores (aprende de Jose). */}
+      <RespuestasPanel />
     </>
   );
 }
