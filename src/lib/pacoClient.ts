@@ -1,4 +1,8 @@
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../config/supabase';
+import {
+  continuarAccionPaco,
+  intentarAccionPaco,
+} from '../features/pacoAcciones/pacoAcciones';
 const MITICO_AUTH_STORAGE_KEY = 'mitico_auth_session_v1';
 const PACO_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-api`;
 const PACO_SECRETARIA_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-secretaria`;
@@ -7,6 +11,7 @@ const PACO_LIVE_TOKEN_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-live-
 const PACO_ALTAS_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-altas`;
 const PACO_DISPONIBILIDAD_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-disponibilidad`;
 const PACO_PADRES_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-padres`;
+const PACO_ACCIONES_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-acciones`;
 
 type SesionAuthPaco = {
   access_token?: string;
@@ -83,6 +88,12 @@ export type PacoContinuation =
   // Respuestas a familias: el borrador viaja dentro del boton, lo valida el servidor.
   | {
       kind: 'padre_pick' | 'padre_sin_datos' | 'padre_ajustar';
+      [clave: string]: unknown;
+    }
+  // Acciones sobre la app (mover un niño de turno...): se resuelven en el
+  // navegador con la sesion de Jose y siempre piden confirmacion antes de escribir.
+  | {
+      kind: 'accion_preparar' | 'accion_mover_confirm' | 'accion_cancelar';
       [clave: string]: unknown;
     };
 
@@ -533,6 +544,34 @@ async function llamarPadresPaco(
   }
 }
 
+// ---- Acciones sobre la app (listar pendientes, mover un niño de turno) ------
+// La funcion mitico-paco-acciones SOLO interpreta la frase; buscar al niño,
+// la tarjeta de confirmacion y la escritura ocurren aqui, con la sesion de Jose.
+async function llamarAccionesPaco(message: string): Promise<PacoResponse | null> {
+  try {
+    const salida = await intentarAccionPaco(message, async (texto) => {
+      const r = (await llamarEndpointPaco(
+        PACO_ACCIONES_ENDPOINT,
+        { message: texto },
+        'No se pudo interpretar la petición.'
+      )) as PacoResponse & { intent?: unknown };
+      return r?.handled === true ? r.intent : null;
+    });
+    if (!salida) return null;
+    return {
+      ok: true,
+      handled: true,
+      answer: salida.answer,
+      choices: (salida.choices || []) as PacoChoice[],
+    };
+  } catch (error) {
+    const status = (error as Error & { status?: number })?.status;
+    if (status === 401 || status === 403) throw error;
+    console.warn('Paco acciones no disponible:', error);
+    return null;
+  }
+}
+
 // ---- Disponibilidad de entrenadores (funcion aislada, SOLO LECTURA) ---------
 // "Quien no ha respondido la disponibilidad": el servidor decide si el mensaje
 // va con el, aqui solo se evita llamarle con frases que no tienen nada que ver.
@@ -589,6 +628,11 @@ export async function preguntarPaco(message: string) {
     borradorAlta = null;
   }
 
+  // Acciones sobre la app: «niños sin grupo», «pasa a Lucía al jueves»...
+  // Siempre con tarjeta de confirmacion antes de escribir nada.
+  const accion = await llamarAccionesPaco(message);
+  if (accion) return accion;
+
   // Disponibilidad de entrenadores (solo lectura): quien ha respondido y quien no.
   if (parecePeticionDisponibilidad(message)) {
     const disponibilidad = await llamarDisponibilidadPaco({ message });
@@ -620,6 +664,25 @@ export async function continuarPaco(continuation: PacoContinuation) {
       ok: false,
       error: 'No he podido completar esa acción de altas. Inténtelo de nuevo.',
     } as PacoResponse;
+  }
+  if (continuation.kind.startsWith('accion_')) {
+    try {
+      const salida = await continuarAccionPaco(continuation);
+      return {
+        ok: true,
+        handled: true,
+        answer: salida.answer,
+        choices: (salida.choices || []) as PacoChoice[],
+      } as PacoResponse;
+    } catch (error) {
+      const status = (error as Error & { status?: number })?.status;
+      if (status === 401 || status === 403) throw error;
+      console.warn('Paco acciones: error al continuar.', error);
+      return {
+        ok: false,
+        error: 'No he podido completar esa acción. No he cambiado nada; inténtelo de nuevo.',
+      } as PacoResponse;
+    }
   }
   if (continuation.kind.startsWith('padre_')) {
     const familia = await llamarPadresPaco({ continuation });

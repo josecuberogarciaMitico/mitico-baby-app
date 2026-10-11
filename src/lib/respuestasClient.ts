@@ -59,12 +59,10 @@ export type RespGuardado = {
   regla: { id: string; regla: string } | null;
 };
 
-async function llamar(payload: Record<string, unknown>) {
-  await comprobarAccesoPaco();
+async function peticion(payload: Record<string, unknown>) {
   const token = tokenSesionPacoActual();
-  if (!token) throw new Error('Tu sesión ha caducado. Vuelve a entrar.');
-
-  const respuesta = await fetch(ENDPOINT, {
+  if (!token) return null;
+  return fetch(ENDPOINT, {
     method: 'POST',
     headers: {
       apikey: SUPABASE_ANON_KEY,
@@ -73,6 +71,18 @@ async function llamar(payload: Record<string, unknown>) {
     },
     body: JSON.stringify(payload),
   });
+}
+
+async function llamar(payload: Record<string, unknown>) {
+  // Antes se comprobaba el acceso con una llamada aparte en CADA accion (una ida y
+  // vuelta de mas). Ahora se llama directamente y solo si la sesion ha caducado
+  // (401) se renueva y se repite una vez.
+  let respuesta = await peticion(payload);
+  if (!respuesta || respuesta.status === 401) {
+    await comprobarAccesoPaco();
+    respuesta = await peticion(payload);
+  }
+  if (!respuesta) throw new Error('Tu sesión ha caducado. Vuelve a entrar.');
 
   const texto = await respuesta.text();
   let datos: any = null;

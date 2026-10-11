@@ -417,13 +417,28 @@ export function PacoChat() {
       .then((e) => {
         if (!cancelado) setPushEstado(e);
       })
-      .catch(() => {
-        if (!cancelado) setPushEstado(null);
+      .catch((err) => {
+        if (cancelado) return;
+        setPushEstado('error');
+        setPushNota(err instanceof Error ? err.message : 'No se ha podido comprobar los avisos.');
       });
     return () => {
       cancelado = true;
     };
   }, [abierto, autorizado]);
+
+  const reintentarEstadoAvisos = async () => {
+    setPushOcupado(true);
+    setPushNota('');
+    try {
+      setPushEstado(await estadoAvisosPush());
+    } catch (err) {
+      setPushEstado('error');
+      setPushNota(err instanceof Error ? err.message : 'No se ha podido comprobar los avisos.');
+    } finally {
+      setPushOcupado(false);
+    }
+  };
 
   const activarAvisos = async () => {
     setPushOcupado(true);
@@ -782,7 +797,15 @@ export function PacoChat() {
           </header>
 
           <div className="paco-pushzona">
-          {pushEstado && pushEstado !== 'activo' && (
+          {pushEstado === 'error' && (
+            <div className="paco-push">
+              <span>No he podido comprobar los avisos en este móvil.</span>
+              <button type="button" disabled={pushOcupado} onClick={() => void reintentarEstadoAvisos()}>
+                Reintentar
+              </button>
+            </div>
+          )}
+          {pushEstado && pushEstado !== 'activo' && pushEstado !== 'error' && (
             <div className="paco-push">
               <span>
                 {pushEstado === 'no_soportado'

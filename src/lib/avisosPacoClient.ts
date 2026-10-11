@@ -20,7 +20,8 @@ export type EstadoAvisosPush =
   | 'activo' // este movil recibira los avisos
   | 'inactivo' // se puede activar
   | 'bloqueado' // el usuario denego el permiso en el navegador
-  | 'no_soportado'; // navegador sin push (en iPhone: falta instalar la app)
+  | 'no_soportado' // navegador sin push (en iPhone: falta instalar la app)
+  | 'error'; // no se pudo comprobar (se muestra el motivo y un boton Reintentar)
 
 async function llamar(payload: Record<string, unknown>) {
   await comprobarAccesoPaco();
@@ -68,8 +69,20 @@ function claveServidor(valor: string) {
   return salida;
 }
 
+// El navegador solo "esta listo" si la app tiene su Service Worker activo. Si no
+// llega a estarlo (cache antigua, primera carga) no esperamos eternamente.
+async function registroListo(): Promise<ServiceWorkerRegistration> {
+  const limite = new Promise<never>((_, rechazar) =>
+    window.setTimeout(
+      () => rechazar(new Error('La app aún no está lista para avisos. Ciérrela del todo y vuelva a abrirla.')),
+      8000
+    )
+  );
+  return Promise.race([navigator.serviceWorker.ready, limite]);
+}
+
 async function suscripcionLocal() {
-  const registro = await navigator.serviceWorker.ready;
+  const registro = await registroListo();
   return registro.pushManager.getSubscription();
 }
 
@@ -103,7 +116,7 @@ export async function activarAvisosPush(): Promise<EstadoAvisosPush> {
   if (permiso === 'default') permiso = await Notification.requestPermission();
   if (permiso !== 'granted') return permiso === 'denied' ? 'bloqueado' : 'inactivo';
 
-  const registro = await navigator.serviceWorker.ready;
+  const registro = await registroListo();
   let suscripcion = await registro.pushManager.getSubscription();
   if (!suscripcion) {
     suscripcion = await registro.pushManager.subscribe({

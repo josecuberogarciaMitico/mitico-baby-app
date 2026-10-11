@@ -19,3 +19,10 @@
 
 /* Número en el menú lateral junto a "Altas / Test". */
 .mitico-nav-badge-altas { display: inline-grid; place-items: center; min-width: 20px; height: 20px; margin-left: 8px; padding: 0 6px; border-radius: 999px; background: #2563eb; color: #fff; font-size: 11px; font-weight: 900; line-height: 1; vertical-align: middle; }
+
+
+/* Cuando Paco esta activo (coordinador jefe) el aviso de altas lo da Paco:
+   asi no salen dos ventanas flotantes. Quien no tiene Paco sigue viendo este. */
+body:has(.paco-fab) .mitico-aviso-altas {
+  display: none !important;
+}
