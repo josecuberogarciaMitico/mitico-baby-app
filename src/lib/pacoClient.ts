@@ -93,7 +93,15 @@ export type PacoContinuation =
   // Acciones sobre la app (mover un niño de turno...): se resuelven en el
   // navegador con la sesion de Jose y siempre piden confirmacion antes de escribir.
   | {
-      kind: 'accion_preparar' | 'accion_mover_confirm' | 'accion_cancelar';
+      kind:
+        | 'accion_preparar'
+        | 'accion_mover_confirm'
+        | 'accion_cancelar'
+        | 'accion_disp_confirmar'
+        | 'accion_disp_cancelar'
+        | 'accion_aim_semana'
+        | 'accion_aim_confirmar'
+        | 'accion_aim_cancelar';
       [clave: string]: unknown;
     };
 
@@ -549,12 +557,22 @@ async function llamarPadresPaco(
 // la tarjeta de confirmacion y la escritura ocurren aqui, con la sesion de Jose.
 async function llamarAccionesPaco(message: string): Promise<PacoResponse | null> {
   try {
-    const salida = await intentarAccionPaco(message, async (texto) => {
+    const salida = await intentarAccionPaco(message, async (texto, contexto, extra) => {
+      const cuerpo: Record<string, unknown> = { message: texto };
+      if (contexto) cuerpo.contexto = contexto;
+      if (contexto === 'auto' && extra?.propuesta_abierta) cuerpo.propuesta_abierta = extra.propuesta_abierta;
       const r = (await llamarEndpointPaco(
         PACO_ACCIONES_ENDPOINT,
-        { message: texto },
+        cuerpo,
         'No se pudo interpretar la petición.'
-      )) as PacoResponse & { intent?: unknown };
+      )) as PacoResponse & { intent?: unknown; tema?: unknown; ajusta_propuesta?: unknown };
+      // Modo «auto»: se devuelve todo (tema, si ajusta la tarjeta abierta e intención). Un servidor
+      // antiguo no manda «tema»: se devuelve null y la app usa su respaldo por palabras.
+      if (contexto === 'auto') {
+        return r?.handled === true && typeof r.tema === 'string'
+          ? { tema: r.tema, ajusta_propuesta: r.ajusta_propuesta, intent: r.intent }
+          : null;
+      }
       return r?.handled === true ? r.intent : null;
     });
     if (!salida) return null;

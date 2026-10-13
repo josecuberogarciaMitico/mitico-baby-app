@@ -93,6 +93,8 @@ type AjustesLive = {
   model: string;
   voice: string;
   systemInstruction: string;
+  // Detección de voz menos sensible al ruido de ambiente (si el servicio la rechaza, se reintenta sin ella).
+  afinarMicro?: boolean;
 };
 
 const HOST_LIVE = 'wss://generativelanguage.googleapis.com/ws/';
@@ -182,6 +184,20 @@ function abrirLive(
       if (ajustes.systemInstruction) {
         setup.systemInstruction = { parts: [{ text: ajustes.systemInstruction }] };
       }
+      if (ajustes.afinarMicro) {
+        // Un ruido suelto (voces de fondo, un golpe, el ambiente) ya no corta a Paco ni le hace
+        // creer que has empezado a hablar: hace falta voz clara y sostenida para interrumpirle,
+        // y espera un poco más de silencio antes de darte por terminado.
+        setup.realtimeInputConfig = {
+          automaticActivityDetection: {
+            disabled: false,
+            startOfSpeechSensitivity: 'START_SENSITIVITY_LOW',
+            endOfSpeechSensitivity: 'END_SENSITIVITY_LOW',
+            prefixPaddingMs: 300,
+            silenceDurationMs: 1000,
+          },
+        };
+      }
       ws.send(JSON.stringify({ setup }));
     };
 
@@ -229,10 +245,14 @@ async function conectarLive(
 ): Promise<SesionLive> {
   const fallos: string[] = [];
   for (const version of VERSIONES_LIVE) {
-    try {
-      return await abrirLive(version, ajustes, alMensajeLive, alCerrarLive);
-    } catch (error) {
-      fallos.push(error instanceof Error ? error.message : String(error));
+    // Primero con el micro afinado contra el ruido; si el servicio no lo acepta, sin afinar
+    // (mejor una llamada normal que ninguna llamada).
+    for (const afinarMicro of [true, false]) {
+      try {
+        return await abrirLive(version, { ...ajustes, afinarMicro }, alMensajeLive, alCerrarLive);
+      } catch (error) {
+        fallos.push(error instanceof Error ? error.message : String(error));
+      }
     }
   }
   throw new Error(fallos.join(' | '));
@@ -293,6 +313,9 @@ export function PacoVoz({ onCerrar, onTurno }: Props) {
   const nivelesRef = useRef<number[]>(new Array(NUM_BARRAS).fill(0));
   const avatarRef = useRef<HTMLDivElement | null>(null);
   const silenciadoRef = useRef(false);
+  // Mientras Paco consulta datos («pensando») el micro no manda audio: así el ruido de
+  // ambiente no puede cortar la respuesta que está preparando.
+  const pensandoRef = useRef(false);
   const cerradoRef = useRef(false);
   const textoUsuarioRef = useRef('');
   const textoPacoRef = useRef('');
@@ -414,6 +437,7 @@ export function PacoVoz({ onCerrar, onTurno }: Props) {
   const responderHerramienta = useCallback(
     async (id: string | undefined, nombre: string | undefined, pregunta: string) => {
       setEstado('pensando');
+      pensandoRef.current = true;
       let respuesta: Record<string, unknown>;
       try {
         const resultado = await preguntarPaco(pregunta);
@@ -443,6 +467,7 @@ export function PacoVoz({ onCerrar, onTurno }: Props) {
       } catch {
         // La llamada se cerro mientras consultaba.
       }
+      pensandoRef.current = false;
       if (!cerradoRef.current) setEstado('escuchando');
     },
     []
@@ -502,6 +527,7 @@ export function PacoVoz({ onCerrar, onTurno }: Props) {
     if (estado === 'conectando') return;
     limpiar();
     cerradoRef.current = false;
+    pensandoRef.current = false;
     setErrorTexto('');
     setOpciones([]);
     setSubtituloUsuario('');
@@ -571,7 +597,7 @@ export function PacoVoz({ onCerrar, onTurno }: Props) {
       const nodo = new AudioWorkletNode(ctxCaptura, 'paco-captura');
       const tamanoLote = Math.ceil(ctxCaptura.sampleRate * 0.04);
       nodo.port.onmessage = (evento: MessageEvent<Float32Array>) => {
-        if (silenciadoRef.current || cerradoRef.current) return;
+        if (silenciadoRef.current || pensandoRef.current || cerradoRef.current) return;
         const nuevo = evento.data;
         const previo = pendienteRef.current;
         const junto = new Float32Array(previo.length + nuevo.length);

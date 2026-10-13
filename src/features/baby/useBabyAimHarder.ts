@@ -23,9 +23,12 @@ import type {
 } from '../../services/aimharder/aimHarderContract';
 import {
   buildBabyRefreshSummary,
+  describirFrescuraAimHarderBabyApp,
+  describirRepasoSolicitadoBabyApp,
   planBabyWeekSlots,
   selectExactBabyClass,
 } from '../../services/aimharder/aimHarderOperations';
+import { buscarContactoAimHarderPorNombre } from '../../services/aimharder/aimHarderContactService';
 import { fechaAgendaCortaConAnio, inicioSemanaAgenda, rangoSemanaAgenda } from '../agenda/agendaCalendar';
 import type { AgendaAlumnoSesionApp, SesionAgendaOperativa } from '../agenda/agendaTypes';
 
@@ -162,7 +165,6 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
 
     return datos;
   }
-
 
   async function centroAimHarderBabyApp() {
     const boxes = await llamarAimHarderLecturaBabyApp({ action: 'boxes' });
@@ -315,6 +317,58 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
     }
   }
 
+  // Un alumno que YA estaba guardado en la sesión Mítico pero que no sale
+  // como activo en la última lectura de AimHarder puede significar dos
+  // cosas: que de verdad se ha dado de baja, o que la copia interna que usa
+  // Mítico todavía no ha repasado su reserva (AimHarder no tiene un endpoint
+  // para "quién está apuntado a esta clase": solo se puede repasar cliente a
+  // cliente). Esta función pide ese repaso ya mismo, con el mismo mecanismo
+  // seguro que usa "Alta/Test" (aimharder_contacto_alumno_app), sin tocar en
+  // ningún momento el candado de seguridad que decide si se borra a alguien.
+  // Es un intento "a mejor esfuerzo": si falla, no bloquea el refresco real.
+  async function solicitarRepasoAlumnosNoActivosBabyApp(
+    sesionId: string,
+    asistentesActivos: BabyAimHarderAsistenteActivoApp[]
+  ): Promise<{ solicitados: string[]; noEncontrados: string[] }> {
+    const activos = new Set(
+      asistentesActivos
+        .map((asistente) => normalizarNombreFueraPlazoAgenda(asistente.name))
+        .filter(Boolean)
+    );
+
+    let actuales: AgendaAlumnoSesionApp[] = [];
+    try {
+      actuales = await consultarSupabase<AgendaAlumnoSesionApp>(
+        'v_sesion_alumnos_operativa_app',
+        `select=*&sesion_id=${encodeURIComponent(`eq.${sesionId}`)}&order=orden.asc`
+      );
+    } catch {
+      return { solicitados: [], noEncontrados: [] };
+    }
+
+    const pendientes = actuales.filter((alumno) => {
+      const clave = normalizarNombreFueraPlazoAgenda(alumno.alumno || '');
+      return Boolean(clave) && !activos.has(clave);
+    });
+
+    const solicitados: string[] = [];
+    const noEncontrados: string[] = [];
+    for (const alumno of pendientes) {
+      try {
+        const contacto = await buscarContactoAimHarderPorNombre(alumno.alumno);
+        if (contacto) {
+          solicitados.push(alumno.alumno);
+        } else {
+          noEncontrados.push(alumno.alumno);
+        }
+      } catch {
+        // Comprobación puntual: si falla para un alumno concreto, se
+        // omite ese nombre del aviso en vez de interrumpir el refresco.
+      }
+    }
+    return { solicitados, noEncontrados };
+  }
+
   async function traerListadoBabyTurnoAgendaDesdeAimHarder() {
     if (String(agendaForm.modalidad || '').trim().toUpperCase() !== 'BABY') {
       return;
@@ -326,7 +380,7 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
     setError('');
 
     try {
-      const { asistentes } = await obtenerListadoBabyTurnoAimHarderApp(
+      const { asistentes, safety } = await obtenerListadoBabyTurnoAimHarderApp(
         agendaForm.fecha,
         agendaForm.hora_inicio,
         agendaForm.hora_fin
@@ -340,8 +394,9 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
 
       setBabyAimHarderMensaje(
         `✓ TRAER LISTADO · AimHarder: ${asistentes.length} alumno(s) activo(s) · ` +
-          `${asistentes.length > 0 ? 'listado preparado' : 'listado vacío'} · ` +
-          'cancelados excluidos · la sesión NO se ha modificado'
+        `${asistentes.length > 0 ? 'listado preparado' : 'listado vacío'} · ` +
+        'cancelados excluidos · la sesión NO se ha modificado · ' +
+        describirFrescuraAimHarderBabyApp(safety)
       );
     } catch (e) {
       setBabyAimHarderError(
@@ -434,6 +489,23 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
           if (resultado?.creada) {
             creadas += 1;
           } else if (resultado?.ya_existia && resultado.sesion_id) {
+            // La sesión ya existía. Antes de refrescar, se pide repasar ya
+            // mismo a quien estuviera guardado y no salga activo aquí (mismo
+            // mecanismo seguro que "Alta/Test"); esto no cambia el candado,
+            // solo intenta que la lectura esté más al día antes de aplicarla.
+            const repasoTurno = await solicitarRepasoAlumnosNoActivosBabyApp(
+              resultado.sesion_id,
+              asistentes
+            );
+            if (repasoTurno.solicitados.length > 0 || repasoTurno.noEncontrados.length > 0) {
+              incidencias.push(
+                `${fecha} ${horaInicio}: ${describirRepasoSolicitadoBabyApp(
+                  repasoTurno.solicitados,
+                  repasoTurno.noEncontrados
+                )}`
+              );
+            }
+
             // La sesión ya existía: se refresca con el mismo candado de
             // seguridad que "Refrescar listado". Si no hay cambios, no se toca.
             const refresco = await aplicarListadoAimHarderEnSesionBabyApp(
@@ -694,6 +766,8 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
     setBabyAimHarderMensaje('');
     setBabyAimHarderError('');
 
+    let repaso: { solicitados: string[]; noEncontrados: string[] } | null = null;
+
     try {
       // Mismo lector exacto que usa el turno individual. No existe un parser
       // alternativo para Refrescar listado.
@@ -702,6 +776,13 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
         inicioSesion,
         finSesion
       );
+
+      // Si algún alumno que ya estaba en la sesión no sale como activo en
+      // esta lectura, se le pide a la sincronización que repase su reserva
+      // ya mismo (mismo mecanismo seguro que usa "Alta/Test"). No cambia el
+      // candado de seguridad: solo intenta que la próxima lectura esté más
+      // al día, y deja claro por nombre a quién se le ha pedido el repaso.
+      repaso = await solicitarRepasoAlumnosNoActivosBabyApp(sesionId, asistentes);
 
       const { resultado, verificacion } =
         await aplicarListadoAimHarderEnSesionBabyApp(sesionId, asistentes, safety);
@@ -718,19 +799,21 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
       });
 
       setBabyAimHarderMensaje(
-        buildBabyRefreshSummary(asistentes.length, resultado, verificacion)
+        buildBabyRefreshSummary(asistentes.length, resultado, verificacion, safety, repaso)
       );
     } catch (e) {
-      setBabyAimHarderError(
+      const base =
         e instanceof Error
           ? e.message
-          : 'No se pudo refrescar esta sesión Baby desde AimHarder.'
-      );
+          : 'No se pudo refrescar esta sesión Baby desde AimHarder.';
+      const notaRepaso = repaso
+        ? describirRepasoSolicitadoBabyApp(repaso.solicitados, repaso.noEncontrados)
+        : '';
+      setBabyAimHarderError(notaRepaso ? `${base} ${notaRepaso}` : base);
     } finally {
       setBabyAimHarderSesionCargandoId('');
     }
   }
-
 
   return {
     babyAimHarderCargandoSemana,

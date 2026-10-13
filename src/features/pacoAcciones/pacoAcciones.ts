@@ -29,14 +29,36 @@ import {
   type TurnoBaby,
 } from './pacoAccionesLogic';
 import {
+  cancelarPropuestaPorTexto,
+  continuarDisponibilidad,
+  intentarDisponibilidad,
+  intentarDisponibilidadIA,
+  repetirTarjetaPropuesta,
+  resumenPropuestaAbierta,
+} from './pacoDisponibilidad';
+import {
+  parecePeticionAimHarder,
+  parecePreguntaCapacidades,
+  respuestaCapacidades,
+  respuestaOrdenNoSoportada,
+} from './pacoCapacidadesLogic';
+import { continuarVolcadoBaby, prepararVolcadoBaby } from './pacoAimHarderBaby';
+import { semanaDesdeMensaje } from './pacoAimHarderBabyLogic';
+import {
   cargarTurnosBaby,
   moverAlumnoDeTurno,
+  hoyMadrid,
   registrarAccion,
   verificarMovimiento,
 } from './pacoAccionesService';
 
 // Pregunta al servidor qué quiere decir la frase. Devuelve null si no es para este módulo.
-export type Interprete = (mensaje: string) => Promise<unknown>;
+// `contexto` le dice al servidor qué tipo de frase es (por defecto, mover un niño).
+export type Interprete = (
+  mensaje: string,
+  contexto?: 'disponibilidad' | 'auto',
+  extra?: { propuesta_abierta?: string | null }
+) => Promise<unknown>;
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_BOTONES = 6;
@@ -293,10 +315,99 @@ async function confirmarMovimiento(c: Record<string, unknown>): Promise<SalidaAc
   }
 }
 
+// Lo que decide Gemini en el servidor (contexto «auto»): de qué va el mensaje.
+const TEMAS_RUTA = [
+  'disponibilidad',
+  'mover_alumno',
+  'listar_pendientes',
+  'aimharder',
+  'capacidades',
+  'confirmar_propuesta',
+  'cancelar_propuesta',
+  'orden_no_soportada',
+  'otro',
+] as const;
+type TemaRuta = (typeof TEMAS_RUTA)[number];
+type RutaIA = { tema: TemaRuta; ajusta: boolean; intent: unknown };
+
+function leerRuta(valor: unknown): RutaIA | null {
+  const v = valor && typeof valor === 'object' ? (valor as Record<string, unknown>) : null;
+  if (!v || typeof v.tema !== 'string' || !(TEMAS_RUTA as readonly string[]).includes(v.tema)) return null;
+  return { tema: v.tema as TemaRuta, ajusta: v.ajusta_propuesta === true, intent: v.intent };
+}
+
+// Pregunta a Gemini (vía el servidor) qué quiere Jose. Devuelve null si el servicio no está
+// disponible: entonces se usa el respaldo por palabras, que es como funcionaba antes.
+async function enrutarConIA(mensaje: string, interpretar: Interprete): Promise<RutaIA | null> {
+  try {
+    return leerRuta(await interpretar(mensaje, 'auto', { propuesta_abierta: resumenPropuestaAbierta() }));
+  } catch (error) {
+    if (estadoHttp(error) === 401 || estadoHttp(error) === 403) throw error;
+    console.warn('Paco: el clasificador no ha respondido, se usa el respaldo por palabras.', error);
+    return null;
+  }
+}
+
+async function atenderRuta(mensaje: string, ruta: RutaIA): Promise<SalidaAccion | null> {
+  switch (ruta.tema) {
+    case 'disponibilidad':
+      return intentarDisponibilidadIA(mensaje, { intent: ruta.intent, ajusta: ruta.ajusta });
+    case 'confirmar_propuesta':
+      return repetirTarjetaPropuesta();
+    case 'cancelar_propuesta':
+      return cancelarPropuestaPorTexto();
+    case 'mover_alumno': {
+      const intent = limpiarIntent(ruta.intent);
+      return intent.accion === 'mover_alumno' ? prepararMovimiento(intent, {}) : null;
+    }
+    case 'listar_pendientes':
+      return listarPendientes();
+    case 'aimharder':
+      return prepararVolcadoBaby(mensaje);
+    case 'capacidades':
+      return { answer: respuestaCapacidades(mensaje) };
+    case 'orden_no_soportada':
+      // Se anota para ver qué le piden que aún no sabe hacer.
+      void registrarAccion({
+        accion: 'mensaje_no_entendido',
+        estado: 'error',
+        resumen: mensaje.slice(0, 300),
+        parametros: { tema: 'orden_no_soportada' },
+      });
+      return { answer: respuestaOrdenNoSoportada() };
+    default:
+      return null;
+  }
+}
+
 export async function intentarAccionPaco(
   mensaje: string,
   interpretar: Interprete
 ): Promise<SalidaAccion | null> {
+  // 1) Gemini decide qué quiere Jose, sin depender de que use ciertas palabras.
+  const ruta = await enrutarConIA(mensaje, interpretar);
+  if (ruta) return atenderRuta(mensaje, ruta);
+  // 2) Respaldo si el servicio de IA falla: las listas de palabras de siempre.
+  return intentarPorPalabras(mensaje, interpretar);
+}
+
+async function intentarPorPalabras(
+  mensaje: string,
+  interpretar: Interprete
+): Promise<SalidaAccion | null> {
+  // Volcar AimHarder en Baby: primero vista previa (solo lectura) y botón de confirmar.
+  // Una pregunta suelta («¿puedes cargar AimHarder?») sin decir la semana solo se contesta.
+  if (parecePeticionAimHarder(mensaje)) {
+    const concreta = semanaDesdeMensaje(mensaje, hoyMadrid()).semana !== null;
+    if (parecePreguntaCapacidades(mensaje) && !concreta) return { answer: respuestaCapacidades(mensaje) };
+    return prepararVolcadoBaby(mensaje);
+  }
+
+  // Disponibilidad semanal: preparar / editar / enviar (siempre con botones de confirmación).
+  const disponibilidad = await intentarDisponibilidad(mensaje, (texto) => interpretar(texto, 'disponibilidad'));
+  if (disponibilidad) return disponibilidad;
+
+  if (parecePreguntaCapacidades(mensaje)) return { answer: respuestaCapacidades(mensaje) };
   if (parecePeticionListadoPendientes(mensaje)) return listarPendientes();
   if (!parecePeticionMover(mensaje)) return null;
 
@@ -319,6 +430,8 @@ export async function intentarAccionPaco(
 export async function continuarAccionPaco(
   continuacion: Record<string, unknown> & { kind: string }
 ): Promise<SalidaAccion> {
+  if (continuacion.kind.startsWith('accion_disp_')) return continuarDisponibilidad(continuacion);
+  if (continuacion.kind.startsWith('accion_aim_')) return continuarVolcadoBaby(continuacion);
   switch (continuacion.kind) {
     case 'accion_cancelar':
       return { answer: 'De acuerdo, no he tocado nada.' };

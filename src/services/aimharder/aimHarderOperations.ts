@@ -3,6 +3,7 @@ import {
   babyClassHours,
   type BabyAimHarderClaseApp,
   type BabyAimHarderRefrescoResultadoApp,
+  type BabyAimHarderSafetyApp,
   type BabyAimHarderVerificacionRefrescoApp,
   type OcioAimHarderSemanaApp,
   type OcioAimHarderTurnoApp,
@@ -93,10 +94,64 @@ function uniqueNames(values: Array<string | null | undefined>): string[] {
   return Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)));
 }
 
+// Traduce las marcas de tiempo que ya calcula el backend
+// (reservasActualizadasAt / clientesRepasadosAt) a algo que Jose entienda de
+// un vistazo, en vez de no mostrarse nunca como pasaba hasta ahora.
+export function describirFrescuraAimHarderBabyApp(
+  safety: BabyAimHarderSafetyApp | null | undefined
+): string {
+  const haceTiempo = (iso: string | null | undefined): string | null => {
+    if (!iso) return null;
+    const fecha = new Date(String(iso));
+    if (Number.isNaN(fecha.getTime())) return null;
+    const minutos = Math.max(0, Math.round((Date.now() - fecha.getTime()) / 60000));
+    if (minutos < 1) return 'hace menos de 1 min';
+    if (minutos < 60) return `hace ${minutos} min`;
+    const horas = Math.round(minutos / 60);
+    if (horas < 24) return `hace ${horas} h`;
+    const dias = Math.round(horas / 24);
+    return `hace ${dias} día(s)`;
+  };
+
+  const reservas = haceTiempo(safety?.reservasActualizadasAt);
+  const clientes = haceTiempo(safety?.clientesRepasadosAt);
+  if (!reservas && !clientes) {
+    return 'AimHarder: sin dato de frescura de esta lectura.';
+  }
+  const partes: string[] = [];
+  if (reservas) partes.push(`reservas de estos alumnos repasadas ${reservas}`);
+  if (clientes) partes.push(`listado general de clientes repasado ${clientes}`);
+  return `AimHarder (copia interna): ${partes.join(' · ')}.`;
+}
+
+// Resume, en una frase, a quién se le ha pedido a la sincronización que
+// repase ya mismo su reserva (porque estaba en la sesión pero no salía como
+// activo en esta lectura), y a quién no se ha encontrado como cliente de
+// AimHarder con ese nombre exacto.
+export function describirRepasoSolicitadoBabyApp(
+  solicitados: string[],
+  noEncontrados: string[]
+): string {
+  const partes: string[] = [];
+  if (solicitados.length > 0) {
+    partes.push(
+      `He pedido repasar ya a: ${solicitados.join(', ')} (puede tardar 1-2 min; vuelve a pulsar Actualizar).`
+    );
+  }
+  if (noEncontrados.length > 0) {
+    partes.push(
+      `No encuentro como cliente de AimHarder a: ${noEncontrados.join(', ')} (revisa el nombre exacto, o usa "Pegar listado" para ese turno).`
+    );
+  }
+  return partes.join(' ');
+}
+
 export function buildBabyRefreshSummary(
   activeCount: number,
   result: BabyAimHarderRefrescoResultadoApp | null | undefined,
-  verification: BabyAimHarderVerificacionRefrescoApp
+  verification: BabyAimHarderVerificacionRefrescoApp,
+  safety?: BabyAimHarderSafetyApp | null,
+  repaso?: { solicitados: string[]; noEncontrados: string[] } | null
 ): string {
   const added = uniqueNames(result?.nombres_nuevos || []);
   const removed = uniqueNames([...(result?.nombres_retirados || []), ...verification.retiradosExtra]);
@@ -105,12 +160,19 @@ export function buildBabyRefreshSummary(
 
   if (added.length === 0 && removed.length === 0 && protectedNames.length === 0) {
     messages.push(`Sin cambios · ${activeCount} alumno(s) activo(s) en AimHarder · sesión ya actualizada`);
-    return messages.join(' · ');
+  } else {
+    if (removed.length > 0) messages.push(`${removed.length} ${removed.length === 1 ? 'cancelación retirada' : 'cancelaciones retiradas'}: ${removed.join(', ')}`);
+    if (added.length > 0) messages.push(`${added.length} ${added.length === 1 ? 'alumno añadido' : 'alumnos añadidos'}: ${added.join(', ')}`);
+    if (protectedNames.length > 0) messages.push(`${protectedNames.length} ${protectedNames.length === 1 ? 'baja no retirada' : 'bajas no retiradas'} por asistencia/reporte: ${protectedNames.join(', ')}`);
+    messages.push(`AimHarder: ${activeCount} activo(s) · sesión final: ${verification.totalFinal} alumno(s)`);
   }
-  if (removed.length > 0) messages.push(`${removed.length} ${removed.length === 1 ? 'cancelación retirada' : 'cancelaciones retiradas'}: ${removed.join(', ')}`);
-  if (added.length > 0) messages.push(`${added.length} ${added.length === 1 ? 'alumno añadido' : 'alumnos añadidos'}: ${added.join(', ')}`);
-  if (protectedNames.length > 0) messages.push(`${protectedNames.length} ${protectedNames.length === 1 ? 'baja no retirada' : 'bajas no retiradas'} por asistencia/reporte: ${protectedNames.join(', ')}`);
-  messages.push(`AimHarder: ${activeCount} activo(s) · sesión final: ${verification.totalFinal} alumno(s)`);
+
+  const frescura = describirFrescuraAimHarderBabyApp(safety);
+  if (frescura) messages.push(frescura);
+
+  const notaRepaso = repaso ? describirRepasoSolicitadoBabyApp(repaso.solicitados, repaso.noEncontrados) : '';
+  if (notaRepaso) messages.push(notaRepaso);
+
   return messages.join(' · ');
 }
 

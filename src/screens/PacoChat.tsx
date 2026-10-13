@@ -145,6 +145,21 @@ function soportaVozHablada() {
   return typeof window !== 'undefined' && 'speechSynthesis' in window;
 }
 
+// Voz masculina de España para leer en alto (el navegador elige una por defecto que a veces es
+// femenina o latina). Se prefiere una voz de hombre con acento de España; si el dispositivo no
+// tiene ninguna, se deja la que él elija.
+const NOMBRES_VOZ_HOMBRE = /\b(jorge|alvaro|álvaro|pablo|enrique|carlos|raul|raúl|diego|juan|miguel|antonio|andres|andrés|pedro)\b/i;
+function elegirVozMasculinaEspana(): SpeechSynthesisVoice | null {
+  try {
+    const todas = window.speechSynthesis.getVoices();
+    const espana = todas.filter((v) => /^es[-_]ES$/i.test(v.lang));
+    const hombreEspana = espana.find((v) => NOMBRES_VOZ_HOMBRE.test(v.name) && !/mexic|argent|colomb|chile|us\b/i.test(v.name));
+    return hombreEspana || espana[0] || null;
+  } catch {
+    return null;
+  }
+}
+
 export function PacoChat() {
   const [autorizado, setAutorizado] = useState(false);
   const [abierto, setAbierto] = useState(false);
@@ -486,6 +501,8 @@ export function PacoChat() {
       const utterance = new SpeechSynthesisUtterance(texto);
       utterance.lang = 'es-ES';
       utterance.rate = 1;
+      const voz = elegirVozMasculinaEspana();
+      if (voz) utterance.voice = voz;
       window.speechSynthesis.speak(utterance);
     } catch {
       // Si falla la síntesis de voz, Paco simplemente se queda mudo esta vez;

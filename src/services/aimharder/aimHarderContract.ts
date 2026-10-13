@@ -69,6 +69,11 @@ export type BabyAimHarderSafetyApp = {
   reportedPublic?: number;
   reportedTarget?: number | null;
   safeZero?: boolean;
+  // Cuándo se sincronizó por última vez, contra AimHarder, la copia que usa
+  // este turno. Lo calcula ya el backend (mitico-aimharder-baby-read); antes
+  // no se mostraba en ningún sitio de la app.
+  reservasActualizadasAt?: string | null;
+  clientesRepasadosAt?: string | null;
 };
 
 export type BabyAimHarderLecturaApp = {
@@ -163,7 +168,7 @@ export function babyClassHours(classData: BabyAimHarderClaseApp): BabyClassHours
   if (fromTime) return fromTime;
   if (fromName) return fromName;
   throw new Error(
-    `No puedo interpretar con seguridad el horario de “${classData?.className || 'Baby'}”.`
+    `No puedo interpretar con seguridad el horario de "${classData?.className || 'Baby'}".`
   );
 }
 
