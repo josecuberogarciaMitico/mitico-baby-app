@@ -217,6 +217,7 @@ import {
 } from './lib/appHelpers';
 import { PantallaIntensivos } from './screens/IntensivosScreen';
 import { OcioGroupsScreen } from './features/ocio/OcioGroupsScreen';
+import { closeWeekPublishingGroups } from './features/agenda/agendaWeekClosing';
 import {
   ocioLevelRange,
   type OcioWeeklyGroup,
@@ -18051,46 +18052,22 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
     semanaEntrenadorSeleccionada,
   ]);
 
-  async function cerrarOrganizacionSemanalPushApp(
-    semanaForzada?: string
-  ) {
+  async function cerrarOrganizacionSemanalPushApp(semanaForzada?: string) {
     const semanaCierre = semanaForzada || semanaVistaEntrenadorInicio;
-
-    if (!esCoordinadorApp || !semanaCierre || cerrandoSemanaPushApp)
-      return;
-
-    const confirmar = window.confirm(
-      `¿Cerrar la organización de la semana ${rangoSemanaAgenda(
-        semanaCierre
-      )} y avisar a los entrenadores?
-
-A quienes tengan grupos se les confirmará que ya están preparados. A quienes no tengan ninguno se les avisará de que esta semana no tienen grupos asignados.`
-    );
-    if (!confirmar) return;
-
+    if (!esCoordinadorApp || !semanaCierre || cerrandoSemanaPushApp) return;
     setCerrandoSemanaPushApp(true);
     try {
-      const resultado = await ejecutarPushMiticoApp('week_groups_closed', {
-        semana_inicio: semanaCierre,
+      await closeWeekPublishingGroups({
+        weekStart: semanaCierre,
+        weekLabel: rangoSemanaAgenda(semanaCierre),
+        query: consultarSupabase,
+        runFunction: ejecutarFuncion,
+        sendClosingPush: () => ejecutarPushMiticoApp('week_groups_closed', { semana_inicio: semanaCierre }),
+        reload: async () => {
+          await Promise.allSettled([cargarAgendaOperativaDirecta(), cargarGruposEntrenador(), cargarPlanning()]);
+          if (agendaSesionActivaId) await cargarDetalleSesionAgenda(agendaSesionActivaId);
+        },
       });
-
-      if (resultado.already_closed) {
-        alert('Esta semana ya estaba cerrada y los avisos ya se habían procesado.');
-      } else {
-        alert(
-          `Organización semanal cerrada. Entrenadores avisados por push: ${Number(
-            resultado.sent || 0
-          )}. Sin avisos activados: ${Number(
-            resultado.without_subscription || 0
-          )}.`
-        );
-      }
-    } catch (errorPush) {
-      alert(
-        errorPush instanceof Error
-          ? errorPush.message
-          : 'No se pudo cerrar y avisar la organización semanal.'
-      );
     } finally {
       setCerrandoSemanaPushApp(false);
     }
