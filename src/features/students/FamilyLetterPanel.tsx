@@ -132,7 +132,7 @@ export function FamilyLetterPanel(props: { alumnoId: string; datos: DatosCartaFa
         <span className="ficha-letter__num">1</span>
         <div>
           <strong>Copia el resumen y pégalo en ChatGPT</strong>
-          <p className="ficha-hint">Lleva sus habilidades y las notas de los entrenadores. Nunca incidencias.</p>
+          <p className="ficha-hint">Lleva todo lo registrado (habilidades, notas, observaciones…) y cómo escribir la carta.</p>
           <div className="ficha-letter__actions">
             <button type="button" className="ficha-letter__btn is-primary" onClick={() => void copiarResumen()}>
               Copiar resumen

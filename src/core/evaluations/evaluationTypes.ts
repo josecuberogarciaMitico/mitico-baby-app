@@ -128,4 +128,6 @@ export type ReporteDetalleIntensivoApp = {
   mejoras_hoy?: string[] | null;
   prioridades_proxima_sesion?: string[] | null;
   reporte_version?: number | null;
+  /** Nota del entrenador por habilidad {id: texto} (vista con la migración 20261015_000001). */
+  notas_habilidades?: Record<string, string> | null;
 };

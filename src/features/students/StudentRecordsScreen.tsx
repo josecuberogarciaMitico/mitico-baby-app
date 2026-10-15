@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { FamilyEvaluationDraftPanel } from '../../components/evaluations/FamilyEvaluationDraftPanel';
 import { abrirFichaAlumno } from './studentFichaStore';
 import { buildMasterStudentProfile } from '../../core/students/masterStudent';
 import type { IntensivoAlumnoApp } from '../intensivos/intensiveTypes';
@@ -15,7 +14,6 @@ export function StudentRecordsScreen({ ctx }: StudentRecordsScreenProps) {
   >('todos');
   const [busquedaFichasIntensivos, setBusquedaFichasIntensivos] = useState('');
   const {
-    abrirEvaluacionAlumno,
     abrirFiltroFichas,
     abrirPanelIntensivo,
     agendaBadgeModalidad,
@@ -49,12 +47,9 @@ export function StudentRecordsScreen({ ctx }: StudentRecordsScreenProps) {
     cargarAlumnos,
     cargarIntensivos,
     cerrarEditorAlumnoBase,
-    copiarEvaluacionAlumnoTexto,
     datosBasicosFichaAlumnoApp,
     editarAlumnoBaseRapido,
     esVistaMovilApp,
-    evaluacionAlumnoActivaId,
-    evaluacionAlumnoTexto,
     filtroAlumnos,
     filtroModalidadHistorialFicha,
     formatearFecha,
@@ -90,8 +85,6 @@ export function StudentRecordsScreen({ ctx }: StudentRecordsScreenProps) {
     setAlumnoEditTelefono,
     setBusquedaAlumno,
     setBusquedaOcio,
-    setEvaluacionAlumnoActivaId,
-    setEvaluacionAlumnoTexto,
     setFiltroAlumnos,
     setFiltroDiaFichasOcio,
     setFiltroModalidadHistorialFicha,
@@ -1626,14 +1619,6 @@ export function StudentRecordsScreen({ ctx }: StudentRecordsScreenProps) {
                           </button>
                           <button
                             type="button"
-                            onClick={() => abrirEvaluacionAlumno(alumno)}
-                            style={botonMini}
-                            title="Preparar una base breve para el informe de la familia usando el historial técnico del alumno."
-                          >
-                            Informe familia
-                          </button>
-                          <button
-                            type="button"
                             onClick={() =>
                               setSelectorIntensivoFichaAbiertoId((actual) =>
                                 actual === alumno.alumno_id
@@ -1935,19 +1920,6 @@ export function StudentRecordsScreen({ ctx }: StudentRecordsScreenProps) {
                             </button>
                           </div>
                         </div>
-                      )}
-
-                      {evaluacionAlumnoActivaId === alumno.alumno_id && (
-                        <FamilyEvaluationDraftPanel
-                          title="Resumen para informe de familia"
-                          description="Una base corta con evolución, mejoras, trabajo realizado y observaciones útiles. El detalle completo queda en el historial."
-                          value={evaluacionAlumnoTexto}
-                          onCopy={copiarEvaluacionAlumnoTexto}
-                          onClose={() => {
-                            setEvaluacionAlumnoActivaId(null);
-                            setEvaluacionAlumnoTexto('');
-                          }}
-                        />
                       )}
 
                       <div style={{ marginTop: 12 }}>

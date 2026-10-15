@@ -15,6 +15,8 @@ import {
 } from '../../core/reports/skillProgress';
 import { cerrarFichaAlumno, abrirFichaAlumno, useFichaAlumnoAbierta } from './studentFichaStore';
 import { FamilyLetterPanel } from './FamilyLetterPanel';
+import { RawStudentDump } from '../reports/RawStudentDump';
+import { textoBrutoAlumno } from '../../core/reports/rawStudentExport';
 
 /**
  * Ficha única del alumno (fase 2, 01/10/2026). La misma para Baby, Ocio e
@@ -174,6 +176,20 @@ export function StudentFichaSheet(props: Props) {
             ✉️ Carta para la familia
           </button>
         )}
+
+        <RawStudentDump
+          key={alumnoId}
+          construir={async () => {
+            const recargados = await props.cargarHistorial(alumnoId, true);
+            return textoBrutoAlumno({
+              alumno: nombre,
+              edad: perfil?.age ?? null,
+              nivelFicha: nivel,
+              reportes: Array.isArray(recargados) ? (recargados as HistorialReporteAlumnoFichaApp[]) : reportes,
+              formatDate: props.formatDate,
+            });
+          }}
+        />
 
         <section className="ficha-skills" aria-label="Habilidades del nivel">
           <div className="ficha-skills__title">

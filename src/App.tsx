@@ -267,7 +267,6 @@ import {
   validateGroupPedagogy,
 } from './core/recommendations/baseRecommendation';
 import {
-  buildFamilyReportBase,
   sortReportHistory,
 } from './core/reports/reportHistory';
 import type {
@@ -594,7 +593,6 @@ import {
   requireEvaluationCut,
 } from './core/evaluations/evaluationContract';
 import {
-  buildOcioFamilyEvaluationHtml,
   compactLevelJourney,
   dailyWorkObjectives,
   reportedImprovements,
@@ -1853,10 +1851,6 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [nuevoAlumnoEstado, setNuevoAlumnoEstado] = useState(
     'pendiente completar'
   );
-  const [evaluacionAlumnoActivaId, setEvaluacionAlumnoActivaId] = useState<
-    string | null
-  >(null);
-  const [evaluacionAlumnoTexto, setEvaluacionAlumnoTexto] = useState('');
   const [historialAlumnoAbiertoId, setHistorialAlumnoAbiertoId] = useState<
     string | null
   >(null);
@@ -1930,10 +1924,6 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   >([]);
   const [ocioGenerandoPropuesta, setOcioGenerandoPropuesta] = useState(false);
   const [ocioGuardandoPropuesta, setOcioGuardandoPropuesta] = useState(false);
-  const [evaluacionOcioActivaId, setEvaluacionOcioActivaId] = useState<
-    string | null
-  >(null);
-  const [evaluacionOcioTexto, setEvaluacionOcioTexto] = useState('');
   const [ocioSemanaAsistencia, setOcioSemanaAsistencia] = useState<
     Record<string, boolean>
   >({});
@@ -4780,58 +4770,6 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     abrirFichaAlumno(alumnoId);
   }
 
-  function generarBaseEvaluacionAlumnoFichaApp(
-    alumno: Pick<AlumnoResumen, 'alumno'> &
-      Partial<
-        Pick<
-          AlumnoResumen,
-          'nivel_actual' | 'ultimo_nivel_reportado' | 'nivel_estimado'
-        >
-    >,
-    reportes: HistorialReporteAlumnoFichaApp[]
-  ) {
-    return buildFamilyReportBase(alumno, reportes, {
-      formatDate: formatearFecha,
-      summarizeTechnicalEvaluation: resumenEvaluacionTecnica,
-    });
-  }
-
-  async function abrirEvaluacionAlumno(alumno: AlumnoResumen) {
-    setCargando(true);
-    setError('');
-    setEvaluacionAlumnoActivaId(alumno.alumno_id);
-    setEvaluacionAlumnoTexto('Preparando resumen...');
-
-    try {
-      const reportes = await cargarHistorialReportesAlumnoFichaApp(
-        alumno.alumno_id
-      );
-      setEvaluacionAlumnoTexto(
-        generarBaseEvaluacionAlumnoFichaApp(alumno, reportes)
-      );
-    } catch (err) {
-      setEvaluacionAlumnoTexto('');
-      setError(
-        err instanceof Error ? err.message : 'Error generando evaluación'
-      );
-    }
-
-    setCargando(false);
-  }
-
-  async function copiarEvaluacionAlumnoTexto() {
-    if (!evaluacionAlumnoTexto.trim()) return;
-
-    try {
-      await navigator.clipboard.writeText(evaluacionAlumnoTexto);
-      alert(
-        'Base del informe copiada. Pégala en ChatGPT para convertirla en un texto final para la familia.'
-      );
-    } catch {
-      window.prompt('Copia esta base del informe:', evaluacionAlumnoTexto);
-    }
-  }
-
   async function cargarOcioAlumnos() {
     setCargando(true);
     setError('');
@@ -6291,57 +6229,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setCargando(false);
   }
 
-  async function abrirEvaluacionOcio(alumno: OcioAlumnoApp) {
-    setEvaluacionOcioActivaId(alumno.alumno_id);
-    setEvaluacionOcioTexto('Cargando evaluación de Ocio...');
-    setCargando(true);
-    setError('');
-    try {
-      const historial = await cargarHistorialReportesAlumnoFichaApp(
-        alumno.alumno_id,
-        true
-      );
-      const reportesOcio = historial.filter((reporte) =>
-        String(reporte.modalidad || '').toUpperCase().includes('OCIO')
-      );
-      setEvaluacionOcioTexto(
-        generarBaseEvaluacionAlumnoFichaApp(
-          {
-            alumno: alumno.alumno,
-            nivel_actual: alumno.nivel_usado || alumno.nivel || null,
-          },
-          reportesOcio
-        )
-      );
-    } catch (err) {
-      setEvaluacionOcioTexto('');
-      setError(
-        err instanceof Error
-          ? err.message
-          : 'Error generando evaluación de Ocio'
-      );
-    }
-    setCargando(false);
-  }
-
   function abrirCentroEvaluacionOcioDesdeFicha(alumno: OcioAlumnoApp) {
     setEvaluacionOcioIndividualSeleccionadoId(alumno.alumno_id);
-    setEvaluacionOcioActivaId(null);
-    setEvaluacionOcioTexto('');
     setPantalla('ocioEvaluaciones');
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }
-
-  async function copiarEvaluacionOcio() {
-    if (!evaluacionOcioTexto.trim()) return;
-    try {
-      await navigator.clipboard.writeText(evaluacionOcioTexto);
-      alert(
-        'Evaluación de Ocio copiada. Pégala en ChatGPT para dejarla bonita para los padres.'
-      );
-    } catch {
-      window.prompt('Copia esta evaluación:', evaluacionOcioTexto);
-    }
   }
 
   function abrirPrevisualizacionWhatsapp(
@@ -19342,25 +19233,6 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
     );
   }
 
-  function abrirInformeFamiliaOcioApp(fila: EvaluacionAnualOcioApp) {
-    if (typeof window === 'undefined') return;
-    const ventana = window.open('', '_blank');
-    if (!ventana) {
-      setEvaluacionesAnualesOcioError(
-        'El navegador ha bloqueado la ventana del informe. Permite ventanas emergentes para Mítico Baby y vuelve a intentarlo.'
-      );
-      return;
-    }
-    const alumno = ocioAlumnos.find((item) => item.alumno_id === fila.alumno_id);
-    const html = buildOcioFamilyEvaluationHtml(fila, {
-      age: calculateAge(alumno?.fecha_nacimiento),
-      formatDate: formatearFecha,
-    });
-    ventana.document.open();
-    ventana.document.write(html);
-    ventana.document.close();
-  }
-
   async function analizarCierreTemporada() {
     if (!esCoordinadorJefeApp) return;
 
@@ -21133,7 +21005,6 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       {pantalla === 'revisionOcio' && (
         <OcioReviewScreen
           ctx={{
-            abrirEvaluacionOcio,
             agendaCabeceraLinea,
             asignarAlumnoGrupoOcio,
             botonPrincipal,
@@ -21474,8 +21345,6 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       {pantalla === 'ocioEvaluaciones' && (
         <OcioEvaluationsScreen
           ctx={{
-            abrirEvaluacionOcio,
-            abrirInformeFamiliaOcioApp,
             abrirPantallaConScroll,
             agendaBloqueBlanco,
             agendaCabeceraLinea,
@@ -21487,8 +21356,8 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
             busquedaEvaluacionAnualOcio,
             cargando,
             cargarEvaluacionesAnualesOcio,
+            cargarHistorialReportesAlumnoFichaApp,
             compactLevelJourney,
-            copiarEvaluacionOcio,
             cortesEvaluacionOcio,
             cortesEvaluacionOcioCargando,
             cortesEvaluacionOcioError,
@@ -21499,9 +21368,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
             esCoordinadorJefeApp,
             esVistaMovilApp,
             etiquetaSuperior,
-            evaluacionOcioActivaId,
             evaluacionOcioIndividualSeleccionadoId,
-            evaluacionOcioTexto,
             evaluacionesAnualesOcio,
             evaluacionesAnualesOcioCargando,
             evaluacionesAnualesOcioError,
@@ -21525,9 +21392,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
             resumenEvaluacionTecnica,
             selectCampo,
             setBusquedaEvaluacionAnualOcio,
-            setEvaluacionOcioActivaId,
             setEvaluacionOcioIndividualSeleccionadoId,
-            setEvaluacionOcioTexto,
             setFiltroDiaEvaluacionesOcio,
           }}
         />
@@ -22189,7 +22054,6 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       {pantalla === 'alumnos' && (
         <StudentRecordsScreen
           ctx={{
-            abrirEvaluacionAlumno,
             abrirFiltroFichas,
             abrirPanelIntensivo,
             agendaBadgeModalidad,
@@ -22226,12 +22090,9 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
             setError,
             cargarIntensivos,
             cerrarEditorAlumnoBase,
-            copiarEvaluacionAlumnoTexto,
             datosBasicosFichaAlumnoApp,
             editarAlumnoBaseRapido,
             esVistaMovilApp,
-            evaluacionAlumnoActivaId,
-            evaluacionAlumnoTexto,
             filtroAlumnos,
             filtroModalidadHistorialFicha,
             formatearFecha,
@@ -22267,8 +22128,6 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
             setAlumnoEditTelefono,
             setBusquedaAlumno,
             setBusquedaOcio,
-            setEvaluacionAlumnoActivaId,
-            setEvaluacionAlumnoTexto,
             setFiltroAlumnos,
             setFiltroDiaFichasOcio,
             setFiltroModalidadHistorialFicha,

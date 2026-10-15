@@ -6,15 +6,15 @@
  * - La redacta ChatGPT: la app prepara un resumen para copiar y pegar allí.
  * - La carta final se descarga en PDF con el formato del club.
  *
- * Fuente: las habilidades de su nivel y las notas del entrenador por habilidad.
- * Nunca se incluyen incidencias, observaciones internas ni lo marcado en
- * «¿Algo a destacar?» (llanto, miedo…). Solo se usa el nombre de pila en el
- * texto para ChatGPT.
+ * Fuente (desde el 15/10/2026): TODO lo registrado del alumno («Todo en
+ * bruto»). Lo interno va como contexto para ChatGPT, con la instrucción de no
+ * citarlo en la carta; el PDF solo lleva el texto que se pegue en el paso 2.
  */
 import type { PdfBlock } from '../../features/billing/simplePdf';
 import { reportTechnicalLevelForRender } from '../../lib/adaptiveReport';
 import type { HistorialReporteAlumnoFichaApp } from './reportTypes';
 import type { EstadoHabilidad, ProgresoHabilidad } from './skillProgress';
+import { textoBrutoAlumno } from './rawStudentExport';
 
 export type DatosCartaFamilia = {
   /** Nombre completo tal y como está en la app. */
@@ -36,8 +36,6 @@ export const ESTADO_PARA_FAMILIA: Record<EstadoHabilidad, string> = {
   sin_ver: 'Próximamente',
 };
 
-const NOTAS_POR_HABILIDAD = 3;
-const ACTITUDES_GENERALES = new Set(['Muy buena', 'Buena', 'Correcta']);
 
 export const nombreNivelFamilia = (nivel: string | null | undefined) =>
   nivel === 'INICIACION' ? 'Iniciación' : nivel || '';
@@ -47,14 +45,6 @@ export function nombreDePila(nombre: string): string {
   const primero = String(nombre || '').trim().split(/\s+/)[0] || '';
   if (!primero) return 'el alumno';
   return primero.charAt(0).toLocaleUpperCase('es-ES') + primero.slice(1).toLocaleLowerCase('es-ES');
-}
-
-function modalidadLegible(modalidad: string | null | undefined) {
-  const m = String(modalidad || '').toUpperCase();
-  if (m.includes('BABY')) return 'Baby';
-  if (m.includes('OCIO')) return 'Ocio';
-  if (m.includes('INTENSIV')) return 'Intensivos';
-  return '';
 }
 
 /** Recorrido de niveles en orden cronológico, sin repetir seguidos: «B → B+ → C». */
@@ -68,67 +58,50 @@ export function recorridoNiveles(reportes: HistorialReporteAlumnoFichaApp[]): st
   return niveles;
 }
 
-/** Texto que se copia y se pega en ChatGPT para que redacte la carta. */
+/**
+ * Texto que se copia y se pega en ChatGPT para que redacte la carta.
+ * 15/10/2026 (Jose: «que no se oculte nada»): lleva TODO lo registrado
+ * (el mismo texto que «Todo en bruto») más dónde está en su nivel y cómo
+ * escribir la carta. Lo interno (incidencias, entrenadores…) va como contexto.
+ */
 export function textoParaChatGPT(datos: DatosCartaFamilia): string {
   const pila = nombreDePila(datos.nombre);
-  const reportes = datos.reportes.filter((r) => r.fecha);
-  const fechas = reportes.map((r) => r.fecha).sort();
-  const modalidades = Array.from(new Set(reportes.map((r) => modalidadLegible(r.modalidad)).filter(Boolean)));
-  const recorrido = recorridoNiveles(reportes);
   const nivel = nombreNivelFamilia(datos.nivel);
-
-  const lineas: string[] = [];
-  lineas.push(`Escribe una carta breve para la familia de ${pila}, alumno de la escuela de esquí Mítico Club.`);
-  lineas.push('');
-  lineas.push('DATOS (no inventes nada que no esté aquí):');
-  lineas.push(`- Nombre: ${pila}${datos.edad !== null ? ` (${datos.edad} años)` : ''}`);
-  if (modalidades.length) lineas.push(`- Actividad: ${modalidades.join(', ')}`);
-  if (nivel) lineas.push(`- Nivel actual: ${nivel}`);
-  if (recorrido.length > 1) lineas.push(`- Niveles por los que ha pasado: ${recorrido.map(nombreNivelFamilia).join(' → ')}`);
-  if (fechas.length) {
-    lineas.push(
-      `- Sesiones con informe del entrenador: ${reportes.length} (del ${datos.formatDate(fechas[0])} al ${datos.formatDate(
-        fechas[fechas.length - 1]
-      )})`
-    );
-  }
-
-  const actitudes = reportes.map((r) => String(r.actitud || '')).filter((a) => ACTITUDES_GENERALES.has(a));
-  if (actitudes.length) {
-    const buenas = actitudes.filter((a) => a !== 'Correcta').length;
-    lineas.push(`- Actitud: buena o muy buena en ${buenas} de ${actitudes.length} sesiones`);
-  }
-  const autonomia = reportes.find((r) => r.autonomia)?.autonomia;
-  if (autonomia) lineas.push(`- Autonomía en la última sesión: ${autonomia}`);
-  const remontes = reportes.find((r) => r.remontes && r.remontes.length)?.remontes;
-  if (remontes && remontes.length) lineas.push(`- Remontes que ya usa: ${remontes.join(', ')}`);
+  const lineas: string[] = [
+    `Escribe una carta breve para la familia de ${pila}${datos.edad !== null ? ` (${datos.edad} años)` : ''}, alumno de la escuela de esquí Mítico Club.`,
+    'Debajo tienes TODO lo que han registrado sus entrenadores. No inventes nada que no esté aquí.',
+  ];
 
   const vistas = datos.progreso.filter((p) => p.estado !== 'sin_ver');
-  if (vistas.length) {
-    lineas.push('');
-    lineas.push(`HABILIDADES DE SU NIVEL${nivel ? ` (${nivel})` : ''} Y NOTAS DE SUS ENTRENADORES:`);
-    vistas.forEach((p) => {
-      lineas.push(`- ${p.habilidad.nombre}: ${ESTADO_PARA_FAMILIA[p.estado]}${p.habilidad.foco ? ' (objetivo principal del nivel)' : ''}`);
-      p.valoraciones
-        .filter((v) => v.nota)
-        .slice(0, NOTAS_POR_HABILIDAD)
-        .forEach((v) => lineas.push(`    · ${datos.formatDate(v.fecha)}: ${v.nota}`));
-    });
-  }
-  const pendientes = datos.progreso.filter((p) => p.estado === 'sin_ver');
-  if (pendientes.length) {
-    lineas.push(`- Todavía sin trabajar en este nivel: ${pendientes.map((p) => p.habilidad.nombre).join(', ')}`);
+  if (nivel && datos.progreso.length) {
+    lineas.push('', `DÓNDE ESTÁ AHORA EN SU NIVEL (${nivel}):`);
+    vistas.forEach((p) =>
+      lineas.push(`- ${p.habilidad.nombre}: ${ESTADO_PARA_FAMILIA[p.estado]}${p.habilidad.foco ? ' (objetivo principal del nivel)' : ''}`)
+    );
+    const pendientes = datos.progreso.filter((p) => p.estado === 'sin_ver');
+    if (pendientes.length) lineas.push(`- Todavía sin trabajar en este nivel: ${pendientes.map((p) => p.habilidad.nombre).join(', ')}`);
   }
 
-  lineas.push('');
-  lineas.push('CÓMO ESCRIBIRLA:');
-  lineas.push('- En español, con un tono cercano, positivo y honesto. Dirígete a la familia («Hola, familia»).');
-  lineas.push('- Entre 150 y 250 palabras, en 3 o 4 párrafos cortos.');
-  lineas.push('- Primero lo que ya consigue; después en qué está mejorando; al final el siguiente paso.');
-  lineas.push('- Explica las habilidades con palabras sencillas, sin tecnicismos de esquí.');
-  lineas.push('- No menciones puntuaciones, fechas sueltas ni nombres de entrenadores.');
-  lineas.push('- Sin emojis, sin negritas y sin títulos: solo el texto de la carta.');
-  lineas.push('- Termina con una despedida en nombre de «El equipo de Mítico Club».');
+  lineas.push(
+    '',
+    textoBrutoAlumno({
+      alumno: datos.nombre,
+      edad: datos.edad,
+      nivelFicha: datos.nivel,
+      reportes: datos.reportes,
+      formatDate: datos.formatDate,
+    }),
+    '',
+    'CÓMO ESCRIBIRLA:',
+    `- Llama al niño solo ${pila}. En español, con un tono cercano, positivo y honesto. Dirígete a la familia («Hola, familia»).`,
+    '- Entre 150 y 250 palabras, en 3 o 4 párrafos cortos.',
+    '- Primero lo que ya consigue; después en qué está mejorando (usa las notas de los entrenadores con ejemplos concretos); al final el siguiente paso.',
+    '- Explica las habilidades con palabras sencillas, sin tecnicismos de esquí.',
+    '- Las incidencias, las observaciones internas y los nombres de los entrenadores son contexto para ti: no los cites en la carta.',
+    '- No menciones puntuaciones ni fechas sueltas.',
+    '- Sin emojis, sin negritas y sin títulos: solo el texto de la carta.',
+    '- Termina con una despedida en nombre de «El equipo de Mítico Club».'
+  );
   return lineas.join('\n');
 }
 

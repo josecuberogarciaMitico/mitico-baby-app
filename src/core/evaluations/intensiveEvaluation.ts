@@ -1,5 +1,6 @@
 import type { EvaluacionTecnicaReporte } from '../reports/reportTypes';
 import type { ReporteDetalleIntensivoApp, ResumenFinalIntensivoApp } from './evaluationTypes';
+import { INSTRUCCION_NOTAS_CHATGPT, seccionNotasEntrenadores } from '../reports/skillNotes';
 
 export function buildIntensiveDiplomaBase(
   record: ResumenFinalIntensivoApp,
@@ -38,6 +39,10 @@ export function buildIntensiveDiplomaBase(
     ].join('\n');
   });
 
+  // Notas por habilidad: llegan cuando la vista de Intensivos incluye
+  // notas_habilidades (migración 20261015_000001). Sin ella, no se añade nada.
+  const skillNotes = seccionNotasEntrenadores(reports, dependencies.formatDate);
+
   return [
     `BASE DIPLOMA INTENSIVO · ${record.intensivo}`,
     `Alumno: ${record.alumno}`,
@@ -58,9 +63,11 @@ export function buildIntensiveDiplomaBase(
     `Comentarios autonomía: ${record.comentarios_autonomia || '-'}`,
     `Comentarios recomendación: ${record.comentarios_recomendacion || '-'}`,
     '',
+    ...(skillNotes.length ? [...skillNotes, ''] : []),
     'REPORTES DÍA A DÍA',
     reportLines.length ? reportLines.join('\n\n---\n\n') : 'Sin reportes día a día todavía.',
     '',
     'INSTRUCCIÓN PARA CHATGPT: redactar un diploma/resumen para la familia en tono positivo, claro y profesional, sin inventar datos.',
+    ...(skillNotes.length ? [INSTRUCCION_NOTAS_CHATGPT] : []),
   ].join('\n');
 }

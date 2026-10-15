@@ -61,17 +61,15 @@ test('nombre de pila y recorrido de niveles', () => {
   equal(nombreArchivoCarta('LUCAS / GARCÍA'), 'Carta familia - LUCAS GARCÍA.pdf', 'archivo');
 });
 
-test('el resumen para ChatGPT lleva habilidades y notas, nunca incidencias ni notas internas', () => {
+test('el resumen para ChatGPT lleva todo lo registrado e instrucciones para no citar lo interno', () => {
   const t = textoParaChatGPT(datos);
-  ok(t.includes('Lucas (9 años)'), 'nombre y edad');
-  ok(!t.includes('GARCÍA'), 'sin apellidos');
-  ok(!t.includes('PEPE'), 'sin entrenador');
-  ok(t.includes('Paralelismo') || t.includes('paralelismo'), 'habilidad');
+  ok(t.includes('familia de Lucas (9 años)'), 'nombre de pila y edad');
+  ok(t.includes('DÓNDE ESTÁ AHORA EN SU NIVEL (C)'), 'estado en su nivel');
   ok(t.includes('Conseguido'), 'paralelismo conseguido');
   ok(t.includes('Ya junta los esquís en toda la bajada'), 'nota del entrenador');
-  ok(t.includes('B+ → C'), 'recorrido de niveles');
-  ok(t.includes('buena o muy buena en 1 de 2 sesiones'), 'actitud solo con valores generales');
-  ok(!/caída|NOTA INTERNA|Llora|Miedo/i.test(t), 'sin incidencias, observaciones internas ni «algo a destacar»');
+  ok(t.includes('TODO LO REGISTRADO DE LUCAS GARCÍA PÉREZ'), 'todo en bruto incluido');
+  ok(/Caída fuerte/.test(t) && /NOTA INTERNA/.test(t), 'no se oculta nada');
+  ok(t.includes('no los cites en la carta'), 'instrucción sobre lo interno');
   ok(t.includes('Telesilla'), 'remontes');
 });
 

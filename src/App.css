@@ -4445,6 +4445,11 @@ section:has(input[placeholder^='Buscar entrenador, teléfono, email o especialid
 .ficha-letter__check { display: flex; align-items: center; gap: 8px; font-size: 14px; color: #334155; }
 .ficha-letter__check input { width: 20px; height: 20px; }
 .ficha-letter__aviso { margin: 0; padding: 9px 11px; border-radius: 11px; background: #ecfeff; color: #155e75; font-size: 13px; font-weight: 800; }
+.raw-dump { display: grid; gap: 8px; justify-items: start; }
+.raw-dump.is-open { justify-items: stretch; padding: 12px; border: 1px solid #cbd5e1; border-radius: 14px; background: #f8fafc; }
+.raw-dump__head { display: grid; gap: 2px; }
+.raw-dump__text { font-size: 13px; line-height: 1.4; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; min-height: 260px; }
+@media (pointer: coarse) { .raw-dump__text { font-size: 16px; } }
 .ficha-skills { display: grid; gap: 6px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 14px; background: #fff; }
 .ficha-skills__title { display: grid; gap: 2px; margin-bottom: 4px; }
 .ficha-skills__title h3 { margin: 0; font-size: 16px; }

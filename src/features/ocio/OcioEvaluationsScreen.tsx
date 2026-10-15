@@ -1,5 +1,7 @@
 import React from 'react';
-import { FamilyEvaluationDraftPanel } from '../../components/evaluations/FamilyEvaluationDraftPanel';
+import { abrirFichaAlumno } from '../students/studentFichaStore';
+import { RawStudentDump } from '../reports/RawStudentDump';
+import { textoBrutoAlumno } from '../../core/reports/rawStudentExport';
 
 type FiltroDiaEvaluacionesOcioApp = 'Todos' | 'Jueves' | 'Sábado' | 'Domingo';
 
@@ -9,12 +11,9 @@ type OcioEvaluationsScreenProps = {
 
 export function OcioEvaluationsScreen({ ctx }: OcioEvaluationsScreenProps) {
   const {
-    abrirEvaluacionOcio,
-    abrirInformeFamiliaOcioApp,
     abrirPantallaConScroll,
     agendaBloqueBlanco,
     agendaCabeceraLinea,
-    alternarHistorialAlumnoFichaApp,
     avisoCompleto,
     avisoNeutral,
     botonPrincipal,
@@ -22,8 +21,8 @@ export function OcioEvaluationsScreen({ ctx }: OcioEvaluationsScreenProps) {
     busquedaEvaluacionAnualOcio,
     cargando,
     cargarEvaluacionesAnualesOcio,
+    cargarHistorialReportesAlumnoFichaApp,
     compactLevelJourney,
-    copiarEvaluacionOcio,
     cortesEvaluacionOcio,
     cortesEvaluacionOcioCargando,
     cortesEvaluacionOcioError,
@@ -34,9 +33,7 @@ export function OcioEvaluationsScreen({ ctx }: OcioEvaluationsScreenProps) {
     esCoordinadorJefeApp,
     esVistaMovilApp,
     etiquetaSuperior,
-    evaluacionOcioActivaId,
     evaluacionOcioIndividualSeleccionadoId,
-    evaluacionOcioTexto,
     evaluacionesAnualesOcio,
     evaluacionesAnualesOcioCargando,
     evaluacionesAnualesOcioError,
@@ -60,9 +57,7 @@ export function OcioEvaluationsScreen({ ctx }: OcioEvaluationsScreenProps) {
     resumenEvaluacionTecnica,
     selectCampo,
     setBusquedaEvaluacionAnualOcio,
-    setEvaluacionOcioActivaId,
     setEvaluacionOcioIndividualSeleccionadoId,
-    setEvaluacionOcioTexto,
     setFiltroDiaEvaluacionesOcio,
   } = ctx;
 
@@ -93,15 +88,6 @@ export function OcioEvaluationsScreen({ ctx }: OcioEvaluationsScreenProps) {
         const edadAlumnoIndividual = alumnoIndividual
           ? edadAproximadaOcio(alumnoIndividual.fecha_nacimiento)
           : null;
-        const historialOcioAbierto = Boolean(
-          alumnoIndividual && historialAlumnoAbiertoId === alumnoIndividual.alumno_id
-        );
-        const historialOcioIndividual = alumnoIndividual
-          ? (historialReportesFichaPorAlumno[alumnoIndividual.alumno_id] || []).filter(
-              (reporte) =>
-                String(reporte.modalidad || '').toUpperCase().includes('OCIO')
-            )
-          : [];
 
         return (
           <section style={{ display: 'grid', gap: 16 }}>
@@ -132,7 +118,7 @@ export function OcioEvaluationsScreen({ ctx }: OcioEvaluationsScreenProps) {
               </h2>
               {renderAyudaRapidaPantallaApp()}
               <p style={{ margin: '8px 0 0', color: '#cbd5e1', lineHeight: 1.45 }}>
-                Evaluación puntual cuando una familia la pide y campañas de Navidad y final. La base cruza reportes, trabajo diario y observaciones; el informe final compara con el corte guardado en Navidad. Nada se guarda automáticamente.
+                Evaluación puntual cuando una familia la pide y campañas de Navidad y final. En cada alumno: «Carta para la familia» (PDF) y «Todo en bruto» (para ChatGPT). Nada se guarda automáticamente.
               </p>
               <div style={{ marginTop: 14 }}>
                 <button
@@ -158,240 +144,68 @@ export function OcioEvaluationsScreen({ ctx }: OcioEvaluationsScreenProps) {
                   </p>
                   <h3 style={{ margin: 0 }}>Una familia te pide una evaluación ahora</h3>
                   <p style={{ margin: '5px 0 0', color: '#64748b' }}>
-                    Elige al alumno y genera únicamente su base de evaluación Ocio. Es el mismo flujo individual que existía en Fichas, ahora centralizado aquí.
+                    Elige al alumno: «Carta para la familia» abre su ficha con la carta en PDF y «Todo en bruto» saca todo lo registrado para pegarlo en ChatGPT.
                   </p>
                 </div>
               </div>
 
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: esVistaMovilApp
-                    ? 'minmax(0, 1fr)'
-                    : 'minmax(0, 1fr) minmax(190px, auto)',
-                  gap: 10,
-                  marginTop: 14,
-                  alignItems: 'end',
-                }}
-              >
-                <label style={labelCampo}>
-                  Alumno Ocio
-                  <select
-                    value={evaluacionOcioIndividualSeleccionadoId}
-                    onChange={(e) => {
-                      setEvaluacionOcioIndividualSeleccionadoId(e.target.value);
-                      setEvaluacionOcioActivaId(null);
-                      setEvaluacionOcioTexto('');
-                    }}
-                    style={selectCampo}
-                  >
-                    <option value="">Seleccionar alumno...</option>
-                    {[...ocioAlumnos]
-                      .sort((a, b) => (a.alumno || '').localeCompare(b.alumno || ''))
-                      .map((alumno) => (
-                        <option key={`eval-ind-${alumno.alumno_id}`} value={alumno.alumno_id}>
-                          {alumno.alumno}
-                          {edadAproximadaOcio(alumno.fecha_nacimiento) !== null
-                            ? ` · ${edadAproximadaOcio(alumno.fecha_nacimiento)} años`
-                            : ''}
-                          {' · '}{alumno.nivel_usado || alumno.nivel || 'Sin nivel'}
-                          {' · '}{alumno.dia_fijo || alumno.grupo_dia || 'Sin día'}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => alumnoIndividual && abrirEvaluacionOcio(alumnoIndividual)}
-                  disabled={!alumnoIndividual || cargando}
-                  style={{
-                    ...botonPrincipal,
-                    minHeight: 46,
-                    opacity: !alumnoIndividual || cargando ? 0.55 : 1,
-                  }}
+              {/* 15/10: solo dos opciones, iguales en toda la app: la carta (en su ficha) y todo en bruto. */}
+              <label style={{ ...labelCampo, display: 'block', marginTop: 14 }}>
+                Alumno Ocio
+                <select
+                  value={evaluacionOcioIndividualSeleccionadoId}
+                  onChange={(e) => setEvaluacionOcioIndividualSeleccionadoId(e.target.value)}
+                  style={selectCampo}
                 >
-                  Generar evaluación puntual
-                </button>
-              </div>
+                  <option value="">Seleccionar alumno...</option>
+                  {[...ocioAlumnos]
+                    .sort((a, b) => (a.alumno || '').localeCompare(b.alumno || ''))
+                    .map((alumno) => (
+                      <option key={`eval-ind-${alumno.alumno_id}`} value={alumno.alumno_id}>
+                        {alumno.alumno}
+                        {edadAproximadaOcio(alumno.fecha_nacimiento) !== null
+                          ? ` · ${edadAproximadaOcio(alumno.fecha_nacimiento)} años`
+                          : ''}
+                        {' · '}{alumno.nivel_usado || alumno.nivel || 'Sin nivel'}
+                        {' · '}{alumno.dia_fijo || alumno.grupo_dia || 'Sin día'}
+                      </option>
+                    ))}
+                </select>
+              </label>
 
               {alumnoIndividual && (
-                <div
-                  style={{
-                    ...miniTarjetaBlanca,
-                    marginTop: 12,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    gap: 10,
-                    alignItems: 'center',
-                    flexWrap: 'wrap',
-                  }}
-                >
+                <div style={{ ...miniTarjetaBlanca, marginTop: 12, display: 'grid', gap: 10 }}>
                   <div>
                     <strong>{alumnoIndividual.alumno}</strong>
                     <span style={{ display: 'block', marginTop: 4, color: '#64748b' }}>
-                      {edadAlumnoIndividual !== null
-                        ? `${edadAlumnoIndividual} años · `
-                        : ''}
+                      {edadAlumnoIndividual !== null ? `${edadAlumnoIndividual} años · ` : ''}
                       Nivel {alumnoIndividual.nivel_usado || alumnoIndividual.nivel || '-'} ·{' '}
                       {alumnoIndividual.dia_fijo || alumnoIndividual.grupo_dia || 'Sin día fijo'}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      void alternarHistorialAlumnoFichaApp(alumnoIndividual)
+                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => abrirFichaAlumno(alumnoIndividual.alumno_id)}
+                      style={botonSecundario}
+                    >
+                      ✉️ Carta para la familia (en su ficha)
+                    </button>
+                  </div>
+                  <RawStudentDump
+                    key={alumnoIndividual.alumno_id}
+                    construir={async () =>
+                      textoBrutoAlumno({
+                        alumno: alumnoIndividual.alumno,
+                        edad: edadAlumnoIndividual,
+                        nivelFicha: alumnoIndividual.nivel_usado || alumnoIndividual.nivel || null,
+                        reportes: await cargarHistorialReportesAlumnoFichaApp(alumnoIndividual.alumno_id, true),
+                        formatDate: formatearFecha,
+                      })
                     }
-                    style={botonSecundario}
-                  >
-                    {historialOcioAbierto ? 'Cerrar historial' : 'Consultar historial exacto'}
-                  </button>
-                </div>
-              )}
-
-              {alumnoIndividual && historialOcioAbierto && (
-                <div
-                  style={{
-                    ...miniTarjetaBlanca,
-                    marginTop: 10,
-                    border: '1px solid #bbf7d0',
-                    background: '#f8fffb',
-                  }}
-                >
-                  <h4 style={{ marginTop: 0 }}>
-                    Historial Ocio · {historialOcioIndividual.length} reportes
-                  </h4>
-                  {historialReportesFichaCargandoId === alumnoIndividual.alumno_id && (
-                    <p style={{ margin: 0 }}>Cargando historial...</p>
-                  )}
-                  {historialReportesFichaCargandoId !== alumnoIndividual.alumno_id &&
-                    historialOcioIndividual.length === 0 && (
-                      <div style={avisoNeutral}>
-                        Todavía no hay reportes de Ocio guardados para este alumno.
-                      </div>
-                    )}
-                  {historialOcioIndividual.length > 0 && (
-                    <div style={{ display: 'grid', gap: 10 }}>
-                      {historialOcioIndividual.map((reporte, indice) => {
-                        const competencias = resumenEvaluacionTecnica(
-                          reporte.evaluacion_tecnica,
-                          reporte.nivel_reportado ||
-                            alumnoIndividual.nivel_usado ||
-                            alumnoIndividual.nivel ||
-                            ''
-                        );
-                        const mejoras =
-                          reporte.mejoras_hoy?.length
-                            ? reporte.mejoras_hoy
-                            : reporte.mejora_hoy
-                              ? [reporte.mejora_hoy]
-                              : [];
-                        const prioridades =
-                          reporte.prioridades_proxima_sesion?.length
-                            ? reporte.prioridades_proxima_sesion
-                            : reporte.recomendacion
-                              ? [reporte.recomendacion]
-                              : [];
-                        return (
-                          <article
-                            key={reporte.reporte_id || `${reporte.fecha}-${indice}`}
-                            style={{
-                              border: '1px solid #dbeafe',
-                              borderRadius: 14,
-                              padding: 12,
-                              background: '#fff',
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: 'flex',
-                                justifyContent: 'space-between',
-                                gap: 8,
-                                flexWrap: 'wrap',
-                              }}
-                            >
-                              <strong>{formatearFecha(reporte.fecha)}</strong>
-                              <span style={miniBadge}>
-                                Nivel {reporte.nivel_reportado || '-'}
-                              </span>
-                            </div>
-                            <p style={{ margin: '6px 0 0', color: '#64748b' }}>
-                              {[reporte.grupo, reporte.entrenador]
-                                .filter(Boolean)
-                                .join(' · ')}
-                            </p>
-                            {competencias && (
-                              <p style={{ margin: '8px 0 0' }}>
-                                <strong>Competencias:</strong> {competencias}
-                              </p>
-                            )}
-                            {mejoras.length > 0 && (
-                              <p style={{ margin: '7px 0 0' }}>
-                                <strong>Mejoró:</strong> {mejoras.join(' · ')}
-                              </p>
-                            )}
-                            {reporte.observaciones_generales && (
-                              <div style={{ ...avisoCompleto, marginTop: 8 }}>
-                                <strong>Observación:</strong>{' '}
-                                {reporte.observaciones_generales}
-                              </div>
-                            )}
-                            {prioridades.length > 0 && (
-                              <p style={{ margin: '7px 0 0' }}>
-                                <strong>Siguiente paso:</strong>{' '}
-                                {prioridades.join(' · ')}
-                              </p>
-                            )}
-                            <details style={{ marginTop: 9 }}>
-                              <summary style={{ cursor: 'pointer', fontWeight: 850 }}>
-                                Ver datos completos y Trabajo diario
-                              </summary>
-                              {reporte.trabajo_diario && (
-                                <pre
-                                  style={{
-                                    whiteSpace: 'pre-wrap',
-                                    margin: '9px 0 0',
-                                    maxHeight: 260,
-                                    overflow: 'auto',
-                                    background: '#f8fafc',
-                                    padding: 10,
-                                    borderRadius: 10,
-                                  }}
-                                >
-                                  {reporte.trabajo_diario}
-                                </pre>
-                              )}
-                              <p style={{ margin: '9px 0 0' }}>
-                                Actitud: {reporte.actitud || '-'} · Autonomía:{' '}
-                                {reporte.autonomia || '-'} · Ritmo:{' '}
-                                {reporte.ritmo_grupo || '-'} · Incidencia:{' '}
-                                {reporte.incidencia || '-'}
-                              </p>
-                            </details>
-                          </article>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {alumnoIndividual &&
-                evaluacionOcioActivaId === alumnoIndividual.alumno_id && (
-                  <FamilyEvaluationDraftPanel
-                    title={`Resumen familiar · ${alumnoIndividual.alumno}${
-                      edadAlumnoIndividual !== null
-                        ? ` · ${edadAlumnoIndividual} años`
-                        : ''
-                    }`}
-                    description="Resumen limitado de evolución. El detalle por sesión permanece en el historial."
-                    value={evaluacionOcioTexto}
-                    onCopy={copiarEvaluacionOcio}
-                    onClose={() => {
-                      setEvaluacionOcioActivaId(null);
-                      setEvaluacionOcioTexto('');
-                    }}
                   />
-                )}
+                </div>
+              )}
             </article>
 
             <article style={agendaBloqueBlanco}>
@@ -630,7 +444,7 @@ export function OcioEvaluationsScreen({ ctx }: OcioEvaluationsScreenProps) {
                               <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 10 }}>
                                 <button
                                   type="button"
-                                  onClick={() => abrirInformeFamiliaOcioApp(evaluacion)}
+                                  onClick={() => abrirFichaAlumno(alumno.alumno_id)}
                                   style={{
                                     ...botonPrincipal,
                                     minHeight: 42,
@@ -638,8 +452,23 @@ export function OcioEvaluationsScreen({ ctx }: OcioEvaluationsScreenProps) {
                                     borderColor: '#0f9f4d',
                                   }}
                                 >
-                                  Generar informe familia
+                                  ✉️ Carta para la familia (en su ficha)
                                 </button>
+                              </div>
+                              {/* 15/10: todo lo registrado del alumno, sin resumir, para ChatGPT. */}
+                              <div style={{ marginBottom: 10 }}>
+                                <RawStudentDump
+                                  construir={async () =>
+                                    textoBrutoAlumno({
+                                      alumno: alumno.alumno,
+                                      edad: edadAproximadaOcio(alumno.fecha_nacimiento),
+                                      nivelFicha: evaluacion.nivel_final || alumno.nivel_usado || null,
+                                      reportes: await cargarHistorialReportesAlumnoFichaApp(alumno.alumno_id, true),
+                                      formatDate: formatearFecha,
+                                      extra: { titulo: 'Datos de la temporada de Ocio', datos: evaluacion },
+                                    })
+                                  }
+                                />
                               </div>
                               <div
                                 style={{

@@ -1,6 +1,7 @@
 import React from 'react';
 import { OcioRelocationRecommender } from './OcioRelocationRecommender';
 import { OcioWeekPreparationPanel } from './OcioWeekPreparationPanel';
+import { abrirFichaAlumno } from '../students/studentFichaStore';
 
 type OcioOperationalScreenProps = {
   ctx: Record<string, any>;
@@ -8,7 +9,6 @@ type OcioOperationalScreenProps = {
 
 export function OcioReviewScreen({ ctx }: OcioOperationalScreenProps) {
   const {
-    abrirEvaluacionOcio,
     agendaCabeceraLinea,
     asignarAlumnoGrupoOcio,
     botonPrincipal,
@@ -186,10 +186,10 @@ export function OcioReviewScreen({ ctx }: OcioOperationalScreenProps) {
 
                   <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                     <button
-                      onClick={() => abrirEvaluacionOcio(alumno)}
+                      onClick={() => abrirFichaAlumno(alumno.alumno_id)}
                       style={botonSecundario}
                     >
-                      Ver evaluación
+                      Ver ficha
                     </button>
                     <button
                       onClick={() =>
