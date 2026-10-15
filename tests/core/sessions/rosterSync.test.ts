@@ -197,14 +197,19 @@ test('normaliza igual que normalizar_nombre_app', () => {
 
 test('detecta fichas que el volcado resolvería a otro alumno', () => {
   const fichas = [
-    { id: 'a1', nombre_normalizado: 'ROI BECERRA SANCHEZ', activo: true, created_at: '2026-08-27T10:00:00+00:00' },
-    { id: 'x1', nombre_normalizado: 'CRISTINA SALAZAR MORENO', activo: true, created_at: '2026-08-27T10:00:00+00:00' },
-    { id: 'x2', nombre_normalizado: 'CRISTINA SALAZAR MORENO', activo: true, created_at: '2026-09-27T10:00:00+00:00' },
+    { alumno_id: 'a1', nombre_normalizado: 'ROI BECERRA SANCHEZ', activo: true },
+    { alumno_id: 'm1', nombre_normalizado: 'MIGUEL FERNANDEZ CAVADA GARCIA', activo: true },
+    { alumno_id: 'm0', nombre_normalizado: 'MIGUEL FERNANDEZ CAVADA GARCIA', activo: false },
+    { alumno_id: 'x1', nombre_normalizado: 'CRISTINA SALAZAR MORENO', activo: true },
+    { alumno_id: 'x2', nombre_normalizado: 'CRISTINA SALAZAR MORENO', activo: true },
+    { alumno_id: 'p1', nombre_normalizado: 'PEDRO VIEJO TEST', activo: false },
   ];
   const conflictos = findListImportIdentityConflicts(
     [
       { alumnoId: 'a1', name: 'Roi Becerra Sánchez' },
+      { alumnoId: 'm1', name: 'MIGUEL FERNANDEZ CAVADA GARCIA' },
       { alumnoId: 'x1', name: 'CRISTINA SALAZAR MORENO' },
+      { alumnoId: 'p1', name: 'PEDRO VIEJO TEST' },
       { alumnoId: 'zz', name: 'SIN FICHA TEST' },
     ],
     fichas

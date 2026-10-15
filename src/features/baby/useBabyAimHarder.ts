@@ -784,9 +784,11 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
             .filter(Boolean)
         )
       );
+      // La tabla alumnos no se puede leer desde la app; esta vista sí (la
+      // usan los mismos roles que pueden refrescar la sesión).
       const fichas = await consultarSupabase<ListImportFicha>(
-        'alumnos',
-        `select=id,nombre_normalizado,activo,created_at&nombre_normalizado=${encodeURIComponent(
+        'v_alumnos_resumen_para_volcado_app',
+        `select=alumno_id,nombre_normalizado,activo&nombre_normalizado=${encodeURIComponent(
           `in.(${nombres.map((nombre) => `"${nombre}"`).join(',')})`
         )}`
       );

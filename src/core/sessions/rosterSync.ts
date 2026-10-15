@@ -221,17 +221,20 @@ export function normalizeNameLikeListImport(value: string | null | undefined): s
   return translated.toUpperCase().replace(/\s+/g, ' ').trim();
 }
 
+// Fila de v_alumnos_resumen_para_volcado_app (la tabla alumnos no se puede
+// leer desde la app: "permission denied for table alumnos").
 export type ListImportFicha = {
-  id: string;
+  alumno_id: string;
   nombre_normalizado: string | null;
   activo: boolean | null;
-  created_at: string | null;
 };
 
 // El volcado SQL vuelve a buscar la ficha de cada nombre (primero activas, y
 // la más reciente). Si para un alumno que ya está en la sesión encontraría una
 // ficha DISTINTA (duplicados, nombre cambiado...), ese alumno saldría de su
-// grupo. Devuelve los nombres en riesgo para no aplicar el volcado.
+// grupo. Devuelve los nombres en riesgo para no aplicar el volcado. Como la
+// vista no trae la fecha de creación, si hay empate (dos fichas activas, o dos
+// inactivas sin ninguna activa) se considera riesgo aunque fuese la buena.
 export function findListImportIdentityConflicts(
   members: Array<{ alumnoId: string; name: string }>,
   fichas: ListImportFicha[]
@@ -244,14 +247,10 @@ export function findListImportIdentityConflicts(
   });
   return members
     .filter((member) => {
-      const candidates = [...(byName.get(normalizeNameLikeListImport(member.name)) || [])];
-      candidates.sort((a, b) => {
-        const activeA = a.activo === false ? 1 : 0;
-        const activeB = b.activo === false ? 1 : 0;
-        if (activeA !== activeB) return activeA - activeB;
-        return String(b.created_at || '').localeCompare(String(a.created_at || ''));
-      });
-      return !candidates[0] || candidates[0].id !== member.alumnoId;
+      const candidates = byName.get(normalizeNameLikeListImport(member.name)) || [];
+      const activas = candidates.filter((ficha) => ficha.activo !== false);
+      const primeras = activas.length > 0 ? activas : candidates;
+      return primeras.length !== 1 || primeras[0].alumno_id !== member.alumnoId;
     })
     .map((member) => member.name);
 }
