@@ -10,6 +10,7 @@ export const GROUP_OPERATION_RPC = {
   updateDailyWork: 'actualizar_trabajo_observaciones_grupo_app',
   create: 'crear_grupo_sesion_operativa_app',
   remove: 'borrar_grupo_sesion_operativa_app',
+  notifyChanged: 'marcar_grupo_modificado_requiere_reconfirmacion_app',
 } as const;
 
 /**

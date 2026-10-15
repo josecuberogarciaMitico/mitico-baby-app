@@ -11,6 +11,7 @@ import { loadBabyRelocationOptions, moveBabyStudentBetweenSessions } from '../..
 import { addLateStudentToSession } from '../../services/agenda/lateStudentSessionService';
 import { SessionTrainerCoverageLine } from './AgendaTrainerSummary';
 import { pendingAgendaStudents } from './agendaSessions';
+import { notifyGroupChangedAndRequestReconfirmation } from './groupChangeNotification';
 import { abrirFichaAlumno } from '../students/studentFichaStore';
 import {
   sessionTrainerCoverage,
@@ -97,6 +98,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     cargando,
     cargarAgendaOperativaDirecta,
     cargarEntrenadores,
+    cargarGruposEntrenador,
     cargarIntensivos,
     cargarListados,
     cargarPlanning,
@@ -112,6 +114,8 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     datosAimHarderAlumnoAgenda,
     despublicarGrupo,
     diasSemanaAgenda,
+    ejecutarFuncionAuthJson,
+    ejecutarPushMiticoApp,
     entrenadores,
     entrenadoresAgendaGrupo,
     entrenadoresApoyoAgendaGrupo,
@@ -3624,14 +3628,58 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                     Publicar al entrenador
                                   </button>
                                 ) : (
-                                  <button
-                                    type="button"
-                                    onClick={() => void despublicarGrupo(grupo.grupo_id)}
-                                    disabled={cargando}
-                                    style={botonPeligroMini}
+                                  <div
+                                    style={{
+                                      display: 'flex',
+                                      gap: 8,
+                                      flexWrap: 'wrap',
+                                      justifyContent: 'flex-end',
+                                    }}
                                   >
-                                    Retirar de Vista entrenador
-                                  </button>
+                                    {grupo.estado_confirmacion ===
+                                      'Confirmado' && (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          void notifyGroupChangedAndRequestReconfirmation({
+                                            groupId: grupo.grupo_id,
+                                            runFunction: ejecutarFuncionAuthJson,
+                                            sendPush: ejecutarPushMiticoApp,
+                                            reload: async () => {
+                                              await Promise.allSettled([
+                                                cargarAgendaOperativaDirecta(),
+                                                cargarGruposEntrenador(),
+                                                cargarPlanning(),
+                                              ]);
+                                              if (agendaSesionActivaId)
+                                                await cargarDetalleSesionAgenda(
+                                                  agendaSesionActivaId
+                                                );
+                                            },
+                                          }).catch((err) =>
+                                            setError(
+                                              err instanceof Error
+                                                ? err.message
+                                                : 'Error desconocido'
+                                            )
+                                          )
+                                        }
+                                        disabled={cargando}
+                                        title="El entrenador ya había confirmado este grupo. Úsalo si has cambiado la composición u otro dato importante y debe volver a confirmar."
+                                        style={botonSecundario}
+                                      >
+                                        Avisar cambios y pedir reconfirmación
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => void despublicarGrupo(grupo.grupo_id)}
+                                      disabled={cargando}
+                                      style={botonPeligroMini}
+                                    >
+                                      Retirar de Vista entrenador
+                                    </button>
+                                  </div>
                                 )}
                               </div>
 

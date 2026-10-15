@@ -289,3 +289,76 @@ test('pendientes de colocar conserva solo el alumno realmente fuera de grupos', 
   equal(pending.length, 1, 'solo un pendiente real');
   equal(pending[0].alumno, 'JOAQUIN GARCIA', 'alumno pendiente correcto');
 });
+
+import {
+  affectedTrainerIds,
+  notifyGroupChangedAndRequestReconfirmation,
+} from '../../../src/features/agenda/groupChangeNotification';
+
+async function asyncTest(name: string, run: () => Promise<void>) {
+  await run();
+  console.log(`OK  ${name}`);
+}
+
+test('affectedTrainerIds quita vacíos y duplicados', () => {
+  const ids = affectedTrainerIds({
+    afectados: [{ entrenador_id: 'a' }, { entrenador_id: 'a' }, { entrenador_id: ' ' }, { entrenador_id: 'b' }],
+  });
+  equal(ids.join(','), 'a,b', 'ids únicos');
+  equal(affectedTrainerIds(null).length, 0, 'sin resultado');
+});
+
+void (async () => {
+  await asyncTest('avisar cambio: confirma, resetea y manda push solo a los afectados', async () => {
+    const calls: string[] = [];
+    const result = await notifyGroupChangedAndRequestReconfirmation({
+      groupId: 'g1',
+      confirm: () => true,
+      notify: (m) => calls.push(`notify:${m}`),
+      runFunction: async <T,>(name: string, body: object) => {
+        calls.push(`rpc:${name}:${JSON.stringify(body)}`);
+        return { afectados: [{ entrenador_id: 'mauro' }, { entrenador_id: 'nicolas' }] } as unknown as T;
+      },
+      sendPush: async (action, payload) => { calls.push(`push:${action}:${JSON.stringify(payload)}`); },
+      reload: async () => { calls.push('reload'); },
+    });
+    equal(result.trainerIds.join(','), 'mauro,nicolas', 'afectados');
+    equal(calls[0], 'rpc:marcar_grupo_modificado_requiere_reconfirmacion_app:{"p_grupo_id":"g1"}', 'rpc');
+    equal(calls[1], 'push:group_changed:{"grupo_id":"g1","entrenador_ids":["mauro","nicolas"]}', 'push');
+    equal(calls[2], 'reload', 'recarga');
+  });
+
+  await asyncTest('avisar cambio: si el usuario cancela no hace nada', async () => {
+    let called = false;
+    const result = await notifyGroupChangedAndRequestReconfirmation({
+      groupId: 'g1',
+      confirm: () => false,
+      runFunction: async <T,>() => { called = true; return {} as T; },
+      sendPush: async () => { called = true; },
+      reload: async () => { called = true; },
+    });
+    equal(result.skipped, true, 'cancelado');
+    equal(called, false, 'sin llamadas');
+  });
+
+  await asyncTest('avisar cambio: sin confirmados no envía push; si el push falla avisa y recarga', async () => {
+    const notes: string[] = [];
+    let pushed = false;
+    let reloads = 0;
+    const none = await notifyGroupChangedAndRequestReconfirmation({
+      groupId: 'g1', confirm: () => true, notify: (m) => notes.push(m),
+      runFunction: async <T,>() => ({ afectados: [] }) as unknown as T,
+      sendPush: async () => { pushed = true; }, reload: async () => { reloads += 1; },
+    });
+    equal(none.trainerIds.length, 0, 'ninguno');
+    equal(pushed, false, 'sin push');
+    const failing = await notifyGroupChangedAndRequestReconfirmation({
+      groupId: 'g1', confirm: () => true, notify: (m) => notes.push(m),
+      runFunction: async <T,>() => ({ afectados: [{ entrenador_id: 'x' }] }) as unknown as T,
+      sendPush: async () => { throw new Error('caído'); }, reload: async () => { reloads += 1; },
+    });
+    equal(failing.pushFailed, true, 'push fallido');
+    equal(reloads, 2, 'recarga siempre');
+    equal(notes.length, 2, 'dos avisos al usuario');
+  });
+})();
