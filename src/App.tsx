@@ -17556,7 +17556,9 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       (filtroIntensivos === 'proximos' && esProximo);
 
     let coincideMes = true;
-    if (mesIntensivos) {
+    // Un intensivo recién creado aún no tiene días (sin fecha_inicio):
+    // se muestra en cualquier mes para que no "desaparezca" tras crearlo.
+    if (mesIntensivos && intensivo.fecha_inicio) {
       const [anioMes, numeroMes] = mesIntensivos
         .split('-')
         .map((valor) => Number(valor));

@@ -1,5 +1,24 @@
 import React from 'react';
 import { CampoSelect } from '../lib/appHelpers';
+
+// Meses para el filtro: 6 meses atrás y 12 adelante desde hoy (formato 'YYYY-MM',
+// el mismo que ya usa el filtro). Si el valor elegido queda fuera, se añade.
+function opcionesMesIntensivos(mesActual: string) {
+  const hoy = new Date();
+  const opciones: { valor: string; etiqueta: string }[] = [];
+  for (let desplazamiento = -6; desplazamiento <= 12; desplazamiento += 1) {
+    const fecha = new Date(hoy.getFullYear(), hoy.getMonth() + desplazamiento, 1);
+    const valor = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
+    const etiqueta = fecha.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    opciones.push({ valor, etiqueta: etiqueta.charAt(0).toUpperCase() + etiqueta.slice(1) });
+  }
+  if (/^\d{4}-\d{2}$/.test(mesActual) && !opciones.some((o) => o.valor === mesActual)) {
+    const [anio, mes] = mesActual.split('-').map(Number);
+    const etiqueta = new Date(anio, mes - 1, 1).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    opciones.unshift({ valor: mesActual, etiqueta: etiqueta.charAt(0).toUpperCase() + etiqueta.slice(1) });
+  }
+  return opciones;
+}
 export function PantallaIntensivos(ctx: any) {
   const { abrirFichaMaestraAlumnoApp, abrirPanelIntensivo, actualizarDiaIntensivoDesdeApp, actualizarDiplomaIntensivo,
     actualizarNivelAlumnoIntensivo, actualizarRecuperacionIntensivo, agendaBadgeModalidad,
@@ -349,8 +368,9 @@ export function PantallaIntensivos(ctx: any) {
                     gap: 7,
                   }}
                 >
-                  <input
-                    type="month"
+                  {/* Desplegable en vez de <input type="month">: Safari (app de Mac)
+                      no soporta type="month" y lo muestra como texto libre. */}
+                  <select
                     value={mesIntensivos}
                     onChange={(e) => setMesIntensivos(e.target.value)}
                     style={{
@@ -362,7 +382,14 @@ export function PantallaIntensivos(ctx: any) {
                       background: '#fff',
                       color: '#0f172a',
                     }}
-                  />
+                  >
+                    <option value="">Todos los meses</option>
+                    {opcionesMesIntensivos(mesIntensivos).map((opcion) => (
+                      <option key={opcion.valor} value={opcion.valor}>
+                        {opcion.etiqueta}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </label>
 
@@ -511,7 +538,7 @@ export function PantallaIntensivos(ctx: any) {
                 <CampoSelect
                   label="Estado"
                   value={formIntensivo.estado}
-                  opciones={['Abierto', 'Pendiente de evaluación final', 'Cerrado']}
+                  opciones={['Abierto', 'Pendiente de revisar diplomas', 'Cerrado']}
                   onChange={(valor) =>
                     setFormIntensivo({ ...formIntensivo, estado: valor })
                   }
