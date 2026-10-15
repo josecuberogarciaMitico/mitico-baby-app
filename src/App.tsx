@@ -329,6 +329,7 @@ import type {
   OcioCambioPuntualApp,
 } from './features/ocio/ocioRelocation';
 import { requireIntensiveDiplomaUpdate } from './features/intensivos/intensivosPolicy';
+import { useIntensivoAltasTest } from './features/intensivos/useIntensivoAltasTest';
 import {
   calcularFechasCuatroSesionesIntensivo,
   diaIntensivoInicial,
@@ -2130,6 +2131,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [resultadoVolcadoIntensivo, setResultadoVolcadoIntensivo] = useState<
     VolcadoAlumnoIntensivoApp[]
   >([]);
+  const altasTestIntensivoApp = useIntensivoAltasTest({ resultadoVolcado: resultadoVolcadoIntensivo, ejecutarFuncionAuthJson, alCrearAltas: cargarAltasNivelInicial });
   const [intensivoDias, setIntensivoDias] = useState<IntensivoDiaApp[]>([]);
   const [intensivoAsistencias, setIntensivoAsistencias] = useState<
     IntensivoAsistenciaApp[]
@@ -23405,6 +23407,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
 
       {pantalla === 'intensivos' &&
         PantallaIntensivos({
+          ...altasTestIntensivoApp,
           abrirFichaMaestraAlumnoApp,
           abrirPanelIntensivo,
           actualizarDiaIntensivoDesdeApp,

@@ -82,7 +82,9 @@ export function PantallaIntensivos(ctx: any) {
     setResultadoVolcadoIntensivo, setTextoVolcadoIntensivo, setTrabajoDiarioPorGrupoRecomendado,
     tarjeta, tarjetaIntensivoCurso, textoBaseDiplomaIntensivo, textoNecesidadDosEntrenadoresApp,
     textoValidacionPedagogicaGrupoApp, textoVolcadoIntensivo, trabajoDiarioPorGrupoRecomendado,
-    volcarListadoAlumnosIntensivo } = ctx;
+    volcarListadoAlumnosIntensivo,
+    contactosAimHarderIntensivo, altasTestIntensivo, nombresSinFichaVolcado,
+    puedeCrearAltaTestIntensivo, crearAltasTestIntensivo, reiniciarAltasTestIntensivo } = ctx;
 
   function formatearAlumnoIntensivoVisible(valor: string | null | undefined) {
     const partes = String(valor || '')
@@ -601,7 +603,7 @@ export function PantallaIntensivos(ctx: any) {
               const volcadoAbierto =
                 mostrarVolcadoIntensivoId === intensivo.intensivo_id;
               const totalVolcadoNuevos = resultadoVolcadoIntensivo.filter(
-                (registro) => registro.resultado === 'NUEVO'
+                (registro) => registro.resultado !== 'EXISTENTE'
               ).length;
               const totalVolcadoExistentes = resultadoVolcadoIntensivo.filter(
                 (registro) => registro.resultado === 'EXISTENTE'
@@ -1573,6 +1575,145 @@ export function PantallaIntensivos(ctx: any) {
                         </div>
                       </div>
 
+                      {/* Recuperado: "Pegar listado Aimharder" se perdió en el commit 2a51f34 (12/08). */}
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                        <button
+                          onClick={() => {
+                            setMostrarVolcadoIntensivoId(
+                              volcadoAbierto ? null : intensivo.intensivo_id
+                            );
+                            setResultadoVolcadoIntensivo([]);
+                            reiniciarAltasTestIntensivo();
+                          }}
+                          style={botonPrincipal}
+                        >
+                          {volcadoAbierto ? 'Cerrar listado Aimharder' : 'Pegar listado Aimharder'}
+                        </button>
+                      </div>
+
+                      {volcadoAbierto && (
+                        <div style={{ ...miniTarjetaBlanca, marginBottom: 12 }}>
+                          <label style={labelCampo}>
+                            Pega aquí el listado completo del intensivo (copiado de Aimharder)
+                            <textarea
+                              value={textoVolcadoIntensivo}
+                              onChange={(e) => setTextoVolcadoIntensivo(e.target.value)}
+                              placeholder={
+                                'PABLO SINDE ANDRES\nReserva el 11/05/2026 a las 10:04\nTermina tarifa el 17/05/2026\n\nSOFIA XENOFONTOS GONZALEZ\nReserva el 11/05/2026 a las 10:05'
+                              }
+                              style={{
+                                ...inputCampo,
+                                minHeight: 170,
+                                resize: 'vertical',
+                                lineHeight: 1.4,
+                              }}
+                            />
+                          </label>
+
+                          <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
+                            <button
+                              onClick={() => volcarListadoAlumnosIntensivo(intensivo)}
+                              disabled={cargando}
+                              style={botonPrincipal}
+                            >
+                              Volcar alumnos al intensivo
+                            </button>
+                            <button
+                              onClick={() => {
+                                setTextoVolcadoIntensivo('');
+                                setResultadoVolcadoIntensivo([]);
+                                reiniciarAltasTestIntensivo();
+                              }}
+                              style={botonSecundario}
+                            >
+                              Limpiar
+                            </button>
+                          </div>
+
+                          {resultadoVolcadoIntensivo.length > 0 && (
+                            <div style={{ marginTop: 12 }}>
+                              <div style={avisoCompleto}>
+                                {resultadoVolcadoIntensivo.length} alumnos leídos · {totalVolcadoExistentes} añadidos al intensivo
+                                {totalVolcadoNuevos > 0
+                                  ? ` · ${totalVolcadoNuevos} sin ficha (pendientes de Alta/Test, NO añadidos)`
+                                  : ''}
+                              </div>
+                              {nombresSinFichaVolcado.length > 0 && (
+                                <div style={{ display: 'flex', gap: 8, marginTop: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                                  <button
+                                    onClick={() => crearAltasTestIntensivo(nombresSinFichaVolcado)}
+                                    disabled={!nombresSinFichaVolcado.some((nombre: string) => puedeCrearAltaTestIntensivo(nombre))}
+                                    style={{
+                                      ...botonPrincipal,
+                                      opacity: nombresSinFichaVolcado.some((nombre: string) => puedeCrearAltaTestIntensivo(nombre)) ? 1 : 0.55,
+                                    }}
+                                  >
+                                    Crear Alta/Test de todos los nuevos
+                                  </button>
+                                  <span style={{ fontSize: 12, color: '#64748b' }}>
+                                    Fecha de nacimiento y teléfono se cogen de AimHarder. Después, en Altas / Test: enviar por WhatsApp, validar nivel y añadir a este intensivo.
+                                  </span>
+                                </div>
+                              )}
+
+                              <div style={{ display: 'grid', gap: 6, marginTop: 10 }}>
+                                {resultadoVolcadoIntensivo.map((registro: any) => {
+                                  if (registro.resultado === 'EXISTENTE') {
+                                    return (
+                                      <div key={registro.alumno_id} style={miniTarjetaBlanca}>
+                                        <strong>{registro.alumno}</strong>
+                                        {` · Añadido · Nivel: ${registro.nivel_resumen || 'SIN NIVEL'}`}
+                                      </div>
+                                    );
+                                  }
+                                  const contacto = contactosAimHarderIntensivo[registro.alumno];
+                                  const alta = altasTestIntensivo[registro.alumno];
+                                  const textoContacto =
+                                    !contacto || contacto.estado === 'buscando'
+                                      ? 'Buscando en AimHarder…'
+                                      : contacto.estado === 'encontrado'
+                                      ? `Nac.: ${contacto.fechaNacimiento ? formatearFecha(contacto.fechaNacimiento) : 'sin fecha'} · Tel.: ${contacto.telefono || 'sin teléfono'}`
+                                      : contacto.estado === 'varios'
+                                      ? 'Varios clientes con este nombre en AimHarder: crear el Alta/Test a mano'
+                                      : contacto.estado === 'no_encontrado'
+                                      ? 'No encontrado en AimHarder: crear el Alta/Test a mano'
+                                      : 'Error consultando AimHarder';
+                                  const textoAlta = !alta
+                                    ? ''
+                                    : alta.estado === 'creando'
+                                    ? ' · Creando Alta/Test…'
+                                    : alta.estado === 'creado'
+                                    ? ' · ✓ Alta/Test creado'
+                                    : alta.estado === 'ya_existe'
+                                    ? ` · ${alta.detalle}`
+                                    : ` · Error: ${alta.detalle}`;
+                                  return (
+                                    <div
+                                      key={registro.alumno_id}
+                                      style={{ ...miniTarjetaBlanca, ...avisoPendiente, display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}
+                                    >
+                                      <span>
+                                        <strong>{registro.alumno}</strong>
+                                        {' · Sin ficha (no añadido) · '}
+                                        {textoContacto}
+                                        {textoAlta}
+                                      </span>
+                                      {puedeCrearAltaTestIntensivo(registro.alumno) && (
+                                        <button
+                                          onClick={() => crearAltasTestIntensivo([registro.alumno])}
+                                          style={botonSecundario}
+                                        >
+                                          Crear Alta/Test
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {alumnosInscritosIntensivo.length === 0 && (
                         <p style={{ marginBottom: 0 }}>
                           Todavía no hay alumnos inscritos. Valida sus tests en Administración y añádelos a este intensivo.
