@@ -21,6 +21,10 @@ const MARKDOWN_IMAGE = /!?\[[^\]]*\]\([^\n)]*\)/gi;
 const MARKDOWN_IMAGE_DETECT = /!?\[[^\]]*\]\([^\n)]*\)/i;
 const METADATA_START = /^(?:RESERVA(?:\s+EL)?|ULTIMA\s+RESERVA|ÚLTIMA\s+RESERVA|TERMINA\s+TARIFA|TARIFA|INSCRIPCION|INSCRIPCIÓN|PAGO|BONO|OBSERVACION|OBSERVACIÓN|FECHA|CANCELACIONES?|ULTIMO|ÚLTIMO)\b/i;
 const METADATA_ANYWHERE = /\b(?:Reserva\s+el|Última\s+reserva\s*:|Ultima\s+reserva\s*:|Termina\s+tarifa\s+el)\b/gi;
+// Textos de la pantalla de reservas de AimHarder que se cuelan al copiar la
+// tarjeta entera (sobre todo con la "lista de espera"). No son alumnos.
+const AIMHARDER_SCREEN_LABEL =
+  /^(?:(?:EN )?LISTA DE ESPERA|APUNTAR(?: .*)?|MODIFICAR CLASE|CANCELAR(?: .*)?|ENVIAR MENSAJE|DETALLE|PLAZAS OCUPADAS(?: .*)?|ASISTENCIA(?: .*)?|INSTRUCTOR(?: .*)?)$/;
 
 function cleanVisibleName(value: string): { name: string; guest: boolean } {
   const raw = String(value || '').replace(/\u00a0/g, ' ').trim();
@@ -51,6 +55,7 @@ function isLikelyStudentName(value: string): boolean {
   const normalized = normalizeRosterName(name);
   if (!normalized || METADATA_START.test(normalized)) return false;
   if (/\bAIMHARDER\b/i.test(normalized)) return false;
+  if (AIMHARDER_SCREEN_LABEL.test(normalized)) return false;
 
   const words = name.split(/\s+/).filter(Boolean);
   if (words.length < 2 || words.length > 8) return false;

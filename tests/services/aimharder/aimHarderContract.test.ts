@@ -6,7 +6,9 @@ import {
   type BabyAimHarderClaseApp,
 } from '../../../src/services/aimharder/aimHarderContract';
 import {
+  buildBabyAddOnlySummary,
   buildBabyRefreshSummary,
+  describirConfirmacionSoloAnadirBaby,
   normalizeOcioAimHarderTurn,
   planBabyWeekSlots,
   planOcioAttendanceFromAimHarder,
@@ -141,4 +143,34 @@ test('aplica reservas Ocio por turno exacto e identidad normalizada', () => {
   rejects(() => planOcioAttendanceFromAimHarder('2026-09-21', {
     semanaInicio: '2026-09-14', actualizadoAt: '', turnos: [],
   }, []), 'semana distinta');
+});
+
+test('resume el modo solo añadir con ficha antigua, nuevo y los que se quedan', () => {
+  const texto = buildBabyAddOnlySummary({
+    anadidos: [
+      { nombre: 'MIGUEL FERNANDEZ CAVADA GARCIA', estado: 'CONOCIDO', nivel: 'A' },
+      { nombre: 'CANDELA FERNANDEZ CAVADA GARCIA', estado: 'PENDIENTE_TEST', nivel: null },
+    ],
+    siguenSinSalir: ['JORGE BARQUILLA SUAREZ'],
+    cancelacionesRetiradas: [],
+    protegidos: [],
+    noAnadidos: [],
+    nivelesRecalculados: [],
+  }, { sourceKey: 'manual-paste' });
+  equal(texto.includes('MIGUEL FERNANDEZ CAVADA GARCIA (ya tenía ficha · nivel A)'), true, 'ficha antigua');
+  equal(texto.includes('CANDELA FERNANDEZ CAVADA GARCIA (nuevo · pendiente de Alta/Test)'), true, 'nuevo');
+  equal(texto.includes('no se ha quitado a nadie'), true, 'se quedan');
+  equal(texto.includes('copia interna'), false, 'listado pegado sin frescura');
+});
+
+test('la confirmación del listado pegado dice qué entra y que no se quita a nadie', () => {
+  const texto = describirConfirmacionSoloAnadirBaby({
+    additions: ['CANDELA FERNANDEZ CAVADA GARCIA'],
+    keptMissing: ['JORGE BARQUILLA SUAREZ'],
+    cancelledRemovals: [],
+    unsupportedAdditions: [],
+  });
+  equal(texto.includes('NO voy a quitar a nadie'), true, 'aviso');
+  equal(texto.includes('• CANDELA FERNANDEZ CAVADA GARCIA'), true, 'nuevo');
+  equal(texto.includes('JORGE BARQUILLA SUAREZ'), true, 'se queda');
 });

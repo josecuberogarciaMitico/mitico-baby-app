@@ -178,3 +178,30 @@ test('marca duplicados normalizados en vez de esconderlos', () => {
 test('genera el texto limpio que consume el resto de la app', () => {
   equal(rosterTextFromPastedList(realAimHarderCopy), expectedNames.join('\n'), 'texto limpio');
 });
+
+test('ignora los textos de la pantalla de reservas de AimHarder (lista de espera)', () => {
+  const copia = [
+    'JAIME REY COEGO',
+    'RESERVA EL 12/10/2026 A LAS 23:19',
+    'TERMINA TARIFA EL 17/10/2026',
+    'EN LISTA DE ESPERA',
+    'CANDELA FERNANDEZ CAVADA GARCIA',
+    'RESERVA EL 14/10/2026 A LAS 14:31',
+    'ÚLTIMA RESERVA: 01/04/2023',
+    'TERMINA TARIFA EL 16/05/2027MIGUEL FERNANDEZ CAVADA GARCIA',
+    'RESERVA EL 14/10/2026 A LAS 14:32',
+    'ÚLTIMA RESERVA: 16/11/2025',
+    'TERMINA TARIFA EL 16/05/2027',
+    'Apuntar a otro cliente',
+    'Apuntar invitado',
+    'Modificar clase',
+    'Enviar mensaje',
+    'Cancelar clase',
+  ].join('\n');
+  const parsed = parsePastedRoster(copia);
+  equal(
+    parsed.names.join('|'),
+    'JAIME REY COEGO|CANDELA FERNANDEZ CAVADA GARCIA|MIGUEL FERNANDEZ CAVADA GARCIA',
+    'solo alumnos'
+  );
+});

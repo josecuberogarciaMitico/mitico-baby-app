@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
 import {
   assessRosterRefresh,
+  findListImportIdentityConflicts,
+  normalizeNameLikeListImport,
   normalizeRosterName as normalizarNombreFueraPlazoAgenda,
+  planAddOnlyRosterRefresh,
   planRosterCleanup,
   verifyRosterSnapshot,
 } from '../../core/sessions/rosterSync';
+import type { ListImportFicha } from '../../core/sessions/rosterSync';
 import {
   babyClassHours as horasClaseBabyAimHarder,
   normalizeBabyAttendees,
@@ -22,13 +26,15 @@ import type {
   DatosContactoAimHarderApp,
 } from '../../services/aimharder/aimHarderContract';
 import {
+  buildBabyAddOnlySummary,
   buildBabyRefreshSummary,
+  describirConfirmacionSoloAnadirBaby,
   describirFrescuraAimHarderBabyApp,
   describirRepasoSolicitadoBabyApp,
   planBabyWeekSlots,
   selectExactBabyClass,
 } from '../../services/aimharder/aimHarderOperations';
-import { buscarContactoAimHarderPorNombre } from '../../services/aimharder/aimHarderContactService';
+import type { BabyAddOnlyResult } from '../../services/aimharder/aimHarderOperations';
 import { fechaAgendaCortaConAnio, inicioSemanaAgenda, rangoSemanaAgenda } from '../agenda/agendaCalendar';
 import type { AgendaAlumnoSesionApp, SesionAgendaOperativa } from '../agenda/agendaTypes';
 
@@ -355,8 +361,14 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
     const noEncontrados: string[] = [];
     for (const alumno of pendientes) {
       try {
-        const contacto = await buscarContactoAimHarderPorNombre(alumno.alumno);
-        if (contacto) {
+        // Misma RPC que usa aimHarderContactService (Alta/Test), llamada con el
+        // cliente que ya recibe este hook: así este archivo no arrastra la
+        // configuración de Vite (import.meta.env) a la compilación de test:core.
+        const filas = await ejecutarFuncionAuthJson<
+          Array<{ coincidencias?: number | null }>
+        >('aimharder_contacto_alumno_app', { p_nombre: alumno.alumno });
+        const contacto = Array.isArray(filas) ? filas[0] : null;
+        if (contacto && Number(contacto.coincidencias) === 1) {
           solicitados.push(alumno.alumno);
         } else {
           noEncontrados.push(alumno.alumno);
@@ -520,6 +532,17 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
               refrescadas += 1;
               alumnosAnadidos += refresco.anadidos;
             }
+            // Modo "solo añadir": se avisa de quién sigue en la sesión sin salir
+            // en AimHarder (no se ha quitado) para que no pase desapercibido.
+            if (
+              refresco.soloAnadir &&
+              (refresco.soloAnadir.siguenSinSalir.length > 0 ||
+                refresco.soloAnadir.noAnadidos.length > 0)
+            ) {
+              incidencias.push(
+                `${fecha} ${horaInicio}: ${buildBabyAddOnlySummary(refresco.soloAnadir)}`
+              );
+            }
           } else if (resultado?.ya_existia) {
             yaExistentes += 1;
           }
@@ -671,6 +694,197 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
     };
   }
 
+  // MODO "SOLO AÑADIR" (sesión con grupos hechos y niños que se apuntan tarde).
+  // Se usa cuando el candado bloquearía el refresco porque falta en la lectura
+  // algún alumno que ya estaba en la sesión. En vez de no hacer nada, añade a
+  // los nuevos con el MISMO volcado que se usa al crear la sesión (ficha
+  // existente -> su nivel, también de temporadas anteriores; sin ficha ->
+  // "Pendiente de Alta/Test"), re-enviando a todos los que ya estaban para que
+  // nadie salga de su grupo. Solo sale quien AimHarder marque como cancelado.
+  async function aplicarSoloAnadirEnSesionBabyApp(
+    sesionId: string,
+    existentesAntes: AgendaAlumnoSesionApp[],
+    asistentes: BabyAimHarderAsistenteActivoApp[],
+    safety: BabyAimHarderSafetyApp,
+    motivoBloqueo: string[]
+  ): Promise<{
+    sinCambios: boolean;
+    anadidos: number;
+    resultado: BabyAimHarderRefrescoResultadoApp | null;
+    soloAnadir: BabyAddOnlyResult;
+  }> {
+    const plan = planAddOnlyRosterRefresh(
+      existentesAntes.map((alumno) => ({
+        id: alumno.sesion_alumno_id,
+        name: alumno.alumno,
+      })),
+      {
+        activeNames: asistentes.map((asistente) => asistente.name),
+        cancelledNames: safety.cancelledNames || [],
+        safeZero: safety.safeZero === true,
+      }
+    );
+
+    if (plan.status === 'BLOCKED') {
+      throw new Error(
+        `Refresco bloqueado por seguridad: ${[...motivoBloqueo, ...plan.issues].join(
+          ' '
+        )} No se ha eliminado nadie.`
+      );
+    }
+
+    const siguenSinSalir = plan.keptMissing.map((alumno) => alumno.name);
+    if (plan.status === 'NOTHING_TO_ADD') {
+      return {
+        sinCambios: true,
+        anadidos: 0,
+        resultado: null,
+        soloAnadir: {
+          anadidos: [],
+          siguenSinSalir,
+          cancelacionesRetiradas: [],
+          protegidos: [],
+          noAnadidos: plan.unsupportedAdditions,
+          nivelesRecalculados: [],
+        },
+      };
+    }
+
+    // Un listado pegado a mano puede traer basura: se enseña qué se va a hacer
+    // antes de escribir nada. La lectura automática de AimHarder no pregunta.
+    if (safety.sourceKey === 'manual-paste' && typeof window !== 'undefined') {
+      const confirmado = window.confirm(
+        describirConfirmacionSoloAnadirBaby({
+          additions: plan.additions,
+          keptMissing: siguenSinSalir,
+          cancelledRemovals: plan.cancelledRemovals.map((alumno) => alumno.name),
+          unsupportedAdditions: plan.unsupportedAdditions,
+        })
+      );
+      if (!confirmado) {
+        throw new Error('Cancelado: no se ha cambiado nada en la sesión.');
+      }
+    }
+
+    // El volcado vuelve a buscar la ficha de cada nombre. Si para alguien que
+    // ya está en un grupo encontrara otra ficha (duplicados), saldría de su
+    // grupo: en ese caso no se toca nada. Los "Pendiente de Alta/Test" no están
+    // en grupos, así que no cuentan.
+    const idsConservados = new Set(plan.kept.map((alumno) => alumno.id));
+    const conservados = existentesAntes.filter(
+      (alumno) =>
+        idsConservados.has(alumno.sesion_alumno_id) &&
+        String(alumno.estado_en_listado || '').trim().toUpperCase() !== 'PENDIENTE_TEST'
+    );
+    if (conservados.length > 0) {
+      const nombres = Array.from(
+        new Set(
+          conservados
+            .map((alumno) => normalizeNameLikeListImport(alumno.alumno).replace(/"/g, ''))
+            .filter(Boolean)
+        )
+      );
+      const fichas = await consultarSupabase<ListImportFicha>(
+        'alumnos',
+        `select=id,nombre_normalizado,activo,created_at&nombre_normalizado=${encodeURIComponent(
+          `in.(${nombres.map((nombre) => `"${nombre}"`).join(',')})`
+        )}`
+      );
+      const conflictos = findListImportIdentityConflicts(
+        conservados.map((alumno) => ({ alumnoId: alumno.alumno_id, name: alumno.alumno })),
+        fichas
+      );
+      if (conflictos.length > 0) {
+        throw new Error(
+          `No he añadido a nadie: la ficha de ${conflictos.join(
+            ', '
+          )} está duplicada o no coincide con su nombre, y al volcar el listado podría salirse de su grupo. Revisa esa ficha o usa "+ Alumno fuera de plazo". No se ha cambiado nada.`
+        );
+      }
+    }
+
+    const resultado = await ejecutarFuncionAuthJson<BabyAimHarderRefrescoResultadoApp>(
+      'refrescar_sesion_baby_aimharder_app',
+      {
+        p_sesion_id: sesionId,
+        p_texto_listado: plan.mergedRosterNames.join('\n'),
+      }
+    );
+
+    const despues = await consultarSupabase<AgendaAlumnoSesionApp>(
+      'v_sesion_alumnos_operativa_app',
+      `select=*&sesion_id=${encodeURIComponent(`eq.${sesionId}`)}&order=orden.asc`
+    );
+    const despuesPorNombre = new Map(
+      despues.map((alumno) => [normalizarNombreFueraPlazoAgenda(alumno.alumno), alumno])
+    );
+
+    // Verificación: ninguno de los que se quedaban puede haber desaparecido.
+    const perdidos = plan.kept
+      .filter((alumno) => !despuesPorNombre.has(normalizarNombreFueraPlazoAgenda(alumno.name)))
+      .map((alumno) => alumno.name);
+    if (perdidos.length > 0) {
+      throw new Error(
+        `ATENCIÓN: después de añadir no encuentro en la sesión a ${perdidos.join(
+          ', '
+        )}. Revisa la sesión antes de seguir (no se muestra como correcto).`
+      );
+    }
+
+    const anadidos = plan.additions
+      .map((nombre) => despuesPorNombre.get(normalizarNombreFueraPlazoAgenda(nombre)))
+      .filter((alumno): alumno is AgendaAlumnoSesionApp => Boolean(alumno))
+      .map((alumno) => ({
+        nombre: alumno.alumno,
+        estado: alumno.estado_en_listado,
+        nivel: alumno.nivel_usado,
+      }));
+    const noEntraron = plan.additions.filter(
+      (nombre) => !despuesPorNombre.has(normalizarNombreFueraPlazoAgenda(nombre))
+    );
+
+    const protegidosResultado = new Set(
+      (resultado?.nombres_protegidos || []).map((nombre) =>
+        normalizarNombreFueraPlazoAgenda(nombre)
+      )
+    );
+    const cancelacionesRetiradas: string[] = [];
+    const protegidos: string[] = [];
+    plan.cancelledRemovals.forEach((alumno) => {
+      const clave = normalizarNombreFueraPlazoAgenda(alumno.name);
+      if (despuesPorNombre.has(clave) || protegidosResultado.has(clave)) {
+        protegidos.push(alumno.name);
+      } else {
+        cancelacionesRetiradas.push(alumno.name);
+      }
+    });
+
+    const nivelesRecalculados = existentesAntes
+      .filter((alumno) => idsConservados.has(alumno.sesion_alumno_id))
+      .map((alumno) => ({
+        nombre: alumno.alumno,
+        antes: alumno.nivel_usado || null,
+        despues:
+          despuesPorNombre.get(normalizarNombreFueraPlazoAgenda(alumno.alumno))?.nivel_usado ||
+          null,
+      }))
+      .filter((item) => item.antes !== item.despues);
+
+    return {
+      sinCambios: false,
+      anadidos: anadidos.length,
+      resultado,
+      soloAnadir: {
+        anadidos,
+        siguenSinSalir,
+        cancelacionesRetiradas,
+        protegidos,
+        noAnadidos: [...plan.unsupportedAdditions, ...noEntraron],
+        nivelesRecalculados,
+      },
+    };
+  }
+
   // Refresco seguro de una sesión Baby YA EXISTENTE con el listado de AimHarder.
   // Lo usan "Refrescar listado" (una sesión) y "Cargar semana" (todas las
   // sesiones ya creadas de la semana). Mismo candado anti-borrado en ambos.
@@ -684,6 +898,7 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
     anadidos: number;
     resultado: BabyAimHarderRefrescoResultadoApp | null;
     verificacion: BabyAimHarderVerificacionRefrescoApp | null;
+    soloAnadir: BabyAddOnlyResult | null;
   }> {
     // PREVUELO ANTI-BORRADO:
     // antes de tocar la sesión, cualquier alumno que vaya a salir debe aparecer
@@ -705,11 +920,17 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
     );
 
     if (preflight.status === 'BLOCKED') {
-      throw new Error(
-        `Refresco bloqueado por seguridad: ${preflight.issues.join(
-          ' '
-        )} No se ha eliminado nadie.`
+      // Antes aquí se paraba todo y los niños nuevos no entraban. Ahora se
+      // añaden sin quitar a nadie (o se sigue bloqueando si hay duplicados,
+      // 0 alumnos o algún nombre que no se pueda re-leer con seguridad).
+      const soloAnadir = await aplicarSoloAnadirEnSesionBabyApp(
+        sesionId,
+        existentesAntes,
+        asistentes,
+        safety,
+        preflight.issues
       );
+      return { ...soloAnadir, verificacion: null };
     }
 
     if (
@@ -717,7 +938,13 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
       preflight.additions.length === 0 &&
       preflight.removals.length === 0
     ) {
-      return { sinCambios: true, anadidos: 0, resultado: null, verificacion: null };
+      return {
+        sinCambios: true,
+        anadidos: 0,
+        resultado: null,
+        verificacion: null,
+        soloAnadir: null,
+      };
     }
 
     const resultado = await ejecutarFuncionAuthJson<BabyAimHarderRefrescoResultadoApp>(
@@ -743,7 +970,30 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
       anadidos: preflight.additions.length,
       resultado,
       verificacion,
+      soloAnadir: null,
     };
+  }
+
+  // El resultado de "Refrescar listado" / "Pegar listado" se pinta arriba de
+  // la Agenda, lejos de la tarjeta: si estás con la tarjeta en pantalla no lo
+  // ves. Este aviso lo recoge manualRosterBridge para pintarlo en la tarjeta.
+  function notificarResultadoTarjetaBabyApp(
+    sesion: SesionAgendaOperativa,
+    ok: boolean,
+    texto: string
+  ) {
+    if (typeof window === 'undefined') return;
+    window.dispatchEvent(
+      new CustomEvent('mitico:baby-refresh-result', {
+        detail: {
+          fecha: String(sesion.fecha || '').slice(0, 10),
+          inicio: horaCorta(sesion.hora_inicio),
+          fin: horaCorta(sesion.hora_fin),
+          ok,
+          texto,
+        },
+      })
+    );
   }
 
   async function refrescarSesionBabyDesdeAimHarder(
@@ -782,11 +1032,16 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
       // ya mismo (mismo mecanismo seguro que usa "Alta/Test"). No cambia el
       // candado de seguridad: solo intenta que la próxima lectura esté más
       // al día, y deja claro por nombre a quién se le ha pedido el repaso.
-      repaso = await solicitarRepasoAlumnosNoActivosBabyApp(sesionId, asistentes);
+      // Con un listado pegado a mano (que puede traer solo a los nuevos) no
+      // tiene sentido: no viene de la copia de AimHarder.
+      repaso =
+        safety.sourceKey === 'manual-paste'
+          ? null
+          : await solicitarRepasoAlumnosNoActivosBabyApp(sesionId, asistentes);
 
-      const { resultado, verificacion } =
+      const { resultado, verificacion, soloAnadir } =
         await aplicarListadoAimHarderEnSesionBabyApp(sesionId, asistentes, safety);
-      if (!verificacion) {
+      if (!soloAnadir && !verificacion) {
         // No ocurre: sin omitirSiSinCambios siempre se refresca y verifica.
         throw new Error('No se pudo verificar el refresco de la sesión Baby.');
       }
@@ -798,9 +1053,25 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
         preservarScroll: true,
       });
 
-      setBabyAimHarderMensaje(
-        buildBabyRefreshSummary(asistentes.length, resultado, verificacion, safety, repaso)
-      );
+      let mensaje = '';
+      if (soloAnadir) {
+        const notaRepaso = repaso
+          ? describirRepasoSolicitadoBabyApp(repaso.solicitados, repaso.noEncontrados)
+          : '';
+        mensaje = [buildBabyAddOnlySummary(soloAnadir, safety), notaRepaso]
+          .filter(Boolean)
+          .join(' · ');
+      } else if (verificacion) {
+        mensaje = buildBabyRefreshSummary(
+          asistentes.length,
+          resultado,
+          verificacion,
+          safety,
+          repaso
+        );
+      }
+      setBabyAimHarderMensaje(mensaje);
+      notificarResultadoTarjetaBabyApp(sesion, true, mensaje);
     } catch (e) {
       const base =
         e instanceof Error
@@ -809,7 +1080,9 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
       const notaRepaso = repaso
         ? describirRepasoSolicitadoBabyApp(repaso.solicitados, repaso.noEncontrados)
         : '';
-      setBabyAimHarderError(notaRepaso ? `${base} ${notaRepaso}` : base);
+      const textoError = notaRepaso ? `${base} ${notaRepaso}` : base;
+      setBabyAimHarderError(textoError);
+      notificarResultadoTarjetaBabyApp(sesion, false, textoError);
     } finally {
       setBabyAimHarderSesionCargandoId('');
     }

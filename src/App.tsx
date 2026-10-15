@@ -13652,6 +13652,7 @@ async function abrirGestionOperativaIntensivoDia(
       }
 
       await cargarAgendaOperativaDirecta();
+      await cargarGruposEntrenador();
       if (opcion.es_sesion_actual) {
         await cargarDetalleSesionAgenda(opcion.sesion_id);
       }

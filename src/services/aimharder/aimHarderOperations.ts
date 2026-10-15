@@ -176,6 +176,108 @@ export function buildBabyRefreshSummary(
   return messages.join(' · ');
 }
 
+// Resultado del modo "solo añadir" (sesión con grupos ya hechos y niños que se
+// apuntan tarde): qué se ha añadido, cómo ha quedado cada uno y qué se ha
+// dejado como estaba.
+export type BabyAddOnlyAddedStudent = {
+  nombre: string;
+  // CONOCIDO (tenía ficha, también de temporadas anteriores) o PENDIENTE_TEST.
+  estado: string;
+  nivel: string | null;
+};
+
+export type BabyAddOnlyResult = {
+  anadidos: BabyAddOnlyAddedStudent[];
+  // Siguen en la sesión aunque no salen en esta lectura (no se quitan).
+  siguenSinSalir: string[];
+  // AimHarder los marca como cancelados: se retiran como en un refresco normal.
+  cancelacionesRetiradas: string[];
+  // Cancelados que no se retiran porque ya tienen asistencia o reporte.
+  protegidos: string[];
+  // Nombres que no se pueden volcar automáticamente.
+  noAnadidos: string[];
+  // Alumnos que ya estaban y cuyo nivel en la sesión se ha recalculado desde su ficha.
+  nivelesRecalculados: Array<{ nombre: string; antes: string | null; despues: string | null }>;
+};
+
+function describirAnadidoBaby(alumno: BabyAddOnlyAddedStudent): string {
+  if (String(alumno.estado || '').toUpperCase() === 'PENDIENTE_TEST') {
+    return `${alumno.nombre} (nuevo · pendiente de Alta/Test)`;
+  }
+  return `${alumno.nombre} (ya tenía ficha · nivel ${alumno.nivel || 'sin nivel, revisa su ficha'})`;
+}
+
+export function describirConfirmacionSoloAnadirBaby(input: {
+  additions: string[];
+  keptMissing: string[];
+  cancelledRemovals: string[];
+  unsupportedAdditions: string[];
+}): string {
+  const lineas = [
+    'La sesión ya tiene alumnos que no salen en este listado, así que NO voy a quitar a nadie ni a tocar los grupos.',
+    '',
+  ];
+  if (input.additions.length > 0) {
+    lineas.push(`Voy a AÑADIR (quedarán en "Pendientes de colocar"):`);
+    input.additions.forEach((nombre) => lineas.push(`  • ${nombre}`));
+    lineas.push(
+      'Si ya tienen ficha (también del año pasado) entran con su nivel; si son nuevos, entran como "Pendiente de Alta/Test".'
+    );
+  }
+  if (input.cancelledRemovals.length > 0) {
+    lineas.push('', `AimHarder los marca como cancelados y saldrán: ${input.cancelledRemovals.join(', ')}`);
+  }
+  if (input.keptMissing.length > 0) {
+    lineas.push('', `Se quedan como están (no salen en el listado, revísalos tú): ${input.keptMissing.join(', ')}`);
+  }
+  if (input.unsupportedAdditions.length > 0) {
+    lineas.push('', `No los puedo añadir automáticamente: ${input.unsupportedAdditions.join(', ')}`);
+  }
+  lineas.push('', '¿Continuar?');
+  return lineas.join('\n');
+}
+
+export function buildBabyAddOnlySummary(
+  result: BabyAddOnlyResult,
+  safety?: BabyAimHarderSafetyApp | null
+): string {
+  const messages = ['✓ AÑADIR NUEVOS (grupos sin tocar)'];
+  if (result.anadidos.length > 0) {
+    messages.push(
+      `${result.anadidos.length} ${result.anadidos.length === 1 ? 'alumno añadido' : 'alumnos añadidos'} a "Pendientes de colocar": ${result.anadidos
+        .map(describirAnadidoBaby)
+        .join(', ')}`
+    );
+  } else {
+    messages.push('No había alumnos nuevos que añadir');
+  }
+  if (result.cancelacionesRetiradas.length > 0) {
+    messages.push(`Cancelaciones retiradas (AimHarder las marca como canceladas): ${result.cancelacionesRetiradas.join(', ')}`);
+  }
+  if (result.protegidos.length > 0) {
+    messages.push(`Cancelados que NO se quitan por asistencia/reporte: ${result.protegidos.join(', ')}`);
+  }
+  if (result.siguenSinSalir.length > 0) {
+    messages.push(
+      `Siguen en la sesión aunque no salen en este listado (no se ha quitado a nadie, revísalos): ${result.siguenSinSalir.join(', ')}`
+    );
+  }
+  if (result.noAnadidos.length > 0) {
+    messages.push(`No añadidos automáticamente (usa "+ Alumno fuera de plazo"): ${result.noAnadidos.join(', ')}`);
+  }
+  if (result.nivelesRecalculados.length > 0) {
+    messages.push(
+      `Nivel de la sesión actualizado al de su ficha: ${result.nivelesRecalculados
+        .map((item) => `${item.nombre} (${item.antes || '-'} → ${item.despues || '-'})`)
+        .join(', ')}`
+    );
+  }
+  if (safety && safety.sourceKey !== 'manual-paste') {
+    messages.push(describirFrescuraAimHarderBabyApp(safety));
+  }
+  return messages.join(' · ');
+}
+
 export type OcioStableRosterGroup = {
   groupId: string;
   date: string;

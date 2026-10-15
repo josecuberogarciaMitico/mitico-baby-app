@@ -252,7 +252,7 @@ function ensureBabyRefreshManualImports() {
     panel.style.background = '#f8fafc';
 
     const textarea = createPasteArea(
-      'Pega el listado completo de este turno. Se usa para refrescar la misma sesión sin consultar AimHarder.'
+      'Pega el listado de este turno tal cual sale en AimHarder (completo o solo los nuevos, también la lista de espera). Si falta alguien que ya estaba, no se quita: solo se añaden los nuevos.'
     );
     const actionRow = document.createElement('div');
     Object.assign(actionRow.style, {
@@ -264,6 +264,7 @@ function ensureBabyRefreshManualImports() {
     const applyButton = cloneButton(autoButton, 'Refrescar con listado pegado');
     const closeButton = cloneButton(autoButton, 'Cerrar');
     const status = createStatus();
+    status.dataset.manualRosterPasteStatus = '1';
 
     manualButton.addEventListener('click', () => {
       panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
@@ -271,6 +272,13 @@ function ensureBabyRefreshManualImports() {
     });
     closeButton.addEventListener('click', () => {
       panel.style.display = 'none';
+    });
+    // Al volver a refrescar, el resultado anterior de la tarjeta deja de valer.
+    autoButton.addEventListener('click', () => {
+      const previous = card.querySelector<HTMLElement>(
+        '[data-manual-roster-result="baby-refresh"]'
+      );
+      if (previous) paintStatus(previous, 'Comprobando la sesión…');
     });
     applyButton.addEventListener('click', () => {
       try {
@@ -298,7 +306,9 @@ function ensureBabyRefreshManualImports() {
         const guestText = staged.guests > 0 ? ` · ${staged.guests} invitado(s)` : '';
         paintStatus(
           status,
-          `✓ ${staged.names.length} alumno(s) detectados${guestText}. Refrescando la misma sesión…`
+          `Leídos ${staged.names.length} nombre(s) del listado${guestText}: ${staged.names.join(
+            ', '
+          )}. Aplicando en la sesión… (el resultado sale justo debajo)`
         );
         window.setTimeout(() => autoButton.click(), 30);
       } catch (error) {
@@ -316,6 +326,53 @@ function ensureBabyRefreshManualImports() {
     card.append(panel);
     card.dataset.manualRosterRefreshReady = '1';
   });
+}
+
+// Pinta el resultado real de "Refrescar listado" / "Pegar listado" dentro de la
+// tarjeta Baby de ese turno (antes solo salía arriba del todo de la Agenda y,
+// con la tarjeta en pantalla, parecía que no había pasado nada).
+function babyRefreshCard(fecha: string, inicio: string, fin: string): HTMLElement | null {
+  const cards = Array.from(
+    document.querySelectorAll<HTMLElement>('article[data-agenda-session-date]')
+  ).filter((card) => {
+    if (card.getAttribute('data-agenda-session-date') !== fecha) return false;
+    const times = parseManualBabyTimesFromText(card.getAttribute('data-agenda-session-time'));
+    if (times.start !== inicio || times.end !== fin) return false;
+    // Solo la tarjeta Baby (la de Ocio del mismo horario no tiene este botón).
+    return Array.from(card.querySelectorAll('button')).some((button) =>
+      /^(Refrescar listado|Refrescando…)$/.test(buttonText(button))
+    );
+  });
+  return cards[0] || null;
+}
+
+function showBabyRefreshResult(event: Event) {
+  const detail = (event as CustomEvent<{
+    fecha?: string;
+    inicio?: string;
+    fin?: string;
+    ok?: boolean;
+    texto?: string;
+  }>).detail || {};
+  const card = babyRefreshCard(
+    String(detail.fecha || '').slice(0, 10),
+    String(detail.inicio || '').slice(0, 5),
+    String(detail.fin || '').slice(0, 5)
+  );
+  if (!card) return;
+  let box = card.querySelector<HTMLDivElement>('[data-manual-roster-result="baby-refresh"]');
+  if (!box) {
+    box = createStatus();
+    box.dataset.manualRosterResult = 'baby-refresh';
+    box.style.whiteSpace = 'pre-line';
+    card.append(box);
+  }
+  paintStatus(box, String(detail.texto || ''), detail.ok === false);
+  // Si el panel de pegado está abierto, su aviso de "Aplicando…" ya no aplica.
+  const pasteStatus = card.querySelector<HTMLElement>(
+    '[data-manual-roster-panel="baby-refresh"] [data-manual-roster-paste-status]'
+  );
+  if (pasteStatus) pasteStatus.style.display = 'none';
 }
 
 function addIsoDays(iso: string, days: number): string {
@@ -682,6 +739,7 @@ export function installManualRosterBridge() {
   if (globalWindow[INSTALL_FLAG]) return;
   globalWindow[INSTALL_FLAG] = true;
   installManualBabyFetchAdapter();
+  window.addEventListener('mitico:baby-refresh-result', showBabyRefreshResult);
 
   const start = () => {
     scan();
