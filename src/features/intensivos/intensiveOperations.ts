@@ -1,3 +1,5 @@
+import { parsePastedRoster, rosterTextForServerImport } from '../../core/imports/pastedRoster';
+import { normalizeRosterName } from '../../core/sessions/rosterSync';
 import type {
   DiaIntensivoFormState,
   GrupoEditableIntensivoDiaApp,
@@ -137,4 +139,29 @@ export function planIntensiveFutureMove(input: {
     throw new Error(`${input.studentName} ya está en ${input.targetGroupName} desde el día seleccionado en adelante.`);
   }
   return plan;
+}
+
+// Listado pegado de un intensivo: se limpia igual que en Baby antes de enviarlo a
+// volcar_alumnos_intensivo_app (un niño por línea, sin «[Invitado]» ni textos de
+// la pantalla de AimHarder, y con el nivel al final si venía escrito).
+export function prepareIntensiveRosterImport(rawText: string): {
+  serverText: string;
+  names: string[];
+} {
+  const parsed = parsePastedRoster(rawText);
+  return {
+    serverText: rosterTextForServerImport(rawText),
+    names: parsed.names,
+  };
+}
+
+// Nombres del listado que la base de datos no ha devuelto en el resultado (los
+// ha descartado sin avisar: p. ej. con guion o apóstrofo, antes de la migración
+// 20261015_000001).
+export function intensiveRosterNamesNotRead(
+  names: string[],
+  result: Array<{ alumno: string | null }>
+): string[] {
+  const read = new Set(result.map((row) => normalizeRosterName(row.alumno)).filter(Boolean));
+  return names.filter((name) => !read.has(normalizeRosterName(name)));
 }

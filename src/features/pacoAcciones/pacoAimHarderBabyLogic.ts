@@ -5,11 +5,18 @@
 //   · turno que no existe en la app            → crearlo con sus niños;
 //   · turno que existe y solo le faltan niños  → añadirlos;
 //   · turno que existe y ya está al día        → no tocarlo;
-//   · turno donde AimHarder quita a alguien o el candado de seguridad bloquea
-//     → NO se toca desde Paco: se avisa para hacerlo con «Refrescar listado»
-//       de la Agenda (que ya sabe proteger asistencia y reportes).
-// El candado es el mismo de la Agenda (assessRosterRefresh).
-import { assessRosterRefresh, normalizeRosterName } from '../../core/sessions/rosterSync';
+//   · turno con niños nuevos donde además AimHarder ya no trae a alguien
+//     → «solo añadir», igual que la tarjeta de la Agenda: se añaden los nuevos
+//       y NO se quita a nadie (los que faltan se avisan);
+//   · turno donde AimHarder quita a alguien y no hay nadie nuevo, o el candado
+//     bloquea por duplicados / lectura vacía → NO se toca desde Paco: se avisa
+//       para hacerlo con «Refrescar listado» de la Agenda.
+// El candado es el mismo de la Agenda (assessRosterRefresh / planAddOnlyRosterRefresh).
+import {
+  assessRosterRefresh,
+  normalizeRosterName,
+  planAddOnlyRosterRefresh,
+} from '../../core/sessions/rosterSync';
 import { etiquetaDia, horaCorta, sinTildes } from './pacoAccionesLogic';
 import { lunesDe, rangoSemana, resolverSemana } from './pacoDisponibilidadLogic';
 
@@ -29,7 +36,8 @@ export type SesionExistente = {
   fecha: string;
   inicio: string;
   fin: string;
-  roster: { id: string; name: string }[];
+  // alumnoId / estado: para comprobar fichas duplicadas antes de un «solo añadir».
+  roster: { id: string; name: string; alumnoId?: string; estado?: string }[];
 };
 
 export type EstadoTurno = 'crear' | 'anadir' | 'al_dia' | 'revisar' | 'vacio';
@@ -40,7 +48,11 @@ export type PlanTurno = {
   inicio: string;
   fin: string;
   estado: EstadoTurno;
-  nombres: string[]; // lista completa de AimHarder (la que se escribe)
+  nombres: string[]; // lista completa de AimHarder
+  // Lo que se escribe en la base de datos. En «solo añadir» = los que ya estaban
+  // + los nuevos, para que nadie salga de su grupo.
+  listaVolcado: string[];
+  soloAnadir: boolean;
   sesion_id: string | null;
   anadir: string[]; // niños que entrarían (o todos, si el turno es nuevo)
   quitar: string[]; // niños que AimHarder ya no tiene (solo informativo: Paco no los quita)
@@ -132,6 +144,8 @@ export function planificarTurno(
     inicio: turno.inicio,
     fin: turno.fin,
     nombres,
+    listaVolcado: nombres,
+    soloAnadir: false,
     quitar: [] as string[],
     motivos: [] as string[],
   };
@@ -163,6 +177,39 @@ export function planificarTurno(
   });
   const quitar = evaluacion.removals.map((r) => r.name);
   if (evaluacion.status === 'BLOCKED' || quitar.length > 0) {
+    // Paco nunca quita a nadie: cancelados = [] para que todos los que ya están
+    // se queden. Si hay niños nuevos y nada más bloquea, se añaden sin tocar grupos.
+    const soloAnadir = planAddOnlyRosterRefresh(existente.roster, {
+      activeNames: nombres,
+      cancelledNames: [],
+      safeZero: turno.safeZero,
+    });
+    if (soloAnadir.status === 'ADD' && soloAnadir.additions.length > 0) {
+      const motivosAnadir: string[] = [];
+      if (soloAnadir.keptMissing.length > 0) {
+        motivosAnadir.push(
+          `No salen en AimHarder y se quedan como están (no quito a nadie; revíselos en la Agenda): ${soloAnadir.keptMissing
+            .map((m) => m.name)
+            .join(', ')}.`
+        );
+      }
+      if (soloAnadir.unsupportedAdditions.length > 0) {
+        motivosAnadir.push(
+          `No puedo añadir automáticamente a ${soloAnadir.unsupportedAdditions.join(', ')} (use «+ Alumno fuera de plazo»).`
+        );
+      }
+      return {
+        ...base,
+        estado: 'anadir',
+        sesion_id: existente.sesion_id,
+        listaVolcado: soloAnadir.mergedRosterNames,
+        soloAnadir: true,
+        anadir: soloAnadir.additions,
+        quitar: soloAnadir.keptMissing.map((m) => m.name),
+        motivos: motivosAnadir,
+        desconocidos: desconocidosDe(soloAnadir.additions),
+      };
+    }
     const motivos = [...evaluacion.issues];
     if (quitar.length > 0) {
       motivos.push(
@@ -200,6 +247,8 @@ export function planAmbiguo(turno: TurnoAimHarder, cuantos: number): PlanTurno {
     fin: turno.fin,
     estado: 'revisar',
     nombres: turno.nombres,
+    listaVolcado: turno.nombres,
+    soloAnadir: false,
     sesion_id: null,
     anadir: [],
     quitar: [],
@@ -241,7 +290,12 @@ export function textoVistaPrevia(semana: string, planes: PlanTurno[], incidencia
   if (anadir.length) {
     partes.push(
       `Turnos existentes a los que solo añadiría niños (${anadir.length}):\n${anadir
-        .map((p) => `· ${etiqueta(p)} — añadir ${lista(p.anadir)}`)
+        .map(
+          (p) =>
+            `· ${etiqueta(p)} — añadir ${lista(p.anadir)}${
+              p.soloAnadir && p.motivos.length ? `. ${p.motivos.join(' ')}` : ''
+            }`
+        )
         .join('\n')}`
     );
   }

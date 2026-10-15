@@ -6,7 +6,11 @@
 // ESCRITURA: solo las dos funciones que ya usa «Cargar semana Baby» de la Agenda
 // (cargar_sesion_baby_aimharder_inicial_app y refrescar_sesion_baby_aimharder_app).
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../../config/supabase';
-import { normalizeRosterName } from '../../core/sessions/rosterSync';
+import {
+  normalizeNameLikeListImport,
+  normalizeRosterName,
+  type ListImportFicha,
+} from '../../core/sessions/rosterSync';
 import { obtenerAccessTokenSupabaseApp } from '../../services/auth/authService';
 import {
   babyClassHours,
@@ -125,7 +129,12 @@ export async function leerSesionesBabySemana(semanaInicio: string): Promise<Sesi
     fin: hora(s.hora_fin),
     roster: alumnos
       .filter((a) => a.sesion_id === s.sesion_id)
-      .map((a) => ({ id: a.sesion_alumno_id, name: a.alumno })),
+      .map((a) => ({
+        id: a.sesion_alumno_id,
+        name: a.alumno,
+        alumnoId: a.alumno_id,
+        estado: a.estado_en_listado,
+      })),
   }));
 }
 
@@ -139,18 +148,21 @@ export async function leerRosterSesion(sesionId: string): Promise<{ id: string; 
 
 // Qué nombres de AimHarder ya son alumnos de la app (mismo criterio que la base de
 // datos al cargar el listado: nombre normalizado; los «pendiente de test» cuentan como nuevos).
+// La tabla `alumnos` no se puede leer desde la app ("permission denied"): se usa la
+// vista v_alumnos_resumen_para_volcado_app (coordinación). La vista no trae
+// semilla_temporada_origen; una ficha inactiva en «revisar» se cuenta como pendiente
+// de Alta/Test (hoy, 15/10/2026, todas las de ese tipo son pendientes sin semilla).
 export async function leerConocimientoAlumnos(): Promise<ConocimientoAlumno> {
   const filas = await supabase.query<{
     nombre_normalizado: string | null;
     activo: boolean | null;
     estado_ficha: string | null;
-    semilla_temporada_origen: unknown;
-  }>('alumnos', 'select=nombre_normalizado,activo,estado_ficha,semilla_temporada_origen&limit=5000');
+  }>('v_alumnos_resumen_para_volcado_app', 'select=nombre_normalizado,activo,estado_ficha&limit=5000');
   const mapa: ConocimientoAlumno = new Map();
   for (const f of filas) {
     const clave = normalizeRosterName(f.nombre_normalizado);
     if (!clave) continue;
-    const pendiente = f.activo === false && f.estado_ficha === 'revisar' && f.semilla_temporada_origen == null;
+    const pendiente = f.activo === false && f.estado_ficha === 'revisar';
     // Si hay dos fichas con el mismo nombre, una conocida basta (la base prefiere las activas).
     if (!pendiente) mapa.set(clave, 'conocido');
     else if (!mapa.has(clave)) mapa.set(clave, 'pendiente_test');
@@ -195,4 +207,19 @@ export async function anadirNinosATurno(sesionId: string, nombres: string[]): Pr
     p_sesion_id: sesionId,
     p_texto_listado: nombres.join('\n'),
   });
+}
+
+// Fichas (por nombre normalizado) de los niños que ya están en un turno, para
+// comprobar antes de un «solo añadir» que el volcado no cambiaría a nadie de ficha.
+export async function leerFichasVolcado(nombres: string[]): Promise<ListImportFicha[]> {
+  const claves = Array.from(
+    new Set(nombres.map((n) => normalizeNameLikeListImport(n).replace(/"/g, '')).filter(Boolean))
+  );
+  if (claves.length === 0) return [];
+  return supabase.query<ListImportFicha>(
+    'v_alumnos_resumen_para_volcado_app',
+    `select=alumno_id,nombre_normalizado,activo&nombre_normalizado=${encodeURIComponent(
+      `in.(${claves.map((c) => `"${c}"`).join(',')})`
+    )}`
+  );
 }

@@ -98,3 +98,36 @@ test('textos: la vista previa avisa y el resultado marca omitidos', () => {
   ]);
   ok(r.includes('1 turno(s) cargado(s)') && r.includes('Omitidos por seguridad'), r);
 });
+
+test('solo añadir: hay nuevos y AimHarder ya no trae a alguien → añade sin quitar', () => {
+  const p = planificarTurno(
+    turno(['Ana Ruiz', 'Pablo Gil']),
+    sesion(['Ana Ruiz', 'Hugo Lara']),
+    new Map([['ANA RUIZ', 'conocido']])
+  );
+  equal(p.estado, 'anadir', 'se puede añadir');
+  ok(p.soloAnadir, 'modo solo añadir');
+  equal(p.anadir, ['Pablo Gil'], 'nuevo');
+  equal(p.listaVolcado, ['Ana Ruiz', 'Hugo Lara', 'Pablo Gil'], 'se vuelve a enviar a todos');
+  equal(p.quitar, ['Hugo Lara'], 'Hugo se queda (aviso)');
+  equal(p.desconocidos, ['Pablo Gil'], 'Pablo entra como pendiente de Alta/Test');
+  ok(p.motivos.join(' ').includes('no quito a nadie'), 'avisa');
+  ok(textoVistaPrevia('2026-10-19', [p], [], true).includes('Hugo Lara'), 'la vista previa lo dice');
+});
+
+test('solo añadir: con cancelación justificada Paco tampoco quita', () => {
+  const p = planificarTurno(turno(['Ana Ruiz', 'Pablo Gil'], { cancelados: ['Hugo Lara'] }), sesion(['Ana Ruiz', 'Hugo Lara']));
+  equal(p.estado, 'anadir', 'añade');
+  equal(p.listaVolcado, ['Ana Ruiz', 'Hugo Lara', 'Pablo Gil'], 'Hugo sigue en el volcado');
+});
+
+test('solo añadir: duplicados o nombre guardado ilegible siguen a revisar', () => {
+  equal(planificarTurno(turno(['Ana Ruiz', 'Pablo Gil', 'pablo gil']), sesion(['Ana Ruiz', 'Hugo Lara'])).estado, 'revisar', 'duplicados');
+  equal(planificarTurno(turno(['Ana Ruiz', 'Pablo Gil']), sesion(['Ana Ruiz', 'PEPE'])).estado, 'revisar', 'nombre de una palabra');
+});
+
+test('turno normal: la lista que se escribe es la de AimHarder', () => {
+  const p = planificarTurno(turno(['Ana Ruiz', 'Pablo Gil']), sesion(['Ana Ruiz']));
+  equal(p.soloAnadir, false, 'no es solo añadir');
+  equal(p.listaVolcado, ['Ana Ruiz', 'Pablo Gil'], 'lista AimHarder');
+});

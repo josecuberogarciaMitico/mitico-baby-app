@@ -1,7 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import type { AlumnoResumen } from '../../core/students/studentTypes';
 import type { EntrenadorResumen } from '../../core/trainers/trainerTypes';
-import type { AgendaRecomendacionSesionApp, RecomendacionFueraPlazoAgendaApp } from './agendaTypes';
+import type {
+  AgendaRecomendacionSesionApp,
+  RecomendacionFueraPlazoAgendaApp,
+  SesionAgendaOperativa,
+} from './agendaTypes';
 import { addIsoDays, type BabyRelocationOption, type BabyRelocationStudent } from './agendaRelocation';
 import { loadBabyRelocationOptions, moveBabyStudentBetweenSessions } from '../../services/agenda/agendaRelocationService';
 import { addLateStudentToSession } from '../../services/agenda/lateStudentSessionService';
@@ -61,6 +65,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     alumnoFueraPlazoAlumnoId,
     cargarDetalleSesionAgenda,
     alumnoFueraPlazoNombre,
+    anadirAlumnoSinFichaASesionBabyApp,
     alumnos,
     alumnosDelGrupoCreadoApp,
     analizandoFueraPlazo,
@@ -244,6 +249,55 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     texto: string;
   } | null>(null);
 
+  // ¿La sesión abierta es de Baby? (para el alta tardía de un niño sin ficha).
+  function sesionActivaEsBaby(): boolean {
+    const sesion = (diasSemanaAgenda as Array<{ fecha: string }>)
+      .flatMap((dia) => sesionesDelDiaAgenda(dia.fecha) as SesionAgendaOperativa[])
+      .find((item) => item.agendaDirecta?.sesion_id === agendaSesionActivaId);
+    return String(sesion?.modalidad || '').trim().toUpperCase() === 'BABY';
+  }
+
+  // Niño sin ficha elegida en una sesión Baby: entra como en el listado de
+  // AimHarder (ficha antigua → su nivel; sin ficha → «Pendiente de Alta/Test»),
+  // sin elegir un nivel a ojo y sin tocar los grupos.
+  async function anadirAlumnoSinFichaComoPendiente(nombre: string) {
+    if (
+      !window.confirm(
+        `${nombre}\n\nSe añade a esta sesión SIN grupo. Si ya tiene ficha (también del año pasado) entra con su nivel; si es nuevo, entra como «Pendiente de Alta/Test».\nNo se toca ningún grupo. ¿Continuar?`
+      )
+    ) {
+      return;
+    }
+    setAnadiendoFueraPlazoSesion(true);
+    setAvisoFueraPlazoSesion(null);
+    try {
+      const resultado = await anadirAlumnoSinFichaASesionBabyApp(agendaSesionActivaId, nombre);
+      await cargarAgendaOperativaDirecta();
+      await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      const anadido = resultado.anadidos[0];
+      setAvisoFueraPlazoSesion(
+        anadido
+          ? {
+              ok: true,
+              texto:
+                String(anadido.estado || '').toUpperCase() === 'PENDIENTE_TEST'
+                  ? `${anadido.nombre} añadido a la sesión como «Pendiente de Alta/Test». Pulsa «Crear Alta / Test» en Pendientes de colocar.`
+                  : `${anadido.nombre} ya tenía ficha: añadido con su nivel ${anadido.nivel || '(sin nivel, revisa su ficha)'} (pendiente de colocar en grupo).`,
+            }
+          : resultado.noAnadidos.length > 0
+          ? { ok: false, texto: `No puedo añadir «${nombre}» así: escribe nombre y apellidos completos, sin números.` }
+          : { ok: true, texto: `${nombre} ya estaba en esta sesión. No se ha duplicado.` }
+      );
+    } catch (errorAnadir) {
+      setAvisoFueraPlazoSesion({
+        ok: false,
+        texto: errorAnadir instanceof Error ? errorAnadir.message : 'No se pudo añadir el alumno a la sesión.',
+      });
+    } finally {
+      setAnadiendoFueraPlazoSesion(false);
+    }
+  }
+
   // "+ Alumno fuera de plazo" sin grupo: lo añade a la sesión (pendiente de
   // colocar). Para cuando la sesión aún no tiene grupos o no encaja en ninguno.
   async function anadirAlumnoFueraPlazoASesionSinGrupo() {
@@ -251,6 +305,18 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     const nivel = String(alumnoFueraPlazoNivel || '').trim();
     if (!agendaSesionActivaId) {
       setAvisoFueraPlazoSesion({ ok: false, texto: 'Abre primero la sesión donde se ha apuntado el niño.' });
+      return;
+    }
+    if (nombre && !alumnoFueraPlazoAlumnoId) {
+      // Sin ficha elegida no se crea una ficha con un nivel puesto a ojo.
+      if (sesionActivaEsBaby()) {
+        await anadirAlumnoSinFichaComoPendiente(nombre);
+      } else {
+        setAvisoFueraPlazoSesion({
+          ok: false,
+          texto: 'Este niño no tiene ficha elegida. Elígelo de la lista o créale primero el Alta / Test, para no poner un nivel a ojo.',
+        });
+      }
       return;
     }
     if (!nombre || !nivel) {
@@ -2009,9 +2075,18 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                     : {}),
                                 }}
                                 disabled={incorporandoFueraPlazo}
-                                onClick={() =>
-                                  incorporarAlumnoFueraPlazoEnGrupo(opcion)
-                                }
+                                onClick={() => {
+                                  // Sin ficha no se mete en un grupo con un nivel puesto a ojo.
+                                  if (!alumnoFueraPlazoAlumnoId) {
+                                    setAvisoFueraPlazoSesion({
+                                      ok: false,
+                                      texto:
+                                        'Este niño no tiene ficha: no lo meto en un grupo con un nivel a ojo. Pulsa «Añadir a la sesión sin grupo» (entra como «Pendiente de Alta/Test», o con su nivel si ya tenía ficha) y colócalo cuando tenga nivel.',
+                                    });
+                                    return;
+                                  }
+                                  incorporarAlumnoFueraPlazoEnGrupo(opcion);
+                                }}
                               >
                                 {incorporandoFueraPlazo
                                   ? 'Añadiendo…'

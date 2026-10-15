@@ -7,8 +7,9 @@
 //   3. Solo al pulsar «Sí, cargar» se escribe, con las mismas funciones que el botón
 //      «Cargar semana Baby» de la Agenda, y después se vuelve a leer para comprobarlo.
 //   Paco NUNCA quita a nadie de un turno: si AimHarder quita a un niño (cancelación),
-//   ese turno queda para «Refrescar listado» de la Agenda, que protege asistencia y reportes.
-import { verifyRosterSnapshot } from '../../core/sessions/rosterSync';
+//   ese niño se queda; si además hay niños nuevos, se añaden («solo añadir», igual que
+//   la tarjeta de la Agenda). Quitar queda para «Refrescar listado» de la Agenda.
+import { findListImportIdentityConflicts, verifyRosterSnapshot } from '../../core/sessions/rosterSync';
 import { etiquetaDia, horaCorta, type SalidaAccion } from './pacoAccionesLogic';
 import { hoyMadrid, registrarAccion } from './pacoAccionesService';
 import {
@@ -30,6 +31,7 @@ import {
   anadirNinosATurno,
   crearTurnoDesdeAimHarder,
   leerConocimientoAlumnos,
+  leerFichasVolcado,
   leerRosterSesion,
   leerSemanaBabyAimHarder,
   leerSesionesBabySemana,
@@ -277,10 +279,35 @@ async function aplicarTurno(plan: PlanTurno, turno: TurnoAimHarder, existentes: 
           : 'ha cambiado desde la vista previa y ya no es seguro añadir desde aquí; revíselo en la Agenda.',
     };
   }
-  await anadirNinosATurno(actual.sesion_id, turno.nombres);
+  if (actual.soloAnadir) {
+    // «Solo añadir»: se vuelve a enviar a todos los que ya están. Antes se comprueba
+    // que ninguno cambiaría de ficha (duplicados), porque saldría de su grupo.
+    // Los «pendiente de Alta/Test» no están en grupos y no cuentan.
+    const conservados = (coincidentes[0]?.roster || []).filter(
+      (m) => m.alumnoId && String(m.estado || '').trim().toUpperCase() !== 'PENDIENTE_TEST'
+    );
+    if (conservados.length > 0) {
+      const fichas = await leerFichasVolcado(conservados.map((m) => m.name));
+      const conflictos = findListImportIdentityConflicts(
+        conservados.map((m) => ({ alumnoId: String(m.alumnoId), name: m.name })),
+        fichas
+      );
+      if (conflictos.length > 0) {
+        return {
+          ...base,
+          resultado: 'omitido',
+          detalle: `la ficha de ${conflictos.join(', ')} está duplicada o no coincide con su nombre y podría salirse de su grupo; no he tocado el turno (use «+ Alumno fuera de plazo»).`,
+        };
+      }
+    }
+  }
+  await anadirNinosATurno(actual.sesion_id, actual.listaVolcado);
+  const avisoQuedan = actual.soloAnadir && actual.quitar.length
+    ? `; siguen en el turno aunque no salen en AimHarder: ${actual.quitar.slice(0, 8).join(', ')}${actual.quitar.length > 8 ? '…' : ''}`
+    : '';
   return {
     ...base,
-    ...(await comprobar(actual.sesion_id, turno.nombres, 'anadido', `añadidos ${actual.anadir.length}: ${actual.anadir.slice(0, 8).join(', ')}${actual.anadir.length > 8 ? '…' : ''}`)),
+    ...(await comprobar(actual.sesion_id, actual.listaVolcado, 'anadido', `añadidos ${actual.anadir.length}: ${actual.anadir.slice(0, 8).join(', ')}${actual.anadir.length > 8 ? '…' : ''}${avisoQuedan}`)),
   };
 }
 

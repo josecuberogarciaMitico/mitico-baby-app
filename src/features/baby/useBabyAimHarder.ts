@@ -976,6 +976,29 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
     };
   }
 
+  // «+ Alumno fuera de plazo» con un niño SIN ficha elegida, en una sesión Baby:
+  // en vez de crear una ficha con un nivel puesto a ojo, entra con el mismo
+  // volcado que el listado de AimHarder: si ya tiene ficha (también de temporadas
+  // anteriores) con su nivel; si no, como «Pendiente de Alta/Test». No toca grupos
+  // ni quita a nadie (mismo «solo añadir» y mismas comprobaciones).
+  async function anadirAlumnoSinFichaASesionBabyApp(
+    sesionId: string,
+    nombre: string
+  ): Promise<BabyAddOnlyResult> {
+    const existentesAntes = await consultarSupabase<AgendaAlumnoSesionApp>(
+      'v_sesion_alumnos_operativa_app',
+      `select=*&sesion_id=${encodeURIComponent(`eq.${sesionId}`)}&order=orden.asc`
+    );
+    const { soloAnadir } = await aplicarSoloAnadirEnSesionBabyApp(
+      sesionId,
+      existentesAntes,
+      [{ name: String(nombre || '').trim(), guest: false }],
+      { sourceKey: 'alta-fuera-de-plazo', cancelledNames: [], safeZero: false },
+      []
+    );
+    return soloAnadir;
+  }
+
   // El resultado de "Refrescar listado" / "Pegar listado" se pinta arriba de
   // la Agenda, lejos de la tarjeta: si estás con la tarjeta en pantalla no lo
   // ves. Este aviso lo recoge manualRosterBridge para pintarlo en la tarjeta.
@@ -1104,5 +1127,6 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
     traerListadoBabyTurnoAgendaDesdeAimHarder,
     cargarSemanaBabyDesdeAimHarder,
     refrescarSesionBabyDesdeAimHarder,
+    anadirAlumnoSinFichaASesionBabyApp,
   };
 }

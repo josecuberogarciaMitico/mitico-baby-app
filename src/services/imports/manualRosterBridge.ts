@@ -1,5 +1,3 @@
-import { parsePastedRoster } from '../../core/imports/pastedRoster';
-import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../../config/supabase';
 import { stageManualOcioRoster } from '../aimharder/ocioAimHarderService';
 import {
   armManualBabyRoster,
@@ -9,18 +7,10 @@ import {
   parseManualBabyTimesFromText,
   stageManualBabyRoster,
 } from './manualRosterSource';
-import { obtenerAccessTokenSupabaseApp } from '../auth/authService';
-import { createSupabaseRestClient } from '../supabase/restClient';
 
-const INTENSIVE_RESTORE_KEY = 'mitico_manual_intensivo_restore_v1';
 const INSTALL_FLAG = '__MITICO_MANUAL_ROSTER_BRIDGE_INSTALLED__';
 
 type OcioDay = 'Jueves' | 'Sábado' | 'Domingo';
-
-type RestoreIntensive = {
-  intensivoId: string;
-  createdAt: number;
-};
 
 const OCIO_DAY_CONFIG: Record<OcioDay, { offset: number; start: string; end: string }> = {
   Jueves: { offset: 3, start: '18:00', end: '20:00' },
@@ -389,6 +379,14 @@ function selectedOcioWeek(section: Element): string {
 }
 
 function activeOcioDay(section: Element): OcioDay | '' {
+  // 1) Marca fiable puesta en los botones de día de Ocio (OcioGroupsScreen).
+  //    Los botones están fuera de la sección de «Actualizar AimHarder», así que
+  //    se busca en toda la página.
+  const marked = document.querySelector<HTMLElement>('[data-ocio-dia-activo="1"]');
+  const markedDay = String(marked?.getAttribute('data-ocio-dia') || '');
+  if (markedDay === 'Jueves' || markedDay === 'Sábado' || markedDay === 'Domingo') {
+    return markedDay;
+  }
   const headingMatch = String(section.textContent || '').match(
     /ESTRUCTURA\s+PERMANENTE\s*·\s*(Jueves|Sábado|Domingo)/i
   );
@@ -517,221 +515,13 @@ function ensureOcioManualImport() {
   article.append(panel);
 }
 
-function intensivePanelContext(): {
-  panel: HTMLElement;
-  course: HTMLElement;
-  intensivoId: string;
-  title: string;
-} | null {
-  const heading = Array.from(document.querySelectorAll<HTMLElement>('h4')).find(
-    (element) => isVisible(element) && /^Fichas\s*·/i.test(normalizeText(element.textContent))
-  );
-  if (!heading) return null;
-  const panel = heading.closest<HTMLElement>('[id^="intensivo-panel-activo-"]');
-  const course = heading.closest<HTMLElement>('[id^="intensivo-curso-"]');
-  if (!panel || !course) return null;
-  const intensivoId = course.id.replace(/^intensivo-curso-/, '').trim();
-  if (!intensivoId) return null;
-  return {
-    panel,
-    course,
-    intensivoId,
-    title: normalizeText(heading.textContent).replace(/^Fichas\s*·\s*/i, ''),
-  };
-}
-
-function saveIntensiveRestore(intensivoId: string) {
-  try {
-    sessionStorage.setItem(
-      INTENSIVE_RESTORE_KEY,
-      JSON.stringify({ intensivoId, createdAt: Date.now() } satisfies RestoreIntensive)
-    );
-  } catch {
-    // Si el navegador bloquea sessionStorage, la importación sigue siendo válida;
-    // simplemente no podremos reabrir automáticamente la ficha tras recargar.
-  }
-}
-
-function readIntensiveRestore(): RestoreIntensive | null {
-  try {
-    const raw = sessionStorage.getItem(INTENSIVE_RESTORE_KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw) as Partial<RestoreIntensive>;
-    const intensivoId = String(parsed?.intensivoId || '').trim();
-    const createdAt = Number(parsed?.createdAt || 0);
-    if (!intensivoId || !Number.isFinite(createdAt) || Date.now() - createdAt > 120_000) {
-      sessionStorage.removeItem(INTENSIVE_RESTORE_KEY);
-      return null;
-    }
-    return { intensivoId, createdAt };
-  } catch {
-    return null;
-  }
-}
-
-function clearIntensiveRestore() {
-  try {
-    sessionStorage.removeItem(INTENSIVE_RESTORE_KEY);
-  } catch {
-    // noop
-  }
-}
-
-async function importIntensiveRoster(
-  intensivoId: string,
-  title: string,
-  rawText: string
-): Promise<number> {
-  const parsed = parsePastedRoster(rawText);
-  if (parsed.names.length === 0) {
-    throw new Error('No he detectado ningún alumno válido en el listado pegado.');
-  }
-  if (parsed.duplicates.length > 0) {
-    throw new Error(
-      `El listado contiene nombres duplicados o indistinguibles: ${parsed.duplicates.join(', ')}.`
-    );
-  }
-  if (
-    !window.confirm(
-      `¿Volcar ${parsed.names.length} alumno(s) en ${title || 'este intensivo'}? Se crearán fichas nuevas si no existen.`
-    )
-  ) {
-    return 0;
-  }
-
-  const client = createSupabaseRestClient({
-    supabaseUrl: SUPABASE_URL,
-    publishableKey: SUPABASE_ANON_KEY,
-    getAccessToken: obtenerAccessTokenSupabaseApp,
-  });
-  await client.rpcRows('volcar_alumnos_intensivo_app', {
-    p_intensivo_id: intensivoId,
-    p_texto: parsed.names.join('\n'),
-  });
-  return parsed.names.length;
-}
-
-function ensureIntensiveManualImport() {
-  const context = intensivePanelContext();
-  if (!context || context.panel.querySelector('[data-manual-roster-action="intensivo"]')) return;
-
-  const sourceButton = Array.from(context.panel.querySelectorAll<HTMLButtonElement>('button')).find(
-    (button) => isVisible(button)
-  );
-  if (!sourceButton) return;
-
-  const manualButton = cloneButton(sourceButton, 'Pegar listado');
-  manualButton.dataset.manualRosterAction = 'intensivo';
-  const panel = document.createElement('div');
-  panel.dataset.manualRosterPanel = 'intensivo';
-  panel.style.display = 'none';
-  panel.style.marginTop = '12px';
-  panel.style.padding = '12px';
-  panel.style.border = '1px solid #e2e8f0';
-  panel.style.borderRadius = '14px';
-  panel.style.background = '#f8fafc';
-
-  const textarea = createPasteArea('Pega aquí el listado completo copiado de AimHarder.');
-  const actionRow = document.createElement('div');
-  Object.assign(actionRow.style, {
-    display: 'flex',
-    gap: '8px',
-    flexWrap: 'wrap',
-    marginTop: '8px',
-  });
-  const applyButton = cloneButton(sourceButton, 'Volcar listado');
-  const closeButton = cloneButton(sourceButton, 'Cerrar');
-  const status = createStatus();
-
-  manualButton.addEventListener('click', () => {
-    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
-    if (panel.style.display !== 'none') textarea.focus();
-  });
-  closeButton.addEventListener('click', () => {
-    panel.style.display = 'none';
-  });
-  applyButton.addEventListener('click', async () => {
-    applyButton.disabled = true;
-    try {
-      const total = await importIntensiveRoster(
-        context.intensivoId,
-        context.title,
-        textarea.value
-      );
-      if (total === 0) return;
-      paintStatus(status, `✓ ${total} alumno(s) procesados. Actualizando la misma ficha del intensivo…`);
-      saveIntensiveRestore(context.intensivoId);
-      window.setTimeout(() => window.location.reload(), 200);
-    } catch (error) {
-      paintStatus(
-        status,
-        error instanceof Error ? error.message : 'No se pudo volcar el listado del intensivo.',
-        true
-      );
-    } finally {
-      applyButton.disabled = false;
-    }
-  });
-
-  actionRow.append(applyButton, closeButton);
-  panel.append(textarea, actionRow, status);
-
-  const header = context.panel.firstElementChild;
-  if (header) header.insertAdjacentElement('afterend', manualButton);
-  else context.panel.prepend(manualButton);
-  manualButton.insertAdjacentElement('afterend', panel);
-}
-
-function clickVisibleButtonByText(pattern: RegExp, root: ParentNode = document): boolean {
-  const button = Array.from(root.querySelectorAll<HTMLButtonElement>('button')).find(
-    (item) => isVisible(item) && pattern.test(buttonText(item))
-  );
-  if (!button) return false;
-  button.click();
-  return true;
-}
-
-function restoreIntensiveAfterReload() {
-  const restore = readIntensiveRestore();
-  if (!restore) return;
-  let attempts = 0;
-  const timer = window.setInterval(() => {
-    attempts += 1;
-    const course = document.getElementById(`intensivo-curso-${restore.intensivoId}`);
-    if (!course) {
-      clickVisibleButtonByText(/^Intensivos$/i);
-      if (attempts > 40) {
-        clearInterval(timer);
-        clearIntensiveRestore();
-      }
-      return;
-    }
-
-    const fichasHeading = Array.from(course.querySelectorAll<HTMLElement>('h4')).find(
-      (item) => /^Fichas\s*·/i.test(normalizeText(item.textContent))
-    );
-    if (fichasHeading) {
-      fichasHeading.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      clearInterval(timer);
-      clearIntensiveRestore();
-      return;
-    }
-
-    if (clickVisibleButtonByText(/^Gestionar intensivo$/i, course)) return;
-    clickVisibleButtonByText(/^2\s*·\s*Alumnos$/i, course);
-
-    if (attempts > 40) {
-      clearInterval(timer);
-      clearIntensiveRestore();
-    }
-  }, 200);
-}
-
 function scan() {
   ensureBabyManualImport();
   ensureBabyRefreshManualImports();
   ensureOcioManualImport();
-  ensureIntensiveManualImport();
+  // Intensivos ya no lleva botón inyectado: el panel tiene su propio
+  // «Pegar listado Aimharder», que enseña el resultado niño a niño y ofrece
+  // Alta/Test. El inyectado era un duplicado que recargaba la página y lo perdía.
 }
 
 export function installManualRosterBridge() {
@@ -743,7 +533,6 @@ export function installManualRosterBridge() {
 
   const start = () => {
     scan();
-    restoreIntensiveAfterReload();
     const observer = new MutationObserver(scan);
     observer.observe(document.body, { childList: true, subtree: true });
   };

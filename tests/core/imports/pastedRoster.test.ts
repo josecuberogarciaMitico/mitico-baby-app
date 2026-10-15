@@ -1,5 +1,6 @@
 import {
   parsePastedRoster,
+  rosterTextForServerImport,
   rosterTextFromPastedList,
 } from '../../../src/core/imports/pastedRoster';
 
@@ -204,4 +205,19 @@ test('ignora los textos de la pantalla de reservas de AimHarder (lista de espera
     'JAIME REY COEGO|CANDELA FERNANDEZ CAVADA GARCIA|MIGUEL FERNANDEZ CAVADA GARCIA',
     'solo alumnos'
   );
+});
+
+test('separa «EN LISTA DE ESPERA» cuando sale pegado al nombre del niño', () => {
+  // Caso real 14/10/2026: se creó una ficha «EN LISTA DE ESPERAOLIVIA GUTIERREZ GUILLO».
+  const parsed = parsePastedRoster(
+    'ALEJANDRA MARTINEZ TILVES\nTERMINA TARIFA EL 17/10/2026\nEN LISTA DE ESPERAOLIVIA GUTIERREZ GUILLO\nRESERVA EL 14/10/2026 A LAS 10:00'
+  );
+  equal(parsed.names.join('|'), 'ALEJANDRA MARTINEZ TILVES|OLIVIA GUTIERREZ GUILLO', 'nombres limpios');
+});
+
+test('guarda el nivel escrito al final y lo devuelve para la base de datos', () => {
+  const texto = 'Juan Pérez B\nAna Ruiz A+\nLuis Gil [Invitado]\nPedro Sanz Iniciación\nEN LISTA DE ESPERA\nApuntar a otro cliente';
+  const parsed = parsePastedRoster(texto);
+  equal(parsed.attendees.map((a) => `${a.name}:${a.level || '-'}`).join('|'), 'Juan Pérez:B|Ana Ruiz:A+|Luis Gil:-|Pedro Sanz:INICIACION', 'niveles');
+  equal(rosterTextForServerImport(texto), 'Juan Pérez B\nAna Ruiz A+\nLuis Gil\nPedro Sanz INICIACION', 'texto para el servidor');
 });

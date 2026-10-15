@@ -334,10 +334,12 @@ import {
   calcularFechasCuatroSesionesIntensivo,
   diaIntensivoInicial,
   grupoIntensivoInicial,
+  intensiveRosterNamesNotRead,
   intensivoInicial,
   nombreTipoCuatroSesionesIntensivo,
   planIntensiveFutureMove,
   plantillaCuatroSesionesInicial,
+  prepareIntensiveRosterImport,
 } from './features/intensivos/intensiveOperations';
 import type {
   AlumnoParaIntensivoApp,
@@ -9992,9 +9994,13 @@ Gracias!`;
       setError('Pega el listado de Aimharder antes de volcar alumnos.');
       return;
     }
-
+    const listado = prepareIntensiveRosterImport(textoVolcadoIntensivo);
+    if (listado.names.length === 0) {
+      setError('No he detectado ningún alumno válido en el listado pegado.');
+      return;
+    }
     const confirmar = window.confirm(
-      `¿Volcar este listado en ${intensivo.intensivo}? Se crearán fichas nuevas si no existen.`
+      `¿Volcar ${listado.names.length} alumno(s) en ${intensivo.intensivo}? Los que no tengan ficha quedarán pendientes de Alta/Test.`
     );
 
     if (!confirmar) return;
@@ -10008,11 +10014,15 @@ Gracias!`;
           'volcar_alumnos_intensivo_app',
           {
             p_intensivo_id: intensivo.intensivo_id,
-            p_texto: textoVolcadoIntensivo,
+            p_texto: listado.serverText,
           }
         );
 
       setResultadoVolcadoIntensivo(resultado);
+      const sinLeer = intensiveRosterNamesNotRead(listado.names, resultado);
+      if (sinLeer.length > 0) {
+        setError(`No se han podido volcar (revisa cómo están escritos o usa «Añadir alumno existente»): ${sinLeer.join(', ')}.`);
+      }
       setBusquedaAlumnoIntensivo('');
       setAlumnoSeleccionadoIntensivoId('');
       await cargarIntensivos();
@@ -13129,6 +13139,7 @@ async function abrirGestionOperativaIntensivoDia(
     traerListadoBabyTurnoAgendaDesdeAimHarder,
     cargarSemanaBabyDesdeAimHarder,
     refrescarSesionBabyDesdeAimHarder,
+    anadirAlumnoSinFichaASesionBabyApp,
   } = useBabyAimHarder({
     agendaForm,
     cargarAgendaOperativaDirecta,
@@ -21316,6 +21327,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
             rangoSemanaAgenda,
             recomendacionesFueraPlazo,
             refrescarSesionBabyDesdeAimHarder,
+            anadirAlumnoSinFichaASesionBabyApp,
             regenerarTrabajoGrupoIntensivoAgenda,
             renderAyudaRapidaPantallaApp,
             responsableManualGrupoCreadoApp,

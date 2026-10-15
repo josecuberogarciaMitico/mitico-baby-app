@@ -383,6 +383,9 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
               <button
                 key={dia}
                 type="button"
+                // Marca para «Pegar listado» (manualRosterBridge): qué día de Ocio está activo.
+                data-ocio-dia={dia}
+                data-ocio-dia-activo={activo ? '1' : '0'}
                 onClick={() => {
                   setOcioTurnoVista(dia);
                   setOcioPropuestaGrupos([]);

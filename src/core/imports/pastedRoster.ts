@@ -1,10 +1,12 @@
-import { parseTechnicalLevel } from '../levels/levelContract';
+import { parseTechnicalLevel, type TechnicalLevel } from '../levels/levelContract';
 import { normalizeRosterName } from '../sessions/rosterSync';
 
 export type PastedRosterEntry = {
   name: string;
   normalizedName: string;
   guest: boolean;
+  // Nivel escrito al final de la línea («JUAN PÉREZ B»), si lo había.
+  level: TechnicalLevel | null;
 };
 
 export type PastedRosterResult = {
@@ -21,12 +23,19 @@ const MARKDOWN_IMAGE = /!?\[[^\]]*\]\([^\n)]*\)/gi;
 const MARKDOWN_IMAGE_DETECT = /!?\[[^\]]*\]\([^\n)]*\)/i;
 const METADATA_START = /^(?:RESERVA(?:\s+EL)?|ULTIMA\s+RESERVA|ÚLTIMA\s+RESERVA|TERMINA\s+TARIFA|TARIFA|INSCRIPCION|INSCRIPCIÓN|PAGO|BONO|OBSERVACION|OBSERVACIÓN|FECHA|CANCELACIONES?|ULTIMO|ÚLTIMO)\b/i;
 const METADATA_ANYWHERE = /\b(?:Reserva\s+el|Última\s+reserva\s*:|Ultima\s+reserva\s*:|Termina\s+tarifa\s+el)\b/gi;
+// AimHarder pinta «EN LISTA DE ESPERA» justo antes del primer niño en espera y al
+// copiar a veces sale pegado a su nombre («EN LISTA DE ESPERAOLIVIA …»).
+const WAITING_LIST_LABEL = /EN\s+LISTA\s+DE\s+ESPERA/gi;
 // Textos de la pantalla de reservas de AimHarder que se cuelan al copiar la
 // tarjeta entera (sobre todo con la "lista de espera"). No son alumnos.
 const AIMHARDER_SCREEN_LABEL =
   /^(?:(?:EN )?LISTA DE ESPERA|APUNTAR(?: .*)?|MODIFICAR CLASE|CANCELAR(?: .*)?|ENVIAR MENSAJE|DETALLE|PLAZAS OCUPADAS(?: .*)?|ASISTENCIA(?: .*)?|INSTRUCTOR(?: .*)?)$/;
 
-function cleanVisibleName(value: string): { name: string; guest: boolean } {
+function cleanVisibleName(value: string): {
+  name: string;
+  guest: boolean;
+  level: TechnicalLevel | null;
+} {
   const raw = String(value || '').replace(/\u00a0/g, ' ').trim();
   const guest = /\[\s*invitado\s*\]/i.test(raw);
   let name = raw
@@ -36,16 +45,19 @@ function cleanVisibleName(value: string): { name: string; guest: boolean } {
     .replace(/\s+/g, ' ')
     .trim();
 
+  let level: TechnicalLevel | null = null;
   const parts = name.split(/\s+/).filter(Boolean);
   if (parts.length > 1) {
     const last = parts[parts.length - 1];
-    if (parseTechnicalLevel(last).status === 'VALID') {
+    const parsedLevel = parseTechnicalLevel(last);
+    if (parsedLevel.status === 'VALID') {
       parts.pop();
       name = parts.join(' ');
+      level = parsedLevel.level;
     }
   }
 
-  return { name, guest };
+  return { name, guest, level };
 }
 
 function isLikelyStudentName(value: string): boolean {
@@ -80,6 +92,7 @@ function buildEntries(values: Array<{ value: string; guestHint?: boolean }>): Pa
         name: cleaned.name,
         normalizedName,
         guest: Boolean(guestHint || cleaned.guest),
+        level: cleaned.level,
       } satisfies PastedRosterEntry;
     })
     .filter((entry): entry is PastedRosterEntry => Boolean(entry));
@@ -91,6 +104,7 @@ function fallbackPlainCandidates(value: string): Array<{ value: string; guestHin
     .replace(/\r\n?|\n/g, '\n')
     .replace(/\u00a0/g, ' ')
     .replace(MARKDOWN_IMAGE, '\n')
+    .replace(WAITING_LIST_LABEL, (match) => `\n${match}\n`)
     .replace(/\*\*/g, '')
     .replace(METADATA_ANYWHERE, (match) => `\n${match}`)
       .replace(/(\d{2})\/(\d{2})\/(\d{4})(?=[A-Za-zÁÉÍÓÚÑáéíóúñ])/g, '$1\n');
@@ -155,4 +169,14 @@ export function parsePastedRoster(value: string): PastedRosterResult {
 
 export function rosterTextFromPastedList(value: string): string {
   return parsePastedRoster(value).names.join('\n');
+}
+
+// Texto limpio para las funciones de la base de datos que vuelven a leer el
+// listado (p. ej. volcar_alumnos_intensivo_app): un niño por línea, sin
+// «[Invitado]» ni textos de la pantalla de AimHarder, y con el nivel al final si
+// venía escrito («JUAN PEREZ B»), que esa función usa como nivel declarado.
+export function rosterTextForServerImport(value: string): string {
+  return parsePastedRoster(value)
+    .attendees.map((entry) => (entry.level ? `${entry.name} ${entry.level}` : entry.name))
+    .join('\n');
 }

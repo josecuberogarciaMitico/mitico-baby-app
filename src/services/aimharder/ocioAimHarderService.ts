@@ -18,6 +18,9 @@ import type { OcioStableRosterGroup } from './aimHarderOperations';
 
 const OCIO_MANUAL_WEEK_STORAGE_KEY = 'mitico_ocio_manual_week_v1';
 const OCIO_MANUAL_PENDING_STORAGE_KEY = 'mitico_ocio_manual_pending_v1';
+// El aviso de «usa el listado pegado» caduca: si el clic automático no llega a
+// lanzarse, un pegado viejo no debe sustituir más tarde a la lectura de AimHarder.
+const OCIO_MANUAL_PENDING_TTL_MS = 2 * 60 * 1000;
 
 type OcioManualStoredWeek = {
   semanaInicio: string;
@@ -143,7 +146,10 @@ export function stageManualOcioRoster(
     OCIO_MANUAL_WEEK_STORAGE_KEY,
     JSON.stringify({ semanaInicio: weekStart, turnos: updatedTurns } satisfies OcioManualStoredWeek)
   );
-  storage.setItem(OCIO_MANUAL_PENDING_STORAGE_KEY, weekStart);
+  storage.setItem(
+    OCIO_MANUAL_PENDING_STORAGE_KEY,
+    JSON.stringify({ weekStart, at: Date.now() })
+  );
 
   return {
     total: parsed.names.length,
@@ -156,8 +162,20 @@ export function stageManualOcioRoster(
 function consumeManualOcioWeek(weekStart: string): OcioWeekWithSource | null {
   const storage = browserSessionStorage();
   if (!storage) return null;
-  const pendingWeek = String(storage.getItem(OCIO_MANUAL_PENDING_STORAGE_KEY) || '');
-  if (!pendingWeek || pendingWeek !== weekStart) return null;
+  let pendingWeek = '';
+  let pendingAt = 0;
+  try {
+    const raw = JSON.parse(String(storage.getItem(OCIO_MANUAL_PENDING_STORAGE_KEY) || 'null'));
+    pendingWeek = String(raw?.weekStart || '');
+    pendingAt = Number(raw?.at || 0);
+  } catch {
+    // Formato antiguo (solo la semana, sin hora) o roto: se trata como caducado.
+  }
+  if (!pendingWeek || !Number.isFinite(pendingAt) || Date.now() - pendingAt > OCIO_MANUAL_PENDING_TTL_MS) {
+    storage.removeItem(OCIO_MANUAL_PENDING_STORAGE_KEY);
+    return null;
+  }
+  if (pendingWeek !== weekStart) return null;
 
   storage.removeItem(OCIO_MANUAL_PENDING_STORAGE_KEY);
   const stored = readStoredManualWeek(storage);
