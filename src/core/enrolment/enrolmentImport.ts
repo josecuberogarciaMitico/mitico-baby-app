@@ -3,6 +3,7 @@ import type {
   AltaImportadaPegadoApp,
   AltaNivelInicialApp,
   AltaNivelInicialFormApp,
+  AvisoNuevaAltaAlumnoApp,
   EnrolmentModality,
   OcioFixedDay,
   ParsedEnrolmentList,
@@ -247,6 +248,33 @@ export function coincideAltaImportadaConAltaExistenteApp(
   const mismoNombre = Boolean(nombreImportado) && nombreImportado === nombreExistente;
   const mismoTelefono = Boolean(telefonoImportado) && telefonoImportado === telefonoExistente;
   return (mismoNombre && mismaFecha) || (mismoNombre && mismoTelefono) || (mismaFecha && mismoTelefono);
+}
+
+/**
+ * Decide si un posible duplicado devuelto por
+ * `comprobar_posibles_alumnos_nueva_alta_app` impide crear el Alta/Test.
+ *
+ * Bloquea solo cuando el niño YA TIENE FICHA (activa) con su misma fecha de
+ * nacimiento, es decir, es claramente él:
+ * - mismo nombre y misma fecha, o
+ * - nombre compatible y misma fecha.
+ * NO bloquea si la ficha no tiene fecha: «+ Alumno fuera de plazo» crea fichas
+ * activas sin fecha y después se les manda el test con normalidad.
+ * Tampoco bloquea con otra fecha ni con otras Altas/Test: ahí sigue el aviso.
+ */
+export function fichaExistenteQueBloqueaAltaApp(
+  posibles: AvisoNuevaAltaAlumnoApp[],
+  fechaNacimiento: string
+): AvisoNuevaAltaAlumnoApp | null {
+  const fecha = String(fechaNacimiento || '').slice(0, 10);
+  return (
+    posibles.find((item) => {
+      if (item.fuente !== 'FICHA_MAESTRA') return false;
+      const fechaFicha = String(item.fecha_nacimiento || '').slice(0, 10);
+      if (!fecha || fechaFicha !== fecha) return false;
+      return item.motivo === 'NOMBRE_EXACTO' || item.motivo === 'NOMBRE_COMPATIBLE';
+    }) || null
+  );
 }
 
 export function testNivelPublicoRespuestasVaciasApp(): TestNivelPublicoRespuestasApp {

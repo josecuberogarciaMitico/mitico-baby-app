@@ -608,6 +608,7 @@ import {
   VERSION_PARSER_ALTAS_IMPORT_APP,
   altaNivelInicialFormVacioApp,
   coincideAltaImportadaConAltaExistenteApp,
+  fichaExistenteQueBloqueaAltaApp,
   parsearListadoAltasPegadoApp,
 } from './core/enrolment/enrolmentImport';
 import type {
@@ -3569,6 +3570,17 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
             p_fecha_nacimiento: fechaNacimiento,
           }
         )) || [];
+
+      const fichaExistente = fichaExistenteQueBloqueaAltaApp(posibles, fechaNacimiento);
+      if (fichaExistente) {
+        setError(
+          `${fichaExistente.alumno} ya tiene ficha en la app (${
+            fichaExistente.fecha_nacimiento ? formatearFecha(fichaExistente.fecha_nacimiento) : 'sin fecha'
+          }${fichaExistente.nivel_actual ? ` · nivel ${fichaExistente.nivel_actual}` : ''}). ` +
+            'No se crea el test. Para meterle en una sesión usa «+ Alumno fuera de plazo» en la Agenda y elige su ficha; para cambiarle de Baby a Ocio usa «Pasar a Ocio» en su ficha.'
+        );
+        return;
+      }
 
       if (posibles.length > 0) {
         const lineas = posibles

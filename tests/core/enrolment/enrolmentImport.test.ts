@@ -1,6 +1,7 @@
 import {
   altaNivelInicialFormVacioApp,
   coincideAltaImportadaConAltaExistenteApp,
+  fichaExistenteQueBloqueaAltaApp,
   normalizarFechaAltaImportadaApp,
   normalizarIdentidadAltaImportadaApp,
   normalizarModalidadAltaImportadaApp,
@@ -11,6 +12,7 @@ import {
 import type {
   AltaImportadaPegadoApp,
   AltaNivelInicialApp,
+  AvisoNuevaAltaAlumnoApp,
 } from '../../../src/core/enrolment/enrolmentTypes';
 
 function equal<T>(actual: T, expected: T, label: string) {
@@ -90,4 +92,44 @@ test('expone estados iniciales nuevos sin referencias compartidas', () => {
   equal(formulario.modalidad, 'BABY', 'modalidad inicial');
   respuestasA.observacionesEntrenador.push('x');
   equal(respuestasB.observacionesEntrenador.length, 0, 'lista independiente');
+});
+
+function aviso(parcial: Partial<AvisoNuevaAltaAlumnoApp>): AvisoNuevaAltaAlumnoApp {
+  return {
+    referencia_id: 'r1',
+    fuente: 'FICHA_MAESTRA',
+    alumno: 'MIGUEL FERNANDEZ CAVADA GARCIA',
+    fecha_nacimiento: '2021-11-12',
+    nivel_actual: 'A',
+    estado: null,
+    motivo: 'NOMBRE_EXACTO',
+    ...parcial,
+  };
+}
+
+test('bloquea el Alta/Test si el niño ya tiene ficha con el mismo nombre y fecha', () => {
+  equal(fichaExistenteQueBloqueaAltaApp([aviso({})], '2021-11-12')?.referencia_id, 'r1', 'mismo nombre y fecha');
+  equal(
+    fichaExistenteQueBloqueaAltaApp([aviso({ motivo: 'NOMBRE_COMPATIBLE', alumno: 'MIGUEL FERNANDEZ' })], '2021-11-12')
+      ?.referencia_id,
+    'r1',
+    'nombre compatible con la misma fecha'
+  );
+});
+
+test('no bloquea (solo avisa) si puede ser otro niño o es otra Alta/Test', () => {
+  equal(fichaExistenteQueBloqueaAltaApp([aviso({ fecha_nacimiento: '2019-03-01' })], '2021-11-12'), null, 'otra fecha');
+  equal(fichaExistenteQueBloqueaAltaApp([aviso({ fuente: 'ALTA_TEST', estado: 'ENVIADO' })], '2021-11-12'), null, 'alta/test');
+  equal(
+    fichaExistenteQueBloqueaAltaApp([aviso({ motivo: 'NOMBRE_COMPATIBLE', fecha_nacimiento: '2019-03-01' })], '2021-11-12'),
+    null,
+    'compatible con otra fecha'
+  );
+  equal(
+    fichaExistenteQueBloqueaAltaApp([aviso({ fecha_nacimiento: null })], '2021-11-12'),
+    null,
+    'ficha sin fecha (alta fuera de plazo): se le puede mandar el test'
+  );
+  equal(fichaExistenteQueBloqueaAltaApp([aviso({})], ''), null, 'formulario sin fecha');
+  equal(fichaExistenteQueBloqueaAltaApp([], '2021-11-12'), null, 'sin coincidencias');
 });
