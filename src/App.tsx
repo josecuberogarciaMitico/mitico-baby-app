@@ -11586,6 +11586,20 @@ Gracias!`;
     }
   }
 
+  // Día de intensivo en Entrenamientos igual que Baby/Ocio: prepara su sesión y le copia
+  // los alumnos del curso (idempotente) y la abre con el panel normal de la sesión.
+  async function abrirIntensivoDiaEnEntrenamientosApp(dia: IntensivoDiaApp) {
+    setError('');
+    try {
+      const sesionId = await ejecutarFuncionAuthJson<string>('preparar_sesion_operativa_intensivo_dia_app', { p_intensivo_dia_id: dia.intensivo_dia_id });
+      if (!sesionId) throw new Error('No se pudo preparar la sesión de este día de intensivo.');
+      await cargarIntensivos();
+      await abrirGestionOperativaIntensivoDia({ ...dia, sesion_id: sesionId });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo abrir este día de intensivo.');
+    }
+  }
+
 async function abrirGestionOperativaIntensivoDia(
     dia: IntensivoDiaApp | undefined
   ) {
@@ -18640,6 +18654,8 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
     panel: 'alumnos' | 'grupos'
   ) {
     if (sesion.origen === 'operativa' && sesion.agendaDirecta) {
+      const diaIntensivoSesion = intensivoDias.find((dia: IntensivoDiaApp) => dia.sesion_id === sesion.agendaDirecta?.sesion_id);
+      if (diaIntensivoSesion) { void abrirIntensivoDiaEnEntrenamientosApp(diaIntensivoSesion); return; }
       setAgendaDiaCompactoActivo(sesion.fecha);
       setAgendaFormularioAbierto(false);
 
@@ -18655,12 +18671,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
     }
 
     if (sesion.origen === 'intensivo' && sesion.intensivo && sesion.dia) {
-      if (panel === 'alumnos') abrirPanelIntensivo(sesion.intensivo, 'alumnos');
-      if (panel === 'grupos') {
-        abrirPanelIntensivo(sesion.intensivo, 'grupos');
-        setDiaGrupoSeleccionadoId(sesion.dia.intensivo_dia_id);
-      }
-      setPantalla('intensivos');
+      void abrirIntensivoDiaEnEntrenamientosApp(sesion.dia);
       return;
     }
 

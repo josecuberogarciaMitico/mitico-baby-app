@@ -3265,6 +3265,17 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                       >
                                         <strong style={{ minWidth: 0, overflowWrap: 'anywhere' }}>
                                           {formatearAlumnoListadoOperativo(alumnoGrupo)}
+                                          {(() => {
+                                            // Misma edad que en «Generar grupos» (perfil operativo).
+                                            const edad = alumnoSesion
+                                              ? perfilOperativoAlumnoApp(alumnoSesion.alumno_id)?.edad_aprox
+                                              : null;
+                                            return edad !== null && edad !== undefined ? (
+                                              <span style={{ fontWeight: 600, color: '#475569' }}>
+                                                {` · ${edad} años`}
+                                              </span>
+                                            ) : null;
+                                          })()}
                                         </strong>
 
                                         {alumnoSesion && (
