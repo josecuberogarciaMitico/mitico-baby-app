@@ -122,3 +122,35 @@ export function primaryTrainerChangePlan(input: {
     previousTrainerId: input.previousTrainerId || '',
   } as const;
 }
+
+/**
+ * Trabajo en pista · recordatorio de chaquetas (igual que el de camisetas rosas).
+ * Devuelve los entrenadores que trabajan en los grupos indicados (principal o
+ * apoyo) y que todavía NO tienen la chaqueta entregada en su ficha.
+ * Empareja por ID y, si el grupo no trae ID, por nombre.
+ */
+export function trainersMissingJacket(
+  groups: Array<{
+    entrenador_id?: string | null;
+    entrenador?: string | null;
+    entrenador_apoyo_id?: string | null;
+    entrenador_apoyo?: string | null;
+  }>,
+  trainers: Array<{ entrenador_id: string; nombre_completo: string; chaqueta_entregada?: boolean | null; activo?: boolean | null }>
+): Array<{ entrenador_id: string; nombre_completo: string }> {
+  const norm = (value: string | null | undefined) =>
+    String(value || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toUpperCase();
+  const byId = new Map(trainers.map((t) => [t.entrenador_id, t]));
+  const byName = new Map(trainers.map((t) => [norm(t.nombre_completo), t]));
+  const found = new Map<string, { entrenador_id: string; nombre_completo: string }>();
+  const consider = (id?: string | null, name?: string | null) => {
+    const trainer = (id && byId.get(id)) || (name ? byName.get(norm(name)) : undefined);
+    if (!trainer || trainer.chaqueta_entregada) return;
+    found.set(trainer.entrenador_id, { entrenador_id: trainer.entrenador_id, nombre_completo: trainer.nombre_completo });
+  };
+  for (const group of groups) {
+    consider(group.entrenador_id, group.entrenador);
+    consider(group.entrenador_apoyo_id, group.entrenador_apoyo);
+  }
+  return Array.from(found.values()).sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo, 'es'));
+}

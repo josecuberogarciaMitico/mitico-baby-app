@@ -7,6 +7,7 @@ import {
   supportTrainerChangeIssue,
   trainerNamesForGroup,
   trainerStudentDistribution,
+  trainersMissingJacket,
 } from '../../../src/core/trainers/trainerOperations';
 
 function equal<T>(actual: T, expected: T, label: string) {
@@ -89,4 +90,19 @@ test('el formulario inicial no comparte especialidades mutables', () => {
   const second = entrenadorFormInicial();
   first.especialidades.push('Baby');
   equal(second.especialidades.length, 0, 'estado independiente');
+});
+
+test('recordatorio de chaquetas: solo entrenadores de hoy sin chaqueta', () => {
+  const trainers = [
+    { entrenador_id: 'a', nombre_completo: 'ALBERTO DEDI', chaqueta_entregada: false },
+    { entrenador_id: 'b', nombre_completo: 'ALFONSO JORDAN', chaqueta_entregada: true },
+    { entrenador_id: 'c', nombre_completo: 'MACARENA SECO', chaqueta_entregada: false },
+    { entrenador_id: 'd', nombre_completo: 'NO TRABAJA HOY', chaqueta_entregada: false },
+  ];
+  const lista = trainersMissingJacket([
+    { entrenador_id: 'b', entrenador: 'ALFONSO JORDAN', entrenador_apoyo_id: 'c', entrenador_apoyo: 'MACARENA SECO' },
+    { entrenador: 'Alberto Dedí' },
+    { entrenador_id: 'a', entrenador: 'ALBERTO DEDI' },
+  ], trainers);
+  equal(lista.map((t) => t.nombre_completo).join(','), 'ALBERTO DEDI,MACARENA SECO', 'sin chaqueta, sin repetir, con apoyo y por nombre');
 });

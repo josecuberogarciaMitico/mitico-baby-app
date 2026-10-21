@@ -1,4 +1,5 @@
 import React from 'react';
+import { trainersMissingJacket } from '../../core/trainers/trainerOperations';
 import { TrackTrainerAdjustPanel } from './TrackTrainerAdjustPanel';
 
 type DailySummaryScreenProps = {
@@ -307,6 +308,60 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                       ))}
                     </div>
                   )}
+                </div>
+              );
+            })()}
+
+            {(() => {
+              const sinChaqueta = trainersMissingJacket(
+                sesionesResumenDia.flatMap((sesion: any) => gruposPublicadosSesionResumenDia(sesion)),
+                entrenadores || []
+              );
+              if (sinChaqueta.length === 0) return null;
+
+              return (
+                <div
+                  style={{
+                    display: 'grid',
+                    gap: 9,
+                    padding: '12px 14px',
+                    borderRadius: 16,
+                    border: '1px solid rgba(244,114,182,.72)',
+                    background: 'linear-gradient(135deg,rgba(131,24,67,.42),rgba(80,7,36,.30))',
+                  }}
+                >
+                  <div>
+                    <strong style={{ display: 'block', color: '#fbcfe8', fontSize: 13 }}>
+                      CHAQUETAS DE ENTRENADOR
+                    </strong>
+                    <span style={{ color: '#ffffff', fontWeight: 900, fontSize: 16 }}>
+                      Lleva {sinChaqueta.length} chaqueta{sinChaqueta.length === 1 ? '' : 's'} hoy
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                    {sinChaqueta.map((entrenador) => (
+                      <span
+                        key={`chaqueta-pendiente-${entrenador.entrenador_id}`}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 6,
+                          padding: '7px 10px',
+                          borderRadius: 999,
+                          background: '#fdf2f8',
+                          color: '#9d174d',
+                          border: '1px solid #f9a8d4',
+                          fontSize: 12,
+                          fontWeight: 900,
+                        }}
+                      >
+                        🧥 {entrenador.nombre_completo}
+                      </span>
+                    ))}
+                  </div>
+                  <span style={{ color: '#fce7f3', fontSize: 12 }}>
+                    Cuando se la des, márcala en Entrenadores → Editar ficha → Chaqueta entregada.
+                  </span>
                 </div>
               );
             })()}
@@ -916,6 +971,11 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                     <strong style={{ color: grupo.entrenador || grupo.entrenadores ? '#0f172a' : '#b45309' }}>
                                       {grupo.entrenador || grupo.entrenadores || 'SIN ENTRENADOR'}
                                     </strong>
+                                    {trainersMissingJacket([grupo], entrenadores || []).length > 0 && (
+                                      <span style={{ ...miniBadge, display: 'inline-block', marginTop: 4, background: '#fdf2f8', color: '#9d174d', border: '1px solid #f9a8d4' }}>
+                                        🧥 Chaqueta pendiente
+                                      </span>
+                                    )}
                                     {grupo.entrenador_apoyo && (
                                       <p style={{ margin: '4px 0 0', fontSize: 13 }}>
                                         Apoyo: {grupo.entrenador_apoyo}
