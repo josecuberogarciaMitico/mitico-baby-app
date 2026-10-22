@@ -16239,9 +16239,27 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
     setCargando(false);
   }
 
-  async function quitarAlumnoAgenda(alumno: AgendaAlumnoSesionApp) {
+  async function quitarAlumnoAgenda(
+    alumno: AgendaAlumnoSesionApp,
+    // Opcional: grupo ya creado en el que está el niño (botón de «Organizar
+    // grupos»). Con él se avisa si el grupo se queda con 0/1 niños y se borra
+    // la línea de este niño en las observaciones del grupo.
+    grupo?: AgendaGrupoSesionApp
+  ) {
+    const alumnosGrupoAntes = grupo ? alumnosDelGrupoCreadoAgenda(grupo) : [];
+    const alumnosGrupoDespues = alumnosGrupoAntes.filter(
+      (item) => item.alumno_id !== alumno.alumno_id
+    );
+    const avisoGrupo = !grupo
+      ? ''
+      : alumnosGrupoDespues.length === 0
+      ? `\n\nAtención: ${nombreGrupoVisualApp(grupo)} se quedará sin niños.`
+      : alumnosGrupoDespues.length === 1
+      ? `\n\nAtención: ${nombreGrupoVisualApp(grupo)} se quedará con 1 solo niño. Revisa el grupo después.`
+      : '';
+
     const confirmar = window.confirm(
-      `¿Quitar a ${alumno.alumno} de esta sesión/listado?`
+      `¿Quitar a ${alumno.alumno} de esta sesión/listado?${avisoGrupo}`
     );
     if (!confirmar) return;
 
@@ -16253,8 +16271,43 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
         p_sesion_alumno_id: alumno.sesion_alumno_id,
       });
 
+      // La RPC no limpia las observaciones del grupo: quitamos solo la línea
+      // «NOMBRE: …» de este niño. El resto del texto y el trabajo diario se
+      // conservan tal cual (no se regenera nada).
+      if (grupo) {
+        const nombreNino = textoSinAcentosGrupoApp(
+          nombreLimpioObservacionesGrupoApp(alumno.alumno)
+        );
+        const lineas = String(grupo.observaciones_importantes || '').split(/\r?\n/);
+        const lineasSinNino = lineas.filter((linea) => {
+          const normalizada = textoSinAcentosGrupoApp(linea.trim());
+          return !(
+            normalizada === nombreNino ||
+            normalizada.startsWith(`${nombreNino}:`) ||
+            normalizada.startsWith(`${nombreNino} ·`)
+          );
+        });
+        // Sin trabajo guardado no llamamos: la RPC crearía un trabajo vacío.
+        if (
+          nombreNino &&
+          grupo.trabajo_diario &&
+          lineasSinNino.length !== lineas.length
+        ) {
+          await ejecutarFuncion(GROUP_OPERATION_RPC.updateDailyWork, {
+            p_grupo_id: grupo.grupo_id,
+            p_trabajo_diario: grupo.trabajo_diario,
+            p_observaciones_importantes: lineasSinNino.join('\n'),
+          });
+        }
+      }
+
       await cargarAgendaOperativaDirecta();
-      await cargarDetalleSesionAgenda(alumno.sesion_id);
+      await cargarDetalleSesionAgenda(alumno.sesion_id, {
+        preservarScroll: true,
+      });
+      // Reparto manual de reportes y vista entrenador leen de estas vistas.
+      await cargarPlanning();
+      await cargarGruposEntrenador();
       setAgendaRecomendaciones([]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');

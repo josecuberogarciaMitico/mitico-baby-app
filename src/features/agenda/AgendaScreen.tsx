@@ -3416,6 +3416,30 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                                 </select>
                                               </label>
                                             )}
+
+                                            {/* Quitar del grupo y de esta sesión (p. ej. cambia de día).
+                                                Intensivos ya tienen su propio «No viene». */}
+                                            {!contextoIntensivo && (
+                                              <button
+                                                type="button"
+                                                disabled={cargando}
+                                                onClick={() =>
+                                                  quitarAlumnoAgenda(alumnoSesion, grupo)
+                                                }
+                                                style={{
+                                                  ...botonPeligroMini,
+                                                  // El estilo base tiene ancho fijo de 128px;
+                                                  // aquí el texto es más largo y se salía.
+                                                  width: 'auto',
+                                                  minWidth: 0,
+                                                  flex: '0 0 auto',
+                                                  padding: '8px 14px',
+                                                  justifySelf: 'start',
+                                                }}
+                                              >
+                                                Quitar de esta sesión
+                                              </button>
+                                            )}
                                           </div>
                                         )}
                                       </div>
