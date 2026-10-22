@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   AdaptiveReportFields,
   BotonesOpcion,
@@ -12,8 +12,23 @@ import {
   reportTechnicalLevelForRender,
   ritmoDesdeNivel,
 } from '../../lib/adaptiveReport';
-import type { AlumnoReporteEntrenador } from '../../core/sessions/operationalTypes';
+import type {
+  AlumnoReporteEntrenador,
+  GrupoEntrenadorApp,
+} from '../../core/sessions/operationalTypes';
 import { DictationButton } from '../../components/reports/DictationButton';
+import {
+  chipPorDefectoEntrenador,
+  chipsDiasEntrenador,
+  claveChipDiaEntrenador,
+} from './trainerDayNav';
+
+function hoyEntrenadorIso() {
+  const hoy = new Date();
+  return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(
+    hoy.getDate()
+  ).padStart(2, '0')}`;
+}
 
 type TrainerViewScreenProps = {
   ctx: Record<string, any>;
@@ -23,6 +38,10 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
   const [tareaEntrenadorAbierta, setTareaEntrenadorAbierta] = useState<string | null>(null);
   const [diaDisponibilidadAbierto, setDiaDisponibilidadAbierto] = useState('');
   const [dictandoObservacion, setDictandoObservacion] = useState(false);
+  // Día elegido en la fila de botones, por entrenador (clave del botón).
+  const [diaEntrenadorSeleccionado, setDiaEntrenadorSeleccionado] = useState<
+    Record<string, string>
+  >({});
   const {
     abrirFormularioReporte,
     abrirGrupoDesdeTareaEntrenador,
@@ -138,6 +157,36 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
     turnoEntrenadorBox,
     vistaEntrenadorShell,
   } = ctx;
+
+  // Al abrir un grupo desde «Tareas por cerrar» (o cualquier otro salto), se
+  // selecciona su día para que la tarjeta exista en pantalla y se pueda abrir.
+  const claveGrupoActivoEntrenador = grupoActivoEntrenador
+    ? `${grupoActivoEntrenador.entrenador_id}__${grupoActivoEntrenador.grupo_id}`
+    : '';
+  useEffect(() => {
+    if (!grupoActivoEntrenador) return;
+    for (const bloque of gruposSemanalVistaEntrenador || []) {
+      if (bloque.entrenador_id !== grupoActivoEntrenador.entrenador_id) continue;
+      for (const semana of bloque.semanas || []) {
+        const grupo = (semana.grupos || []).find(
+          (item: { grupo_id: string }) => item.grupo_id === grupoActivoEntrenador.grupo_id
+        );
+        if (!grupo) continue;
+        const clave = claveChipDiaEntrenador(
+          semana.inicio,
+          semanaVistaEntrenadorInicio,
+          grupo.fecha
+        );
+        setDiaEntrenadorSeleccionado((actual) =>
+          actual[bloque.entrenador_id] === clave
+            ? actual
+            : { ...actual, [bloque.entrenador_id]: clave }
+        );
+        return;
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [claveGrupoActivoEntrenador]);
 
   const fechaConDiaEntrenador = (fecha: string) =>
     `${capitalizarPrimera(
@@ -2001,139 +2050,93 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                   </section>
                 )}
 
-                {bloqueEntrenador.semanas.map((semana) => {
-                  const totalReportesSemana = semana.grupos.reduce(
-                    (total, grupo) => {
-                      const alumnosGrupo = alumnosDelGrupo(
-                        grupo.grupo_id,
-                        grupo.entrenador_id
-                      );
-                      return (
-                        total +
-                        alumnosGrupo.filter(
-                          (a) =>
-                            a.estado_reporte === 'Falta reporte' ||
-                            a.estado_reporte ===
-                              'Asistencia sin confirmar' ||
-                            a.estado_asistencia === 'Pendiente'
-                        ).length
-                      );
-                    },
-                    0
+                {(() => {
+                  // Días como botones (sin desplegables semana → día → turno).
+                  const chipsDias = chipsDiasEntrenador<GrupoEntrenadorApp>(
+                    bloqueEntrenador.semanas,
+                    semanaVistaEntrenadorInicio,
+                    grupoTienePendientesVistaEntrenador
                   );
-                  const esSemanaVigente =
-                    semana.inicio === semanaVistaEntrenadorInicio;
+                  if (chipsDias.length === 0) return null;
+                  const claveElegida =
+                    diaEntrenadorSeleccionado[bloqueEntrenador.entrenador_id];
+                  const chipActivo =
+                    chipsDias.find((chip) => chip.clave === claveElegida) ||
+                    chipsDias.find(
+                      (chip) =>
+                        chip.clave === chipPorDefectoEntrenador(chipsDias, hoyEntrenadorIso())
+                    ) ||
+                    chipsDias[0];
 
                   return (
-                    <details
-                      key={`${bloqueEntrenador.entrenador_id}-${semana.inicio}`}
-                      className={`trainer-week-block ${
-                        esSemanaVigente ? 'is-current' : 'is-previous-pending'
-                      }`}
-                      style={bloqueSemanaMovil}
-                      onToggle={cerrarAcordeonesHermanos}
-                      open={false}
-                    >
-                      <summary
-                        className="trainer-week-summary"
-                        style={cabeceraSemanaMovil}
-                        onClick={enfocarAcordeonEntrenadorAlAbrir}
+                    <>
+                      <nav
+                        className="trainer-day-chips"
+                        aria-label="Días con grupos"
                       >
-                        <div>
-                          <p style={etiquetaSuperior}>
-                            {esSemanaVigente
-                              ? 'SEMANA DE TRABAJO'
-                              : 'PENDIENTES DE SEMANAS ANTERIORES'}
-                          </p>
-                          <h4 style={{ margin: 0 }}>
-                            {rangoSemanaAgenda(semana.inicio)}
-                          </h4>
-                        </div>
-                        <div style={resumenChipsMovil}>
-                          <span>{semana.grupos.length} grupos</span>
-                          <span>{totalReportesSemana} tareas pendientes</span>
-                        </div>
-                      </summary>
+                        {chipsDias.map((chip) => (
+                          <button
+                            type="button"
+                            key={`${bloqueEntrenador.entrenador_id}-${chip.clave}`}
+                            className={`trainer-day-chip${
+                              chip.clave === chipActivo.clave ? ' is-active' : ''
+                            }${chip.esAnterior ? ' is-previous' : ''}`}
+                            aria-pressed={chip.clave === chipActivo.clave}
+                            onClick={() =>
+                              setDiaEntrenadorSeleccionado((actual) => ({
+                                ...actual,
+                                [bloqueEntrenador.entrenador_id]: chip.clave,
+                              }))
+                            }
+                          >
+                            {chip.pendientes > 0 && !chip.esAnterior && (
+                              <span
+                                className="trainer-day-chip-dot"
+                                aria-label="Con tareas pendientes"
+                              />
+                            )}
+                            <strong>{chip.titulo}</strong>
+                            <small>{chip.detalle}</small>
+                          </button>
+                        ))}
+                      </nav>
 
-                      <div className="trainer-day-grid trainer-day-grid--groups">
-                        {diasGruposVistaEntrenador(semana.grupos).map(
-                          (dia, indiceDia) => {
-                            const gruposDia = dia.turnos.flatMap(
-                              (turno) => turno.grupos
-                            );
-                            const pendientesDia = gruposDia.filter(
-                              (grupo) =>
-                                grupoTienePendientesVistaEntrenador(grupo)
-                            ).length;
-                            const nombreDia = capitalizarPrimera(
-                              new Date(
-                                `${dia.fecha}T00:00:00`
-                              ).toLocaleDateString('es-ES', {
-                                weekday: 'long',
-                              })
-                            );
+                      <div className="trainer-day-panel trainer-day-grid--groups">
+                        {diasGruposVistaEntrenador(chipActivo.grupos).map(
+                          (dia: {
+                            fecha: string;
+                            turnos: Array<{
+                              hora_inicio: string;
+                              hora_fin: string;
+                              grupos: typeof chipActivo.grupos;
+                            }>;
+                          }) => (
+                            <React.Fragment
+                              key={`${bloqueEntrenador.entrenador_id}-${dia.fecha}`}
+                            >
+                              {chipActivo.esAnterior && (
+                                <h4 className="trainer-day-panel-date">
+                                  {capitalizarPrimera(
+                                    new Date(
+                                      `${dia.fecha}T00:00:00`
+                                    ).toLocaleDateString('es-ES', {
+                                      weekday: 'long',
+                                    })
+                                  )}{' '}
+                                  {formatearFecha(dia.fecha)}
+                                </h4>
+                              )}
+                              {dia.turnos.map((turno) => {
+                                const gruposTurno = turno.grupos;
 
-                            return (
-                              <details
-                                key={`${bloqueEntrenador.entrenador_id}-${semana.inicio}-${dia.fecha}`}
-                                className="trainer-day-accordion"
-                                style={diaEntrenadorCard}
-                                onToggle={cerrarAcordeonesHermanos}
-                                open={false}
-                              >
-                                <summary
-                                  className="trainer-accordion-summary"
-                                  onClick={enfocarAcordeonEntrenadorAlAbrir}
-                                >
-                                  <div style={{ display: 'grid' }}>
-                                    <strong>{nombreDia}</strong>
-                                    <span>{formatearFecha(dia.fecha)}</span>
-                                  </div>
-                                  <div style={resumenChipsMovil}>
-                                    <span>{gruposDia.length} grupos</span>
-                                    {pendientesDia > 0 && (
-                                      <span>{pendientesDia} pendientes</span>
-                                    )}
-                                  </div>
-                                </summary>
-
-                                <div className="trainer-turn-grid">
-                                  {dia.turnos.map((turno, indiceTurno) => {
-                                    const gruposTurno = turno.grupos;
-                                    const pendientesTurno = gruposTurno.filter(
-                                      (grupo) =>
-                                        grupoTienePendientesVistaEntrenador(
-                                          grupo
-                                        )
-                                    ).length;
-
-                                    return (
-                                      <details
-                                        key={`${dia.fecha}-${turno.hora_inicio}-${turno.hora_fin}`}
-                                        className="trainer-shift-accordion"
-                                        style={turnoEntrenadorBox}
-                                        onToggle={manejarAperturaTurno(
-                                          gruposTurno
-                                        )}
-                                        open={false}
-                                      >
-                                        <summary
-                                          className="trainer-shift-summary"
-                                          onClick={enfocarAcordeonEntrenadorAlAbrir}
-                                        >
-                                          <strong>
-                                            {turno.hora_inicio}–
-                                            {turno.hora_fin}
-                                          </strong>
-                                          <div style={resumenChipsMovil}>
-                                            <span>{gruposTurno.length} grupos</span>
-                                            {pendientesTurno > 0 && (
-                                              <span>
-                                                {pendientesTurno} pendientes
-                                              </span>
-                                            )}
-                                          </div>
-                                        </summary>
+                                return (
+                                  <section
+                                    key={`${dia.fecha}-${turno.hora_inicio}-${turno.hora_fin}`}
+                                    className="trainer-shift-block"
+                                  >
+                                    <p className="trainer-shift-title">
+                                      {turno.hora_inicio} – {turno.hora_fin}
+                                    </p>
 
                                         <div className="trainer-groups-list">
                                           {gruposTurno.map(
@@ -2307,42 +2310,45 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                                                   </div>
                                                 </div>
 
-                                                {repartoGrupo.length > 1 && (
-                                                  <section
-                                                    style={{
-                                                      ...miniTarjetaBlanca,
-                                                      marginTop: 10,
-                                                      display: 'grid',
-                                                      gap: 8,
-                                                    }}
-                                                  >
-                                                    <strong>Equipo y reparto del grupo</strong>
-                                                    {repartoGrupo.map((responsable) => (
-                                                      <div
-                                                        key={`${grupo.grupo_id}-reparto-${responsable.entrenador_id}`}
-                                                        style={{
-                                                          padding: '8px 10px',
-                                                          borderRadius: 12,
-                                                          background:
-                                                            responsable.entrenador_id === grupo.entrenador_id
-                                                              ? '#eff6ff'
-                                                              : '#f8fafc',
-                                                          border: '1px solid #e2e8f0',
-                                                        }}
-                                                      >
-                                                        <strong>{responsable.entrenador}</strong>
-                                                        <span style={{ marginLeft: 6, color: '#64748b' }}>
-                                                          · {responsable.alumnos.length} niño{responsable.alumnos.length === 1 ? '' : 's'}
-                                                        </span>
-                                                        <div style={{ marginTop: 4, fontSize: 13, lineHeight: 1.45 }}>
-                                                          {responsable.alumnos.length > 0
-                                                            ? responsable.alumnos.map((alumno) => alumno.alumno).join(' · ')
-                                                            : 'Sin alumnos asignados'}
-                                                        </div>
-                                                      </div>
-                                                    ))}
-                                                  </section>
-                                                )}
+                                                {repartoGrupo.length > 1 && (() => {
+                                                  // Equipo en una línea: con quién va y de qué niños hace el reporte.
+                                                  type ResponsableReparto = {
+                                                    entrenador_id: string;
+                                                    entrenador: string;
+                                                    alumnos: Array<{ alumno: string }>;
+                                                  };
+                                                  const companeros = (repartoGrupo as ResponsableReparto[]).filter(
+                                                    (responsable) =>
+                                                      responsable.entrenador_id !== grupo.entrenador_id
+                                                  );
+                                                  const propio = (repartoGrupo as ResponsableReparto[]).find(
+                                                    (responsable) =>
+                                                      responsable.entrenador_id === grupo.entrenador_id
+                                                  );
+                                                  return (
+                                                    <p className="trainer-team-line">
+                                                      Con{' '}
+                                                      <strong>
+                                                        {companeros
+                                                          .map((responsable) => responsable.entrenador)
+                                                          .join(' y ')}
+                                                      </strong>
+                                                      {' · '}
+                                                      {propio && propio.alumnos.length > 0 ? (
+                                                        <>
+                                                          Tus reportes:{' '}
+                                                          <strong>
+                                                            {propio.alumnos
+                                                              .map((alumno) => alumno.alumno)
+                                                              .join(', ')}
+                                                          </strong>
+                                                        </>
+                                                      ) : (
+                                                        'No tienes reportes asignados en este grupo'
+                                                      )}
+                                                    </p>
+                                                  );
+                                                })()}
 
                                                 {estadoAccionGrupo && (
                                                   <div
@@ -2723,18 +2729,16 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                                           }
                                         )}
                                         </div>
-                                      </details>
-                                    );
-                                  })}
-                                </div>
-                              </details>
-                            );
-                          }
+                                  </section>
+                                );
+                              })}
+                            </React.Fragment>
+                          )
                         )}
                       </div>
-                    </details>
+                    </>
                   );
-                })}
+                })()}
               </details>
             ))}
         </section>
