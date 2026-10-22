@@ -579,6 +579,7 @@ import { AdminEnrolmentScreen } from './features/admin/AdminEnrolmentScreen';
 import { AltasPendientesBadge, AltasRespondidasAviso } from './features/admin/AltasRespondidasAviso';
 import { useAltasRespondidasAviso } from './features/admin/useAltasRespondidasAviso';
 import { UserAccessScreen } from './features/admin/UserAccessScreen';
+import { descargarInformeSnowZonePdf } from './features/reports/snowZonePdf';
 import { DailySummaryScreen } from './features/dashboard/DailySummaryScreen';
 import { HomeScreen } from './features/dashboard/HomeScreen';
 import { OcioStudentsScreen } from './features/ocio/OcioStudentsScreen';
@@ -18856,48 +18857,14 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       return;
     }
 
-    const totalPequena = snowZoneDias.reduce(
-      (total, fila) => total + Number(fila.pista_pequena || 0),
-      0
-    );
-    const totalGrande = snowZoneDias.reduce(
-      (total, fila) => total + Number(fila.pista_grande || 0),
-      0
-    );
-    const totalGeneral = totalPequena + totalGrande;
-
-    const escaparCsv = (valor: unknown) => {
-      const texto = String(valor ?? '');
-      return `"${texto.replace(/"/g, '""')}"`;
-    };
-
-    const cabeceraPeriodo = tituloPeriodoSnowZone();
-
-    const filasCsv: Array<Array<string | number>> = [
-      [`SNOWZONE · ${cabeceraPeriodo.titulo}`],
-      [`Periodo: ${cabeceraPeriodo.periodo}`],
-      [],
-      ['Fecha', 'Pista pequeña', 'Pista grande', 'Total'],
-      ...snowZoneDias.map((fila) => [
-        formatearFecha(fila.fecha),
-        fila.pista_pequena,
-        fila.pista_grande,
-        fila.total,
-      ]),
-      ['TOTAL', totalPequena, totalGrande, totalGeneral],
-    ];
-
-    const csv =
-      '\uFEFF' +
-      filasCsv
-        .map((fila) => fila.map(escaparCsv).join(';'))
-        .join('\r\n');
-
-    descargarTextoComoArchivo(
-      `snowzone_${snowZoneModo}_${desde}_${hasta}.csv`,
-      csv,
-      'text/csv;charset=utf-8'
-    );
+    descargarInformeSnowZonePdf(
+      snowZoneDias,
+      tituloPeriodoSnowZone(),
+      `snowzone_${snowZoneModo}_${desde}_${hasta}.pdf`
+    ).catch((err) => {
+      console.error('Error generando PDF SnowZone', err);
+      setSnowZoneError('No se pudo generar el PDF del informe.');
+    });
   }
 
 
