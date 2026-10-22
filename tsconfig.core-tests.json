@@ -17,6 +17,7 @@
     "src/features/ocio/**/*.ts",
     "src/features/intensivos/**/*.ts",
     "src/features/agenda/**/*.ts",
+    "src/features/trainers/trainerDayNav.ts",
     "src/features/pacoAcciones/pacoAccionesLogic.ts",
     "src/features/seasons/**/*.ts",
     "src/features/billing/**/*.ts",
