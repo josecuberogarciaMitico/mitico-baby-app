@@ -4723,3 +4723,35 @@ section:has(input[placeholder^='Buscar entrenador, teléfono, email o especialid
     grid-column: 1 / -1;
   }
 }
+
+/* Ordenador: los grupos salen plegados (solo resumen) y se despliegan
+   con «Abrir grupo», igual que en móvil pero sin pantalla completa. */
+@media (min-width: 720px) {
+  .trainer-day-panel .trainer-group-card:not(.is-sheet-open) > .trainer-attendance-panel,
+  .trainer-day-panel .trainer-group-card:not(.is-sheet-open) > .trainer-info-details {
+    display: none !important;
+  }
+
+  .trainer-day-panel .trainer-group-card .trainer-open-group-button {
+    display: block !important;
+    grid-column: 1 / -1;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 14px;
+    border: 1px solid rgba(37, 99, 235, 0.34);
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(239, 246, 255, 0.98), #ffffff);
+    color: #1d4ed8;
+    font-size: 15px;
+    font-weight: 900;
+    cursor: pointer;
+    box-shadow: 0 8px 18px rgba(37, 99, 235, 0.13);
+  }
+
+  .trainer-day-panel .trainer-group-card.is-sheet-open .trainer-open-group-button {
+    background: #ffffff;
+    color: #475569;
+    border-color: #cbd5e1;
+    box-shadow: none;
+  }
+}

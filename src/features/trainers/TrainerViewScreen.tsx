@@ -2438,7 +2438,14 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                                                 <button
                                                   type="button"
                                                   className="trainer-open-group-button"
+                                                  aria-expanded={esGrupoActivo}
                                                   onClick={() => {
+                                                    // En ordenador el grupo se pliega y despliega
+                                                    // con este mismo botón (en móvil se abre la hoja).
+                                                    if (esGrupoActivo) {
+                                                      cerrarGrupoEntrenador();
+                                                      return;
+                                                    }
                                                     marcarGrupoVistoPorEntrenador(
                                                       grupo.entrenador_id,
                                                       grupo.grupo_id
@@ -2453,7 +2460,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                                                     });
                                                   }}
                                                 >
-                                                  Abrir grupo
+                                                  {esGrupoActivo ? 'Plegar grupo' : 'Abrir grupo'}
                                                 </button>
 
                                                 <section
