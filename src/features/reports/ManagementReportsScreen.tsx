@@ -187,7 +187,7 @@ export function ManagementReportsScreen({ ctx }: ManagementReportsScreenProps) {
 
             <div style={{ padding: '16px 18px 18px' }}>
               <p style={{ margin: '0 0 14px', color: '#475569', lineHeight: 1.4 }}>
-                Solo Baby. Cuenta asistencia real por día. Un grupo marcado
+                Solo Baby e Intensivos (Ocio no cuenta). Cuenta asistencia real por día. Un grupo marcado
                 como Pequeña/Grande computa como Pista grande.
               </p>
 
