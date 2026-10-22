@@ -9,6 +9,7 @@ import {
   ocioWhatsappContext,
   sessionWhatsappContext,
   whatsappDirectUrl,
+  whatsappDesktopAppUrl,
   whatsappGroupLinkByKey,
 } from '../../../src/core/communications/whatsappContract';
 
@@ -68,4 +69,14 @@ test('busca el enlace exacto y prepara preview sin mutar registros', () => {
 
 test('limpia el prefijo de prueba inicial y conserva el formato V1 de la lista', () => {
   equal(cleanTrainerNamesForWhatsapp('[TEST 1] Ana + TEST NUEVO · Luis'), 'Ana + TEST NUEVO · Luis', 'nombres');
+});
+
+test('WhatsApp de escritorio: enlaces directos a la app', () => {
+  equal(whatsappDesktopAppUrl('https://wa.me/34612345678?text=Hola%20equipo!'), 'whatsapp://send?phone=34612345678&text=Hola%20equipo!', 'wa.me con texto');
+  equal(whatsappDesktopAppUrl('https://wa.me/34612345678'), 'whatsapp://send?phone=34612345678', 'wa.me sin texto');
+  equal(whatsappDesktopAppUrl('https://api.whatsapp.com/send?phone=34653757090&text&type=phone_number&app_absent=0'), 'whatsapp://send?phone=34653757090', 'api.whatsapp.com');
+  equal(whatsappDesktopAppUrl('https://chat.whatsapp.com/ABC123'), 'whatsapp://chat?code=ABC123', 'grupo');
+  equal(whatsappDesktopAppUrl('https://mitico.app/ficha'), null, 'no es WhatsApp');
+  equal(whatsappDesktopAppUrl('tel:+34612345678'), null, 'teléfono');
+  equal(whatsappDesktopAppUrl(''), null, 'vacío');
 });
