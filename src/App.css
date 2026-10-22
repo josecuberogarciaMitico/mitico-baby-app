@@ -4731,9 +4731,10 @@ section:has(input[placeholder^='Buscar entrenador, teléfono, email o especialid
   min-width: 0;
   margin-top: 12px;
   padding: 12px;
-  border: 1px solid #cfe3d6;
+  /* Borde marcado, como el de «Tareas por cerrar» pero en verde. */
+  border: 1px solid #166534;
   border-radius: 16px;
-  background: linear-gradient(135deg, #f6fbf7, #ffffff);
+  background: linear-gradient(135deg, #f0fdf4, #ffffff);
 }
 
 .trainer-days-box-title {
