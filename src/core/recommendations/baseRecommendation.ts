@@ -176,7 +176,8 @@ export function pedagogicalBandForLevel(value: unknown): PedagogicalBand {
       id: 'B_BPLUS',
       label: 'B / B+',
       block: 'B / B+',
-      piste: 'Pequeña/Grande',
+      // B y B+ trabajan siempre en pista grande (decisión de coordinación).
+      piste: 'Grande',
       order: 3,
       maxSize: 6,
     };
