@@ -1052,7 +1052,8 @@ export function StudentRecordsScreen({ ctx }: StudentRecordsScreenProps) {
                             <button
                               type="button"
                               onClick={() => abrirFichaAlumno(registro.alumno_id)}
-                              style={botonMini}
+                              // botonMini mide 128px fijos y este texto no cabía.
+                              style={{ ...botonMini, width: 'auto', flex: '0 0 auto' }}
                             >
                               Ver ficha e historial
                             </button>
@@ -1087,6 +1088,34 @@ export function StudentRecordsScreen({ ctx }: StudentRecordsScreenProps) {
                                 {pendienteRecuperar
                                   ? 'Gestionar recuperación'
                                   : 'Abrir intensivo'}
+                              </button>
+                            )}
+
+                            {/* Mismo «Eliminar» que las fichas de Baby: borra la
+                                ficha completa (también del intensivo). */}
+                            {fichaMaestra && (
+                              <button
+                                type="button"
+                                disabled={cargando}
+                                onClick={async () => {
+                                  const historial =
+                                    Number(totalReportes) > 0 ||
+                                    Number(sesionesRegistradas) > 0
+                                      ? `\n\nOJO: tiene ${totalReportes} reportes y ${sesionesRegistradas} sesiones registradas que también se borrarán.`
+                                      : '';
+                                  const seguir = window.confirm(
+                                    `${registro.alumno} está en ${
+                                      curso?.intensivo || registro.intensivo
+                                    }. Al eliminar la ficha también sale de ese intensivo y, si vuelve, habrá que añadirla de nuevo.${historial}\n\n¿Continuar?`
+                                  );
+                                  if (!seguir) return;
+                                  await borrarAlumnoBase(fichaMaestra);
+                                  await cargarIntensivos();
+                                }}
+                                style={botonPeligroMini}
+                                title="Eliminar la ficha completa del alumno y sus datos asociados."
+                              >
+                                Eliminar
                               </button>
                             )}
                           </div>

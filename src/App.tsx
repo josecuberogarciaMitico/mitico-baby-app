@@ -4930,18 +4930,21 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   }
 
   async function eliminarAlumnoOcio(alumno: OcioAlumnoApp) {
+    // «Eliminar» borra la ficha completa, igual que en Baby e Intensivos
+    // (antes solo lo sacaba de Ocio y la ficha seguía existiendo).
     const confirmar = window.confirm(
-      `¿Eliminar la ficha de Ocio de ${alumno.alumno}? No se puede deshacer.`
+      `¿Borrar definitivamente la ficha de ${alumno.alumno}?\n\nSe borra de Ocio, Baby e Intensivos, con sus grupos, reportes y asistencias. No se puede deshacer.`
     );
     if (!confirmar) return;
     setCargando(true);
     setError('');
     try {
-      await ejecutarFuncion('eliminar_alumno_ocio_app', {
+      await ejecutarFuncion('borrar_alumno_base_operativa_app', {
         p_alumno_id: alumno.alumno_id,
       });
       await cargarOcioAlumnos();
       await cargarOcioGrupos();
+      await cargarAlumnos();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Error eliminando alumno Ocio'
