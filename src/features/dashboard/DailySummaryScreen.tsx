@@ -2,6 +2,20 @@ import React from 'react';
 import { groupTrainersJacket, trainersMissingJacket } from '../../core/trainers/trainerOperations';
 import { TrackTrainerAdjustPanel } from './TrackTrainerAdjustPanel';
 
+// Botón pequeño común de Trabajo en pista (WhatsApp, Llamar, Camiseta, Chaqueta).
+const pildoraPista: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  minHeight: 26,
+  padding: '3px 8px',
+  borderRadius: 8,
+  fontSize: 11,
+  fontWeight: 900,
+  lineHeight: 1.1,
+  whiteSpace: 'nowrap',
+};
+
 type DailySummaryScreenProps = {
   ctx: Record<string, any>;
 };
@@ -978,76 +992,58 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                   minWidth: 0,
                                 }}
                               >
-                                <div
-                                  style={{
-                                    display: 'grid',
-                                    gridTemplateColumns: 'minmax(0, 1fr) auto',
-                                    alignItems: 'start',
-                                    gap: 12,
-                                  }}
-                                >
-                                  <div style={{ minWidth: 0 }}>
-                                    <strong style={{ fontSize: 16 }}>{nombreGrupoVisualApp(grupo, indice)}</strong>
-                                    <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap', marginTop: 8 }}>
-                                      <span style={{ ...miniBadge, background: '#0f172a', color: '#fff' }}>
-                                        PUNTO {grupo.punto_encuentro || '-'}
-                                      </span>
-                                      <span style={{ ...miniBadge, background: '#dbeafe', color: '#1e3a8a' }}>
-                                        {grupo.pista || 'SIN PISTA'}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div style={{ textAlign: 'right', minWidth: 138, alignSelf: 'start' }}>
-                                    <span style={{ display: 'block', fontSize: 11, fontWeight: 900, color: '#64748b', textTransform: 'uppercase' }}>
-                                      Entrenador
+                                {/* Cabecera en filas: así no se aprieta cuando hay 4 grupos por fila. */}
+                                <div style={{ display: 'grid', gap: 6, minWidth: 0 }}>
+                                  <strong style={{ fontSize: 15, lineHeight: 1.2, overflowWrap: 'anywhere' }}>
+                                    {nombreGrupoVisualApp(grupo, indice)}
+                                  </strong>
+                                  <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
+                                    <span style={{ ...miniBadge, background: '#0f172a', color: '#fff' }}>
+                                      PUNTO {grupo.punto_encuentro || '-'}
                                     </span>
+                                    <span style={{ ...miniBadge, background: '#dbeafe', color: '#1e3a8a' }}>
+                                      {grupo.pista || 'SIN PISTA'}
+                                    </span>
+                                  </div>
+                                  <p style={{ margin: 0, fontSize: 12.5, lineHeight: 1.35, color: '#475569', overflowWrap: 'anywhere' }}>
                                     <strong style={{ color: grupo.entrenador || grupo.entrenadores ? '#0f172a' : '#b45309' }}>
                                       {grupo.entrenador || grupo.entrenadores || 'SIN ENTRENADOR'}
                                     </strong>
-                                    {grupo.entrenador_apoyo && (
-                                      <p style={{ margin: '4px 0 0', fontSize: 13 }}>
-                                        Apoyo: {grupo.entrenador_apoyo}
-                                      </p>
-                                    )}
-                                    {/* Chaqueta de cada entrenador del grupo: pulsar cambia SÍ / NO en su ficha. */}
-                                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 6 }}>
-                                      {groupTrainersJacket(grupo, entrenadores || []).map((entrenadorGrupo) => {
-                                        const guardando = guardandoChaquetaId === entrenadorGrupo.entrenador_id;
-                                        const nombreCorto =
-                                          entrenadorGrupo.nombre_completo.split(/\s+/)[0].charAt(0).toUpperCase() +
-                                          entrenadorGrupo.nombre_completo.split(/\s+/)[0].slice(1).toLowerCase();
-                                        return (
-                                          <button
-                                            type="button"
-                                            key={`chaqueta-${grupo.grupo_id}-${entrenadorGrupo.entrenador_id}`}
-                                            disabled={Boolean(guardandoChaquetaId)}
-                                            onClick={() => void cambiarChaquetaEntrenador(entrenadorGrupo)}
-                                            title={
-                                              entrenadorGrupo.chaqueta
-                                                ? `Marcar que ${entrenadorGrupo.nombre_completo} ya NO tiene chaqueta`
-                                                : `Marcar que ${entrenadorGrupo.nombre_completo} ya tiene chaqueta`
-                                            }
-                                            style={{
-                                              minHeight: 30,
-                                              padding: '5px 9px',
-                                              borderRadius: 9,
-                                              border: entrenadorGrupo.chaqueta ? '1px solid #bbf7d0' : '1px solid #f9a8d4',
-                                              background: entrenadorGrupo.chaqueta ? '#f0fdf4' : '#fdf2f8',
-                                              color: entrenadorGrupo.chaqueta ? '#15803d' : '#be185d',
-                                              fontSize: 11,
-                                              fontWeight: 900,
-                                              cursor: guardando ? 'wait' : 'pointer',
-                                              whiteSpace: 'nowrap',
-                                              opacity: guardandoChaquetaId && !guardando ? 0.65 : 1,
-                                            }}
-                                          >
-                                            {guardando
-                                              ? 'Guardando…'
-                                              : `🧥 ${nombreCorto}: ${entrenadorGrupo.chaqueta ? 'SÍ' : 'NO'}`}
-                                          </button>
-                                        );
-                                      })}
-                                    </div>
+                                    {grupo.entrenador_apoyo && <> · Apoyo: {grupo.entrenador_apoyo}</>}
+                                  </p>
+                                  {/* Chaqueta de cada entrenador del grupo: pulsar cambia SÍ / NO en su ficha. */}
+                                  <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                                    {groupTrainersJacket(grupo, entrenadores || []).map((entrenadorGrupo) => {
+                                      const guardando = guardandoChaquetaId === entrenadorGrupo.entrenador_id;
+                                      const nombreCorto =
+                                        entrenadorGrupo.nombre_completo.split(/\s+/)[0].charAt(0).toUpperCase() +
+                                        entrenadorGrupo.nombre_completo.split(/\s+/)[0].slice(1).toLowerCase();
+                                      return (
+                                        <button
+                                          type="button"
+                                          key={`chaqueta-${grupo.grupo_id}-${entrenadorGrupo.entrenador_id}`}
+                                          disabled={Boolean(guardandoChaquetaId)}
+                                          onClick={() => void cambiarChaquetaEntrenador(entrenadorGrupo)}
+                                          title={
+                                            entrenadorGrupo.chaqueta
+                                              ? `Marcar que ${entrenadorGrupo.nombre_completo} ya NO tiene chaqueta`
+                                              : `Marcar que ${entrenadorGrupo.nombre_completo} ya tiene chaqueta`
+                                          }
+                                          style={{
+                                            ...pildoraPista,
+                                            border: entrenadorGrupo.chaqueta ? '1px solid #bbf7d0' : '1px solid #f9a8d4',
+                                            background: entrenadorGrupo.chaqueta ? '#f0fdf4' : '#fdf2f8',
+                                            color: entrenadorGrupo.chaqueta ? '#15803d' : '#be185d',
+                                            cursor: guardando ? 'wait' : 'pointer',
+                                            opacity: guardandoChaquetaId && !guardando ? 0.65 : 1,
+                                          }}
+                                        >
+                                          {guardando
+                                            ? 'Guardando…'
+                                            : `🧥 ${nombreCorto}: ${entrenadorGrupo.chaqueta ? 'SÍ' : 'NO'}`}
+                                        </button>
+                                      );
+                                    })}
                                   </div>
                                 </div>
 
@@ -1056,7 +1052,7 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                     Alumnos ({alumnosGrupo.length})
                                   </strong>
                                   {alumnosGrupo.length > 0 ? (
-                                    <ul style={{ margin: 0, paddingLeft: 20, display: 'grid', gap: 4 }}>
+                                    <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
                                       {alumnosGrupo.map((alumno, alumnoIndice) => (
                                         <li
                                           id={`resumen-alumno-${String(
@@ -1075,7 +1071,6 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                                   borderRadius: 8,
                                                   padding: '4px 7px',
                                                   fontWeight: 900,
-                                                  listStylePosition: 'inside',
                                                 }
                                               : undefined
                                           }
@@ -1090,163 +1085,84 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                             const guardandoCamiseta =
                                               ficha?.alumno_id === guardandoCamisetaAlumnoId;
 
-                                            return (
-                                              <div
-                                                style={{
-                                                  display: 'grid',
-                                                  gridTemplateColumns: telefono
-                                                    ? 'minmax(0, 1fr) auto'
-                                                    : 'minmax(0, 1fr)',
-                                                  alignItems: 'center',
-                                                  gap: 10,
-                                                  minWidth: 0,
-                                                  width: '100%',
-                                                }}
-                                              >
-                                                <div
-                                                  style={{
-                                                    minWidth: 0,
-                                                    display: 'grid',
-                                                    gap: 6,
-                                                    justifyItems: 'start',
-                                                  }}
-                                                >
-                                                  <strong style={{ color: '#172033' }}>
-                                                    {alumno}
-                                                  </strong>
+                                            const [nombreAlumno, ...restoAlumno] = alumno.split(' · ');
 
-                                                  {ficha && (
-                                                    <div
+                                            // Dos líneas: nombre a todo lo ancho y debajo todos sus botones pequeños.
+                                            return (
+                                              <div style={{ display: 'grid', gap: 4, minWidth: 0 }}>
+                                                <span style={{ fontSize: 13.5, lineHeight: 1.25, overflowWrap: 'anywhere' }}>
+                                                  <strong style={{ color: '#172033' }}>{nombreAlumno}</strong>
+                                                  {restoAlumno.length > 0 && (
+                                                    <span style={{ color: '#64748b', fontWeight: 700 }}>
+                                                      {' · '}
+                                                      {restoAlumno.join(' · ')}
+                                                    </span>
+                                                  )}
+                                                </span>
+
+                                                <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                                                  {whatsapp && (
+                                                    <a
+                                                      href={whatsapp}
+                                                      target="_blank"
+                                                      rel="noreferrer"
                                                       style={{
-                                                        display: 'flex',
-                                                        alignItems: 'center',
-                                                        gap: 6,
-                                                        flexWrap: 'wrap',
+                                                        ...pildoraPista,
+                                                        border: '1px solid #bbf7d0',
+                                                        background: '#f0fdf4',
+                                                        color: '#15803d',
+                                                        textDecoration: 'none',
                                                       }}
                                                     >
-                                                      <button
-                                                        type="button"
-                                                        disabled={guardandoCamiseta}
-                                                        onClick={() =>
-                                                          void actualizarCamisetaAlumnoResumenDia(
-                                                            ficha,
-                                                            camisetaPendiente
-                                                          )
-                                                        }
-                                                        title={
+                                                      WhatsApp
+                                                    </a>
+                                                  )}
+                                                  {llamada && (
+                                                    <a
+                                                      href={llamada}
+                                                      style={{
+                                                        ...pildoraPista,
+                                                        border: '1px solid #bfdbfe',
+                                                        background: '#eff6ff',
+                                                        color: '#1d4ed8',
+                                                        textDecoration: 'none',
+                                                      }}
+                                                    >
+                                                      Llamar
+                                                    </a>
+                                                  )}
+                                                  {ficha && (
+                                                    <button
+                                                      type="button"
+                                                      disabled={guardandoCamiseta}
+                                                      onClick={() =>
+                                                        void actualizarCamisetaAlumnoResumenDia(
+                                                          ficha,
                                                           camisetaPendiente
-                                                            ? 'Marcar que ya tiene camiseta'
-                                                            : 'Marcar que necesita camiseta para el próximo entrenamiento'
-                                                        }
-                                                        style={{
-                                                          minHeight: 30,
-                                                          padding: '5px 9px',
-                                                          borderRadius: 9,
-                                                          border: camisetaPendiente
-                                                            ? '1px solid #f9a8d4'
-                                                            : '1px solid #bbf7d0',
-                                                          background: camisetaPendiente
-                                                            ? '#fdf2f8'
-                                                            : '#f0fdf4',
-                                                          color: camisetaPendiente
-                                                            ? '#be185d'
-                                                            : '#15803d',
-                                                          fontSize: 11,
-                                                          fontWeight: 900,
-                                                          cursor: guardandoCamiseta
-                                                            ? 'wait'
-                                                            : 'pointer',
-                                                          whiteSpace: 'nowrap',
-                                                          opacity: guardandoCamiseta ? 0.65 : 1,
-                                                        }}
-                                                      >
-                                                        {guardandoCamiseta
-                                                          ? 'Guardando…'
-                                                          : camisetaPendiente
-                                                          ? 'Camiseta: NO'
-                                                          : 'Camiseta: SÍ'}
-                                                      </button>
-
-                                                      {camisetaPendiente && (
-                                                        <span
-                                                          style={{
-                                                            display: 'inline-flex',
-                                                            alignItems: 'center',
-                                                            padding: '3px 7px',
-                                                            borderRadius: 999,
-                                                            background: '#fdf2f8',
-                                                            color: '#be185d',
-                                                            border: '1px solid #f9a8d4',
-                                                            fontSize: 10,
-                                                            fontWeight: 950,
-                                                            whiteSpace: 'nowrap',
-                                                          }}
-                                                        >
-                                                          🎽 ENTREGAR
-                                                        </span>
-                                                      )}
-                                                    </div>
+                                                        )
+                                                      }
+                                                      title={
+                                                        camisetaPendiente
+                                                          ? 'Marcar que ya tiene camiseta'
+                                                          : 'Marcar que necesita camiseta para el próximo entrenamiento'
+                                                      }
+                                                      style={{
+                                                        ...pildoraPista,
+                                                        border: camisetaPendiente ? '1px solid #f9a8d4' : '1px solid #bbf7d0',
+                                                        background: camisetaPendiente ? '#fdf2f8' : '#f0fdf4',
+                                                        color: camisetaPendiente ? '#be185d' : '#15803d',
+                                                        cursor: guardandoCamiseta ? 'wait' : 'pointer',
+                                                        opacity: guardandoCamiseta ? 0.65 : 1,
+                                                      }}
+                                                    >
+                                                      {guardandoCamiseta
+                                                        ? 'Guardando…'
+                                                        : camisetaPendiente
+                                                        ? '🎽 Camiseta: NO · ENTREGAR'
+                                                        : 'Camiseta: SÍ'}
+                                                    </button>
                                                   )}
                                                 </div>
-
-                                                {telefono && (
-                                                  <div
-                                                    style={{
-                                                      display: 'flex',
-                                                      gap: 5,
-                                                      flexWrap: 'nowrap',
-                                                      justifyContent: 'flex-end',
-                                                      alignItems: 'center',
-                                                    }}
-                                                  >
-                                                    {whatsapp && (
-                                                      <a
-                                                        href={whatsapp}
-                                                        target="_blank"
-                                                        rel="noreferrer"
-                                                        style={{
-                                                          display: 'inline-flex',
-                                                          alignItems: 'center',
-                                                          justifyContent: 'center',
-                                                          minHeight: 32,
-                                                          padding: '5px 8px',
-                                                          borderRadius: 10,
-                                                          border: '1px solid #bbf7d0',
-                                                          background: '#f0fdf4',
-                                                          color: '#15803d',
-                                                          fontSize: 11,
-                                                          fontWeight: 900,
-                                                          textDecoration: 'none',
-                                                          whiteSpace: 'nowrap',
-                                                        }}
-                                                      >
-                                                        WhatsApp
-                                                      </a>
-                                                    )}
-                                                    {llamada && (
-                                                      <a
-                                                        href={llamada}
-                                                        style={{
-                                                          display: 'inline-flex',
-                                                          alignItems: 'center',
-                                                          justifyContent: 'center',
-                                                          minHeight: 32,
-                                                          padding: '5px 8px',
-                                                          borderRadius: 10,
-                                                          border: '1px solid #bfdbfe',
-                                                          background: '#eff6ff',
-                                                          color: '#1d4ed8',
-                                                          fontSize: 11,
-                                                          fontWeight: 900,
-                                                          textDecoration: 'none',
-                                                          whiteSpace: 'nowrap',
-                                                        }}
-                                                      >
-                                                        Llamar
-                                                      </a>
-                                                    )}
-                                                  </div>
-                                                )}
                                               </div>
                                             );
                                           })()}
