@@ -5,6 +5,10 @@ import App from './App.tsx'
 import { CoordinationLauncher } from './screens/CoordinationLauncher.tsx'
 import { PacoChat } from './screens/PacoChat.tsx'
 import { SecretariaPanel } from './screens/SecretariaPanel.tsx'
+import { instalarWhatsappEscritorio } from './lib/whatsappDesktop'
+
+// En ordenador, WhatsApp se abre directo en la app de escritorio (sin la página intermedia).
+instalarWhatsappEscritorio()
 
 let registroPwa: ServiceWorkerRegistration | null = null
 let recargandoPorCambioControlador = false

@@ -90,3 +90,39 @@ export function cleanTrainerNameForWhatsapp(value: string | null | undefined): s
 export function cleanTrainerNamesForWhatsapp(value: string | null | undefined): string {
   return String(value || '').split('+').map(cleanTrainerNameForWhatsapp).filter(Boolean).join(' + ');
 }
+
+/**
+ * WhatsApp de escritorio sin la página intermedia de api.whatsapp.com.
+ * Convierte un enlace web de WhatsApp (wa.me, api.whatsapp.com/send,
+ * chat.whatsapp.com) en el enlace que abre la aplicación directamente
+ * (whatsapp://). Devuelve null si no es un enlace de WhatsApp.
+ */
+export function whatsappDesktopAppUrl(url: string | null | undefined): string | null {
+  const texto = String(url || '').trim();
+  let enlace: URL;
+  try {
+    enlace = new URL(texto);
+  } catch {
+    return null;
+  }
+  const host = enlace.hostname.toLowerCase();
+  const textoMensaje = enlace.searchParams.get('text');
+  const conTexto = (base: string) =>
+    textoMensaje ? `${base}&text=${encodeURIComponent(textoMensaje)}` : base;
+
+  if (host === 'wa.me' || host === 'www.wa.me') {
+    const telefono = enlace.pathname.replace(/\D/g, '');
+    if (!telefono) return textoMensaje ? `whatsapp://send?text=${encodeURIComponent(textoMensaje)}` : null;
+    return conTexto(`whatsapp://send?phone=${telefono}`);
+  }
+  if ((host === 'api.whatsapp.com' || host === 'web.whatsapp.com') && /\/send\/?$/.test(enlace.pathname)) {
+    const telefono = String(enlace.searchParams.get('phone') || '').replace(/\D/g, '');
+    if (!telefono) return textoMensaje ? `whatsapp://send?text=${encodeURIComponent(textoMensaje)}` : null;
+    return conTexto(`whatsapp://send?phone=${telefono}`);
+  }
+  if (host === 'chat.whatsapp.com') {
+    const codigo = enlace.pathname.replace(/^\/+/, '').split('/')[0];
+    return codigo ? `whatsapp://chat?code=${encodeURIComponent(codigo)}` : null;
+  }
+  return null;
+}
