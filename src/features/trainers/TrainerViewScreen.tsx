@@ -18,17 +18,9 @@ import type {
 } from '../../core/sessions/operationalTypes';
 import { DictationButton } from '../../components/reports/DictationButton';
 import {
-  chipPorDefectoEntrenador,
   chipsDiasEntrenador,
   claveChipDiaEntrenador,
 } from './trainerDayNav';
-
-function hoyEntrenadorIso() {
-  const hoy = new Date();
-  return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(
-    hoy.getDate()
-  ).padStart(2, '0')}`;
-}
 
 type TrainerViewScreenProps = {
   ctx: Record<string, any>;
@@ -2060,13 +2052,10 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                   if (chipsDias.length === 0) return null;
                   const claveElegida =
                     diaEntrenadorSeleccionado[bloqueEntrenador.entrenador_id];
+                  // Ningún día abierto por defecto: solo el que se pulse
+                  // (o el del grupo al que se salta desde una tarea).
                   const chipActivo =
-                    chipsDias.find((chip) => chip.clave === claveElegida) ||
-                    chipsDias.find(
-                      (chip) =>
-                        chip.clave === chipPorDefectoEntrenador(chipsDias, hoyEntrenadorIso())
-                    ) ||
-                    chipsDias[0];
+                    chipsDias.find((chip) => chip.clave === claveElegida) || null;
 
                   return (
                     <>
@@ -2079,13 +2068,17 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                             type="button"
                             key={`${bloqueEntrenador.entrenador_id}-${chip.clave}`}
                             className={`trainer-day-chip${
-                              chip.clave === chipActivo.clave ? ' is-active' : ''
+                              chip.clave === chipActivo?.clave ? ' is-active' : ''
                             }${chip.esAnterior ? ' is-previous' : ''}`}
-                            aria-pressed={chip.clave === chipActivo.clave}
+                            aria-pressed={chip.clave === chipActivo?.clave}
                             onClick={() =>
+                              // Pulsar el día abierto lo vuelve a cerrar.
                               setDiaEntrenadorSeleccionado((actual) => ({
                                 ...actual,
-                                [bloqueEntrenador.entrenador_id]: chip.clave,
+                                [bloqueEntrenador.entrenador_id]:
+                                  actual[bloqueEntrenador.entrenador_id] === chip.clave
+                                    ? ''
+                                    : chip.clave,
                               }))
                             }
                           >
@@ -2101,6 +2094,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                         ))}
                       </nav>
 
+                      {chipActivo && (
                       <div className="trainer-day-panel trainer-day-grid--groups">
                         {diasGruposVistaEntrenador(chipActivo.grupos).map(
                           (dia: {
@@ -2108,7 +2102,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                             turnos: Array<{
                               hora_inicio: string;
                               hora_fin: string;
-                              grupos: typeof chipActivo.grupos;
+                              grupos: GrupoEntrenadorApp[];
                             }>;
                           }) => (
                             <React.Fragment
@@ -2743,6 +2737,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                           )
                         )}
                       </div>
+                      )}
                     </>
                   );
                 })()}
