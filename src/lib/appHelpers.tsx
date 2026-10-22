@@ -1,4 +1,8 @@
 import React from 'react';
+import {
+  estructurarObservacionesGrupo,
+  textoDatosObservacion,
+} from '../core/groups/groupObservations';
 import { FOTO_MITICO_HERO } from '../assets/imagenes';
 import type { DisponibilidadEntrenador } from '../features/availability/availabilityEditor';
 import type { GrupoEntrenadorApp, ReportePendiente } from '../core/sessions/operationalTypes';
@@ -282,37 +286,55 @@ export function formatearTrabajoDiario(texto: string | null) {
 }
 
 export function formatearObservaciones(texto: string | null) {
-  const lineas = extraerObservacionesVisualesGrupoApp(texto, 12);
+  // Mismo estilo que el Trabajo diario: texto limpio con títulos en mayúscula.
+  // Un bloque por niño con cada dato etiquetado; lo que comparten todos va
+  // arriba una sola vez y los niños sin novedades se agrupan en una línea.
+  const obs = estructurarObservacionesGrupo(texto);
+  const conDatos = obs.alumnos.filter((alumno) => alumno.datos.length > 0);
+  const sinNovedades = obs.alumnos.filter((alumno) => alumno.sinNovedades);
 
-  if (lineas.length === 0) {
+  if (
+    obs.notas.length === 0 &&
+    obs.comunes.length === 0 &&
+    conDatos.length === 0 &&
+    sinNovedades.length === 0
+  ) {
     return <p style={{ margin: 0 }}>Sin observaciones relevantes.</p>;
   }
 
-  return (
-    <div style={{ display: 'grid', gap: 8 }}>
-      {lineas.map((linea, index) => {
-        const separador = linea.indexOf(':');
-        const nombre = separador >= 0 ? linea.slice(0, separador).trim() : '';
-        const detalle = separador >= 0 ? linea.slice(separador + 1).trim() : linea;
+  const parrafo: React.CSSProperties = {
+    margin: 0,
+    lineHeight: 1.5,
+    whiteSpace: 'normal',
+    textAlign: 'left',
+  };
 
-        return (
-          <div
-            key={`${linea}-${index}`}
-            style={{
-              display: 'grid',
-              gap: 3,
-              textAlign: 'left',
-              padding: '9px 10px',
-              borderRadius: 12,
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-            }}
-          >
-            {nombre && <strong style={{ color: '#0f172a' }}>{nombre}:</strong>}
-            <span style={{ color: '#334155', lineHeight: 1.35 }}>{detalle}</span>
-          </div>
-        );
-      })}
+  return (
+    <div style={{ display: 'grid', gap: 14 }}>
+      {obs.notas.map((nota, index) => (
+        <p key={`nota-${index}`} style={parrafo}>
+          <strong>COORDINACIÓN</strong> · {nota}
+        </p>
+      ))}
+      {obs.comunes.length > 0 && (
+        <p style={parrafo}>
+          <strong>{obs.comunesTodos ? 'TODO EL GRUPO' : 'EN COMÚN'}</strong> ·{' '}
+          {textoDatosObservacion(obs.comunes)}
+        </p>
+      )}
+      {conDatos.map((alumno) => (
+        <p key={`alumno-${alumno.nombre}`} style={parrafo}>
+          <strong>{alumno.nombre}</strong>
+          <br />
+          {textoDatosObservacion(alumno.datos)}
+        </p>
+      ))}
+      {sinNovedades.length > 0 && (
+        <p style={parrafo}>
+          <strong>SIN NOVEDADES</strong> ·{' '}
+          {sinNovedades.map((alumno) => alumno.nombre).join(', ')}
+        </p>
+      )}
     </div>
   );
 }
