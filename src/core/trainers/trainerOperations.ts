@@ -154,3 +154,37 @@ export function trainersMissingJacket(
   }
   return Array.from(found.values()).sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo, 'es'));
 }
+
+/**
+ * Trabajo en pista · botón «Chaqueta: SÍ / NO» por entrenador del grupo.
+ * Devuelve el principal y el apoyo del grupo (emparejados por ID o, si falta,
+ * por nombre) con su estado de chaqueta, sin repetir.
+ */
+export function groupTrainersJacket(
+  group: {
+    entrenador_id?: string | null;
+    entrenador?: string | null;
+    entrenador_apoyo_id?: string | null;
+    entrenador_apoyo?: string | null;
+  },
+  trainers: Array<{ entrenador_id: string; nombre_completo: string; chaqueta_entregada?: boolean | null }>
+): Array<{ rol: 'principal' | 'apoyo'; entrenador_id: string; nombre_completo: string; chaqueta: boolean }> {
+  const norm = (value: string | null | undefined) =>
+    String(value || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toUpperCase();
+  const byId = new Map(trainers.map((t) => [t.entrenador_id, t]));
+  const byName = new Map(trainers.map((t) => [norm(t.nombre_completo), t]));
+  const out: Array<{ rol: 'principal' | 'apoyo'; entrenador_id: string; nombre_completo: string; chaqueta: boolean }> = [];
+  const add = (rol: 'principal' | 'apoyo', id?: string | null, name?: string | null) => {
+    const trainer = (id && byId.get(id)) || (name ? byName.get(norm(name)) : undefined);
+    if (!trainer || out.some((item) => item.entrenador_id === trainer.entrenador_id)) return;
+    out.push({
+      rol,
+      entrenador_id: trainer.entrenador_id,
+      nombre_completo: trainer.nombre_completo,
+      chaqueta: Boolean(trainer.chaqueta_entregada),
+    });
+  };
+  add('principal', group.entrenador_id, group.entrenador);
+  add('apoyo', group.entrenador_apoyo_id, group.entrenador_apoyo);
+  return out;
+}
