@@ -1,5 +1,5 @@
 import React from 'react';
-import { trainersMissingJacket } from '../../core/trainers/trainerOperations';
+import { groupTrainersJacket, trainersMissingJacket } from '../../core/trainers/trainerOperations';
 import { TrackTrainerAdjustPanel } from './TrackTrainerAdjustPanel';
 
 type DailySummaryScreenProps = {
@@ -7,6 +7,9 @@ type DailySummaryScreenProps = {
 };
 
 export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
+  // Chaqueta de entrenador: se marca SÍ / NO desde su grupo, igual que la
+  // camiseta de los niños. Cambia el dato de su ficha (Entrenadores).
+  const [guardandoChaquetaId, setGuardandoChaquetaId] = React.useState('');
   const {
     abrirAjustePistaSesion,
     abrirResultadoAlumnoResumenDia,
@@ -75,6 +78,36 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
     totalPublicadosResumenDia,
     turnoResumenDiaAbierto,
   } = ctx;
+
+  async function cambiarChaquetaEntrenador(entrenador: {
+    entrenador_id: string;
+    nombre_completo: string;
+    chaqueta: boolean;
+  }) {
+    if (guardandoChaquetaId) return;
+    const entregada = !entrenador.chaqueta;
+    setGuardandoChaquetaId(entrenador.entrenador_id);
+    ctx.setError('');
+    try {
+      await ctx.ejecutarFuncion('actualizar_chaqueta_entrenador_app', {
+        p_entrenador_id: entrenador.entrenador_id,
+        p_entregada: entregada,
+      });
+      ctx.setEntrenadores((actuales: Array<{ entrenador_id: string }>) =>
+        actuales.map((item) =>
+          item.entrenador_id === entrenador.entrenador_id
+            ? { ...item, chaqueta_entregada: entregada }
+            : item
+        )
+      );
+    } catch (err) {
+      ctx.setError(
+        err instanceof Error ? err.message : 'No se pudo actualizar la chaqueta.'
+      );
+    } finally {
+      setGuardandoChaquetaId('');
+    }
+  }
 
   return (
     <>
@@ -360,7 +393,7 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                     ))}
                   </div>
                   <span style={{ color: '#fce7f3', fontSize: 12 }}>
-                    Cuando se la des, márcala en Entrenadores → Editar ficha → Chaqueta entregada.
+                    Cuando se la des, pulsa «🧥 Nombre: NO» en su grupo y pasará a SÍ.
                   </span>
                 </div>
               );
@@ -971,16 +1004,50 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                     <strong style={{ color: grupo.entrenador || grupo.entrenadores ? '#0f172a' : '#b45309' }}>
                                       {grupo.entrenador || grupo.entrenadores || 'SIN ENTRENADOR'}
                                     </strong>
-                                    {trainersMissingJacket([grupo], entrenadores || []).length > 0 && (
-                                      <span style={{ ...miniBadge, display: 'inline-block', marginTop: 4, background: '#fdf2f8', color: '#9d174d', border: '1px solid #f9a8d4' }}>
-                                        🧥 Chaqueta pendiente
-                                      </span>
-                                    )}
                                     {grupo.entrenador_apoyo && (
                                       <p style={{ margin: '4px 0 0', fontSize: 13 }}>
                                         Apoyo: {grupo.entrenador_apoyo}
                                       </p>
                                     )}
+                                    {/* Chaqueta de cada entrenador del grupo: pulsar cambia SÍ / NO en su ficha. */}
+                                    <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: 6 }}>
+                                      {groupTrainersJacket(grupo, entrenadores || []).map((entrenadorGrupo) => {
+                                        const guardando = guardandoChaquetaId === entrenadorGrupo.entrenador_id;
+                                        const nombreCorto =
+                                          entrenadorGrupo.nombre_completo.split(/\s+/)[0].charAt(0).toUpperCase() +
+                                          entrenadorGrupo.nombre_completo.split(/\s+/)[0].slice(1).toLowerCase();
+                                        return (
+                                          <button
+                                            type="button"
+                                            key={`chaqueta-${grupo.grupo_id}-${entrenadorGrupo.entrenador_id}`}
+                                            disabled={Boolean(guardandoChaquetaId)}
+                                            onClick={() => void cambiarChaquetaEntrenador(entrenadorGrupo)}
+                                            title={
+                                              entrenadorGrupo.chaqueta
+                                                ? `Marcar que ${entrenadorGrupo.nombre_completo} ya NO tiene chaqueta`
+                                                : `Marcar que ${entrenadorGrupo.nombre_completo} ya tiene chaqueta`
+                                            }
+                                            style={{
+                                              minHeight: 30,
+                                              padding: '5px 9px',
+                                              borderRadius: 9,
+                                              border: entrenadorGrupo.chaqueta ? '1px solid #bbf7d0' : '1px solid #f9a8d4',
+                                              background: entrenadorGrupo.chaqueta ? '#f0fdf4' : '#fdf2f8',
+                                              color: entrenadorGrupo.chaqueta ? '#15803d' : '#be185d',
+                                              fontSize: 11,
+                                              fontWeight: 900,
+                                              cursor: guardando ? 'wait' : 'pointer',
+                                              whiteSpace: 'nowrap',
+                                              opacity: guardandoChaquetaId && !guardando ? 0.65 : 1,
+                                            }}
+                                          >
+                                            {guardando
+                                              ? 'Guardando…'
+                                              : `🧥 ${nombreCorto}: ${entrenadorGrupo.chaqueta ? 'SÍ' : 'NO'}`}
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
                                   </div>
                                 </div>
 

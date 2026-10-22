@@ -8,6 +8,7 @@ import {
   trainerNamesForGroup,
   trainerStudentDistribution,
   trainersMissingJacket,
+  groupTrainersJacket,
 } from '../../../src/core/trainers/trainerOperations';
 
 function equal<T>(actual: T, expected: T, label: string) {
@@ -105,4 +106,15 @@ test('recordatorio de chaquetas: solo entrenadores de hoy sin chaqueta', () => {
     { entrenador_id: 'a', entrenador: 'ALBERTO DEDI' },
   ], trainers);
   equal(lista.map((t) => t.nombre_completo).join(','), 'ALBERTO DEDI,MACARENA SECO', 'sin chaqueta, sin repetir, con apoyo y por nombre');
+});
+
+test('botón de chaqueta: principal y apoyo del grupo con su estado', () => {
+  const trainers = [
+    { entrenador_id: 'b', nombre_completo: 'ALFONSO JORDAN', chaqueta_entregada: true },
+    { entrenador_id: 'c', nombre_completo: 'MACARENA SECO', chaqueta_entregada: false },
+  ];
+  const lista = groupTrainersJacket({ entrenador_id: 'b', entrenador: 'ALFONSO JORDAN', entrenador_apoyo: 'Macarena Seco' }, trainers);
+  equal(lista.map((t) => `${t.rol}:${t.nombre_completo}:${t.chaqueta}`).join(','), 'principal:ALFONSO JORDAN:true,apoyo:MACARENA SECO:false', 'principal por id y apoyo por nombre');
+  equal(groupTrainersJacket({ entrenador_id: 'b', entrenador_apoyo_id: 'b' }, trainers).length, 1, 'sin repetir');
+  equal(groupTrainersJacket({ entrenador: 'DESCONOCIDO' }, trainers).length, 0, 'desconocido fuera');
 });
