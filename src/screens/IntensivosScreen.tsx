@@ -1,5 +1,8 @@
 import React from 'react';
 import { CampoSelect } from '../lib/appHelpers';
+import { IntensivePendingPlacementPanel } from '../features/intensivos/IntensivePendingPlacementPanel';
+import { moverAlumnoPropuestaIntensivo } from '../features/intensivos/intensiveProposalSync';
+import type { IntensivoDiaApp } from '../features/intensivos/intensiveTypes';
 
 // Meses para el filtro: 6 meses atrás y 12 adelante desde hoy (formato 'YYYY-MM',
 // el mismo que ya usa el filtro). Si el valor elegido queda fuera, se añade.
@@ -37,6 +40,7 @@ export function PantallaIntensivos(ctx: any) {
     crearGrupoVacioPropuestaIntensivo, generarPlantillaCuatroDiasIntensivo,
     crearPlantillaCuatroDiasIntensivo, cargarEdicionGruposIntensivoDia,
     abrirGestionOperativaIntensivoDia,
+    abrirIntensivoDiaEnEntrenamientosApp, ejecutarFuncionConRespuesta, recomendacionesGrupoIntensivo, setError,
     guardarComposicionDiaIntensivo,
     crearIntensivoDesdeApp, destinoAlumnoRecomendado, diaActivoIntensivoId,
     diaAsistenciaSeleccionadoId, diaEditandoIntensivoId, diaGrupoSeleccionadoId,
@@ -713,6 +717,19 @@ export function PantallaIntensivos(ctx: any) {
                 : 0;
               const nombresBaseRecomendados = diaSeleccionadoGrupo
                 ? nombresGruposBaseRecomendados(diaSeleccionadoGrupo.intensivo_dia_id)
+                : [];
+              // Plantilla de 4 días (ningún día tiene grupos guardados): lo que
+              // se cambia en un día se aplica a los 4, porque al confirmar se
+              // copia la composición del Día 1 a todos.
+              const modoPlantillaIntensivo = diasIntensivo.every(
+                (dia: IntensivoDiaApp) => gruposNormalesDelDiaIntensivo(dia.intensivo_dia_id).length === 0
+              );
+              const diasAplicarPropuesta = diaSeleccionadoGrupo
+                ? modoPlantillaIntensivo
+                  ? diasIntensivo.filter((dia: IntensivoDiaApp) =>
+                      recomendacionesDelDiaIntensivo(dia.intensivo_dia_id).length > 0
+                    )
+                  : [diaSeleccionadoGrupo]
                 : [];
               const resumenReportes = resumenReportesDelIntensivo(
                 intensivo.intensivo_id
@@ -2633,7 +2650,7 @@ export function PantallaIntensivos(ctx: any) {
                                       // Una vez creados los grupos, no mantenemos
                                       // dos editores compitiendo. La operativa
                                       // real vive siempre en Días de entrenamiento.
-                                      await abrirGestionOperativaIntensivoDia(dia);
+                                      await abrirIntensivoDiaEnEntrenamientosApp(dia);
                                       return;
                                     }
 
@@ -2750,7 +2767,7 @@ export function PantallaIntensivos(ctx: any) {
                                     <button
                                       type="button"
                                       onClick={() =>
-                                        void abrirGestionOperativaIntensivoDia(
+                                        void abrirIntensivoDiaEnEntrenamientosApp(
                                           diaSeleccionadoGrupo
                                         )
                                       }
@@ -2826,8 +2843,12 @@ export function PantallaIntensivos(ctx: any) {
                                 <button
                                   type="button"
                                   onClick={() =>
-                                    crearGrupoVacioPropuestaIntensivo(
-                                      diaSeleccionadoGrupo.intensivo_dia_id
+                                    // En la plantilla el grupo nuevo se crea en los 4 días.
+                                    (modoPlantillaIntensivo
+                                      ? diasAplicarPropuesta
+                                      : [diaSeleccionadoGrupo]
+                                    ).forEach((dia: IntensivoDiaApp) =>
+                                      crearGrupoVacioPropuestaIntensivo(dia.intensivo_dia_id)
                                     )
                                   }
                                   style={botonSecundario}
@@ -2878,12 +2899,18 @@ export function PantallaIntensivos(ctx: any) {
                                   type="button"
                                   onClick={() => {
                                     if (!diaSeleccionadoGrupo) return;
+                                    // En la plantilla se cancela la propuesta de los 4 días a la vez.
+                                    const idsCancelar = new Set(
+                                      (modoPlantillaIntensivo
+                                        ? diasAplicarPropuesta
+                                        : [diaSeleccionadoGrupo]
+                                      ).map((dia: IntensivoDiaApp) => dia.intensivo_dia_id)
+                                    );
                                     setRecomendacionesGrupoIntensivo(
-                                      (anteriores) =>
+                                      (anteriores: Array<{ intensivo_dia_id: string }>) =>
                                         anteriores.filter(
-                                          (registro) =>
-                                            registro.intensivo_dia_id !==
-                                            diaSeleccionadoGrupo.intensivo_dia_id
+                                          (registro: { intensivo_dia_id: string }) =>
+                                            !idsCancelar.has(registro.intensivo_dia_id)
                                         )
                                     );
                                     setDestinoAlumnoRecomendado({});
@@ -2892,7 +2919,9 @@ export function PantallaIntensivos(ctx: any) {
                                   }}
                                   style={botonSecundario}
                                 >
-                                  Cancelar edición de este día
+                                  {modoPlantillaIntensivo
+                                    ? 'Descartar propuesta'
+                                    : 'Cancelar edición de este día'}
                                 </button>
                               )}
                             </div>
@@ -2926,6 +2955,37 @@ export function PantallaIntensivos(ctx: any) {
                                   </p>
                                 )}
                               </>
+                            )}
+
+                            {diaSeleccionadoGrupo && alumnosPendientesRecomendacion > 0 && (
+                              <IntensivePendingPlacementPanel
+                                key={`pendientes-${diaSeleccionadoGrupo.intensivo_dia_id}`}
+                                diaVisible={diaSeleccionadoGrupo}
+                                diasAplicar={diasAplicarPropuesta}
+                                inscritosIds={alumnosDelIntensivo(intensivo.intensivo_id).map(
+                                  (registro: { alumno_id: string }) => registro.alumno_id
+                                )}
+                                propuesta={recomendacionesGrupoIntensivo}
+                                destinos={destinoAlumnoRecomendado}
+                                nombresGrupos={nombresBaseRecomendados}
+                                cargando={cargando}
+                                setPropuesta={setRecomendacionesGrupoIntensivo}
+                                setDestinos={setDestinoAlumnoRecomendado}
+                                cargarFilasRecomendador={(diaId: string) =>
+                                  ejecutarFuncionConRespuesta(
+                                    'recomendar_grupos_intensivo_dia_app',
+                                    { p_intensivo_dia_id: diaId }
+                                  )
+                                }
+                                setError={setError}
+                                estilos={{
+                                  caja: { ...avisoPendiente, display: 'block' },
+                                  linea: agendaAlumnoLinea,
+                                  label: labelCampo,
+                                  select: selectCampo,
+                                  boton: botonSecundario,
+                                }}
+                              />
                             )}
 
                             {gruposRecomendadosDia.length > 0 && (
@@ -3041,10 +3101,20 @@ export function PantallaIntensivos(ctx: any) {
                                                     alumno.grupo_recomendado
                                                   }
                                                   onChange={(e) =>
-                                                    setDestinoAlumnoRecomendado({
-                                                      ...destinoAlumnoRecomendado,
-                                                      [claveAlumno]: e.target.value,
-                                                    })
+                                                    // Plantilla: el cambio se aplica a los 4 días.
+                                                    setDestinoAlumnoRecomendado(
+                                                      modoPlantillaIntensivo
+                                                        ? moverAlumnoPropuestaIntensivo(
+                                                            destinoAlumnoRecomendado,
+                                                            diasAplicarPropuesta.map((dia: IntensivoDiaApp) => dia.intensivo_dia_id),
+                                                            alumno.alumno_id,
+                                                            e.target.value
+                                                          )
+                                                        : {
+                                                            ...destinoAlumnoRecomendado,
+                                                            [claveAlumno]: e.target.value,
+                                                          }
+                                                    )
                                                   }
                                                   style={{
                                                     ...selectCampo,
@@ -3063,7 +3133,7 @@ export function PantallaIntensivos(ctx: any) {
                                                     </option>
                                                   ))}
                                                   <option value="__NO_CREAR__">
-                                                    Dejar fuera de momento
+                                                    Quitar del grupo (a pendientes)
                                                   </option>
                                                 </select>
                                               </label>
