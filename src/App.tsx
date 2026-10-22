@@ -10331,7 +10331,7 @@ Gracias!`;
       new Set([
         ...recomendacionesDelDiaIntensivo(diaId)
           .map((registro) => registro.grupo_recomendado)
-          .filter(Boolean),
+          .filter((nombre: string) => nombre && nombre !== '__NO_CREAR__'),
         ...(gruposExtraIntensivoPorDia[diaId] || []),
       ])
     );
@@ -11935,7 +11935,7 @@ async function abrirGestionOperativaIntensivoDia(
       Array.from(idsInscritos).some((id) => !idsPlantilla.has(id))
     ) {
       setError(
-        'La plantilla base no contiene exactamente a todos los alumnos inscritos. Revisa los movimientos antes de crear los 4 días.'
+        'Hay niños inscritos sin colocar en un grupo. Colócalos en «Pendientes de colocar» (Día 1) antes de confirmar los 4 días.'
       );
       return;
     }
@@ -23361,6 +23361,10 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       {pantalla === 'intensivos' &&
         PantallaIntensivos({
           ...altasTestIntensivoApp,
+          abrirIntensivoDiaEnEntrenamientosApp,
+          ejecutarFuncionConRespuesta,
+          recomendacionesGrupoIntensivo,
+          setError,
           abrirFichaMaestraAlumnoApp,
           abrirPanelIntensivo,
           actualizarDiaIntensivoDesdeApp,
