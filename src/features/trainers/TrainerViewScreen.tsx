@@ -2058,7 +2058,8 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                     chipsDias.find((chip) => chip.clave === claveElegida) || null;
 
                   return (
-                    <>
+                    <section className="trainer-days-box" aria-label="Mis días">
+                      <strong className="trainer-days-box-title">Mis días</strong>
                       <nav
                         className="trainer-day-chips"
                         aria-label="Días con grupos"
@@ -2738,7 +2739,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                         )}
                       </div>
                       )}
-                    </>
+                    </section>
                   );
                 })()}
               </details>

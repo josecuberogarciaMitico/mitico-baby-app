@@ -4724,6 +4724,27 @@ section:has(input[placeholder^='Buscar entrenador, teléfono, email o especialid
   }
 }
 
+/* Recuadro «Mis días»: botones de días y grupos del día juntos. */
+.trainer-days-box {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #cfe3d6;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #f6fbf7, #ffffff);
+}
+
+.trainer-days-box-title {
+  font-size: 14px;
+  color: #14532d;
+}
+
+.trainer-days-box .trainer-day-chips {
+  margin: 0;
+}
+
 /* Ordenador: los grupos salen plegados (solo resumen) y se despliegan
    con «Abrir grupo», igual que en móvil pero sin pantalla completa. */
 @media (min-width: 720px) {
