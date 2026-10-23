@@ -12,6 +12,7 @@ const PACO_ALTAS_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-altas`;
 const PACO_DISPONIBILIDAD_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-disponibilidad`;
 const PACO_PADRES_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-padres`;
 const PACO_ACCIONES_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-acciones`;
+const PACO_AGENTE_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-agente`;
 
 type SesionAuthPaco = {
   access_token?: string;
@@ -84,6 +85,11 @@ export type PacoContinuation =
         | 'alta_whatsapp'
         | 'alta_mark_sent';
       [clave: string]: unknown;
+    }
+  // Paco con «ojos»: boton que manda ese texto al agente (p. ej. elegir un niño).
+  | {
+      kind: 'agente_texto';
+      texto: string;
     }
   // Respuestas a familias: el borrador viaja dentro del boton, lo valida el servidor.
   | {
@@ -622,6 +628,56 @@ async function llamarDisponibilidadPaco(
   }
 }
 
+// ---- Agente con «ojos» (funcion mitico-paco-agente, SOLO LECTURA) ----------
+// Consulta por su cuenta los datos que necesite (niños, grupos, reportes,
+// material, turnos...) y contesta. Recuerda los ultimos mensajes de la charla
+// para entender «y el domingo?» o «el grupo que me dijiste».
+const MAX_HISTORIAL_AGENTE = 8;
+const VIGENCIA_HISTORIAL_AGENTE_MS = 30 * 60 * 1000;
+let historialAgente: { rol: 'user' | 'assistant'; texto: string }[] = [];
+let historialAgenteHasta = 0;
+
+// Lo que va a Secretaria (apuntar, tareas, notas...) sigue yendo alli.
+function pareceOrdenSecretaria(message: string) {
+  const n = message
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  return /\b(apunta|apuntame|anota|anotame|recuerdame|tarea|tareas|secretaria|notas?|marca como|resuelt[oa]|borra|elimina)\b/.test(n);
+}
+
+async function llamarAgentePaco(message: string): Promise<PacoResponse | null> {
+  if (historialAgenteHasta < Date.now()) historialAgente = [];
+  try {
+    const r = await llamarEndpointPaco(
+      PACO_AGENTE_ENDPOINT,
+      { message, historial: historialAgente },
+      'Paco no ha podido consultar los datos.'
+    );
+    if (r?.handled !== true || !String(r.answer || '').trim()) return null;
+    const opciones = (r as PacoResponse & { opciones?: unknown }).opciones;
+    if (Array.isArray(opciones) && opciones.length && !(r.choices && r.choices.length)) {
+      r.choices = opciones
+        .map((o) => String(o || '').trim())
+        .filter(Boolean)
+        .slice(0, 6)
+        .map((o) => ({ label: o, continuation: { kind: 'agente_texto' as const, texto: o } }));
+    }
+    historialAgente = [
+      ...historialAgente,
+      { rol: 'user' as const, texto: message.slice(0, 1500) },
+      { rol: 'assistant' as const, texto: String(r.answer).slice(0, 1500) },
+    ].slice(-MAX_HISTORIAL_AGENTE);
+    historialAgenteHasta = Date.now() + VIGENCIA_HISTORIAL_AGENTE_MS;
+    return r;
+  } catch (error) {
+    const status = (error as Error & { status?: number })?.status;
+    if (status === 401) throw error;
+    console.warn('Paco agente no disponible:', error);
+    return null;
+  }
+}
+
 export async function preguntarPaco(message: string) {
   // Respuesta a una familia: o es un mensaje de padre/madre (o "responde a
   // este padre"), o hay un borrador reciente y Jose pide ajustarlo.
@@ -655,6 +711,13 @@ export async function preguntarPaco(message: string) {
   if (parecePeticionDisponibilidad(message)) {
     const disponibilidad = await llamarDisponibilidadPaco({ message });
     if (disponibilidad?.handled === true) return disponibilidad;
+  }
+
+  // Paco con «ojos»: contesta consultando los datos reales. Si no esta
+  // disponible (o es una orden para Secretaria), sigue el camino de siempre.
+  if (!pareceOrdenSecretaria(message)) {
+    const agente = await llamarAgentePaco(message);
+    if (agente) return agente;
   }
 
   // Las dos comprobaciones rapidas se lanzan a la vez (antes iban una detras
@@ -712,6 +775,14 @@ export async function continuarPaco(continuation: PacoContinuation) {
       ok: false,
       error: 'No he podido preparar esa respuesta. Inténtelo de nuevo.',
     } as PacoResponse;
+  }
+  if (continuation.kind === 'agente_texto') {
+    const texto = String((continuation as { texto?: unknown }).texto || '').slice(0, 300);
+    const agente = texto ? await llamarAgentePaco(texto) : null;
+    return (
+      agente ||
+      ({ ok: false, error: 'No he podido consultarlo ahora mismo. Inténtelo de nuevo.' } as PacoResponse)
+    );
   }
   if (continuation.kind.startsWith('secretary_')) {
     const secretaria = await llamarSecretariaPaco({ continuation });

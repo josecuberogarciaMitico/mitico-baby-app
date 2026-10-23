@@ -368,7 +368,7 @@ export function ManagementReportsScreen({ ctx }: ManagementReportsScreenProps) {
                             snowZoneCargando || snowZoneDias.length === 0 ? 0.55 : 1,
                         }}
                       >
-                        Descargar datos técnicos
+                        Descargar informe PDF
                       </button>
                     </div>
 
