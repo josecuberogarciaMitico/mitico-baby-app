@@ -610,3 +610,159 @@
     grid-column: 1 / -1;
   }
 }
+
+/* --- Escribir como un chat (23/10/2026) --- */
+.respuestas-chat {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+}
+
+.respuestas-hilo {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-height: 0;
+  padding: 12px 14px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.respuestas-burbuja {
+  margin: 0;
+  max-width: 92%;
+  padding: 9px 12px;
+  border-radius: 14px;
+  font-size: 14px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.respuestas-burbuja--jose {
+  justify-self: end;
+  border: 1px solid rgba(34, 211, 238, 0.45);
+  border-bottom-right-radius: 4px;
+  background: rgba(34, 211, 238, 0.16);
+}
+
+.respuestas-burbuja--entrada {
+  justify-self: end;
+  border: 1px solid var(--j-linea);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.respuestas-burbuja--entrada summary {
+  display: grid;
+  gap: 2px;
+  cursor: pointer;
+  color: var(--j-suave);
+  font-size: 12px;
+  list-style: none;
+}
+
+.respuestas-burbuja--entrada summary span {
+  color: var(--j-texto);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.respuestas-burbuja--entrada p {
+  margin: 8px 0 0;
+}
+
+.respuestas-turno-paco {
+  display: grid;
+  gap: 8px;
+  max-width: 96%;
+}
+
+.respuestas-version {
+  font-size: 12px;
+  color: var(--j-suave);
+}
+
+.respuestas-version summary {
+  cursor: pointer;
+}
+
+.respuestas-version p {
+  margin: 6px 0 0;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--j-texto);
+  font-size: 13px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.respuestas-recordar {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px dashed rgba(74, 222, 128, 0.5);
+  border-radius: 12px;
+  background: rgba(74, 222, 128, 0.06);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.respuestas-recordar__titulo {
+  color: #bbf7d0;
+  font-size: 12px;
+}
+
+.respuestas-recordar__botones {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.respuestas-recordar__ok {
+  color: #bbf7d0;
+}
+
+.respuestas-actual {
+  display: grid;
+  gap: 10px;
+  padding-top: 4px;
+  border-top: 1px solid var(--j-linea);
+}
+
+.respuestas-escribiendo {
+  margin: 0;
+  color: var(--j-suave);
+  font-size: 13px;
+  font-style: italic;
+}
+
+.respuestas-composer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+  padding: 10px 14px max(12px, env(safe-area-inset-bottom));
+  border-top: 1px solid var(--j-linea);
+  background: rgba(3, 10, 18, 0.85);
+}
+
+.respuestas-composer textarea {
+  min-height: 46px;
+  max-height: 140px;
+  resize: none;
+}
+
+.respuestas-composer .respuestas-principal {
+  min-height: 46px;
+}
+
+.respuestas-recordar__botones button {
+  flex: 0 0 auto;
+  width: auto;
+  min-height: 36px;
+  padding: 7px 12px;
+  font-size: 13px;
+}

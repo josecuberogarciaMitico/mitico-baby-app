@@ -11,6 +11,7 @@ import {
   listarAprendizaje,
   pedirCambio,
   redactarMensaje,
+  type RespAprender,
   type RespAprendizaje,
   type RespDestino,
   type RespEjemplo,
@@ -23,6 +24,21 @@ import {
 import './RespuestasPanel.css';
 
 type Pestana = 'escribir' | 'aprendido';
+
+// Conversación sobre un mensaje: lo que pegaste, lo que pides y lo que contesta
+// Paco (cada respuesta de Paco guarda su versión del texto).
+type Turno = {
+  id: number;
+  de: 'entrada' | 'jose' | 'paco';
+  texto: string;
+  version?: string | null;
+  aprender?: RespAprender[];
+};
+
+const ENVIAR_CON_ENTER =
+  typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+    ? window.matchMedia('(pointer: fine)').matches
+    : true;
 
 const TIPO_LABEL: Record<RespEjemplo['tipo'], string> = {
   aprobada: 'Aprobada',
@@ -84,6 +100,11 @@ export function RespuestasPanel() {
   const [guardando, setGuardando] = useState(false);
   const [guardado, setGuardado] = useState<RespGuardado | null>(null);
   const [copiado, setCopiado] = useState('');
+  const [hilo, setHilo] = useState<Turno[]>([]);
+  // Lo que Paco propone recordar: 'guardando' | 'guardado' | 'descartado' (por texto).
+  const [recordar, setRecordar] = useState<Record<string, string>>({});
+  const finHilo = useRef<HTMLDivElement | null>(null);
+  const idTurno = useRef(0);
 
   // --- Lo aprendido ---
   const [aprendizaje, setAprendizaje] = useState<RespAprendizaje | null>(null);
@@ -172,12 +193,51 @@ export function RespuestasPanel() {
     setCambio('');
   };
 
+  const anadirTurno = (turno: Omit<Turno, 'id'>) => {
+    idTurno.current += 1;
+    const nuevo = { ...turno, id: idTurno.current };
+    setHilo((actual) => [...actual, nuevo]);
+  };
+
+  const turnoPaco = (r: RespRedaccion) =>
+    anadirTurno({ de: 'paco', texto: r.mensajePaco, version: r.texto, aprender: r.aprender });
+
+  useEffect(() => {
+    finHilo.current?.scrollIntoView({ block: 'end', behavior: 'smooth' });
+  }, [hilo.length, cargando]);
+
+  const decidirRecuerdo = async (item: RespAprender, guardar: boolean) => {
+    const clave = item.texto;
+    if (!guardar) {
+      setRecordar((actual) => ({ ...actual, [clave]: 'descartado' }));
+      return;
+    }
+    setRecordar((actual) => ({ ...actual, [clave]: 'guardando' }));
+    try {
+      const borrador = resultado?.borrador;
+      // Un dato del club vale para todos; una forma de escribir, para ese tipo de mensaje.
+      const ambito = item.tipo === 'dato' ? 'todos' : borrador?.destino || 'todos';
+      await guardarReglaManual(item.texto, ambito);
+      setRecordar((actual) => ({ ...actual, [clave]: 'guardado' }));
+      setAprendizaje(null);
+    } catch (err) {
+      setRecordar((actual) => ({ ...actual, [clave]: '' }));
+      setError(mensajeError(err, 'No se pudo guardar lo aprendido.'));
+    }
+  };
+
   const redactar = async () => {
     if (!entrada.trim() || cargando) return;
     setCargando(true);
     setError('');
     try {
-      aplicar(await redactarMensaje({ texto: entrada.trim(), modo, destino }));
+      const r = await redactarMensaje({ texto: entrada.trim(), modo, destino });
+      idTurno.current = 0;
+      setHilo([]);
+      setRecordar({});
+      anadirTurno({ de: 'entrada', texto: entrada.trim() });
+      turnoPaco(r);
+      aplicar(r);
     } catch (err) {
       setError(mensajeError(err, 'No se pudo redactar el mensaje.'));
     } finally {
@@ -189,10 +249,16 @@ export function RespuestasPanel() {
     if (!resultado?.borrador || !cambio.trim() || cargando) return;
     setCargando(true);
     setError('');
+    const peticion = cambio.trim();
     try {
       const actual = textoFinal.trim() || resultado.borrador.respuesta;
-      aplicar(await pedirCambio({ ...resultado.borrador, respuesta: actual }, cambio.trim()));
+      anadirTurno({ de: 'jose', texto: peticion });
+      setCambio('');
+      const r = await pedirCambio({ ...resultado.borrador, respuesta: actual }, peticion);
+      turnoPaco(r);
+      aplicar(r);
     } catch (err) {
+      setCambio(peticion); // no se pierde lo que escribiste
       setError(mensajeError(err, 'No se pudo aplicar el cambio.'));
     } finally {
       setCargando(false);
@@ -209,7 +275,10 @@ export function RespuestasPanel() {
       if (continuacion?.kind === 'padre_ajustar' && continuacion.draft && textoFinal.trim()) {
         continuacion = { ...continuacion, draft: { ...continuacion.draft, respuesta: textoFinal.trim() } };
       }
-      aplicar(await elegirOpcion({ ...opcion, continuation: continuacion }));
+      anadirTurno({ de: 'jose', texto: opcion.label });
+      const r = await elegirOpcion({ ...opcion, continuation: continuacion });
+      turnoPaco(r);
+      aplicar(r);
     } catch (err) {
       setError(mensajeError(err, 'No se pudo preparar la respuesta.'));
     } finally {
@@ -242,6 +311,8 @@ export function RespuestasPanel() {
   };
 
   const nuevoMensaje = () => {
+    setHilo([]);
+    setRecordar({});
     setResultado(null);
     setTextoFinal('');
     setEntrada('');
@@ -322,149 +393,212 @@ export function RespuestasPanel() {
             </button>
           </nav>
 
-          {pestana === 'escribir' && (
+          {pestana === 'escribir' && !resultado && (
             <div className="respuestas-cuerpo">
-              {!resultado && (
-                <>
-                  <div className="respuestas-segmento" role="group" aria-label="Qué quieres hacer">
-                    <button type="button" className={modo === 'respuesta' ? 'activa' : ''} onClick={() => setModo('respuesta')}>
-                      Responder a un mensaje
+              <div className="respuestas-segmento" role="group" aria-label="Qué quieres hacer">
+                <button type="button" className={modo === 'respuesta' ? 'activa' : ''} onClick={() => setModo('respuesta')}>
+                  Responder a un mensaje
+                </button>
+                <button type="button" className={modo === 'notas' ? 'activa' : ''} onClick={() => setModo('notas')}>
+                  Convertir mis notas
+                </button>
+              </div>
+
+              {modo === 'notas' && (
+                <div className="respuestas-chips" role="group" aria-label="Para quién es">
+                  <span>Para</span>
+                  {(['familias', 'entrenadores'] as RespDestino[]).map((d) => (
+                    <button key={d} type="button" className={destino === d ? 'activa' : ''} onClick={() => setDestino(d)}>
+                      {DESTINO_LABEL[d]}
                     </button>
-                    <button type="button" className={modo === 'notas' ? 'activa' : ''} onClick={() => setModo('notas')}>
-                      Convertir mis notas
-                    </button>
-                  </div>
-
-                  {modo === 'notas' && (
-                    <div className="respuestas-chips" role="group" aria-label="Para quién es">
-                      <span>Para</span>
-                      {(['familias', 'entrenadores'] as RespDestino[]).map((d) => (
-                        <button key={d} type="button" className={destino === d ? 'activa' : ''} onClick={() => setDestino(d)}>
-                          {DESTINO_LABEL[d]}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  <label className="respuestas-campo">
-                    <span>{modo === 'respuesta' ? 'Mensaje de la familia' : 'Tus notas'}</span>
-                    <textarea
-                      value={entrada}
-                      maxLength={4000}
-                      rows={9}
-                      onChange={(e) => setEntrada(e.target.value)}
-                      placeholder={
-                        modo === 'respuesta'
-                          ? 'Pega aquí el mensaje de la familia. Si quieres decirle algo concreto, añádelo debajo, por ejemplo: «dile que sí, que el domingo lo vemos».'
-                          : 'Escribe o dicta tus notas tal cual, aunque estén desordenadas. Paco las convierte en un mensaje listo para enviar.'
-                      }
-                    />
-                  </label>
-
-                  <button type="button" className="respuestas-principal" disabled={cargando || !entrada.trim()} onClick={() => void redactar()}>
-                    {cargando ? 'Paco está escribiendo…' : 'Redactar'}
-                  </button>
-                </>
-              )}
-
-              {resultado && (
-                <div className="respuestas-resultado">
-                  {resultado.mensajePaco && <p className="respuestas-paco">{resultado.mensajePaco}</p>}
-
-                  {resultado.texto !== null && (
-                    <>
-                      <label className="respuestas-campo">
-                        <span>
-                          {resultado.borrador?.modo === 'notas'
-                            ? `Mensaje para ${resultado.borrador.destino === 'entrenadores' ? 'los entrenadores' : 'las familias'}`
-                            : 'Respuesta'}
-                          {' · puedes retocarla'}
-                        </span>
-                        <textarea
-                          value={textoFinal}
-                          maxLength={3000}
-                          rows={Math.min(16, Math.max(7, textoFinal.split('\n').length + 2))}
-                          onChange={(e) => {
-                            setTextoFinal(e.target.value);
-                            setGuardado(null);
-                          }}
-                        />
-                      </label>
-
-                      <div className="respuestas-acciones">
-                        <button type="button" className="respuestas-principal" onClick={() => void copiar('todo', textoFinal.trim())} disabled={!textoFinal.trim()}>
-                          {copiado === 'todo' ? 'Copiado' : partes.length > 1 ? 'Copiar todo' : 'Copiar'}
-                        </button>
-                        {partes.length > 1 &&
-                          partes.map((parte, i) => (
-                            <button key={i} type="button" className="respuestas-sec" onClick={() => void copiar(`p${i}`, parte)}>
-                              {copiado === `p${i}` ? 'Copiado' : `Copiar mensaje ${i + 1}`}
-                            </button>
-                          ))}
-                      </div>
-
-                      <div className="respuestas-aprende">
-                        <button type="button" className="respuestas-sec respuestas-sec--aprende" disabled={guardando || !textoFinal.trim() || guardado !== null} onClick={() => void guardar()}>
-                          {guardado
-                            ? 'Guardado'
-                            : guardando
-                              ? 'Guardando…'
-                              : editado
-                                ? 'Guardar mi versión para que Paco aprenda'
-                                : 'Está bien, que aprenda de esta'}
-                        </button>
-                        {guardado && (
-                          <p className="respuestas-ok">
-                            {guardado.tipo === 'aprobada'
-                              ? 'Anotado: así te gusta que escriba.'
-                              : 'Anotado: Paco tendrá en cuenta tu versión.'}
-                            {guardado.regla && (
-                              <>
-                                {' '}
-                                Ha sacado esta regla: <strong>«{guardado.regla.regla}»</strong>. La puedes quitar en «Lo que ha aprendido».
-                              </>
-                            )}
-                          </p>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  {resultado.opciones.length > 0 && (
-                    <div className="respuestas-opciones">
-                      {resultado.opciones.map((opcion) => (
-                        <button key={opcion.label} type="button" disabled={cargando} onClick={() => void pulsarOpcion(opcion)}>
-                          {opcion.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {resultado.borrador && resultado.texto !== null && (
-                    <div className="respuestas-cambio">
-                      <input
-                        type="text"
-                        value={cambio}
-                        maxLength={380}
-                        placeholder="Pídele un cambio: «dile que sí», «sin lo del seguro»…"
-                        onChange={(e) => setCambio(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') void aplicarCambio();
-                        }}
-                      />
-                      <button type="button" disabled={cargando || !cambio.trim()} onClick={() => void aplicarCambio()}>
-                        {cargando ? '…' : 'Cambiar'}
-                      </button>
-                    </div>
-                  )}
-
-                  <button type="button" className="respuestas-enlace" onClick={nuevoMensaje}>
-                    Escribir otro mensaje
-                  </button>
+                  ))}
                 </div>
               )}
 
+              <label className="respuestas-campo">
+                <span>{modo === 'respuesta' ? 'Mensaje de la familia' : 'Tus notas'}</span>
+                <textarea
+                  value={entrada}
+                  maxLength={4000}
+                  rows={9}
+                  onChange={(e) => setEntrada(e.target.value)}
+                  placeholder={
+                    modo === 'respuesta'
+                      ? 'Pega aquí el mensaje de la familia. Si quieres, añade debajo cómo contestar: «dile que sí, que el domingo lo vemos».'
+                      : 'Escribe o dicta tus notas tal cual, aunque estén desordenadas. Paco las convierte en un mensaje listo para enviar.'
+                  }
+                />
+              </label>
+
+              <button type="button" className="respuestas-principal" disabled={cargando || !entrada.trim()} onClick={() => void redactar()}>
+                {cargando ? 'Paco está escribiendo…' : 'Redactar'}
+              </button>
+
+              <p className="respuestas-nota">
+                Después podrás hablar con Paco como en un chat: «quita lo de los viajes, no los hacemos», «añade que traigan casco»… Lo que le
+                enseñes te lo propondrá recordar para las próximas familias.
+              </p>
+
               {error && <p className="respuestas-error">{error}</p>}
+            </div>
+          )}
+
+          {pestana === 'escribir' && resultado && (
+            <div className="respuestas-chat">
+              <div className="respuestas-hilo">
+                <button type="button" className="respuestas-enlace" onClick={nuevoMensaje}>
+                  ← Escribir otro mensaje
+                </button>
+
+                {hilo.map((turno, indice) => {
+                  const ultimoPaco = hilo.map((t) => t.de).lastIndexOf('paco') === indice;
+                  if (turno.de === 'entrada') {
+                    return (
+                      <details key={turno.id} className="respuestas-burbuja respuestas-burbuja--entrada">
+                        <summary>
+                          {resultado.borrador?.modo === 'notas' ? 'Tus notas' : 'Mensaje de la familia'}
+                          <span>{turno.texto.split('\n')[0].slice(0, 90)}</span>
+                        </summary>
+                        <p>{turno.texto}</p>
+                      </details>
+                    );
+                  }
+                  if (turno.de === 'jose') {
+                    return (
+                      <p key={turno.id} className="respuestas-burbuja respuestas-burbuja--jose">
+                        {turno.texto}
+                      </p>
+                    );
+                  }
+                  return (
+                    <div key={turno.id} className="respuestas-turno-paco">
+                      {turno.texto && <p className="respuestas-paco">{turno.texto}</p>}
+                      {!ultimoPaco && turno.version && (
+                        <details className="respuestas-version">
+                          <summary>Ver esta versión</summary>
+                          <p>{turno.version}</p>
+                        </details>
+                      )}
+                      {(turno.aprender || []).map((item) => {
+                        const estado = recordar[item.texto] || '';
+                        if (estado === 'descartado') return null;
+                        return (
+                          <div key={item.texto} className="respuestas-recordar">
+                            <span className="respuestas-recordar__titulo">
+                              {item.tipo === 'dato' ? '¿Lo recuerdo para próximas familias?' : '¿Escribo siempre así?'}
+                            </span>
+                            <strong>«{item.texto}»</strong>
+                            {estado === 'guardado' ? (
+                              <span className="respuestas-recordar__ok">Recordado. Lo verás en «Lo que ha aprendido».</span>
+                            ) : (
+                              <div className="respuestas-recordar__botones">
+                                <button type="button" className="respuestas-sec respuestas-sec--aprende" disabled={estado === 'guardando'} onClick={() => void decidirRecuerdo(item, true)}>
+                                  {estado === 'guardando' ? 'Guardando…' : 'Sí, recuérdalo'}
+                                </button>
+                                <button type="button" className="respuestas-sec" disabled={estado === 'guardando'} onClick={() => void decidirRecuerdo(item, false)}>
+                                  No, solo este
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+
+                {resultado.texto !== null && (
+                  <div className="respuestas-actual">
+                    <label className="respuestas-campo">
+                      <span>
+                        {resultado.borrador?.modo === 'notas'
+                          ? `Mensaje para ${resultado.borrador.destino === 'entrenadores' ? 'los entrenadores' : 'las familias'}`
+                          : 'Respuesta'}
+                        {' · puedes retocarla'}
+                      </span>
+                      <textarea
+                        value={textoFinal}
+                        maxLength={3000}
+                        rows={Math.min(16, Math.max(6, textoFinal.split('\n').length + 1))}
+                        onChange={(e) => {
+                          setTextoFinal(e.target.value);
+                          setGuardado(null);
+                        }}
+                      />
+                    </label>
+
+                    <div className="respuestas-acciones">
+                      <button type="button" className="respuestas-principal" onClick={() => void copiar('todo', textoFinal.trim())} disabled={!textoFinal.trim()}>
+                        {copiado === 'todo' ? 'Copiado' : partes.length > 1 ? 'Copiar todo' : 'Copiar'}
+                      </button>
+                      {partes.length > 1 &&
+                        partes.map((parte, i) => (
+                          <button key={i} type="button" className="respuestas-sec" onClick={() => void copiar(`p${i}`, parte)}>
+                            {copiado === `p${i}` ? 'Copiado' : `Copiar mensaje ${i + 1}`}
+                          </button>
+                        ))}
+                    </div>
+
+                    <div className="respuestas-aprende">
+                      <button type="button" className="respuestas-sec respuestas-sec--aprende" disabled={guardando || !textoFinal.trim() || guardado !== null} onClick={() => void guardar()}>
+                        {guardado
+                          ? 'Guardado'
+                          : guardando
+                            ? 'Guardando…'
+                            : editado
+                              ? 'Guardar mi versión para que Paco aprenda'
+                              : 'Está bien, que aprenda de esta'}
+                      </button>
+                      {guardado && (
+                        <p className="respuestas-ok">
+                          {guardado.tipo === 'aprobada' ? 'Anotado: así te gusta que escriba.' : 'Anotado: Paco tendrá en cuenta tu versión.'}
+                          {guardado.regla && (
+                            <>
+                              {' '}
+                              Ha sacado esta regla: <strong>«{guardado.regla.regla}»</strong>. La puedes quitar en «Lo que ha aprendido».
+                            </>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {resultado.opciones.length > 0 && (
+                  <div className="respuestas-opciones">
+                    {resultado.opciones.map((opcion) => (
+                      <button key={opcion.label} type="button" disabled={cargando} onClick={() => void pulsarOpcion(opcion)}>
+                        {opcion.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {cargando && <p className="respuestas-escribiendo">Paco está escribiendo…</p>}
+                {error && <p className="respuestas-error">{error}</p>}
+                <div ref={finHilo} />
+              </div>
+
+              {resultado.borrador && resultado.texto !== null && (
+                <div className="respuestas-composer">
+                  <textarea
+                    value={cambio}
+                    maxLength={1500}
+                    rows={2}
+                    placeholder="Dile qué cambiar: «quita lo de los viajes, no los hacemos»…"
+                    onChange={(e) => setCambio(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (ENVIAR_CON_ENTER && e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        void aplicarCambio();
+                      }
+                    }}
+                  />
+                  <button type="button" className="respuestas-principal" disabled={cargando || !cambio.trim()} onClick={() => void aplicarCambio()}>
+                    {cargando ? '…' : 'Enviar'}
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
