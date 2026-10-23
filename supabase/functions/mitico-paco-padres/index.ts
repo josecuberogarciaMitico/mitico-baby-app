@@ -60,7 +60,7 @@ const DATOS_CLUB = `DATOS DEL CLUB (dichos por Jose; úsalos solo si vienen al c
 - Prácticas: ropa de abrigo, guantes, casco y, a ser posible, pantalón de esquí negro. La chaqueta del club la entrega Mítico el primer día de prácticas.`;
 
 const REGLAS = `REGLAS DE CONTENIDO (obligatorias):
-1. Usa SOLO los datos de la sección DATOS (sobre el niño) y los DATOS DEL CLUB. No inventes horarios, precios, plazas, normas, fechas, devoluciones ni nombres de entrenadores. Si un dato no está, no lo afirmes.
+1. Usa SOLO los datos de la sección DATOS (sobre el niño), los DATOS DEL CLUB y lo que Jose te ha enseñado (LO QUE JOSE TE HA ENSEÑADO). No inventes horarios, precios, plazas, normas, fechas, devoluciones ni nombres de entrenadores. Si un dato no está, no lo afirmes.
 2. Si la respuesta depende de algo que no consta o que decide Jose (cambio de grupo o día, plazas, recuperar una clase, devoluciones, precios, seguros), redacta una respuesta amable que NO prometa nada y diga que lo revisas y se lo confirmas; y apunta en "para_jose" qué debe decidir o comprobar.
 3. Temas delicados (lesión, golpe, salud, queja, enfado, dinero o pagos, comportamiento del niño, discusión): tono empático y tranquilo, no culpes a nadie, no des diagnósticos, no te justifiques de más; pon "delicado": true.
 4. Nunca menciones observaciones internas, incidencias, comentarios de entrenadores, datos de otros niños ni el apellido del niño.
@@ -71,7 +71,7 @@ const REGLAS = `REGLAS DE CONTENIDO (obligatorias):
 
 const REGLAS_NOTAS = `REGLAS (obligatorias):
 1. Jose te da notas sueltas o dictadas por voz (con faltas, a medias, desordenadas). Conviértelas en un mensaje listo para enviar, ordenado y con su tono, sin cambiar lo que quiere decir.
-2. Conserva TODO lo que dice: no quites datos ni añadas hechos, promesas, precios, fechas o normas que no estén en las notas (puedes usar los DATOS DEL CLUB si vienen claramente al caso).
+2. Conserva TODO lo que dice: no quites datos ni añadas hechos, promesas, precios, fechas o normas que no estén en las notas (puedes usar los DATOS DEL CLUB y lo que Jose te ha enseñado si vienen claramente al caso).
 3. Si en las notas hay indicaciones para ti ("añadir que...", "escribir mensaje a los papás de ocio donde les explique...", "este es otro mensaje"), cúmplelas: son órdenes, no texto del mensaje. Si piden dos mensajes distintos, sepáralos con una línea que solo contenga ---.
 4. Si falta algo importante para que el mensaje se entienda, no lo inventes: apúntalo en "para_jose".
 5. Temas delicados (dinero, quejas, salud, conflictos): tono tranquilo y respetuoso; pon "delicado": true.
@@ -264,7 +264,7 @@ function cleanDraft(d: any): Draft | null {
     respuesta,
     hechos: String(d.hechos || "").slice(0, 2500),
     nino: d.nino ? String(d.nino).slice(0, 60) : null,
-    instruccion: d.instruccion ? String(d.instruccion).slice(0, 400) : null,
+    instruccion: d.instruccion ? String(d.instruccion).slice(-1200) : null,
     modo: d.modo === "notas" ? "notas" : "respuesta",
     destino: d.destino === "entrenadores" ? "entrenadores" : "familias",
   };
@@ -396,8 +396,8 @@ export function elegirEjemplos(texto: string, ejemplos: Ejemplo[], modo: Modo, d
 
 export function bloqueAprendizaje(texto: string, modo: Modo, destino: Destino, reglas: { regla: string }[], ejemplos: Ejemplo[]): string {
   const partes: string[] = [];
-  const rs = (Array.isArray(reglas) ? reglas : []).map((r) => String(r.regla || "").trim()).filter(Boolean).slice(0, 30);
-  if (rs.length) partes.push("REGLAS DE JOSE (aprendidas de sus correcciones; aplícalas siempre):\n" + rs.map((r) => `- ${r}`).join("\n"));
+  const rs = (Array.isArray(reglas) ? reglas : []).map((r) => String(r.regla || "").trim()).filter(Boolean).slice(0, 60);
+  if (rs.length) partes.push("LO QUE JOSE TE HA ENSEÑADO (sus reglas de estilo y datos ciertos del club; aplícalas siempre y usa estos datos como ciertos cuando vengan al caso; si algo de aquí contradice lo que ibas a decir, manda esto):\n" + rs.map((r) => `- ${r}`).join("\n"));
   const ex = elegirEjemplos(texto, Array.isArray(ejemplos) ? ejemplos : [], modo, destino);
   if (ex.length) {
     const etiqueta = (e: Ejemplo) => ((e.modo || "respuesta") === "notas" ? ["Notas de Jose", "Mensaje final de Jose"] : ["Mensaje de la familia", "Respuesta de Jose"]);
@@ -416,7 +416,7 @@ async function cargarAprendizaje(texto: string, modo: Modo, destino: Destino): P
   try {
     if (!cacheApr || cacheApr.hasta < Date.now() || cacheApr.destino !== destino) {
       const [reglas, ejemplos] = await Promise.all([
-        admin(`/rest/v1/paco_respuestas_reglas?select=regla&activa=eq.true&destino=in.(todos,${destino})&order=created_at.desc&limit=30`),
+        admin(`/rest/v1/paco_respuestas_reglas?select=regla&activa=eq.true&destino=in.(todos,${destino})&order=created_at.desc&limit=60`),
         admin("/rest/v1/paco_respuestas_ejemplos?select=id,mensaje_familia,respuesta_final,tipo,modo,destino&activo=eq.true&order=created_at.desc&limit=80"),
       ]);
       cacheApr = { hasta: Date.now() + 45_000, destino, reglas, ejemplos };
@@ -527,7 +527,8 @@ async function accion(b: any, uid: string): Promise<Response> {
 
 // ---------- Redaccion ---------------------------------------------------------------------------------
 
-type Salida = { respuesta: string; para_jose: string[]; delicado: boolean };
+export type Aprender = { texto: string; tipo: "dato" | "estilo" };
+type Salida = { respuesta: string; para_jose: string[]; delicado: boolean; aprender: Aprender[] };
 
 const FORMATO = `Devuelve SOLO JSON: {"respuesta": string con el texto listo para pegar en WhatsApp (saltos de línea con \\n), "para_jose": lista de 0 a 4 avisos MUY cortos para Jose (qué debe decidir/comprobar o qué has supuesto), "delicado": boolean}.`;
 
@@ -555,8 +556,9 @@ async function reescribir(d: Draft, instruccion: string, aprendizaje: string): P
 - Si Jose dicta algo que añadir o cambiar, intégralo con sus palabras y con el estilo del mensaje; no lo expliques ni lo resumas.
 - No añadas datos nuevos ni promesas que Jose no haya dado. Mantén los hechos correctos.
 - "para_jose" solo si hay algo que Jose deba decidir o comprobar; si no, lista vacía.
-${FORMATO}`;
-  const user = `FECHA DE HOY: ${todayMadrid()}\n\n${notas ? "NOTAS ORIGINALES DE JOSE" : "MENSAJE DE LA FAMILIA"}:\n"""\n${d.mensaje}\n"""\n\nMENSAJE ACTUAL (es el que hay que modificar; puede incluir retoques que Jose ya hizo a mano, respétalos):\n"""\n${d.respuesta}\n"""\n\nPETICIÓN DE JOSE: ${instruccion}\n${d.instruccion ? `(Instrucción anterior de Jose: ${d.instruccion})\n` : ""}${notas ? "" : `\nDATOS:\n${d.hechos || "No hay datos del niño."}`}`;
+- Si la petición de Jose revela algo que sirve para FUTURAS respuestas a otras familias (un dato cierto del club: "no hacemos X", "la edad mínima es Y", "eso no existe"; o una preferencia general de cómo escribir), ponlo en "aprender" como frase corta, general y en presente, sin nombres de niños ni detalles de este caso (máximo 160 caracteres). tipo "dato" si es un hecho del club; "estilo" si es una forma de escribir. Si es algo solo de este caso ("dile que sí", "el domingo lo vemos"), no pongas nada.
+${FORMATO.replace("}.", ', "aprender": lista de 0 a 2 objetos {"texto": string, "tipo": "dato" | "estilo"}}.')}`;
+  const user = `FECHA DE HOY: ${todayMadrid()}\n\n${notas ? "NOTAS ORIGINALES DE JOSE" : "MENSAJE DE LA FAMILIA"}:\n"""\n${d.mensaje}\n"""\n\nMENSAJE ACTUAL (es el que hay que modificar; puede incluir retoques que Jose ya hizo a mano, respétalos):\n"""\n${d.respuesta}\n"""\n\nPETICIÓN DE JOSE: ${instruccion}\n${d.instruccion ? `(Peticiones anteriores de Jose en esta conversación; siguen valiendo: ${d.instruccion})\n` : ""}${notas ? "" : `\nDATOS:\n${d.hechos || "No hay datos del niño."}`}`;
   const t = await gemini(WRITER_MODELS, sys, user, true, "minimal", { temp: 0.3, hedgeMs: 6000, timeoutMs: 20000 });
   return limpiarSalida(parseJson(t));
 }
@@ -565,7 +567,20 @@ export function limpiarSalida(o: any): Salida {
   const respuesta = String(o?.respuesta || "").replace(/\r/g, "").replace(/\n{3,}/g, "\n\n").trim();
   if (!respuesta) throw new Error("vacio");
   const para = Array.isArray(o?.para_jose) ? o.para_jose.map((x: unknown) => String(x).replace(/\s+/g, " ").trim().slice(0, 200)).filter(Boolean).slice(0, 4) : [];
-  return { respuesta: respuesta.slice(0, 3000), para_jose: para, delicado: o?.delicado === true };
+  return { respuesta: respuesta.slice(0, 3000), para_jose: para, delicado: o?.delicado === true, aprender: limpiarAprender(o?.aprender) };
+}
+
+export function limpiarAprender(x: unknown): Aprender[] {
+  if (!Array.isArray(x)) return [];
+  const vistos = new Set<string>();
+  const out: Aprender[] = [];
+  for (const a of x) {
+    const texto = String((a as any)?.texto ?? (typeof a === "string" ? a : "")).replace(/\s+/g, " ").trim().slice(0, 180);
+    if (texto.length < 8 || vistos.has(texto.toLowerCase())) continue;
+    vistos.add(texto.toLowerCase());
+    out.push({ texto, tipo: (a as any)?.tipo === "estilo" ? "estilo" : "dato" });
+  }
+  return out.slice(0, 2);
 }
 
 // ---------- Respuesta al cliente ----------------------------------------------------------------------------
@@ -597,6 +612,7 @@ function replyOk(out: Salida, d: Draft, extraNotas: string[], intro: string) {
     respuesta_familia: { texto: out.respuesta },
     padre_draft: { ...d, respuesta: out.respuesta },
     choices: ajustes({ ...d, respuesta: out.respuesta }),
+    aprender: out.aprender,
     alta_draft: null, secretary_changed: false, alta_changed: false, actions: [], silent: false,
   });
 }
@@ -680,7 +696,10 @@ Deno.serve(async (req) => {
     if (prev && (b.revision === true || (!isExplicit(msg) && isRevision(msg)))) {
       try {
         const out = await reescribir(prev, msg, await cargarAprendizaje(prev.mensaje, prev.modo, prev.destino));
-        return replyOk(out, { ...prev, respuesta: out.respuesta }, [], "Hecho, señor Cubero. Aquí tiene la nueva versión.");
+        // Se acumulan las peticiones de Jose para que la siguiente versión no
+        // vuelva a meter lo que ya pidió quitar.
+        const instruccion = [prev.instruccion, msg.slice(0, 600)].filter(Boolean).join(" | ").slice(-1200);
+        return replyOk(out, { ...prev, respuesta: out.respuesta, instruccion }, [], "Hecho, señor Cubero. Aquí tiene la nueva versión.");
       } catch (e) {
         console.error("mitico-paco-padres rev", e);
         return replyTxt("No he podido ajustar la respuesta ahora mismo. Inténtelo de nuevo.");

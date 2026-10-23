@@ -23,6 +23,10 @@ export type RespBorrador = {
 
 export type RespOpcion = { label: string; continuation: unknown };
 
+// Algo que Paco ha deducido de tus peticiones y que puede recordar para
+// futuras respuestas (un dato del club o una forma de escribir).
+export type RespAprender = { texto: string; tipo: 'dato' | 'estilo' };
+
 export type RespRedaccion = {
   // Texto listo para copiar (null si Paco necesita que elijas un nino).
   texto: string | null;
@@ -30,6 +34,7 @@ export type RespRedaccion = {
   mensajePaco: string;
   borrador: RespBorrador | null;
   opciones: RespOpcion[];
+  aprender: RespAprender[];
 };
 
 export type RespEjemplo = {
@@ -118,7 +123,14 @@ function aRedaccion(datos: any): RespRedaccion {
     datos.padre_draft && typeof datos.padre_draft === 'object'
       ? (datos.padre_draft as RespBorrador)
       : null;
+  const aprender: RespAprender[] = Array.isArray(datos.aprender)
+    ? datos.aprender
+        .filter((a: any) => a && typeof a.texto === 'string' && a.texto.trim())
+        .slice(0, 2)
+        .map((a: any) => ({ texto: String(a.texto).trim().slice(0, 180), tipo: a.tipo === 'estilo' ? 'estilo' : 'dato' }))
+    : [];
   return {
+    aprender,
     texto: typeof datos.respuesta_familia?.texto === 'string' ? datos.respuesta_familia.texto : null,
     mensajePaco: typeof datos.answer === 'string' ? datos.answer : '',
     borrador,
