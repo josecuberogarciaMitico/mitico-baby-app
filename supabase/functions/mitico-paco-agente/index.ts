@@ -1,14 +1,14 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { completar, type Mensaje } from "./llm.ts";
-import { Contexto, HERRAMIENTAS, ejecutarHerramienta, hoyMadrid, sumarDias, diaSemana } from "./herramientas.ts";
+import { Contexto, HERRAMIENTAS, ejecutarHerramienta, hoyMadrid, sumarDias, diaSemana, type Propuesta } from "./herramientas.ts";
 
 // ---------------------------------------------------------------------------
 // mitico-paco-agente · Paco con «ojos» (23/10/2026)
 //
 // Paco decide qué datos necesita, los consulta con herramientas de SOLO
-// LECTURA (herramientas.ts) y contesta. No escribe nada en la base de datos.
-// Las acciones que cambian datos siguen yendo por sus caminos con botón de
-// Confirmar (mover niño, disponibilidad, altas, secretaría).
+// LECTURA (herramientas.ts) y contesta. No escribe nada en la base de datos:
+// para cambios (meter a un niño en un grupo) prepara una propuesta y la app le
+// enseña a Jose un botón Confirmar; el cambio lo hace la app con su sesión.
 // Solo coordinador_jefe.
 // ---------------------------------------------------------------------------
 
@@ -59,7 +59,7 @@ function calendario(hoy: string) {
   return dias.join("; ");
 }
 
-function sistema() {
+function sistema(memoria = "") {
   const hoy = hoyMadrid();
   return `Eres Paco, un miembro más del equipo de coordinación de Mítico (escuela y club de esquí infantil en Snowzone, Madrid; modalidades Baby, Ocio e Intensivos). Trabajas para Jose Cubero, el coordinador jefe; le hablas de «señor Cubero» con naturalidad (no en cada frase), en español de España, directo y con un punto de humor seco cuando encaja.
 
@@ -71,12 +71,29 @@ CÓMO TRABAJAS
 - Para proponer dónde colocar a un niño (alta tardía o niño sin grupo) usa opciones_para_nino y explica en una línea por qué recomiendas la primera opción. Si no hay grupo que encaje, dilo y sugiere el turno con hueco o crear grupo.
 - Respuestas cortas y ordenadas: primero lo importante, luego el detalle en viñetas. Nada de JSON ni ids internos en la respuesta.
 
-LÍMITES (por ahora)
-- Tú solo LEES datos. No digas que has cambiado, movido, publicado o enviado nada.
-- Si te piden un cambio (meter a un niño en un grupo, mover, publicar, mandar algo), prepara toda la información útil (por ejemplo, el grupo recomendado) y di claramente que ese paso todavía tiene que hacerlo él desde la app o pidiéndomelo con la frase concreta (por ejemplo «pasa a Lucía al jueves a las 17:00» para mover a un niño de Baby).
+CAMBIOS
+- Tú no cambias nada directamente. Para meter a un niño en un grupo de Baby (alta tardía, niño sin grupo, cambiarle de grupo en el mismo turno) usa preparar_meter_en_grupo: la app le pone a Jose un botón Confirmar y solo al pulsarlo se hace. Nunca digas que ya está hecho; di qué se hará y que pulse Confirmar.
+- Si Jose dice «mételo en el que me recomendaste», usa el grupo_id de la MEMORIA o de tu respuesta anterior.
+- Otros cambios (cambiar de turno, publicar, mandar avisos, disponibilidad) todavía no los preparas tú: dile cómo pedirlo (por ejemplo «pasa a Lucía al jueves a las 17:00» para cambiar de turno a un niño de Baby) o que lo haga desde la app.
 - Si algo no está en los datos, dilo tal cual.
 
-FECHA: hoy es ${diaSemana(hoy)} ${hoy} (Madrid). Calendario: ${calendario(hoy)}.`;
+FECHA: hoy es ${diaSemana(hoy)} ${hoy} (Madrid). Calendario: ${calendario(hoy)}.${memoria ? `\n\nMEMORIA de esta conversación (ids para tus herramientas; no los enseñes):\n${memoria}` : ""}`;
+}
+
+const MAX_MEMORIA = 2500;
+
+/** Ids útiles de lo consultado (niños y grupos recomendados) para la siguiente pregunta. */
+function memoriaDe(nombre: string, resultado: unknown): string[] {
+  const r = resultado as Record<string, any> | null;
+  if (!r || typeof r !== "object") return [];
+  if (nombre === "buscar_alumno" && Array.isArray(r.coincidencias)) {
+    return r.coincidencias.slice(0, 6).map((c: any) => `niño ${c.nombre} (${c.edad ?? "?"} años, ${c.nivel}) alumno_id=${c.alumno_id}`);
+  }
+  if (nombre === "opciones_para_nino" && Array.isArray(r.mejores_opciones)) {
+    return r.mejores_opciones.slice(0, 4).map((o: any, i: number) =>
+      `opción ${i + 1} para ${r.nino || "el niño"}: ${o.dia} ${o.fecha} ${o.hora} «${o.grupo}» grupo_id=${o.grupo_id}`);
+  }
+  return [];
 }
 
 const MAX_OPCIONES = 6;
@@ -119,8 +136,9 @@ Deno.serve(async (req) => {
 
     const inicio = Date.now();
     const ctx = new Contexto(dbGet);
+    const memoriaPrevia = typeof b.memoria === "string" ? b.memoria.slice(0, MAX_MEMORIA) : "";
     const mensajes: Mensaje[] = [
-      { role: "system", content: sistema() },
+      { role: "system", content: sistema(memoriaPrevia) },
       ...historialLimpio(b.historial).map((t) => ({ role: t.rol, content: t.texto }) as Mensaje),
       { role: "user", content: msg },
     ];
@@ -131,6 +149,8 @@ Deno.serve(async (req) => {
     const avisos: string[] = [];
     // Nombres de la última búsqueda de alumnos con varias coincidencias (para botones).
     let candidatos: string[] = [];
+    const acciones: Propuesta[] = [];
+    const memoria: string[] = [];
 
     for (let vuelta = 0; vuelta <= MAX_VUELTAS; vuelta++) {
       const queda = LIMITE_TOTAL_MS - (Date.now() - inicio);
@@ -147,13 +167,25 @@ Deno.serve(async (req) => {
         let opciones = sep.opciones;
         if (!opciones.length && candidatos.length > 1 && texto.includes("?")) opciones = candidatos.slice(0, MAX_OPCIONES);
         console.log(`agente ok ${modelo} vueltas=${vuelta} herramientas=${usadas.join(",") || "-"} ${Date.now() - inicio}ms${avisos.length ? ` (fallos: ${avisos.join(" | ").slice(0, 400)})` : ""}`);
-        return J({ ok: true, handled: true, answer: texto, choices: [], opciones, modelo, herramientas: usadas });
+        if (acciones.length) opciones = [];
+        const memoriaNueva = [...memoria, ...memoriaPrevia.split("\n")].filter(Boolean);
+        return J({
+          ok: true, handled: true, answer: texto, choices: [], opciones, acciones: acciones.slice(-3),
+          memoria: [...new Set(memoriaNueva)].join("\n").slice(0, MAX_MEMORIA), modelo, herramientas: usadas,
+        });
       }
       mensajes.push({ role: "assistant", content: r.mensaje.content || null, tool_calls: llamadas });
       const resultados = await Promise.all(llamadas.map((l) => ejecutarHerramienta(ctx, l.function.name, l.function.arguments)));
       llamadas.forEach((l, i) => {
         usadas.push(l.function.name);
         const res = resultados[i] as { coincidencias?: { nombre?: unknown }[] } | null;
+        memoria.push(...memoriaDe(l.function.name, resultados[i]));
+        const prop = (resultados[i] as { propuesta?: Propuesta } | null)?.propuesta;
+        if (l.function.name === "preparar_meter_en_grupo" && prop) {
+          const repetida = acciones.findIndex((a) => a.grupo_id === prop.grupo_id && a.alumno_id === prop.alumno_id && a.nombre === prop.nombre);
+          if (repetida >= 0) acciones.splice(repetida, 1);
+          acciones.push(prop);
+        }
         if (l.function.name === "buscar_alumno") {
           candidatos = Array.isArray(res?.coincidencias) ? res!.coincidencias.map((c) => String(c?.nombre || "")).filter(Boolean) : [];
         }

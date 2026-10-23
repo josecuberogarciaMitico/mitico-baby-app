@@ -3,6 +3,11 @@ import {
   continuarAccionPaco,
   intentarAccionPaco,
 } from '../features/pacoAcciones/pacoAcciones';
+import {
+  ejecutarPropuestaAgente,
+  esPropuestaAgente,
+  type PropuestaAgente,
+} from '../features/pacoAcciones/pacoAgenteAcciones';
 const MITICO_AUTH_STORAGE_KEY = 'mitico_auth_session_v1';
 const PACO_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-api`;
 const PACO_SECRETARIA_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-secretaria`;
@@ -90,6 +95,11 @@ export type PacoContinuation =
   | {
       kind: 'agente_texto';
       texto: string;
+    }
+  // Paco con «manos»: cambio preparado por el agente; solo se hace al pulsar.
+  | {
+      kind: 'agente_accion';
+      propuesta: PropuestaAgente;
     }
   // Respuestas a familias: el borrador viaja dentro del boton, lo valida el servidor.
   | {
@@ -636,6 +646,8 @@ const MAX_HISTORIAL_AGENTE = 8;
 const VIGENCIA_HISTORIAL_AGENTE_MS = 30 * 60 * 1000;
 let historialAgente: { rol: 'user' | 'assistant'; texto: string }[] = [];
 let historialAgenteHasta = 0;
+// Ids de lo consultado (niños, grupos recomendados) para «mételo en el que me dijiste».
+let memoriaAgente = '';
 
 // Lo que va a Secretaria (apuntar, tareas, notas...) sigue yendo alli.
 function pareceOrdenSecretaria(message: string) {
@@ -647,14 +659,29 @@ function pareceOrdenSecretaria(message: string) {
 }
 
 async function llamarAgentePaco(message: string): Promise<PacoResponse | null> {
-  if (historialAgenteHasta < Date.now()) historialAgente = [];
+  if (historialAgenteHasta < Date.now()) {
+    historialAgente = [];
+    memoriaAgente = '';
+  }
   try {
     const r = await llamarEndpointPaco(
       PACO_AGENTE_ENDPOINT,
-      { message, historial: historialAgente },
+      { message, historial: historialAgente, memoria: memoriaAgente },
       'Paco no ha podido consultar los datos.'
     );
     if (r?.handled !== true || !String(r.answer || '').trim()) return null;
+    const extra = r as PacoResponse & { memoria?: unknown; acciones?: unknown };
+    if (typeof extra.memoria === 'string') memoriaAgente = extra.memoria.slice(0, 2500);
+    const acciones = Array.isArray(extra.acciones) ? extra.acciones.filter(esPropuestaAgente) : [];
+    if (acciones.length) {
+      r.choices = [
+        ...acciones.map((propuesta) => ({
+          label: `✅ Confirmar: ${propuesta.etiqueta}`,
+          continuation: { kind: 'agente_accion' as const, propuesta },
+        })),
+        { label: 'Cancelar', continuation: { kind: 'accion_cancelar' as const } },
+      ];
+    }
     const opciones = (r as PacoResponse & { opciones?: unknown }).opciones;
     if (Array.isArray(opciones) && opciones.length && !(r.choices && r.choices.length)) {
       r.choices = opciones
@@ -775,6 +802,27 @@ export async function continuarPaco(continuation: PacoContinuation) {
       ok: false,
       error: 'No he podido preparar esa respuesta. Inténtelo de nuevo.',
     } as PacoResponse;
+  }
+  if (continuation.kind === 'agente_accion') {
+    const propuesta = (continuation as { propuesta?: unknown }).propuesta;
+    if (!esPropuestaAgente(propuesta)) {
+      return { ok: false, error: 'Esa confirmación no es válida. No he cambiado nada.' } as PacoResponse;
+    }
+    try {
+      const salida = await ejecutarPropuestaAgente(propuesta);
+      historialAgente = [
+        ...historialAgente,
+        { rol: 'assistant' as const, texto: salida.answer.slice(0, 1500) },
+      ].slice(-MAX_HISTORIAL_AGENTE);
+      return { ok: true, handled: true, answer: salida.answer, choices: [] } as PacoResponse;
+    } catch (error) {
+      const status = (error as Error & { status?: number })?.status;
+      if (status === 401 || status === 403) throw error;
+      return {
+        ok: false,
+        error: 'No he podido hacerlo. No se ha cambiado nada; inténtelo de nuevo.',
+      } as PacoResponse;
+    }
   }
   if (continuation.kind === 'agente_texto') {
     const texto = String((continuation as { texto?: unknown }).texto || '').slice(0, 300);

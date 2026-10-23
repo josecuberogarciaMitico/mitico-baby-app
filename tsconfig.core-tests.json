@@ -19,6 +19,7 @@
     "src/features/agenda/**/*.ts",
     "src/features/trainers/trainerDayNav.ts",
     "src/features/pacoAcciones/pacoAccionesLogic.ts",
+    "src/features/pacoAcciones/pacoAgenteAccionesLogic.ts",
     "src/features/seasons/**/*.ts",
     "src/features/billing/**/*.ts",
     "src/services/aimharder/aimHarderContract.ts",

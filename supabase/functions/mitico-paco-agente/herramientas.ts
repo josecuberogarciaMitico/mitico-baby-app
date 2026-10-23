@@ -308,7 +308,7 @@ async function agenda(ctx: Contexto, args: Fila) {
       fecha: s.fecha, dia: diaSemana(s.fecha), hora: `${hora(s.hora_inicio)}-${hora(s.hora_fin)}`,
       modalidad: s.modalidad_codigo, alumnos: s.total_alumnos, sin_grupo: s.alumnos_sin_grupo, estado: s.estado_sesion,
       grupos: grupos.map((g) => ({
-        grupo: g.nombre_grupo, nivel: g.nivel_grupo, pista: g.pista, punto: g.punto_encuentro, alumnos: g.total_alumnos,
+        grupo_id: g.grupo_id, grupo: g.nombre_grupo, nivel: g.nivel_grupo, pista: g.pista, punto: g.punto_encuentro, alumnos: g.total_alumnos,
         entrenador: g.entrenador || "SIN ENTRENADOR", apoyo: g.entrenador_apoyo || null,
         confirmacion: g.estado_confirmacion || null, publicado: g.publicado === true,
       })),
@@ -395,6 +395,7 @@ async function opcionesAlumno(ctx: Contexto, args: Fila) {
       const puntos = dNivel * 3 + Math.min(dEdad, 8) * 1.1 + ms.length * 0.15 + (lleno ? 20 : 0) + (coincideDiaFijo === false ? 4 : 0);
       opciones.push({
         puntos: Math.round(puntos * 10) / 10,
+        grupo_id: g.grupo_id,
         fecha: s.fecha, dia: diaSemana(s.fecha), hora: `${hora(s.hora_inicio)}-${hora(s.hora_fin)}`,
         grupo: g.nombre_grupo, nivel_grupo: g.nivel_grupo, niveles_dentro: codigos.join(", ") || "sin datos",
         edades: edades.length ? `${Math.min(...edades)}-${Math.max(...edades)} años` : "sin datos",
@@ -509,6 +510,109 @@ async function revisionSemana(ctx: Contexto, args: Fila) {
   return { revision: text };
 }
 
+// ------------------------- propuestas de cambio -----------------------------
+// Paco NO escribe: prepara la propuesta, la comprueba y la app le enseña a Jose
+// un botón «Confirmar». Solo al pulsarlo se hace el cambio, con la sesión de
+// Jose y las mismas funciones que usa la Agenda.
+
+export type Propuesta = {
+  tipo: "incorporar" | "mover_mismo_turno";
+  alumno_id: string | null;
+  nombre: string;
+  nivel: string;
+  sesion_id: string;
+  grupo_id: string;
+  grupo_origen_id: string | null;
+  grupo: string;
+  turno: string;
+  etiqueta: string;
+};
+
+async function prepararMeterEnGrupo(ctx: Contexto, args: Fila) {
+  const hoy = hoyMadrid();
+  const grupoId = String(args.grupo_id || "");
+  if (!UUID.test(grupoId)) return { error: "grupo_id no válido: sácalo de opciones_para_nino o de agenda." };
+  const [g] = await ctx.db("grupos", { select: "id,sesion_id,nombre_grupo,nivel_grupo,cancelado,publicado", id: `eq.${grupoId}`, limit: "1" });
+  if (!g || g.cancelado) return { error: "Ese grupo no existe o está cancelado." };
+  const [s] = await ctx.db("sesiones", { select: "id,fecha,hora_inicio,hora_fin,modalidad_id", id: `eq.${g.sesion_id}`, limit: "1" });
+  if (!s) return { error: "No encuentro el turno de ese grupo." };
+  const mods = await ctx.modalidadesPorId();
+  const mod = modalidadDe(mods.get(String(s.modalidad_id)));
+  if (mod !== "BABY") return { error: `Por ahora solo puedo meter niños en grupos de Baby (este turno es de ${mod || "otra modalidad"}). Eso hay que hacerlo desde la app.` };
+  if (String(s.fecha) < hoy) return { error: "Ese turno ya ha pasado." };
+
+  let alumnoId: string | null = null;
+  let nombre = "";
+  let nivel = "";
+  if (args.alumno_id) {
+    if (!UUID.test(String(args.alumno_id))) return { error: "alumno_id no válido: usa buscar_alumno primero." };
+    const [a] = await ctx.db("alumnos", { select: "id,nombre_completo,nivel_actual_id,nivel_estimado_id,activo", id: `eq.${args.alumno_id}`, limit: "1" });
+    if (!a || a.activo === false) return { error: "No encuentro esa ficha activa." };
+    alumnoId = String(a.id);
+    nombre = String(a.nombre_completo);
+    const nv = await nivelDeAlumno(ctx, a);
+    if (nv) nivel = nv.codigo;
+  } else {
+    nombre = String(args.nombre_nuevo || "").replace(/\s+/g, " ").trim().slice(0, 80);
+    if (nombre.split(" ").length < 2) return { error: "Para un niño sin ficha necesito nombre y apellido (nombre_nuevo)." };
+    const q = norm(nombre);
+    const parecidos = (await ctx.db("alumnos", { select: "id,nombre_completo", activo: "eq.true", limit: "3000" }))
+      .filter((a) => norm(a.nombre_completo) === q);
+    if (parecidos.length) return { error: `Ya hay una ficha con ese nombre (${parecidos[0].nombre_completo}). Usa su alumno_id con buscar_alumno.` };
+  }
+  if (args.nivel) {
+    const nv = await ctx.nivelPorCodigo(String(args.nivel));
+    if (!nv) return { error: `No existe el nivel «${args.nivel}». Niveles: INICIACION, A, A+, B, B+, C, C+, D, D+.` };
+    nivel = nv.codigo;
+  }
+  if (!nivel) return { error: "Ese niño no tiene nivel en su ficha: pregúntale a Jose qué nivel usar y pásalo en «nivel»." };
+
+  const avisos: string[] = [];
+  let tipo: Propuesta["tipo"] = "incorporar";
+  let grupoOrigenId: string | null = null;
+  const [miembros, gruposSesion] = await Promise.all([
+    ctx.db("grupo_alumnos", { select: "alumno_id", grupo_id: `eq.${grupoId}` }),
+    ctx.db("grupos", { select: "id,nombre_grupo", sesion_id: `eq.${s.id}`, cancelado: "eq.false" }),
+  ]);
+  if (alumnoId) {
+    if (miembros.some((m) => String(m.alumno_id) === alumnoId)) return { error: `${nombre} ya está en ese grupo. No hay nada que cambiar.` };
+    const otros = gruposSesion.filter((x) => String(x.id) !== grupoId).map((x) => String(x.id));
+    if (otros.length) {
+      const [ya] = await ctx.db("grupo_alumnos", { select: "grupo_id", alumno_id: `eq.${alumnoId}`, grupo_id: inLista(otros), limit: "1" });
+      if (ya) {
+        tipo = "mover_mismo_turno";
+        grupoOrigenId = String(ya.grupo_id);
+        const origen = gruposSesion.find((x) => String(x.id) === grupoOrigenId);
+        avisos.push(`Ahora está en «${origen?.nombre_grupo || "otro grupo"}» de ese mismo turno: se le cambia de grupo.`);
+      }
+    }
+    // ¿Apuntado a otro turno ese mismo día? No se le quita de ahí.
+    const listados = await ctx.db("v_sesion_alumnos_operativa_app", { select: "sesion_id", alumno_id: `eq.${alumnoId}`, limit: "100" });
+    const otrasSes = [...new Set(listados.map((l) => String(l.sesion_id)).filter((x) => UUID.test(x) && x !== String(s.id)))];
+    if (otrasSes.length) {
+      const mismas = await ctx.db("sesiones", { select: "id,hora_inicio", id: inLista(otrasSes), fecha: `eq.${s.fecha}` });
+      for (const o of mismas) avisos.push(`Ojo: ese día también está apuntado a las ${hora(o.hora_inicio)}; esto NO le quita de ese turno (para cambiarle de turno, pídeme «pasa a ${nombre.split(" ")[0]} al ...»).`);
+    }
+  }
+  const cap = CAPACIDAD.BABY;
+  const total = miembros.length + 1;
+  if (total > cap) avisos.push(`El grupo pasaría a ${total} niños (lo normal en Baby son ${cap} como mucho).`);
+  if (g.publicado) avisos.push("El grupo ya está publicado: si quiere que el entrenador lo reconfirme, use «Avisar cambios» en la Agenda.");
+  if (!alumnoId) avisos.push("No tiene ficha: se creará una nueva con ese nombre y nivel.");
+
+  const turno = `${diaSemana(s.fecha)} ${String(s.fecha).slice(8, 10)}/${String(s.fecha).slice(5, 7)} ${hora(s.hora_inicio)}-${hora(s.hora_fin)}`;
+  const propuesta: Propuesta = {
+    tipo, alumno_id: alumnoId, nombre, nivel, sesion_id: String(s.id), grupo_id: grupoId, grupo_origen_id: grupoOrigenId,
+    grupo: String(g.nombre_grupo), turno,
+    etiqueta: `${tipo === "mover_mismo_turno" ? "Cambiar" : "Meter"} a ${nombre.split(" ").slice(0, 2).join(" ")} ${tipo === "mover_mismo_turno" ? "al grupo" : "en"} «${g.nombre_grupo}» · ${turno}`,
+  };
+  return {
+    propuesta,
+    avisos,
+    nota: "Jose verá un botón para confirmar este cambio. NO digas que está hecho: dile qué se va a hacer, los avisos, y que pulse Confirmar.",
+  };
+}
+
 // ------------------------------ registro ------------------------------------
 
 type Impl = (ctx: Contexto, args: Fila) => Promise<unknown>;
@@ -590,6 +694,18 @@ export const HERRAMIENTAS: { def: DefHerramienta; impl: Impl }[] = [
       name: "reportes_pendientes",
       description: "Reportes que faltan por hacer, por entrenador. Por defecto los últimos 7 días.",
       parameters: { type: "object", properties: { desde: FECHA, hasta: FECHA } },
+    } },
+  },
+  {
+    impl: prepararMeterEnGrupo,
+    def: { type: "function", function: {
+      name: "preparar_meter_en_grupo",
+      description: "Prepara (sin hacerlo) meter a un niño en un grupo de Baby de un turno futuro: un alta tardía, un niño sin grupo o pasarlo de grupo en el mismo turno. Comprueba todo y la app le enseña a Jose un botón Confirmar. Úsala cuando Jose diga «mételo», «mete a X en el grupo que me dijiste», etc. Necesita grupo_id (de opciones_para_nino o agenda) y alumno_id; si el niño no tiene ficha, nombre_nuevo + nivel.",
+      parameters: { type: "object", properties: {
+        grupo_id: { type: "string" }, alumno_id: { type: "string" },
+        nombre_nuevo: { type: "string", description: "Nombre y apellidos si no tiene ficha" },
+        nivel: { type: "string", description: "Nivel a usar si no tiene o Jose dice otro: INICIACION, A, A+, B, B+, C, C+, D, D+" },
+      }, required: ["grupo_id"] },
     } },
   },
   {
