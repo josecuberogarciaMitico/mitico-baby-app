@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { pedirIA } from "./ia.ts";
 
 // ---------------------------------------------------------------------------
 // mitico-paco-acciones  (SOLO INTERPRETA; no lee ni escribe datos del club)
@@ -8,7 +9,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 // Nada más. Buscar al niño, comprobar turnos, pedir confirmación y escribir lo
 // hace la app en el navegador con la sesión de Jose y las funciones seguras de
 // Supabase que ya usa la Agenda. Esta función no tiene acceso de escritura a
-// nada: solo comprueba que quien pregunta es coordinador_jefe y llama a Gemini.
+// nada: solo comprueba que quien pregunta es coordinador_jefe y llama a la IA (./ia.ts).
 // Solo coordinador_jefe.
 // ---------------------------------------------------------------------------
 
@@ -74,63 +75,14 @@ export function pareceDisponibilidad(texto: string) {
   return semana && dias && !otro;
 }
 
-// ---------- Gemini ----------------------------------------------------------------------
+// ---------- IA (cerebro compartido ./ia.ts) --------------------------------------------
+// Antes: tres modelos Gemini en carrera que se quedaban sin contestar (502 tras ~22 s).
+// Ahora: Cloudflare (rápido) → Gemini sin «pensar», con límite de tiempo por intento.
+// Se mantiene el nombre y la firma de gemini() para no tocar el resto del archivo.
 
-async function unModelo(model: string, sys: string, user: string, signal: AbortSignal): Promise<string> {
-  const generationConfig: Record<string, unknown> = { temperature: 0, maxOutputTokens: 900, responseMimeType: "application/json" };
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", "x-goog-api-key": G },
-    body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: [{ role: "user", parts: [{ text: user }] }], generationConfig }),
-    signal,
-  });
-  const d = await r.json();
-  if (!r.ok) throw new Error(`${model} ${r.status}`);
-  return (d?.candidates?.[0]?.content?.parts || []).filter((p: any) => !p?.thought).map((p: any) => p?.text || "").join("").trim();
-}
-
-// Prueba los modelos en orden; si uno tarda mas de hedgeMs lanza el siguiente
-// en paralelo y gana el primero que conteste.
-export async function gemini(models: string[], sys: string, user: string, hedgeMs = 4000, timeoutMs = 12000): Promise<string> {
-  return await new Promise<string>((resolve, reject) => {
-    const ctrls: AbortController[] = [];
-    let siguiente = 0, enCurso = 0, terminado = false, lastErr = "";
-    let hedge: ReturnType<typeof setTimeout> | undefined;
-    const fin = (f: () => void) => {
-      if (terminado) return;
-      terminado = true;
-      if (hedge) clearTimeout(hedge);
-      ctrls.forEach((c) => c.abort());
-      f();
-    };
-    const lanzar = () => {
-      if (terminado) return;
-      if (hedge) { clearTimeout(hedge); hedge = undefined; }
-      if (siguiente >= models.length) {
-        if (enCurso === 0) fin(() => reject(new Error(`gemini: ${lastErr}`)));
-        return;
-      }
-      const model = models[siguiente++];
-      const c = new AbortController();
-      ctrls.push(c);
-      enCurso++;
-      const limite = setTimeout(() => c.abort(), timeoutMs);
-      unModelo(model, sys, user, c.signal).then(
-        (t) => {
-          clearTimeout(limite); enCurso--;
-          if (t) fin(() => resolve(t)); else { lastErr = `${model} vacio`; lanzar(); }
-        },
-        (e) => {
-          clearTimeout(limite); enCurso--;
-          if (terminado) return;
-          lastErr = `${model} ${c.signal.aborted ? "tiempo agotado" : String(e).slice(0, 80)}`;
-          lanzar();
-        },
-      );
-      if (siguiente < models.length) hedge = setTimeout(lanzar, hedgeMs);
-    };
-    lanzar();
-  });
+export async function gemini(_models: string[], sys: string, user: string, _hedgeMs = 4000, _timeoutMs = 12000): Promise<string> {
+  const r = await pedirIA({ system: sys, user, json: true, nivel: "rapido", maxTokens: 900 });
+  return r.texto;
 }
 
 function parseJson(t: string): any {

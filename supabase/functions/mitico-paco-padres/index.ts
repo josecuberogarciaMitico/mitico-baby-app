@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { pedirIA } from "./ia.ts";
 
 // ---------------------------------------------------------------------------
 // mitico-paco-padres  (no envia nada a nadie)
@@ -211,74 +212,19 @@ export function isRevision(text: string) {
 type Pensar = "minimal" | "low" | "medium";
 type OpcGemini = { temp?: number; hedgeMs?: number; timeoutMs?: number };
 
-// Una llamada a un modelo concreto. Devuelve "" si no hay texto.
-async function unModelo(model: string, sys: string, user: string, json: boolean, thinking: Pensar | undefined, temp: number, signal: AbortSignal): Promise<string> {
-  const llamar = async (th: Pensar | undefined) => {
-    const generationConfig: Record<string, unknown> = { temperature: temp, maxOutputTokens: 4096 };
-    if (th && !model.includes("lite")) generationConfig.thinkingConfig = { thinkingLevel: th };
-    if (json) generationConfig.responseMimeType = "application/json";
-    return await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": G },
-      body: JSON.stringify({ systemInstruction: { parts: [{ text: sys }] }, contents: [{ role: "user", parts: [{ text: user }] }], generationConfig }),
-      signal,
-    });
-  };
-  let r = await llamar(thinking);
-  // Si el modelo no admite "minimal", se repite el mismo modelo con "low" (nunca sin nivel: pensaria mucho mas).
-  if (r.status === 400 && thinking === "minimal") r = await llamar("low");
-  const d = await r.json();
-  if (!r.ok) throw new Error(`${model} ${r.status}`);
-  return (d?.candidates?.[0]?.content?.parts || []).filter((p: any) => !p?.thought).map((p: any) => p?.text || "").join("").trim();
-}
-
-// Prueba los modelos por orden, pero sin esperar eternamente: cada intento tiene limite
-// de tiempo y, si un modelo tarda mas de hedgeMs, se lanza el siguiente EN PARALELO y
-// gana el primero que conteste. Si un modelo falla, se pasa al siguiente al instante.
-export async function gemini(models: string[], sys: string, user: string, json: boolean, thinking?: Pensar, opc: OpcGemini = {}): Promise<string> {
-  const temp = opc.temp ?? (json ? 0.4 : 0.5);
-  const hedgeMs = opc.hedgeMs ?? 7000;
-  const timeoutMs = opc.timeoutMs ?? 25000;
-  const t0 = Date.now();
-  return await new Promise<string>((resolve, reject) => {
-    const ctrls: AbortController[] = [];
-    let siguiente = 0, enCurso = 0, terminado = false, lastErr = "";
-    let hedge: ReturnType<typeof setTimeout> | undefined;
-    const fin = (f: () => void) => {
-      if (terminado) return;
-      terminado = true;
-      if (hedge) clearTimeout(hedge);
-      ctrls.forEach((c) => c.abort());
-      f();
-    };
-    const lanzar = () => {
-      if (terminado) return;
-      if (hedge) { clearTimeout(hedge); hedge = undefined; }
-      if (siguiente >= models.length) {
-        if (enCurso === 0) fin(() => reject(new Error(`gemini: ${lastErr}`)));
-        return;
-      }
-      const model = models[siguiente++];
-      const c = new AbortController();
-      ctrls.push(c);
-      enCurso++;
-      const limite = setTimeout(() => c.abort(), timeoutMs);
-      unModelo(model, sys, user, json, thinking, temp, c.signal).then(
-        (t) => {
-          clearTimeout(limite); enCurso--;
-          if (t) { console.log(`gemini ${model} ${Date.now() - t0}ms`); fin(() => resolve(t)); } else { lastErr = `${model} vacio`; lanzar(); }
-        },
-        (e) => {
-          clearTimeout(limite); enCurso--;
-          if (terminado) return;
-          lastErr = `${model} ${c.signal.aborted ? "tiempo agotado" : String(e).slice(0, 80)}`;
-          lanzar();
-        },
-      );
-      if (siguiente < models.length) hedge = setTimeout(lanzar, hedgeMs);
-    };
-    lanzar();
+// IA compartida (./ia.ts): Cloudflare → Gemini, con límite de tiempo por intento.
+// Se mantiene gemini() con la misma firma para no tocar el resto del archivo:
+// ROUTER_MODELS = entender la frase (rápido); WRITER_MODELS = redactar (pensar).
+export async function gemini(models: string[], sys: string, user: string, json: boolean, _thinking?: Pensar, opc: OpcGemini = {}): Promise<string> {
+  const r = await pedirIA({
+    system: sys,
+    user,
+    json,
+    nivel: models === ROUTER_MODELS ? "rapido" : "pensar",
+    temperatura: opc.temp ?? (json ? 0.4 : 0.5),
+    maxTokens: 4096,
   });
+  return r.texto;
 }
 
 function parseJson(t: string): any {

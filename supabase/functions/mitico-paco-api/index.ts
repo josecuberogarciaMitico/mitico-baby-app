@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { buildWeeklyReview } from "./semana.ts";
+import { pedirIA } from "./ia.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") || "";
@@ -264,69 +265,25 @@ async function authorizeCoordinatorJefe(req: Request) {
   };
 }
 
-async function callGeminiModel(
-  model: string,
-  systemText: string,
-  userText: string,
-  jsonMode: boolean,
-  thinkingLevel?: "low" | "medium" | "high",
-) {
-  if (!GEMINI_API_KEY) throw new Error("Missing GEMINI_API_KEY");
-  const generationConfig: Record<string, unknown> = {
-    temperature: jsonMode ? 0 : 0.45,
-    maxOutputTokens: jsonMode ? 2048 : 8192,
-  };
-  if (thinkingLevel && !model.includes("lite")) {
-    generationConfig.thinkingConfig = { thinkingLevel };
-  }
-  if (jsonMode) generationConfig.responseMimeType = "application/json";
-
-  const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-goog-api-key": GEMINI_API_KEY,
-      },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemText }] },
-        contents: [{ role: "user", parts: [{ text: userText }] }],
-        generationConfig,
-      }),
-    },
-  );
-  const data = await res.json();
-  if (!res.ok) throw new Error(`${model}: ${data?.error?.message || `Gemini API error ${res.status}`}`);
-  const parts = data?.candidates?.[0]?.content?.parts;
-  const text = Array.isArray(parts)
-    ? parts.map((p: any) => (typeof p?.text === "string" ? p.text : "")).join("").trim()
-    : "";
-  if (!text) throw new Error(`${model}: Gemini returned no text`);
-  return text;
-}
-
+// IA compartida (./ia.ts): Cloudflare → Gemini sin «pensar largo», con límite de tiempo.
+// Se mantiene geminiWithFallback() con la misma firma para no tocar el resto del archivo:
+// la lista ROUTER_MODELS = entender la frase (rápido); cualquier otra = redactar (pensar).
 async function geminiWithFallback(
   models: string[],
   systemText: string,
   userText: string,
   jsonMode = false,
-  thinkingLevel?: "low" | "medium" | "high",
+  _thinkingLevel?: "low" | "medium" | "high",
 ) {
-  const errors: string[] = [];
-  for (const model of models) {
-    try {
-      return {
-        text: await callGeminiModel(model, systemText, userText, jsonMode, thinkingLevel),
-        model,
-      };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      console.error("Gemini model failed", message);
-      errors.push(message);
-    }
-  }
-  throw new Error(`All Gemini models failed: ${errors.join(" | ")}`);
+  const r = await pedirIA({
+    system: systemText,
+    user: userText,
+    json: jsonMode,
+    nivel: models === ROUTER_MODELS ? "rapido" : "pensar",
+    temperatura: jsonMode ? 0 : 0.45,
+    maxTokens: jsonMode ? 2048 : 1500,
+  });
+  return { text: r.texto, model: r.modelo };
 }
 
 async function routeMessage(userText: string): Promise<Route> {

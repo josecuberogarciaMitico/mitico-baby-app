@@ -1,4 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { pedirIA } from "./ia.ts";
 
 // ---------------------------------------------------------------------------
 // mitico-paco-altas
@@ -233,7 +234,7 @@ async function authorize(req: Request) {
   return p?.rol === "coordinador_jefe" ? { authz: a } : null;
 }
 
-// ---------- Gemini (solo para entender la frase) ------------------------------
+// ---------- IA (solo para entender la frase) -----------------------------------
 
 type Route = {
   action?: string;
@@ -264,24 +265,9 @@ Datos (solo si el usuario los dice explícitamente; si no, null; no inventes):
 - dia_ocio: Jueves, Sábado o Domingo (solo Ocio).
 ${draft ? `\nHAY UN ALTA EN PREPARACIÓN con estos datos ya recogidos: ${JSON.stringify(draft)}. Si el mensaje aporta datos que faltan o corrige alguno, devuelve action alta_create con TODOS los campos (los ya recogidos más los nuevos). Si no tiene que ver con el alta, not_altas.` : ""}`;
 
-  for (const model of ["gemini-3.5-flash-lite", "gemini-3.5-flash"]) {
-    try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": G },
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: sys }] },
-          contents: [{ role: "user", parts: [{ text }] }],
-          generationConfig: { temperature: 0, maxOutputTokens: 600, responseMimeType: "application/json" },
-        }),
-      });
-      const d = await r.json();
-      if (!r.ok) continue;
-      const s = (d?.candidates?.[0]?.content?.parts || []).map((x: any) => x?.text || "").join("");
-      return JSON.parse(s);
-    } catch { /* siguiente modelo */ }
-  }
-  throw new Error("router");
+  // IA compartida (./ia.ts): Cloudflare rápido → Gemini sin «pensar».
+  const r = await pedirIA({ system: sys, user: text, json: true, nivel: "rapido", maxTokens: 600 });
+  return JSON.parse(r.texto);
 }
 
 // Palabras que activan esta funcion. Sin ellas ni borrador, ni se llama a Gemini.
