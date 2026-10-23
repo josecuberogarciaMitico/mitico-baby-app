@@ -89,7 +89,7 @@ function J(x: unknown, s = 200) {
 export function norm(x: unknown) {
   return String(x ?? "")
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase()
     .replace(/[^A-Z0-9+ ]/g, " ")
     .replace(/\s+/g, " ")

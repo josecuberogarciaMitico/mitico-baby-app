@@ -27,7 +27,7 @@ export const CONFIG = {
 function normalize(value: string) {
   return value
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase()
     .replace(/[^A-Z0-9+ ]/g, " ")
     .replace(/\s+/g, " ")
