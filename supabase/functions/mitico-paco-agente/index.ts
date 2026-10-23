@@ -65,7 +65,8 @@ function sistema() {
 
 CÓMO TRABAJAS
 - Antes de contestar sobre niños, grupos, turnos, reportes, entrenadores o material, CONSULTA los datos con tus herramientas. Nunca inventes nombres, fechas, horas, niveles ni números.
-- Si te nombran a un niño, primero buscar_alumno; si hay varios posibles, pregunta cuál (enseña nombre, edad y nivel) en vez de suponer.
+- Si te nombran a un niño, primero buscar_alumno; si hay varios posibles, pregunta cuál (enseña nombre, edad y nivel) en vez de suponer. La app le pondrá a Jose un botón por cada niño para que solo tenga que pulsar.
+- Cuando le ofrezcas elegir entre varias cosas concretas, termina con una última línea así: OPCIONES: opción 1 | opción 2 | opción 3 (textos cortos, como mucho 6). Esa línea no se le enseña: se convierte en botones.
 - Puedes encadenar varias herramientas para responder algo compuesto. Interpreta las fechas con el calendario de abajo («el sábado» = el próximo sábado; «el finde» = sábado y domingo próximos).
 - Para proponer dónde colocar a un niño (alta tardía o niño sin grupo) usa opciones_para_nino y explica en una línea por qué recomiendas la primera opción. Si no hay grupo que encaje, dilo y sugiere el turno con hueco o crear grupo.
 - Respuestas cortas y ordenadas: primero lo importante, luego el detalle en viñetas. Nada de JSON ni ids internos en la respuesta.
@@ -76,6 +77,22 @@ LÍMITES (por ahora)
 - Si algo no está en los datos, dilo tal cual.
 
 FECHA: hoy es ${diaSemana(hoy)} ${hoy} (Madrid). Calendario: ${calendario(hoy)}.`;
+}
+
+const MAX_OPCIONES = 6;
+
+/** Saca la línea «OPCIONES: a | b» del texto y la convierte en botones. */
+function separarOpciones(texto: string): { texto: string; opciones: string[] } {
+  const lineas = texto.split("\n");
+  const i = lineas.findIndex((l) => /^\s*\**\s*opciones\s*\**\s*:/i.test(l));
+  if (i < 0) return { texto, opciones: [] };
+  const opciones = lineas[i]
+    .replace(/^\s*\**\s*opciones\s*\**\s*:/i, "")
+    .split("|")
+    .map((o) => o.replace(/[*_`]/g, "").trim())
+    .filter((o) => o && o.length <= 80);
+  lineas.splice(i, 1);
+  return { texto: lineas.join("\n").trim(), opciones: [...new Set(opciones)].slice(0, MAX_OPCIONES) };
 }
 
 type Turno = { rol: "user" | "assistant"; texto: string };
@@ -112,6 +129,8 @@ Deno.serve(async (req) => {
     let indice = 0;
     let modelo = "";
     const avisos: string[] = [];
+    // Nombres de la última búsqueda de alumnos con varias coincidencias (para botones).
+    let candidatos: string[] = [];
 
     for (let vuelta = 0; vuelta <= MAX_VUELTAS; vuelta++) {
       const queda = LIMITE_TOTAL_MS - (Date.now() - inicio);
@@ -123,14 +142,21 @@ Deno.serve(async (req) => {
       if (r.fallos.length) avisos.push(...r.fallos);
       const llamadas = r.mensaje.tool_calls || [];
       if (!llamadas.length) {
-        const texto = String(r.mensaje.content || "").trim();
+        const sep = separarOpciones(String(r.mensaje.content || "").trim());
+        const texto = sep.texto;
+        let opciones = sep.opciones;
+        if (!opciones.length && candidatos.length > 1 && texto.includes("?")) opciones = candidatos.slice(0, MAX_OPCIONES);
         console.log(`agente ok ${modelo} vueltas=${vuelta} herramientas=${usadas.join(",") || "-"} ${Date.now() - inicio}ms${avisos.length ? ` (fallos: ${avisos.join(" | ").slice(0, 400)})` : ""}`);
-        return J({ ok: true, handled: true, answer: texto, choices: [], modelo, herramientas: usadas });
+        return J({ ok: true, handled: true, answer: texto, choices: [], opciones, modelo, herramientas: usadas });
       }
       mensajes.push({ role: "assistant", content: r.mensaje.content || null, tool_calls: llamadas });
       const resultados = await Promise.all(llamadas.map((l) => ejecutarHerramienta(ctx, l.function.name, l.function.arguments)));
       llamadas.forEach((l, i) => {
         usadas.push(l.function.name);
+        const res = resultados[i] as { coincidencias?: { nombre?: unknown }[] } | null;
+        if (l.function.name === "buscar_alumno") {
+          candidatos = Array.isArray(res?.coincidencias) ? res!.coincidencias.map((c) => String(c?.nombre || "")).filter(Boolean) : [];
+        }
         let contenido = JSON.stringify(resultados[i]);
         if (contenido.length > MAX_RESULTADO) contenido = contenido.slice(0, MAX_RESULTADO) + "…(recortado)";
         mensajes.push({ role: "tool", tool_call_id: l.id, content: contenido });

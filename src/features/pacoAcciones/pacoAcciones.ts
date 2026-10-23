@@ -40,7 +40,6 @@ import {
   parecePeticionAimHarder,
   parecePreguntaCapacidades,
   respuestaCapacidades,
-  respuestaOrdenNoSoportada,
 } from './pacoCapacidadesLogic';
 import { continuarVolcadoBaby, prepararVolcadoBaby } from './pacoAimHarderBaby';
 import { semanaDesdeMensaje } from './pacoAimHarderBabyLogic';
@@ -365,16 +364,18 @@ async function atenderRuta(mensaje: string, ruta: RutaIA): Promise<SalidaAccion 
     case 'aimharder':
       return prepararVolcadoBaby(mensaje);
     case 'capacidades':
-      return { answer: respuestaCapacidades(mensaje) };
+      // Lo contesta Paco con «ojos» (consulta los datos); si no esta, el Paco de siempre.
+      return null;
     case 'orden_no_soportada':
-      // Se anota para ver qué le piden que aún no sabe hacer.
+      // Se anota para ver qué le piden que aún no sabe hacer, y se deja pasar a
+      // Paco con «ojos»: al menos consulta los datos y prepara lo que pueda.
       void registrarAccion({
         accion: 'mensaje_no_entendido',
         estado: 'error',
         resumen: mensaje.slice(0, 300),
         parametros: { tema: 'orden_no_soportada' },
       });
-      return { answer: respuestaOrdenNoSoportada() };
+      return null;
     default:
       return null;
   }

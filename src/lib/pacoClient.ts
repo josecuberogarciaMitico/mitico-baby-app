@@ -86,6 +86,11 @@ export type PacoContinuation =
         | 'alta_mark_sent';
       [clave: string]: unknown;
     }
+  // Paco con «ojos»: boton que manda ese texto al agente (p. ej. elegir un niño).
+  | {
+      kind: 'agente_texto';
+      texto: string;
+    }
   // Respuestas a familias: el borrador viaja dentro del boton, lo valida el servidor.
   | {
       kind: 'padre_pick' | 'padre_sin_datos' | 'padre_ajustar';
@@ -650,6 +655,14 @@ async function llamarAgentePaco(message: string): Promise<PacoResponse | null> {
       'Paco no ha podido consultar los datos.'
     );
     if (r?.handled !== true || !String(r.answer || '').trim()) return null;
+    const opciones = (r as PacoResponse & { opciones?: unknown }).opciones;
+    if (Array.isArray(opciones) && opciones.length && !(r.choices && r.choices.length)) {
+      r.choices = opciones
+        .map((o) => String(o || '').trim())
+        .filter(Boolean)
+        .slice(0, 6)
+        .map((o) => ({ label: o, continuation: { kind: 'agente_texto' as const, texto: o } }));
+    }
     historialAgente = [
       ...historialAgente,
       { rol: 'user' as const, texto: message.slice(0, 1500) },
@@ -762,6 +775,14 @@ export async function continuarPaco(continuation: PacoContinuation) {
       ok: false,
       error: 'No he podido preparar esa respuesta. Inténtelo de nuevo.',
     } as PacoResponse;
+  }
+  if (continuation.kind === 'agente_texto') {
+    const texto = String((continuation as { texto?: unknown }).texto || '').slice(0, 300);
+    const agente = texto ? await llamarAgentePaco(texto) : null;
+    return (
+      agente ||
+      ({ ok: false, error: 'No he podido consultarlo ahora mismo. Inténtelo de nuevo.' } as PacoResponse)
+    );
   }
   if (continuation.kind.startsWith('secretary_')) {
     const secretaria = await llamarSecretariaPaco({ continuation });
