@@ -248,11 +248,12 @@ async function route(text: string): Promise<Route> {
   return parseJson(t);
 }
 
-type Hechos = { texto: string; nino: string | null };
+// telefono: solo para el botón «Abrir en WhatsApp» de la app; NUNCA va a la IA.
+type Hechos = { texto: string; nino: string | null; telefono?: string | null };
 
 type Modo = "respuesta" | "notas";
 type Destino = "familias" | "entrenadores";
-type Draft = { mensaje: string; respuesta: string; hechos: string; nino: string | null; instruccion: string | null; modo: Modo; destino: Destino };
+type Draft = { mensaje: string; respuesta: string; hechos: string; nino: string | null; instruccion: string | null; modo: Modo; destino: Destino; telefono?: string | null };
 
 function cleanDraft(d: any): Draft | null {
   if (!d || typeof d !== "object") return null;
@@ -267,15 +268,21 @@ function cleanDraft(d: any): Draft | null {
     instruccion: d.instruccion ? String(d.instruccion).slice(-1200) : null,
     modo: d.modo === "notas" ? "notas" : "respuesta",
     destino: d.destino === "entrenadores" ? "entrenadores" : "familias",
+    telefono: telefonoLimpio(d.telefono),
   };
+}
+
+export function telefonoLimpio(x: unknown): string | null {
+  const digitos = String(x ?? "").replace(/\D/g, "");
+  return digitos.length >= 9 && digitos.length <= 15 ? digitos : null;
 }
 
 // ---------- Ninos y datos seguros ---------------------------------------------------------------
 
-type Student = { id: string; nombre_completo: string; fecha_nacimiento: string | null; seccion_principal: string | null; nivel_actual_id: string | null; nivel_estimado_id: string | null };
+type Student = { id: string; nombre_completo: string; fecha_nacimiento: string | null; seccion_principal: string | null; nivel_actual_id: string | null; nivel_estimado_id: string | null; telefono?: string | null };
 
 async function loadRoster(): Promise<Student[]> {
-  const d = await admin("/rest/v1/alumnos?select=id,nombre_completo,fecha_nacimiento,seccion_principal,nivel_actual_id,nivel_estimado_id&activo=eq.true&order=nombre_completo.asc&limit=1000");
+  const d = await admin("/rest/v1/alumnos?select=id,nombre_completo,fecha_nacimiento,seccion_principal,nivel_actual_id,nivel_estimado_id,telefono&activo=eq.true&order=nombre_completo.asc&limit=1000");
   return Array.isArray(d) ? d : [];
 }
 
@@ -358,7 +365,7 @@ async function buildHechos(s: Student): Promise<Hechos> {
     const p = [r.nivel_reportado && `nivel ${r.nivel_reportado}`, r.actitud && `actitud ${r.actitud}`, r.tecnica && `técnica ${r.tecnica}`, r.autonomia && `autonomía ${r.autonomia}`].filter(Boolean).join(", ");
     if (p) lineas.push(`Último reporte (${String(r.fecha).slice(0, 10)}): ${p}.`);
   }
-  return { texto: lineas.join("\n"), nino: nombre };
+  return { texto: lineas.join("\n"), nino: nombre, telefono: telefonoLimpio(s.telefono) };
 }
 
 // ---------- Aprendizaje de Jose (tablas propias) ---------------------------------------------
@@ -623,7 +630,7 @@ function replyTxt(answer: string, choices: Choice[] = []) {
 
 async function generar(mensaje: string, instruccion: string | null, hechos: Hechos | null, notas: string[]) {
   const out = await redactar(mensaje, instruccion, hechos?.texto || "", await cargarAprendizaje(mensaje, "respuesta", "familias"));
-  const d: Draft = { mensaje, respuesta: out.respuesta, hechos: hechos?.texto || "", nino: hechos?.nino || null, instruccion, modo: "respuesta", destino: "familias" };
+  const d: Draft = { mensaje, respuesta: out.respuesta, hechos: hechos?.texto || "", nino: hechos?.nino || null, instruccion, modo: "respuesta", destino: "familias", telefono: hechos?.telefono ?? null };
   const intro = hechos?.nino
     ? `Aquí tiene la respuesta para la familia de ${hechos.nino}, señor Cubero. Está lista para copiar.`
     : "Aquí tiene la respuesta para la familia, señor Cubero. Está lista para copiar.";
@@ -671,7 +678,7 @@ Deno.serve(async (req) => {
         if (c.kind === "padre_pick") {
           const mensaje = String(c.mensaje || "").slice(0, 4000);
           if (!mensaje || !UUID.test(String(c.alumno_id || ""))) return J({ ok: true, handled: false });
-          const rows = await admin(`/rest/v1/alumnos?select=id,nombre_completo,fecha_nacimiento,seccion_principal,nivel_actual_id,nivel_estimado_id&id=eq.${encodeURIComponent(String(c.alumno_id))}&activo=eq.true&limit=1`);
+          const rows = await admin(`/rest/v1/alumnos?select=id,nombre_completo,fecha_nacimiento,seccion_principal,nivel_actual_id,nivel_estimado_id,telefono&id=eq.${encodeURIComponent(String(c.alumno_id))}&activo=eq.true&limit=1`);
           const s: Student | undefined = Array.isArray(rows) ? rows[0] : undefined;
           const h = s ? await buildHechos(s) : null;
           return await generar(mensaje, c.instruccion ? String(c.instruccion).slice(0, 400) : null, h, s ? [] : ["No he encontrado esa ficha; respuesta sin datos del niño."]);
@@ -749,7 +756,7 @@ Deno.serve(async (req) => {
           hechos = await buildHechos(m.unicos[0]);
           if (m.unicos.length > 1) {
             const resto = await Promise.all(m.unicos.slice(1, 3).map((s) => buildHechos(s)));
-            hechos = { texto: [hechos.texto, ...resto.map((r) => r.texto)].join("\n\n"), nino: [hechos.nino, ...resto.map((r) => r.nino)].filter(Boolean).join(" y ") };
+            hechos = { texto: [hechos.texto, ...resto.map((r) => r.texto)].join("\n\n"), nino: [hechos.nino, ...resto.map((r) => r.nino)].filter(Boolean).join(" y "), telefono: hechos.telefono };
           }
           if (m.ambiguos.length) notas.push(`Hay otro niño mencionado («${m.ambiguos[0].nombre}») que no he podido identificar: sin sus datos.`);
         } else if (m.sinMatch.length) {

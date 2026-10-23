@@ -19,6 +19,8 @@ export type RespBorrador = {
   instruccion: string | null;
   modo: RespModo;
   destino: RespDestino;
+  // Teléfono de la ficha del niño (si Paco lo ha identificado): para abrir WhatsApp.
+  telefono?: string | null;
 };
 
 export type RespOpcion = { label: string; continuation: unknown };

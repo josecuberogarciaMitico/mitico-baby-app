@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { comprobarAccesoPaco } from '../lib/pacoClient';
+import { normalizeWhatsappPhone, whatsappDirectUrl } from '../core/communications/whatsappContract';
 import {
   activarRegla,
   borrarEjemplo,
@@ -101,6 +102,8 @@ export function RespuestasPanel() {
   const [guardado, setGuardado] = useState<RespGuardado | null>(null);
   const [copiado, setCopiado] = useState('');
   const [hilo, setHilo] = useState<Turno[]>([]);
+  // Teléfono para «Abrir en WhatsApp»: el de la ficha si Paco identificó al niño; editable.
+  const [telefono, setTelefono] = useState('');
   // Lo que Paco propone recordar: 'guardando' | 'guardado' | 'descartado' (por texto).
   const [recordar, setRecordar] = useState<Record<string, string>>({});
   const finHilo = useRef<HTMLDivElement | null>(null);
@@ -187,6 +190,8 @@ export function RespuestasPanel() {
     Boolean(resultado?.texto) && textoFinal.trim() !== String(resultado?.texto || '').trim();
 
   const aplicar = (r: RespRedaccion) => {
+    const telFicha = r.borrador?.telefono ? String(r.borrador.telefono) : '';
+    if (telFicha) setTelefono((actual) => actual || telFicha);
     setResultado(r);
     setTextoFinal(r.texto ?? '');
     setGuardado(null);
@@ -286,6 +291,12 @@ export function RespuestasPanel() {
     }
   };
 
+  // Sin teléfono, WhatsApp deja elegir el chat; con teléfono, abre el de esa familia.
+  const enlaceWhatsapp = (texto: string) => {
+    const tel = normalizeWhatsappPhone(telefono);
+    return tel.length >= 9 ? whatsappDirectUrl(tel, texto) : `https://wa.me/?text=${encodeURIComponent(texto)}`;
+  };
+
   const copiar = async (clave: string, texto: string) => {
     const ok = await copiarTexto(texto);
     setCopiado(ok ? clave : '');
@@ -311,6 +322,7 @@ export function RespuestasPanel() {
   };
 
   const nuevoMensaje = () => {
+    setTelefono('');
     setHilo([]);
     setRecordar({});
     setResultado(null);
@@ -538,6 +550,33 @@ export function RespuestasPanel() {
                           </button>
                         ))}
                     </div>
+
+                    <div className="respuestas-whatsapp">
+                      <input
+                        type="tel"
+                        inputMode="tel"
+                        value={telefono}
+                        maxLength={20}
+                        placeholder="Teléfono (si lo dejas vacío, eliges el chat)"
+                        aria-label="Teléfono de la familia para WhatsApp"
+                        onChange={(e) => setTelefono(e.target.value)}
+                      />
+                      {(partes.length > 1 ? partes : [textoFinal.trim()]).map((parte, i) => (
+                        <a
+                          key={i}
+                          className={`respuestas-wa${!parte ? ' respuestas-wa--off' : ''}`}
+                          href={parte ? enlaceWhatsapp(parte) : undefined}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          aria-disabled={!parte}
+                        >
+                          {partes.length > 1 ? `WhatsApp ${i + 1}` : 'Abrir en WhatsApp'}
+                        </a>
+                      ))}
+                    </div>
+                    {resultado.borrador?.telefono && normalizeWhatsappPhone(telefono) === normalizeWhatsappPhone(resultado.borrador.telefono) && (
+                      <p className="respuestas-nota">Teléfono de la ficha de {resultado.borrador.nino || 'el niño'}. Revísalo antes de enviar.</p>
+                    )}
 
                     <div className="respuestas-aprende">
                       <button type="button" className="respuestas-sec respuestas-sec--aprende" disabled={guardando || !textoFinal.trim() || guardado !== null} onClick={() => void guardar()}>
