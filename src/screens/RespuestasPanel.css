@@ -198,6 +198,7 @@
 
 .respuestas-panel textarea,
 .respuestas-panel input[type='text'],
+.respuestas-panel input[type='tel'],
 .respuestas-panel select {
   width: 100%;
   padding: 11px 12px;
@@ -217,6 +218,7 @@
 
 .respuestas-panel textarea:focus,
 .respuestas-panel input[type='text']:focus,
+.respuestas-panel input[type='tel']:focus,
 .respuestas-panel select:focus {
   border-color: var(--j-acento);
   outline: none;
@@ -765,4 +767,37 @@
   min-height: 36px;
   padding: 7px 12px;
   font-size: 13px;
+}
+
+/* --- Abrir en WhatsApp --- */
+.respuestas-whatsapp {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.respuestas-whatsapp input {
+  flex: 1 1 170px;
+  min-width: 0;
+}
+
+.respuestas-wa {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid rgba(37, 211, 102, 0.6);
+  border-radius: 12px;
+  background: rgba(37, 211, 102, 0.16);
+  color: #c9f7da;
+  font-size: 14px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.respuestas-wa--off {
+  opacity: 0.45;
+  pointer-events: none;
 }
