@@ -46,9 +46,10 @@ type Cont =
   | { kind: "alta_validate_add"; id: string; nivel: string | null }
   | { kind: "alta_add"; id: string; alumno_existente_id: string | null; confirmar_nuevo: boolean }
   | { kind: "alta_whatsapp"; id: string }
-  | { kind: "alta_mark_sent"; id: string };
+  | { kind: "alta_mark_sent"; id: string }
+  | { kind: "alta_recordatorio"; id: string };
 type Choice = { label: string; continuation: Cont };
-type Accion = { type: "whatsapp"; alta_id: string; nombre: string; telefono: string; token: string };
+type Accion = { type: "whatsapp"; alta_id: string; nombre: string; telefono: string; token: string; recordatorio?: boolean };
 type Result = {
   answer: string;
   choices: Choice[];
@@ -555,6 +556,34 @@ async function markSent(authz: string, id: string): Promise<Result> {
   return { answer: "", choices: [], draft: null, changed: true, silent: true };
 }
 
+// Recordatorio a la familia que no ha respondido el test (mismo enlace).
+async function recordatorioFlow(authz: string, id: string): Promise<Result> {
+  const r = await whatsappFlow(authz, id);
+  if (!r.actions?.length) return r;
+  const a = r.actions[0];
+  return {
+    answer: `Listo, señor Cubero. Pulse el botón y se abre WhatsApp con un recordatorio amable y el enlace del test para la familia de ${a.nombre}. Allí solo le queda darle a Enviar.`,
+    choices: [],
+    draft: null,
+    actions: [{ ...a, recordatorio: true }],
+  };
+}
+
+// Paco valida solo las altas «fáciles»: confianza ALTA y sin marca de revisión.
+// En las 14 altas validadas hasta el 26/10/2026 con confianza ALTA, el nivel
+// que puso Jose fue siempre el propuesto. Si hay fichas parecidas, pregunta.
+function esAltaFacil(a: any) {
+  return a.estado === "RESPONDIDO" &&
+    String(a.nivel_propuesto_confianza || "").toUpperCase() === "ALTA" &&
+    !a.requiere_revision_jefe &&
+    Boolean(a.nivel_propuesto);
+}
+
+function diasDesde(iso: unknown) {
+  const t = new Date(String(iso || "")).getTime();
+  return Number.isNaN(t) ? 0 : Math.floor((Date.now() - t) / 86_400_000);
+}
+
 async function pickLevel(authz: string, id: string): Promise<Result> {
   const levels = await loadLevels(authz);
   if (!levels.length) return { answer: "No he podido cargar los niveles.", choices: [], draft: null };
@@ -680,6 +709,7 @@ function parseCont(x: any): Cont | null {
     case "alta_pick_level":
     case "alta_whatsapp":
     case "alta_mark_sent":
+    case "alta_recordatorio":
       return UUID.test(String(x.id || "")) ? { kind: x.kind, id: String(x.id) } : null;
     case "alta_validate_add":
       return UUID.test(String(x.id || ""))
@@ -723,6 +753,8 @@ async function runCont(c: Cont, authz: string): Promise<Result> {
       return whatsappFlow(authz, c.id);
     case "alta_mark_sent":
       return markSent(authz, c.id);
+    case "alta_recordatorio":
+      return recordatorioFlow(authz, c.id);
   }
 }
 
@@ -751,13 +783,40 @@ Deno.serve(async (req) => {
     // 2) Aviso proactivo: altas respondidas pendientes de decidir.
     if (b.check === "respondidas") {
       const altas = await loadAltas(c.authz);
-      const items = altas
-        .filter((a) => a.estado === "RESPONDIDO")
-        .slice(0, 5)
-        .map((a) => {
-          const p = proposal(a, []);
-          return { id: String(a.id), nombre: String(a.nombre_completo), answer: p.answer, choices: p.choices };
+      const items: { id: string; nombre: string; answer: string; choices: Choice[] }[] = [];
+
+      // a) Respondidas fáciles: Paco las valida y añade él solo, y lo cuenta.
+      for (const a of altas.filter(esAltaFacil).slice(0, 3)) {
+        const r = await validateAdd(c.authz, String(a.id), null);
+        items.push({
+          id: `auto:${a.id}`,
+          nombre: String(a.nombre_completo),
+          answer: `🤖 Hecho por mí, señor Cubero: la familia de ${a.nombre_completo} respondió el test y el resultado era claro (confianza alta).\n${r.answer}`,
+          choices: r.choices,
         });
+      }
+
+      // b) Respondidas con dudas: como siempre, se le pregunta.
+      for (const a of altas.filter((x) => x.estado === "RESPONDIDO" && !esAltaFacil(x)).slice(0, 5)) {
+        const p = proposal(a, []);
+        items.push({ id: String(a.id), nombre: String(a.nombre_completo), answer: p.answer, choices: p.choices });
+      }
+
+      // c) Enviadas sin respuesta: recordatorio a los 2 días y otro a los 5
+      //    (las de hace más de 3 semanas ya no se recuerdan: se ven en Altas / Test).
+      for (const a of altas.filter((x) => x.estado === "ENVIADO" && !x.respondido_at && diasDesde(x.enviado_at) >= 2 && diasDesde(x.enviado_at) <= 21).slice(0, 5)) {
+        const dias = diasDesde(a.enviado_at);
+        const mod = MODALIDAD_LABEL[String(a.modalidad)] || String(a.modalidad);
+        items.push({
+          id: `recordatorio:${a.id}:${dias >= 5 ? 2 : 1}`,
+          nombre: String(a.nombre_completo),
+          answer: `Señor Cubero, la familia de ${a.nombre_completo} (${mod}) no ha respondido el test desde hace ${dias} días. ¿Le preparo un recordatorio por WhatsApp? Usted solo pulsa Enviar.`,
+          choices: [
+            { label: "Preparar recordatorio", continuation: { kind: "alta_recordatorio", id: String(a.id) } },
+            dismissChoice(String(a.id)),
+          ],
+        });
+      }
       return J({ ok: true, handled: true, items });
     }
 

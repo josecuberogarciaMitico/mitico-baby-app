@@ -10,6 +10,7 @@ import { addIsoDays, type BabyRelocationOption, type BabyRelocationStudent } fro
 import { loadBabyRelocationOptions, moveBabyStudentBetweenSessions } from '../../services/agenda/agendaRelocationService';
 import { addLateStudentToSession } from '../../services/agenda/lateStudentSessionService';
 import { SessionTrainerCoverageLine } from './AgendaTrainerSummary';
+import { PacoAltasAviso } from '../baby/PacoAltasAviso';
 import { pendingAgendaStudents } from './agendaSessions';
 import { notifyGroupChangedAndRequestReconfirmation } from './groupChangeNotification';
 import { abrirFichaAlumno } from '../students/studentFichaStore';
@@ -77,6 +78,9 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     avisoCompleto,
     avisoNeutral,
     avisoPendiente,
+    altasPaco,
+    setAltasPaco,
+    enviarAltaPacoWhatsapp,
     babyAimHarderCargandoSemana,
     babyAimHarderError,
     babyAimHarderFormularioCargando,
@@ -828,6 +832,15 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                       )}
                     </div>
                   )}
+
+                {esCoordinadorApp && altasPaco && (
+                  <PacoAltasAviso
+                    aviso={altasPaco}
+                    onEnviar={enviarAltaPacoWhatsapp}
+                    onAbrirAlta={abrirAltaTestDesdeAgenda}
+                    onCerrar={() => setAltasPaco(null)}
+                  />
+                )}
               </div>
             </div>
 
