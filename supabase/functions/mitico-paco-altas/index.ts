@@ -802,8 +802,9 @@ Deno.serve(async (req) => {
         items.push({ id: String(a.id), nombre: String(a.nombre_completo), answer: p.answer, choices: p.choices });
       }
 
-      // c) Enviadas sin respuesta: recordatorio a los 2 días y otro a los 5.
-      for (const a of altas.filter((x) => x.estado === "ENVIADO" && !x.respondido_at && diasDesde(x.enviado_at) >= 2).slice(0, 5)) {
+      // c) Enviadas sin respuesta: recordatorio a los 2 días y otro a los 5
+      //    (las de hace más de 3 semanas ya no se recuerdan: se ven en Altas / Test).
+      for (const a of altas.filter((x) => x.estado === "ENVIADO" && !x.respondido_at && diasDesde(x.enviado_at) >= 2 && diasDesde(x.enviado_at) <= 21).slice(0, 5)) {
         const dias = diasDesde(a.enviado_at);
         const mod = MODALIDAD_LABEL[String(a.modalidad)] || String(a.modalidad);
         items.push({
