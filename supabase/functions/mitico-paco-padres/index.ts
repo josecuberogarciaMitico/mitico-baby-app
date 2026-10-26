@@ -249,7 +249,9 @@ async function route(text: string): Promise<Route> {
 }
 
 // telefono: solo para el botón «Abrir en WhatsApp» de la app; NUNCA va a la IA.
-type Hechos = { texto: string; nino: string | null; telefono?: string | null };
+// notasJose: lo que Jose le apuntó a Paco sobre ese niño (paco_notas). Se le
+// recuerda a Jose y la IA lo usa solo si viene al caso (nunca los conflictos).
+type Hechos = { texto: string; nino: string | null; telefono?: string | null; notasJose?: string[] };
 
 type Modo = "respuesta" | "notas";
 type Destino = "familias" | "entrenadores";
@@ -311,11 +313,12 @@ export function matchStudents(names: string[], roster: Student[]) {
 async function buildHechos(s: Student): Promise<Hechos> {
   const td = todayMadrid();
   const id = encodeURIComponent(s.id);
-  const [levels, ga, att, rep] = await Promise.all([
+  const [levels, ga, att, rep, notasRaw] = await Promise.all([
     admin("/rest/v1/niveles?select=id,codigo&activo=eq.true&limit=100"),
     admin(`/rest/v1/grupo_alumnos?select=grupo_id,es_recuperacion&alumno_id=eq.${id}&limit=100`),
     admin(`/rest/v1/asistencias?select=estado&alumno_id=eq.${id}&limit=300`),
     admin(`/rest/v1/v_historial_reportes_alumno?select=fecha,nivel_reportado,actitud,tecnica,autonomia&alumno_id=eq.${id}&order=fecha.desc&limit=1`),
+    admin(`/rest/v1/paco_notas?select=texto,una_vez,entrenador_id&alumno_id=eq.${id}&activa=eq.true&order=created_at.asc&limit=10`).catch(() => []),
   ]);
   const lv = new Map((Array.isArray(levels) ? levels : []).map((x: any) => [String(x.id), String(x.codigo)]));
   const nivel = lv.get(String(s.nivel_actual_id || "")) || lv.get(String(s.nivel_estimado_id || "")) || null;
@@ -365,7 +368,12 @@ async function buildHechos(s: Student): Promise<Hechos> {
     const p = [r.nivel_reportado && `nivel ${r.nivel_reportado}`, r.actitud && `actitud ${r.actitud}`, r.tecnica && `técnica ${r.tecnica}`, r.autonomia && `autonomía ${r.autonomia}`].filter(Boolean).join(", ");
     if (p) lineas.push(`Último reporte (${String(r.fecha).slice(0, 10)}): ${p}.`);
   }
-  return { texto: lineas.join("\n"), nino: nombre, telefono: telefonoLimpio(s.telefono) };
+  const notasJose = (Array.isArray(notasRaw) ? notasRaw : []).map((n: any) => `${String(n.texto)}${n.una_vez ? " (para la próxima vez)" : ""}`);
+  const sinConflictos = (Array.isArray(notasRaw) ? notasRaw : []).filter((n: any) => !n.entrenador_id).map((n: any) => String(n.texto));
+  if (sinConflictos.length) {
+    lineas.push(`Notas internas de Jose sobre este niño (úsalas solo si vienen al caso; no digas que son notas): ${sinConflictos.join(" | ")}.`);
+  }
+  return { texto: lineas.join("\n"), nino: nombre, telefono: telefonoLimpio(s.telefono), notasJose };
 }
 
 // ---------- Aprendizaje de Jose (tablas propias) ---------------------------------------------
@@ -634,7 +642,8 @@ async function generar(mensaje: string, instruccion: string | null, hechos: Hech
   const intro = hechos?.nino
     ? `Aquí tiene la respuesta para la familia de ${hechos.nino}, señor Cubero. Está lista para copiar.`
     : "Aquí tiene la respuesta para la familia, señor Cubero. Está lista para copiar.";
-  return replyOk(out, d, notas, intro);
+  const recordatorios = (hechos?.notasJose || []).map((n) => `📝 Tienes apuntado de ${hechos?.nino || "este niño"}: ${n}`);
+  return replyOk(out, d, [...recordatorios, ...notas], intro);
 }
 
 async function generarNotas(notas: string, destino: Destino) {
@@ -756,7 +765,7 @@ Deno.serve(async (req) => {
           hechos = await buildHechos(m.unicos[0]);
           if (m.unicos.length > 1) {
             const resto = await Promise.all(m.unicos.slice(1, 3).map((s) => buildHechos(s)));
-            hechos = { texto: [hechos.texto, ...resto.map((r) => r.texto)].join("\n\n"), nino: [hechos.nino, ...resto.map((r) => r.nino)].filter(Boolean).join(" y "), telefono: hechos.telefono };
+            hechos = { texto: [hechos.texto, ...resto.map((r) => r.texto)].join("\n\n"), nino: [hechos.nino, ...resto.map((r) => r.nino)].filter(Boolean).join(" y "), telefono: hechos.telefono, notasJose: [...(hechos.notasJose || []), ...resto.flatMap((r) => r.notasJose || [])] };
           }
           if (m.ambiguos.length) notas.push(`Hay otro niño mencionado («${m.ambiguos[0].nombre}») que no he podido identificar: sin sus datos.`);
         } else if (m.sinMatch.length) {

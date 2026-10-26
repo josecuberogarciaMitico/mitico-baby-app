@@ -8,6 +8,8 @@ import {
   esPropuestaAgente,
   type PropuestaAgente,
 } from '../features/pacoAcciones/pacoAgenteAcciones';
+import { esPropuestaNotaAgente, pareceNotaDeNino, type PropuestaNotaAgente } from '../features/pacoAcciones/pacoNotasLogic';
+import { ejecutarPropuestaNota } from '../features/pacoAcciones/pacoNotasService';
 const MITICO_AUTH_STORAGE_KEY = 'mitico_auth_session_v1';
 const PACO_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-api`;
 const PACO_SECRETARIA_ENDPOINT = `${SUPABASE_URL}/functions/v1/mitico-paco-secretaria`;
@@ -101,6 +103,11 @@ export type PacoContinuation =
   | {
       kind: 'agente_accion';
       propuesta: PropuestaAgente;
+    }
+  // Memoria de Paco: nota preparada por el agente; solo se guarda al pulsar.
+  | {
+      kind: 'agente_nota';
+      propuesta: PropuestaNotaAgente;
     }
   // Respuestas a familias: el borrador viaja dentro del boton, lo valida el servidor.
   | {
@@ -660,6 +667,8 @@ function pareceOrdenSecretaria(message: string) {
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase();
+  // Las notas sobre un niño o su familia van al agente (memoria de Paco).
+  if (pareceNotaDeNino(message)) return false;
   return /\b(apunta|apuntame|anota|anotame|recuerdame|tarea|tareas|secretaria|notas?|marca como|resuelt[oa]|borra|elimina)\b/.test(n);
 }
 
@@ -678,11 +687,17 @@ async function llamarAgentePaco(message: string): Promise<PacoResponse | null> {
     const extra = r as PacoResponse & { memoria?: unknown; acciones?: unknown };
     if (typeof extra.memoria === 'string') memoriaAgente = extra.memoria.slice(0, 2500);
     const acciones = Array.isArray(extra.acciones) ? extra.acciones.filter(esPropuestaAgente) : [];
-    if (acciones.length) {
+    const notasExtra = (r as PacoResponse & { notas?: unknown }).notas;
+    const notas = Array.isArray(notasExtra) ? notasExtra.filter(esPropuestaNotaAgente) : [];
+    if (acciones.length || notas.length) {
       r.choices = [
         ...acciones.map((propuesta) => ({
           label: `✅ Confirmar: ${propuesta.etiqueta}`,
           continuation: { kind: 'agente_accion' as const, propuesta },
+        })),
+        ...notas.map((propuesta) => ({
+          label: `✅ Confirmar: ${propuesta.etiqueta}`,
+          continuation: { kind: 'agente_nota' as const, propuesta },
         })),
         { label: 'Cancelar', continuation: { kind: 'accion_cancelar' as const } },
       ];
@@ -826,6 +841,27 @@ export async function continuarPaco(continuation: PacoContinuation) {
       return {
         ok: false,
         error: 'No he podido hacerlo. No se ha cambiado nada; inténtelo de nuevo.',
+      } as PacoResponse;
+    }
+  }
+  if (continuation.kind === 'agente_nota') {
+    const propuesta = (continuation as { propuesta?: unknown }).propuesta;
+    if (!esPropuestaNotaAgente(propuesta)) {
+      return { ok: false, error: 'Esa nota no es válida. No he guardado nada.' } as PacoResponse;
+    }
+    try {
+      const salida = await ejecutarPropuestaNota(propuesta);
+      historialAgente = [
+        ...historialAgente,
+        { rol: 'assistant' as const, texto: salida.answer.slice(0, 1500) },
+      ].slice(-MAX_HISTORIAL_AGENTE);
+      return { ok: true, handled: true, answer: salida.answer, choices: [] } as PacoResponse;
+    } catch (error) {
+      const status = (error as Error & { status?: number })?.status;
+      if (status === 401 || status === 403) throw error;
+      return {
+        ok: false,
+        error: `No he podido guardarla: ${error instanceof Error ? error.message.slice(0, 160) : 'error'}. No se ha guardado nada.`,
       } as PacoResponse;
     }
   }

@@ -11,6 +11,7 @@ import { loadBabyRelocationOptions, moveBabyStudentBetweenSessions } from '../..
 import { addLateStudentToSession } from '../../services/agenda/lateStudentSessionService';
 import { SessionTrainerCoverageLine } from './AgendaTrainerSummary';
 import { PacoAltasAviso } from '../baby/PacoAltasAviso';
+import { PacoNotasSesion } from '../pacoAcciones/PacoNotasSesion';
 import { pendingAgendaStudents } from './agendaSessions';
 import { notifyGroupChangedAndRequestReconfirmation } from './groupChangeNotification';
 import { abrirFichaAlumno } from '../students/studentFichaStore';
@@ -1447,6 +1448,13 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                   style={{ ...tarjetaResaltada, scrollMarginTop: 16 }}
                 >
                   <h3 style={{ marginTop: 0 }}>Sesión seleccionada</h3>
+
+                  {esCoordinadorApp && (
+                    <PacoNotasSesion
+                      sesionId={agendaSesionActivaId}
+                      firma={`${firmaGruposAgenda}#${agendaAlumnosSesion.length}`}
+                    />
+                  )}
 
                   {(() => {
                     const totalAlumnosGrupos = agendaGruposSesion.reduce(
