@@ -88,7 +88,8 @@ export type PacoContinuation =
         | 'alta_validate_add'
         | 'alta_add'
         | 'alta_whatsapp'
-        | 'alta_mark_sent';
+        | 'alta_mark_sent'
+        | 'alta_recordatorio';
       [clave: string]: unknown;
     }
   // Paco con «ojos»: boton que manda ese texto al agente (p. ej. elegir un niño).
@@ -162,6 +163,8 @@ export type PacoAccion = {
   nombre: string;
   telefono: string;
   token: string;
+  // true: es un recordatorio a una familia que aún no ha respondido el test.
+  recordatorio?: boolean;
 };
 
 export type PacoAvisoAlta = {
@@ -476,10 +479,12 @@ export function urlWhatsappTestNivel(accion: PacoAccion) {
   const enlace = `${window.location.origin}${window.location.pathname}?test_nivel=${accion.token}`;
   const nombrePila =
     accion.nombre.trim().split(/\\s+/)[0] || accion.nombre; // igual que App.tsx (usa /\\s+/)
-  const texto =
-    `Hola familia, para preparar correctamente el grupo de ${nombrePila} necesitamos una pequeña valoración de su experiencia esquiando.\n\n` +
-    `No tenéis que conocer su nivel: son 8 preguntas de respuesta cerrada sobre lo que le habéis visto hacer y se tarda aproximadamente 2 minutos.\n\n` +
-    `${enlace}\n\nMuchas gracias.`;
+  const texto = accion.recordatorio
+    ? `Hola familia, os recordamos la pequeña valoración de ${nombrePila} para prepararle bien su grupo. ` +
+      `Son 8 preguntas de respuesta cerrada y se tarda unos 2 minutos.\n\n${enlace}\n\n¡Muchas gracias!`
+    : `Hola familia, para preparar correctamente el grupo de ${nombrePila} necesitamos una pequeña valoración de su experiencia esquiando.\n\n` +
+      `No tenéis que conocer su nivel: son 8 preguntas de respuesta cerrada sobre lo que le habéis visto hacer y se tarda aproximadamente 2 minutos.\n\n` +
+      `${enlace}\n\nMuchas gracias.`;
   return `https://wa.me/${telefono}?text=${encodeURIComponent(texto)}`;
 }
 
