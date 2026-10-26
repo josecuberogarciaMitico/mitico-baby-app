@@ -341,7 +341,7 @@ create or replace function public.aimharder_asistentes_app(p_fecha date, p_sched
  set search_path to 'aimharder_sync', 'public', 'pg_temp'
 as $function$
 declare c record; v_act jsonb; v_canc jsonb; v_sync timestamptz;
-  v_cands bigint[]; v_pend int; v_pos int; v_hora int; v_espera int; v_eta int;
+  v_cands bigint[]; v_conocidos bigint[]; v_pend int; v_pos int; v_hora int; v_espera int; v_eta int;
 begin
   select * into c from aimharder_sync.clases where schedule_id = p_schedule_id and fecha = p_fecha;
   if not found then
@@ -364,21 +364,26 @@ begin
 
   -- A quién hay que mirar: los que ya sé que van (por si cancelan) y los
   -- habituales de este turno (por si han reservado y aún no lo he visto).
+  select coalesce(array_agg(distinct a.cid), '{}') into v_conocidos
+  from aimharder_sync.asistentes_clase(p_fecha, p_schedule_id) a where a.cid is not null;
   select coalesce(array_agg(distinct x.cid), '{}') into v_cands
   from (
-    select a.cid from aimharder_sync.asistentes_clase(p_fecha, p_schedule_id) a where a.cid is not null
+    select unnest(v_conocidos) cid
     union
     select h.cid from aimharder_sync.habituales_clase(p_fecha, p_schedule_id) h
   ) x
   join aimharder_sync.clientes cl on cl.cid = x.cid and cl.fecha_baja is null;
 
-  -- Solo clases que aún no han pasado: las pasadas no cambian.
+  -- Solo clases que aún no han pasado: las pasadas no cambian. Los que ya van
+  -- se vuelven a mirar si hace más de 10 min; los habituales, si hace más de
+  -- 1 h (así pulsar varias veces no gasta consultas de más).
   if p_fecha >= current_date then
     insert into aimharder_sync.cola (cid, prioridad, motivo)
     select cl.cid, 10, 'app_refrescar_clase'
     from aimharder_sync.clientes cl
     where cl.cid = any(v_cands)
-      and coalesce(cl.reservas_sync_at, 'epoch'::timestamptz) < now() - interval '10 minutes'
+      and coalesce(cl.reservas_sync_at, 'epoch'::timestamptz) <
+          now() - case when cl.cid = any(v_conocidos) then interval '10 minutes' else interval '1 hour' end
     on conflict (cid) do update set prioridad = greatest(aimharder_sync.cola.prioridad, 10);
   end if;
 
