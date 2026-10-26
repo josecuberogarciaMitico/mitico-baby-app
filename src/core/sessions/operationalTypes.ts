@@ -62,6 +62,8 @@ export type AlumnoReporteEntrenador = {
   nivel_alumno?: string | null;
   fuente_nivel?: string | null;
   pista_alumno?: string | null;
+  // Años cumplidos el día de la sesión (la vista no expone la fecha de nacimiento).
+  edad?: number | null;
 };
 
 export type ReportePendiente = Omit<

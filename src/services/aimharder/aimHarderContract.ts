@@ -74,6 +74,19 @@ export type BabyAimHarderSafetyApp = {
   // no se mostraba en ningún sitio de la app.
   reservasActualizadasAt?: string | null;
   clientesRepasadosAt?: string | null;
+  // Desde el 26/10/2026 (backend v31): nº de reservas que dice el calendario
+  // de AimHarder (si lo trae) y progreso del repaso de los niños del turno.
+  reservadasAimHarder?: number | null;
+  repaso?: BabyAimHarderRepasoApp | null;
+};
+
+export type BabyAimHarderRepasoApp = {
+  // Niños de este turno que hay que mirar (los que ya van + los habituales).
+  revisar: number;
+  // Cuántos de ellos siguen esperando su repaso.
+  pendientes: number;
+  // Minutos estimados para terminar.
+  etaMin: number;
 };
 
 export type BabyAimHarderLecturaApp = {

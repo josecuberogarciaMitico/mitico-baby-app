@@ -104,3 +104,10 @@ export function chipPorDefectoEntrenador<G>(
     ''
   );
 }
+
+/** Edad del niño para la vista entrenador: «4 años», «1 año» o null si no hay dato válido. */
+export function textoEdadNino(edad: number | null | undefined): string | null {
+  if (typeof edad !== 'number' || !Number.isFinite(edad) || edad < 0 || edad > 25) return null;
+  const anios = Math.floor(edad);
+  return `${anios} ${anios === 1 ? 'año' : 'años'}`;
+}

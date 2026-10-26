@@ -792,18 +792,18 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                       {babyAimHarderMensaje && (
                         <div
                           style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
+                            display: 'block',
                             width: 'fit-content',
                             maxWidth: '100%',
-                            padding: '5px 8px',
+                            padding: '6px 9px',
                             borderRadius: 8,
                             background: 'rgba(240,253,244,.72)',
                             border: '1px solid rgba(134,239,172,.55)',
                             color: '#166534',
                             fontSize: 12,
-                            fontWeight: 700,
-                            lineHeight: 1.25,
+                            fontWeight: 600,
+                            lineHeight: 1.4,
+                            whiteSpace: 'pre-line',
                           }}
                         >
                           {babyAimHarderMensaje}
@@ -818,7 +818,9 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                             border: '1px solid rgba(251,146,60,.75)',
                             color: '#9a3412',
                             fontSize: 12,
-                            fontWeight: 800,
+                            fontWeight: 700,
+                            lineHeight: 1.4,
+                            whiteSpace: 'pre-line',
                           }}
                         >
                           {babyAimHarderError}

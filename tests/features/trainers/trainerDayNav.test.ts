@@ -2,6 +2,7 @@ import {
   chipPorDefectoEntrenador,
   chipsDiasEntrenador,
   claveChipDiaEntrenador,
+  textoEdadNino,
   tituloDiaCortoEntrenador,
 } from '../../../src/features/trainers/trainerDayNav';
 
@@ -79,4 +80,14 @@ test('varias semanas anteriores se distinguen por fecha', () => {
     (grupo) => grupo.pendiente
   );
   equal(varias.map((chip) => chip.titulo), ['Semana 05/10', 'Semana 12/10', 'Vie 23'], 'títulos');
+});
+
+test('edad del niño: texto corto y nada si no hay dato válido', () => {
+  equal(textoEdadNino(4), '4 años', 'cuatro');
+  equal(textoEdadNino(1), '1 año', 'singular');
+  equal(textoEdadNino(0), '0 años', 'bebé');
+  equal(textoEdadNino(null), null, 'sin dato');
+  equal(textoEdadNino(undefined), null, 'sin campo');
+  equal(textoEdadNino(-1), null, 'negativa');
+  equal(textoEdadNino(40), null, 'absurda');
 });
