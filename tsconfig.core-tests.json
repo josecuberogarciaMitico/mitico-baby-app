@@ -24,6 +24,7 @@
     "src/features/billing/**/*.ts",
     "src/services/aimharder/aimHarderContract.ts",
     "src/services/aimharder/aimHarderOperations.ts",
+    "src/services/aimharder/pacoListadoMensajes.ts",
     "src/services/imports/manualRosterSource.ts",
     "src/services/auth/authContract.ts",
     "src/services/auth/authTypes.ts",

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   assessRosterRefresh,
   findListImportIdentityConflicts,
@@ -27,14 +27,19 @@ import type {
 } from '../../services/aimharder/aimHarderContract';
 import {
   buildBabyAddOnlySummary,
-  buildBabyRefreshSummary,
   describirConfirmacionSoloAnadirBaby,
-  describirFrescuraAimHarderBabyApp,
   describirRepasoSolicitadoBabyApp,
   planBabyWeekSlots,
   selectExactBabyClass,
 } from '../../services/aimharder/aimHarderOperations';
 import type { BabyAddOnlyResult } from '../../services/aimharder/aimHarderOperations';
+import {
+  mensajePacoError,
+  mensajePacoRefresco,
+  mensajePacoSoloAnadir,
+  mensajePacoTraerListado,
+  repasoEnCurso,
+} from '../../services/aimharder/pacoListadoMensajes';
 import { fechaAgendaCortaConAnio, inicioSemanaAgenda, rangoSemanaAgenda } from '../agenda/agendaCalendar';
 import type { AgendaAlumnoSesionApp, SesionAgendaOperativa } from '../agenda/agendaTypes';
 
@@ -44,6 +49,7 @@ type BabyAimHarderDependencies = {
     fecha: string;
     hora_inicio: string;
     hora_fin: string;
+    texto_listado?: string;
   };
   cargarAgendaOperativaDirecta: () => Promise<unknown>;
   cargarDetalleSesionAgenda: (
@@ -87,6 +93,41 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
   const [babyAimHarderFormularioCargando, setBabyAimHarderFormularioCargando] = useState(false);
   const [babyAimHarderMensaje, setBabyAimHarderMensaje] = useState('');
   const [babyAimHarderError, setBabyAimHarderError] = useState('');
+
+  // Seguimiento automático: mientras la copia de AimHarder sigue comprobando
+  // niños de un turno, se vuelve a mirar sola cada pocos minutos y, al
+  // terminar, se actualiza el listado (o la sesión) sin que Jose pulse nada.
+  const formularioRef = useRef(agendaForm);
+  formularioRef.current = agendaForm;
+  const textoTraidoRef = useRef<string | null>(null);
+  const seguimientosRef = useRef<Record<string, number>>({});
+  const MAX_SEGUIMIENTOS = 20;
+
+  useEffect(() => {
+    const pendientes = seguimientosRef.current;
+    return () => {
+      Object.values(pendientes).forEach((id) => window.clearTimeout(id));
+    };
+  }, []);
+
+  function programarSeguimiento(
+    clave: string,
+    etaMin: number,
+    intento: number,
+    accion: (intento: number) => void
+  ) {
+    if (typeof window === 'undefined') return;
+    const previo = seguimientosRef.current[clave];
+    if (previo) window.clearTimeout(previo);
+    delete seguimientosRef.current[clave];
+    if (intento > MAX_SEGUIMIENTOS) return;
+    // Se vuelve a mirar como mucho cada 3 min (antes si termina antes).
+    const minutos = Math.min(Math.max(Number(etaMin) || 1, 1), 3);
+    seguimientosRef.current[clave] = window.setTimeout(() => {
+      delete seguimientosRef.current[clave];
+      accion(intento);
+    }, minutos * 60000);
+  }
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -391,13 +432,17 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
     setBabyAimHarderError('');
     setError('');
 
+    const fecha = String(agendaForm.fecha || '').slice(0, 10);
+    const inicio = horaCorta(agendaForm.hora_inicio);
+    const fin = horaCorta(agendaForm.hora_fin);
     try {
       const { asistentes, safety } = await obtenerListadoBabyTurnoAimHarderApp(
-        agendaForm.fecha,
-        agendaForm.hora_inicio,
-        agendaForm.hora_fin
+        fecha,
+        inicio,
+        fin
       );
       const textoListado = asistentes.map((asistente) => asistente.name).join('\n');
+      textoTraidoRef.current = textoListado;
 
       setAgendaForm((anterior) => ({
         ...anterior,
@@ -405,11 +450,13 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
       }));
 
       setBabyAimHarderMensaje(
-        `✓ TRAER LISTADO · AimHarder: ${asistentes.length} alumno(s) activo(s) · ` +
-        `${asistentes.length > 0 ? 'listado preparado' : 'listado vacío'} · ` +
-        'cancelados excluidos · la sesión NO se ha modificado · ' +
-        describirFrescuraAimHarderBabyApp(safety)
+        mensajePacoTraerListado({ fecha, inicio, fin, activos: asistentes.length, safety })
       );
+      if (repasoEnCurso(safety)) {
+        programarSeguimiento('formulario', safety.repaso?.etaMin ?? 1, 1, (intento) =>
+          void seguirTraerListadoBaby(fecha, inicio, fin, intento)
+        );
+      }
     } catch (e) {
       setBabyAimHarderError(
         e instanceof Error
@@ -418,6 +465,52 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
       );
     } finally {
       setBabyAimHarderFormularioCargando(false);
+    }
+  }
+
+  // Vuelve a leer el turno del formulario mientras se están comprobando niños.
+  // Solo actualiza el cuadro si Jose no ha cambiado de turno ni ha tocado el
+  // texto que se trajo; si no, se para sin decir nada.
+  async function seguirTraerListadoBaby(
+    fecha: string,
+    inicio: string,
+    fin: string,
+    intento: number
+  ) {
+    const mismoTurno = () => {
+      const f = formularioRef.current;
+      return (
+        String(f.modalidad || '').trim().toUpperCase() === 'BABY' &&
+        String(f.fecha || '').slice(0, 10) === fecha &&
+        horaCorta(f.hora_inicio) === inicio &&
+        horaCorta(f.hora_fin) === fin &&
+        String(f.texto_listado ?? '') === String(textoTraidoRef.current ?? '')
+      );
+    };
+    if (!mismoTurno()) return;
+    try {
+      const { asistentes, safety } = await obtenerListadoBabyTurnoAimHarderApp(
+        fecha,
+        inicio,
+        fin
+      );
+      if (!mismoTurno()) return;
+      const textoListado = asistentes.map((asistente) => asistente.name).join('\n');
+      textoTraidoRef.current = textoListado;
+      setAgendaForm((anterior) => ({ ...anterior, texto_listado: textoListado }));
+      setBabyAimHarderMensaje(
+        mensajePacoTraerListado({ fecha, inicio, fin, activos: asistentes.length, safety })
+      );
+      if (repasoEnCurso(safety)) {
+        programarSeguimiento('formulario', safety.repaso?.etaMin ?? 1, intento + 1, (siguiente) =>
+          void seguirTraerListadoBaby(fecha, inicio, fin, siguiente)
+        );
+      }
+    } catch {
+      // Fallo puntual de red: se vuelve a intentar más tarde.
+      programarSeguimiento('formulario', 2, intento + 1, (siguiente) =>
+        void seguirTraerListadoBaby(fecha, inicio, fin, siguiente)
+      );
     }
   }
 
@@ -455,6 +548,8 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
       let sinReservas = 0;
       let turnosLeidos = 0;
       let alumnosActivosLeidos = 0;
+      let ninosPorComprobar = 0;
+      let minutosParaTerminar = 0;
       const incidencias: string[] = [];
 
       // El CORE agrupa por fecha + inicio y excluye cualquier turno ambiguo.
@@ -474,6 +569,13 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
 
           turnosLeidos += 1;
           alumnosActivosLeidos += asistentes.length;
+          if (repasoEnCurso(lectura.safety)) {
+            ninosPorComprobar += Number(lectura.safety.repaso?.pendientes) || 0;
+            minutosParaTerminar = Math.max(
+              minutosParaTerminar,
+              Number(lectura.safety.repaso?.etaMin) || 1
+            );
+          }
           emitirListadoBabyAimHarderAgenda(clase, asistentes);
 
           if (asistentes.length === 0) {
@@ -558,25 +660,29 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
       await cargarAgendaOperativaDirecta();
       await cargarListados();
 
-      const partes = [
-        `✓ CARGAR SEMANA · ${turnosLeidos} turno(s) Baby leído(s)`,
-        `${alumnosActivosLeidos} alumno(s) activo(s) en AimHarder`,
-        `${creadas} sesión(es) nueva(s) creada(s)`,
-        `${refrescadas} sesión(es) actualizada(s) (${alumnosAnadidos} alumno(s) añadido(s))`,
-        `${yaAlDia} sesión(es) ya al día`,
-        ...(yaExistentes > 0
-          ? [`${yaExistentes} sesión(es) ya existente(s) sin modificar`]
+      const lineas = [
+        `Paco · Cargar semana Baby (${rangoSemanaAgenda(semanaAgendaActiva)})`,
+        `He mirado ${turnosLeidos} turno(s) con ${alumnosActivosLeidos} niño(s) apuntados en AimHarder (sin contar cancelados).`,
+        `Sesiones: ${creadas} nueva(s) · ${refrescadas} actualizada(s)` +
+          `${alumnosAnadidos > 0 ? ` (+${alumnosAnadidos} niño(s))` : ''} · ${yaAlDia} ya estaban al día` +
+          `${yaExistentes > 0 ? ` · ${yaExistentes} sin tocar` : ''}.`,
+        ...(sinReservas > 0
+          ? [`${sinReservas} turno(s) todavía sin nadie apuntado.`]
           : []),
-        `${sinReservas} turno(s) con 0 activos`,
-        'cancelados excluidos',
+        ...(ninosPorComprobar > 0
+          ? [
+              `⏳ Aún estoy comprobando a ${ninosPorComprobar} niño(s) que suelen venir, por si han reservado. ` +
+                `Vuelve a pulsar «Cargar semana» en unos ${minutosParaTerminar} min para tenerlo completo.`,
+            ]
+          : ['✔ He comprobado a todos los que suelen venir.']),
       ];
 
-      setBabyAimHarderMensaje(partes.join(' · '));
+      setBabyAimHarderMensaje(lineas.join('\n'));
 
       if (incidencias.length > 0) {
         setBabyAimHarderError(
-          `Hay ${incidencias.length} turno(s) que necesitan revisión. ${incidencias.join(
-            ' | '
+          `Hay ${incidencias.length} turno(s) que necesitan revisión:\n• ${incidencias.join(
+            '\n• '
           )}`
         );
       }
@@ -1022,7 +1128,8 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
   }
 
   async function refrescarSesionBabyDesdeAimHarder(
-    sesion: SesionAgendaOperativa
+    sesion: SesionAgendaOperativa,
+    opciones: { intento?: number } = {}
   ) {
     if (
       sesion.origen !== 'operativa' ||
@@ -1078,38 +1185,89 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
         preservarScroll: true,
       });
 
+      const unicos = (nombres: Array<string | null | undefined>) =>
+        Array.from(new Set(nombres.map((n) => String(n || '').trim()).filter(Boolean)));
+      const comun = {
+        fecha: String(fecha || '').slice(0, 10),
+        inicio: inicioSesion,
+        fin: finSesion,
+        activos: asistentes.length,
+        noEncontrados: repaso?.noEncontrados || [],
+        safety,
+      };
       let mensaje = '';
       if (soloAnadir) {
-        const notaRepaso = repaso
-          ? describirRepasoSolicitadoBabyApp(repaso.solicitados, repaso.noEncontrados)
-          : '';
-        mensaje = [buildBabyAddOnlySummary(soloAnadir, safety), notaRepaso]
-          .filter(Boolean)
-          .join(' · ');
+        mensaje = mensajePacoSoloAnadir({ ...comun, result: soloAnadir });
       } else if (verificacion) {
-        mensaje = buildBabyRefreshSummary(
-          asistentes.length,
-          resultado,
-          verificacion,
-          safety,
-          repaso
-        );
+        mensaje = mensajePacoRefresco({
+          ...comun,
+          totalFinal: verificacion.totalFinal,
+          anadidos: unicos(resultado?.nombres_nuevos || []),
+          retirados: unicos([...(resultado?.nombres_retirados || []), ...verificacion.retiradosExtra]),
+          protegidos: unicos([...(resultado?.nombres_protegidos || []), ...verificacion.protegidosExtra]),
+        });
+      }
+      if (opciones.intento) {
+        mensaje = `${mensaje}\n(Lo he vuelto a actualizar yo solo al terminar de comprobar.)`;
       }
       setBabyAimHarderMensaje(mensaje);
       notificarResultadoTarjetaBabyApp(sesion, true, mensaje);
+
+      if (repasoEnCurso(safety)) {
+        programarSeguimiento(
+          `sesion:${sesionId}`,
+          safety.repaso?.etaMin ?? 1,
+          (opciones.intento || 0) + 1,
+          (intento) => void seguirRefrescoSesionBaby(sesion, intento)
+        );
+      }
     } catch (e) {
       const base =
         e instanceof Error
           ? e.message
           : 'No se pudo refrescar esta sesión Baby desde AimHarder.';
-      const notaRepaso = repaso
-        ? describirRepasoSolicitadoBabyApp(repaso.solicitados, repaso.noEncontrados)
-        : '';
-      const textoError = notaRepaso ? `${base} ${notaRepaso}` : base;
+      const notaRepaso =
+        repaso && repaso.noEncontrados.length > 0
+          ? ` No encuentro en AimHarder a: ${repaso.noEncontrados.join(', ')}.`
+          : '';
+      const textoError = mensajePacoError(
+        String(fecha || '').slice(0, 10),
+        inicioSesion,
+        finSesion,
+        `${base}${notaRepaso}`
+      );
       setBabyAimHarderError(textoError);
       notificarResultadoTarjetaBabyApp(sesion, false, textoError);
     } finally {
       setBabyAimHarderSesionCargandoId('');
+    }
+  }
+
+  // Mientras se comprueban niños del turno solo se LEE (no se escribe nada).
+  // Cuando termina (o tras muchos intentos), se refresca la sesión una vez
+  // con el mismo candado de siempre, como si Jose volviera a pulsar.
+  async function seguirRefrescoSesionBaby(
+    sesion: SesionAgendaOperativa,
+    intento: number
+  ) {
+    const sesionId = sesion.agendaDirecta?.sesion_id || '';
+    try {
+      const { safety } = await obtenerListadoBabyTurnoAimHarderApp(
+        sesion.fecha,
+        horaCorta(sesion.hora_inicio),
+        horaCorta(sesion.hora_fin)
+      );
+      if (repasoEnCurso(safety) && intento < MAX_SEGUIMIENTOS) {
+        programarSeguimiento(`sesion:${sesionId}`, safety.repaso?.etaMin ?? 1, intento + 1, (siguiente) =>
+          void seguirRefrescoSesionBaby(sesion, siguiente)
+        );
+        return;
+      }
+      await refrescarSesionBabyDesdeAimHarder(sesion, { intento });
+    } catch {
+      programarSeguimiento(`sesion:${sesionId}`, 2, intento + 1, (siguiente) =>
+        void seguirRefrescoSesionBaby(sesion, siguiente)
+      );
     }
   }
 
