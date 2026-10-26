@@ -18,7 +18,7 @@ const CAPACIDAD: Record<string, number> = { BABY: 4, OCIO: 6 };
 export function norm(x: unknown) {
   return String(x ?? "")
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase()
     .replace(/[^A-Z0-9+ ]/g, " ")
     .replace(/\s+/g, " ")
@@ -115,6 +115,41 @@ async function nivelDeAlumno(ctx: Contexto, a: Fila) {
   return n ? { codigo: n.codigo, orden: n.orden, estimado: !a.nivel_actual_id } : null;
 }
 
+// --------------------------- memoria de Jose -------------------------------
+// Notas que Jose le dicta a Paco sobre niños y familias (tabla paco_notas).
+// Se adjuntan solas a cualquier herramienta que trate de ese niño, para que
+// Paco se las recuerde sin que se las pidan.
+
+type NotaJose = { nota_id: string; texto: string; entrenador_id: string | null; entrenador: string | null; solo_proxima_vez: boolean; apuntada: string };
+
+async function notasDe(ctx: Contexto, alumnoIds: string[]): Promise<Map<string, NotaJose[]>> {
+  const ids = [...new Set(alumnoIds.filter((x) => UUID.test(String(x))))];
+  const mapa = new Map<string, NotaJose[]>();
+  if (!ids.length) return mapa;
+  const filas = await ctx.db("paco_notas", {
+    select: "id,alumno_id,entrenador_id,texto,una_vez,created_at",
+    activa: "eq.true",
+    alumno_id: inLista(ids),
+    order: "created_at.asc",
+  });
+  const entIds = [...new Set(filas.map((f) => String(f.entrenador_id || "")).filter((x) => UUID.test(x)))];
+  const ents = entIds.length ? await ctx.db("entrenadores", { select: "id,nombre_completo", id: inLista(entIds) }) : [];
+  const em = new Map(ents.map((e) => [String(e.id), String(e.nombre_completo)]));
+  for (const f of filas) {
+    const lista = mapa.get(String(f.alumno_id)) || [];
+    lista.push({
+      nota_id: String(f.id),
+      texto: String(f.texto),
+      entrenador_id: f.entrenador_id ? String(f.entrenador_id) : null,
+      entrenador: f.entrenador_id ? em.get(String(f.entrenador_id)) || null : null,
+      solo_proxima_vez: f.una_vez === true,
+      apuntada: String(f.created_at || "").slice(0, 10),
+    });
+    mapa.set(String(f.alumno_id), lista);
+  }
+  return mapa;
+}
+
 // --------------------------- herramientas ----------------------------------
 
 async function buscarAlumno(ctx: Contexto, args: Fila) {
@@ -155,7 +190,9 @@ async function buscarAlumno(ctx: Contexto, args: Fila) {
       camiseta_entregada: a.camiseta_entregada === true,
     });
   }
-  return { coincidencias: salida, nota: salida.length ? undefined : "No hay alumnos activos con ese nombre." };
+  const notas = await notasDe(ctx, salida.map((x) => String(x.alumno_id)));
+  const conNotas = salida.map((x) => (notas.get(String(x.alumno_id)) ? { ...x, notas_de_jose: notas.get(String(x.alumno_id)) } : x));
+  return { coincidencias: conNotas, nota: salida.length ? undefined : "No hay alumnos activos con ese nombre." };
 }
 
 async function reportesAlumno(ctx: Contexto, args: Fila) {
@@ -273,6 +310,7 @@ async function informeAlumno(ctx: Contexto, args: Fila) {
     ultimos_grupos: conGrupo.filter((x) => x.fecha < hoy).slice(-4),
     apuntado_sin_grupo: sinGrupo.slice(0, 6),
     ultimos_reportes: (reportes as Fila).reportes || [],
+    notas_de_jose: (await notasDe(ctx, [id])).get(id) || [],
   };
 }
 
@@ -376,6 +414,10 @@ async function opcionesAlumno(ctx: Contexto, args: Fila) {
   const am = new Map(alumnos.map((x) => [String(x.id), x]));
   const niveles = await ctx.nivelesPorId();
   const cap = CAPACIDAD[modalidad] ?? 5;
+  const notasNino = args.alumno_id && UUID.test(String(args.alumno_id))
+    ? (await notasDe(ctx, [String(args.alumno_id)])).get(String(args.alumno_id)) || []
+    : [];
+  const vetados = new Map(notasNino.filter((n) => n.entrenador_id).map((n) => [String(n.entrenador_id), n.texto]));
 
   const opciones = [];
   for (const { sesion: s, grupos } of datos) {
@@ -392,7 +434,8 @@ async function opcionesAlumno(ctx: Contexto, args: Fila) {
       const dEdad = edadNino === null || edadMedia === null ? 2 : Math.abs(edadNino - edadMedia);
       const lleno = ms.length >= cap;
       const coincideDiaFijo = diaFijo ? norm(diaSemana(s.fecha)) === diaFijo : null;
-      const puntos = dNivel * 3 + Math.min(dEdad, 8) * 1.1 + ms.length * 0.15 + (lleno ? 20 : 0) + (coincideDiaFijo === false ? 4 : 0);
+      const choca = vetados.get(String(g.entrenador_id || "")) || vetados.get(String(g.entrenador_apoyo_id || "")) || null;
+      const puntos = dNivel * 3 + Math.min(dEdad, 8) * 1.1 + ms.length * 0.15 + (lleno ? 20 : 0) + (coincideDiaFijo === false ? 4 : 0) + (choca ? 50 : 0);
       opciones.push({
         puntos: Math.round(puntos * 10) / 10,
         grupo_id: g.grupo_id,
@@ -402,6 +445,7 @@ async function opcionesAlumno(ctx: Contexto, args: Fila) {
         alumnos: ms.length, plazas_libres: Math.max(cap - ms.length, 0), lleno,
         entrenador: g.entrenador || "SIN ENTRENADOR", publicado: g.publicado === true,
         dia_fijo_ocio: coincideDiaFijo,
+        ...(choca ? { choca_con_nota_de_jose: choca } : {}),
       });
     }
   }
@@ -414,6 +458,7 @@ async function opcionesAlumno(ctx: Contexto, args: Fila) {
     criterio: "Menos puntos = mejor encaje (nivel pesa más que edad; grupos llenos al final).",
     mejores_opciones: opciones.slice(0, 6),
     turnos_sin_grupos: turnosSinGrupos.slice(0, 6),
+    ...(notasNino.length ? { notas_de_jose: notasNino } : {}),
   };
 }
 
@@ -594,6 +639,23 @@ async function prepararMeterEnGrupo(ctx: Contexto, args: Fila) {
       for (const o of mismas) avisos.push(`Ojo: ese día también está apuntado a las ${hora(o.hora_inicio)}; esto NO le quita de ese turno (para cambiarle de turno, pídeme «pasa a ${nombre.split(" ")[0]} al ...»).`);
     }
   }
+  if (alumnoId) {
+    const notas = (await notasDe(ctx, [alumnoId])).get(alumnoId) || [];
+    if (notas.length) {
+      const [asig, extra] = await Promise.all([
+        ctx.db("asignaciones_entrenadores", { select: "entrenador_id", grupo_id: `eq.${grupoId}` }),
+        ctx.db("grupo_entrenadores_extra_app", { select: "entrenador_id", grupo_id: `eq.${grupoId}` }),
+      ]);
+      const delGrupo = new Set([...asig, ...extra].map((x) => String(x.entrenador_id)));
+      for (const n of notas) {
+        if (n.entrenador_id && delGrupo.has(n.entrenador_id)) {
+          avisos.unshift(`⚠️ NOTA DE JOSE: «${n.texto}». Ese grupo es de ${n.entrenador || "ese entrenador"}.`);
+        } else {
+          avisos.push(`📝 Nota de Jose: «${n.texto}»${n.solo_proxima_vez ? " (para la próxima vez)" : ""}.`);
+        }
+      }
+    }
+  }
   const cap = CAPACIDAD.BABY;
   const total = miembros.length + 1;
   if (total > cap) avisos.push(`El grupo pasaría a ${total} niños (lo normal en Baby son ${cap} como mucho).`);
@@ -611,6 +673,72 @@ async function prepararMeterEnGrupo(ctx: Contexto, args: Fila) {
     avisos,
     nota: "Jose verá un botón para confirmar este cambio. NO digas que está hecho: dile qué se va a hacer, los avisos, y que pulse Confirmar.",
   };
+}
+
+// ------------------------- memoria: propuestas -------------------------------
+// Igual que los cambios: Paco prepara la nota y Jose la guarda con un botón.
+
+export type PropuestaNota =
+  | { tipo: "nota"; alumno_id: string; nombre: string; entrenador_id: string | null; entrenador: string | null; texto: string; una_vez: boolean; etiqueta: string }
+  | { tipo: "cerrar_nota"; nota_id: string; nombre: string; texto: string; etiqueta: string };
+
+async function prepararNota(ctx: Contexto, args: Fila) {
+  const id = String(args.alumno_id || "");
+  if (!UUID.test(id)) return { error: "alumno_id no válido: usa buscar_alumno primero." };
+  const texto = String(args.texto || "").replace(/\s+/g, " ").trim().slice(0, 300);
+  if (texto.length < 3) return { error: "Dime qué quieres que apunte." };
+  const [a] = await ctx.db("alumnos", { select: "id,nombre_completo", id: `eq.${id}`, limit: "1" });
+  if (!a) return { error: "No encuentro esa ficha." };
+  let entrenadorId: string | null = null;
+  let entrenador: string | null = null;
+  if (args.entrenador) {
+    const q = norm(args.entrenador);
+    const ents = await ctx.db("entrenadores", { select: "id,nombre_completo", activo: "eq.true", limit: "300" });
+    const cand = ents.filter((e) => q.split(" ").every((t) => norm(e.nombre_completo).split(" ").includes(t)) || norm(e.nombre_completo).includes(q));
+    if (!cand.length) return { error: `No encuentro ningún entrenador activo que se llame «${args.entrenador}».` };
+    if (cand.length > 1) return { error: "Hay varios entrenadores con ese nombre: pregunta cuál.", varios: cand.map((e) => e.nombre_completo) };
+    entrenadorId = String(cand[0].id);
+    entrenador = String(cand[0].nombre_completo);
+  }
+  const unaVez = args.solo_proxima_vez === true;
+  const nombre = String(a.nombre_completo);
+  const corto = nombre.split(" ").slice(0, 2).join(" ");
+  const propuesta: PropuestaNota = {
+    tipo: "nota", alumno_id: id, nombre, entrenador_id: entrenadorId, entrenador, texto, una_vez: unaVez,
+    etiqueta: `Apuntar sobre ${corto}: «${texto.slice(0, 90)}»${unaVez ? " (solo la próxima vez)" : ""}`,
+  };
+  return {
+    propuesta_nota: propuesta,
+    nota: `Jose verá un botón para guardar la nota. Dile cómo la has entendido${entrenador ? ` (va ligada a ${entrenador}: te avisaré si ${corto} acaba en su grupo)` : ""} y que pulse Confirmar.`,
+  };
+}
+
+async function notasJose(ctx: Contexto, args: Fila) {
+  const id = String(args.alumno_id || "");
+  if (id && !UUID.test(id)) return { error: "alumno_id no válido: usa buscar_alumno primero." };
+  if (id) return { notas: (await notasDe(ctx, [id])).get(id) || [] };
+  const filas = await ctx.db("paco_notas", { select: "alumno_id", activa: "eq.true", order: "created_at.desc", limit: "60" });
+  const ids = [...new Set(filas.map((f) => String(f.alumno_id)))];
+  const [notas, alumnos] = await Promise.all([
+    notasDe(ctx, ids),
+    ids.length ? ctx.db("alumnos", { select: "id,nombre_completo", id: inLista(ids) }) : Promise.resolve([]),
+  ]);
+  const am = new Map(alumnos.map((a) => [String(a.id), String(a.nombre_completo)]));
+  return { total: filas.length, por_nino: ids.map((i) => ({ nino: am.get(i) || "?", notas: notas.get(i) || [] })) };
+}
+
+async function prepararCerrarNota(ctx: Contexto, args: Fila) {
+  const id = String(args.nota_id || "");
+  if (!UUID.test(id)) return { error: "nota_id no válido: sácalo de notas_de_jose." };
+  const [n] = await ctx.db("paco_notas", { select: "id,alumno_id,texto,activa", id: `eq.${id}`, limit: "1" });
+  if (!n || n.activa === false) return { error: "Esa nota ya no está activa." };
+  const [a] = await ctx.db("alumnos", { select: "nombre_completo", id: `eq.${n.alumno_id}`, limit: "1" });
+  const nombre = String(a?.nombre_completo || "ese niño");
+  const propuesta: PropuestaNota = {
+    tipo: "cerrar_nota", nota_id: id, nombre, texto: String(n.texto),
+    etiqueta: `Borrar la nota de ${nombre.split(" ").slice(0, 2).join(" ")}: «${String(n.texto).slice(0, 80)}»`,
+  };
+  return { propuesta_nota: propuesta, nota: "Jose verá un botón para borrarla. Dile cuál es y que pulse Confirmar." };
 }
 
 // ------------------------------ registro ------------------------------------
@@ -706,6 +834,35 @@ export const HERRAMIENTAS: { def: DefHerramienta; impl: Impl }[] = [
         nombre_nuevo: { type: "string", description: "Nombre y apellidos si no tiene ficha" },
         nivel: { type: "string", description: "Nivel a usar si no tiene o Jose dice otro: INICIACION, A, A+, B, B+, C, C+, D, D+" },
       }, required: ["grupo_id"] },
+    } },
+  },
+  {
+    impl: prepararNota,
+    def: { type: "function", function: {
+      name: "preparar_nota",
+      description: "Prepara (sin guardarla) una nota de Jose sobre un niño o su familia, para recordársela siempre que vuelva a salir ese niño: «mejor que venga el miércoles», «no con Nico», «el próximo día a pista grande». Jose la guarda con un botón. Si la nota es sobre un entrenador (no ponerle con él), pásalo en «entrenador» para avisar si acaba en su grupo. Usa solo_proxima_vez=true si es para la próxima sesión.",
+      parameters: { type: "object", properties: {
+        alumno_id: { type: "string" },
+        texto: { type: "string", description: "La nota tal y como la diría Jose, corta y clara" },
+        entrenador: { type: "string", description: "Nombre del entrenador al que se refiere (opcional)" },
+        solo_proxima_vez: { type: "boolean" },
+      }, required: ["alumno_id", "texto"] },
+    } },
+  },
+  {
+    impl: notasJose,
+    def: { type: "function", function: {
+      name: "notas_de_jose",
+      description: "Lo que Jose tiene apuntado: de un niño (alumno_id) o, sin alumno_id, todas las notas activas por niño. Devuelve nota_id para poder borrarlas.",
+      parameters: { type: "object", properties: { alumno_id: { type: "string" } } },
+    } },
+  },
+  {
+    impl: prepararCerrarNota,
+    def: { type: "function", function: {
+      name: "preparar_borrar_nota",
+      description: "Prepara (sin hacerlo) borrar o dar por hecha una nota de Jose (nota_id de notas_de_jose). Jose lo confirma con un botón.",
+      parameters: { type: "object", properties: { nota_id: { type: "string" } }, required: ["nota_id"] },
     } },
   },
   {

@@ -1,6 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { completar, type Mensaje } from "./llm.ts";
-import { Contexto, HERRAMIENTAS, ejecutarHerramienta, hoyMadrid, sumarDias, diaSemana, type Propuesta } from "./herramientas.ts";
+import { Contexto, HERRAMIENTAS, ejecutarHerramienta, hoyMadrid, sumarDias, diaSemana, type Propuesta, type PropuestaNota } from "./herramientas.ts";
 
 // ---------------------------------------------------------------------------
 // mitico-paco-agente · Paco con «ojos» (23/10/2026)
@@ -77,6 +77,11 @@ CAMBIOS
 - Otros cambios (cambiar de turno, publicar, mandar avisos, disponibilidad) todavía no los preparas tú: dile cómo pedirlo (por ejemplo «pasa a Lucía al jueves a las 17:00» para cambiar de turno a un niño de Baby) o que lo haga desde la app.
 - Si algo no está en los datos, dilo tal cual.
 
+MEMORIA DE JOSE (notas sobre niños y familias)
+- Cuando Jose te cuente algo de un niño o su familia para que lo tengas en cuenta («apunta que…», «que no esté con…», «recuerda que la familia…», «el próximo día…»), busca al niño y usa preparar_nota. No la des por guardada: Jose pulsa Confirmar.
+- Si alguna herramienta trae notas_de_jose de un niño (o choca_con_nota_de_jose), EMPIEZA tu respuesta recordándolas con 📝 aunque no te pregunten por ellas. Si un grupo choca con una nota, no lo recomiendes y explica por qué.
+- «¿Qué tengo apuntado (de X)?» → notas_de_jose. «Borra la nota de X» o «ya está hecho» → preparar_borrar_nota.
+
 FECHA: hoy es ${diaSemana(hoy)} ${hoy} (Madrid). Calendario: ${calendario(hoy)}.${memoria ? `\n\nMEMORIA de esta conversación (ids para tus herramientas; no los enseñes):\n${memoria}` : ""}`;
 }
 
@@ -150,6 +155,7 @@ Deno.serve(async (req) => {
     // Nombres de la última búsqueda de alumnos con varias coincidencias (para botones).
     let candidatos: string[] = [];
     const acciones: Propuesta[] = [];
+    const notas: PropuestaNota[] = [];
     const memoria: string[] = [];
 
     for (let vuelta = 0; vuelta <= MAX_VUELTAS; vuelta++) {
@@ -167,10 +173,10 @@ Deno.serve(async (req) => {
         let opciones = sep.opciones;
         if (!opciones.length && candidatos.length > 1 && texto.includes("?")) opciones = candidatos.slice(0, MAX_OPCIONES);
         console.log(`agente ok ${modelo} vueltas=${vuelta} herramientas=${usadas.join(",") || "-"} ${Date.now() - inicio}ms${avisos.length ? ` (fallos: ${avisos.join(" | ").slice(0, 400)})` : ""}`);
-        if (acciones.length) opciones = [];
+        if (acciones.length || notas.length) opciones = [];
         const memoriaNueva = [...memoria, ...memoriaPrevia.split("\n")].filter(Boolean);
         return J({
-          ok: true, handled: true, answer: texto, choices: [], opciones, acciones: acciones.slice(-3),
+          ok: true, handled: true, answer: texto, choices: [], opciones, acciones: acciones.slice(-3), notas: notas.slice(-3),
           memoria: [...new Set(memoriaNueva)].join("\n").slice(0, MAX_MEMORIA), modelo, herramientas: usadas,
         });
       }
@@ -186,6 +192,8 @@ Deno.serve(async (req) => {
           if (repetida >= 0) acciones.splice(repetida, 1);
           acciones.push(prop);
         }
+        const pn = (resultados[i] as { propuesta_nota?: PropuestaNota } | null)?.propuesta_nota;
+        if (pn) notas.push(pn);
         if (l.function.name === "buscar_alumno") {
           candidatos = Array.isArray(res?.coincidencias) ? res!.coincidencias.map((c) => String(c?.nombre || "")).filter(Boolean) : [];
         }
