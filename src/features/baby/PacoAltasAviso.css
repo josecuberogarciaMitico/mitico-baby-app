@@ -1,0 +1,123 @@
+/* Aviso de Paco: niños nuevos sin ficha tras cargar AimHarder (móvil y escritorio). */
+.paco-altas {
+  margin-top: 4px;
+  padding: 10px 12px;
+  border: 1px solid #bbf7d0;
+  border-radius: 12px;
+  background: #f0fdf4;
+  color: #14532d;
+}
+
+.paco-altas__cabecera {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.paco-altas__kicker {
+  display: block;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #15803d;
+}
+
+.paco-altas__resumen {
+  margin: 2px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.paco-altas__cerrar {
+  border: 0;
+  background: transparent;
+  color: #15803d;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.paco-altas__lista {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.paco-altas__fila {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid #dcfce7;
+}
+
+.paco-altas__fila--falta_dato,
+.paco-altas__fila--revisar {
+  border-color: #fed7aa;
+  background: #fffbeb;
+}
+
+.paco-altas__nino {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.paco-altas__nino strong {
+  font-size: 13px;
+  color: #0f172a;
+  overflow-wrap: anywhere;
+}
+
+.paco-altas__estado {
+  font-size: 12px;
+  font-weight: 700;
+  color: #64748b;
+}
+
+.paco-altas__acciones {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.paco-altas__wa,
+.paco-altas__secundario {
+  min-height: 36px;
+  padding: 6px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.paco-altas__wa {
+  border: 1px solid #16a34a;
+  background: #16a34a;
+  color: #ffffff;
+}
+
+.paco-altas__secundario {
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+  color: #0f172a;
+}
+
+@media (max-width: 640px) {
+  .paco-altas__acciones,
+  .paco-altas__wa,
+  .paco-altas__secundario {
+    width: 100%;
+  }
+}

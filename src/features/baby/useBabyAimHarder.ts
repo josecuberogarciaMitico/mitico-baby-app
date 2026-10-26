@@ -39,7 +39,30 @@ import {
   mensajePacoSoloAnadir,
   mensajePacoTraerListado,
   repasoEnCurso,
+  tituloTurnoPaco,
 } from '../../services/aimharder/pacoListadoMensajes';
+import type {
+  AltaNivelInicialApp,
+  AvisoNuevaAltaAlumnoApp,
+} from '../../core/enrolment/enrolmentTypes';
+import {
+  decidirAltasPaco,
+  resumenAltasPaco,
+  urlWhatsappAltaTest,
+  type DecisionAltaPaco,
+} from './altasPacoLogic';
+
+// Niño nuevo sin ficha detectado al cargar AimHarder, con lo que Paco ha hecho.
+export type AltaPacoItem = DecisionAltaPaco & {
+  enlace: string;
+  alumnoSesion: AgendaAlumnoSesionApp | null;
+};
+
+export type AltasPacoAviso = {
+  titulo: string;
+  resumen: string;
+  items: AltaPacoItem[];
+};
 import { fechaAgendaCortaConAnio, inicioSemanaAgenda, rangoSemanaAgenda } from '../agenda/agendaCalendar';
 import type { AgendaAlumnoSesionApp, SesionAgendaOperativa } from '../agenda/agendaTypes';
 
@@ -93,6 +116,7 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
   const [babyAimHarderFormularioCargando, setBabyAimHarderFormularioCargando] = useState(false);
   const [babyAimHarderMensaje, setBabyAimHarderMensaje] = useState('');
   const [babyAimHarderError, setBabyAimHarderError] = useState('');
+  const [altasPaco, setAltasPaco] = useState<AltasPacoAviso | null>(null);
 
   // Seguimiento automático: mientras la copia de AimHarder sigue comprobando
   // niños de un turno, se vuelve a mirar sola cada pocos minutos y, al
@@ -549,6 +573,8 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
       let turnosLeidos = 0;
       let alumnosActivosLeidos = 0;
       let ninosPorComprobar = 0;
+      const sesionesSemana: string[] = [];
+      const asistentesSemana: BabyAimHarderAsistenteActivoApp[] = [];
       let minutosParaTerminar = 0;
       const incidencias: string[] = [];
 
@@ -600,6 +626,8 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
               p_texto_listado: asistentes.map((a) => a.name).join('\n'),
             });
 
+          if (resultado?.sesion_id) sesionesSemana.push(resultado.sesion_id);
+          asistentesSemana.push(...asistentes);
           if (resultado?.creada) {
             creadas += 1;
           } else if (resultado?.ya_existia && resultado.sesion_id) {
@@ -678,6 +706,11 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
       ];
 
       setBabyAimHarderMensaje(lineas.join('\n'));
+      void prepararAltasPaco(
+        sesionesSemana,
+        asistentesSemana,
+        `Semana Baby ${rangoSemanaAgenda(semanaAgendaActiva)}`
+      );
 
       if (incidencias.length > 0) {
         setBabyAimHarderError(
@@ -1105,6 +1138,129 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
     return soloAnadir;
   }
 
+  // ---- Paco y las Altas/Test de los niños nuevos ---------------------------
+  // Tras refrescar/cargar, mira quién ha entrado como «Pendiente de Alta/Test»,
+  // crea él solo el Alta/Test si AimHarder trae teléfono y fecha (y no hay
+  // posible duplicado) y deja preparado el WhatsApp para la familia.
+  function enlaceAltaTest(alta: AltaNivelInicialApp | null) {
+    if (!alta?.token_publico || typeof window === 'undefined') return '';
+    return `${window.location.origin}${window.location.pathname}?test_nivel=${alta.token_publico}`;
+  }
+
+  async function prepararAltasPaco(
+    sesionIds: string[],
+    asistentes: BabyAimHarderAsistenteActivoApp[],
+    titulo: string
+  ) {
+    try {
+      const contacto = new Map(
+        asistentes.map((a) => [normalizarNombreFueraPlazoAgenda(a.name), a])
+      );
+      const filas: AgendaAlumnoSesionApp[] = [];
+      for (const id of Array.from(new Set(sesionIds.filter(Boolean)))) {
+        const enSesion = await consultarSupabase<AgendaAlumnoSesionApp>(
+          'v_sesion_alumnos_operativa_app',
+          `select=*&sesion_id=${encodeURIComponent(`eq.${id}`)}&order=orden.asc`
+        );
+        filas.push(
+          ...enSesion.filter(
+            (f) => String(f.estado_en_listado || '').toUpperCase() === 'PENDIENTE_TEST'
+          )
+        );
+      }
+      if (filas.length === 0) {
+        setAltasPaco(null);
+        return;
+      }
+      const filaPorNombre = new Map(
+        filas.map((f) => [normalizarNombreFueraPlazoAgenda(f.alumno), f])
+      );
+      const pendientes = filas.map((f) => {
+        const c = contacto.get(normalizarNombreFueraPlazoAgenda(f.alumno));
+        return { nombre: f.alumno, telefono: c?.phone || '', fechaNacimiento: c?.birthDate || '' };
+      });
+
+      const leerAltas = async () =>
+        (await ejecutarFuncionAuthJson<AltaNivelInicialApp[]>('obtener_altas_nivel_inicial_app', {})) || [];
+      let decisiones = decidirAltasPaco(pendientes, await leerAltas());
+
+      const revisar = new Map<string, string>();
+      let creadas = 0;
+      for (const d of decisiones.filter((x) => x.estado === 'crear')) {
+        try {
+          const posibles =
+            (await ejecutarFuncionAuthJson<AvisoNuevaAltaAlumnoApp[]>(
+              'comprobar_posibles_alumnos_nueva_alta_app',
+              { p_nombre_completo: d.nombre, p_fecha_nacimiento: d.fechaNacimiento }
+            )) || [];
+          if (posibles.length > 0) {
+            revisar.set(d.nombre, `puede que ya exista (${posibles[0].alumno})`);
+            continue;
+          }
+          await ejecutarFuncionAuthJson<string>('crear_alta_nivel_inicial_app', {
+            p_nombre_completo: d.nombre,
+            p_fecha_nacimiento: d.fechaNacimiento,
+            p_modalidad: 'BABY',
+            p_telefono: d.telefono,
+            p_ocio_dia_fijo: null,
+          });
+          creadas += 1;
+        } catch (e) {
+          revisar.set(d.nombre, e instanceof Error ? e.message.slice(0, 120) : 'no se pudo crear');
+        }
+      }
+      if (creadas > 0) decisiones = decidirAltasPaco(pendientes, await leerAltas());
+
+      const items: AltaPacoItem[] = decisiones.map((d) => {
+        const motivo = revisar.get(d.nombre);
+        const base = motivo ? { ...d, estado: 'revisar' as const, motivo } : d;
+        return {
+          ...base,
+          enlace: enlaceAltaTest(base.alta),
+          alumnoSesion: filaPorNombre.get(normalizarNombreFueraPlazoAgenda(d.nombre)) || null,
+        };
+      });
+      setAltasPaco({ titulo, resumen: resumenAltasPaco(items), items });
+    } catch (e) {
+      console.warn('Paco altas tras AimHarder:', e);
+    }
+  }
+
+  // Abre el WhatsApp de la familia con el mensaje y el enlace ya escritos y
+  // marca el alta como enviada. La ventana se abre lo primero, en el mismo
+  // toque, para que el navegador no la bloquee.
+  async function enviarAltaPacoWhatsapp(item: AltaPacoItem) {
+    if (!item.alta) return;
+    const url = urlWhatsappAltaTest(
+      item.alta.telefono || item.telefono,
+      item.alta.nombre_completo,
+      item.enlace
+    );
+    if (!url) {
+      setBabyAimHarderError(`El teléfono de ${item.nombre} no vale para WhatsApp. Revísalo en Altas / Test.`);
+      return;
+    }
+    window.open(url, '_blank');
+    try {
+      if (item.alta.estado === 'PENDIENTE_ENVIO') {
+        await ejecutarFuncion('marcar_alta_nivel_enviada_app', { p_id: item.alta.id });
+      }
+      setAltasPaco((actual) => {
+        if (!actual) return actual;
+        const items = actual.items.map((x) =>
+          x.alta?.id === item.alta?.id
+            ? { ...x, estado: 'enviado' as const, alta: x.alta ? { ...x.alta, estado: 'ENVIADO' as const } : x.alta }
+            : x
+        );
+        return { ...actual, items, resumen: resumenAltasPaco(items) };
+      });
+    } catch (e) {
+      setBabyAimHarderError(
+        e instanceof Error ? e.message : 'No se pudo marcar el alta como enviada.'
+      );
+    }
+  }
+
   // El resultado de "Refrescar listado" / "Pegar listado" se pinta arriba de
   // la Agenda, lejos de la tarjeta: si estás con la tarjeta en pantalla no lo
   // ves. Este aviso lo recoge manualRosterBridge para pintarlo en la tarjeta.
@@ -1212,6 +1368,11 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
       }
       setBabyAimHarderMensaje(mensaje);
       notificarResultadoTarjetaBabyApp(sesion, true, mensaje);
+      void prepararAltasPaco(
+        [sesionId],
+        asistentes,
+        tituloTurnoPaco(String(fecha || '').slice(0, 10), inicioSesion, finSesion).replace(/^Paco · /, '')
+      );
 
       if (repasoEnCurso(safety)) {
         programarSeguimiento(
@@ -1286,5 +1447,8 @@ export function useBabyAimHarder(ctx: BabyAimHarderDependencies) {
     cargarSemanaBabyDesdeAimHarder,
     refrescarSesionBabyDesdeAimHarder,
     anadirAlumnoSinFichaASesionBabyApp,
+    altasPaco,
+    setAltasPaco,
+    enviarAltaPacoWhatsapp,
   };
 }

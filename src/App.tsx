@@ -13061,6 +13061,7 @@ async function abrirGestionOperativaIntensivoDia(
     cargarSemanaBabyDesdeAimHarder,
     refrescarSesionBabyDesdeAimHarder,
     anadirAlumnoSinFichaASesionBabyApp,
+    altasPaco, setAltasPaco, enviarAltaPacoWhatsapp,
   } = useBabyAimHarder({
     agendaForm,
     cargarAgendaOperativaDirecta,
@@ -21142,6 +21143,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
             avisoCompleto,
             avisoNeutral,
             avisoPendiente,
+            altasPaco, setAltasPaco, enviarAltaPacoWhatsapp,
             babyAimHarderCargandoSemana,
             babyAimHarderError,
             babyAimHarderFormularioCargando,
