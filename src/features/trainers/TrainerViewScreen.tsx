@@ -20,7 +20,19 @@ import { DictationButton } from '../../components/reports/DictationButton';
 import {
   chipsDiasEntrenador,
   claveChipDiaEntrenador,
+  textoEdadNino,
 } from './trainerDayNav';
+
+// Edad del niño, discreta junto a su nombre (grupos y reportes del entrenador).
+function EdadNino({ edad }: { edad?: number | null }) {
+  const texto = textoEdadNino(edad);
+  if (!texto) return null;
+  return (
+    <span className="trainer-age-chip" title={`Edad: ${texto}`}>
+      {texto}
+    </span>
+  );
+}
 
 type TrainerViewScreenProps = {
   ctx: Record<string, any>;
@@ -398,7 +410,9 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
           <div className="trainer-report-sheet-header">
             <div>
               <span className="trainer-report-sheet-kicker">Reporte del alumno</span>
-              <h3>{alumno.alumno}</h3>
+              <h3>
+                {alumno.alumno} <EdadNino edad={alumno.edad} />
+              </h3>
               <p>
                 {alumno.nombre_grupo}
                 {nivelEfectivoReporte ? ` · Nivel ${nivelEfectivoReporte}` : ''}
@@ -413,7 +427,9 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
             </button>
           </div>
         ) : (
-          <h4 style={{ marginTop: 0 }}>Reporte de {alumno.alumno}</h4>
+          <h4 style={{ marginTop: 0 }}>
+            Reporte de {alumno.alumno} <EdadNino edad={alumno.edad} />
+          </h4>
         )}
 
         <details
@@ -1925,7 +1941,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                                           color: '#6b21a8',
                                         }}
                                       >
-                                        {reporte.alumno}
+                                        {reporte.alumno} <EdadNino edad={reporte.edad} />
                                       </strong>
                                       <span
                                         style={{
@@ -2512,6 +2528,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                                                             <div>
                                                               <strong>
                                                                 {alumno.alumno}{' '}
+                                                                <EdadNino edad={alumno.edad} />{' '}
                                                                 · Nivel{' '}
                                                                 {alumno.nivel_alumno ||
                                                                   'SIN NIVEL'}
