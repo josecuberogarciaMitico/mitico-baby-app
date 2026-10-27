@@ -110,3 +110,134 @@ export function resumenDia(sesiones: SesionTablero[]) {
     texto: `${ninos} ${ninos === 1 ? 'niño' : 'niños'} · ${grupos} ${grupos === 1 ? 'grupo' : 'grupos'}`,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Ayudas de la semana (27/10): qué falta, siguiente pendiente, disponibles por
+// turno y avisos de cada sesión.
+
+export type ExtrasSesion = { revisar: number; notas: number; sinConfirmar: number };
+
+export type MotivoPendiente = 'sin_grupos' | 'sin_entrenador' | 'sin_publicar' | 'revisar' | 'sin_confirmar';
+
+export type PendienteSesion<S extends SesionTablero> = {
+  sesion: S;
+  fecha: string;
+  motivos: MotivoPendiente[];
+};
+
+export type ResumenPendientes<S extends SesionTablero> = {
+  contadores: Record<MotivoPendiente, number>;
+  pendientes: PendienteSesion<S>[];
+  total: number;
+};
+
+export const ETIQUETA_MOTIVO: Record<MotivoPendiente, [string, string]> = {
+  sin_grupos: ['sesión sin grupos', 'sesiones sin grupos'],
+  sin_entrenador: ['grupo sin entrenador', 'grupos sin entrenador'],
+  sin_publicar: ['grupo sin publicar', 'grupos sin publicar'],
+  revisar: ['niño por revisar', 'niños por revisar'],
+  sin_confirmar: ['grupo sin confirmar', 'grupos sin confirmar'],
+};
+
+/**
+ * Lo que falta en la semana, desde hoy (los días pasados no cuentan). Cada
+ * sesión pendiente lleva sus motivos; los contadores suman sesiones, grupos o
+ * niños según el caso. La lista sale ordenada por fecha y hora.
+ */
+export function pendientesSemana<S extends SesionTablero>(
+  dias: Array<{ fecha: string; sesiones: S[] }>,
+  hoyIso: string,
+  cobertura: (s: S) => CoberturaTablero | null,
+  extras: (s: S) => ExtrasSesion | null
+): ResumenPendientes<S> {
+  const contadores: Record<MotivoPendiente, number> = {
+    sin_grupos: 0, sin_entrenador: 0, sin_publicar: 0, revisar: 0, sin_confirmar: 0,
+  };
+  const pendientes: PendienteSesion<S>[] = [];
+  [...dias]
+    .filter((d) => d.fecha >= hoyIso)
+    .sort((a, b) => a.fecha.localeCompare(b.fecha))
+    .forEach((dia) => {
+      [...dia.sesiones]
+        .sort((a, b) => hhmm(a.hora_inicio).localeCompare(hhmm(b.hora_inicio)))
+        .forEach((s) => {
+          const alumnos = Number(s.totalAlumnos || 0);
+          const grupos = Number(s.totalGrupos || 0);
+          if (!alumnos && !grupos) return;
+          const cob = cobertura(s);
+          const ex = extras(s);
+          const motivos: MotivoPendiente[] = [];
+          if (alumnos > 0 && grupos === 0) {
+            motivos.push('sin_grupos');
+            contadores.sin_grupos += 1;
+          }
+          const sinEntrenador = grupos > 0 && cob ? Math.max(0, Number(cob.pendingGroups) || 0) : 0;
+          if (sinEntrenador > 0) {
+            motivos.push('sin_entrenador');
+            contadores.sin_entrenador += sinEntrenador;
+          }
+          const sinPublicar = grupos > 0 ? Math.max(0, grupos - Number(s.publicados || 0)) : 0;
+          if (sinPublicar > 0) {
+            motivos.push('sin_publicar');
+            contadores.sin_publicar += sinPublicar;
+          }
+          if (ex && ex.revisar > 0) {
+            motivos.push('revisar');
+            contadores.revisar += ex.revisar;
+          }
+          if (ex && ex.sinConfirmar > 0) {
+            motivos.push('sin_confirmar');
+            contadores.sin_confirmar += ex.sinConfirmar;
+          }
+          if (motivos.length) pendientes.push({ sesion: s, fecha: dia.fecha, motivos });
+        });
+    });
+  return { contadores, pendientes, total: pendientes.length };
+}
+
+/** La siguiente sesión pendiente después de la abierta (vuelve al principio al acabar). */
+export function siguientePendiente<S extends SesionTablero>(
+  pendientes: PendienteSesion<S>[],
+  sesionAbiertaId: string,
+  motivo?: MotivoPendiente
+): PendienteSesion<S> | null {
+  const lista = motivo ? pendientes.filter((p) => p.motivos.includes(motivo)) : pendientes;
+  if (!lista.length) return null;
+  const i = lista.findIndex((p) => p.sesion.id === sesionAbiertaId);
+  if (i < 0) return lista[0];
+  return lista.length > 1 ? lista[(i + 1) % lista.length] : null;
+}
+
+export type FilaDisponibilidad = {
+  entrenador_id: string;
+  fecha: string;
+  hora_inicio: string;
+  hora_fin: string;
+  respuesta: string;
+};
+
+/**
+ * Entrenadores que han dicho «Disponible» en un turno (fecha y hora de inicio
+ * iguales; si no hay turno igual, el que lo contiene). Solo entrenadores activos.
+ * null = no hay disponibilidad publicada para ese turno.
+ */
+export function disponiblesEnTurno(
+  filas: FilaDisponibilidad[],
+  fecha: string,
+  inicio: string,
+  fin: string,
+  activos: Set<string> | null
+): number | null {
+  const delDia = (filas || []).filter((f) => String(f.fecha).slice(0, 10) === fecha);
+  if (!delDia.length) return null;
+  let delTurno = delDia.filter((f) => hhmm(f.hora_inicio) === inicio);
+  if (!delTurno.length) delTurno = delDia.filter((f) => hhmm(f.hora_inicio) <= inicio && hhmm(f.hora_fin) >= fin);
+  if (!delTurno.length) return null;
+  const ids = new Set(
+    delTurno
+      .filter((f) => String(f.respuesta || '').trim().toLowerCase() === 'disponible')
+      .map((f) => String(f.entrenador_id))
+      .filter((id) => !activos || activos.has(id))
+  );
+  return ids.size;
+}
