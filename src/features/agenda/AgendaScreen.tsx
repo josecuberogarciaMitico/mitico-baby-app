@@ -426,6 +426,28 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     }
   }
 
+  // Fase 2: la sesión y «Pegar listado» se abren en un panel lateral
+  // (pantalla completa en móvil). Cerrar hace lo mismo que el antiguo botón.
+  function cerrarPanelTrabajoAgenda() {
+    setAgendaFormularioAbierto(false);
+    setAgendaSesionActivaId('');
+    setAgendaRecomendaciones([]);
+    setAgendaPestanaProceso('crear');
+  }
+
+  useEffect(() => {
+    if (pantalla !== 'agenda' || !(agendaFormularioAbierto || agendaSesionActivaId)) return;
+    const alPulsar = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const destino = e.target as HTMLElement | null;
+      // Esc dentro de un campo de texto no cierra (podría perder lo escrito).
+      if (destino && /^(INPUT|TEXTAREA|SELECT)$/.test(destino.tagName)) return;
+      cerrarPanelTrabajoAgenda();
+    };
+    window.addEventListener('keydown', alPulsar);
+    return () => window.removeEventListener('keydown', alPulsar);
+  }, [pantalla, agendaFormularioAbierto, agendaSesionActivaId]);
+
   useEffect(() => {
     if (pantalla !== 'agenda') return;
     void cargarAsignacionesEntrenadoresSemana();
@@ -624,7 +646,10 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
   return (
     <>
       {pantalla === 'agenda' && (
-        <section style={agendaShellCompacto}>
+        <section
+          style={agendaShellCompacto}
+          className={`ag-shell${agendaFormularioAbierto || agendaSesionActivaId ? ' ag-shell--con-panel' : ''}`}
+        >
           <article
             style={{
               borderRadius: 24,
@@ -1061,7 +1086,13 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                       ).slice(0, 5)} - ${String(
                                         sesion.hora_fin || ''
                                       ).slice(0, 5)}`}
-                                      className={`ag-sesion ag-sesion--${modalidad.toLowerCase().replace(/[^a-z]/g, '') || 'otra'}`}
+                                      className={`ag-sesion ag-sesion--${modalidad.toLowerCase().replace(/[^a-z]/g, '') || 'otra'}${
+                                        agendaSesionActivaId &&
+                                        (sesion.agendaDirecta?.sesion_id === agendaSesionActivaId ||
+                                          (sesion.dia as { sesion_id?: string } | undefined)?.sesion_id === agendaSesionActivaId)
+                                          ? ' is-abierta'
+                                          : ''
+                                      }`}
                                       title={sesion.estado}
                                     >
                                       <div className="ag-sesion-top">
@@ -1201,33 +1232,31 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
           {(agendaFormularioAbierto || agendaSesionActivaId) && (
             <section
               id="trabajo-agenda"
-              style={{
-                ...agendaBloqueBlanco,
-                border: '2px solid #111827',
-                scrollMarginTop: 16,
-              }}
+              className="ag-trabajo"
+              role="dialog"
+              aria-label={agendaFormularioAbierto ? 'Pegar listado' : 'Sesión abierta'}
             >
-              <div style={agendaCabeceraLinea}>
-                <div>
-                  <h3 style={{ margin: 0 }}>
-                    {agendaFormularioAbierto
-                      ? 'Pegar listado'
-                      : 'Sesión abierta'}
-                  </h3>
-                  <p style={{ margin: '4px 0 0', color: '#666' }}>
-                    Trabajo directo sin salto automático de pantalla.
-                  </p>
-                </div>
+              <div className="ag-trabajo-cabecera">
                 <button
-                  onClick={() => {
-                    setAgendaFormularioAbierto(false);
-                    setAgendaSesionActivaId('');
-                    setAgendaRecomendaciones([]);
-                    setAgendaPestanaProceso('crear');
-                  }}
-                  style={botonSecundario}
+                  type="button"
+                  className="ag-trabajo-volver"
+                  onClick={cerrarPanelTrabajoAgenda}
                 >
-                  Cerrar
+                  ← Volver
+                </button>
+                <h3>
+                  {agendaFormularioAbierto
+                    ? 'Pegar listado'
+                    : 'Sesión abierta'}
+                </h3>
+                <button
+                  type="button"
+                  className="ag-trabajo-cerrar"
+                  onClick={cerrarPanelTrabajoAgenda}
+                  aria-label="Cerrar"
+                  title="Cerrar (Esc)"
+                >
+                  ✕
                 </button>
               </div>
 

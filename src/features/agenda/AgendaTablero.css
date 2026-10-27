@@ -122,3 +122,39 @@
   .ag-turnos { padding: 12px; }
   .ag-sesion-cifras { margin-left: 0; width: 100%; }
 }
+
+/* --- Fase 2: panel de trabajo (sesión abierta / pegar listado) --- */
+/* Móvil y tablet: pantalla completa con «← Volver». Sin transform (los avisos
+   y ventanas fijas de dentro deben seguir pegados a la pantalla). */
+.ag-trabajo {
+  position: fixed; inset: 0; z-index: 80; overflow-y: auto; overscroll-behavior: contain;
+  background: #f8fafc; padding: 0 12px 24px; box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+.ag-trabajo-cabecera {
+  position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 10px;
+  margin: 0 -12px 12px; padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px;
+  background: #fff; border-bottom: 1px solid #e2e8f0; box-shadow: 0 4px 14px rgba(15, 23, 42, .06);
+}
+.ag-trabajo-cabecera h3 { margin: 0; font-size: 18px; flex: 1; min-width: 0; }
+.ag-trabajo-volver, .ag-trabajo-cerrar {
+  border: 1px solid #cbd5e1; background: #fff; border-radius: 10px; cursor: pointer;
+  font-weight: 850; font-family: inherit; color: #0f172a;
+}
+.ag-trabajo-volver { padding: 8px 12px; font-size: 14px; }
+.ag-trabajo-cerrar { display: none; width: 36px; height: 36px; font-size: 16px; }
+
+/* Ordenador: panel a la derecha y el tablero del día sigue a la vista. */
+@media (min-width: 1100px) {
+  .ag-shell--con-panel { padding-right: min(760px, 52vw); box-sizing: border-box; }
+  .ag-shell--con-panel .ag-turnos { grid-template-columns: minmax(0, 1fr); }
+  .ag-shell--con-panel .ag-dias { grid-auto-columns: minmax(100px, 1fr); }
+  .ag-trabajo {
+    left: auto; width: min(760px, 52vw); padding: 0 18px 28px;
+    background: #fff; border-left: 1px solid #cbd5e1; box-shadow: -18px 0 40px rgba(15, 23, 42, .14);
+  }
+  .ag-trabajo-cabecera { margin: 0 -18px 14px; padding: 14px 18px; }
+  .ag-trabajo-volver { display: none; }
+  .ag-trabajo-cerrar { display: inline-flex; align-items: center; justify-content: center; }
+}
+.ag-sesion.is-abierta { outline: 3px solid #1d4ed8; outline-offset: 1px; }
