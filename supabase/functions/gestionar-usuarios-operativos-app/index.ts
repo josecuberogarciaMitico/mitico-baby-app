@@ -91,15 +91,20 @@ Deno.serve(async (req) => {
       return json({ message: 'No se pudo comprobar tu perfil.' }, 500)
     }
 
-    if (!callerProfile || callerProfile.rol !== 'coordinador_jefe') {
+    const body = await req.json()
+    const accion = String(body?.accion || '').trim()
+
+    // «Solo consulta» puede VER la lista de accesos; nada más.
+    const esJefe = callerProfile?.rol === 'coordinador_jefe'
+    const esConsultaListando =
+      callerProfile?.rol === 'consulta' && accion === 'listar'
+
+    if (!callerProfile || (!esJefe && !esConsultaListando)) {
       return json(
         { message: 'Solo el coordinador jefe puede gestionar estos accesos.' },
         403,
       )
     }
-
-    const body = await req.json()
-    const accion = String(body?.accion || '').trim()
 
     if (accion === 'listar') {
       const { data: perfiles, error: perfilesError } = await admin

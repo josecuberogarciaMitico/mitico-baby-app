@@ -19,7 +19,7 @@ export function esRolCoordinacionApp(rol?: string): boolean {
 }
 
 /**
- * Usuario «Solo consulta»: ve la coordinación (y Cobros) pero no puede cambiar
+ * Usuario «Solo consulta»: ve la coordinación y Dirección pero no puede cambiar
  * nada. El bloqueo de verdad está en Supabase (solo pasa en lecturas); esto es
  * para la pantalla.
  */
@@ -27,7 +27,8 @@ export function esSoloConsultaApp(rol?: string): boolean {
   return rol === 'consulta';
 }
 
-export function puedeVerCobrosApp(rol?: string): boolean {
+/** Ver las pantallas de Dirección (sin acciones): jefe y «Solo consulta». */
+export function puedeVerDireccionLecturaApp(rol?: string): boolean {
   return rol === 'coordinador_jefe' || rol === 'consulta';
 }
 
