@@ -15,7 +15,7 @@ export type UsuarioOperativoGestionApp = {
   auth_user_id: string | null;
   email: string;
   nombre: string;
-  rol: 'coordinador_jefe' | 'sub_coordinador' | 'administracion' | 'coordinador';
+  rol: 'coordinador_jefe' | 'sub_coordinador' | 'administracion' | 'coordinador' | 'consulta';
   activo: boolean;
   estado_acceso: 'activo' | 'invitacion_pendiente' | 'desactivado' | 'revisar';
   confirmado_at: string | null;

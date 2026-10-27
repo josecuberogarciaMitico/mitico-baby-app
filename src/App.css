@@ -4794,3 +4794,15 @@ section:has(input[placeholder^='Buscar entrenador, teléfono, email o especialid
     box-shadow: none;
   }
 }
+
+/* Usuario «Solo consulta»: aviso fijo arriba del contenido. */
+.mitico-consulta-banner {
+  margin: 0 0 12px;
+  padding: 10px 14px;
+  border: 1px solid #f2d27a;
+  border-radius: 12px;
+  background: #fff8e1;
+  color: #5c4500;
+  font-size: 14px;
+  line-height: 1.35;
+}

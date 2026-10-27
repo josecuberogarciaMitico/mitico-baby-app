@@ -159,13 +159,15 @@ export function UserAccessScreen({ ctx }: UserAccessScreenProps) {
                           ...formUsuarioOperativo,
                           rol: e.target.value as
                             | 'sub_coordinador'
-                            | 'administracion',
+                            | 'administracion'
+                            | 'consulta',
                         })
                       }
                       style={selectCampo}
                     >
                       <option value="sub_coordinador">Sub-coordinador</option>
                       <option value="administracion">Administración</option>
+                      <option value="consulta">Solo consulta (ver sin cambiar nada)</option>
                     </select>
                   </label>
                 </div>

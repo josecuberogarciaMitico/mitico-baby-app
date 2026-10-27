@@ -1,7 +1,9 @@
 import {
   esRolCoordinacionApp,
+  esSoloConsultaApp,
   puedeGestionarAccesosApp,
   puedeVerAdministracionAltasApp,
+  puedeVerCobrosApp,
   puedeVerDireccionApp,
   rolUsuarioTextoApp,
 } from '../../../src/core/permissions/rolePermissions';
@@ -41,4 +43,21 @@ test('altas administrativas excluyen coordinador legacy y entrenador', () => {
   }
   equal(puedeVerAdministracionAltasApp('coordinador'), false, 'altas coordinador');
   equal(puedeVerAdministracionAltasApp('entrenador'), false, 'altas entrenador');
+});
+
+test('solo consulta: ve coordinación y Cobros, nada de dirección, accesos ni altas', () => {
+  equal(rolUsuarioTextoApp('consulta'), 'Solo consulta', 'etiqueta');
+  equal(esRolCoordinacionApp('consulta'), true, 'coordinación');
+  equal(esSoloConsultaApp('consulta'), true, 'solo consulta');
+  equal(puedeVerCobrosApp('consulta'), true, 'cobros');
+  equal(puedeVerDireccionApp('consulta'), false, 'dirección');
+  equal(puedeGestionarAccesosApp('consulta'), false, 'accesos');
+  equal(puedeVerAdministracionAltasApp('consulta'), false, 'altas');
+  for (const rol of ['coordinador_jefe', 'sub_coordinador', 'administracion', 'coordinador', 'entrenador']) {
+    equal(esSoloConsultaApp(rol), false, `no consulta ${rol}`);
+  }
+  equal(puedeVerCobrosApp('coordinador_jefe'), true, 'cobros jefe');
+  for (const rol of ['sub_coordinador', 'administracion', 'coordinador', 'entrenador']) {
+    equal(puedeVerCobrosApp(rol), false, `cobros ${rol}`);
+  }
 });

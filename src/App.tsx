@@ -377,8 +377,10 @@ import {
 } from './features/availability/availabilityEditor';
 import {
   esRolCoordinacionApp,
+  esSoloConsultaApp,
   puedeGestionarAccesosApp,
   puedeVerAdministracionAltasApp,
+  puedeVerCobrosApp,
   puedeVerDireccionApp,
   rolUsuarioTextoApp,
 } from './core/permissions/rolePermissions';
@@ -1264,6 +1266,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const esCoordinadorJefeApp =
     !perfilUsuario || puedeVerDireccionApp(perfilUsuario.rol);
   const esAdministracionApp = perfilUsuario?.rol === 'administracion';
+  const esSoloConsultaUsuarioApp = esSoloConsultaApp(perfilUsuario?.rol);
+  const puedeVerCobrosUsuarioApp =
+    !perfilUsuario || puedeVerCobrosApp(perfilUsuario.rol);
   const puedeGestionarAccesosUsuarioApp =
     !perfilUsuario || puedeGestionarAccesosApp(perfilUsuario.rol);
   const puedeGestionarWhatsappApp =
@@ -1421,7 +1426,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     if (
       esCoordinadorApp &&
       !esCoordinadorJefeApp &&
-      (pantalla === 'cobros' ||
+      ((pantalla === 'cobros' && !puedeVerCobrosUsuarioApp) ||
         pantalla === 'informes' ||
         pantalla === 'temporadas' ||
         pantalla === 'analisis' ||
@@ -1434,6 +1439,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     esEntrenadorApp,
     esCoordinadorApp,
     esCoordinadorJefeApp,
+    puedeVerCobrosUsuarioApp,
     pantalla,
   ]);
 
@@ -1618,7 +1624,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [formUsuarioOperativo, setFormUsuarioOperativo] = useState({
     nombre: '',
     email: '',
-    rol: 'sub_coordinador' as 'sub_coordinador' | 'administracion',
+    rol: 'sub_coordinador' as 'sub_coordinador' | 'administracion' | 'consulta',
   });
 
   const [avisos, setAvisos] = useState<AvisoJose[]>([]);
@@ -16588,7 +16594,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
     }
     if (pantalla === 'disponibilidad') cargarDisponibilidad();
     if (pantalla === 'reportes') cargarReportesPendientes();
-    if (pantalla === 'cobros' && esCoordinadorJefeApp) {
+    if (pantalla === 'cobros' && puedeVerCobrosUsuarioApp) {
       void cargarCobrosDesdeSemanaActiva();
       cargarEntrenadores();
     }
@@ -20096,7 +20102,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       className={`mitico-app-shell ${esCoordinadorApp ? 'with-sidebar' : 'trainer-only'} ${esVistaMovilApp ? 'is-mobile' : ''}`}
       style={layout}
     >
-      {esCoordinadorApp && !esAdministracionApp && <CoordinationAlerts onNivelCambiado={() => void cargarAlumnos()} />}
+      {esCoordinadorApp && !esAdministracionApp && !esSoloConsultaUsuarioApp && <CoordinationAlerts onNivelCambiado={() => void cargarAlumnos()} />}
       {esCoordinadorApp && (
         <StudentFichaSheet alumnos={alumnos} ocioAlumnos={ocioAlumnos} historialPorAlumno={historialReportesFichaPorAlumno} cargandoHistorialId={historialReportesFichaCargandoId} cargarHistorial={cargarHistorialReportesAlumnoFichaApp} formatDate={formatearFecha} cargarAlumnos={cargarAlumnos} />
       )}
@@ -20353,6 +20359,15 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
               </div>
             )}
 
+            {esSoloConsultaUsuarioApp && (
+              <div className="mitico-nav-group">
+                <span className="mitico-nav-heading">Dirección</span>
+                <button className={`mitico-nav-item ${pantalla === 'cobros' ? 'is-active' : ''}`} onClick={() => abrirPantallaConScroll('cobros')}>
+                  <IconoNavegacionApp tipo="cobros" /><span>Cobros</span>
+                </button>
+              </div>
+            )}
+
             {esCoordinadorJefeApp && (
               <div className="mitico-nav-group">
                 <span className="mitico-nav-heading">Dirección</span>
@@ -20483,6 +20498,11 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       `}</style>
 
       <div className="mitico-content-shell">
+        {esSoloConsultaUsuarioApp && (
+          <div className="mitico-consulta-banner" role="note">
+            👀 <strong>Modo consulta:</strong> puedes ver toda la app, pero no se puede cambiar nada.
+          </div>
+        )}
 
 
       {whatsappPreview && (
@@ -22347,7 +22367,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
           }}
         />
       )}
-      {pantalla === 'cobros' && esCoordinadorJefeApp && (
+      {pantalla === 'cobros' && puedeVerCobrosUsuarioApp && (
         <section
           style={{
             display: 'grid',
