@@ -10,6 +10,8 @@ import { addIsoDays, type BabyRelocationOption, type BabyRelocationStudent } fro
 import { loadBabyRelocationOptions, moveBabyStudentBetweenSessions } from '../../services/agenda/agendaRelocationService';
 import { addLateStudentToSession } from '../../services/agenda/lateStudentSessionService';
 import { SessionTrainerCoverageLine } from './AgendaTrainerSummary';
+import { columnasDelDia, estadoDia, pasosSesion, resumenDia } from './agendaTablero';
+import './AgendaTablero.css';
 import { PacoAltasAviso } from '../baby/PacoAltasAviso';
 import { PacoNotasSesion } from '../pacoAcciones/PacoNotasSesion';
 import { pendingAgendaStudents } from './agendaSessions';
@@ -929,6 +931,12 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
               </div>
             ) : (
               (() => {
+                const hoyTablero = new Intl.DateTimeFormat('en-CA', {
+                  timeZone: 'Europe/Madrid',
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                }).format(new Date());
                 const diaActivo =
                   diasSemanaAgenda.find(
                     (dia) => dia.fecha === agendaDiaCompactoActivo
@@ -936,37 +944,31 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                 const sesionesDia = diaActivo
                   ? sesionesDelDiaAgenda(diaActivo.fecha)
                   : [];
-                const totalAlumnosDia = sesionesDia.reduce(
-                  (total, sesion) => total + Number(sesion.totalAlumnos || 0),
-                  0
-                );
-                const totalGruposDia = sesionesDia.reduce(
-                  (total, sesion) => total + Number(sesion.totalGrupos || 0),
-                  0
-                );
-
                 return (
-                  <div style={{ display: 'grid', gap: 14 }}>
-                    <div style={agendaDiasSelectorCompacto}>
+                  <div className="ag-tablero">
+                    <div className="ag-dias" role="tablist" aria-label="Días de la semana">
                       {diasSemanaAgenda.map((dia) => {
                         const sesionesDiaBoton = sesionesDelDiaAgenda(
                           dia.fecha
-                        );
-                        const alumnosDiaBoton = sesionesDiaBoton.reduce(
-                          (total, sesion) =>
-                            total + Number(sesion.totalAlumnos || 0),
-                          0
-                        );
-                        const gruposDiaBoton = sesionesDiaBoton.reduce(
-                          (total, sesion) =>
-                            total + Number(sesion.totalGrupos || 0),
-                          0
+                        ) as SesionAgendaOperativa[];
+                        const resumen = resumenDia(sesionesDiaBoton);
+                        const estado = estadoDia(sesionesDiaBoton, (s) =>
+                          sessionTrainerCoverage(
+                            s as SesionAgendaOperativa,
+                            agendaTrainerAssignmentRows
+                          )
                         );
                         const activo = dia.fecha === diaActivo.fecha;
+                        const esHoy = dia.fecha === hoyTablero;
+                        const pasado = dia.fecha < hoyTablero;
 
                         return (
                           <button
                             key={dia.fecha}
+                            type="button"
+                            role="tab"
+                            aria-selected={activo}
+                            className={`ag-dia ag-dia--${estado}${activo ? ' is-activo' : ''}${esHoy ? ' is-hoy' : ''}${pasado ? ' is-pasado' : ''}`}
                             onClick={() => {
                               setAgendaDiaCompactoActivo(dia.fecha);
                               setAgendaSesionActivaId('');
@@ -980,272 +982,215 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                   });
                               }, 120);
                             }}
-                            style={agendaBotonDiaCompacto(
-                              activo,
-                              alumnosDiaBoton,
-                              gruposDiaBoton
-                            )}
                           >
-                            <span
-                              style={{
-                                display: 'grid',
-                                gap: 2,
-                                textAlign: 'left',
-                              }}
-                            >
-                              <span
-                                style={{
-                                  textTransform: 'capitalize',
-                                  fontWeight: 900,
-                                }}
-                              >
-                                {dia.nombre}
-                              </span>
-                              <span
-                                style={{
-                                  fontSize: 13,
-                                  color: activo ? '#1d4ed8' : '#64748b',
-                                }}
-                              >
-                                {fechaAgendaDiaCorta(dia.fecha)}
-                              </span>
+                            <span className="ag-dia-nombre">
+                              <span className="ag-dia-punto" aria-hidden="true" />
+                              {dia.nombre}
+                              {esHoy && <span className="ag-dia-hoy">hoy</span>}
                             </span>
-                            <span
-                              style={agendaMiniContadorDiaCompacto(
-                                activo,
-                                alumnosDiaBoton,
-                                gruposDiaBoton
-                              )}
-                            >
-                              {alumnosDiaBoton} alumnos · {gruposDiaBoton}{' '}
-                              grupos
+                            <span className="ag-dia-fecha">
+                              {fechaAgendaDiaCorta(dia.fecha)}
+                            </span>
+                            <span className="ag-dia-resumen">
+                              {estado === 'vacio' ? 'Sin sesiones' : resumen.texto}
                             </span>
                           </button>
                         );
                       })}
                     </div>
 
-                    <article
-                      id="agenda-dia-seleccionado"
-                      style={{
-                        ...agendaDiaCard,
-                        padding: 0,
-                        overflow: 'hidden',
-                        border: '1px solid rgba(15,118,110,0.24)',
-                        boxShadow: '0 12px 30px rgba(15,23,42,0.06)',
-                      }}
-                    >
-                      <header
-                        style={{
-                          ...agendaDiaHeader,
-                          marginBottom: 0,
-                          padding: '15px 16px',
-                          background:
-                            'linear-gradient(135deg, rgba(236,253,245,0.98), #ffffff)',
-                          borderBottom: '1px solid rgba(15,118,110,0.16)',
-                        }}
-                      >
-                        <div>
-                          <p style={agendaMiniLabel}>Día seleccionado</p>
-                          <h3
-                            style={{
-                              margin: 0,
-                              textTransform: 'capitalize',
-                              fontSize: 24,
-                            }}
-                          >
-                            {diaActivo.nombre} ·{' '}
-                            {fechaAgendaCortaConAnio(diaActivo.fecha)}
-                          </h3>
-                          <p style={{ margin: '4px 0 0', color: '#64748b' }}>
-                            {totalAlumnosDia} alumnos · {totalGruposDia} grupos
-                            · Semana {rangoSemanaAgenda(semanaAgendaActiva)}
-                          </p>
-                        </div>
-                        <span
-                          style={{
-                            ...agendaMiniTexto,
-                            alignSelf: 'center',
-                            fontWeight: 800,
-                          }}
-                        >
-                          Elige un turno y añade Baby
-                        </span>
+                    <article id="agenda-dia-seleccionado" className="ag-dia-panel">
+                      <header className="ag-dia-cabecera">
+                        <h3>
+                          {diaActivo.nombre} ·{' '}
+                          {fechaAgendaCortaConAnio(diaActivo.fecha)}
+                        </h3>
+                        <p>
+                          {resumenDia(sesionesDia as SesionAgendaOperativa[]).texto}
+                          {turnosTrabajoDiaAgenda(diaActivo.fecha).length > 0 &&
+                            ` · ${turnosTrabajoDiaAgenda(diaActivo.fecha).length} ${turnosTrabajoDiaAgenda(diaActivo.fecha).length === 1 ? 'turno' : 'turnos'}`}
+                        </p>
                       </header>
 
-                      <div style={{ display: 'grid', gap: 8, padding: '14px 16px 0' }}>
-                        {turnosTrabajoDiaAgenda(diaActivo.fecha).map(
-                          (turno) => (
-                            <div
-                              key={`${diaActivo.fecha}-${turno.inicio}`}
-                              style={agendaTurnoFila}
-                            >
-                              <strong>{turno.etiqueta}</strong>
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  gap: 6,
-                                  flexWrap: 'wrap',
-                                }}
-                              >
-                                <button
-                                  onClick={() =>
-                                    abrirFormularioAgendaDia(
-                                      diaActivo.fecha,
-                                      turno.inicio,
-                                      turno.fin,
-                                      'BABY'
-                                    )
-                                  }
-                                  style={botonModalidadAgenda('BABY')}
-                                >
-                                  + Baby
-                                </button>
-                              </div>
+                      {(() => {
+                        const columnas = columnasDelDia(
+                          turnosTrabajoDiaAgenda(diaActivo.fecha),
+                          sesionesDia as SesionAgendaOperativa[]
+                        );
+                        if (!columnas.length) {
+                          return (
+                            <div className="ag-vacio">
+                              <strong>Sin sesiones en este día.</strong>
+                              <p>
+                                Este día no tiene turnos de Baby. Ocio se prepara
+                                desde Grupos estables e Intensivos desde su flujo
+                                correspondiente.
+                              </p>
                             </div>
-                          )
-                        )}
-                      </div>
-
-                      {sesionesDia.length === 0 ? (
-                        <div style={{ ...agendaVacioMini, margin: '12px 16px 16px' }}>
-                          <strong>Sin sesiones en este día.</strong>
-                          <p style={{ margin: '6px 0 10px' }}>
-                            Para Baby, elige un turno y pulsa “+ Baby”.
-                            Ocio se prepara desde Grupos estables e Intensivos
-                            desde su flujo correspondiente.
-                          </p>
-                        </div>
-                      ) : (
-                        <div
-                          style={{ display: 'grid', gap: 10, marginTop: 12 }}
-                        >
-                          {sesionesDia.map((sesion) => (
-                            <article
-                              key={sesion.id}
-                              data-agenda-session-date={sesion.fecha}
-                              data-agenda-session-time={`${String(
-                                sesion.hora_inicio || ''
-                              ).slice(0, 5)} - ${String(
-                                sesion.hora_fin || ''
-                              ).slice(0, 5)}`}
-                              style={{
-                                ...agendaSesionCardModalidad(sesion.modalidad),
-                                borderRadius: 16,
-                                boxShadow: '0 8px 20px rgba(15,23,42,0.05)',
-                              }}
-                            >
-                              <div style={agendaSesionTop}>
-                                <div>
-                                  <div
-                                    style={agendaBadgeModalidadColor(
-                                      sesion.modalidad
-                                    )}
-                                  >
-                                    {sesion.modalidad}
-                                  </div>
-                                  <h4
-                                    style={{
-                                      margin: '8px 0 4px',
-                                      fontSize: 18,
-                                    }}
-                                  >
-                                    {sesion.titulo}
-                                  </h4>
-                                  <p style={{ margin: 0, color: '#475569' }}>
-                                    {sesion.hora_inicio?.slice(0, 5)} -{' '}
-                                    {sesion.hora_fin?.slice(0, 5)} ·{' '}
-                                    {sesion.estado}
-                                  </p>
-                                </div>
-                                <div style={agendaSesionContadores}>
-                                  <span>
-                                    <strong>{sesion.totalAlumnos}</strong>{' '}
-                                    alumnos
-                                  </span>
-                                  <span>
-                                    <strong>{sesion.totalGrupos}</strong> grupos
-                                  </span>
-                                </div>
-                              </div>
-                              <SessionTrainerCoverageLine
-                                coverage={sessionTrainerCoverage(
-                                  sesion,
-                                  agendaTrainerAssignmentRows
-                                )}
-                                publishedGroups={Number(sesion.publicados || 0)}
-                              />
-                              <div style={agendaAccionesSesion}>
-                                <button
-                                  onClick={() =>
-                                    abrirSesionAgenda(
-                                      sesion,
-                                      sesion.totalGrupos > 0
-                                        ? 'grupos'
-                                        : 'alumnos'
-                                    )
-                                  }
-                                  style={botonPrincipal}
-                                >
-                                  Abrir sesión
-                                </button>
-                                {sesion.origen === 'operativa' &&
-                                  String(sesion.modalidad || '')
+                          );
+                        }
+                        return (
+                          <div
+                            className="ag-turnos"
+                            style={{ ['--ag-cols' as any]: Math.min(columnas.length, 3) }}
+                          >
+                            {columnas.map((columna) => (
+                              <section key={columna.clave} className="ag-turno">
+                                <div className="ag-turno-hora">{columna.etiqueta}</div>
+                                {columna.sesiones.map((sesion) => {
+                                  const cobertura = sessionTrainerCoverage(
+                                    sesion,
+                                    agendaTrainerAssignmentRows
+                                  );
+                                  const { pasos, botonPrincipal } = pasosSesion(
+                                    sesion,
+                                    cobertura
+                                  );
+                                  const modalidad = String(sesion.modalidad || '')
                                     .trim()
-                                    .toUpperCase() === 'BABY' && (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        void refrescarSesionBabyDesdeAimHarder(
-                                          sesion
-                                        )
-                                      }
-                                      disabled={
-                                        babyAimHarderCargandoSemana ||
-                                        babyAimHarderFormularioCargando ||
-                                        Boolean(babyAimHarderSesionCargandoId)
-                                      }
-                                      style={botonSecundario}
+                                    .toUpperCase();
+                                  const esBabyOperativa =
+                                    sesion.origen === 'operativa' &&
+                                    modalidad === 'BABY';
+                                  return (
+                                    <article
+                                      key={sesion.id}
+                                      data-agenda-session-date={sesion.fecha}
+                                      data-agenda-session-time={`${String(
+                                        sesion.hora_inicio || ''
+                                      ).slice(0, 5)} - ${String(
+                                        sesion.hora_fin || ''
+                                      ).slice(0, 5)}`}
+                                      className={`ag-sesion ag-sesion--${modalidad.toLowerCase().replace(/[^a-z]/g, '') || 'otra'}`}
+                                      title={sesion.estado}
                                     >
-                                      {babyAimHarderSesionCargandoId ===
-                                      sesion.agendaDirecta?.sesion_id
-                                        ? 'Refrescando…'
-                                        : 'Refrescar listado'}
-                                    </button>
-                                  )}
-                                {sesion.origen === 'operativa' &&
-                                  sesion.totalGrupos > 0 && (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        void enviarWhatsAppPapisSesionTarjeta(
-                                          sesion
-                                        )
-                                      }
-                                      style={botonSecundario}
-                                    >
-                                      WhatsApp papis
-                                    </button>
-                                  )}
-                                {sesion.origen === 'operativa' &&
-                                  sesion.agendaDirecta?.sesion_id && (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        void borrarSesionAgenda(
-                                          sesion.agendaDirecta!.sesion_id
-                                        )
-                                      }
-                                      style={botonPeligro}
-                                    >
-                                      Borrar sesión
-                                    </button>
-                                  )}
-                              </div>
-                            </article>
-                          ))}
-                        </div>
-                      )}
+                                      <div className="ag-sesion-top">
+                                        <span className="ag-sesion-modalidad">
+                                          {sesion.modalidad}
+                                        </span>
+                                        {(!columna.turno ||
+                                          String(sesion.hora_inicio || '').slice(0, 5) !== columna.turno.inicio ||
+                                          String(sesion.hora_fin || '').slice(0, 5) !== columna.turno.fin) && (
+                                          <span className="ag-sesion-horario">
+                                            {sesion.hora_inicio?.slice(0, 5)}–
+                                            {sesion.hora_fin?.slice(0, 5)}
+                                          </span>
+                                        )}
+                                        <span className="ag-sesion-cifras">
+                                          <strong>{sesion.totalAlumnos}</strong>{' '}
+                                          {Number(sesion.totalAlumnos) === 1 ? 'niño' : 'niños'} ·{' '}
+                                          <strong>{sesion.totalGrupos}</strong>{' '}
+                                          {Number(sesion.totalGrupos) === 1 ? 'grupo' : 'grupos'}
+                                        </span>
+                                      </div>
+                                      <div className="ag-sesion-titulo">{sesion.titulo}</div>
+                                      <ol className="ag-pasos" aria-label="Estado de la sesión">
+                                        {pasos.map((paso) => (
+                                          <li key={paso.clave} className={`ag-paso ag-paso--${paso.estado}`}>
+                                            {paso.estado === 'hecho' ? '✓ ' : ''}
+                                            {paso.etiqueta}
+                                          </li>
+                                        ))}
+                                      </ol>
+                                      <SessionTrainerCoverageLine
+                                        coverage={cobertura}
+                                        publishedGroups={Number(sesion.publicados || 0)}
+                                      />
+                                      <div className="ag-sesion-acciones">
+                                        <button
+                                          type="button"
+                                          className="ag-boton ag-boton--principal"
+                                          onClick={() =>
+                                            abrirSesionAgenda(
+                                              sesion,
+                                              sesion.totalGrupos > 0
+                                                ? 'grupos'
+                                                : 'alumnos'
+                                            )
+                                          }
+                                        >
+                                          {botonPrincipal}
+                                        </button>
+                                        {esBabyOperativa && (
+                                          <button
+                                            type="button"
+                                            className="ag-boton"
+                                            onClick={() =>
+                                              void refrescarSesionBabyDesdeAimHarder(
+                                                sesion
+                                              )
+                                            }
+                                            disabled={
+                                              babyAimHarderCargandoSemana ||
+                                              babyAimHarderFormularioCargando ||
+                                              Boolean(babyAimHarderSesionCargandoId)
+                                            }
+                                          >
+                                            {babyAimHarderSesionCargandoId ===
+                                            sesion.agendaDirecta?.sesion_id
+                                              ? 'Refrescando…'
+                                              : 'Refrescar listado'}
+                                          </button>
+                                        )}
+                                        {sesion.origen === 'operativa' &&
+                                          sesion.totalGrupos > 0 && (
+                                            <button
+                                              type="button"
+                                              className="ag-boton"
+                                              onClick={() =>
+                                                void enviarWhatsAppPapisSesionTarjeta(
+                                                  sesion
+                                                )
+                                              }
+                                            >
+                                              WhatsApp papis
+                                            </button>
+                                          )}
+                                        {sesion.origen === 'operativa' &&
+                                          sesion.agendaDirecta?.sesion_id && (
+                                            <details className="ag-mas">
+                                              <summary aria-label="Más acciones">⋯</summary>
+                                              <div className="ag-mas-menu">
+                                                <button
+                                                  type="button"
+                                                  className="ag-mas-peligro"
+                                                  onClick={(e) => {
+                                                    (e.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open');
+                                                    void borrarSesionAgenda(
+                                                      sesion.agendaDirecta!.sesion_id
+                                                    );
+                                                  }}
+                                                >
+                                                  Borrar sesión
+                                                </button>
+                                              </div>
+                                            </details>
+                                          )}
+                                      </div>
+                                    </article>
+                                  );
+                                })}
+                                {columna.turno && !columna.tieneBaby && (
+                                  <button
+                                    type="button"
+                                    className="ag-anadir"
+                                    onClick={() =>
+                                      abrirFormularioAgendaDia(
+                                        diaActivo.fecha,
+                                        columna.turno!.inicio,
+                                        columna.turno!.fin,
+                                        'BABY'
+                                      )
+                                    }
+                                  >
+                                    + Añadir Baby
+                                  </button>
+                                )}
+                              </section>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </article>
                   </div>
                 );

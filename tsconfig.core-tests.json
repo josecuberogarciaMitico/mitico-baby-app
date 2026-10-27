@@ -22,6 +22,7 @@
     "src/features/pacoAcciones/pacoAgenteAccionesLogic.ts",
     "src/features/pacoAcciones/pacoNotasLogic.ts",
     "src/features/analysis/analysisSummary.ts",
+    "src/features/agenda/agendaTablero.ts",
     "src/features/seasons/**/*.ts",
     "src/features/billing/**/*.ts",
     "src/services/aimharder/aimHarderContract.ts",
