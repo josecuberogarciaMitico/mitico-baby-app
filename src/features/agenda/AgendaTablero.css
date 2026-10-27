@@ -128,11 +128,14 @@
    y ventanas fijas de dentro deben seguir pegados a la pantalla). */
 .ag-trabajo {
   position: fixed; inset: 0; z-index: 80; overflow-y: auto; overscroll-behavior: contain;
+  /* Va colgado de <body> (fuera de la app): misma letra y color, y sin la
+     animación general que deja un transform (atraparía sus ventanas fijas). */
+  animation: none; font-family: 'SF Pro Rounded', 'Aptos', 'Inter', 'Segoe UI', system-ui, sans-serif; color: #172033;
   background: #f8fafc; padding: 0 12px 24px; box-sizing: border-box;
   -webkit-overflow-scrolling: touch;
 }
 .ag-trabajo-cabecera {
-  position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 10px;
+  position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px;
   margin: 0 -12px 12px; padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px;
   background: #fff; border-bottom: 1px solid #e2e8f0; box-shadow: 0 4px 14px rgba(15, 23, 42, .06);
 }

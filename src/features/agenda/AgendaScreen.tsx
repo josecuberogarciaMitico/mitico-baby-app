@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { AlumnoResumen } from '../../core/students/studentTypes';
 import type { EntrenadorResumen } from '../../core/trainers/trainerTypes';
 import type {
@@ -1229,7 +1230,10 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
             )}
           </section>
 
-          {(agendaFormularioAbierto || agendaSesionActivaId) && (
+          {/* El panel cuelga de <body>: dentro de la Agenda una animación general
+              (miticoFadeUp) deja un transform que lo «atrapaba» y la barra de
+              Volver/Cerrar quedaba fuera de la pantalla. */}
+          {(agendaFormularioAbierto || agendaSesionActivaId) && typeof document !== 'undefined' && createPortal(
             <section
               id="trabajo-agenda"
               className="ag-trabajo"
@@ -4049,7 +4053,8 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                   )}
                 </article>
               )}
-            </section>
+            </section>,
+            document.body
           )}
         </section>
       )}
