@@ -10794,6 +10794,19 @@ Gracias!`;
     window.open(enlace, '_blank', 'noopener,noreferrer');
   }
 
+  // WhatsApp no deja dejar escrito un mensaje al abrir un grupo por su enlace.
+  // Lo que sí permite es abrir WhatsApp con el mensaje ya escrito y elegir el
+  // chat (el grupo de papis) en la lista: un toque más, pero sin pegar nada.
+  function abrirWhatsappConMensajeElegirChat() {
+    if (!whatsappPreview?.texto.trim()) return;
+    setError('');
+    window.open(
+      `https://wa.me/?text=${encodeURIComponent(whatsappPreview.texto)}`,
+      '_blank',
+      'noopener,noreferrer'
+    );
+  }
+
   // Extraído de mensajeWhatsAppPapisSesionActual para poder generar el mismo
   // mensaje también para una sesión que NO está abierta (tarjeta del día),
   // sin depender de agendaSesionActivaId/agendaGruposSesion.
@@ -20648,8 +20661,8 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
                 }}
               >
                 {whatsappPreview.mensajeGrupoCopiado
-                  ? 'Mensaje copiado ✓ Solo pégalo en el grupo y pulsa enviar.'
-                  : 'Un toque: copia el mensaje y abre directamente el grupo de WhatsApp.'}
+                  ? 'Mensaje copiado ✓ WhatsApp no deja escribirlo solo: en el grupo pulsa Cmd+V (en el móvil, mantén pulsado → Pegar) y envía.'
+                  : 'Opción 1: copia el mensaje y abre el grupo (luego pegas). Opción 2: «Escribir mensaje y elegir grupo» lo deja ya escrito y tú eliges el grupo.'}
               </div>
             )}
 
@@ -20672,6 +20685,14 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
                   }
                 >
                   Enviar a grupo WhatsApp
+                </button>
+              )}
+              {whatsappPreview.claveGrupoWhatsapp && (
+                <button
+                  onClick={abrirWhatsappConMensajeElegirChat}
+                  style={botonSecundario}
+                >
+                  Escribir mensaje y elegir grupo
                 </button>
               )}
               {whatsappPreview.telefonoDestino && (
