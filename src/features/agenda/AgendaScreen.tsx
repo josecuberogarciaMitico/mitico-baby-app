@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { AlumnoResumen } from '../../core/students/studentTypes';
 import type { EntrenadorResumen } from '../../core/trainers/trainerTypes';
 import type {
@@ -10,6 +11,21 @@ import { addIsoDays, type BabyRelocationOption, type BabyRelocationStudent } fro
 import { loadBabyRelocationOptions, moveBabyStudentBetweenSessions } from '../../services/agenda/agendaRelocationService';
 import { addLateStudentToSession } from '../../services/agenda/lateStudentSessionService';
 import { SessionTrainerCoverageLine } from './AgendaTrainerSummary';
+import {
+  ETIQUETA_MOTIVO,
+  columnasDelDia,
+  disponiblesEnTurno,
+  estadoDia,
+  pasosSesion,
+  pendientesSemana,
+  resumenDia,
+  siguientePendiente,
+  type ExtrasSesion,
+  type FilaDisponibilidad,
+  type MotivoPendiente,
+  type PendienteSesion,
+} from './agendaTablero';
+import './AgendaTablero.css';
 import { PacoAltasAviso } from '../baby/PacoAltasAviso';
 import { PacoNotasSesion } from '../pacoAcciones/PacoNotasSesion';
 import { pendingAgendaStudents } from './agendaSessions';
@@ -424,6 +440,144 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     }
   }
 
+  // --- Ayudas del tablero (27/10): datos extra de la semana, solo lectura ---
+  const idSesionDbTablero = (s: SesionAgendaOperativa) =>
+    String(s.agendaDirecta?.sesion_id || (s.dia as { sesion_id?: string } | undefined)?.sesion_id || '');
+  const hoyTableroSemana = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+  const diasTableroSemana = (diasSemanaAgenda || []).map((dia: { fecha: string }) => ({
+    fecha: dia.fecha,
+    sesiones: sesionesDelDiaAgenda(dia.fecha) as SesionAgendaOperativa[],
+  }));
+  const idsSesionesSemanaTablero = Array.from(
+    new Set(
+      diasTableroSemana
+        .flatMap((d: { sesiones: SesionAgendaOperativa[] }) => d.sesiones.map(idSesionDbTablero))
+        .filter(Boolean)
+    )
+  ).sort() as string[];
+  const firmaSesionesSemanaTablero = idsSesionesSemanaTablero.join(',');
+  const [extrasTablero, setExtrasTablero] = useState<Record<string, ExtrasSesion>>({});
+  const [disponibilidadTablero, setDisponibilidadTablero] = useState<FilaDisponibilidad[]>([]);
+
+  async function cargarExtrasTableroSemana() {
+    if (!semanaAgendaActiva) {
+      setExtrasTablero({});
+      setDisponibilidadTablero([]);
+      return;
+    }
+    const ids = idsSesionesSemanaTablero;
+    const nuevos: Record<string, ExtrasSesion> = {};
+    ids.forEach((id) => (nuevos[id] = { revisar: 0, notas: 0, sinConfirmar: 0 }));
+    // Cada dato va por su lado: si uno falla (p. ej. un usuario sin permiso
+    // para las notas), el resto se enseña igual.
+    const [roster, grupos, dispo] = await Promise.allSettled([
+      ids.length
+        ? consultarSupabase(
+            'v_sesion_alumnos_operativa_app',
+            `select=sesion_id,alumno_id,estado_en_listado,estado_ficha&sesion_id=in.(${ids.join(',')})`
+          )
+        : Promise.resolve([]),
+      ids.length
+        ? consultarSupabase(
+            'v_grupos_sesion_operativa_app',
+            `select=sesion_id,grupo_id,publicado,estado_confirmacion,entrenador_id&sesion_id=in.(${ids.join(',')})`
+          )
+        : Promise.resolve([]),
+      ejecutarFuncionAuthJson('obtener_disponibilidad_publicada_entrenadores_editor_app', {
+        p_semana_inicio: semanaAgendaActiva,
+      }),
+    ]);
+    const filasRoster: Array<{ sesion_id: string; alumno_id: string; estado_en_listado?: string; estado_ficha?: string }> =
+      roster.status === 'fulfilled' && Array.isArray(roster.value) ? (roster.value as any[]) : [];
+    filasRoster.forEach((f) => {
+      const ex = nuevos[String(f.sesion_id)];
+      if (!ex) return;
+      const listado = String(f.estado_en_listado || '').toUpperCase();
+      const ficha = String(f.estado_ficha || '').toLowerCase();
+      if (listado === 'PENDIENTE_TEST' || (ficha && ficha !== 'completa')) ex.revisar += 1;
+    });
+    if (grupos.status === 'fulfilled' && Array.isArray(grupos.value)) {
+      (grupos.value as Array<{ sesion_id: string; publicado?: boolean; estado_confirmacion?: string | null; entrenador_id?: string | null }>).forEach((g) => {
+        const ex = nuevos[String(g.sesion_id)];
+        if (!ex) return;
+        if (g.publicado && g.entrenador_id && String(g.estado_confirmacion || '').toLowerCase() !== 'confirmado') ex.sinConfirmar += 1;
+      });
+    }
+    const alumnoIds = Array.from(new Set(filasRoster.map((f) => String(f.alumno_id)).filter(Boolean)));
+    if (esCoordinadorApp && alumnoIds.length) {
+      try {
+        const notas = await ejecutarFuncionAuthJson('notas_paco_alumnos_app', { p_alumno_ids: alumnoIds });
+        const conNota = new Set(
+          (Array.isArray(notas) ? (notas as Array<{ alumno_id?: string }>) : []).map((n) => String(n.alumno_id || ''))
+        );
+        filasRoster.forEach((f) => {
+          if (conNota.has(String(f.alumno_id)) && nuevos[String(f.sesion_id)]) nuevos[String(f.sesion_id)].notas += 1;
+        });
+      } catch {
+        // Sin permiso para las notas: no se enseñan.
+      }
+    }
+    setExtrasTablero(nuevos);
+    const turnos = dispo.status === 'fulfilled' ? (dispo.value as { turnos?: FilaDisponibilidad[] } | null)?.turnos : null;
+    setDisponibilidadTablero(Array.isArray(turnos) ? turnos : []);
+  }
+
+  useEffect(() => {
+    if (pantalla !== 'agenda') return;
+    void cargarExtrasTableroSemana();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pantalla, semanaAgendaActiva, firmaSesionesSemanaTablero, firmaGruposAgenda]);
+
+  const entrenadoresActivosTablero = new Set(
+    (entrenadores || []).filter((e: { activo?: boolean }) => e.activo).map((e: { entrenador_id: string }) => String(e.entrenador_id))
+  );
+  const pendientesTablero = pendientesSemana(
+    diasTableroSemana,
+    hoyTableroSemana,
+    (s) => sessionTrainerCoverage(s, agendaTrainerAssignmentRows),
+    (s) => extrasTablero[idSesionDbTablero(s)] || null
+  );
+  const sesionAbiertaTablero =
+    pendientesTablero.pendientes.find((p) => agendaSesionActivaId && idSesionDbTablero(p.sesion) === agendaSesionActivaId)
+      ?.sesion.id || '';
+  const siguientePendienteTablero = siguientePendiente(pendientesTablero.pendientes, sesionAbiertaTablero);
+
+  function abrirPendienteTablero(p: PendienteSesion<SesionAgendaOperativa> | null, motivo?: MotivoPendiente) {
+    if (!p) return;
+    setAgendaDiaCompactoActivo(p.fecha);
+    abrirSesionAgenda(
+      p.sesion,
+      motivo === 'revisar' || p.sesion.totalGrupos <= 0 ? 'alumnos' : 'grupos'
+    );
+  }
+
+  // Fase 2: la sesión y «Pegar listado» se abren en un panel lateral
+  // (pantalla completa en móvil). Cerrar hace lo mismo que el antiguo botón.
+  function cerrarPanelTrabajoAgenda() {
+    setAgendaFormularioAbierto(false);
+    setAgendaSesionActivaId('');
+    setAgendaRecomendaciones([]);
+    setAgendaPestanaProceso('crear');
+  }
+
+  useEffect(() => {
+    if (pantalla !== 'agenda' || !(agendaFormularioAbierto || agendaSesionActivaId)) return;
+    const alPulsar = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const destino = e.target as HTMLElement | null;
+      // Esc dentro de un campo de texto no cierra (podría perder lo escrito).
+      if (destino && /^(INPUT|TEXTAREA|SELECT)$/.test(destino.tagName)) return;
+      cerrarPanelTrabajoAgenda();
+    };
+    window.addEventListener('keydown', alPulsar);
+    return () => window.removeEventListener('keydown', alPulsar);
+  }, [pantalla, agendaFormularioAbierto, agendaSesionActivaId]);
+
   useEffect(() => {
     if (pantalla !== 'agenda') return;
     void cargarAsignacionesEntrenadoresSemana();
@@ -622,7 +776,10 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
   return (
     <>
       {pantalla === 'agenda' && (
-        <section style={agendaShellCompacto}>
+        <section
+          style={agendaShellCompacto}
+          className={`ag-shell${agendaFormularioAbierto || agendaSesionActivaId ? ' ag-shell--con-panel' : ''}`}
+        >
           <article
             style={{
               borderRadius: 24,
@@ -929,6 +1086,12 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
               </div>
             ) : (
               (() => {
+                const hoyTablero = new Intl.DateTimeFormat('en-CA', {
+                  timeZone: 'Europe/Madrid',
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit',
+                }).format(new Date());
                 const diaActivo =
                   diasSemanaAgenda.find(
                     (dia) => dia.fecha === agendaDiaCompactoActivo
@@ -936,37 +1099,68 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                 const sesionesDia = diaActivo
                   ? sesionesDelDiaAgenda(diaActivo.fecha)
                   : [];
-                const totalAlumnosDia = sesionesDia.reduce(
-                  (total, sesion) => total + Number(sesion.totalAlumnos || 0),
-                  0
-                );
-                const totalGruposDia = sesionesDia.reduce(
-                  (total, sesion) => total + Number(sesion.totalGrupos || 0),
-                  0
-                );
-
                 return (
-                  <div style={{ display: 'grid', gap: 14 }}>
-                    <div style={agendaDiasSelectorCompacto}>
+                  <div className="ag-tablero">
+                    <div
+                      className={`ag-pendientes${pendientesTablero.total === 0 ? ' is-al-dia' : ''}`}
+                      aria-label="Lo que falta esta semana"
+                    >
+                      {pendientesTablero.total === 0 ? (
+                        <span className="ag-pendientes-ok">✓ Semana al día: no falta nada desde hoy.</span>
+                      ) : (
+                        <>
+                          <span className="ag-pendientes-titulo">Falta esta semana:</span>
+                          {(Object.keys(ETIQUETA_MOTIVO) as MotivoPendiente[])
+                            .filter((m) => pendientesTablero.contadores[m] > 0)
+                            .map((m) => (
+                              <button
+                                key={m}
+                                type="button"
+                                className={`ag-chip ag-chip--${m}`}
+                                onClick={() =>
+                                  abrirPendienteTablero(
+                                    siguientePendiente(pendientesTablero.pendientes, '', m),
+                                    m
+                                  )
+                                }
+                              >
+                                <strong>{pendientesTablero.contadores[m]}</strong>{' '}
+                                {ETIQUETA_MOTIVO[m][pendientesTablero.contadores[m] === 1 ? 0 : 1]}
+                              </button>
+                            ))}
+                          <button
+                            type="button"
+                            className="ag-boton ag-boton--principal ag-siguiente"
+                            onClick={() => abrirPendienteTablero(siguientePendienteTablero || pendientesTablero.pendientes[0])}
+                          >
+                            Siguiente pendiente →
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    <div className="ag-dias" role="tablist" aria-label="Días de la semana">
                       {diasSemanaAgenda.map((dia) => {
                         const sesionesDiaBoton = sesionesDelDiaAgenda(
                           dia.fecha
-                        );
-                        const alumnosDiaBoton = sesionesDiaBoton.reduce(
-                          (total, sesion) =>
-                            total + Number(sesion.totalAlumnos || 0),
-                          0
-                        );
-                        const gruposDiaBoton = sesionesDiaBoton.reduce(
-                          (total, sesion) =>
-                            total + Number(sesion.totalGrupos || 0),
-                          0
+                        ) as SesionAgendaOperativa[];
+                        const resumen = resumenDia(sesionesDiaBoton);
+                        const estado = estadoDia(sesionesDiaBoton, (s) =>
+                          sessionTrainerCoverage(
+                            s as SesionAgendaOperativa,
+                            agendaTrainerAssignmentRows
+                          )
                         );
                         const activo = dia.fecha === diaActivo.fecha;
+                        const esHoy = dia.fecha === hoyTablero;
+                        const pasado = dia.fecha < hoyTablero;
 
                         return (
                           <button
                             key={dia.fecha}
+                            type="button"
+                            role="tab"
+                            aria-selected={activo}
+                            className={`ag-dia ag-dia--${estado}${activo ? ' is-activo' : ''}${esHoy ? ' is-hoy' : ''}${pasado ? ' is-pasado' : ''}`}
                             onClick={() => {
                               setAgendaDiaCompactoActivo(dia.fecha);
                               setAgendaSesionActivaId('');
@@ -980,272 +1174,272 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                   });
                               }, 120);
                             }}
-                            style={agendaBotonDiaCompacto(
-                              activo,
-                              alumnosDiaBoton,
-                              gruposDiaBoton
-                            )}
                           >
-                            <span
-                              style={{
-                                display: 'grid',
-                                gap: 2,
-                                textAlign: 'left',
-                              }}
-                            >
-                              <span
-                                style={{
-                                  textTransform: 'capitalize',
-                                  fontWeight: 900,
-                                }}
-                              >
-                                {dia.nombre}
-                              </span>
-                              <span
-                                style={{
-                                  fontSize: 13,
-                                  color: activo ? '#1d4ed8' : '#64748b',
-                                }}
-                              >
-                                {fechaAgendaDiaCorta(dia.fecha)}
-                              </span>
+                            <span className="ag-dia-nombre">
+                              <span className="ag-dia-punto" aria-hidden="true" />
+                              {dia.nombre}
+                              {esHoy && <span className="ag-dia-hoy">hoy</span>}
                             </span>
-                            <span
-                              style={agendaMiniContadorDiaCompacto(
-                                activo,
-                                alumnosDiaBoton,
-                                gruposDiaBoton
-                              )}
-                            >
-                              {alumnosDiaBoton} alumnos · {gruposDiaBoton}{' '}
-                              grupos
+                            <span className="ag-dia-fecha">
+                              {fechaAgendaDiaCorta(dia.fecha)}
+                            </span>
+                            <span className="ag-dia-resumen">
+                              {estado === 'vacio' ? 'Sin sesiones' : resumen.texto}
                             </span>
                           </button>
                         );
                       })}
                     </div>
 
-                    <article
-                      id="agenda-dia-seleccionado"
-                      style={{
-                        ...agendaDiaCard,
-                        padding: 0,
-                        overflow: 'hidden',
-                        border: '1px solid rgba(15,118,110,0.24)',
-                        boxShadow: '0 12px 30px rgba(15,23,42,0.06)',
-                      }}
-                    >
-                      <header
-                        style={{
-                          ...agendaDiaHeader,
-                          marginBottom: 0,
-                          padding: '15px 16px',
-                          background:
-                            'linear-gradient(135deg, rgba(236,253,245,0.98), #ffffff)',
-                          borderBottom: '1px solid rgba(15,118,110,0.16)',
-                        }}
-                      >
-                        <div>
-                          <p style={agendaMiniLabel}>Día seleccionado</p>
-                          <h3
-                            style={{
-                              margin: 0,
-                              textTransform: 'capitalize',
-                              fontSize: 24,
-                            }}
-                          >
-                            {diaActivo.nombre} ·{' '}
-                            {fechaAgendaCortaConAnio(diaActivo.fecha)}
-                          </h3>
-                          <p style={{ margin: '4px 0 0', color: '#64748b' }}>
-                            {totalAlumnosDia} alumnos · {totalGruposDia} grupos
-                            · Semana {rangoSemanaAgenda(semanaAgendaActiva)}
-                          </p>
-                        </div>
-                        <span
-                          style={{
-                            ...agendaMiniTexto,
-                            alignSelf: 'center',
-                            fontWeight: 800,
-                          }}
-                        >
-                          Elige un turno y añade Baby
-                        </span>
+                    <article id="agenda-dia-seleccionado" className="ag-dia-panel">
+                      <header className="ag-dia-cabecera">
+                        <h3>
+                          {diaActivo.nombre} ·{' '}
+                          {fechaAgendaCortaConAnio(diaActivo.fecha)}
+                        </h3>
+                        <p>
+                          {resumenDia(sesionesDia as SesionAgendaOperativa[]).texto}
+                          {turnosTrabajoDiaAgenda(diaActivo.fecha).length > 0 &&
+                            ` · ${turnosTrabajoDiaAgenda(diaActivo.fecha).length} ${turnosTrabajoDiaAgenda(diaActivo.fecha).length === 1 ? 'turno' : 'turnos'}`}
+                        </p>
                       </header>
 
-                      <div style={{ display: 'grid', gap: 8, padding: '14px 16px 0' }}>
-                        {turnosTrabajoDiaAgenda(diaActivo.fecha).map(
-                          (turno) => (
-                            <div
-                              key={`${diaActivo.fecha}-${turno.inicio}`}
-                              style={agendaTurnoFila}
-                            >
-                              <strong>{turno.etiqueta}</strong>
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  gap: 6,
-                                  flexWrap: 'wrap',
-                                }}
-                              >
-                                <button
-                                  onClick={() =>
-                                    abrirFormularioAgendaDia(
-                                      diaActivo.fecha,
-                                      turno.inicio,
-                                      turno.fin,
-                                      'BABY'
-                                    )
-                                  }
-                                  style={botonModalidadAgenda('BABY')}
-                                >
-                                  + Baby
-                                </button>
-                              </div>
+                      {(() => {
+                        const columnas = columnasDelDia(
+                          turnosTrabajoDiaAgenda(diaActivo.fecha),
+                          sesionesDia as SesionAgendaOperativa[]
+                        );
+                        if (!columnas.length) {
+                          return (
+                            <div className="ag-vacio">
+                              <strong>Sin sesiones en este día.</strong>
+                              <p>
+                                Este día no tiene turnos de Baby. Ocio se prepara
+                                desde Grupos estables e Intensivos desde su flujo
+                                correspondiente.
+                              </p>
                             </div>
-                          )
-                        )}
-                      </div>
-
-                      {sesionesDia.length === 0 ? (
-                        <div style={{ ...agendaVacioMini, margin: '12px 16px 16px' }}>
-                          <strong>Sin sesiones en este día.</strong>
-                          <p style={{ margin: '6px 0 10px' }}>
-                            Para Baby, elige un turno y pulsa “+ Baby”.
-                            Ocio se prepara desde Grupos estables e Intensivos
-                            desde su flujo correspondiente.
-                          </p>
-                        </div>
-                      ) : (
-                        <div
-                          style={{ display: 'grid', gap: 10, marginTop: 12 }}
-                        >
-                          {sesionesDia.map((sesion) => (
-                            <article
-                              key={sesion.id}
-                              data-agenda-session-date={sesion.fecha}
-                              data-agenda-session-time={`${String(
-                                sesion.hora_inicio || ''
-                              ).slice(0, 5)} - ${String(
-                                sesion.hora_fin || ''
-                              ).slice(0, 5)}`}
-                              style={{
-                                ...agendaSesionCardModalidad(sesion.modalidad),
-                                borderRadius: 16,
-                                boxShadow: '0 8px 20px rgba(15,23,42,0.05)',
-                              }}
-                            >
-                              <div style={agendaSesionTop}>
-                                <div>
-                                  <div
-                                    style={agendaBadgeModalidadColor(
-                                      sesion.modalidad
-                                    )}
-                                  >
-                                    {sesion.modalidad}
-                                  </div>
-                                  <h4
-                                    style={{
-                                      margin: '8px 0 4px',
-                                      fontSize: 18,
-                                    }}
-                                  >
-                                    {sesion.titulo}
-                                  </h4>
-                                  <p style={{ margin: 0, color: '#475569' }}>
-                                    {sesion.hora_inicio?.slice(0, 5)} -{' '}
-                                    {sesion.hora_fin?.slice(0, 5)} ·{' '}
-                                    {sesion.estado}
-                                  </p>
+                          );
+                        }
+                        return (
+                          <div
+                            className="ag-turnos"
+                            style={{ ['--ag-cols' as any]: Math.min(columnas.length, 3) }}
+                          >
+                            {columnas.map((columna) => (
+                              <section key={columna.clave} className="ag-turno">
+                                <div className="ag-turno-hora">
+                                  <span>{columna.etiqueta}</span>
+                                  {columna.turno &&
+                                    (() => {
+                                      const disp = disponiblesEnTurno(
+                                        disponibilidadTablero,
+                                        diaActivo.fecha,
+                                        columna.turno.inicio,
+                                        columna.turno.fin,
+                                        entrenadoresActivosTablero.size ? entrenadoresActivosTablero : null
+                                      );
+                                      if (disp === null) return null;
+                                      const gruposTurno = columna.sesiones.reduce(
+                                        (t, s) => t + Number(s.totalGrupos || 0),
+                                        0
+                                      );
+                                      const corto = gruposTurno > disp;
+                                      return (
+                                        <span
+                                          className={`ag-turno-dispo${corto ? ' is-corto' : ''}`}
+                                          title={corto ? 'Hay más grupos que entrenadores disponibles en este turno' : 'Entrenadores que han dicho «Disponible» en este turno'}
+                                        >
+                                          {gruposTurno > 0 ? `${gruposTurno} ${gruposTurno === 1 ? 'grupo' : 'grupos'} · ` : ''}
+                                          {disp} {disp === 1 ? 'entrenador disponible' : 'entrenadores disponibles'}
+                                          {corto ? ' ⚠️' : ''}
+                                        </span>
+                                      );
+                                    })()}
                                 </div>
-                                <div style={agendaSesionContadores}>
-                                  <span>
-                                    <strong>{sesion.totalAlumnos}</strong>{' '}
-                                    alumnos
-                                  </span>
-                                  <span>
-                                    <strong>{sesion.totalGrupos}</strong> grupos
-                                  </span>
-                                </div>
-                              </div>
-                              <SessionTrainerCoverageLine
-                                coverage={sessionTrainerCoverage(
-                                  sesion,
-                                  agendaTrainerAssignmentRows
-                                )}
-                                publishedGroups={Number(sesion.publicados || 0)}
-                              />
-                              <div style={agendaAccionesSesion}>
-                                <button
-                                  onClick={() =>
-                                    abrirSesionAgenda(
-                                      sesion,
-                                      sesion.totalGrupos > 0
-                                        ? 'grupos'
-                                        : 'alumnos'
-                                    )
-                                  }
-                                  style={botonPrincipal}
-                                >
-                                  Abrir sesión
-                                </button>
-                                {sesion.origen === 'operativa' &&
-                                  String(sesion.modalidad || '')
+                                {columna.sesiones.map((sesion) => {
+                                  const cobertura = sessionTrainerCoverage(
+                                    sesion,
+                                    agendaTrainerAssignmentRows
+                                  );
+                                  const { pasos, botonPrincipal } = pasosSesion(
+                                    sesion,
+                                    cobertura
+                                  );
+                                  const modalidad = String(sesion.modalidad || '')
                                     .trim()
-                                    .toUpperCase() === 'BABY' && (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        void refrescarSesionBabyDesdeAimHarder(
-                                          sesion
-                                        )
-                                      }
-                                      disabled={
-                                        babyAimHarderCargandoSemana ||
-                                        babyAimHarderFormularioCargando ||
-                                        Boolean(babyAimHarderSesionCargandoId)
-                                      }
-                                      style={botonSecundario}
+                                    .toUpperCase();
+                                  const esBabyOperativa =
+                                    sesion.origen === 'operativa' &&
+                                    modalidad === 'BABY';
+                                  return (
+                                    <article
+                                      key={sesion.id}
+                                      data-agenda-session-date={sesion.fecha}
+                                      data-agenda-session-time={`${String(
+                                        sesion.hora_inicio || ''
+                                      ).slice(0, 5)} - ${String(
+                                        sesion.hora_fin || ''
+                                      ).slice(0, 5)}`}
+                                      className={`ag-sesion ag-sesion--${modalidad.toLowerCase().replace(/[^a-z]/g, '') || 'otra'}${
+                                        agendaSesionActivaId &&
+                                        (sesion.agendaDirecta?.sesion_id === agendaSesionActivaId ||
+                                          (sesion.dia as { sesion_id?: string } | undefined)?.sesion_id === agendaSesionActivaId)
+                                          ? ' is-abierta'
+                                          : ''
+                                      }`}
+                                      title={sesion.estado}
                                     >
-                                      {babyAimHarderSesionCargandoId ===
-                                      sesion.agendaDirecta?.sesion_id
-                                        ? 'Refrescando…'
-                                        : 'Refrescar listado'}
-                                    </button>
-                                  )}
-                                {sesion.origen === 'operativa' &&
-                                  sesion.totalGrupos > 0 && (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        void enviarWhatsAppPapisSesionTarjeta(
-                                          sesion
-                                        )
-                                      }
-                                      style={botonSecundario}
-                                    >
-                                      WhatsApp papis
-                                    </button>
-                                  )}
-                                {sesion.origen === 'operativa' &&
-                                  sesion.agendaDirecta?.sesion_id && (
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        void borrarSesionAgenda(
-                                          sesion.agendaDirecta!.sesion_id
-                                        )
-                                      }
-                                      style={botonPeligro}
-                                    >
-                                      Borrar sesión
-                                    </button>
-                                  )}
-                              </div>
-                            </article>
-                          ))}
-                        </div>
-                      )}
+                                      <div className="ag-sesion-top">
+                                        <span className="ag-sesion-modalidad">
+                                          {sesion.modalidad}
+                                        </span>
+                                        {(!columna.turno ||
+                                          String(sesion.hora_inicio || '').slice(0, 5) !== columna.turno.inicio ||
+                                          String(sesion.hora_fin || '').slice(0, 5) !== columna.turno.fin) && (
+                                          <span className="ag-sesion-horario">
+                                            {sesion.hora_inicio?.slice(0, 5)}–
+                                            {sesion.hora_fin?.slice(0, 5)}
+                                          </span>
+                                        )}
+                                        <span className="ag-sesion-cifras">
+                                          <strong>{sesion.totalAlumnos}</strong>{' '}
+                                          {Number(sesion.totalAlumnos) === 1 ? 'niño' : 'niños'} ·{' '}
+                                          <strong>{sesion.totalGrupos}</strong>{' '}
+                                          {Number(sesion.totalGrupos) === 1 ? 'grupo' : 'grupos'}
+                                        </span>
+                                      </div>
+                                      <div className="ag-sesion-titulo">{sesion.titulo}</div>
+                                      {(() => {
+                                        const ex = extrasTablero[idSesionDbTablero(sesion)];
+                                        if (!ex || (!ex.revisar && !ex.notas && !ex.sinConfirmar)) return null;
+                                        return (
+                                          <div className="ag-avisos">
+                                            {ex.revisar > 0 && (
+                                              <span className="ag-aviso ag-aviso--revisar" title="Niños nuevos (pendientes de test) o con la ficha sin completar">
+                                                🆕 {ex.revisar} por revisar
+                                              </span>
+                                            )}
+                                            {ex.notas > 0 && (
+                                              <span className="ag-aviso ag-aviso--nota" title="Niños de esta sesión con notas tuyas en Paco">
+                                                📝 {ex.notas} con nota
+                                              </span>
+                                            )}
+                                            {ex.sinConfirmar > 0 && (
+                                              <span className="ag-aviso ag-aviso--confirmar" title="Grupos publicados que el entrenador aún no ha confirmado">
+                                                🔄 {ex.sinConfirmar} sin confirmar
+                                              </span>
+                                            )}
+                                          </div>
+                                        );
+                                      })()}
+                                      <ol className="ag-pasos" aria-label="Estado de la sesión">
+                                        {pasos.map((paso) => (
+                                          <li key={paso.clave} className={`ag-paso ag-paso--${paso.estado}`}>
+                                            {paso.estado === 'hecho' ? '✓ ' : ''}
+                                            {paso.etiqueta}
+                                          </li>
+                                        ))}
+                                      </ol>
+                                      <SessionTrainerCoverageLine
+                                        coverage={cobertura}
+                                        publishedGroups={Number(sesion.publicados || 0)}
+                                      />
+                                      <div className="ag-sesion-acciones">
+                                        <button
+                                          type="button"
+                                          className="ag-boton ag-boton--principal"
+                                          onClick={() =>
+                                            abrirSesionAgenda(
+                                              sesion,
+                                              sesion.totalGrupos > 0
+                                                ? 'grupos'
+                                                : 'alumnos'
+                                            )
+                                          }
+                                        >
+                                          {botonPrincipal}
+                                        </button>
+                                        {esBabyOperativa && (
+                                          <button
+                                            type="button"
+                                            className="ag-boton"
+                                            onClick={() =>
+                                              void refrescarSesionBabyDesdeAimHarder(
+                                                sesion
+                                              )
+                                            }
+                                            disabled={
+                                              babyAimHarderCargandoSemana ||
+                                              babyAimHarderFormularioCargando ||
+                                              Boolean(babyAimHarderSesionCargandoId)
+                                            }
+                                          >
+                                            {babyAimHarderSesionCargandoId ===
+                                            sesion.agendaDirecta?.sesion_id
+                                              ? 'Refrescando…'
+                                              : 'Refrescar listado'}
+                                          </button>
+                                        )}
+                                        {sesion.origen === 'operativa' &&
+                                          sesion.totalGrupos > 0 && (
+                                            <button
+                                              type="button"
+                                              className="ag-boton"
+                                              onClick={() =>
+                                                void enviarWhatsAppPapisSesionTarjeta(
+                                                  sesion
+                                                )
+                                              }
+                                            >
+                                              WhatsApp papis
+                                            </button>
+                                          )}
+                                        {sesion.origen === 'operativa' &&
+                                          sesion.agendaDirecta?.sesion_id && (
+                                            <details className="ag-mas">
+                                              <summary aria-label="Más acciones">⋯</summary>
+                                              <div className="ag-mas-menu">
+                                                <button
+                                                  type="button"
+                                                  className="ag-mas-peligro"
+                                                  onClick={(e) => {
+                                                    (e.currentTarget.closest('details') as HTMLDetailsElement | null)?.removeAttribute('open');
+                                                    void borrarSesionAgenda(
+                                                      sesion.agendaDirecta!.sesion_id
+                                                    );
+                                                  }}
+                                                >
+                                                  Borrar sesión
+                                                </button>
+                                              </div>
+                                            </details>
+                                          )}
+                                      </div>
+                                    </article>
+                                  );
+                                })}
+                                {columna.turno && !columna.tieneBaby && (
+                                  <button
+                                    type="button"
+                                    className="ag-anadir"
+                                    onClick={() =>
+                                      abrirFormularioAgendaDia(
+                                        diaActivo.fecha,
+                                        columna.turno!.inicio,
+                                        columna.turno!.fin,
+                                        'BABY'
+                                      )
+                                    }
+                                  >
+                                    + Añadir Baby
+                                  </button>
+                                )}
+                              </section>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </article>
                   </div>
                 );
@@ -1253,36 +1447,47 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
             )}
           </section>
 
-          {(agendaFormularioAbierto || agendaSesionActivaId) && (
+          {/* El panel cuelga de <body>: dentro de la Agenda una animación general
+              (miticoFadeUp) deja un transform que lo «atrapaba» y la barra de
+              Volver/Cerrar quedaba fuera de la pantalla. */}
+          {(agendaFormularioAbierto || agendaSesionActivaId) && typeof document !== 'undefined' && createPortal(
             <section
               id="trabajo-agenda"
-              style={{
-                ...agendaBloqueBlanco,
-                border: '2px solid #111827',
-                scrollMarginTop: 16,
-              }}
+              className="ag-trabajo"
+              role="dialog"
+              aria-label={agendaFormularioAbierto ? 'Pegar listado' : 'Sesión abierta'}
             >
-              <div style={agendaCabeceraLinea}>
-                <div>
-                  <h3 style={{ margin: 0 }}>
-                    {agendaFormularioAbierto
-                      ? 'Pegar listado'
-                      : 'Sesión abierta'}
-                  </h3>
-                  <p style={{ margin: '4px 0 0', color: '#666' }}>
-                    Trabajo directo sin salto automático de pantalla.
-                  </p>
-                </div>
+              <div className="ag-trabajo-cabecera">
                 <button
-                  onClick={() => {
-                    setAgendaFormularioAbierto(false);
-                    setAgendaSesionActivaId('');
-                    setAgendaRecomendaciones([]);
-                    setAgendaPestanaProceso('crear');
-                  }}
-                  style={botonSecundario}
+                  type="button"
+                  className="ag-trabajo-volver"
+                  onClick={cerrarPanelTrabajoAgenda}
                 >
-                  Cerrar
+                  ← Volver
+                </button>
+                <h3>
+                  {agendaFormularioAbierto
+                    ? 'Pegar listado'
+                    : 'Sesión abierta'}
+                </h3>
+                {!agendaFormularioAbierto && siguientePendienteTablero && (
+                  <button
+                    type="button"
+                    className="ag-trabajo-siguiente"
+                    onClick={() => abrirPendienteTablero(siguientePendienteTablero)}
+                    title="Abrir la siguiente sesión que tiene algo pendiente"
+                  >
+                    Siguiente →
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="ag-trabajo-cerrar"
+                  onClick={cerrarPanelTrabajoAgenda}
+                  aria-label="Cerrar"
+                  title="Cerrar (Esc)"
+                >
+                  ✕
                 </button>
               </div>
 
@@ -4075,7 +4280,8 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                   )}
                 </article>
               )}
-            </section>
+            </section>,
+            document.body
           )}
         </section>
       )}

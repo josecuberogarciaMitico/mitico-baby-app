@@ -1,0 +1,198 @@
+/* Entrenamientos · tablero del día (prefijo ag-). */
+.ag-tablero { display: grid; gap: 12px; min-width: 0; }
+
+/* --- Barra de días --- */
+.ag-dias {
+  display: grid; grid-auto-flow: column; grid-auto-columns: minmax(118px, 1fr);
+  gap: 8px; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin;
+}
+.ag-dia {
+  display: grid; gap: 2px; text-align: left; cursor: pointer; min-width: 0;
+  padding: 10px 12px; border-radius: 14px; background: #fff;
+  border: 1px solid #e2e8f0; color: #0f172a; font: inherit;
+  transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.ag-dia:hover { border-color: #94a3b8; }
+.ag-dia.is-activo { border: 2px solid #1d4ed8; padding: 9px 11px; background: #eff6ff; box-shadow: 0 6px 16px rgba(29, 78, 216, .12); }
+.ag-dia.is-pasado:not(.is-activo) { opacity: .62; }
+.ag-dia-nombre { display: flex; align-items: center; gap: 6px; font-weight: 900; text-transform: capitalize; font-size: 15px; }
+.ag-dia-punto { width: 9px; height: 9px; border-radius: 999px; background: #cbd5e1; flex: none; }
+.ag-dia--pendiente .ag-dia-punto { background: #f59e0b; }
+.ag-dia--listo .ag-dia-punto { background: #16a34a; }
+.ag-dia-hoy { margin-left: auto; padding: 1px 7px; border-radius: 999px; background: #0f172a; color: #fff; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.ag-dia-fecha { font-size: 12px; color: #64748b; }
+.ag-dia.is-activo .ag-dia-fecha { color: #1d4ed8; }
+.ag-dia-resumen { font-size: 12px; font-weight: 800; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ag-dia--vacio .ag-dia-resumen { color: #94a3b8; font-weight: 700; }
+
+/* --- Día seleccionado --- */
+.ag-dia-panel {
+  border-radius: 18px; overflow: hidden; background: #fff;
+  border: 1px solid rgba(15, 118, 110, .22); box-shadow: 0 10px 26px rgba(15, 23, 42, .06);
+  scroll-margin-top: 16px;
+}
+.ag-dia-cabecera {
+  display: flex; align-items: baseline; gap: 6px 14px; flex-wrap: wrap; padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(236, 253, 245, .95), #fff);
+  border-bottom: 1px solid rgba(15, 118, 110, .14);
+}
+.ag-dia-cabecera h3 { margin: 0; font-size: 20px; text-transform: capitalize; }
+.ag-dia-cabecera p { margin: 0; color: #64748b; font-size: 14px; font-weight: 700; }
+.ag-vacio { margin: 14px 16px 16px; padding: 14px; border-radius: 12px; background: #f8fafc; color: #475569; }
+.ag-vacio p { margin: 6px 0 0; }
+
+/* --- Turnos (columnas en ordenador) --- */
+.ag-turnos { display: grid; gap: 12px; padding: 14px 16px 16px; grid-template-columns: minmax(0, 1fr); }
+@media (min-width: 900px) {
+  .ag-turnos { grid-template-columns: repeat(var(--ag-cols, 1), minmax(0, 1fr)); align-items: start; }
+}
+.ag-turno { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.ag-turno-hora {
+  font-weight: 900; font-size: 15px; color: #0f172a; padding: 0 2px 4px;
+  border-bottom: 2px solid #e2e8f0;
+}
+.ag-anadir {
+  border: 2px dashed #bfdbfe; border-radius: 14px; background: #f8fbff; color: #1d4ed8;
+  padding: 14px; font-weight: 850; font-size: 14px; cursor: pointer; font-family: inherit;
+}
+.ag-anadir:hover { background: #eff6ff; border-color: #60a5fa; }
+
+/* --- Tarjeta de sesión --- */
+.ag-sesion {
+  display: grid; gap: 8px; min-width: 0; padding: 12px; border-radius: 14px;
+  background: #fff; border: 1px solid #dbe4f0; border-left: 4px solid #2563eb;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, .05);
+}
+.ag-sesion--ocio { border-left-color: #0f9f4d; }
+.ag-sesion--intensivos, .ag-sesion--intensivo { border-left-color: #9333ea; }
+.ag-sesion-top { display: flex; align-items: center; gap: 6px 10px; flex-wrap: wrap; }
+.ag-sesion-modalidad {
+  padding: 2px 9px; border-radius: 999px; font-size: 11px; font-weight: 900; letter-spacing: .05em;
+  background: #eff6ff; color: #1d4ed8; text-transform: uppercase;
+}
+.ag-sesion--ocio .ag-sesion-modalidad { background: #ecfdf5; color: #047857; }
+.ag-sesion--intensivos .ag-sesion-modalidad, .ag-sesion--intensivo .ag-sesion-modalidad { background: #faf5ff; color: #7e22ce; }
+.ag-sesion-horario { font-weight: 900; font-size: 16px; }
+.ag-sesion-cifras { margin-left: auto; font-size: 13px; color: #475569; white-space: nowrap; }
+.ag-sesion-cifras strong { color: #0f172a; font-size: 15px; }
+.ag-sesion-titulo { font-size: 12px; color: #64748b; margin-top: -4px; }
+
+.ag-pasos { list-style: none; margin: 0; padding: 0; display: flex; gap: 4px; flex-wrap: wrap; }
+.ag-paso {
+  padding: 3px 8px; border-radius: 999px; font-size: 11px; font-weight: 800;
+  border: 1px solid #e2e8f0; color: #94a3b8; background: #f8fafc;
+}
+.ag-paso--hecho { color: #166534; background: #f0fdf4; border-color: #bbf7d0; }
+.ag-paso--actual { color: #9a3412; background: #fff7ed; border-color: #fdba74; }
+
+.ag-sesion-acciones { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.ag-boton {
+  padding: 7px 11px; border-radius: 10px; font-size: 13px; font-weight: 800; cursor: pointer;
+  background: #fff; color: #0f172a; border: 1px solid #cbd5e1; font-family: inherit;
+}
+.ag-boton:hover:not(:disabled) { border-color: #64748b; }
+.ag-boton:disabled { opacity: .55; cursor: default; }
+.ag-boton--principal { background: #1d4ed8; border-color: #1d4ed8; color: #fff; padding: 8px 14px; }
+.ag-boton--principal:hover { background: #1e40af; }
+
+.ag-mas { position: relative; margin-left: auto; }
+.ag-mas > summary {
+  list-style: none; cursor: pointer; padding: 4px 10px; border-radius: 10px; font-weight: 900;
+  color: #475569; border: 1px solid transparent; user-select: none;
+}
+.ag-mas > summary::-webkit-details-marker { display: none; }
+.ag-mas[open] > summary, .ag-mas > summary:hover { border-color: #cbd5e1; background: #f8fafc; }
+.ag-mas-menu {
+  position: absolute; right: 0; bottom: calc(100% + 4px); z-index: 5; min-width: 160px;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, .16);
+}
+.ag-mas-peligro {
+  width: 100%; text-align: left; border: 0; background: #fff; color: #b91c1c;
+  padding: 10px 14px; font-weight: 800; cursor: pointer; font-family: inherit;
+}
+.ag-mas-peligro:hover { background: #fef2f2; }
+
+@media (max-width: 719px) {
+  .ag-dias { grid-auto-columns: minmax(104px, 1fr); }
+  .ag-dia { padding: 8px 10px; }
+  .ag-dia.is-activo { padding: 7px 9px; }
+  .ag-dia-cabecera { padding: 10px 12px; }
+  .ag-dia-cabecera h3 { font-size: 18px; }
+  .ag-turnos { padding: 12px; }
+  .ag-sesion-cifras { margin-left: 0; width: 100%; }
+}
+
+/* --- Fase 2: panel de trabajo (sesión abierta / pegar listado) --- */
+/* Móvil y tablet: pantalla completa con «← Volver». Sin transform (los avisos
+   y ventanas fijas de dentro deben seguir pegados a la pantalla). */
+.ag-trabajo {
+  position: fixed; inset: 0; z-index: 80; overflow-y: auto; overscroll-behavior: contain;
+  /* Va colgado de <body> (fuera de la app): misma letra y color, y sin la
+     animación general que deja un transform (atraparía sus ventanas fijas). */
+  animation: none; font-family: 'SF Pro Rounded', 'Aptos', 'Inter', 'Segoe UI', system-ui, sans-serif; color: #172033;
+  background: #f8fafc; padding: 0 12px 24px; box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+.ag-trabajo-cabecera {
+  position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px;
+  margin: 0 -12px 12px; padding: calc(10px + env(safe-area-inset-top, 0px)) 12px 10px;
+  background: #fff; border-bottom: 1px solid #e2e8f0; box-shadow: 0 4px 14px rgba(15, 23, 42, .06);
+}
+.ag-trabajo-cabecera h3 { margin: 0; font-size: 18px; flex: 1; min-width: 0; }
+.ag-trabajo-volver, .ag-trabajo-cerrar {
+  border: 1px solid #cbd5e1; background: #fff; border-radius: 10px; cursor: pointer;
+  font-weight: 850; font-family: inherit; color: #0f172a;
+}
+.ag-trabajo-volver { padding: 8px 12px; font-size: 14px; }
+.ag-trabajo-cerrar { display: none; width: 36px; height: 36px; font-size: 16px; }
+
+/* Ordenador: panel a la derecha y el tablero del día sigue a la vista. */
+@media (min-width: 1100px) {
+  .ag-shell--con-panel { padding-right: min(760px, 52vw); box-sizing: border-box; }
+  .ag-shell--con-panel .ag-turnos { grid-template-columns: minmax(0, 1fr); }
+  .ag-shell--con-panel .ag-dias { grid-auto-columns: minmax(100px, 1fr); }
+  .ag-trabajo {
+    left: auto; width: min(760px, 52vw); padding: 0 18px 28px;
+    background: #fff; border-left: 1px solid #cbd5e1; box-shadow: -18px 0 40px rgba(15, 23, 42, .14);
+  }
+  .ag-trabajo-cabecera { margin: 0 -18px 14px; padding: 14px 18px; }
+  .ag-trabajo-volver { display: none; }
+  .ag-trabajo-cerrar { display: inline-flex; align-items: center; justify-content: center; }
+}
+.ag-sesion.is-abierta { outline: 3px solid #1d4ed8; outline-offset: 1px; }
+
+/* --- Ayudas de la semana (27/10) --- */
+.ag-pendientes {
+  display: flex; align-items: center; gap: 6px 8px; flex-wrap: wrap;
+  padding: 10px 12px; border-radius: 14px; background: #fffbeb; border: 1px solid #fde68a;
+}
+.ag-pendientes.is-al-dia { background: #f0fdf4; border-color: #bbf7d0; }
+.ag-pendientes-ok { color: #166534; font-weight: 850; font-size: 14px; }
+.ag-pendientes-titulo { font-weight: 900; color: #92400e; font-size: 14px; }
+.ag-chip {
+  border: 1px solid #fcd34d; background: #fff; color: #78350f; border-radius: 999px;
+  padding: 5px 11px; font-size: 13px; font-weight: 750; cursor: pointer; font-family: inherit;
+}
+.ag-chip:hover { background: #fef3c7; }
+.ag-chip--sin_confirmar { border-color: #bfdbfe; color: #1e40af; }
+.ag-chip--revisar { border-color: #c4b5fd; color: #5b21b6; }
+.ag-siguiente { margin-left: auto; }
+
+.ag-turno-hora { display: flex; justify-content: space-between; align-items: baseline; gap: 4px 10px; flex-wrap: wrap; }
+.ag-turno-dispo { font-size: 12px; font-weight: 750; color: #475569; }
+.ag-turno-dispo.is-corto { color: #b45309; }
+
+.ag-avisos { display: flex; gap: 5px; flex-wrap: wrap; }
+.ag-aviso { padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; border: 1px solid; }
+.ag-aviso--revisar { background: #f5f3ff; border-color: #ddd6fe; color: #5b21b6; }
+.ag-aviso--nota { background: #fefce8; border-color: #fde68a; color: #854d0e; }
+.ag-aviso--confirmar { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+
+.ag-trabajo-siguiente {
+  border: 1px solid #1d4ed8; background: #1d4ed8; color: #fff; border-radius: 10px;
+  padding: 8px 12px; font-weight: 850; font-size: 14px; cursor: pointer; font-family: inherit;
+}
+@media (max-width: 719px) {
+  .ag-siguiente { margin-left: 0; width: 100%; }
+}
