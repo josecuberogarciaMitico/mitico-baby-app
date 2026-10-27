@@ -1,4 +1,18 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import './OperationalAnalysisScreen.css';
+import {
+  NOMBRES_DEFINICIONES,
+  comoVamos,
+  crecimientoTemporada,
+  formatoNumero,
+  formatoPct,
+  mesesConActividad,
+  nombreMes,
+  resumenProgresiones,
+  type Cambio,
+  type MesAnalisis,
+  type TramoAnalisis,
+} from './analysisSummary';
 
 type ModalidadAnalisisAdminApp = 'BABY' | 'OCIO' | 'INTENSIVOS';
 
@@ -6,584 +20,388 @@ type OperationalAnalysisScreenProps = {
   ctx: Record<string, any>;
 };
 
+const NOMBRE_MODALIDAD: Record<ModalidadAnalisisAdminApp, string> = {
+  BABY: 'Baby',
+  OCIO: 'Ocio',
+  INTENSIVOS: 'Intensivos',
+};
+
+function hoyMadrid() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(new Date());
+}
+
+function haceCuanto(iso: string | undefined, ahora: number) {
+  const t = iso ? new Date(iso).getTime() : NaN;
+  if (!Number.isFinite(t)) return '';
+  const min = Math.max(0, Math.round((ahora - t) / 60000));
+  if (min < 1) return 'Actualizado ahora mismo';
+  if (min < 60) return `Actualizado hace ${min} min`;
+  const h = Math.round(min / 60);
+  return `Actualizado hace ${h} h`;
+}
+
+function Flecha({ cambio }: { cambio: Cambio }) {
+  if (!cambio.sentido) return null;
+  const icono = cambio.sentido === 'sube' ? '▲' : cambio.sentido === 'baja' ? '▼' : '＝';
+  return (
+    <span className={`an-cambio an-cambio--${cambio.sentido}`}>
+      <span aria-hidden="true">{icono}</span> {cambio.texto}
+    </span>
+  );
+}
+
 export function OperationalAnalysisScreen({ ctx }: OperationalAnalysisScreenProps) {
   const {
-    agendaBloqueBlanco,
     analisisAdmin,
-    avisoNeutral,
-    botonSecundario,
     cambiarModalidadAnalisisAdminApp,
     cambiarTemporadaAnalisisAdminApp,
     cargandoAnalisisAdmin,
     descargarCsvAnalisisAdminApp,
     descargarExcelAnalisisAdminApp,
     descargarPdfAnalisisAdminApp,
-    diferenciaAnalisisAdminApp,
     errorAnalisisAdmin,
-    errorCaja,
     esCoordinadorJefeApp,
     esVistaMovilApp,
-    etiquetaMesAnalisisAdminApp,
-    labelCampo,
-    miniTarjetaBlanca,
     modalidadAnalisisAdmin,
-    numeroAnalisisAdminApp,
     pantalla,
+    recargarAnalisisAdminApp,
     renderAyudaRapidaPantallaApp,
-    selectCampo,
     temporadaAnalisisAdminId,
   } = ctx;
 
+  const [ahora, setAhora] = useState(() => Date.now());
+  useEffect(() => {
+    if (pantalla !== 'analisis') return;
+    const id = window.setInterval(() => setAhora(Date.now()), 60000);
+    return () => window.clearInterval(id);
+  }, [pantalla]);
+
+  if (pantalla !== 'analisis' || !esCoordinadorJefeApp) return null;
+
+  const hoy = hoyMadrid();
+  const mensual: MesAnalisis[] = analisisAdmin?.mensual || [];
+  const meses = mesesConActividad(mensual, hoy);
+  const tramo: TramoAnalisis | undefined = analisisAdmin?.tramo;
+  const vamos = analisisAdmin ? comoVamos(mensual, tramo, hoy) : null;
+  const crecimiento = analisisAdmin
+    ? crecimientoTemporada(mensual, hoy, Number(analisisAdmin.resumen?.altas) || 0)
+    : null;
+  const niveles: Array<{ nivel: string; total: number }> = analisisAdmin?.niveles || [];
+  const maxNivel = Math.max(1, ...niveles.map((n) => n.total));
+  const prog = resumenProgresiones(analisisAdmin?.progresiones || []);
+  const temporadas: any[] = analisisAdmin?.comparativa_temporadas || [];
+  const continuidad = analisisAdmin?.resumen?.continuidad_pct;
+
   return (
-    <>
-        {pantalla === 'analisis' && esCoordinadorJefeApp && (
-                  <article
-                    style={{
-                      display: 'grid',
-                      gap: 16,
-                      width: '100%',
-                      minWidth: 0,
-                      boxSizing: 'border-box',
-                    }}
-                  >
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'flex-start',
-                        gap: 16,
-                        flexWrap: 'wrap',
-                        borderRadius: 24,
-                        padding: 20,
-                        background:
-                          'linear-gradient(135deg, #062d3f 0%, #083b4d 58%, #0b5d4f 100%)',
-                        border: '1px solid rgba(16,185,129,0.28)',
-                        boxShadow: '0 18px 44px rgba(15,23,42,0.16)',
-                        color: '#ffffff',
-                      }}
-                    >
-                      <div style={{ minWidth: 0 }}>
-                        <span
-                          style={{
-                            color: '#86efac',
-                            fontWeight: 950,
-                            fontSize: 11,
-                            letterSpacing: '0.1em',
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          DIRECCIÓN · ANÁLISIS
-                        </span>
-                        <h2 style={{ margin: '5px 0 0', color: '#ffffff', fontSize: 30 }}>
-                          Análisis operativo
-                        </h2>
-                {renderAyudaRapidaPantallaApp()}
-                        <p
-                          style={{
-                            margin: '8px 0 0',
-                            color: '#cbd5e1',
-                            lineHeight: 1.45,
-                            maxWidth: 760,
-                          }}
-                        >
-                          Lectura de actividad, continuidad, asistencia, ocupación y evolución técnica con los datos reales de la temporada.
-                        </p>
-                      </div>
-  
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <button
-                          type="button"
-                          disabled={!analisisAdmin || cargandoAnalisisAdmin}
-                          onClick={descargarPdfAnalisisAdminApp}
-                          style={{ ...botonSecundario, background: 'rgba(255,255,255,.10)', color: '#fff', border: '1px solid rgba(255,255,255,.28)' }}
-                        >
-                          PDF
-                        </button>
-                        <button
-                          type="button"
-                          disabled={!analisisAdmin || cargandoAnalisisAdmin}
-                          onClick={descargarExcelAnalisisAdminApp}
-                          style={{ ...botonSecundario, background: 'rgba(255,255,255,.10)', color: '#fff', border: '1px solid rgba(255,255,255,.28)' }}
-                        >
-                          Excel
-                        </button>
-                        <button
-                          type="button"
-                          disabled={!analisisAdmin || cargandoAnalisisAdmin}
-                          onClick={descargarCsvAnalisisAdminApp}
-                          style={{ ...botonSecundario, background: '#ffffff', color: '#064e3b', border: '1px solid #ffffff' }}
-                        >
-                          CSV
-                        </button>
-                      </div>
-                    </div>
-  
-                    <div
-                      style={{
-                        ...agendaBloqueBlanco,
-                        display: 'grid',
-                        gridTemplateColumns: esVistaMovilApp
-                          ? 'minmax(0, 1fr)'
-                          : 'minmax(0, 1fr) minmax(220px, 320px)',
-                        gap: 12,
-                        alignItems: 'end',
-                        border: '1px solid #dbeafe',
-                        background: '#ffffff',
-                        boxShadow: '0 10px 28px rgba(15,23,42,0.05)',
-                      }}
-                    >
-                      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        {(['BABY', 'OCIO', 'INTENSIVOS'] as ModalidadAnalisisAdminApp[]).map(
-                          (modalidad) => (
-                            <button
-                              key={modalidad}
-                              type="button"
-                              disabled={cargandoAnalisisAdmin}
-                              onClick={() => cambiarModalidadAnalisisAdminApp(modalidad)}
-                              style={{
-                                ...botonSecundario,
-                                background:
-                                  modalidadAnalisisAdmin === modalidad ? '#0f9f4d' : '#fff',
-                                color:
-                                  modalidadAnalisisAdmin === modalidad ? '#fff' : '#475569',
-                                borderColor:
-                                  modalidadAnalisisAdmin === modalidad ? '#0f9f4d' : '#e2e8f0',
-                                flex: esVistaMovilApp ? '1 1 95px' : undefined,
-                              }}
-                            >
-                              {modalidad === 'INTENSIVOS' ? 'Intensivos' : modalidad === 'OCIO' ? 'Ocio' : 'Baby'}
-                            </button>
-                          )
-                        )}
-                      </div>
-  
-                      <label style={labelCampo}>
-                        Temporada analizada · actual + 2 anteriores
-                        <select
-                          value={temporadaAnalisisAdminId}
-                          disabled={cargandoAnalisisAdmin || !analisisAdmin}
-                          onChange={(e) => cambiarTemporadaAnalisisAdminApp(e.target.value)}
-                          style={selectCampo}
-                        >
-                          {(analisisAdmin?.comparativa_temporadas || []).map((temporada) => (
-                            <option key={temporada.temporada_id} value={temporada.temporada_id}>
-                              {temporada.temporada}{temporada.activa ? ' · actual' : ''}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                    </div>
-  
-                    {cargandoAnalisisAdmin && (
-                      <div style={avisoNeutral}>Calculando métricas con los datos actuales…</div>
-                    )}
-  
-                    {errorAnalisisAdmin && <div style={errorCaja}>{errorAnalisisAdmin}</div>}
-  
-                    {analisisAdmin && !cargandoAnalisisAdmin && (
-                      <>
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            gap: 10,
-                            flexWrap: 'wrap',
-                            alignItems: 'baseline',
-                          }}
-                        >
-                          <strong style={{ fontSize: 18 }}>
-                            {analisisAdmin.meta.modalidad === 'INTENSIVOS'
-                              ? 'Intensivos'
-                              : analisisAdmin.meta.modalidad === 'OCIO'
-                              ? 'Ocio'
-                              : 'Baby'}{' '}
-                            · {analisisAdmin.meta.temporada}
-                          </strong>
-                          <span style={{ color: '#64748b', fontSize: 12, fontWeight: 700 }}>
-                            Calculado {new Date(analisisAdmin.meta.generado_at).toLocaleString('es-ES')}
-                          </span>
-                        </div>
-  
-                        {(() => {
-                          const mesesConActividad = analisisAdmin.mensual.filter(
-                            (mes) =>
-                              mes.alumnos_unicos > 0 ||
-                              mes.altas > 0 ||
-                              mes.sesiones_realizadas > 0
-                          );
-                          if (mesesConActividad.length === 0) {
-                            return (
-                              <section
-                                style={{
-                                  ...agendaBloqueBlanco,
-                                  border: '1px solid #dbeafe',
-                                  background: '#ffffff',
-                                }}
-                              >
-                                <strong style={{ fontSize: 16 }}>Último mes vs mes anterior</strong>
-                                <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: 13 }}>
-                                  Todavía no hay meses con actividad real para comparar.
-                                </p>
-                              </section>
-                            );
-                          }
-  
-                          const ultimo = mesesConActividad[mesesConActividad.length - 1];
-                          const anterior = mesesConActividad.length >= 2
-                            ? mesesConActividad[mesesConActividad.length - 2]
-                            : null;
-  
-                          if (!anterior) {
-                            return (
-                              <section
-                                style={{
-                                  ...agendaBloqueBlanco,
-                                  border: '1px solid #bbf7d0',
-                                  background: 'linear-gradient(135deg, #f0fdf4 0%, #ffffff 68%)',
-                                }}
-                              >
-                                <strong style={{ fontSize: 16 }}>Último mes vs mes anterior</strong>
-                                <p style={{ margin: '5px 0 0', color: '#64748b', fontSize: 13 }}>
-                                  {etiquetaMesAnalisisAdminApp(ultimo.mes)} es el primer mes con actividad real. Todavía no existe un mes anterior con el que compararlo.
-                                </p>
-                              </section>
-                            );
-                          }
-  
-                          const cambios = [
-                            {
-                              titulo: 'ALUMNOS',
-                              valor: ultimo.alumnos_unicos,
-                              cambio: diferenciaAnalisisAdminApp(ultimo.alumnos_unicos, anterior.alumnos_unicos),
-                            },
-                            {
-                              titulo: 'ALTAS',
-                              valor: ultimo.altas,
-                              cambio: diferenciaAnalisisAdminApp(ultimo.altas, anterior.altas),
-                            },
-                            {
-                              titulo: 'ASISTENCIA',
-                              valor: numeroAnalisisAdminApp(ultimo.asistencia_real_pct, '%'),
-                              cambio: diferenciaAnalisisAdminApp(ultimo.asistencia_real_pct, anterior.asistencia_real_pct, ' pp'),
-                            },
-                            {
-                              titulo: 'OCUPACIÓN',
-                              valor: numeroAnalisisAdminApp(ultimo.ocupacion_pct, '%'),
-                              cambio: diferenciaAnalisisAdminApp(ultimo.ocupacion_pct, anterior.ocupacion_pct, ' pp'),
-                            },
-                            {
-                              titulo: 'NIÑOS / TURNO',
-                              valor: numeroAnalisisAdminApp(ultimo.promedio_ninos_turno),
-                              cambio: diferenciaAnalisisAdminApp(ultimo.promedio_ninos_turno, anterior.promedio_ninos_turno),
-                            },
-                            {
-                              titulo: 'EVOLUCIÓN TÉCNICA',
-                              valor: numeroAnalisisAdminApp(ultimo.evolucion_tecnica),
-                              cambio: diferenciaAnalisisAdminApp(ultimo.evolucion_tecnica, anterior.evolucion_tecnica),
-                            },
-                          ];
-  
-                          return (
-                            <section
-                              style={{
-                                ...agendaBloqueBlanco,
-                                border: '1px solid #bbf7d0',
-                                background: 'linear-gradient(135deg, #f0fdf4 0%, #ffffff 68%)',
-                                display: 'grid',
-                                gap: 12,
-                              }}
-                            >
-                              <div
-                                style={{
-                                  display: 'flex',
-                                  justifyContent: 'space-between',
-                                  gap: 10,
-                                  flexWrap: 'wrap',
-                                  alignItems: 'baseline',
-                                }}
-                              >
-                                <div>
-                                  <strong style={{ fontSize: 16 }}>Último mes vs mes anterior</strong>
-                                  <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
-                                    {etiquetaMesAnalisisAdminApp(ultimo.mes)} frente a {etiquetaMesAnalisisAdminApp(anterior.mes)}.
-                                  </p>
-                                </div>
-                                <span style={{ color: '#64748b', fontSize: 12, fontWeight: 750 }}>
-                                  Comparación directa · sin objetivos ni umbrales inventados
-                                </span>
-                              </div>
-  
-                              <div
-                                style={{
-                                  display: 'grid',
-                                  gridTemplateColumns: 'repeat(auto-fit, minmax(135px, 1fr))',
-                                  gap: 8,
-                                }}
-                              >
-                                {cambios.map((item) => (
-                                  <div
-                                    key={item.titulo}
-                                    style={{
-                                      border: '1px solid #dcfce7',
-                                      borderRadius: 14,
-                                      padding: '11px 12px',
-                                      background: '#ffffff',
-                                      minWidth: 0,
-                                    }}
-                                  >
-                                    <span style={{ color: '#64748b', fontWeight: 850, fontSize: 10 }}>
-                                      {item.titulo}
-                                    </span>
-                                    <div
-                                      style={{
-                                        marginTop: 3,
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        gap: 8,
-                                        alignItems: 'baseline',
-                                      }}
-                                    >
-                                      <strong style={{ fontSize: 22 }}>{item.valor}</strong>
-                                      <span
-                                        style={{
-                                          color: '#475569',
-                                          fontSize: 12,
-                                          fontWeight: 850,
-                                          whiteSpace: 'nowrap',
-                                        }}
-                                      >
-                                        {item.cambio}
-                                      </span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </section>
-                          );
-                        })()}
-  
-                        <section
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                            gap: 10,
-                          }}
-                        >
-                          {[
-                            ['ALUMNOS ÚNICOS', analisisAdmin.resumen.alumnos_unicos, 'identidades'],
-                            ['ALTAS', analisisAdmin.resumen.altas, 'temporada'],
-                            ['CONTINUIDAD', numeroAnalisisAdminApp(analisisAdmin.resumen.continuidad_pct, '%'), 'mes a mes'],
-                            ['PÉRDIDA', numeroAnalisisAdminApp(analisisAdmin.resumen.perdida_continuidad_pct, '%'), 'continuidad'],
-                            ['ASISTENCIA REAL', numeroAnalisisAdminApp(analisisAdmin.resumen.asistencia_real_pct, '%'), 'confirmada'],
-                            ['NIÑOS / TURNO', numeroAnalisisAdminApp(analisisAdmin.resumen.promedio_ninos_turno), 'promedio'],
-                            ['POR GRUPO', numeroAnalisisAdminApp(analisisAdmin.resumen.promedio_por_grupo), 'promedio'],
-                            ['SESIONES', analisisAdmin.resumen.sesiones_realizadas, 'realizadas'],
-                            ['OCUPACIÓN', numeroAnalisisAdminApp(analisisAdmin.resumen.ocupacion_pct, '%'), 'capacidad'],
-                          ].map(([titulo, valor, pie]) => (
-                            <div
-                              key={String(titulo)}
-                              style={{
-                                ...miniTarjetaBlanca,
-                                border: '1px solid #dbeafe',
-                                background: '#ffffff',
-                                boxShadow: '0 8px 20px rgba(15,23,42,0.04)',
-                                minHeight: 82,
-                                display: 'grid',
-                                alignContent: 'center',
-                              }}
-                            >
-                              <span style={{ color: '#64748b', fontWeight: 850, fontSize: 11 }}>
-                                {titulo}
-                              </span>
-                              <strong style={{ fontSize: 27, overflowWrap: 'anywhere' }}>{valor}</strong>
-                              <span style={{ color: '#64748b', fontSize: 12 }}>{pie}</span>
-                            </div>
-                          ))}
-                        </section>
-  
-                        <section
-                          style={{
-                            ...agendaBloqueBlanco,
-                            border: '1px solid #e2e8f0',
-                            display: 'grid',
-                            gap: 10,
-                          }}
-                        >
-                          <div>
-                            <strong>Evolución técnica</strong>
-                            <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
-                              Cambio medio entre el primer y el último nivel reportado de cada alumno.
-                            </p>
-                          </div>
-                          <div
-                            style={{
-                              display: 'grid',
-                              gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))',
-                              gap: 8,
-                            }}
-                          >
-                            <div style={miniTarjetaBlanca}>
-                              <span style={{ color: '#64748b', fontSize: 12 }}>EVOLUCIÓN MEDIA</span>
-                              <strong style={{ fontSize: 25 }}>
-                                {numeroAnalisisAdminApp(analisisAdmin.resumen.evolucion_tecnica)}
-                              </strong>
-                            </div>
-                            <div style={miniTarjetaBlanca}>
-                              <span style={{ color: '#64748b', fontSize: 12 }}>MEJORAN</span>
-                              <strong style={{ fontSize: 25, color: '#15803d' }}>{analisisAdmin.resumen.alumnos_mejoran}</strong>
-                            </div>
-                            <div style={miniTarjetaBlanca}>
-                              <span style={{ color: '#64748b', fontSize: 12 }}>ESTABLES</span>
-                              <strong style={{ fontSize: 25 }}>{analisisAdmin.resumen.alumnos_estables}</strong>
-                            </div>
-                            <div style={miniTarjetaBlanca}>
-                              <span style={{ color: '#64748b', fontSize: 12 }}>BAJAN</span>
-                              <strong style={{ fontSize: 25, color: '#b91c1c' }}>{analisisAdmin.resumen.alumnos_bajan}</strong>
-                            </div>
-                          </div>
-                        </section>
-  
-                        <section style={{ display: 'grid', gap: 9 }}>
-                          <div>
-                            <strong>Evolución mensual</strong>
-                            <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
-                              Crecimiento, continuidad, asistencia, ocupación y carga real por mes.
-                            </p>
-                          </div>
-                          <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
-                            <table
-                              style={{
-                                width: '100%',
-                                minWidth: 980,
-                                borderCollapse: 'collapse',
-                                fontSize: 12,
-                              }}
-                            >
-                              <thead>
-                                <tr>
-                                  {['Mes','Alumnos','Altas','Crec.','Cont.','Pérdida','Asist.','Niños/turno','Por grupo','Sesiones','Ocup.','Evol.'].map((titulo) => (
-                                    <th key={titulo} style={{ padding: 8, textAlign: 'left', borderBottom: '1px solid #cbd5e1', color: '#475569', whiteSpace: 'nowrap' }}>
-                                      {titulo}
-                                    </th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {analisisAdmin.mensual.map((m) => (
-                                  <tr key={m.mes}>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9', fontWeight: 800 }}>{etiquetaMesAnalisisAdminApp(m.mes)}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{m.alumnos_unicos}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{m.altas}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.crecimiento_pct, '%')}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.continuidad_pct, '%')}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.perdida_continuidad_pct, '%')}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.asistencia_real_pct, '%')}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.promedio_ninos_turno)}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.promedio_por_grupo)}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{m.sesiones_realizadas}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.ocupacion_pct, '%')}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(m.evolucion_tecnica)}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </section>
-  
-                        <section
-                          style={{
-                            display: 'grid',
-                            gridTemplateColumns: esVistaMovilApp ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))',
-                            gap: 12,
-                          }}
-                        >
-                          <div style={{ ...agendaBloqueBlanco, border: '1px solid #e2e8f0' }}>
-                            <strong>Distribución de niveles</strong>
-                            <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-                              {analisisAdmin.niveles.length === 0 && <span style={{ color: '#64748b' }}>Sin datos todavía.</span>}
-                              {analisisAdmin.niveles.map((nivel) => {
-                                const maximo = Math.max(1, ...analisisAdmin.niveles.map((n) => n.total));
-                                return (
-                                  <div key={nivel.nivel} style={{ display: 'grid', gap: 4 }}>
-                                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                                      <strong>{nivel.nivel}</strong><span>{nivel.total}</span>
-                                    </div>
-                                    <div style={{ height: 8, borderRadius: 999, background: '#f1f5f9', overflow: 'hidden' }}>
-                                      <div style={{ height: '100%', width: `${Math.max(4, (nivel.total / maximo) * 100)}%`, background: '#0f9f4d', borderRadius: 999 }} />
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-  
-                          <div style={{ ...agendaBloqueBlanco, border: '1px solid #e2e8f0' }}>
-                            <strong>Progresión de niveles</strong>
-                            <div style={{ display: 'grid', gap: 7, marginTop: 10 }}>
-                              {analisisAdmin.progresiones.length === 0 && <span style={{ color: '#64748b' }}>Sin progresiones todavía.</span>}
-                              {analisisAdmin.progresiones.slice(0, 12).map((progresion, indice) => (
-                                <div key={`${progresion.desde}-${progresion.hasta}-${indice}`} style={{ display: 'flex', justifyContent: 'space-between', gap: 10, padding: '7px 0', borderBottom: '1px solid #f1f5f9' }}>
-                                  <span><strong>{progresion.desde}</strong> → <strong>{progresion.hasta}</strong></span>
-                                  <span style={{ fontWeight: 850, color: progresion.sentido === 'SUBE' ? '#15803d' : progresion.sentido === 'BAJA' ? '#b91c1c' : '#64748b' }}>
-                                    {progresion.total} · {progresion.sentido}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </section>
-  
-                        <section style={{ display: 'grid', gap: 9 }}>
-                          <div>
-                            <strong>Comparación entre temporadas</strong>
-                            <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: 13 }}>
-                              Queda preparada para crecer automáticamente cuando existan nuevas temporadas.
-                            </p>
-                          </div>
-                          <div style={{ overflowX: 'auto', maxWidth: '100%' }}>
-                            <table style={{ width: '100%', minWidth: 650, borderCollapse: 'collapse', fontSize: 13 }}>
-                              <thead>
-                                <tr>
-                                  {['Temporada','Alumnos','Sesiones','Asistencia','Evolución técnica'].map((titulo) => (
-                                    <th key={titulo} style={{ padding: 8, textAlign: 'left', borderBottom: '1px solid #cbd5e1', color: '#475569' }}>{titulo}</th>
-                                  ))}
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {analisisAdmin.comparativa_temporadas.map((temporada) => (
-                                  <tr key={temporada.temporada_id}>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9', fontWeight: 800 }}>
-                                      {temporada.temporada}{temporada.activa ? ' · actual' : ''}
-                                    </td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{temporada.alumnos_unicos}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{temporada.sesiones_realizadas}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(temporada.asistencia_real_pct, '%')}</td>
-                                    <td style={{ padding: 8, borderBottom: '1px solid #f1f5f9' }}>{numeroAnalisisAdminApp(temporada.evolucion_tecnica)}</td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
-                          </div>
-                        </section>
-  
-                        <details style={{ ...agendaBloqueBlanco, border: '1px solid #e2e8f0', padding: 12 }}>
-                          <summary style={{ cursor: 'pointer', fontWeight: 850, color: '#475569' }}>
-                            Cómo se calcula cada métrica
-                          </summary>
-                          <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-                            {Object.entries(analisisAdmin.definiciones).map(([clave, definicion]) => (
-                              <div key={clave} style={{ fontSize: 13, lineHeight: 1.45 }}>
-                                <strong>{clave.replace(/_/g, ' ')}:</strong> {String(definicion ?? '')}
-                              </div>
-                            ))}
-                          </div>
-                        </details>
-                      </>
-                    )}
-                  </article>
+    <article className="an-pantalla">
+      <header className="an-cabecera">
+        <div className="an-cabecera-texto">
+          <span className="an-etiqueta">Dirección · Análisis</span>
+          <h2>Análisis</h2>
+          {renderAyudaRapidaPantallaApp()}
+          <p>
+            {analisisAdmin
+              ? `${NOMBRE_MODALIDAD[analisisAdmin.meta.modalidad as ModalidadAnalisisAdminApp] || analisisAdmin.meta.modalidad} · temporada ${analisisAdmin.meta.temporada}`
+              : 'Cómo crece la escuela, con los datos reales de la app.'}
+            {analisisAdmin && (
+              <span className="an-actualizado"> · {haceCuanto(analisisAdmin.meta.generado_at, ahora)}</span>
+            )}
+          </p>
+        </div>
+        <div className="an-cabecera-acciones">
+          <button
+            type="button"
+            className="an-boton an-boton--claro"
+            disabled={cargandoAnalisisAdmin}
+            onClick={() => recargarAnalisisAdminApp()}
+          >
+            {cargandoAnalisisAdmin ? 'Actualizando…' : '↻ Actualizar'}
+          </button>
+          <details className="an-exportar">
+            <summary className="an-boton an-boton--blanco">Exportar ▾</summary>
+            <div className="an-exportar-menu">
+              <button type="button" disabled={!analisisAdmin} onClick={descargarPdfAnalisisAdminApp}>PDF</button>
+              <button type="button" disabled={!analisisAdmin} onClick={descargarExcelAnalisisAdminApp}>Excel</button>
+              <button type="button" disabled={!analisisAdmin} onClick={descargarCsvAnalisisAdminApp}>CSV</button>
+            </div>
+          </details>
+        </div>
+      </header>
+
+      <div className="an-filtros">
+        <div className="an-modalidades" role="group" aria-label="Modalidad">
+          {(['BABY', 'OCIO', 'INTENSIVOS'] as ModalidadAnalisisAdminApp[]).map((m) => (
+            <button
+              key={m}
+              type="button"
+              disabled={cargandoAnalisisAdmin}
+              className={`an-pastilla ${modalidadAnalisisAdmin === m ? 'is-activa' : ''}`}
+              onClick={() => cambiarModalidadAnalisisAdminApp(m)}
+            >
+              {NOMBRE_MODALIDAD[m]}
+            </button>
+          ))}
+        </div>
+        {temporadas.length >= 2 && (
+          <label className="an-temporada">
+            Temporada
+            <select
+              value={temporadaAnalisisAdminId}
+              disabled={cargandoAnalisisAdmin}
+              onChange={(e) => cambiarTemporadaAnalisisAdminApp(e.target.value)}
+            >
+              {temporadas.map((t) => (
+                <option key={t.temporada_id} value={t.temporada_id}>
+                  {t.temporada}{t.activa ? ' · actual' : ''}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+
+      {cargandoAnalisisAdmin && !analisisAdmin && <div className="an-aviso">Calculando con los datos de hoy…</div>}
+      {errorAnalisisAdmin && (
+        <div className="an-error">
+          {errorAnalisisAdmin}
+          {analisisAdmin ? ' Se siguen mostrando los últimos datos cargados.' : ''}
+        </div>
+      )}
+
+      {analisisAdmin && (
+        <>
+          {crecimiento && (
+            <section className="an-bloque an-crecimiento">
+              <div className="an-crecimiento-texto">
+                <h3>Crecimiento de la temporada</h3>
+                {crecimiento.barras.length > 1 ? (
+                  <p className="an-titular">
+                    De <strong>{crecimiento.desde}</strong> niños con clase en {nombreMes(crecimiento.desdeMes, true)} a{' '}
+                    <strong>{crecimiento.hasta}</strong> en {nombreMes(crecimiento.hastaMes, true)}
+                    {crecimiento.barras[crecimiento.barras.length - 1].enCurso ? ' (y el mes aún no ha acabado)' : ''}.
+                  </p>
+                ) : (
+                  <p className="an-titular">
+                    <strong>{crecimiento.hasta}</strong> niños con clase en {nombreMes(crecimiento.hastaMes, true)}.
+                  </p>
                 )}
-  
-      </>
+                <div className="an-crecimiento-cifras">
+                  {crecimiento.cambio.sentido && (
+                    <div>
+                      <span>Crecimiento</span>
+                      <Flecha cambio={crecimiento.cambio} />
+                    </div>
+                  )}
+                  <div>
+                    <span>Altas esta temporada</span>
+                    <strong>{crecimiento.altasTemporada}</strong>
+                  </div>
+                  {typeof continuidad === 'number' && (
+                    <div>
+                      <span>Siguen de un mes a otro</span>
+                      <strong>{formatoPct(continuidad)}</strong>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="an-barras" aria-label="Niños con clase por mes">
+                {crecimiento.barras.map((b) => (
+                  <div key={b.mes} className={`an-barra ${b.enCurso ? 'is-en-curso' : ''}`}>
+                    <span className="an-barra-valor">{b.valor}</span>
+                    <div className="an-barra-columna">
+                      <div style={{ height: `${b.alto}%` }} />
+                    </div>
+                    <span className="an-barra-mes">{b.etiqueta}{b.enCurso ? '*' : ''}</span>
+                  </div>
+                ))}
+              </div>
+              {crecimiento.barras.some((b) => b.enCurso) && (
+                <p className="an-nota">* Mes en curso: cuenta hasta hoy.</p>
+              )}
+            </section>
+          )}
+
+          {vamos && (
+            <section className="an-bloque">
+              <h3>Cómo vamos · {vamos.titulo}</h3>
+              <p className="an-subtitulo">{vamos.subtitulo}</p>
+              <div className="an-indicadores">
+                {vamos.indicadores.map((ind) => (
+                  <div key={ind.clave} className="an-indicador">
+                    <span className="an-indicador-titulo">{ind.titulo}</span>
+                    <strong>{ind.valor}</strong>
+                    <Flecha cambio={ind.cambio} />
+                    <span className="an-indicador-ayuda">{ind.ayuda}</span>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {meses.length > 0 && (
+            <section className="an-bloque">
+              <h3>Evolución por mes</h3>
+              {esVistaMovilApp ? (
+                <div className="an-meses-tarjetas">
+                  {meses.map((m) => (
+                    <div key={m.mes} className="an-mes-tarjeta">
+                      <strong>
+                        {nombreMes(m.mes, true)}
+                        {(m.en_curso ?? m.mes === hoy.slice(0, 7)) && <span className="an-en-curso">en curso</span>}
+                      </strong>
+                      <dl>
+                        <dt>Niños con clase</dt><dd>{m.alumnos_unicos}</dd>
+                        <dt>Altas</dt><dd>{m.altas}</dd>
+                        <dt>Asistencia</dt><dd>{formatoPct(m.asistencia_real_pct)}</dd>
+                        <dt>Ocupación</dt><dd>{formatoPct(m.ocupacion_pct)}</dd>
+                        <dt>Niños por grupo</dt><dd>{formatoNumero(m.promedio_por_grupo, 1)}</dd>
+                        <dt>Sesiones</dt><dd>{m.sesiones_realizadas}</dd>
+                      </dl>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <table className="an-tabla">
+                  <thead>
+                    <tr>
+                      <th>Mes</th><th>Niños con clase</th><th>Altas</th><th>Asistencia</th>
+                      <th>Ocupación</th><th>Niños por grupo</th><th>Sesiones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {meses.map((m) => (
+                      <tr key={m.mes}>
+                        <td>
+                          {nombreMes(m.mes, true)}
+                          {(m.en_curso ?? m.mes === hoy.slice(0, 7)) && <span className="an-en-curso">en curso</span>}
+                        </td>
+                        <td>{m.alumnos_unicos}</td>
+                        <td>{m.altas}</td>
+                        <td>{formatoPct(m.asistencia_real_pct)}</td>
+                        <td>{formatoPct(m.ocupacion_pct)}</td>
+                        <td>{formatoNumero(m.promedio_por_grupo, 1)}</td>
+                        <td>{m.sesiones_realizadas}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </section>
+          )}
+
+          <section className="an-bloque an-niveles">
+            <div>
+              <h3>Niveles</h3>
+              {niveles.length === 0 ? (
+                <p className="an-subtitulo">Sin datos de nivel todavía.</p>
+              ) : (
+                <div className="an-niveles-lista">
+                  {niveles.map((n) => (
+                    <div key={n.nivel} className="an-nivel">
+                      <span>{n.nivel}</span>
+                      <div className="an-nivel-barra"><div style={{ width: `${Math.max(4, (n.total / maxNivel) * 100)}%` }} /></div>
+                      <strong>{n.total}</strong>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div>
+              <h3>Cambios de nivel en la temporada</h3>
+              <div className="an-progreso-cifras">
+                <div className="an-progreso an-progreso--sube"><strong>{prog.totalSuben}</strong><span>suben</span></div>
+                <div className="an-progreso"><strong>{prog.seMantienen}</strong><span>se mantienen</span></div>
+                <div className="an-progreso an-progreso--baja"><strong>{prog.totalBajan}</strong><span>bajan</span></div>
+              </div>
+              {prog.suben.length > 0 && (
+                <ul className="an-progreso-lista">
+                  {prog.suben.slice(0, 8).map((p) => (
+                    <li key={`s-${p.desde}-${p.hasta}`}><span>{p.desde} → {p.hasta}</span><span className="an-cambio an-cambio--sube">▲ {p.total}</span></li>
+                  ))}
+                  {prog.bajan.slice(0, 4).map((p) => (
+                    <li key={`b-${p.desde}-${p.hasta}`}><span>{p.desde} → {p.hasta}</span><span className="an-cambio an-cambio--baja">▼ {p.total}</span></li>
+                  ))}
+                </ul>
+              )}
+              <p className="an-nota">Según el primer y el último nivel que han puesto los entrenadores en los reportes.</p>
+            </div>
+          </section>
+
+          <details className="an-bloque an-detalle">
+            <summary>Más detalle</summary>
+            {meses.length > 0 && (
+              <div className="an-tabla-scroll">
+                <table className="an-tabla an-tabla--completa">
+                  <thead>
+                    <tr>
+                      <th>Mes</th><th>Niños</th><th>Altas</th><th>Siguen del mes anterior</th>
+                      <th>Asistencia</th><th>Niños por turno</th><th>Por grupo</th><th>Sesiones</th><th>Ocupación</th><th>Evolución técnica</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {meses.map((m) => (
+                      <tr key={m.mes}>
+                        <td>{nombreMes(m.mes, true)}</td>
+                        <td>{m.alumnos_unicos}</td>
+                        <td>{m.altas}</td>
+                        <td>{formatoPct(m.continuidad_pct)}</td>
+                        <td>{formatoPct(m.asistencia_real_pct)}</td>
+                        <td>{formatoNumero(m.promedio_ninos_turno, 1)}</td>
+                        <td>{formatoNumero(m.promedio_por_grupo, 1)}</td>
+                        <td>{m.sesiones_realizadas}</td>
+                        <td>{formatoPct(m.ocupacion_pct)}</td>
+                        <td>{formatoNumero(m.evolucion_tecnica, 2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <p className="an-nota">
+              Toda la temporada: {analisisAdmin.resumen.alumnos_unicos} niños (contando altas que aún no han venido),{' '}
+              {analisisAdmin.resumen.sesiones_realizadas} sesiones, asistencia {formatoPct(analisisAdmin.resumen.asistencia_real_pct)}.
+            </p>
+
+            {temporadas.length >= 2 && (
+              <>
+                <h4>Comparación entre temporadas</h4>
+                <div className="an-tabla-scroll">
+                  <table className="an-tabla">
+                    <thead>
+                      <tr><th>Temporada</th><th>Niños</th><th>Sesiones</th><th>Asistencia</th><th>Evolución técnica</th></tr>
+                    </thead>
+                    <tbody>
+                      {temporadas.map((t) => (
+                        <tr key={t.temporada_id}>
+                          <td>{t.temporada}{t.activa ? ' · actual' : ''}</td>
+                          <td>{t.alumnos_unicos}</td>
+                          <td>{t.sesiones_realizadas}</td>
+                          <td>{formatoPct(t.asistencia_real_pct)}</td>
+                          <td>{formatoNumero(t.evolucion_tecnica, 2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            <h4>Cómo se calcula</h4>
+            <div className="an-definiciones">
+              {Object.entries(analisisAdmin.definiciones || {}).map(([clave, texto]) => (
+                <p key={clave}>
+                  <strong>{NOMBRES_DEFINICIONES[clave] || clave.replace(/_/g, ' ')}:</strong> {String(texto ?? '')}
+                </p>
+              ))}
+            </div>
+          </details>
+        </>
+      )}
+    </article>
   );
 }
-

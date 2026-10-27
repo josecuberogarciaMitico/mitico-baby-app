@@ -3,17 +3,33 @@ export type RolUsuarioApp =
   | 'sub_coordinador'
   | 'administracion'
   | 'coordinador'
-  | 'entrenador';
+  | 'entrenador'
+  | 'consulta';
 
 export function rolUsuarioTextoApp(rol?: string): string {
   if (rol === 'coordinador_jefe') return 'Coordinador jefe';
   if (rol === 'sub_coordinador' || rol === 'coordinador') return 'Sub-coordinador';
   if (rol === 'administracion') return 'Administración';
+  if (rol === 'consulta') return 'Solo consulta';
   return 'Entrenador';
 }
 
 export function esRolCoordinacionApp(rol?: string): boolean {
-  return rol === 'coordinador_jefe' || rol === 'sub_coordinador' || rol === 'administracion' || rol === 'coordinador';
+  return rol === 'coordinador_jefe' || rol === 'sub_coordinador' || rol === 'administracion' || rol === 'coordinador' || rol === 'consulta';
+}
+
+/**
+ * Usuario «Solo consulta»: ve la coordinación y Dirección pero no puede cambiar
+ * nada. El bloqueo de verdad está en Supabase (solo pasa en lecturas); esto es
+ * para la pantalla.
+ */
+export function esSoloConsultaApp(rol?: string): boolean {
+  return rol === 'consulta';
+}
+
+/** Ver las pantallas de Dirección (sin acciones): jefe y «Solo consulta». */
+export function puedeVerDireccionLecturaApp(rol?: string): boolean {
+  return rol === 'coordinador_jefe' || rol === 'consulta';
 }
 
 export function puedeVerDireccionApp(rol?: string): boolean {

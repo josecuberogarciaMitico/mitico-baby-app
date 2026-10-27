@@ -377,8 +377,10 @@ import {
 } from './features/availability/availabilityEditor';
 import {
   esRolCoordinacionApp,
+  esSoloConsultaApp,
   puedeGestionarAccesosApp,
   puedeVerAdministracionAltasApp,
+  puedeVerDireccionLecturaApp,
   puedeVerDireccionApp,
   rolUsuarioTextoApp,
 } from './core/permissions/rolePermissions';
@@ -708,6 +710,7 @@ const opcionesPistaGrupoIntensivo = ['', 'Pequeña', 'Grande', 'Pequeña/Grande'
 
 type AnalisisAdminMensualApp = {
   mes: string;
+  en_curso?: boolean;
   alumnos_unicos: number;
   altas: number;
   crecimiento_pct: number | null;
@@ -766,6 +769,24 @@ type AnalisisAdminPayloadApp = {
     evolucion_tecnica: number;
   }>;
   definiciones: Record<string, string>;
+  // Mes en curso del 1 a hoy contra los mismos días del mes anterior.
+  tramo?: {
+    dias: number;
+    actual: AnalisisAdminTramoApp | null;
+    anterior: AnalisisAdminTramoApp | null;
+  } | null;
+};
+
+type AnalisisAdminTramoApp = {
+  desde: string;
+  hasta: string;
+  alumnos: number;
+  altas: number;
+  sesiones: number;
+  asistencia_real_pct: number | null;
+  ocupacion_pct: number | null;
+  promedio_por_grupo: number | null;
+  promedio_ninos_turno: number | null;
 };
 
 type AnalisisAdminRpcRowApp = {
@@ -1264,6 +1285,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const esCoordinadorJefeApp =
     !perfilUsuario || puedeVerDireccionApp(perfilUsuario.rol);
   const esAdministracionApp = perfilUsuario?.rol === 'administracion';
+  const esSoloConsultaUsuarioApp = esSoloConsultaApp(perfilUsuario?.rol);
+  // Dirección para mirar: jefe y «Solo consulta» (las acciones siguen solo jefe).
+  const puedeVerDireccionUsuarioApp =
+    !perfilUsuario || puedeVerDireccionLecturaApp(perfilUsuario.rol);
   const puedeGestionarAccesosUsuarioApp =
     !perfilUsuario || puedeGestionarAccesosApp(perfilUsuario.rol);
   const puedeGestionarWhatsappApp =
@@ -1420,7 +1445,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
 
     if (
       esCoordinadorApp &&
-      !esCoordinadorJefeApp &&
+      !puedeVerDireccionUsuarioApp &&
       (pantalla === 'cobros' ||
         pantalla === 'informes' ||
         pantalla === 'temporadas' ||
@@ -1434,6 +1459,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     esEntrenadorApp,
     esCoordinadorApp,
     esCoordinadorJefeApp,
+    puedeVerDireccionUsuarioApp,
     pantalla,
   ]);
 
@@ -1618,7 +1644,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   const [formUsuarioOperativo, setFormUsuarioOperativo] = useState({
     nombre: '',
     email: '',
-    rol: 'sub_coordinador' as 'sub_coordinador' | 'administracion',
+    rol: 'sub_coordinador' as 'sub_coordinador' | 'administracion' | 'consulta',
   });
 
   const [avisos, setAvisos] = useState<AvisoJose[]>([]);
@@ -2645,39 +2671,11 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     return `${texto}${sufijo}`;
   }
 
-  function etiquetaMesAnalisisAdminApp(mes: string) {
-    const [anio, numeroMes] = String(mes || '').split('-').map(Number);
-    if (!anio || !numeroMes) return mes || '-';
-    const fecha = new Date(anio, numeroMes - 1, 1);
-    return fecha.toLocaleDateString('es-ES', { month: 'short', year: '2-digit' });
-  }
-
-  function diferenciaAnalisisAdminApp(
-    actual: number | null | undefined,
-    anterior: number | null | undefined,
-    sufijo = ''
-  ) {
-    if (actual === null || actual === undefined || anterior === null || anterior === undefined) {
-      return 'Sin comparación';
-    }
-
-    const diferencia = Number(actual) - Number(anterior);
-    if (!Number.isFinite(diferencia)) return 'Sin comparación';
-
-    const redondeada = Math.round(diferencia * 10) / 10;
-    const texto = Number.isInteger(redondeada)
-      ? String(Math.abs(redondeada))
-      : Math.abs(redondeada).toLocaleString('es-ES', { maximumFractionDigits: 1 });
-
-    if (redondeada === 0) return `Sin cambio${sufijo ? ` ${sufijo}` : ''}`;
-    return `${redondeada > 0 ? '+' : '−'}${texto}${sufijo}`;
-  }
-
   async function cargarAnalisisAdminApp(
     modalidad: ModalidadAnalisisAdminApp = modalidadAnalisisAdmin,
     temporadaId: string = temporadaAnalisisAdminId
   ) {
-    if (!esCoordinadorJefeApp) return;
+    if (!puedeVerDireccionUsuarioApp) return;
     setCargandoAnalisisAdmin(true);
     setErrorAnalisisAdmin('');
 
@@ -2697,7 +2695,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       setModalidadAnalisisAdmin(modalidad);
       setTemporadaAnalisisAdminId(payload.meta.temporada_id);
     } catch (err: any) {
-      setAnalisisAdmin(null);
+      // Se quedan los últimos datos buenos en pantalla (antes se borraban y el
+      // selector de temporada se quedaba bloqueado).
       setErrorAnalisisAdmin(
         err?.message || 'No se pudo calcular el análisis de administración.'
       );
@@ -2709,6 +2708,10 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   function cambiarModalidadAnalisisAdminApp(modalidad: ModalidadAnalisisAdminApp) {
     setModalidadAnalisisAdmin(modalidad);
     void cargarAnalisisAdminApp(modalidad, temporadaAnalisisAdminId);
+  }
+
+  function recargarAnalisisAdminApp() {
+    void cargarAnalisisAdminApp(modalidadAnalisisAdmin, temporadaAnalisisAdminId);
   }
 
   function cambiarTemporadaAnalisisAdminApp(temporadaId: string) {
@@ -2725,6 +2728,20 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     filas.push(['Temporada', payload.meta.temporada]);
     filas.push(['Generado', new Date(payload.meta.generado_at).toLocaleString('es-ES')]);
     filas.push([]);
+    const tramo = payload.tramo;
+    if (tramo?.actual) {
+      const a = tramo.actual;
+      const b = tramo.anterior;
+      filas.push(['MES EN CURSO (MISMOS DÍAS QUE EL MES ANTERIOR)']);
+      filas.push(['', `${a.desde} a ${a.hasta}`, b ? `${b.desde} a ${b.hasta}` : '']);
+      filas.push(['Niños con clase', a.alumnos, b?.alumnos ?? null]);
+      filas.push(['Altas', a.altas, b?.altas ?? null]);
+      filas.push(['Asistencia %', a.asistencia_real_pct, b?.asistencia_real_pct ?? null]);
+      filas.push(['Ocupación %', a.ocupacion_pct, b?.ocupacion_pct ?? null]);
+      filas.push(['Niños por grupo', a.promedio_por_grupo, b?.promedio_por_grupo ?? null]);
+      filas.push(['Sesiones', a.sesiones, b?.sesiones ?? null]);
+      filas.push([]);
+    }
     filas.push(['RESUMEN']);
     filas.push(['Alumnos únicos', r.alumnos_unicos]);
     filas.push(['Altas', r.altas]);
@@ -2859,6 +2876,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       `${p.meta.modalidad} · Temporada ${p.meta.temporada}`,
       `Generado: ${new Date(p.meta.generado_at).toLocaleString('es-ES')}`,
       '',
+      ...(p.tramo?.actual
+        ? [
+            `MES EN CURSO (${p.tramo.actual.desde} a ${p.tramo.actual.hasta}${p.tramo.anterior ? ` frente a ${p.tramo.anterior.desde} a ${p.tramo.anterior.hasta}` : ''})`,
+            `Ninos con clase: ${p.tramo.actual.alumnos}${p.tramo.anterior ? ` (antes ${p.tramo.anterior.alumnos})` : ''} · Altas: ${p.tramo.actual.altas}${p.tramo.anterior ? ` (antes ${p.tramo.anterior.altas})` : ''}`,
+            `Asistencia: ${numeroAnalisisAdminApp(p.tramo.actual.asistencia_real_pct, '%')}${p.tramo.anterior ? ` (antes ${numeroAnalisisAdminApp(p.tramo.anterior.asistencia_real_pct, '%')})` : ''} · Ocupacion: ${numeroAnalisisAdminApp(p.tramo.actual.ocupacion_pct, '%')}${p.tramo.anterior ? ` (antes ${numeroAnalisisAdminApp(p.tramo.anterior.ocupacion_pct, '%')})` : ''}`,
+            '',
+          ]
+        : []),
       `RESUMEN`,
       `Alumnos unicos: ${r.alumnos_unicos} · Altas: ${r.altas}`,
       `Continuidad: ${numeroAnalisisAdminApp(r.continuidad_pct, '%')} · Perdida: ${numeroAnalisisAdminApp(r.perdida_continuidad_pct, '%')}`,
@@ -2868,8 +2893,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       `Evolucion tecnica: ${numeroAnalisisAdminApp(r.evolucion_tecnica)} · Mejoran ${r.alumnos_mejoran} · Estables ${r.alumnos_estables} · Bajan ${r.alumnos_bajan}`,
       '',
       `EVOLUCION MENSUAL`,
-      ...p.mensual.map((m) =>
-        `${m.mes} · alumnos ${m.alumnos_unicos} · altas ${m.altas} · crec ${numeroAnalisisAdminApp(m.crecimiento_pct, '%')} · cont ${numeroAnalisisAdminApp(m.continuidad_pct, '%')} · asist ${numeroAnalisisAdminApp(m.asistencia_real_pct, '%')} · ocup ${numeroAnalisisAdminApp(m.ocupacion_pct, '%')}`
+      ...p.mensual.filter((m) => m.alumnos_unicos > 0 || m.altas > 0 || m.sesiones_realizadas > 0).map((m) =>
+        `${m.mes}${m.en_curso ? ' (en curso)' : ''} · alumnos ${m.alumnos_unicos} · altas ${m.altas} · crec ${numeroAnalisisAdminApp(m.crecimiento_pct, '%')} · cont ${numeroAnalisisAdminApp(m.continuidad_pct, '%')} · asist ${numeroAnalisisAdminApp(m.asistencia_real_pct, '%')} · ocup ${numeroAnalisisAdminApp(m.ocupacion_pct, '%')}`
       ),
       '',
       `NIVELES`,
@@ -16579,22 +16604,22 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       cargarIntensivosAltaNivel();
       cargarWhatsappGruposApp();
     }
-    if (pantalla === 'usuarios' && esCoordinadorJefeApp) {
+    if (pantalla === 'usuarios' && puedeVerDireccionUsuarioApp) {
       cargarUsuariosOperativos();
     }
-    if (pantalla === 'whatsappDireccion' && esCoordinadorJefeApp) {
+    if (pantalla === 'whatsappDireccion' && puedeVerDireccionUsuarioApp) {
       cargarIntensivosAltaNivel();
       cargarWhatsappGruposApp();
     }
     if (pantalla === 'disponibilidad') cargarDisponibilidad();
     if (pantalla === 'reportes') cargarReportesPendientes();
-    if (pantalla === 'cobros' && esCoordinadorJefeApp) {
+    if (pantalla === 'cobros' && puedeVerDireccionUsuarioApp) {
       void cargarCobrosDesdeSemanaActiva();
       cargarEntrenadores();
     }
     if (
       (pantalla === 'informes' || pantalla === 'temporadas') &&
-      esCoordinadorJefeApp
+      puedeVerDireccionUsuarioApp
     ) {
       cargarAgendaOperativaDirecta();
       cargarIntensivos();
@@ -16606,7 +16631,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       cargarOcioGrupos();
       cargarCobros();
     }
-    if (pantalla === 'analisis' && esCoordinadorJefeApp && !analisisAdmin) {
+    if (pantalla === 'analisis' && puedeVerDireccionUsuarioApp && !analisisAdmin) {
       void cargarAnalisisAdminApp('BABY', '');
     }
     if (pantalla === 'intensivos') {
@@ -16659,11 +16684,11 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
   }, [pantalla]);
 
   useEffect(() => {
-    if (pantalla !== 'informes' || !esCoordinadorJefeApp) return;
+    if (pantalla !== 'informes' || !puedeVerDireccionUsuarioApp) return;
     cargarInformeSnowZone();
   }, [
     pantalla,
-    esCoordinadorJefeApp,
+    puedeVerDireccionUsuarioApp,
     snowZoneModo,
     snowZoneMes,
     snowZoneSemanaInicio,
@@ -18816,7 +18841,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
   }
 
   async function cargarInformeSnowZone() {
-    if (!esCoordinadorJefeApp) return;
+    if (!puedeVerDireccionUsuarioApp) return;
 
     const { desde, hasta } = limitesSnowZoneSeleccionados();
     setSnowZoneCargando(true);
@@ -18870,7 +18895,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
 
 
   async function cargarCandidatosEquipo() {
-    if (!esCoordinadorJefeApp) return;
+    if (!puedeVerDireccionUsuarioApp) return;
 
     setCandidatosEquipoCargando(true);
     setCandidatosEquipoError('');
@@ -18963,7 +18988,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
   async function cargarListadoAlumnosTemporada(
     tipo: TipoListadoAlumnosApp = tipoListadoAlumnos
   ) {
-    if (!esCoordinadorJefeApp) return;
+    if (!puedeVerDireccionUsuarioApp) return;
 
     setListadoAlumnosCargando(true);
     setListadoAlumnosError('');
@@ -19079,7 +19104,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
   }
 
   async function cargarCortesEvaluacionOcio() {
-    if (!esCoordinadorJefeApp) return;
+    if (!puedeVerDireccionUsuarioApp) return;
     setCortesEvaluacionOcioCargando(true);
     setCortesEvaluacionOcioError('');
     try {
@@ -19141,7 +19166,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
   }
 
   async function cargarEvaluacionesAnualesOcio() {
-    if (!esCoordinadorJefeApp) return;
+    if (!puedeVerDireccionUsuarioApp) return;
 
     setEvaluacionesAnualesOcioCargando(true);
     setEvaluacionesAnualesOcioError('');
@@ -19281,7 +19306,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
   }
 
   async function analizarCierreTemporada() {
-    if (!esCoordinadorJefeApp) return;
+    if (!puedeVerDireccionUsuarioApp) return;
 
     setCierreTemporadaCargando(true);
     setCierreTemporadaError('');
@@ -19676,7 +19701,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
   }
 
   async function cargarTemporadaActivaCierre() {
-    if (!esCoordinadorJefeApp) return;
+    if (!puedeVerDireccionUsuarioApp) return;
 
     setCargandoTemporadaActivaCierre(true);
     setErrorTemporadaActivaCierre('');
@@ -19783,9 +19808,9 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
   }
 
   useEffect(() => {
-    if (!esCoordinadorJefeApp) return;
+    if (!puedeVerDireccionUsuarioApp) return;
     cargarTemporadaActivaCierre();
-  }, [esCoordinadorJefeApp]);
+  }, [puedeVerDireccionUsuarioApp]);
 
   async function ejecutarCierreDefinitivoTemporada() {
     const incidencia = seasonClosureIssue({
@@ -20096,7 +20121,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       className={`mitico-app-shell ${esCoordinadorApp ? 'with-sidebar' : 'trainer-only'} ${esVistaMovilApp ? 'is-mobile' : ''}`}
       style={layout}
     >
-      {esCoordinadorApp && !esAdministracionApp && <CoordinationAlerts onNivelCambiado={() => void cargarAlumnos()} />}
+      {esCoordinadorApp && !esAdministracionApp && !esSoloConsultaUsuarioApp && <CoordinationAlerts onNivelCambiado={() => void cargarAlumnos()} />}
       {esCoordinadorApp && (
         <StudentFichaSheet alumnos={alumnos} ocioAlumnos={ocioAlumnos} historialPorAlumno={historialReportesFichaPorAlumno} cargandoHistorialId={historialReportesFichaCargandoId} cargarHistorial={cargarHistorialReportesAlumnoFichaApp} formatDate={formatearFecha} cargarAlumnos={cargarAlumnos} />
       )}
@@ -20353,7 +20378,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
               </div>
             )}
 
-            {esCoordinadorJefeApp && (
+            {puedeVerDireccionUsuarioApp && (
               <div className="mitico-nav-group">
                 <span className="mitico-nav-heading">Dirección</span>
                 <button className={`mitico-nav-item ${pantalla === 'cobros' ? 'is-active' : ''}`} onClick={() => abrirPantallaConScroll('cobros')}>
@@ -20483,6 +20508,11 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       `}</style>
 
       <div className="mitico-content-shell">
+        {esSoloConsultaUsuarioApp && (
+          <div className="mitico-consulta-banner" role="note">
+            👀 <strong>Modo consulta:</strong> puedes ver toda la app, pero no se puede cambiar nada.
+          </div>
+        )}
 
 
       {whatsappPreview && (
@@ -20914,7 +20944,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
             descargarInformeSnowZoneExcel,
             descargarListadoAlumnosTemporada,
             errorCaja,
-            esCoordinadorJefeApp,
+            esCoordinadorJefeApp: puedeVerDireccionUsuarioApp,
             etiquetaSuperior,
             fechaIsoEditor,
             formatearFecha,
@@ -20980,7 +21010,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
             errorCaja,
             errorCopiaMaestraImport,
             errorTemporadaActivaCierre,
-            esCoordinadorJefeApp,
+            esCoordinadorJefeApp: puedeVerDireccionUsuarioApp,
             etiquetaSuperior,
             fechaIsoEditor,
             filasCopiaMaestraImport,
@@ -21025,29 +21055,20 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       )}
       <OperationalAnalysisScreen
         ctx={{
-          agendaBloqueBlanco,
           analisisAdmin,
-          avisoNeutral,
-          botonSecundario,
           cambiarModalidadAnalisisAdminApp,
           cambiarTemporadaAnalisisAdminApp,
           cargandoAnalisisAdmin,
           descargarCsvAnalisisAdminApp,
           descargarExcelAnalisisAdminApp,
           descargarPdfAnalisisAdminApp,
-          diferenciaAnalisisAdminApp,
           errorAnalisisAdmin,
-          errorCaja,
-          esCoordinadorJefeApp,
+          esCoordinadorJefeApp: puedeVerDireccionUsuarioApp,
           esVistaMovilApp,
-          etiquetaMesAnalisisAdminApp,
-          labelCampo,
-          miniTarjetaBlanca,
           modalidadAnalisisAdmin,
-          numeroAnalisisAdminApp,
           pantalla,
+          recargarAnalisisAdminApp,
           renderAyudaRapidaPantallaApp,
-          selectCampo,
           temporadaAnalisisAdminId,
         }}
       />
@@ -21416,7 +21437,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
             descargarEvaluacionesAnualesOcio,
             edadAproximadaOcio,
             errorCaja,
-            esCoordinadorJefeApp,
+            esCoordinadorJefeApp: puedeVerDireccionUsuarioApp,
             esVistaMovilApp,
             etiquetaSuperior,
             evaluacionOcioIndividualSeleccionadoId,
@@ -21991,7 +22012,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
           contextoWhatsappAdministracionApp,
           eliminarWhatsappAdministracionApp,
           enlaceWhatsappPorClaveApp,
-          esCoordinadorJefeApp,
+          esCoordinadorJefeApp: puedeVerDireccionUsuarioApp,
           esEnlaceGrupoWhatsappValido,
           formatearFecha,
           guardarWhatsappAdministracionApp,
@@ -22203,7 +22224,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
           cargarUsuariosOperativos,
           crearUsuarioOperativo,
           error,
-          esCoordinadorJefeApp,
+          esCoordinadorJefeApp: puedeVerDireccionUsuarioApp,
           formUsuarioOperativo,
           gestionandoUsuarioOperativoId,
           gestionarUsuarioOperativo,
@@ -22347,7 +22368,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
           }}
         />
       )}
-      {pantalla === 'cobros' && esCoordinadorJefeApp && (
+      {pantalla === 'cobros' && puedeVerDireccionUsuarioApp && (
         <section
           style={{
             display: 'grid',
