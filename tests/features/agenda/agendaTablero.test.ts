@@ -64,13 +64,16 @@ test('lo que falta: solo desde hoy y con sus motivos', () => {
     { fecha: '2026-11-01', sesiones: [ses('c', '09:45', '11:45', 6, 2, 2), ses('vacia', '12:00', '14:00', 0)] },
   ];
   const cob = (s: { id: string }) => ({ totalGroups: 2, pendingGroups: s.id === 'b' ? 1 : 0 });
-  const ex = (s: { id: string }) => (s.id === 'c' ? { revisar: 2, notas: 1, sinConfirmar: 1 } : null);
+  const ex = (s: { id: string }) => (s.id === 'c' ? { revisar: 2, notas: 1, sinConfirmar: 1, sinColocar: 3 } : null);
   const r = pendientesSemana(dias, '2026-10-29', cob, ex);
   equal(r.contadores.sin_grupos, 1, 'sin grupos');
   equal(r.contadores.sin_entrenador, 1, 'sin entrenador');
   equal(r.contadores.sin_publicar, 1, 'sin publicar');
   equal(r.contadores.revisar, 2, 'revisar');
   equal(r.contadores.sin_confirmar, 1, 'sin confirmar');
+  equal(r.contadores.sin_colocar, 3, 'sin colocar');
+  equal(r.pendientes[2].motivos[0], 'sin_colocar', 'sin colocar va primero');
+  equal(siguientePendiente(r.pendientes, '', 'sin_colocar')!.sesion.id, 'c', 'por sin colocar');
   equal(r.pendientes.map((p) => p.sesion.id).join(','), 'a,b,c', 'orden');
   equal(siguientePendiente(r.pendientes, 'a')!.sesion.id, 'b', 'siguiente');
   equal(siguientePendiente(r.pendientes, 'c')!.sesion.id, 'a', 'vuelve al principio');
