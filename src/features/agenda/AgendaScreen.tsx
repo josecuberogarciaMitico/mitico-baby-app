@@ -3613,12 +3613,20 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                 (Number(grupo.total_alumnos || 0) >= 1 && Number(grupo.total_alumnos || 0) <= 2)) && (
                                 <button
                                   type="button"
-                                  style={{ ...botonMini, marginTop: 4 }}
+                                  style={{
+                                    ...botonMini,
+                                    width: 'auto',
+                                    minWidth: 0,
+                                    maxWidth: '100%',
+                                    flex: '0 0 auto',
+                                    whiteSpace: 'normal',
+                                    marginTop: 4,
+                                  }}
                                   onClick={() => void marcarGrupoParticular(grupo)}
                                 >
                                   {esNombreGrupoParticularApp(grupo.nombre_grupo)
-                                    ? 'Quitar particular (grupo normal)'
-                                    : `Hacer particular (${grupo.total_alumnos} ${Number(grupo.total_alumnos) === 1 ? 'niño' : 'niños'})`}
+                                    ? 'Quitar particular'
+                                    : 'Hacer particular'}
                                 </button>
                               )}
                             {grupo.alumnos_lista && (
