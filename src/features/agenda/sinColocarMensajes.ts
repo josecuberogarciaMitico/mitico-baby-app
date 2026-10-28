@@ -39,10 +39,12 @@ export function etiquetaTurnoFamilia(fecha: string, inicio: string, fin: string)
  * todos los hermanos, sin «No encaja», uno por turno y como mucho 3. El orden
  * ya viene del planificador (mismo día y fin de semana primero).
  */
-export function opcionesParaFamilia(u: UnidadPlan, maximo = 3): OpcionPlan[] {
+export function opcionesParaFamilia(u: UnidadPlan, maximo = 3, primera?: OpcionPlan | null): OpcionPlan[] {
   const vistas = new Set<string>();
   const lista: OpcionPlan[] = [];
-  for (const o of u.opciones) {
+  // La opción que ha elegido coordinación (si es otro turno) va la primera.
+  const orden = primera && !primera.mismoTurno ? [primera, ...u.opciones] : u.opciones;
+  for (const o of orden) {
     if (o.mismoTurno || o.estado === 'NO_ENCAJA' || vistas.has(o.sesion.sesionId)) continue;
     // Una opción que separa a los hermanos no se ofrece a la familia.
     if (o.avisos.some((a) => a.startsWith('Separa de su hermano'))) continue;

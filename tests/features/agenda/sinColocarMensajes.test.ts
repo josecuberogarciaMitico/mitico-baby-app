@@ -88,3 +88,11 @@ test('un solo enlace corto', () => {
   equal(enlaceElegirTurno('https://x/', uuid), `https://x/?t=${corto}`, 'enlace');
   equal(cortoAUuid('mal'), '', 'código malo');
 });
+
+test('la opción elegida por coordinación va la primera en el mensaje', () => {
+  const ops = opcionesParaFamilia(u);
+  const elegida = ops[2];
+  const conElegida = opcionesParaFamilia(u, 3, elegida);
+  equal(conElegida[0].sesion.sesionId, elegida.sesion.sesionId, 'primera');
+  equal(conElegida.length, 3, 'sin repetir');
+});
