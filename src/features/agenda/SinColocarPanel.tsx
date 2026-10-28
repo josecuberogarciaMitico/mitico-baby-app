@@ -14,6 +14,7 @@ import {
 } from './sinColocarPlanner';
 import {
   etiquetaTurnoFamilia,
+  enlaceElegirTurno,
   necesitaMensaje,
   opcionesParaFamilia,
   propuestaDeUnidad,
@@ -171,7 +172,7 @@ export function SinColocarPanel(props: Props) {
         const lote = sesionAlumnoIds.slice(i, i + 80);
         const r = await props.consultarSupabase(
           'cambios_turno_propuestos_app',
-          `select=sesion_alumno_id,estado,opciones,opcion_aceptada,updated_at,respondido_familia_at,movido_at&sesion_alumno_id=in.(${lote.join(',')})`
+          `select=sesion_alumno_id,estado,opciones,opcion_aceptada,updated_at,respondido_familia_at,movido_at,token_publico&sesion_alumno_id=in.(${lote.join(',')})`
         );
         filas.push(...(r || []));
       }
@@ -184,6 +185,7 @@ export function SinColocarPanel(props: Props) {
           updated_at: String(f.updated_at || ''),
           respondido_familia_at: f.respondido_familia_at || null,
           movido_at: f.movido_at || null,
+          token_publico: f.token_publico || null,
         }))
       );
       setTablaPropuestasLista(true);
@@ -202,12 +204,16 @@ export function SinColocarPanel(props: Props) {
     if (!ops.length || !tel) return;
     // Código de la familia: va en los enlaces del mensaje, así que se crea aquí
     // (antes de abrir WhatsApp) y se guarda después con la propuesta.
+    // Si ya se le mandó antes, se reutiliza el mismo código: así el enlace
+    // de un mensaje anterior sigue funcionando.
+    const previo = propuestaDeUnidad(u, propuestas)?.token_publico || '';
     const token =
-      tablaPropuestasLista && !props.soloLectura && typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      previo ||
+      (tablaPropuestasLista && !props.soloLectura && typeof crypto !== 'undefined' && 'randomUUID' in crypto
         ? crypto.randomUUID()
-        : '';
+        : '');
     const base = `${window.location.origin}${window.location.pathname}`;
-    const texto = textoPropuestaFamilia(u, ops, token ? { base, token } : undefined);
+    const texto = textoPropuestaFamilia(u, ops, token ? enlaceElegirTurno(base, token) : undefined);
     const url = urlWhatsappFamilia(tel, texto);
     if (!url) return;
     // Primero se abre WhatsApp (dentro del clic, si no el navegador lo bloquea).

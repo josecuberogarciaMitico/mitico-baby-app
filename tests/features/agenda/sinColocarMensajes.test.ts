@@ -4,7 +4,9 @@ import {
   opcionesParaFamilia,
   propuestaDeUnidad,
   telefonoFamilia,
+  cortoAUuid,
   enlaceElegirTurno,
+  uuidACorto,
   textoPropuestaFamilia,
   urlWhatsappFamilia,
 } from '../../../src/features/agenda/sinColocarMensajes';
@@ -54,8 +56,8 @@ test('opciones: otros turnos, primero fin de semana, máximo 3', () => {
 test('texto con los dos hermanos y las opciones numeradas', () => {
   const t = textoPropuestaFamilia(u, opcionesParaFamilia(u));
   equal(t.includes('Ana y Pablo (juntos)'), true, 'nombres');
-  equal(t.includes('sábado 31/10 de 12:00 a 14:00'), true, 'turno de origen');
-  equal(t.includes('1️⃣ sábado 31/10 de 09:45 a 11:45'), true, 'opción 1');
+  equal(t.includes('sábado 31/10 · 12:00–14:00'), true, 'turno de origen');
+  equal(t.includes('1️⃣ Sábado 31/10 · 09:45–11:45'), true, 'opción 1');
 });
 
 test('teléfono de cualquiera de los hermanos y enlace de WhatsApp', () => {
@@ -73,9 +75,14 @@ test('propuesta vigente de la familia', () => {
   equal(p!.estado, 'ACEPTADO', 'la más reciente de la familia');
 });
 
-test('con enlaces: uno por opción y otro para «ninguno»', () => {
-  const t = textoPropuestaFamilia(u, opcionesParaFamilia(u), { base: 'https://app.test/', token: 'abc' });
-  equal(t.includes('👉 Pulsa para elegirlo: https://app.test/?confirmar_turno=abc&o=1'), true, 'opción 1');
-  equal(t.includes('https://app.test/?confirmar_turno=abc&o=0'), true, 'ninguna');
-  equal(enlaceElegirTurno('https://x/', 'a b', 2), 'https://x/?confirmar_turno=a%20b&o=2', 'codifica');
+test('un solo enlace corto', () => {
+  const t = textoPropuestaFamilia(u, opcionesParaFamilia(u), 'https://app.test/?turno=X');
+  equal((t.match(/https:/g) || []).length, 1, 'un enlace');
+  equal(t.includes('1️⃣ Sábado 31/10 · 09:45–11:45'), true, 'opción 1');
+  const uuid = '97550714-9367-4c57-8e3a-b6c77d53376a';
+  const corto = uuidACorto(uuid);
+  equal(corto.length, 22, '22 letras');
+  equal(cortoAUuid(corto), uuid, 'ida y vuelta');
+  equal(enlaceElegirTurno('https://x/', uuid), `https://x/?turno=${corto}`, 'enlace');
+  equal(cortoAUuid('mal'), '', 'código malo');
 });

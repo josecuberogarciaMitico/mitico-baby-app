@@ -21,6 +21,7 @@ export type PropuestaGuardada = {
   respondido_familia_at?: string | null;
   /** La app ya lo pasó sola al día elegido por la familia (sin grupo). */
   movido_at?: string | null;
+  token_publico?: string | null;
 };
 
 const NUMEROS = ['1️⃣', '2️⃣', '3️⃣'];
@@ -67,28 +68,57 @@ function nombresPila(u: UnidadPlan) {
   return nombres.length > 1 ? `${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}` : nombres[0];
 }
 
-/** Enlace de la página pública para elegir turno (o = 1..3, 0 = ninguno). */
-export function enlaceElegirTurno(base: string, token: string, o: number) {
-  return `${base}?confirmar_turno=${encodeURIComponent(token)}&o=${o}`;
+// Código corto para el enlace: el uuid de la propuesta en base64url (22
+// letras en vez de 36), para que el WhatsApp lleve un solo enlace corto.
+const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+
+export function uuidACorto(uuid: string) {
+  const hex = String(uuid || '').replace(/-/g, '').toLowerCase();
+  if (!/^[0-9a-f]{32}$/.test(hex)) return '';
+  let bits = '';
+  for (const c of hex) bits += parseInt(c, 16).toString(2).padStart(4, '0');
+  bits += '0000'; // 128 bits → 22 grupos de 6
+  let out = '';
+  for (let i = 0; i < 132; i += 6) out += B64[parseInt(bits.slice(i, i + 6), 2)];
+  return out;
 }
 
-export function textoPropuestaFamilia(u: UnidadPlan, opciones: OpcionPlan[], enlaces?: { base: string; token: string }) {
+export function cortoAUuid(corto: string) {
+  const c = String(corto || '').trim();
+  if (!/^[A-Za-z0-9_-]{22}$/.test(c)) return '';
+  let bits = '';
+  for (const ch of c) bits += B64.indexOf(ch).toString(2).padStart(6, '0');
+  let hex = '';
+  for (let i = 0; i < 128; i += 4) hex += parseInt(bits.slice(i, i + 4), 2).toString(16);
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+/** Enlace único de la página pública para elegir turno. */
+export function enlaceElegirTurno(base: string, token: string) {
+  return `${base}?turno=${uuidACorto(token)}`;
+}
+
+function etiquetaCorta(fecha: string, inicio: string, fin: string) {
+  const d = new Date(`${fecha}T12:00:00`);
+  const dia = d.toLocaleDateString('es-ES', { weekday: 'long' });
+  const f = d.toLocaleDateString('es-ES', { day: 'numeric', month: 'numeric' });
+  return `${dia.charAt(0).toUpperCase()}${dia.slice(1)} ${f} · ${hhmm(inicio)}–${hhmm(fin)}`;
+}
+
+export function textoPropuestaFamilia(u: UnidadPlan, opciones: OpcionPlan[], enlace?: string) {
   const quien = nombresPila(u);
   const varios = u.miembros.length > 1;
-  const origen = etiquetaTurnoFamilia(u.origen.fecha, u.origen.hora_inicio, u.origen.hora_fin);
-  const lineas = opciones.map((o, i) => {
-    const turno = `${NUMEROS[i] || `${i + 1}.`} ${etiquetaTurnoFamilia(o.sesion.fecha, o.sesion.hora_inicio, o.sesion.hora_fin)}`;
-    return enlaces ? `${turno}\n👉 Pulsa para elegirlo: ${enlaceElegirTurno(enlaces.base, enlaces.token, i + 1)}` : turno;
-  });
-  const cierre = enlaces
-    ? `❌ Si no os viene bien ninguno: ${enlaceElegirTurno(enlaces.base, enlaces.token, 0)}\n\nTambién podéis contestarnos aquí con el número. ¡Gracias!`
-    : `¿Os viene bien alguna? Contestadnos con el número y os confirmamos el grupo. ¡Gracias!`;
+  const o = u.origen;
+  const lineas = opciones.map(
+    (op, i) => `${NUMEROS[i] || `${i + 1}.`} ${etiquetaCorta(op.sesion.fecha, op.sesion.hora_inicio, op.sesion.hora_fin)}`
+  );
   return (
-    `Hola familia 👋 Os escribimos de Mítico Baby.\n\n` +
-    `Para el ${origen} no tenemos hueco en un grupo del nivel de ${quien}` +
-    `${varios ? ' (juntos)' : ''}. Para que ${varios ? 'puedan entrenar' : 'pueda entrenar'} bien esta semana os proponemos:\n\n` +
-    `${lineas.join('\n\n')}\n\n` +
-    cierre
+    `Hola familia 👋 Somos Mítico Baby.\n\n` +
+    `El ${etiquetaCorta(o.fecha, o.hora_inicio, o.hora_fin).toLowerCase()} no tenemos hueco en un grupo del nivel de ${quien}${varios ? ' (juntos)' : ''}. Os proponemos:\n\n` +
+    `${lineas.join('\n')}\n\n` +
+    (enlace
+      ? `👉 Elegid aquí con un toque:\n${enlace}\n\n(o contestadnos con el número 🙂)`
+      : `Contestadnos con el número y os confirmamos el grupo. ¡Gracias!`)
   );
 }
 

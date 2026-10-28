@@ -486,6 +486,7 @@ import {
 } from './screens/AuthScreens';
 import { PantallaTestNivelPublicoApp } from './screens/PublicLevelTestScreen';
 import { PantallaCambioTurnoPublicoApp } from './screens/PublicTurnChangeScreen';
+import { cortoAUuid } from './features/agenda/sinColocarMensajes';
 import {
   addBackupDays as sumarDiasBackup,
   normalizeSeasonClosureStudents,
@@ -23744,7 +23745,8 @@ export default function App() {
   const tokenTestNivel = tokenTestNivelDesdeUrlApp();
   // Enlace del WhatsApp de «Niños sin colocar»: la familia elige turno sin login.
   const parametrosUrl = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search);
-  const tokenCambioTurno = parametrosUrl?.get('confirmar_turno') || '';
+  const tokenCambioTurno =
+    cortoAUuid(parametrosUrl?.get('turno') || '') || parametrosUrl?.get('confirmar_turno') || '';
 
   return (
     <PantallaSegura>

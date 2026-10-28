@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
+import { FOTO_MITICO_HERO } from '../assets/imagenes';
 import { ejecutarFuncionPublicaConRespuestaApp } from '../services/enrolment/publicEnrolmentService';
-import { authCardApp, authShellApp } from './AuthScreens';
+import './PublicTurnChangeScreen.css';
 
 /**
- * Página pública para que la familia elija turno desde el enlace del WhatsApp
- * (?confirmar_turno=<código>&o=<n>). Mismo patrón que el test de nivel: sin
- * login, solo puede ver y responder ESA propuesta con ese código.
+ * Página pública para que la familia elija turno desde el WhatsApp
+ * (?turno=<código corto>). Mismo patrón que el test de nivel: sin login, solo
+ * puede ver y responder ESA propuesta con ese código. Un toque en el día y
+ * «Confirmar».
  */
 
 type Opcion = { sesionId: string; etiqueta: string };
@@ -17,19 +19,31 @@ type Info = {
   opcion_aceptada: Opcion | null;
 };
 
-const NUMEROS = ['1️⃣', '2️⃣', '3️⃣'];
-
 function unirNombres(nombres: string[]) {
   return nombres.length > 1 ? `${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}` : nombres[0] || '';
+}
+
+// «sábado 31/10 de 09:45 a 11:45» → partes para la tarjeta.
+function partes(etiqueta: string) {
+  const m = String(etiqueta || '').match(/^(\S+)\s+(\S+)\s+de\s+(\d{1,2}:\d{2})\s+a\s+(\d{1,2}:\d{2})/i);
+  if (!m) return { dia: etiqueta, fecha: '', hora: '', icono: '📅' };
+  const h = Number(m[3].split(':')[0]);
+  return {
+    dia: m[1].charAt(0).toUpperCase() + m[1].slice(1),
+    fecha: m[2],
+    hora: `${m[3]} – ${m[4]}`,
+    icono: h < 12 ? '🌅' : h < 16 ? '☀️' : '🌙',
+  };
 }
 
 function etiquetaOrigen(o: Info['origen']) {
   if (!o) return '';
   const d = new Date(`${String(o.fecha).slice(0, 10)}T12:00:00`);
-  return `${d.toLocaleDateString('es-ES', { weekday: 'long', day: '2-digit', month: '2-digit' })} de ${String(o.hora_inicio).slice(0, 5)} a ${String(o.hora_fin).slice(0, 5)}`;
+  const dia = d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'numeric' });
+  return `${dia} (${String(o.hora_inicio).slice(0, 5)}–${String(o.hora_fin).slice(0, 5)})`;
 }
 
-export function PantallaCambioTurnoPublicoApp({ token, opcionInicial }: { token: string; opcionInicial: string }) {
+export function PantallaCambioTurnoPublicoApp({ token }: { token: string; opcionInicial?: string }) {
   const [info, setInfo] = useState<Info | null>(null);
   const [cargando, setCargando] = useState(true);
   const [elegida, setElegida] = useState('');
@@ -45,13 +59,10 @@ export function PantallaCambioTurnoPublicoApp({ token, opcionInicial }: { token:
           p_token: token,
         });
         if (!activo) return;
-        if (!datos || !Array.isArray(datos.opciones)) throw new Error('Esta propuesta ya no está disponible.');
+        if (!datos || !Array.isArray(datos.opciones)) throw new Error('Este enlace ya no está activo.');
         setInfo(datos);
-        const n = Number(opcionInicial);
-        if (opcionInicial === '0') setElegida('NINGUNA');
-        else if (n >= 1 && n <= datos.opciones.length) setElegida(datos.opciones[n - 1].sesionId);
       } catch (e: any) {
-        if (activo) setError(e?.message || 'Esta propuesta ya no está disponible.');
+        if (activo) setError(e?.message || 'Este enlace ya no está activo.');
       } finally {
         if (activo) setCargando(false);
       }
@@ -59,40 +70,41 @@ export function PantallaCambioTurnoPublicoApp({ token, opcionInicial }: { token:
     return () => {
       activo = false;
     };
-  }, [token, opcionInicial]);
+  }, [token]);
 
-  async function confirmar() {
-    if (!elegida || enviando) return;
+  async function confirmar(eleccion: string) {
+    if (!eleccion || enviando) return;
     setEnviando(true);
     setError('');
     try {
       const r = await ejecutarFuncionPublicaConRespuestaApp<{ estado: 'ACEPTADO' | 'RECHAZADO' }>(
         'responder_propuesta_cambio_turno_publico_app',
-        { p_token: token, p_sesion_id: elegida }
+        { p_token: token, p_sesion_id: eleccion }
       );
-      setHecho(r?.estado || (elegida === 'NINGUNA' ? 'RECHAZADO' : 'ACEPTADO'));
+      setElegida(eleccion);
+      setHecho(r?.estado || (eleccion === 'NINGUNA' ? 'RECHAZADO' : 'ACEPTADO'));
     } catch (e: any) {
-      setError(e?.message || 'No se ha podido enviar. Probad de nuevo o escribidnos por WhatsApp.');
+      setError(e?.message || 'No se ha podido enviar. Probad de nuevo o contestadnos por WhatsApp.');
     } finally {
       setEnviando(false);
     }
   }
 
-  const tarjeta = { ...authCardApp, width: 'min(560px, 100%)', maxWidth: 'none' };
-  const logo = (
-    <img
-      src="/logo-cabecera-mitico.png"
-      alt="Mítico Club"
-      style={{ width: 60, height: 60, borderRadius: 16, objectFit: 'contain', background: '#fff', border: '1px solid #e5e7eb' }}
-    />
+  const cabecera = (
+    <div className="ct-hero" style={{ backgroundImage: `linear-gradient(180deg, rgba(15,23,42,.05), rgba(15,23,42,.75)), url(${FOTO_MITICO_HERO})` }}>
+      <img src="/logo-cabecera-mitico.png" alt="Mítico Club" className="ct-logo" />
+      <span className="ct-marca">MÍTICO BABY</span>
+    </div>
   );
 
   if (cargando) {
     return (
-      <main style={authShellApp}>
-        <section style={tarjeta}>
-          {logo}
-          <h1 style={{ margin: '14px 0 0' }}>Un momento…</h1>
+      <main className="ct-pagina">
+        <section className="ct-tarjeta">
+          {cabecera}
+          <div className="ct-cuerpo">
+            <p className="ct-texto">Un momento…</p>
+          </div>
         </section>
       </main>
     );
@@ -100,11 +112,13 @@ export function PantallaCambioTurnoPublicoApp({ token, opcionInicial }: { token:
 
   if (!info) {
     return (
-      <main style={authShellApp}>
-        <section style={tarjeta}>
-          {logo}
-          <h1 style={{ margin: '14px 0 6px' }}>Propuesta no disponible</h1>
-          <p style={{ color: '#64748b', lineHeight: 1.5 }}>{error || 'Escribidnos por WhatsApp y lo vemos.'}</p>
+      <main className="ct-pagina">
+        <section className="ct-tarjeta">
+          {cabecera}
+          <div className="ct-cuerpo">
+            <h1 className="ct-titulo">Enlace no activo</h1>
+            <p className="ct-texto">{error || 'Contestadnos por WhatsApp con el número del día y lo apuntamos.'}</p>
+          </div>
         </section>
       </main>
     );
@@ -114,84 +128,98 @@ export function PantallaCambioTurnoPublicoApp({ token, opcionInicial }: { token:
 
   if (hecho) {
     const op = info.opciones.find((o) => o.sesionId === elegida);
+    const p = op ? partes(op.etiqueta) : null;
     return (
-      <main style={authShellApp}>
-        <section style={{ ...tarjeta, border: '1px solid #bbf7d0', background: 'linear-gradient(135deg, #f0fdf4, #ffffff)' }}>
-          {logo}
-          <p style={{ margin: '14px 0 4px', color: '#15803d', fontWeight: 900 }}>RESPUESTA ENVIADA</p>
-          <h1 style={{ margin: 0 }}>¡Gracias!</h1>
-          <p style={{ color: '#475569', lineHeight: 1.55 }}>
-            {hecho === 'ACEPTADO'
-              ? `Hemos apuntado ${op?.etiqueta || 'el turno elegido'} para ${quien}. En breve os confirmamos el grupo.`
-              : `Hemos visto que no os viene bien ninguno. Os escribimos para buscar otra opción para ${quien}.`}
-          </p>
-          <p style={{ marginBottom: 0, color: '#64748b', fontSize: 13 }}>Ya podéis cerrar esta página.</p>
+      <main className="ct-pagina">
+        <section className="ct-tarjeta">
+          {cabecera}
+          <div className="ct-cuerpo ct-hecho">
+            <div className="ct-check">{hecho === 'ACEPTADO' ? '✓' : '👍'}</div>
+            <h1 className="ct-titulo">{hecho === 'ACEPTADO' ? '¡Apuntado!' : 'Recibido'}</h1>
+            {hecho === 'ACEPTADO' && p ? (
+              <div className="ct-resumen">
+                <span className="ct-resumen-icono">{p.icono}</span>
+                <div>
+                  <strong>
+                    {p.dia} {p.fecha}
+                  </strong>
+                  <span>{p.hora}</span>
+                </div>
+              </div>
+            ) : null}
+            <p className="ct-texto">
+              {hecho === 'ACEPTADO'
+                ? `${quien} entrena ese día. Os confirmamos el grupo en breve.`
+                : `Os escribimos para buscar otra opción para ${quien}.`}
+            </p>
+            <p className="ct-pie">Ya podéis cerrar esta página.</p>
+          </div>
         </section>
       </main>
     );
   }
 
-  const boton = (activo: boolean) => ({
-    display: 'block',
-    width: '100%',
-    textAlign: 'left' as const,
-    padding: '14px 16px',
-    borderRadius: 14,
-    border: activo ? '2px solid #16a34a' : '1px solid #cbd5e1',
-    background: activo ? '#f0fdf4' : '#fff',
-    fontSize: 16,
-    fontWeight: 800,
-    color: '#0f172a',
-    cursor: 'pointer',
-  });
+  const seleccion = info.opciones.find((o) => o.sesionId === elegida);
 
   return (
-    <main style={{ ...authShellApp, alignItems: 'flex-start', padding: 'max(18px, env(safe-area-inset-top)) 14px 28px' }}>
-      <section style={{ ...tarjeta, margin: '0 auto' }}>
-        {logo}
-        <p style={{ margin: '14px 0 4px', color: '#2563eb', fontWeight: 900, fontSize: 12, letterSpacing: 1 }}>MÍTICO BABY · CAMBIO DE TURNO</p>
-        <h1 style={{ margin: '0 0 6px', fontSize: 24 }}>¿Qué turno os viene mejor para {quien}?</h1>
-        {info.origen && (
-          <p style={{ color: '#475569', lineHeight: 1.5, marginTop: 0 }}>
-            Para el {etiquetaOrigen(info.origen)} no tenemos hueco en un grupo de su nivel.
-          </p>
-        )}
-        {info.estado !== 'ENVIADO' && (
-          <p style={{ padding: '8px 10px', borderRadius: 10, background: '#eff6ff', color: '#1e3a8a', fontSize: 13, fontWeight: 700 }}>
-            Ya nos habíais contestado
-            {info.estado === 'ACEPTADO' && info.opcion_aceptada ? `: ${info.opcion_aceptada.etiqueta}` : ': ninguno os venía bien'}. Podéis cambiarlo aquí.
-          </p>
-        )}
-        <div style={{ display: 'grid', gap: 10, margin: '14px 0' }}>
-          {info.opciones.map((o, i) => (
-            <button key={o.sesionId} type="button" style={boton(elegida === o.sesionId)} onClick={() => setElegida(o.sesionId)}>
-              {NUMEROS[i] || `${i + 1}.`} {o.etiqueta.charAt(0).toUpperCase() + o.etiqueta.slice(1)}
-              {elegida === o.sesionId ? '  ✓' : ''}
-            </button>
-          ))}
-          <button type="button" style={boton(elegida === 'NINGUNA')} onClick={() => setElegida('NINGUNA')}>
-            ❌ No nos viene bien ninguno{elegida === 'NINGUNA' ? '  ✓' : ''}
+    <main className="ct-pagina">
+      <section className="ct-tarjeta">
+        {cabecera}
+        <div className="ct-cuerpo">
+          <h1 className="ct-titulo">¿Qué día le viene mejor a {quien}?</h1>
+          {info.origen && (
+            <p className="ct-texto">
+              El {etiquetaOrigen(info.origen)} no tenemos hueco en un grupo de su nivel. Toca el día que prefiráis:
+            </p>
+          )}
+          {info.estado === 'ACEPTADO' && info.opcion_aceptada && (
+            <p className="ct-aviso">Ya habíais elegido {info.opcion_aceptada.etiqueta}. Podéis cambiarlo aquí.</p>
+          )}
+
+          <div className="ct-opciones">
+            {info.opciones.map((o) => {
+              const p = partes(o.etiqueta);
+              const activa = elegida === o.sesionId;
+              return (
+                <button
+                  key={o.sesionId}
+                  type="button"
+                  className={`ct-opcion${activa ? ' is-activa' : ''}`}
+                  onClick={() => setElegida(o.sesionId)}
+                  aria-pressed={activa}
+                >
+                  <span className="ct-opcion-icono">{p.icono}</span>
+                  <span className="ct-opcion-texto">
+                    <strong>{p.dia}</strong>
+                    <span>
+                      {p.fecha} · {p.hora}
+                    </span>
+                  </span>
+                  <span className="ct-opcion-marca">{activa ? '✓' : ''}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {error && <p className="ct-error">{error}</p>}
+
+          <button
+            type="button"
+            className="ct-confirmar"
+            disabled={!seleccion || enviando}
+            onClick={() => void confirmar(elegida)}
+          >
+            {enviando
+              ? 'Enviando…'
+              : seleccion
+              ? `Confirmar ${partes(seleccion.etiqueta).dia.toLowerCase()} ${partes(seleccion.etiqueta).hora.split(' –')[0]}`
+              : 'Elige un día'}
+          </button>
+
+          <button type="button" className="ct-ninguno" disabled={enviando} onClick={() => void confirmar('NINGUNA')}>
+            Ninguno nos viene bien
           </button>
         </div>
-        {error && <p style={{ color: '#be123c', fontWeight: 800 }}>{error}</p>}
-        <button
-          type="button"
-          disabled={!elegida || enviando}
-          onClick={() => void confirmar()}
-          style={{
-            width: '100%',
-            padding: '16px',
-            borderRadius: 14,
-            border: 0,
-            background: elegida ? '#16a34a' : '#94a3b8',
-            color: '#fff',
-            fontSize: 17,
-            fontWeight: 900,
-            cursor: elegida ? 'pointer' : 'default',
-          }}
-        >
-          {enviando ? 'Enviando…' : 'Confirmar'}
-        </button>
       </section>
     </main>
   );

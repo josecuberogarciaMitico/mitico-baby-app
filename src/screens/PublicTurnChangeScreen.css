@@ -1,0 +1,64 @@
+/* Página pública «elige el día» para familias (28/10). Móvil primero. */
+.ct-pagina {
+  min-height: 100vh; display: flex; justify-content: center; align-items: flex-start;
+  padding: max(14px, env(safe-area-inset-top)) 12px max(24px, env(safe-area-inset-bottom));
+  background: linear-gradient(180deg, #e0f2fe 0%, #f8fafc 45%);
+  font-family: inherit; box-sizing: border-box;
+}
+.ct-tarjeta {
+  width: min(520px, 100%); background: #fff; border-radius: 24px; overflow: hidden;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, .15); border: 1px solid #e2e8f0;
+}
+.ct-hero {
+  position: relative; height: 150px; background-size: cover; background-position: center;
+  display: flex; align-items: flex-end; padding: 14px 16px;
+}
+.ct-logo {
+  position: absolute; top: 12px; left: 14px; width: 54px; height: 54px; border-radius: 14px;
+  background: rgba(255, 255, 255, .95); padding: 4px; object-fit: contain;
+}
+.ct-marca { color: #fff; font-weight: 900; letter-spacing: 3px; font-size: 13px; }
+.ct-cuerpo { padding: 18px 16px 20px; display: grid; gap: 12px; }
+.ct-titulo { margin: 0; font-size: 24px; line-height: 1.15; color: #0f172a; }
+.ct-texto { margin: 0; color: #475569; font-size: 15px; line-height: 1.45; }
+.ct-aviso { margin: 0; padding: 8px 10px; border-radius: 12px; background: #eff6ff; color: #1e3a8a; font-size: 13px; font-weight: 700; }
+.ct-opciones { display: grid; gap: 10px; margin-top: 4px; }
+.ct-opcion {
+  display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px 16px; text-align: left;
+  border-radius: 18px; border: 2px solid #e2e8f0; background: #fff; cursor: pointer; font-family: inherit;
+  transition: border-color .15s, background .15s, transform .1s;
+}
+.ct-opcion:active { transform: scale(.98); }
+.ct-opcion.is-activa { border-color: #16a34a; background: #f0fdf4; }
+.ct-opcion-icono { font-size: 30px; width: 40px; text-align: center; }
+.ct-opcion-texto { display: grid; gap: 2px; flex: 1; }
+.ct-opcion-texto strong { font-size: 20px; color: #0f172a; }
+.ct-opcion-texto span { font-size: 15px; color: #475569; font-weight: 700; }
+.ct-opcion-marca {
+  width: 30px; height: 30px; border-radius: 50%; border: 2px solid #cbd5e1; display: grid; place-items: center;
+  font-weight: 900; color: #fff;
+}
+.ct-opcion.is-activa .ct-opcion-marca { background: #16a34a; border-color: #16a34a; }
+.ct-confirmar {
+  margin-top: 6px; width: 100%; padding: 16px; border: 0; border-radius: 16px; background: #16a34a; color: #fff;
+  font-size: 18px; font-weight: 900; cursor: pointer; font-family: inherit;
+}
+.ct-confirmar:disabled { background: #cbd5e1; color: #475569; cursor: default; }
+.ct-ninguno {
+  background: none; border: 0; color: #64748b; font-size: 14px; font-weight: 700; text-decoration: underline;
+  cursor: pointer; padding: 6px; font-family: inherit;
+}
+.ct-error { margin: 0; color: #be123c; font-weight: 800; }
+.ct-hecho { text-align: center; justify-items: center; }
+.ct-check {
+  width: 72px; height: 72px; border-radius: 50%; background: #16a34a; color: #fff; font-size: 40px; font-weight: 900;
+  display: grid; place-items: center; box-shadow: 0 10px 24px rgba(22, 163, 74, .35);
+}
+.ct-resumen {
+  display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-radius: 16px; background: #f0fdf4;
+  border: 2px solid #86efac; text-align: left;
+}
+.ct-resumen-icono { font-size: 30px; }
+.ct-resumen strong { display: block; font-size: 18px; color: #0f172a; }
+.ct-resumen span { font-size: 15px; color: #166534; font-weight: 800; }
+.ct-pie { margin: 0; color: #94a3b8; font-size: 13px; }
