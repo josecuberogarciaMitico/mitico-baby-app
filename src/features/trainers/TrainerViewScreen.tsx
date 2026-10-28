@@ -1252,6 +1252,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
           {!cargando &&
             tabVistaEntrenador === 'disponibilidad' && (
               <section style={{ display: 'grid', gap: 12 }}>
+                {!proximaDisponibilidadSinAbrir && (
                 <section
                   className="trainer-availability-reminder"
                   style={{
@@ -1271,18 +1272,14 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                       lineHeight: 1.4,
                     }}
                   >
-                    {proximaDisponibilidadSinAbrir
-                      ? `✓ La disponibilidad de esta semana ya está cerrada. La de la semana que viene (${rangoSemanaAgenda(
-                          semanaDisponibilidadVistaEntrenadorInicio
-                        )}) todavía no está abierta: te llegará un aviso cuando puedas rellenarla.`
-                      : semanaDisponibilidadVistaEntrenadorInicio
+                    {semanaDisponibilidadVistaEntrenadorInicio
                       ? `${
                           disponibilidadEsSemanaQueViene ? 'Semana que viene' : 'Semana'
                         }: ${rangoSemanaAgenda(
                           semanaDisponibilidadVistaEntrenadorInicio
                         )}. `
                       : ''}
-                    {proximaDisponibilidadSinAbrir || disponibilidadVistaEntrenador.length === 0
+                    {disponibilidadVistaEntrenador.length === 0
                       ? ''
                       : totalDisponibilidadPendienteVistaEntrenador === 0
                       ? `✓ Ya has enviado tu disponibilidad de ${
@@ -1291,6 +1288,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                       : textoRecordatorioDisponibilidad(disponibilidadEditorVista)}
                   </p>
                 </section>
+                )}
 
                 {disponibilidadSemanalVistaEntrenador
                   .filter((grupo) =>
