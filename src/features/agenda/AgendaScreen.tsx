@@ -1584,6 +1584,16 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
               await Promise.all([cargarAsignacionesEntrenadoresSemana(), cargarExtrasTableroSemana()]);
             }}
             soloLectura={Boolean(ctx.esSoloConsultaUsuarioApp)}
+            avisarCambioGrupo={async (grupoId: string) => {
+              await notifyGroupChangedAndRequestReconfirmation({
+                groupId: grupoId,
+                runFunction: ejecutarFuncionAuthJson,
+                sendPush: ejecutarPushMiticoApp,
+                reload: async () => {
+                  await cargarAgendaOperativaDirecta();
+                },
+              });
+            }}
           />
           {(agendaFormularioAbierto || agendaSesionActivaId) && typeof document !== 'undefined' && createPortal(
             <section

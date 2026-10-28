@@ -1,6 +1,7 @@
 import { planificarSinColocar, type AlumnoPlan, type GrupoPlan, type SesionPlan } from '../../../src/features/agenda/sinColocarPlanner';
 import {
   necesitaMensaje,
+  ninosDePropuesta,
   opcionesParaFamilia,
   propuestaDeUnidad,
   telefonoFamilia,
@@ -95,4 +96,18 @@ test('la opción elegida por coordinación va la primera en el mensaje', () => {
   const conElegida = opcionesParaFamilia(u, 3, elegida);
   equal(conElegida[0].sesion.sesionId, elegida.sesion.sesionId, 'primera');
   equal(conElegida.length, 3, 'sin repetir');
+});
+
+test('opción de familia: el mensaje nombra también a los hermanos colocados', () => {
+  const fam = planificarSinColocar({
+    sesiones,
+    grupos: [{ ...G('dom1', 'd1', 0), nivelGrupo: 'A' }, { ...G('dom1', 'd2', 0), nivelGrupo: 'B' }],
+    pendientes: [{ ...A('i', 'INES BALET CORELLA', 'sab2'), nivel: 'A' }],
+    listados: [{ ...A('i', 'INES BALET CORELLA', 'sab2'), nivel: 'A' }, A('j', 'JAIME BALET CORELLA', 'sab2')],
+    colocados: new Set(['j']),
+    telefonos: {},
+  })[0];
+  const ops = fam.opciones.filter((o) => o.familia);
+  equal(ninosDePropuesta(fam, ops).length, 2, 'Inés y Jaime');
+  equal(textoPropuestaFamilia(fam, ops).includes('Ines y Jaime (juntos)'), true, 'nombres en el mensaje');
 });

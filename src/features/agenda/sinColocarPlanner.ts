@@ -62,6 +62,8 @@ export type OpcionPlan = {
   mismoTurno: boolean;
   mismoDia: boolean;
   avisos: string[];
+  /** Opción de familia completa: mueve también a hermanos ya colocados en su turno. */
+  familia?: boolean;
 };
 
 export type HermanoInfo = {
@@ -388,6 +390,56 @@ export function planificarSinColocar(input: {
           avisos,
         });
       });
+      // Familia completa: si tiene hermanos YA colocados en su mismo turno, se
+      // busca otro turno donde quepan TODOS juntos (cada uno en un grupo de su
+      // nivel). Así no se separa a nadie.
+      const hermanosColocados = Array.from(new Set(u.miembros.flatMap((m) => hermanosDe[m.alumnoId] || [])))
+        .filter((h) => !ids.has(h) && input.colocados.has(h))
+        .map((h) => filaPorAlumno.get(h))
+        .filter((f): f is AlumnoPlan => Boolean(f) && f!.sesionId === u.origen.sesionId);
+      if (baby && hermanosColocados.length) {
+        const todos = [...u.miembros, ...hermanosColocados];
+        const todosIds = new Set(todos.map((m) => m.alumnoId));
+        const nombresHermanos = hermanosColocados.map((h) => h.alumno.split(' ')[0]).join(' y ');
+        input.sesiones
+          .filter(
+            (s) =>
+              s.sesionId !== u.origen.sesionId &&
+              /BABY/i.test(s.modalidad) &&
+              !input.listados.some((a) => todosIds.has(a.alumnoId) && a.sesionId === s.sesionId)
+          )
+          .forEach((s) => {
+            const grupos = gruposPorSesion.get(s.sesionId) || [];
+            if (!grupos.length) return;
+            const colocaciones = colocarEnSesion(todos, grupos, reservas);
+            if (!colocaciones || colocaciones.some((c) => c.estado === 'NO_ENCAJA')) return;
+            let estado = colocaciones.map((c) => c.estado).reduce(peorEstado, 'RECOMENDADO' as EstadoOpcion);
+            let score = Math.min(...colocaciones.map((c) => evaluarEncaje(c.alumno, c.grupo).score)) + 10;
+            const avisos = [`Toda la familia junta: mueve también a ${nombresHermanos} (ya ${hermanosColocados.length > 1 ? 'colocados' : 'colocado/a'} en su turno).`];
+            if (s.fecha === u.origen.fecha) score += 15;
+            if (finde && !esFinDeSemana(s.fecha)) {
+              score -= 35;
+              avisos.push('Viene en fin de semana: esto es entre semana.');
+              if (estado === 'RECOMENDADO') estado = 'REVISAR';
+            } else if (!finde && esFinDeSemana(s.fecha)) {
+              score -= 5;
+            } else {
+              score += 10;
+            }
+            avisos.push('Cambio de turno: solo con el OK de los padres.');
+            opciones.push({
+              clave: `fam:${s.sesionId}:${colocaciones.map((c) => c.grupo.grupoId).join('+')}`,
+              sesion: s,
+              colocaciones,
+              estado,
+              score,
+              mismoTurno: false,
+              mismoDia: s.fecha === u.origen.fecha,
+              avisos,
+              familia: true,
+            });
+          });
+      }
       opciones.sort(
         (a, b) =>
           ORDEN_ESTADO[a.estado] - ORDEN_ESTADO[b.estado] ||
