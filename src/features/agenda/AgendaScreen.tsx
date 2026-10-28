@@ -836,6 +836,22 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [accionSinColocarPendiente, agendaSesionActivaId, agendaAlumnosSesion, alumnosPendientesColocar.length]);
 
+  async function marcarGrupoParticular(grupo: { grupo_id: string; nombre_grupo: string | null; total_alumnos?: number | null }) {
+    const quitar = esNombreGrupoParticularApp(grupo.nombre_grupo);
+    const texto = quitar
+      ? `¿Quitar «particular» a este grupo?\n\nVolverá a ser un grupo normal: necesitará punto de encuentro y se le podrán proponer más niños.`
+      : `¿Hacer clase PARTICULAR con estos ${grupo.total_alumnos} niños?\n\nNo se le propondrán más niños, no necesita punto de encuentro (CON JOSE) y el grupo pasará a llamarse «PARTICULAR · …».`;
+    if (!window.confirm(texto)) return;
+    setError('');
+    try {
+      await ejecutarFuncionAuthJson('marcar_grupo_particular_app', { p_grupo_id: grupo.grupo_id, p_particular: !quitar });
+      await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      await cargarAgendaOperativaDirecta();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo cambiar la clase particular.');
+    }
+  }
+
   // «Abrir sesión» / «Crear Alta / Test» desde la tabla de sin colocar: abre
   // la sesión y lanza la acción de ese niño en cuanto su listado carga.
   function abrirSesionDesdeSinColocar(sesionId: string, sesionAlumnoId?: string) {
@@ -3590,6 +3606,21 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                 ? 'CON JOSE'
                                 : `Punto ${grupo.punto_encuentro || '-'}`}
                             </p>
+                            {/* Clase particular de 1 o 2 niños (p. ej. dos hermanas): no se le
+                                proponen más niños y no necesita punto de encuentro. */}
+                            {!ctx.esSoloConsultaUsuarioApp &&
+                              (esNombreGrupoParticularApp(grupo.nombre_grupo) ||
+                                (Number(grupo.total_alumnos || 0) >= 1 && Number(grupo.total_alumnos || 0) <= 2)) && (
+                                <button
+                                  type="button"
+                                  style={{ ...botonMini, marginTop: 4 }}
+                                  onClick={() => void marcarGrupoParticular(grupo)}
+                                >
+                                  {esNombreGrupoParticularApp(grupo.nombre_grupo)
+                                    ? 'Quitar particular (grupo normal)'
+                                    : `Hacer particular (${grupo.total_alumnos} ${Number(grupo.total_alumnos) === 1 ? 'niño' : 'niños'})`}
+                                </button>
+                              )}
                             {grupo.alumnos_lista && (
                               <div
                                 style={{
