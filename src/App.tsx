@@ -23746,7 +23746,7 @@ export default function App() {
   // Enlace del WhatsApp de «Niños sin colocar»: la familia elige turno sin login.
   const parametrosUrl = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search);
   const tokenCambioTurno =
-    cortoAUuid(parametrosUrl?.get('turno') || '') || parametrosUrl?.get('confirmar_turno') || '';
+    cortoAUuid(parametrosUrl?.get('t') || parametrosUrl?.get('turno') || '') || parametrosUrl?.get('confirmar_turno') || '';
 
   return (
     <PantallaSegura>

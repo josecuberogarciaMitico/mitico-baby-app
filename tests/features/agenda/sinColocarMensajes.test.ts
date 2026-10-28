@@ -85,6 +85,6 @@ test('un solo enlace corto', () => {
   const corto = uuidACorto(uuid);
   equal(corto.length, 22, '22 letras');
   equal(cortoAUuid(corto), uuid, 'ida y vuelta');
-  equal(enlaceElegirTurno('https://x/', uuid), `https://x/?turno=${corto}`, 'enlace');
+  equal(enlaceElegirTurno('https://x/', uuid), `https://x/?t=${corto}`, 'enlace');
   equal(cortoAUuid('mal'), '', 'código malo');
 });

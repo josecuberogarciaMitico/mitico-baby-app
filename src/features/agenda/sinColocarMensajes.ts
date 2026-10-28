@@ -95,7 +95,7 @@ export function cortoAUuid(corto: string) {
 
 /** Enlace único de la página pública para elegir turno. */
 export function enlaceElegirTurno(base: string, token: string) {
-  return `${base}?turno=${uuidACorto(token)}`;
+  return `${base.replace(/\/$/, '')}/?t=${uuidACorto(token)}`;
 }
 
 function etiquetaCorta(fecha: string, inicio: string, fin: string) {
