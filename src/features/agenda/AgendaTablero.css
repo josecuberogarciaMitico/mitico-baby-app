@@ -307,3 +307,12 @@
   .ag-trabajo-cabecera h3 { font-size: 15px; }
   .ag-trabajo-anterior { padding: 8px 10px; }
 }
+
+/* Elegir qué turnos ofrecer a la familia (28/10) */
+.ag-cf-ofrecer { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.ag-cf-ofrecer > span { font-size: 12px; font-weight: 800; color: #475569; width: 100%; }
+.ag-cf-turno {
+  padding: 6px 10px; border-radius: 999px; border: 1px solid #cbd5e1; background: #fff; color: #334155;
+  font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit; max-width: 100%; white-space: normal;
+}
+.ag-cf-turno.is-activo { background: #16a34a; border-color: #16a34a; color: #fff; }

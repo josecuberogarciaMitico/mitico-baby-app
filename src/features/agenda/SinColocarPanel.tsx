@@ -17,6 +17,7 @@ import {
   enlaceElegirTurno,
   necesitaMensaje,
   opcionesParaFamilia,
+  turnosOfrecibles,
   propuestaDeUnidad,
   telefonoFamilia,
   textoPropuestaFamilia,
@@ -77,6 +78,8 @@ export function SinColocarPanel(props: Props) {
   const [tablaPropuestasLista, setTablaPropuestasLista] = useState(true);
   // Si la tabla aún no existe, al menos no se repite el mismo WhatsApp en esta sesión.
   const [enviadosLocal, setEnviadosLocal] = useState<Set<string>>(new Set());
+  // Turnos que coordinación quiere ofrecer a cada familia (si no toca, los propuestos).
+  const [ofrecer, setOfrecer] = useState<Record<string, string[]>>({});
 
   const sesionesFuturas = useMemo(() => sesiones.filter((s) => s.fecha >= hoyIso), [sesiones, hoyIso]);
   const firma = sesionesFuturas.map((s) => s.sesionId).sort().join(',');
@@ -199,7 +202,7 @@ export function SinColocarPanel(props: Props) {
 
   async function enviarPropuesta(u: UnidadPlan) {
     if (!datos) return;
-    const ops = opcionesParaFamilia(u, 3, opcionElegida(u));
+    const ops = turnosAOfrecer(u);
     const tel = telefonoFamilia(u, datos.telefonos);
     if (!ops.length || !tel) return;
     // Código de la familia: va en los enlaces del mensaje, así que se crea aquí
@@ -457,12 +460,44 @@ export function SinColocarPanel(props: Props) {
 
   if (!abierta || typeof document === 'undefined') return null;
 
+  function turnosAOfrecerPorDefecto(u: UnidadPlan): OpcionPlan[] {
+    const elegida = opcionElegida(u);
+    const propuestos = opcionesParaFamilia(u, 3, elegida);
+    if (propuestos.length) return propuestos;
+    return elegida && !elegida.mismoTurno ? [elegida] : [];
+  }
+
+  function turnosAOfrecer(u: UnidadPlan): OpcionPlan[] {
+    const marcados = ofrecer[u.clave];
+    if (!marcados) return turnosAOfrecerPorDefecto(u);
+    const todos = [...turnosAOfrecerPorDefecto(u), ...turnosOfrecibles(u)];
+    const vistos = new Set<string>();
+    return todos.filter((o) => marcados.includes(o.sesion.sesionId) && !vistos.has(o.sesion.sesionId) && vistos.add(o.sesion.sesionId));
+  }
+
+  function alternarTurno(u: UnidadPlan, sesionId: string) {
+    const actuales = turnosAOfrecer(u).map((o) => o.sesion.sesionId);
+    const nuevos = actuales.includes(sesionId) ? actuales.filter((x) => x !== sesionId) : [...actuales, sesionId];
+    setOfrecer((x) => ({ ...x, [u.clave]: nuevos.slice(0, 3) }));
+  }
+
   function renderFamilia(u: UnidadPlan) {
     if (!datos) return null;
     const prop = propuestaDeUnidad(u, propuestas);
     // Sale si no cabe en su turno o si lo elegido ahora es cambiar de turno.
     const elegida = opcionElegida(u);
-    if (!prop && !necesitaMensaje(u) && !(elegida && !elegida.mismoTurno && opcionesParaFamilia(u, 3, elegida).length)) return null;
+    const candidatos = (() => {
+      const vistos = new Set<string>();
+      return [...turnosAOfrecerPorDefecto(u), ...turnosOfrecibles(u)].filter(
+        (o) => !vistos.has(o.sesion.sesionId) && vistos.add(o.sesion.sesionId)
+      );
+    })();
+    const cabeEnSuTurno = u.opciones.some((o) => o.mismoTurno && o.estado === 'RECOMENDADO');
+    // Sale si hay que escribir, si ya se escribió, o si hay turnos posibles y no
+    // cabe en el suyo / has elegido otro turno (aunque separe de un hermano:
+    // entonces los turnos salen sin marcar y eliges tú).
+    if (!prop && !necesitaMensaje(u) && !(candidatos.length && (!cabeEnSuTurno || (elegida && !elegida.mismoTurno)))) return null;
+    const marcados = turnosAOfrecer(u).map((o) => o.sesion.sesionId);
     const tel = telefonoFamilia(u, datos.telefonos);
     const enviadoAqui = enviadosLocal.has(u.clave);
     return (
@@ -479,9 +514,32 @@ export function SinColocarPanel(props: Props) {
           </strong>
           <span>{tel ? `📞 ${tel.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3')}` : 'Sin teléfono en la ficha'}</span>
         </div>
+        {!props.soloLectura && !prop?.movido_at && prop?.estado !== 'ACEPTADO' && candidatos.length > 0 && (
+          <div className="ag-cf-ofrecer">
+            <span>Turnos a ofrecer (máx. 3):</span>
+            {candidatos.map((o) => {
+              const activo = marcados.includes(o.sesion.sesionId);
+              const separa = o.avisos.some((a) => a.startsWith('Separa de su hermano'));
+              return (
+                <button
+                  key={o.sesion.sesionId}
+                  type="button"
+                  className={`ag-cf-turno${activo ? ' is-activo' : ''}`}
+                  onClick={() => alternarTurno(u, o.sesion.sesionId)}
+                  aria-pressed={activo}
+                  title={o.avisos.join(' ')}
+                >
+                  {activo ? '✓ ' : ''}
+                  {etiquetaTurno(o.sesion)}
+                  {separa ? ' ⚠ hermano' : ''}
+                </button>
+              );
+            })}
+          </div>
+        )}
         {!props.soloLectura && (
           <div className="ag-cf-familia-botones">
-            {tel && !prop?.movido_at && (
+            {tel && !prop?.movido_at && marcados.length > 0 && (
               <button type="button" className="ag-boton ag-boton--whatsapp" onClick={() => void enviarPropuesta(u)}>
                 {prop || enviadoAqui ? '📲 Reenviar WhatsApp' : '📲 WhatsApp con propuesta'}
               </button>

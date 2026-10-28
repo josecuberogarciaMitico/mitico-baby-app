@@ -120,19 +120,37 @@ export function detectarHermanos(
     if (!tel) return;
     porTelefono.set(tel, [...(porTelefono.get(tel) || []), a]);
   });
-  const resultado: Record<string, string[]> = {};
+  const resultado: Record<string, Set<string>> = {};
+  const unir = (x: string, y: string) => {
+    (resultado[x] ||= new Set()).add(y);
+    (resultado[y] ||= new Set()).add(x);
+  };
   porTelefono.forEach((lista) => {
     if (lista.length < 2) return;
     lista.forEach((a) => {
       const misApellidos = apellidos(a.alumno);
-      const hermanos = lista
+      lista
         .filter((b) => b.alumnoId !== a.alumnoId)
         .filter((b) => apellidos(b.alumno).some((x) => misApellidos.includes(x)))
-        .map((b) => b.alumnoId);
-      if (hermanos.length) resultado[a.alumnoId] = hermanos;
+        .forEach((b) => unir(a.alumnoId, b.alumnoId));
     });
   });
-  return resultado;
+  // También hermanos con los DOS apellidos iguales aunque la ficha tenga
+  // teléfonos distintos (p. ej. uno de la madre y otro del padre).
+  const porApellidos = new Map<string, string[]>();
+  const unicos = new Map<string, string>();
+  alumnos.forEach((a) => unicos.set(a.alumnoId, a.alumno));
+  unicos.forEach((nombre, id) => {
+    const p = sinTildes(nombre).split(/\s+/).filter(Boolean);
+    if (p.length < 3) return;
+    const clave = p.slice(-2).join(' ');
+    porApellidos.set(clave, [...(porApellidos.get(clave) || []), id]);
+  });
+  porApellidos.forEach((ids) => {
+    if (ids.length < 2 || ids.length > 5) return; // más de 5 = apellidos muy comunes, no se asume
+    ids.forEach((x) => ids.forEach((y) => x !== y && unir(x, y)));
+  });
+  return Object.fromEntries(Object.entries(resultado).map(([k, v]) => [k, Array.from(v)]));
 }
 
 function nivelesDelGrupo(g: GrupoPlan) {
