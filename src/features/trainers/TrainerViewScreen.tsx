@@ -1535,6 +1535,8 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                       : disponibilidadEditorVista?.estado === 'publicado'
                       ? 'Sin turnos para ti esta semana'
                       : 'Disponibilidad todavía no preparada'
+                    : estadoSemanaPushEntrenadorApp?.organizacion_cerrada
+                    ? 'Esta semana no tienes grupos asignados'
                     : 'Sin datos en esta pestaña'}
                 </h3>
                 <p style={{ marginBottom: 0 }}>
@@ -1552,6 +1554,8 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                       : disponibilidadEditorVista?.estado === 'publicado'
                       ? 'Esta semana no tienes turnos de disponibilidad que responder.'
                       : 'Jose todavía no ha empezado a preparar la disponibilidad de esta semana. En cuanto la publique, aquí podrás decir qué turnos puedes cubrir.'
+                    : estadoSemanaPushEntrenadorApp?.organizacion_cerrada
+                    ? 'No tienes que hacer nada. Si surge algo durante la semana, aparecerá aquí y coordinación se pondrá en contacto contigo.'
                     : 'La semana está limpia. La disponibilidad y los grupos aparecerán cuando Jose los publique. Las tareas anteriores pendientes seguirán visibles hasta completarlas.'}
                 </p>
               </article>
