@@ -13,6 +13,7 @@ import { addLateStudentToSession } from '../../services/agenda/lateStudentSessio
 import { SessionTrainerCoverageLine } from './AgendaTrainerSummary';
 import {
   ETIQUETA_MOTIVO,
+  anteriorPendiente,
   columnasDelDia,
   disponiblesEnTurno,
   estadoDia,
@@ -578,6 +579,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     pendientesTablero.pendientes.find((p) => agendaSesionActivaId && idSesionDbTablero(p.sesion) === agendaSesionActivaId)
       ?.sesion.id || '';
   const siguientePendienteTablero = siguientePendiente(pendientesTablero.pendientes, sesionAbiertaTablero);
+  const anteriorPendienteTablero = anteriorPendiente(pendientesTablero.pendientes, sesionAbiertaTablero);
 
   function abrirPendienteTablero(p: PendienteSesion<SesionAgendaOperativa> | null, motivo?: MotivoPendiente) {
     if (!p) return;
@@ -1579,14 +1581,44 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                   type="button"
                   className="ag-trabajo-volver"
                   onClick={cerrarPanelTrabajoAgenda}
+                  aria-label="Cerrar y volver al tablero"
                 >
-                  ← Volver
+                  ✕
                 </button>
                 <h3>
                   {agendaFormularioAbierto
                     ? 'Pegar listado'
-                    : 'Sesión abierta'}
+                    : (() => {
+                        // Día y turno de la sesión abierta, para saber siempre cuál es.
+                        const dia = diasTableroSemana.find((d: { sesiones: SesionAgendaOperativa[] }) =>
+                          d.sesiones.some((x) => idSesionDbTablero(x) === agendaSesionActivaId)
+                        );
+                        const ses = dia?.sesiones.find((x: SesionAgendaOperativa) => idSesionDbTablero(x) === agendaSesionActivaId);
+                        if (!dia || !ses) return 'Sesión abierta';
+                        const nombreDia = new Date(`${dia.fecha}T12:00:00`).toLocaleDateString('es-ES', {
+                          weekday: 'long',
+                          day: '2-digit',
+                          month: '2-digit',
+                        });
+                        return (
+                          <>
+                            {nombreDia.charAt(0).toUpperCase() + nombreDia.slice(1)} · {String(ses.hora_inicio || '').slice(0, 5)}–
+                            {String(ses.hora_fin || '').slice(0, 5)}
+                            <span className="ag-trabajo-modalidad">{ses.modalidad}</span>
+                          </>
+                        );
+                      })()}
                 </h3>
+                {!agendaFormularioAbierto && anteriorPendienteTablero && (
+                  <button
+                    type="button"
+                    className="ag-trabajo-anterior"
+                    onClick={() => abrirPendienteTablero(anteriorPendienteTablero)}
+                    title="Volver a la sesión pendiente anterior"
+                  >
+                    ← Anterior
+                  </button>
+                )}
                 {!agendaFormularioAbierto && siguientePendienteTablero && (
                   <button
                     type="button"

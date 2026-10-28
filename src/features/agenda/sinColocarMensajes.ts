@@ -17,6 +17,10 @@ export type PropuestaGuardada = {
   opciones: OpcionEnviada[];
   opcion_aceptada: OpcionEnviada | null;
   updated_at: string;
+  /** La familia contestó desde el enlace (no lo apuntó coordinación). */
+  respondido_familia_at?: string | null;
+  /** La app ya lo pasó sola al día elegido por la familia (sin grupo). */
+  movido_at?: string | null;
 };
 
 const NUMEROS = ['1️⃣', '2️⃣', '3️⃣'];
@@ -63,19 +67,28 @@ function nombresPila(u: UnidadPlan) {
   return nombres.length > 1 ? `${nombres.slice(0, -1).join(', ')} y ${nombres[nombres.length - 1]}` : nombres[0];
 }
 
-export function textoPropuestaFamilia(u: UnidadPlan, opciones: OpcionPlan[]) {
+/** Enlace de la página pública para elegir turno (o = 1..3, 0 = ninguno). */
+export function enlaceElegirTurno(base: string, token: string, o: number) {
+  return `${base}?confirmar_turno=${encodeURIComponent(token)}&o=${o}`;
+}
+
+export function textoPropuestaFamilia(u: UnidadPlan, opciones: OpcionPlan[], enlaces?: { base: string; token: string }) {
   const quien = nombresPila(u);
   const varios = u.miembros.length > 1;
   const origen = etiquetaTurnoFamilia(u.origen.fecha, u.origen.hora_inicio, u.origen.hora_fin);
-  const lineas = opciones.map(
-    (o, i) => `${NUMEROS[i] || `${i + 1}.`} ${etiquetaTurnoFamilia(o.sesion.fecha, o.sesion.hora_inicio, o.sesion.hora_fin)}`
-  );
+  const lineas = opciones.map((o, i) => {
+    const turno = `${NUMEROS[i] || `${i + 1}.`} ${etiquetaTurnoFamilia(o.sesion.fecha, o.sesion.hora_inicio, o.sesion.hora_fin)}`;
+    return enlaces ? `${turno}\n👉 Pulsa para elegirlo: ${enlaceElegirTurno(enlaces.base, enlaces.token, i + 1)}` : turno;
+  });
+  const cierre = enlaces
+    ? `❌ Si no os viene bien ninguno: ${enlaceElegirTurno(enlaces.base, enlaces.token, 0)}\n\nTambién podéis contestarnos aquí con el número. ¡Gracias!`
+    : `¿Os viene bien alguna? Contestadnos con el número y os confirmamos el grupo. ¡Gracias!`;
   return (
     `Hola familia 👋 Os escribimos de Mítico Baby.\n\n` +
     `Para el ${origen} no tenemos hueco en un grupo del nivel de ${quien}` +
     `${varios ? ' (juntos)' : ''}. Para que ${varios ? 'puedan entrenar' : 'pueda entrenar'} bien esta semana os proponemos:\n\n` +
-    `${lineas.join('\n')}\n\n` +
-    `¿Os viene bien alguna? Contestadnos con el número y os confirmamos el grupo. ¡Gracias!`
+    `${lineas.join('\n\n')}\n\n` +
+    cierre
   );
 }
 

@@ -215,6 +215,17 @@ export function siguientePendiente<S extends SesionTablero>(
   return lista.length > 1 ? lista[(i + 1) % lista.length] : null;
 }
 
+/** La sesión pendiente anterior a la abierta (vuelve al final al pasar de la primera). */
+export function anteriorPendiente<S extends SesionTablero>(
+  pendientes: PendienteSesion<S>[],
+  sesionAbiertaId: string
+): PendienteSesion<S> | null {
+  if (!pendientes.length) return null;
+  const i = pendientes.findIndex((p) => p.sesion.id === sesionAbiertaId);
+  if (i < 0) return pendientes[pendientes.length - 1];
+  return pendientes.length > 1 ? pendientes[(i - 1 + pendientes.length) % pendientes.length] : null;
+}
+
 export type FilaDisponibilidad = {
   entrenador_id: string;
   fecha: string;

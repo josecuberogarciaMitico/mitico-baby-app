@@ -171,7 +171,7 @@ export function SinColocarPanel(props: Props) {
         const lote = sesionAlumnoIds.slice(i, i + 80);
         const r = await props.consultarSupabase(
           'cambios_turno_propuestos_app',
-          `select=sesion_alumno_id,estado,opciones,opcion_aceptada,updated_at&sesion_alumno_id=in.(${lote.join(',')})`
+          `select=sesion_alumno_id,estado,opciones,opcion_aceptada,updated_at,respondido_familia_at,movido_at&sesion_alumno_id=in.(${lote.join(',')})`
         );
         filas.push(...(r || []));
       }
@@ -182,6 +182,8 @@ export function SinColocarPanel(props: Props) {
           opciones: Array.isArray(f.opciones) ? f.opciones : [],
           opcion_aceptada: f.opcion_aceptada || null,
           updated_at: String(f.updated_at || ''),
+          respondido_familia_at: f.respondido_familia_at || null,
+          movido_at: f.movido_at || null,
         }))
       );
       setTablaPropuestasLista(true);
@@ -198,7 +200,14 @@ export function SinColocarPanel(props: Props) {
     const ops = opcionesParaFamilia(u);
     const tel = telefonoFamilia(u, datos.telefonos);
     if (!ops.length || !tel) return;
-    const texto = textoPropuestaFamilia(u, ops);
+    // Código de la familia: va en los enlaces del mensaje, así que se crea aquí
+    // (antes de abrir WhatsApp) y se guarda después con la propuesta.
+    const token =
+      tablaPropuestasLista && !props.soloLectura && typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : '';
+    const base = `${window.location.origin}${window.location.pathname}`;
+    const texto = textoPropuestaFamilia(u, ops, token ? { base, token } : undefined);
     const url = urlWhatsappFamilia(tel, texto);
     if (!url) return;
     // Primero se abre WhatsApp (dentro del clic, si no el navegador lo bloquea).
@@ -218,6 +227,7 @@ export function SinColocarPanel(props: Props) {
           p_opciones: opciones,
           p_telefono: tel,
           p_mensaje: texto,
+          p_token: token || null,
         });
       }
       await cargarPropuestas(datos.listados.map((a) => a.sesionAlumnoId));
@@ -253,6 +263,21 @@ export function SinColocarPanel(props: Props) {
     void cargar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [abierta, firma]);
+
+  // Las familias contestan desde su enlace: mientras la tabla está abierta se
+  // miran sus respuestas cada 30 s (y al volver a la pestaña).
+  useEffect(() => {
+    if (!abierta || !datos || !tablaPropuestasLista) return;
+    const ids = datos.listados.map((a) => a.sesionAlumnoId);
+    const refrescar = () => void cargarPropuestas(ids);
+    const t = window.setInterval(refrescar, 30000);
+    window.addEventListener('focus', refrescar);
+    return () => {
+      window.clearInterval(t);
+      window.removeEventListener('focus', refrescar);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abierta, datos, tablaPropuestasLista]);
 
   useEffect(() => {
     if (!abierta) return;
@@ -364,7 +389,8 @@ export function SinColocarPanel(props: Props) {
     setMensaje('');
     try {
       await aplicarOpcion(o);
-      if (propuestaDeUnidad(u, propuestas)) await responderPropuesta(u, o.mismoTurno ? 'DESCARTADO' : 'COLOCADO');
+      const prop = propuestaDeUnidad(u, propuestas);
+      if (prop) await responderPropuesta(u, prop.estado === 'ACEPTADO' || !o.mismoTurno ? 'COLOCADO' : 'DESCARTADO');
       setMensaje(`✓ ${u.miembros.map((m) => m.alumno).join(' y ')} colocado${u.miembros.length > 1 ? 's' : ''} en ${o.colocaciones.map((c) => c.grupo.nombre).join(' / ')} · ${etiquetaTurno(o.sesion)}.`);
       await props.onCambios();
       await cargar();
@@ -397,7 +423,8 @@ export function SinColocarPanel(props: Props) {
     for (const u of aplicablesMismoTurno) {
       try {
         await aplicarOpcion(opcionElegida(u)!);
-        if (propuestaDeUnidad(u, propuestas)) await responderPropuesta(u, 'DESCARTADO');
+        const prop = propuestaDeUnidad(u, propuestas);
+        if (prop) await responderPropuesta(u, prop.estado === 'ACEPTADO' ? 'COLOCADO' : 'DESCARTADO');
         hechos += 1;
       } catch (e) {
         fallos.push(`${u.miembros[0].alumno}: ${e instanceof Error ? e.message : 'error'}`);
@@ -435,9 +462,9 @@ export function SinColocarPanel(props: Props) {
         <div className="ag-cf-familia-cabecera">
           <strong>
             {prop?.estado === 'ACEPTADO'
-              ? `✓ Aceptan: ${prop.opcion_aceptada?.etiqueta || ''}`
+              ? `✓ Aceptan: ${prop.opcion_aceptada?.etiqueta || ''}${prop.respondido_familia_at ? ' · lo han elegido ellos' : ''}${prop.movido_at ? ' · ya está en ese día, falta el grupo' : ''}`
               : prop?.estado === 'RECHAZADO'
-              ? '✕ No pueden en esos turnos'
+              ? `✕ No pueden en esos turnos${prop.respondido_familia_at ? ' · lo han dicho ellos' : ''}`
               : prop?.estado === 'ENVIADO' || enviadoAqui
               ? '📤 Propuesta enviada · esperando respuesta'
               : 'Familia: proponer otro turno'}
@@ -446,7 +473,7 @@ export function SinColocarPanel(props: Props) {
         </div>
         {!props.soloLectura && (
           <div className="ag-cf-familia-botones">
-            {tel && (
+            {tel && !prop?.movido_at && (
               <button type="button" className="ag-boton ag-boton--whatsapp" onClick={() => void enviarPropuesta(u)}>
                 {prop || enviadoAqui ? '📲 Reenviar WhatsApp' : '📲 WhatsApp con propuesta'}
               </button>
@@ -464,7 +491,7 @@ export function SinColocarPanel(props: Props) {
                 ✕ No pueden
               </button>
             )}
-            {tablaPropuestasLista && prop && prop.estado !== 'ENVIADO' && (
+            {tablaPropuestasLista && prop && prop.estado !== 'ENVIADO' && !prop.movido_at && (
               <button type="button" className="ag-boton" onClick={() => void responderPropuesta(u, 'ENVIADO')}>
                 ↺ Deshacer respuesta
               </button>

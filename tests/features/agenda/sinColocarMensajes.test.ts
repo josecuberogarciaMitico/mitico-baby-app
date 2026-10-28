@@ -4,6 +4,7 @@ import {
   opcionesParaFamilia,
   propuestaDeUnidad,
   telefonoFamilia,
+  enlaceElegirTurno,
   textoPropuestaFamilia,
   urlWhatsappFamilia,
 } from '../../../src/features/agenda/sinColocarMensajes';
@@ -70,4 +71,11 @@ test('propuesta vigente de la familia', () => {
     { sesion_alumno_id: 'sa-z', estado: 'ACEPTADO', opciones: [], opcion_aceptada: null, updated_at: '2026-10-28T12:00:00Z' },
   ]);
   equal(p!.estado, 'ACEPTADO', 'la más reciente de la familia');
+});
+
+test('con enlaces: uno por opción y otro para «ninguno»', () => {
+  const t = textoPropuestaFamilia(u, opcionesParaFamilia(u), { base: 'https://app.test/', token: 'abc' });
+  equal(t.includes('👉 Pulsa para elegirlo: https://app.test/?confirmar_turno=abc&o=1'), true, 'opción 1');
+  equal(t.includes('https://app.test/?confirmar_turno=abc&o=0'), true, 'ninguna');
+  equal(enlaceElegirTurno('https://x/', 'a b', 2), 'https://x/?confirmar_turno=a%20b&o=2', 'codifica');
 });

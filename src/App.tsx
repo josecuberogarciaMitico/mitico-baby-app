@@ -485,6 +485,7 @@ import {
   authShellApp,
 } from './screens/AuthScreens';
 import { PantallaTestNivelPublicoApp } from './screens/PublicLevelTestScreen';
+import { PantallaCambioTurnoPublicoApp } from './screens/PublicTurnChangeScreen';
 import {
   addBackupDays as sumarDiasBackup,
   normalizeSeasonClosureStudents,
@@ -23741,11 +23742,16 @@ function AppConAuth() {
 
 export default function App() {
   const tokenTestNivel = tokenTestNivelDesdeUrlApp();
+  // Enlace del WhatsApp de «Niños sin colocar»: la familia elige turno sin login.
+  const parametrosUrl = typeof window === 'undefined' ? null : new URLSearchParams(window.location.search);
+  const tokenCambioTurno = parametrosUrl?.get('confirmar_turno') || '';
 
   return (
     <PantallaSegura>
       {tokenTestNivel ? (
         <PantallaTestNivelPublicoApp token={tokenTestNivel} />
+      ) : tokenCambioTurno ? (
+        <PantallaCambioTurnoPublicoApp token={tokenCambioTurno} opcionInicial={parametrosUrl?.get('o') || ''} />
       ) : (
         <AppConAuth />
       )}

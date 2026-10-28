@@ -55,7 +55,7 @@ test('resumen del día', () => {
   equal(resumenDia([ses('a', '09:45', '11:45', 1, 1)]).texto, '1 niño · 1 grupo', 'singular');
 });
 
-import { disponiblesEnTurno, pendientesSemana, siguientePendiente } from '../../../src/features/agenda/agendaTablero';
+import { anteriorPendiente, disponiblesEnTurno, pendientesSemana, siguientePendiente } from '../../../src/features/agenda/agendaTablero';
 
 test('lo que falta: solo desde hoy y con sus motivos', () => {
   const dias = [
@@ -79,6 +79,8 @@ test('lo que falta: solo desde hoy y con sus motivos', () => {
   equal(siguientePendiente(r.pendientes, 'c')!.sesion.id, 'a', 'vuelve al principio');
   equal(siguientePendiente(r.pendientes, 'x')!.sesion.id, 'a', 'sin abierta: la primera');
   equal(siguientePendiente(r.pendientes, 'a', 'revisar')!.sesion.id, 'c', 'por motivo');
+  equal(anteriorPendiente(r.pendientes, 'b')!.sesion.id, 'a', 'anterior');
+  equal(anteriorPendiente(r.pendientes, 'a')!.sesion.id, 'c', 'anterior desde la primera: la última');
 });
 
 test('disponibles en el turno', () => {
