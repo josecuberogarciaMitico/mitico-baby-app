@@ -192,6 +192,29 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [claveGrupoActivoEntrenador]);
 
+  // Cuando el entrenador ya respondió la disponibilidad de esta semana, la app
+  // pasa a pedir la de la semana que viene. Si esa aún no está abierta, el
+  // entrenador está trabajando ESTA semana: se abre en «Grupos y reportes» y la
+  // pestaña de disponibilidad lo explica sin liar.
+  const disponibilidadEsSemanaQueViene = Boolean(
+    semanaDisponibilidadVistaEntrenadorInicio &&
+      semanaVistaEntrenadorInicio &&
+      semanaDisponibilidadVistaEntrenadorInicio > semanaVistaEntrenadorInicio
+  );
+  const proximaDisponibilidadSinAbrir =
+    disponibilidadEsSemanaQueViene &&
+    disponibilidadEditorVista?.estado !== 'publicado' &&
+    (disponibilidadSemanalVistaEntrenador || []).length === 0;
+  const [tabAjustadoSemana, setTabAjustadoSemana] = useState('');
+  useEffect(() => {
+    if (cargando || !proximaDisponibilidadSinAbrir) return;
+    if (Number(totalGruposVistaEntrenador || 0) <= 0) return;
+    if (tabAjustadoSemana === semanaVistaEntrenadorInicio) return;
+    setTabAjustadoSemana(semanaVistaEntrenadorInicio);
+    if (tabVistaEntrenador === 'disponibilidad') setTabVistaEntrenador('grupos');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cargando, proximaDisponibilidadSinAbrir, totalGruposVistaEntrenador, semanaVistaEntrenadorInicio]);
+
   const fechaConDiaEntrenador = (fecha: string) =>
     `${capitalizarPrimera(
       new Date(`${fecha}T00:00:00`).toLocaleDateString('es-ES', {
@@ -1073,7 +1096,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                           {gestionandoPushEntrenadorApp
                             ? 'Activando notificaciones...'
                             : permiso === 'granted'
-                              ? 'Conectando avisos automáticamente...'
+                              ? '🔔 Activar avisos en este móvil'
                               : '🔔 Activar notificaciones'}
                         </button>
                       )}
@@ -1248,15 +1271,23 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                       lineHeight: 1.4,
                     }}
                   >
-                    {semanaDisponibilidadVistaEntrenadorInicio
-                      ? `Próxima semana solicitada: ${rangoSemanaAgenda(
+                    {proximaDisponibilidadSinAbrir
+                      ? `✓ La disponibilidad de esta semana ya está cerrada. La de la semana que viene (${rangoSemanaAgenda(
+                          semanaDisponibilidadVistaEntrenadorInicio
+                        )}) todavía no está abierta: te llegará un aviso cuando puedas rellenarla.`
+                      : semanaDisponibilidadVistaEntrenadorInicio
+                      ? `${
+                          disponibilidadEsSemanaQueViene ? 'Semana que viene' : 'Semana'
+                        }: ${rangoSemanaAgenda(
                           semanaDisponibilidadVistaEntrenadorInicio
                         )}. `
                       : ''}
-                    {disponibilidadVistaEntrenador.length === 0
+                    {proximaDisponibilidadSinAbrir || disponibilidadVistaEntrenador.length === 0
                       ? ''
                       : totalDisponibilidadPendienteVistaEntrenador === 0
-                      ? '✓ Ya has enviado tu disponibilidad de esta semana. Te avisaremos en cuanto haya grupos publicados para ti.'
+                      ? `✓ Ya has enviado tu disponibilidad de ${
+                          disponibilidadEsSemanaQueViene ? 'la semana que viene' : 'esta semana'
+                        }. Te avisaremos en cuanto haya grupos publicados para ti.`
                       : textoRecordatorioDisponibilidad(disponibilidadEditorVista)}
                   </p>
                 </section>
@@ -1499,7 +1530,9 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
               <article style={tarjetaMovilVacia}>
                 <h3 style={{ marginTop: 0 }}>
                   {tabVistaEntrenador === 'disponibilidad'
-                    ? disponibilidadEditorVista?.estado === 'sin_publicar'
+                    ? proximaDisponibilidadSinAbrir
+                      ? 'Ahora no tienes nada que rellenar'
+                      : disponibilidadEditorVista?.estado === 'sin_publicar'
                       ? 'Disponibilidad pendiente de publicación'
                       : disponibilidadEditorVista?.estado === 'publicado'
                       ? 'Sin turnos para ti esta semana'
@@ -1508,7 +1541,11 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                 </h3>
                 <p style={{ marginBottom: 0 }}>
                   {tabVistaEntrenador === 'disponibilidad'
-                    ? disponibilidadEditorVista?.estado === 'sin_publicar'
+                    ? proximaDisponibilidadSinAbrir
+                      ? `Esta semana ya estás organizado: tus grupos están en «Grupos y reportes». La disponibilidad de la semana que viene (${rangoSemanaAgenda(
+                          semanaDisponibilidadVistaEntrenadorInicio
+                        )}) todavía no está abierta; cuando Jose la publique te llegará un aviso.`
+                      : disponibilidadEditorVista?.estado === 'sin_publicar'
                       ? 'Jose está preparando la semana. Los turnos aparecerán aquí únicamente cuando publique la versión definitiva.'
                       : disponibilidadEditorVista?.estado === 'publicado'
                       ? 'Esta semana no tienes turnos de disponibilidad que responder.'
