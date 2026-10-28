@@ -12,6 +12,17 @@ import {
   type SesionPlan,
   type UnidadPlan,
 } from './sinColocarPlanner';
+import {
+  etiquetaTurnoFamilia,
+  necesitaMensaje,
+  opcionesParaFamilia,
+  propuestaDeUnidad,
+  telefonoFamilia,
+  textoPropuestaFamilia,
+  urlWhatsappFamilia,
+  type OpcionEnviada,
+  type PropuestaGuardada,
+} from './sinColocarMensajes';
 
 /**
  * Tabla operativa «Niños sin colocar» de la semana (28/10).
@@ -60,6 +71,11 @@ export function SinColocarPanel(props: Props) {
   } | null>(null);
   // Opción elegida por fila: clave de una opción o «g:<grupoId>» (a mano).
   const [eleccion, setEleccion] = useState<Record<string, string>>({});
+  // Propuestas enviadas a familias y su respuesta (tabla cambios_turno_propuestos_app).
+  const [propuestas, setPropuestas] = useState<PropuestaGuardada[]>([]);
+  const [tablaPropuestasLista, setTablaPropuestasLista] = useState(true);
+  // Si la tabla aún no existe, al menos no se repite el mismo WhatsApp en esta sesión.
+  const [enviadosLocal, setEnviadosLocal] = useState<Set<string>>(new Set());
 
   const sesionesFuturas = useMemo(() => sesiones.filter((s) => s.fecha >= hoyIso), [sesiones, hoyIso]);
   const firma = sesionesFuturas.map((s) => s.sesionId).sort().join(',');
@@ -136,10 +152,97 @@ export function SinColocarPanel(props: Props) {
         }
       }
       setDatos({ grupos: gruposPlan, listados, pendientes, colocados, telefonos });
+      await cargarPropuestas(listados.map((a) => a.sesionAlumnoId));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudieron cargar los niños sin colocar.');
     } finally {
       setCargando(false);
+    }
+  }
+
+  async function cargarPropuestas(sesionAlumnoIds: string[]) {
+    if (!sesionAlumnoIds.length) {
+      setPropuestas([]);
+      return;
+    }
+    try {
+      const filas: any[] = [];
+      for (let i = 0; i < sesionAlumnoIds.length; i += 80) {
+        const lote = sesionAlumnoIds.slice(i, i + 80);
+        const r = await props.consultarSupabase(
+          'cambios_turno_propuestos_app',
+          `select=sesion_alumno_id,estado,opciones,opcion_aceptada,updated_at&sesion_alumno_id=in.(${lote.join(',')})`
+        );
+        filas.push(...(r || []));
+      }
+      setPropuestas(
+        filas.map((f) => ({
+          sesion_alumno_id: String(f.sesion_alumno_id),
+          estado: f.estado,
+          opciones: Array.isArray(f.opciones) ? f.opciones : [],
+          opcion_aceptada: f.opcion_aceptada || null,
+          updated_at: String(f.updated_at || ''),
+        }))
+      );
+      setTablaPropuestasLista(true);
+    } catch {
+      // La tabla todavía no está creada en Supabase: el WhatsApp funciona
+      // igual, pero las respuestas no se pueden apuntar.
+      setPropuestas([]);
+      setTablaPropuestasLista(false);
+    }
+  }
+
+  async function enviarPropuesta(u: UnidadPlan) {
+    if (!datos) return;
+    const ops = opcionesParaFamilia(u);
+    const tel = telefonoFamilia(u, datos.telefonos);
+    if (!ops.length || !tel) return;
+    const texto = textoPropuestaFamilia(u, ops);
+    const url = urlWhatsappFamilia(tel, texto);
+    if (!url) return;
+    // Primero se abre WhatsApp (dentro del clic, si no el navegador lo bloquea).
+    window.open(url, '_blank', 'noopener,noreferrer');
+    setEnviadosLocal((x) => new Set(x).add(u.clave));
+    if (!tablaPropuestasLista || props.soloLectura) return;
+    const opciones: OpcionEnviada[] = ops.map((o) => ({
+      sesionId: o.sesion.sesionId,
+      etiqueta: etiquetaTurnoFamilia(o.sesion.fecha, o.sesion.hora_inicio, o.sesion.hora_fin),
+    }));
+    try {
+      for (const m of u.miembros) {
+        await props.ejecutarFuncionAuthJson('registrar_propuesta_cambio_turno_app', {
+          p_sesion_alumno_id: m.sesionAlumnoId,
+          p_alumno_id: m.alumnoId,
+          p_sesion_origen_id: m.sesionId,
+          p_opciones: opciones,
+          p_telefono: tel,
+          p_mensaje: texto,
+        });
+      }
+      await cargarPropuestas(datos.listados.map((a) => a.sesionAlumnoId));
+    } catch (e) {
+      setError(`WhatsApp abierto, pero no se pudo apuntar como enviado: ${e instanceof Error ? e.message : 'error'}`);
+    }
+  }
+
+  async function responderPropuesta(u: UnidadPlan, estado: 'ACEPTADO' | 'RECHAZADO' | 'COLOCADO' | 'DESCARTADO' | 'ENVIADO', opcion?: OpcionEnviada) {
+    if (!tablaPropuestasLista || props.soloLectura || !datos) return;
+    try {
+      for (const m of u.miembros) {
+        await props.ejecutarFuncionAuthJson('responder_propuesta_cambio_turno_app', {
+          p_sesion_alumno_id: m.sesionAlumnoId,
+          p_estado: estado,
+          p_opcion: opcion || null,
+        });
+      }
+      if (estado === 'ACEPTADO' && opcion) {
+        const o = u.opciones.find((x) => x.sesion.sesionId === opcion.sesionId);
+        if (o) setEleccion((x) => ({ ...x, [u.clave]: o.clave }));
+      }
+      await cargarPropuestas(datos.listados.map((a) => a.sesionAlumnoId));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'No se pudo apuntar la respuesta.');
     }
   }
 
@@ -178,7 +281,14 @@ export function SinColocarPanel(props: Props) {
 
   function opcionElegida(u: UnidadPlan): OpcionPlan | null {
     const clave = eleccion[u.clave];
-    if (!clave) return u.propuesta;
+    if (!clave) {
+      const prop = propuestaDeUnidad(u, propuestas);
+      if (prop?.estado === 'ACEPTADO' && prop.opcion_aceptada) {
+        const aceptada = u.opciones.find((o) => o.sesion.sesionId === prop.opcion_aceptada!.sesionId);
+        if (aceptada) return aceptada;
+      }
+      return u.propuesta;
+    }
     if (clave.startsWith('g:') && datos) {
       const grupoId = clave.slice(2);
       const m = u.miembros[0];
@@ -224,12 +334,21 @@ export function SinColocarPanel(props: Props) {
     }
   }
 
+  function padresAceptan(u: UnidadPlan, o: OpcionPlan) {
+    const prop = propuestaDeUnidad(u, propuestas);
+    return prop?.estado === 'ACEPTADO' && prop.opcion_aceptada?.sesionId === o.sesion.sesionId;
+  }
+
   function textoConfirmacion(u: UnidadPlan, o: OpcionPlan) {
     const lineas = o.colocaciones.map(
       (c) => `• ${c.alumno.alumno} → ${c.grupo.nombre} (${c.totalFinal}/${c.maximo})`
     );
     const avisos = [
-      ...(o.mismoTurno ? [] : [`CAMBIO DE TURNO: de ${etiquetaTurno(u.origen)} a ${etiquetaTurno(o.sesion)}. Hazlo solo si los padres han dicho que sí.`]),
+      ...(o.mismoTurno
+        ? []
+        : padresAceptan(u, o)
+        ? [`CAMBIO DE TURNO: de ${etiquetaTurno(u.origen)} a ${etiquetaTurno(o.sesion)}. ✓ Los padres han dicho que sí.`]
+        : [`CAMBIO DE TURNO: de ${etiquetaTurno(u.origen)} a ${etiquetaTurno(o.sesion)}. Hazlo solo si los padres han dicho que sí.`]),
       ...(o.estado !== 'RECOMENDADO' ? [`Este encaje está marcado «${ETIQUETA_ESTADO[o.estado]}».`] : []),
       ...o.avisos.filter((a) => !a.startsWith('Cambio de turno')),
     ];
@@ -245,6 +364,7 @@ export function SinColocarPanel(props: Props) {
     setMensaje('');
     try {
       await aplicarOpcion(o);
+      if (propuestaDeUnidad(u, propuestas)) await responderPropuesta(u, o.mismoTurno ? 'DESCARTADO' : 'COLOCADO');
       setMensaje(`✓ ${u.miembros.map((m) => m.alumno).join(' y ')} colocado${u.miembros.length > 1 ? 's' : ''} en ${o.colocaciones.map((c) => c.grupo.nombre).join(' / ')} · ${etiquetaTurno(o.sesion)}.`);
       await props.onCambios();
       await cargar();
@@ -277,6 +397,7 @@ export function SinColocarPanel(props: Props) {
     for (const u of aplicablesMismoTurno) {
       try {
         await aplicarOpcion(opcionElegida(u)!);
+        if (propuestaDeUnidad(u, propuestas)) await responderPropuesta(u, 'DESCARTADO');
         hechos += 1;
       } catch (e) {
         fallos.push(`${u.miembros[0].alumno}: ${e instanceof Error ? e.message : 'error'}`);
@@ -289,7 +410,70 @@ export function SinColocarPanel(props: Props) {
     setAplicando('');
   }
 
+  const familiasPorEnviar = datos
+    ? plan.filter(
+        (u) =>
+          necesitaMensaje(u) &&
+          telefonoFamilia(u, datos.telefonos) &&
+          !propuestaDeUnidad(u, propuestas) &&
+          !enviadosLocal.has(u.clave)
+      )
+    : [];
+  const esperandoRespuesta = plan.filter((u) => propuestaDeUnidad(u, propuestas)?.estado === 'ENVIADO').length;
+  const aceptadas = plan.filter((u) => propuestaDeUnidad(u, propuestas)?.estado === 'ACEPTADO').length;
+
   if (!abierta || typeof document === 'undefined') return null;
+
+  function renderFamilia(u: UnidadPlan) {
+    if (!datos) return null;
+    const prop = propuestaDeUnidad(u, propuestas);
+    if (!prop && !necesitaMensaje(u)) return null;
+    const tel = telefonoFamilia(u, datos.telefonos);
+    const enviadoAqui = enviadosLocal.has(u.clave);
+    return (
+      <div className={`ag-cf-familia is-${(prop?.estado || (enviadoAqui ? 'enviado' : 'sin')).toLowerCase()}`}>
+        <div className="ag-cf-familia-cabecera">
+          <strong>
+            {prop?.estado === 'ACEPTADO'
+              ? `✓ Aceptan: ${prop.opcion_aceptada?.etiqueta || ''}`
+              : prop?.estado === 'RECHAZADO'
+              ? '✕ No pueden en esos turnos'
+              : prop?.estado === 'ENVIADO' || enviadoAqui
+              ? '📤 Propuesta enviada · esperando respuesta'
+              : 'Familia: proponer otro turno'}
+          </strong>
+          <span>{tel ? `📞 ${tel.replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3')}` : 'Sin teléfono en la ficha'}</span>
+        </div>
+        {!props.soloLectura && (
+          <div className="ag-cf-familia-botones">
+            {tel && (
+              <button type="button" className="ag-boton ag-boton--whatsapp" onClick={() => void enviarPropuesta(u)}>
+                {prop || enviadoAqui ? '📲 Reenviar WhatsApp' : '📲 WhatsApp con propuesta'}
+              </button>
+            )}
+            {tablaPropuestasLista &&
+              prop &&
+              prop.estado !== 'ACEPTADO' &&
+              prop.opciones.map((op, i) => (
+                <button key={op.sesionId} type="button" className="ag-boton" onClick={() => void responderPropuesta(u, 'ACEPTADO', op)}>
+                  ✓ Aceptan {i + 1} · {op.etiqueta}
+                </button>
+              ))}
+            {tablaPropuestasLista && prop && prop.estado === 'ENVIADO' && (
+              <button type="button" className="ag-boton" onClick={() => void responderPropuesta(u, 'RECHAZADO')}>
+                ✕ No pueden
+              </button>
+            )}
+            {tablaPropuestasLista && prop && prop.estado !== 'ENVIADO' && (
+              <button type="button" className="ag-boton" onClick={() => void responderPropuesta(u, 'ENVIADO')}>
+                ↺ Deshacer respuesta
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   const totalNinos = plan.reduce((t, u) => t + u.miembros.length, 0);
   const conPropuesta = plan.filter((u) => u.propuesta).length;
@@ -312,10 +496,25 @@ export function SinColocarPanel(props: Props) {
         <div className="ag-colocar-barra">
           <span>
             <strong>{conPropuesta}</strong> con propuesta · <strong>{plan.length - conPropuesta}</strong> para decidir tú
+            {(esperandoRespuesta > 0 || aceptadas > 0) && (
+              <>
+                {' '}· 📤 <strong>{esperandoRespuesta}</strong> esperando respuesta · ✓ <strong>{aceptadas}</strong> aceptan
+              </>
+            )}
           </span>
           <button type="button" className="ag-boton" onClick={() => void cargar()} disabled={cargando || Boolean(aplicando)}>
             {cargando ? 'Cargando…' : '⟳ Actualizar'}
           </button>
+          {!props.soloLectura && familiasPorEnviar.length > 0 && (
+            <button
+              type="button"
+              className="ag-boton ag-boton--whatsapp"
+              onClick={() => void enviarPropuesta(familiasPorEnviar[0])}
+              title="Abre el WhatsApp de la siguiente familia con el mensaje escrito; pulsa Enviar y vuelve para la siguiente"
+            >
+              📲 WhatsApp a la siguiente familia ({familiasPorEnviar.length} por enviar)
+            </button>
+          )}
           {!props.soloLectura && (
             <button
               type="button"
@@ -329,6 +528,11 @@ export function SinColocarPanel(props: Props) {
           )}
         </div>
 
+        {!tablaPropuestasLista && (
+          <div className="ag-colocar-mensaje is-aviso">
+            Los WhatsApp a familias funcionan, pero apuntar respuestas (aceptan / no pueden) está pendiente de activar en Supabase.
+          </div>
+        )}
         {(error || mensaje) && (
           <div className={`ag-colocar-mensaje${error ? ' is-error' : ''}`}>{error || mensaje}</div>
         )}
@@ -378,11 +582,17 @@ export function SinColocarPanel(props: Props) {
                             {o.mismoTurno ? 'Su turno' : `→ ${etiquetaTurno(o.sesion)}`} ·{' '}
                             {o.colocaciones.map((c) => `${c.grupo.nombre} (${c.totalFinal}/${c.maximo})`).join(' / ')}
                           </strong>
-                          {o.avisos.map((a) => (
-                            <span key={a} className="ag-cf-aviso">
-                              {a}
-                            </span>
-                          ))}
+                          {o.avisos.map((a) =>
+                            a.startsWith('Cambio de turno') && padresAceptan(u, o) ? (
+                              <span key={a} className="ag-cf-aviso is-ok">
+                                ✓ Cambio de turno aceptado por los padres.
+                              </span>
+                            ) : (
+                              <span key={a} className="ag-cf-aviso">
+                                {a}
+                              </span>
+                            )
+                          )}
                           {o.colocaciones.length === 1 && <span className="ag-cf-motivo">{o.colocaciones[0].motivo}</span>}
                         </div>
                       ) : (
@@ -413,6 +623,7 @@ export function SinColocarPanel(props: Props) {
                           </optgroup>
                         )}
                       </select>
+                      {renderFamilia(u)}
                     </>
                   )}
                 </div>

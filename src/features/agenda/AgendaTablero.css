@@ -278,3 +278,18 @@
 @media (max-width: 640px) {
   .ag-colocar-barra .ag-boton { flex: 1 1 100%; }
 }
+
+/* WhatsApp a familias desde sin colocar (28/10) */
+.ag-boton--whatsapp { background: #16a34a; border-color: #16a34a; color: #fff; padding: 8px 14px; }
+.ag-boton--whatsapp:hover:not(:disabled) { background: #15803d; border-color: #15803d; }
+.ag-colocar-mensaje.is-aviso { background: #fffbeb; color: #92400e; }
+.ag-cf-familia { display: grid; gap: 8px; padding: 8px 10px; border-radius: 10px; border: 1px dashed #86efac; background: #f7fee7; }
+.ag-cf-familia.is-aceptado { border-style: solid; border-color: #22c55e; background: #dcfce7; }
+.ag-cf-familia.is-rechazado { border-color: #fca5a5; background: #fef2f2; }
+.ag-cf-familia.is-enviado { border-color: #93c5fd; background: #eff6ff; }
+.ag-cf-familia-cabecera { display: flex; gap: 8px; justify-content: space-between; flex-wrap: wrap; font-size: 13px; }
+.ag-cf-familia-cabecera span { color: #475569; }
+.ag-cf-familia-botones { display: flex; gap: 6px; flex-wrap: wrap; }
+.ag-cf-familia-botones .ag-boton { font-size: 13px; }
+@media (max-width: 640px) { .ag-cf-familia-botones .ag-boton { flex: 1 1 100%; } }
+.ag-cf-aviso.is-ok { color: #166534; }
