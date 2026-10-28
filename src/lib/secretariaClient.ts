@@ -47,6 +47,9 @@ export type SecretariaRegistro = {
   created_at: string;
   updated_at: string;
   resuelto_at: string | null;
+  /** Cuándo avisar al móvil (29/10). Llega aparte de la lista. */
+  recordar_at?: string | null;
+  recordatorio_enviado_at?: string | null;
 };
 
 export type SecretariaEntradaInput = {
@@ -59,6 +62,8 @@ export type SecretariaEntradaInput = {
   fecha_evento?: string | null;
   hora_evento?: string | null;
   fecha_limite?: string | null;
+  /** Aviso al móvil; solo se envía si hay valor o había uno que quitar. */
+  recordar_at?: string | null;
   etiquetas?: string[];
   origen?: 'app' | 'telegram' | 'paquito_app' | 'manual';
 };
@@ -124,6 +129,24 @@ export async function listarSecretaria() {
   );
 }
 
+/** Avisos programados (id → hora). Si la base de datos aún no tiene las
+ * columnas, devuelve [] y la Secretaría sigue funcionando igual. */
+export async function listarRecordatoriosSecretaria(): Promise<
+  Array<{ id: string; recordar_at: string | null; recordatorio_enviado_at: string | null }>
+> {
+  try {
+    const datos = await peticionSecretaria<
+      Array<{ id: string; recordar_at: string | null; recordatorio_enviado_at: string | null }>
+    >(
+      '/rest/v1/secretaria_coordinacion?select=id,recordar_at,recordatorio_enviado_at&recordar_at=not.is.null',
+      { method: 'GET' }
+    );
+    return Array.isArray(datos) ? datos : [];
+  } catch {
+    return [];
+  }
+}
+
 export async function crearEntradaSecretaria(input: SecretariaEntradaInput) {
   return peticionSecretaria<SecretariaRegistro[]>(
     '/rest/v1/secretaria_coordinacion',
@@ -136,6 +159,7 @@ export async function crearEntradaSecretaria(input: SecretariaEntradaInput) {
         fecha_evento: input.fecha_evento || null,
         hora_evento: input.hora_evento || null,
         fecha_limite: input.fecha_limite || null,
+        ...(input.recordar_at ? { recordar_at: input.recordar_at } : {}),
         etiquetas: input.etiquetas || [],
         origen: input.origen || 'app',
       }),

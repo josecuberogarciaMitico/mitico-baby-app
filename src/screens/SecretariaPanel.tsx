@@ -4,6 +4,7 @@ import {
   crearEntradaSecretaria,
   eliminarEntradaSecretaria,
   eliminarResueltasSecretaria,
+  listarRecordatoriosSecretaria,
   listarSecretaria,
   type SecretariaEntradaInput,
   type SecretariaRegistro,
@@ -21,6 +22,8 @@ type FormSecretaria = {
   detalle: string;
   fechaEvento: string;
   fechaLimite: string;
+  avisoFecha: string;
+  avisoHora: string;
 };
 
 const FORM_INICIAL: FormSecretaria = {
@@ -31,6 +34,8 @@ const FORM_INICIAL: FormSecretaria = {
   detalle: '',
   fechaEvento: '',
   fechaLimite: '',
+  avisoFecha: '',
+  avisoHora: '',
 };
 
 const CATEGORIAS: Array<{
@@ -79,6 +84,41 @@ function fechaCorta(fecha?: string | null) {
   return `${day}/${month}/${year}`;
 }
 
+// Fecha y hora de Madrid ⇄ instante (para «Avisarme el … a las …»).
+function partesMadrid(t: number) {
+  const p = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false,
+  }).formatToParts(new Date(t));
+  const g = (tipo: string) => p.find((x) => x.type === tipo)?.value || '00';
+  return { fecha: `${g('year')}-${g('month')}-${g('day')}`, hora: `${g('hour') === '24' ? '00' : g('hour')}:${g('minute')}` };
+}
+
+function madridAIso(fecha: string, hora: string) {
+  const m = `${fecha}T${hora || '09:00'}`.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return null;
+  const [y, mo, d, h, mi] = m.slice(1).map(Number);
+  const deseado = Date.UTC(y, mo - 1, d, h, mi);
+  let t = deseado;
+  for (let i = 0; i < 2; i += 1) {
+    const p = partesMadrid(t);
+    const [py, pmo, pd] = p.fecha.split('-').map(Number);
+    const [ph, pmi] = p.hora.split(':').map(Number);
+    t += deseado - Date.UTC(py, pmo - 1, pd, ph, pmi);
+  }
+  return new Date(t).toISOString();
+}
+
+function isoAMadrid(ts?: string | null) {
+  const t = ts ? Date.parse(ts) : NaN;
+  return Number.isFinite(t) ? partesMadrid(t) : { fecha: '', hora: '' };
+}
+
+function avisoTexto(ts?: string | null) {
+  const { fecha, hora } = isoAMadrid(ts);
+  return fecha ? `${fechaCorta(fecha).slice(0, 5)} a las ${hora}` : '';
+}
+
 function esActiva(registro: SecretariaRegistro) {
   return registro.tipo === 'tarea' &&
     (registro.estado === 'pendiente' || registro.estado === 'en_curso');
@@ -104,8 +144,18 @@ export function SecretariaPanel() {
     setError('');
 
     try {
-      const datos = await listarSecretaria();
-      setRegistros(Array.isArray(datos) ? datos : []);
+      const [datos, avisos] = await Promise.all([
+        listarSecretaria(),
+        listarRecordatoriosSecretaria(),
+      ]);
+      const porId = new Map(avisos.map((a) => [a.id, a]));
+      setRegistros(
+        (Array.isArray(datos) ? datos : []).map((item) => ({
+          ...item,
+          recordar_at: porId.get(item.id)?.recordar_at || null,
+          recordatorio_enviado_at: porId.get(item.id)?.recordatorio_enviado_at || null,
+        }))
+      );
     } catch (err) {
       setError(
         err instanceof Error
@@ -233,6 +283,8 @@ export function SecretariaPanel() {
       detalle: item.detalle || '',
       fechaEvento: item.fecha_evento || '',
       fechaLimite: item.fecha_limite || '',
+      avisoFecha: isoAMadrid(item.recordar_at).fecha,
+      avisoHora: isoAMadrid(item.recordar_at).hora,
     });
     setEditorAbierto(true);
   };
@@ -266,6 +318,10 @@ export function SecretariaPanel() {
       etiquetas: existente?.etiquetas || [],
       origen: 'app',
     };
+
+    const recordar = form.avisoFecha ? madridAIso(form.avisoFecha, form.avisoHora) : null;
+    if (recordar) input.recordar_at = recordar;
+    else if (existente?.recordar_at) input.recordar_at = null;
 
     try {
       if (editandoId) {
@@ -456,6 +512,12 @@ export function SecretariaPanel() {
                     {item.fecha_limite && (
                       <span>⏱ Límite: {fechaCorta(item.fecha_limite)}</span>
                     )}
+                    {item.recordar_at && (
+                      <span>
+                        🔔 Aviso: {avisoTexto(item.recordar_at)}
+                        {item.recordatorio_enviado_at ? ' · enviado' : ''}
+                      </span>
+                    )}
                     {item.alumno && <span>Alumno: {item.alumno}</span>}
                     {item.entrenador && <span>Entrenador: {item.entrenador}</span>}
                     {item.nombre_grupo && <span>Grupo: {item.nombre_grupo}</span>}
@@ -590,6 +652,33 @@ export function SecretariaPanel() {
                       value={form.fechaEvento}
                       onChange={(event) =>
                         setForm((actual) => ({ ...actual, fechaEvento: event.target.value }))
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    Avisarme el día
+                    <input
+                      type="date"
+                      value={form.avisoFecha}
+                      onChange={(event) =>
+                        setForm((actual) => ({
+                          ...actual,
+                          avisoFecha: event.target.value,
+                          avisoHora: event.target.value ? actual.avisoHora || '09:00' : '',
+                        }))
+                      }
+                    />
+                  </label>
+
+                  <label>
+                    A las
+                    <input
+                      type="time"
+                      value={form.avisoHora}
+                      disabled={!form.avisoFecha}
+                      onChange={(event) =>
+                        setForm((actual) => ({ ...actual, avisoHora: event.target.value }))
                       }
                     />
                   </label>
