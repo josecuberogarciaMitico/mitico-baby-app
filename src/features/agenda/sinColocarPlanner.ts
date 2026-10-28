@@ -329,7 +329,8 @@ export function planificarSinColocar(input: {
         let estado = colocaciones.map((c) => c.estado).reduce(peorEstado, 'RECOMENDADO' as EstadoOpcion);
         let score = Math.min(...colocaciones.map((c) => evaluarEncaje(c.alumno, c.grupo).score));
         const avisos: string[] = [];
-        if (mismoTurno) score += 30;
+        // Su turno, si encaja, va siempre primero.
+        if (mismoTurno) score += 60;
         else if (mismoDia) score += 15;
         if (!mismoTurno) {
           // Quien eligió fin de semana quiere fin de semana. Al revés (de

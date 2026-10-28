@@ -199,7 +199,7 @@ export function SinColocarPanel(props: Props) {
 
   async function enviarPropuesta(u: UnidadPlan) {
     if (!datos) return;
-    const ops = opcionesParaFamilia(u);
+    const ops = opcionesParaFamilia(u, 3, opcionElegida(u));
     const tel = telefonoFamilia(u, datos.telefonos);
     if (!ops.length || !tel) return;
     // Código de la familia: va en los enlaces del mensaje, así que se crea aquí
@@ -460,7 +460,9 @@ export function SinColocarPanel(props: Props) {
   function renderFamilia(u: UnidadPlan) {
     if (!datos) return null;
     const prop = propuestaDeUnidad(u, propuestas);
-    if (!prop && !necesitaMensaje(u)) return null;
+    // Sale si no cabe en su turno o si lo elegido ahora es cambiar de turno.
+    const elegida = opcionElegida(u);
+    if (!prop && !necesitaMensaje(u) && !(elegida && !elegida.mismoTurno && opcionesParaFamilia(u, 3, elegida).length)) return null;
     const tel = telefonoFamilia(u, datos.telefonos);
     const enviadoAqui = enviadosLocal.has(u.clave);
     return (
