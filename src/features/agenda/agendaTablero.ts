@@ -115,9 +115,9 @@ export function resumenDia(sesiones: SesionTablero[]) {
 // Ayudas de la semana (27/10): qué falta, siguiente pendiente, disponibles por
 // turno y avisos de cada sesión.
 
-export type ExtrasSesion = { revisar: number; notas: number; sinConfirmar: number };
+export type ExtrasSesion = { revisar: number; notas: number; sinConfirmar: number; sinColocar?: number };
 
-export type MotivoPendiente = 'sin_grupos' | 'sin_entrenador' | 'sin_publicar' | 'revisar' | 'sin_confirmar';
+export type MotivoPendiente = 'sin_colocar' | 'sin_grupos' | 'sin_entrenador' | 'sin_publicar' | 'revisar' | 'sin_confirmar';
 
 export type PendienteSesion<S extends SesionTablero> = {
   sesion: S;
@@ -132,6 +132,7 @@ export type ResumenPendientes<S extends SesionTablero> = {
 };
 
 export const ETIQUETA_MOTIVO: Record<MotivoPendiente, [string, string]> = {
+  sin_colocar: ['niño sin colocar', 'niños sin colocar'],
   sin_grupos: ['sesión sin grupos', 'sesiones sin grupos'],
   sin_entrenador: ['grupo sin entrenador', 'grupos sin entrenador'],
   sin_publicar: ['grupo sin publicar', 'grupos sin publicar'],
@@ -151,7 +152,7 @@ export function pendientesSemana<S extends SesionTablero>(
   extras: (s: S) => ExtrasSesion | null
 ): ResumenPendientes<S> {
   const contadores: Record<MotivoPendiente, number> = {
-    sin_grupos: 0, sin_entrenador: 0, sin_publicar: 0, revisar: 0, sin_confirmar: 0,
+    sin_colocar: 0, sin_grupos: 0, sin_entrenador: 0, sin_publicar: 0, revisar: 0, sin_confirmar: 0,
   };
   const pendientes: PendienteSesion<S>[] = [];
   [...dias]
@@ -167,6 +168,12 @@ export function pendientesSemana<S extends SesionTablero>(
           const cob = cobertura(s);
           const ex = extras(s);
           const motivos: MotivoPendiente[] = [];
+          // Niños en el listado que no están en ningún grupo ya creado: lo
+          // primero que hay que resolver, por eso va delante.
+          if (ex && Number(ex.sinColocar || 0) > 0) {
+            motivos.push('sin_colocar');
+            contadores.sin_colocar += Number(ex.sinColocar);
+          }
           if (alumnos > 0 && grupos === 0) {
             motivos.push('sin_grupos');
             contadores.sin_grupos += 1;
@@ -206,6 +213,17 @@ export function siguientePendiente<S extends SesionTablero>(
   const i = lista.findIndex((p) => p.sesion.id === sesionAbiertaId);
   if (i < 0) return lista[0];
   return lista.length > 1 ? lista[(i + 1) % lista.length] : null;
+}
+
+/** La sesión pendiente anterior a la abierta (vuelve al final al pasar de la primera). */
+export function anteriorPendiente<S extends SesionTablero>(
+  pendientes: PendienteSesion<S>[],
+  sesionAbiertaId: string
+): PendienteSesion<S> | null {
+  if (!pendientes.length) return null;
+  const i = pendientes.findIndex((p) => p.sesion.id === sesionAbiertaId);
+  if (i < 0) return pendientes[pendientes.length - 1];
+  return pendientes.length > 1 ? pendientes[(i - 1 + pendientes.length) % pendientes.length] : null;
 }
 
 export type FilaDisponibilidad = {

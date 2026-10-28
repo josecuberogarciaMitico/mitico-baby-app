@@ -13,6 +13,8 @@ import webpush from 'npm:web-push@3.6.7'
 //   rellena respuestas "Pendiente").
 // - Dos formas de entrar: (1) cron de Supabase con cabecera secreta,
 //   (2) Jose con su sesion (rol coordinador_jefe).
+// - Con la cabecera secreta y action 'enviar_avisos_pendientes' manda por push
+//   los avisos CAMBIO_TURNO_FAMILIA que la base de datos ha creado (28/10).
 // ---------------------------------------------------------------------------
 
 const CORS = {
@@ -342,6 +344,27 @@ Deno.serve(async (req) => {
       if (cfgErr) throw cfgErr
       const esperado = String(cfg?.valor || '')
       if (!esperado || secretoRecibido !== esperado) return json({ ok: false, error: 'No autorizado.' }, 401)
+
+      // Avisos creados desde la base de datos (p. ej. una familia confirma el
+      // cambio de turno desde su enlace): se mandan por push los que aún no
+      // se han enviado. No toca el resumen del martes.
+      if (b?.action === 'enviar_avisos_pendientes') {
+        const desde = new Date(Date.now() - 86400000).toISOString()
+        const { data: pendientes, error: pe } = await admin
+          .from('paco_avisos').select('id,tipo,titulo,cuerpo,dedupe_key,semana_inicio')
+          .is('push_estado', null).eq('tipo', 'CAMBIO_TURNO_FAMILIA').gte('created_at', desde)
+          .order('created_at', { ascending: true }).limit(20)
+        if (pe) throw pe
+        const resultados: unknown[] = []
+        for (const a of pendientes || []) {
+          const push = await enviarPush(admin, a.titulo, a.cuerpo, a.dedupe_key || `aviso:${a.id}`, a.tipo, a.semana_inicio)
+          await admin.from('paco_avisos')
+            .update({ push_estado: push.estado, push_dispositivos: push.enviados, error: push.error })
+            .eq('id', a.id)
+          resultados.push({ id: a.id, push_estado: push.estado })
+        }
+        return json({ ok: true, enviados: resultados })
+      }
 
       const ahora = madridParts()
       // El cron se lanza a las 11:00 y a las 12:00 UTC (los martes) para cubrir

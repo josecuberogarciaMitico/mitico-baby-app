@@ -13,6 +13,7 @@ import { addLateStudentToSession } from '../../services/agenda/lateStudentSessio
 import { SessionTrainerCoverageLine } from './AgendaTrainerSummary';
 import {
   ETIQUETA_MOTIVO,
+  anteriorPendiente,
   columnasDelDia,
   disponiblesEnTurno,
   estadoDia,
@@ -29,12 +30,22 @@ import './AgendaTablero.css';
 import { PacoAltasAviso } from '../baby/PacoAltasAviso';
 import { PacoNotasSesion } from '../pacoAcciones/PacoNotasSesion';
 import { pendingAgendaStudents } from './agendaSessions';
+import { SinColocarPanel } from './SinColocarPanel';
+import type { SesionPlan } from './sinColocarPlanner';
 import { notifyGroupChangedAndRequestReconfirmation } from './groupChangeNotification';
 import { abrirFichaAlumno } from '../students/studentFichaStore';
 import {
   sessionTrainerCoverage,
   type AgendaTrainerAssignmentRow,
 } from './agendaTrainerSummary';
+
+type AlumnoSinColocarTablero = {
+  sesion_alumno_id: string;
+  alumno_id: string;
+  alumno: string;
+  estado_en_listado?: string;
+  nivel_usado?: string | null;
+};
 
 type AgendaScreenProps = {
   ctx: Record<string, any>;
@@ -463,6 +474,12 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
   const firmaSesionesSemanaTablero = idsSesionesSemanaTablero.join(',');
   const [extrasTablero, setExtrasTablero] = useState<Record<string, ExtrasSesion>>({});
   const [disponibilidadTablero, setDisponibilidadTablero] = useState<FilaDisponibilidad[]>([]);
+  // Niños sin colocar: el contador sale aquí y la tabla en SinColocarPanel.
+  const [verSinColocarSemana, setVerSinColocarSemana] = useState(false);
+  const [accionSinColocarPendiente, setAccionSinColocarPendiente] = useState<{
+    sesionId: string;
+    sesionAlumnoId: string;
+  } | null>(null);
 
   async function cargarExtrasTableroSemana() {
     if (!semanaAgendaActiva) {
@@ -479,20 +496,20 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
       ids.length
         ? consultarSupabase(
             'v_sesion_alumnos_operativa_app',
-            `select=sesion_id,alumno_id,estado_en_listado,estado_ficha&sesion_id=in.(${ids.join(',')})`
+            `select=sesion_id,sesion_alumno_id,alumno_id,alumno,estado_en_listado,estado_ficha,nivel_usado&sesion_id=in.(${ids.join(',')})`
           )
         : Promise.resolve([]),
       ids.length
         ? consultarSupabase(
             'v_grupos_sesion_operativa_app',
-            `select=sesion_id,grupo_id,publicado,estado_confirmacion,entrenador_id&sesion_id=in.(${ids.join(',')})`
+            `select=sesion_id,grupo_id,publicado,estado_confirmacion,entrenador_id,alumnos_lista&sesion_id=in.(${ids.join(',')})`
           )
         : Promise.resolve([]),
       ejecutarFuncionAuthJson('obtener_disponibilidad_publicada_entrenadores_editor_app', {
         p_semana_inicio: semanaAgendaActiva,
       }),
     ]);
-    const filasRoster: Array<{ sesion_id: string; alumno_id: string; estado_en_listado?: string; estado_ficha?: string }> =
+    const filasRoster: Array<AlumnoSinColocarTablero & { sesion_id: string; estado_ficha?: string }> =
       roster.status === 'fulfilled' && Array.isArray(roster.value) ? (roster.value as any[]) : [];
     filasRoster.forEach((f) => {
       const ex = nuevos[String(f.sesion_id)];
@@ -506,6 +523,22 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
         const ex = nuevos[String(g.sesion_id)];
         if (!ex) return;
         if (g.publicado && g.entrenador_id && String(g.estado_confirmacion || '').toLowerCase() !== 'confirmado') ex.sinConfirmar += 1;
+      });
+    }
+    // Sin colocar: solo cuenta en sesiones que ya tienen grupos (igual que dentro de la sesión).
+    if (grupos.status === 'fulfilled' && Array.isArray(grupos.value)) {
+      const gruposPorSesion: Record<string, Array<{ alumnos_lista?: string | null }>> = {};
+      (grupos.value as Array<{ sesion_id: string; grupo_id?: string | null; alumnos_lista?: string | null }>).forEach((g) => {
+        if (!g.grupo_id) return;
+        (gruposPorSesion[String(g.sesion_id)] ||= []).push(g);
+      });
+      Object.keys(nuevos).forEach((id) => {
+        const pendientes = pendingAgendaStudents(
+          filasRoster.filter((f) => String(f.sesion_id) === id),
+          gruposPorSesion[id] || [],
+          normalizarNombreAlumnoAgendaApp
+        );
+        if (pendientes.length) nuevos[id].sinColocar = pendientes.length;
       });
     }
     const alumnoIds = Array.from(new Set(filasRoster.map((f) => String(f.alumno_id)).filter(Boolean)));
@@ -546,6 +579,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     pendientesTablero.pendientes.find((p) => agendaSesionActivaId && idSesionDbTablero(p.sesion) === agendaSesionActivaId)
       ?.sesion.id || '';
   const siguientePendienteTablero = siguientePendiente(pendientesTablero.pendientes, sesionAbiertaTablero);
+  const anteriorPendienteTablero = anteriorPendiente(pendientesTablero.pendientes, sesionAbiertaTablero);
 
   function abrirPendienteTablero(p: PendienteSesion<SesionAgendaOperativa> | null, motivo?: MotivoPendiente) {
     if (!p) return;
@@ -772,6 +806,59 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
       alumnoId: alumno.alumno_id,
     });
   }
+
+  // «Colocar» desde la ventana de la semana: abre la sesión y, en cuanto su
+  // listado está cargado, lanza la misma acción que el botón de dentro.
+  useEffect(() => {
+    if (!accionSinColocarPendiente) return;
+    const limite = window.setTimeout(() => setAccionSinColocarPendiente(null), 10000);
+    return () => window.clearTimeout(limite);
+  }, [accionSinColocarPendiente]);
+
+  useEffect(() => {
+    const accion = accionSinColocarPendiente;
+    if (!accion || agendaSesionActivaId !== accion.sesionId) return;
+    const cargada = (agendaAlumnosSesion as any[]).some((a) => String(a.sesion_id) === accion.sesionId);
+    if (!cargada) return;
+    setAccionSinColocarPendiente(null);
+    setAgendaMostrarPendientesColocar(true);
+    const alumno = alumnosPendientesColocar.find(
+      (a) => String(a.sesion_alumno_id) === accion.sesionAlumnoId
+    );
+    if (!alumno) {
+      requestAnimationFrame(() =>
+        document.getElementById('agenda-pendientes-colocar')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      );
+      return;
+    }
+    if (alumno.estado_en_listado === 'PENDIENTE_TEST') abrirAltaTestDesdeAgenda(alumno);
+    else abrirBusquedaGrupoParaAlumnoPendiente(alumno);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [accionSinColocarPendiente, agendaSesionActivaId, agendaAlumnosSesion, alumnosPendientesColocar.length]);
+
+  // «Abrir sesión» / «Crear Alta / Test» desde la tabla de sin colocar: abre
+  // la sesión y lanza la acción de ese niño en cuanto su listado carga.
+  function abrirSesionDesdeSinColocar(sesionId: string, sesionAlumnoId?: string) {
+    const p = pendientesTablero.pendientes.find((x) => idSesionDbTablero(x.sesion) === sesionId);
+    if (!p) return;
+    setVerSinColocarSemana(false);
+    setAccionSinColocarPendiente({ sesionId, sesionAlumnoId: sesionAlumnoId || '' });
+    abrirPendienteTablero(p, 'sin_colocar');
+  }
+
+  // Sesiones de la semana con su id real (para la tabla de sin colocar).
+  const sesionesPlanSinColocar: SesionPlan[] = diasTableroSemana.flatMap(
+    (d: { fecha: string; sesiones: SesionAgendaOperativa[] }) =>
+      d.sesiones
+        .filter((s) => idSesionDbTablero(s))
+        .map((s) => ({
+          sesionId: idSesionDbTablero(s),
+          fecha: d.fecha,
+          hora_inicio: String(s.hora_inicio || ''),
+          hora_fin: String(s.hora_fin || ''),
+          modalidad: String(s.modalidad || ''),
+        }))
+  );
 
   return (
     <>
@@ -1117,12 +1204,16 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                 key={m}
                                 type="button"
                                 className={`ag-chip ag-chip--${m}`}
-                                onClick={() =>
+                                onClick={() => {
+                                  if (m === 'sin_colocar') {
+                                    setVerSinColocarSemana(true);
+                                    return;
+                                  }
                                   abrirPendienteTablero(
                                     siguientePendiente(pendientesTablero.pendientes, '', m),
                                     m
-                                  )
-                                }
+                                  );
+                                }}
                               >
                                 <strong>{pendientesTablero.contadores[m]}</strong>{' '}
                                 {ETIQUETA_MOTIVO[m][pendientesTablero.contadores[m] === 1 ? 0 : 1]}
@@ -1312,9 +1403,22 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                       <div className="ag-sesion-titulo">{sesion.titulo}</div>
                                       {(() => {
                                         const ex = extrasTablero[idSesionDbTablero(sesion)];
-                                        if (!ex || (!ex.revisar && !ex.notas && !ex.sinConfirmar)) return null;
+                                        if (!ex || (!ex.revisar && !ex.notas && !ex.sinConfirmar && !ex.sinColocar)) return null;
                                         return (
                                           <div className="ag-avisos">
+                                            {Number(ex.sinColocar || 0) > 0 && (
+                                              <button
+                                                type="button"
+                                                className="ag-aviso ag-aviso--colocar"
+                                                title="Niños en el listado que no están en ningún grupo"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setVerSinColocarSemana(true);
+                                                }}
+                                              >
+                                                📌 {ex.sinColocar} sin colocar
+                                              </button>
+                                            )}
                                             {ex.revisar > 0 && (
                                               <span className="ag-aviso ag-aviso--revisar" title="Niños nuevos (pendientes de test) o con la ficha sin completar">
                                                 🆕 {ex.revisar} por revisar
@@ -1450,6 +1554,21 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
           {/* El panel cuelga de <body>: dentro de la Agenda una animación general
               (miticoFadeUp) deja un transform que lo «atrapaba» y la barra de
               Volver/Cerrar quedaba fuera de la pantalla. */}
+          <SinColocarPanel
+            abierta={verSinColocarSemana}
+            onCerrar={() => setVerSinColocarSemana(false)}
+            sesiones={sesionesPlanSinColocar}
+            hoyIso={hoyTableroSemana}
+            consultarSupabase={consultarSupabase}
+            ejecutarFuncionAuthJson={ejecutarFuncionAuthJson}
+            normalizarNombre={normalizarNombreAlumnoAgendaApp}
+            onAbrirSesion={abrirSesionDesdeSinColocar}
+            onCambios={async () => {
+              await cargarAgendaOperativaDirecta();
+              await Promise.all([cargarAsignacionesEntrenadoresSemana(), cargarExtrasTableroSemana()]);
+            }}
+            soloLectura={Boolean(ctx.esSoloConsultaUsuarioApp)}
+          />
           {(agendaFormularioAbierto || agendaSesionActivaId) && typeof document !== 'undefined' && createPortal(
             <section
               id="trabajo-agenda"
@@ -1462,14 +1581,44 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                   type="button"
                   className="ag-trabajo-volver"
                   onClick={cerrarPanelTrabajoAgenda}
+                  aria-label="Cerrar y volver al tablero"
                 >
-                  ← Volver
+                  ✕
                 </button>
                 <h3>
                   {agendaFormularioAbierto
                     ? 'Pegar listado'
-                    : 'Sesión abierta'}
+                    : (() => {
+                        // Día y turno de la sesión abierta, para saber siempre cuál es.
+                        const dia = diasTableroSemana.find((d: { sesiones: SesionAgendaOperativa[] }) =>
+                          d.sesiones.some((x) => idSesionDbTablero(x) === agendaSesionActivaId)
+                        );
+                        const ses = dia?.sesiones.find((x: SesionAgendaOperativa) => idSesionDbTablero(x) === agendaSesionActivaId);
+                        if (!dia || !ses) return 'Sesión abierta';
+                        const nombreDia = new Date(`${dia.fecha}T12:00:00`).toLocaleDateString('es-ES', {
+                          weekday: 'long',
+                          day: '2-digit',
+                          month: '2-digit',
+                        });
+                        return (
+                          <>
+                            {nombreDia.charAt(0).toUpperCase() + nombreDia.slice(1)} · {String(ses.hora_inicio || '').slice(0, 5)}–
+                            {String(ses.hora_fin || '').slice(0, 5)}
+                            <span className="ag-trabajo-modalidad">{ses.modalidad}</span>
+                          </>
+                        );
+                      })()}
                 </h3>
+                {!agendaFormularioAbierto && anteriorPendienteTablero && (
+                  <button
+                    type="button"
+                    className="ag-trabajo-anterior"
+                    onClick={() => abrirPendienteTablero(anteriorPendienteTablero)}
+                    title="Volver a la sesión pendiente anterior"
+                  >
+                    ← Anterior
+                  </button>
+                )}
                 {!agendaFormularioAbierto && siguientePendienteTablero && (
                   <button
                     type="button"
