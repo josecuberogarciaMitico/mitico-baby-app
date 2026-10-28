@@ -21136,6 +21136,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       {pantalla === 'agenda' && (
         <AgendaScreen
           ctx={{
+            esSoloConsultaUsuarioApp,
             abrirAltaTestDesdeAgenda,
             abrirFormularioAgendaDia,
             abrirSesionAgenda,
