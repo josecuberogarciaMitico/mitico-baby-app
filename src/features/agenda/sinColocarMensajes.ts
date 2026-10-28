@@ -5,9 +5,9 @@
 // colocar al niño en cuanto confirmen.
 
 import { normalizeWhatsappPhone } from '../../core/communications/whatsappContract';
-import { normalizarTelefono, type OpcionPlan, type UnidadPlan } from './sinColocarPlanner';
+import { normalizarTelefono, type AlumnoPlan, type OpcionPlan, type UnidadPlan } from './sinColocarPlanner';
 
-export type OpcionEnviada = { sesionId: string; etiqueta: string };
+export type OpcionEnviada = { sesionId: string; etiqueta: string; familia?: boolean };
 
 export type EstadoPropuesta = 'ENVIADO' | 'ACEPTADO' | 'RECHAZADO' | 'COLOCADO' | 'DESCARTADO';
 
@@ -79,8 +79,26 @@ export function necesitaMensaje(u: UnidadPlan) {
   return !enSuTurno && opcionesParaFamilia(u).length > 0;
 }
 
-function nombresPila(u: UnidadPlan) {
-  const nombres = u.miembros.map((m) => {
+/** Niños a los que afecta la propuesta: los sin colocar y, si alguna opción
+ * mueve a toda la familia, también sus hermanos ya colocados. */
+export function ninosDePropuesta(u: UnidadPlan, opciones: OpcionPlan[] = u.opciones): AlumnoPlan[] {
+  const vistos = new Set(u.miembros.map((m) => m.sesionAlumnoId));
+  const extra: AlumnoPlan[] = [];
+  opciones
+    .filter((o) => o.familia)
+    .forEach((o) =>
+      o.colocaciones.forEach((c) => {
+        if (!vistos.has(c.alumno.sesionAlumnoId)) {
+          vistos.add(c.alumno.sesionAlumnoId);
+          extra.push(c.alumno);
+        }
+      })
+    );
+  return [...u.miembros, ...extra];
+}
+
+function nombresPila(lista: AlumnoPlan[]) {
+  const nombres = lista.map((m) => {
     const p = String(m.alumno || '').trim().toLowerCase().split(/\s+/)[0] || '';
     return p.charAt(0).toUpperCase() + p.slice(1);
   });
@@ -125,8 +143,9 @@ function etiquetaCorta(fecha: string, inicio: string, fin: string) {
 }
 
 export function textoPropuestaFamilia(u: UnidadPlan, opciones: OpcionPlan[], enlace?: string) {
-  const quien = nombresPila(u);
-  const varios = u.miembros.length > 1;
+  const ninos = ninosDePropuesta(u, opciones);
+  const quien = nombresPila(ninos);
+  const varios = ninos.length > 1;
   const o = u.origen;
   const lineas = opciones.map(
     (op, i) => `${NUMEROS[i] || `${i + 1}.`} ${etiquetaCorta(op.sesion.fecha, op.sesion.hora_inicio, op.sesion.hora_fin)}`

@@ -86,8 +86,8 @@ test('hermano colocado en su mismo turno: no se le separa sin avisar', () => {
     telefonos: { x: '600111222', y: '600111222' },
   });
   equal(plan[0].hermanos.length, 1, 'detecta hermano');
-  equal(plan[0].propuesta, null, 'no propone separarlos');
-  const dom = plan[0].opciones.find((o) => o.sesion.sesionId === 'dom1')!;
+  equal(plan[0].propuesta!.familia, true, 'propone mover a los dos juntos, no separarlos');
+  const dom = plan[0].opciones.find((o) => o.sesion.sesionId === 'dom1' && !o.familia)!;
   equal(dom.estado, 'REVISAR', 'mover solo a uno = revisar');
   equal(dom.avisos[0].startsWith('Separa de su hermano'), true, 'avisa');
 });
@@ -203,4 +203,25 @@ test('hermanos con los dos apellidos iguales aunque cambie el teléfono', () => 
   );
   equal((h.i || []).sort().join(), 'a,j', 'Inés con Ana y Jaime');
   equal(h.x, undefined, 'un solo apellido igual y otro teléfono: no');
+});
+
+test('hermanos ya colocados en su turno: propone mover a toda la familia junta', () => {
+  const plan = planificarSinColocar({
+    sesiones,
+    grupos: [
+      { ...G('dom1', 'd1', 'A', 3), alumnosLista: '' },
+      { ...G('dom1', 'd2', 'B', 2, 'Grande'), alumnosLista: '' },
+      { ...G('sab1', 'full', 'A', 4), alumnosLista: '' },
+    ],
+    pendientes: [A('i', 'INES BALET CORELLA', 'sab2', 'A')],
+    listados: [A('i', 'INES BALET CORELLA', 'sab2', 'A'), A('j', 'JAIME BALET CORELLA', 'sab2', 'B')],
+    colocados: new Set(['j']),
+    telefonos: {},
+  });
+  const fam = plan[0].opciones.find((o) => o.familia)!;
+  equal(Boolean(fam), true, 'hay opción de familia');
+  equal(fam.sesion.sesionId, 'dom1', 'al domingo');
+  equal(fam.colocaciones.length, 2, 'Inés y Jaime');
+  equal(fam.colocaciones.find((c) => c.alumno.alumnoId === 'j')!.grupo.grupoId, 'd2', 'Jaime a su nivel');
+  equal(plan[0].propuesta!.familia, true, 'es la propuesta');
 });

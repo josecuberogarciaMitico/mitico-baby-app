@@ -16,6 +16,7 @@ import {
   etiquetaTurnoFamilia,
   enlaceElegirTurno,
   necesitaMensaje,
+  ninosDePropuesta,
   opcionesParaFamilia,
   turnosOfrecibles,
   propuestaDeUnidad,
@@ -46,6 +47,8 @@ type Props = {
   normalizarNombre: (valor: string | null | undefined) => string;
   onAbrirSesion: (sesionId: string, sesionAlumnoId?: string) => void;
   onCambios: () => Promise<void> | void;
+  /** «Avisar cambios y pedir reconfirmación» de un grupo publicado que ha perdido niños. */
+  avisarCambioGrupo?: (grupoId: string) => Promise<void>;
   soloLectura: boolean;
 };
 
@@ -226,9 +229,11 @@ export function SinColocarPanel(props: Props) {
     const opciones: OpcionEnviada[] = ops.map((o) => ({
       sesionId: o.sesion.sesionId,
       etiqueta: etiquetaTurnoFamilia(o.sesion.fecha, o.sesion.hora_inicio, o.sesion.hora_fin),
+      ...(o.familia ? { familia: true } : {}),
     }));
     try {
-      for (const m of u.miembros) {
+      // También los hermanos ya colocados si se ofrece mover a toda la familia.
+      for (const m of ninosDePropuesta(u, ops)) {
         await props.ejecutarFuncionAuthJson('registrar_propuesta_cambio_turno_app', {
           p_sesion_alumno_id: m.sesionAlumnoId,
           p_alumno_id: m.alumnoId,
@@ -248,7 +253,7 @@ export function SinColocarPanel(props: Props) {
   async function responderPropuesta(u: UnidadPlan, estado: 'ACEPTADO' | 'RECHAZADO' | 'COLOCADO' | 'DESCARTADO' | 'ENVIADO', opcion?: OpcionEnviada) {
     if (!tablaPropuestasLista || props.soloLectura || !datos) return;
     try {
-      for (const m of u.miembros) {
+      for (const m of ninosDePropuesta(u)) {
         await props.ejecutarFuncionAuthJson('responder_propuesta_cambio_turno_app', {
           p_sesion_alumno_id: m.sesionAlumnoId,
           p_estado: estado,
@@ -345,7 +350,26 @@ export function SinColocarPanel(props: Props) {
     return u.opciones.find((o) => o.clave === clave) || u.propuesta;
   }
 
-  async function aplicarOpcion(o: OpcionPlan) {
+  async function aplicarOpcion(o: OpcionPlan): Promise<string[]> {
+    if (o.familia) {
+      // Toda la familia de una vez (saca a los hermanos colocados de su grupo
+      // y los pasa a todos al turno elegido). Si falla uno, no se mueve nadie.
+      const r = await props.ejecutarFuncionAuthJson('mover_familia_entre_turnos_app', {
+        p_movimientos: o.colocaciones.map((c) => ({
+          sesion_alumno_id: c.alumno.sesionAlumnoId,
+          sesion_destino_id: o.sesion.sesionId,
+          grupo_destino_id: c.grupo.grupoId,
+        })),
+      });
+      const notas: string[] = [];
+      for (const g of (r?.grupos_origen || []) as Array<{ grupo_id: string; nombre: string; publicado: boolean; quedan: number }>) {
+        if (Number(g.quedan) === 0) notas.push(`«${g.nombre}» se ha quedado vacío: bórralo o pásale niños.`);
+        else if (Number(g.quedan) === 1) notas.push(`«${g.nombre}» se ha quedado con 1 niño: hazlo particular o muévelo.`);
+        if (g.publicado && props.avisarCambioGrupo) await props.avisarCambioGrupo(g.grupo_id);
+        else if (g.publicado) notas.push(`«${g.nombre}» estaba publicado: avisa al entrenador desde su sesión.`);
+      }
+      return notas;
+    }
     for (const c of o.colocaciones) {
       const m = c.alumno;
       if (o.sesion.sesionId === m.sesionId) {
@@ -366,6 +390,7 @@ export function SinColocarPanel(props: Props) {
         });
       }
     }
+    return [];
   }
 
   function padresAceptan(u: UnidadPlan, o: OpcionPlan) {
@@ -377,6 +402,10 @@ export function SinColocarPanel(props: Props) {
     const lineas = o.colocaciones.map(
       (c) => `• ${c.alumno.alumno} → ${c.grupo.nombre} (${c.totalFinal}/${c.maximo})`
     );
+    if (o.familia) {
+      const yaColocados = o.colocaciones.filter((c) => !u.miembros.some((m) => m.sesionAlumnoId === c.alumno.sesionAlumnoId));
+      lineas.push(`\nSe saca de su grupo de ${etiquetaTurno(u.origen)} a: ${yaColocados.map((c) => c.alumno.alumno).join(', ')}.`);
+    }
     const avisos = [
       ...(o.mismoTurno
         ? []
@@ -397,10 +426,13 @@ export function SinColocarPanel(props: Props) {
     setError('');
     setMensaje('');
     try {
-      await aplicarOpcion(o);
+      const notas = await aplicarOpcion(o);
       const prop = propuestaDeUnidad(u, propuestas);
       if (prop) await responderPropuesta(u, prop.estado === 'ACEPTADO' || !o.mismoTurno ? 'COLOCADO' : 'DESCARTADO');
-      setMensaje(`✓ ${u.miembros.map((m) => m.alumno).join(' y ')} colocado${u.miembros.length > 1 ? 's' : ''} en ${o.colocaciones.map((c) => c.grupo.nombre).join(' / ')} · ${etiquetaTurno(o.sesion)}.`);
+      const quienes = o.colocaciones.map((c) => c.alumno.alumno);
+      setMensaje(
+        `✓ ${quienes.join(' y ')} ${quienes.length > 1 ? 'colocados' : 'colocado'} · ${etiquetaTurno(o.sesion)}.${notas.length ? ` ${notas.join(' ')}` : ''}`
+      );
       await props.onCambios();
       await cargar();
     } catch (e) {
@@ -530,7 +562,9 @@ export function SinColocarPanel(props: Props) {
                   title={o.avisos.join(' ')}
                 >
                   {activo ? '✓ ' : ''}
+                  {o.familia ? '👨‍👧 ' : ''}
                   {etiquetaTurno(o.sesion)}
+                  {o.familia ? ' (todos)' : ''}
                   {separa ? ' ⚠ hermano' : ''}
                 </button>
               );
@@ -673,7 +707,9 @@ export function SinColocarPanel(props: Props) {
                           <span className="ag-cf-estado">{ETIQUETA_ESTADO[o.estado]}</span>
                           <strong>
                             {o.mismoTurno ? 'Su turno' : `→ ${etiquetaTurno(o.sesion)}`} ·{' '}
-                            {o.colocaciones.map((c) => `${c.grupo.nombre} (${c.totalFinal}/${c.maximo})`).join(' / ')}
+                            {o.familia
+                              ? o.colocaciones.map((c) => `${c.alumno.alumno.split(' ')[0]} → ${c.grupo.nombre} (${c.totalFinal}/${c.maximo})`).join(' · ')
+                              : o.colocaciones.map((c) => `${c.grupo.nombre} (${c.totalFinal}/${c.maximo})`).join(' / ')}
                           </strong>
                           {o.avisos.map((a) =>
                             a.startsWith('Cambio de turno') && padresAceptan(u, o) ? (
@@ -702,7 +738,8 @@ export function SinColocarPanel(props: Props) {
                           {u.opciones.slice(0, 8).map((op) => (
                             <option key={op.clave} value={op.clave}>
                               {ETIQUETA_ESTADO[op.estado]} · {op.mismoTurno ? 'Su turno' : etiquetaTurno(op.sesion)} ·{' '}
-                              {op.colocaciones.map((c) => `${c.grupo.nombre} ${c.totalFinal}/${c.maximo}`).join(' / ')}
+                              {op.familia ? '👨‍👧 Toda la familia · ' : ''}
+                              {op.colocaciones.map((c) => `${op.familia ? `${c.alumno.alumno.split(' ')[0]} ` : ''}${c.grupo.nombre} ${c.totalFinal}/${c.maximo}`).join(' / ')}
                             </option>
                           ))}
                         </optgroup>
@@ -729,7 +766,7 @@ export function SinColocarPanel(props: Props) {
                       disabled={!o || Boolean(aplicando)}
                       onClick={() => void aplicarUna(u)}
                     >
-                      {aplicando === u.clave ? 'Colocando…' : o && !o.mismoTurno ? 'Cambiar turno y colocar' : 'Colocar'}
+                      {aplicando === u.clave ? 'Colocando…' : o?.familia ? 'Mover a toda la familia' : o && !o.mismoTurno ? 'Cambiar turno y colocar' : 'Colocar'}
                     </button>
                   )}
                   <button
