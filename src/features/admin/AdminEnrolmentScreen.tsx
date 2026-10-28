@@ -1365,8 +1365,19 @@ export function AdminEnrolmentScreen({ ctx }: AdminEnrolmentScreenProps) {
                             )}
                           </div>
 
-                          {respondido && (
+                          {(respondido ||
+                            ((validado || anadido || descartado) &&
+                              Boolean(
+                                alta.respuesta_experiencia ||
+                                  alta.respuesta_tecnica ||
+                                  alta.respuesta_pista
+                              ))) && (
                             <>
+                              {!respondido && (
+                                <strong style={{ color: '#334155', fontSize: 15 }}>
+                                  Lo que contestó la familia
+                                </strong>
+                              )}
                               <div
                                 style={{
                                   display: 'grid',
@@ -1595,7 +1606,7 @@ export function AdminEnrolmentScreen({ ctx }: AdminEnrolmentScreenProps) {
                                 </p>
                               </div>
 
-                              {esCoordinadorJefeApp ? (
+                              {!respondido ? null : esCoordinadorJefeApp ? (
                                 <div
                                   style={{
                                     display: 'grid',
