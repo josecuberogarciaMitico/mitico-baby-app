@@ -1542,7 +1542,11 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                 <p style={{ marginBottom: 0 }}>
                   {tabVistaEntrenador === 'disponibilidad'
                     ? proximaDisponibilidadSinAbrir
-                      ? `Esta semana ya estás organizado: tus grupos están en «Grupos y reportes». La disponibilidad de la semana que viene (${rangoSemanaAgenda(
+                      ? `${
+                          Number(totalGruposVistaEntrenador || 0) > 0
+                            ? 'Esta semana ya estás organizado: tus grupos están en «Grupos y reportes».'
+                            : 'Esta semana no tienes grupos asignados y no tienes que hacer nada.'
+                        } La disponibilidad de la semana que viene (${rangoSemanaAgenda(
                           semanaDisponibilidadVistaEntrenadorInicio
                         )}) todavía no está abierta; cuando Jose la publique te llegará un aviso.`
                       : disponibilidadEditorVista?.estado === 'sin_publicar'
