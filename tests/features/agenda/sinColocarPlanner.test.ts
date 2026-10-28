@@ -163,3 +163,30 @@ test('mover a mano: lista todos los grupos con su encaje', () => {
   equal(lista.length, 2, 'todos');
   equal(lista[0].estado, 'NO_ENCAJA', 'lleno');
 });
+
+test('nivel dentro del rango que ya tiene el grupo (B+ en un grupo B/C): encaja', () => {
+  const g = { ...G('sab1', 'g9', 'B / C', 4, 'Grande'), alumnosLista: 'X · B · Grande || Y · C · Grande' };
+  const lista = gruposParaElegir(A('x', 'AYDI', 'sab1', 'B+'), sesiones, [g], true);
+  equal(lista[0].estado, 'RECOMENDADO', 'encaja');
+  const fuera = gruposParaElegir(A('y', 'TERE', 'sab1', 'INICIACION'), sesiones, [g], true);
+  equal(fuera[0].estado, 'NO_ENCAJA', 'iniciación sigue sin encajar');
+});
+
+test('caso real: hermanos del viernes (B+ e iniciación) → sábado 09:45 encaja', () => {
+  const plan = planificarSinColocar({
+    sesiones,
+    grupos: [
+      { ...G('vie', 'v1', 'A / INICIACION', 4), alumnosLista: '' },
+      { ...G('vie', 'v2', 'INICIACION', 4), alumnosLista: '' },
+      { ...G('sab1', 's3', 'B / C', 4, 'Grande'), alumnosLista: 'X · B · Grande || Y · C · Grande' },
+      { ...G('sab1', 's2', 'INICIACION', 3), alumnosLista: '' },
+    ],
+    pendientes: [A('a', 'AYDI SANCHEZ JIMENEZ', 'vie', 'B+'), A('t', 'TERESA SANCHEZ JIMENEZ', 'vie', 'INICIACION')],
+    listados: [A('a', 'AYDI SANCHEZ JIMENEZ', 'vie', 'B+'), A('t', 'TERESA SANCHEZ JIMENEZ', 'vie', 'INICIACION')],
+    colocados: new Set(),
+    telefonos: { a: '600111222', t: '600111222' },
+  });
+  equal(plan.length, 1, 'una familia');
+  equal(plan[0].propuesta!.sesion.sesionId, 'sab1', 'sábado 09:45');
+  equal(plan[0].propuesta!.estado, 'RECOMENDADO', 'encaja');
+});

@@ -10,7 +10,7 @@
 //  - plazas: dos niños no se proponen en el último hueco del mismo grupo.
 
 import { recommendLevelCompatibility } from '../../core/recommendations/baseRecommendation';
-import { parseTechnicalLevel } from '../../core/levels/levelContract';
+import { parseTechnicalLevel, TECHNICAL_LEVEL_ORDER } from '../../core/levels/levelContract';
 import { babyGroupMaximum } from '../baby/babyPolicy';
 
 export type SesionPlan = {
@@ -161,10 +161,22 @@ export function evaluarEncaje(alumno: AlumnoPlan, grupo: GrupoPlan, extra = 0) {
   if (nivel.status !== 'VALID') {
     return { estado: 'NO_ENCAJA' as EstadoOpcion, score: 0, motivo: 'Sin nivel válido: revisa su ficha.', totalFinal, maximo };
   }
-  const comp = recommendLevelCompatibility(nivel.level, nivelesDelGrupo(grupo));
+  const nivelesGrupo = nivelesDelGrupo(grupo);
+  const comp = recommendLevelCompatibility(nivel.level, nivelesGrupo);
   let estado: EstadoOpcion = comp.status;
   let score = comp.score;
   let motivo = comp.reason;
+  // Si coordinación ya ha montado el grupo con esa mezcla (p. ej. B y C) y el
+  // niño está DENTRO de ese rango (B+), no abre más la diferencia: encaja.
+  if (estado !== 'RECOMENDADO' && nivelesGrupo.length) {
+    const ordenes = nivelesGrupo.map((n) => TECHNICAL_LEVEL_ORDER[n as keyof typeof TECHNICAL_LEVEL_ORDER]);
+    const propio = TECHNICAL_LEVEL_ORDER[nivel.level];
+    if (ordenes.every((o) => typeof o === 'number') && propio >= Math.min(...ordenes) && propio <= Math.max(...ordenes)) {
+      estado = 'RECOMENDADO';
+      score = 85;
+      motivo = 'Su nivel está dentro del rango que ya tiene el grupo.';
+    }
+  }
   if (totalFinal > maximo) {
     estado = 'NO_ENCAJA';
     score = 0;
@@ -320,10 +332,14 @@ export function planificarSinColocar(input: {
         if (mismoTurno) score += 30;
         else if (mismoDia) score += 15;
         if (!mismoTurno) {
-          if (esFinDeSemana(s.fecha) !== finde) {
+          // Quien eligió fin de semana quiere fin de semana. Al revés (de
+          // entre semana a fin de semana) suele venir bien: solo baja un poco.
+          if (finde && !esFinDeSemana(s.fecha)) {
             score -= 35;
-            avisos.push(finde ? 'Viene en fin de semana: esto es entre semana.' : 'Viene entre semana: esto es fin de semana.');
+            avisos.push('Viene en fin de semana: esto es entre semana.');
             if (estado === 'RECOMENDADO') estado = 'REVISAR';
+          } else if (!finde && esFinDeSemana(s.fecha)) {
+            score -= 5;
           } else {
             score += 10;
           }
