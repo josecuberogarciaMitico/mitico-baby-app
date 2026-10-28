@@ -55,6 +55,23 @@ export function opcionesParaFamilia(u: UnidadPlan, maximo = 3, primera?: OpcionP
   return lista;
 }
 
+/**
+ * Todos los turnos que se le podrían ofrecer a la familia (otro turno, sin
+ * «No encaja»), también los que separan de un hermano (marcados con aviso):
+ * coordinación elige cuáles van en el mensaje.
+ */
+export function turnosOfrecibles(u: UnidadPlan, maximo = 6): OpcionPlan[] {
+  const vistas = new Set<string>();
+  const lista: OpcionPlan[] = [];
+  for (const o of u.opciones) {
+    if (o.mismoTurno || o.estado === 'NO_ENCAJA' || vistas.has(o.sesion.sesionId)) continue;
+    vistas.add(o.sesion.sesionId);
+    lista.push(o);
+    if (lista.length >= maximo) break;
+  }
+  return lista;
+}
+
 /** ¿Hace falta escribir a la familia? Solo si no hay sitio bueno en su turno. */
 export function necesitaMensaje(u: UnidadPlan) {
   if (u.bloqueo) return false;

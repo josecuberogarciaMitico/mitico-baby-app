@@ -190,3 +190,17 @@ test('caso real: hermanos del viernes (B+ e iniciación) → sábado 09:45 encaj
   equal(plan[0].propuesta!.sesion.sesionId, 'sab1', 'sábado 09:45');
   equal(plan[0].propuesta!.estado, 'RECOMENDADO', 'encaja');
 });
+
+test('hermanos con los dos apellidos iguales aunque cambie el teléfono', () => {
+  const h = detectarHermanos(
+    [
+      { alumnoId: 'i', alumno: 'INES BALET CORELLA' },
+      { alumnoId: 'a', alumno: 'ANA BALET CORELLA' },
+      { alumnoId: 'j', alumno: 'JAIME BALET CORELLA' },
+      { alumnoId: 'x', alumno: 'PEDRO BALET RUIZ' },
+    ],
+    { i: '649113012', a: '625012602', j: '625012602', x: '600000000' }
+  );
+  equal((h.i || []).sort().join(), 'a,j', 'Inés con Ana y Jaime');
+  equal(h.x, undefined, 'un solo apellido igual y otro teléfono: no');
+});
