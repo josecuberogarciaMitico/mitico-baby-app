@@ -30,7 +30,7 @@
 }
 .ct-opcion:active { transform: scale(.98); }
 .ct-opcion.is-activa { border-color: #16a34a; background: #f0fdf4; }
-.ct-opcion-icono { font-size: 30px; width: 40px; text-align: center; }
+
 .ct-opcion-texto { display: grid; gap: 2px; flex: 1; }
 .ct-opcion-texto strong { font-size: 20px; color: #0f172a; }
 .ct-opcion-texto span { font-size: 15px; color: #475569; font-weight: 700; }
@@ -58,7 +58,7 @@
   display: flex; align-items: center; gap: 12px; padding: 12px 18px; border-radius: 16px; background: #f0fdf4;
   border: 2px solid #86efac; text-align: left;
 }
-.ct-resumen-icono { font-size: 30px; }
+
 .ct-resumen strong { display: block; font-size: 18px; color: #0f172a; }
 .ct-resumen span { font-size: 15px; color: #166534; font-weight: 800; }
 .ct-pie { margin: 0; color: #94a3b8; font-size: 13px; }

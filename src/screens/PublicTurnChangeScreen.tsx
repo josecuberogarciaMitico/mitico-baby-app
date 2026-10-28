@@ -26,13 +26,11 @@ function unirNombres(nombres: string[]) {
 // «sábado 31/10 de 09:45 a 11:45» → partes para la tarjeta.
 function partes(etiqueta: string) {
   const m = String(etiqueta || '').match(/^(\S+)\s+(\S+)\s+de\s+(\d{1,2}:\d{2})\s+a\s+(\d{1,2}:\d{2})/i);
-  if (!m) return { dia: etiqueta, fecha: '', hora: '', icono: '📅' };
-  const h = Number(m[3].split(':')[0]);
+  if (!m) return { dia: etiqueta, fecha: '', hora: '' };
   return {
     dia: m[1].charAt(0).toUpperCase() + m[1].slice(1),
     fecha: m[2],
     hora: `${m[3]} – ${m[4]}`,
-    icono: h < 12 ? '🌅' : h < 16 ? '☀️' : '🌙',
   };
 }
 
@@ -138,7 +136,6 @@ export function PantallaCambioTurnoPublicoApp({ token }: { token: string; opcion
             <h1 className="ct-titulo">{hecho === 'ACEPTADO' ? '¡Apuntado!' : 'Recibido'}</h1>
             {hecho === 'ACEPTADO' && p ? (
               <div className="ct-resumen">
-                <span className="ct-resumen-icono">{p.icono}</span>
                 <div>
                   <strong>
                     {p.dia} {p.fecha}
@@ -188,7 +185,6 @@ export function PantallaCambioTurnoPublicoApp({ token }: { token: string; opcion
                   onClick={() => setElegida(o.sesionId)}
                   aria-pressed={activa}
                 >
-                  <span className="ct-opcion-icono">{p.icono}</span>
                   <span className="ct-opcion-texto">
                     <strong>{p.dia}</strong>
                     <span>

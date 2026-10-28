@@ -56,7 +56,8 @@ test('opciones: otros turnos, primero fin de semana, máximo 3', () => {
 test('texto con los dos hermanos y las opciones numeradas', () => {
   const t = textoPropuestaFamilia(u, opcionesParaFamilia(u));
   equal(t.includes('Ana y Pablo (juntos)'), true, 'nombres');
-  equal(t.includes('sábado 31/10 · 12:00–14:00'), true, 'turno de origen');
+  equal(t.includes('El Sábado 31/10 · 12:00–14:00 no tenemos hueco'), true, 'turno de origen');
+  equal(t.startsWith('Hola familia 👋 Soy Jose de Mítico'), true, 'saludo');
   equal(t.includes('1️⃣ Sábado 31/10 · 09:45–11:45'), true, 'opción 1');
 });
 
@@ -78,6 +79,7 @@ test('propuesta vigente de la familia', () => {
 test('un solo enlace corto', () => {
   const t = textoPropuestaFamilia(u, opcionesParaFamilia(u), 'https://app.test/?turno=X');
   equal((t.match(/https:/g) || []).length, 1, 'un enlace');
+  equal(t.endsWith('(Cualquier cosa que necesitéis me decís 🙂)'), true, 'cierre');
   equal(t.includes('1️⃣ Sábado 31/10 · 09:45–11:45'), true, 'opción 1');
   const uuid = '97550714-9367-4c57-8e3a-b6c77d53376a';
   const corto = uuidACorto(uuid);

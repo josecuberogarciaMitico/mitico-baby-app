@@ -113,12 +113,12 @@ export function textoPropuestaFamilia(u: UnidadPlan, opciones: OpcionPlan[], enl
     (op, i) => `${NUMEROS[i] || `${i + 1}.`} ${etiquetaCorta(op.sesion.fecha, op.sesion.hora_inicio, op.sesion.hora_fin)}`
   );
   return (
-    `Hola familia 👋 Somos Mítico Baby.\n\n` +
-    `El ${etiquetaCorta(o.fecha, o.hora_inicio, o.hora_fin).toLowerCase()} no tenemos hueco en un grupo del nivel de ${quien}${varios ? ' (juntos)' : ''}. Os proponemos:\n\n` +
+    `Hola familia 👋 Soy Jose de Mítico\n\n` +
+    `El ${etiquetaCorta(o.fecha, o.hora_inicio, o.hora_fin)} no tenemos hueco en un grupo del nivel de ${quien}${varios ? ' (juntos)' : ''}. Os proponemos:\n\n` +
     `${lineas.join('\n')}\n\n` +
     (enlace
-      ? `👉 Elegid aquí con un toque:\n${enlace}\n\n(o contestadnos con el número 🙂)`
-      : `Contestadnos con el número y os confirmamos el grupo. ¡Gracias!`)
+      ? `👉 Elegid aquí con un toque:\n${enlace}\n\n(Cualquier cosa que necesitéis me decís 🙂)`
+      : `Contestadme con el número y os confirmo el grupo.\n\n(Cualquier cosa que necesitéis me decís 🙂)`)
   );
 }
 
