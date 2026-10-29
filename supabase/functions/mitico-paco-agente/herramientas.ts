@@ -741,6 +741,134 @@ async function prepararCerrarNota(ctx: Contexto, args: Fila) {
   return { propuesta_nota: propuesta, nota: "Jose verá un botón para borrarla. Dile cuál es y que pulse Confirmar." };
 }
 
+// ------------------------- más ojos (29/10) ----------------------------------
+
+async function entrenadoresActivos(ctx: Contexto) {
+  const [ents, usuarios] = await Promise.all([
+    ctx.db("entrenadores", { select: "id,nombre_completo,activo", activo: "eq.true", limit: "300" }),
+    ctx.db("usuarios_app", { select: "entrenador_id", activo: "eq.true", entrenador_id: "not.is.null", limit: "300" }),
+  ]);
+  const conAcceso = new Set(usuarios.map((u) => String(u.entrenador_id)));
+  return ents.filter((e) => conAcceso.has(String(e.id))).map((e) => ({ id: String(e.id), nombre: String(e.nombre_completo) }));
+}
+
+async function disponibilidadEntrenadores(ctx: Contexto, args: Fila) {
+  const fecha = fechaValida(args.fecha) || hoyMadrid();
+  const lunes = lunesDe(fecha);
+  const [sem] = await ctx.db("disponibilidad_semanas_editor", {
+    select: "id,semana_inicio,estado,publicada_at,fecha_limite_publicada", semana_inicio: `eq.${lunes}`, limit: "1",
+  });
+  if (!sem) return { semana: lunes, estado: "sin_preparar", texto: `La disponibilidad de la semana del ${lunes} todavía no está preparada.` };
+  if (sem.estado !== "publicado" || !sem.publicada_at) return { semana: lunes, estado: sem.estado, texto: "Está en preparación: los entrenadores aún no la ven." };
+  const [turnos, respuestas, ents] = await Promise.all([
+    ctx.db("disponibilidad_turnos_editor", { select: "turno_clave,fecha,hora_inicio,hora_fin,modalidades", semana_id: `eq.${sem.id}`, version_tipo: "eq.publicado", order: "fecha.asc,hora_inicio.asc", limit: "200" }),
+    ctx.db("disponibilidad_respuestas_editor", { select: "entrenador_id,turno_clave,respuesta,comentario", semana_id: `eq.${sem.id}`, limit: "5000" }),
+    entrenadoresActivos(ctx),
+  ]);
+  const resp = new Map(respuestas.map((r) => [`${r.entrenador_id}|${r.turno_clave}`, r]));
+  const porTurno = turnos.map((t) => {
+    const disponibles: string[] = [];
+    const noPueden: string[] = [];
+    for (const e of ents) {
+      const r = resp.get(`${e.id}|${t.turno_clave}`);
+      const v = norm(r?.respuesta);
+      if (v.startsWith("DISPONIBLE") || v.startsWith("SI")) disponibles.push(e.nombre + (r?.comentario ? ` («${String(r.comentario).slice(0, 60)}»)` : ""));
+      else if (v && v !== "PENDIENTE") noPueden.push(e.nombre);
+    }
+    return { turno: `${diaSemana(t.fecha)} ${t.fecha} ${hora(t.hora_inicio)}-${hora(t.hora_fin)}`, modalidades: t.modalidades, disponibles, no_pueden: noPueden.length };
+  });
+  const claves = new Set(turnos.map((t) => String(t.turno_clave)));
+  const sinResponder = ents
+    .map((e) => ({ e, pend: [...claves].filter((k) => { const v = norm(resp.get(`${e.id}|${k}`)?.respuesta); return !v || v === "PENDIENTE"; }).length }))
+    .filter((x) => x.pend > 0)
+    .map((x) => `${x.e.nombre} (le faltan ${x.pend} de ${claves.size})`);
+  return {
+    semana: lunes, estado: "publicado", limite: sem.fecha_limite_publicada || null,
+    entrenadores: ents.length, sin_responder: sinResponder, por_turno: porTurno,
+  };
+}
+
+async function avisosEntrenadores(ctx: Contexto, args: Fila) {
+  const dias = Math.min(Math.max(Number(args.dias) || 3, 1), 14);
+  const desde = new Date(Date.now() - dias * 86400000).toISOString();
+  const [ents, subs] = await Promise.all([
+    entrenadoresActivos(ctx),
+    ctx.db("push_subscriptions_app", { select: "entrenador_id", activo: "eq.true", limit: "1000" }),
+  ]);
+  const conAvisos = new Set(subs.map((x) => String(x.entrenador_id)));
+  let objetivo = ents;
+  if (args.nombre) {
+    const q = norm(args.nombre);
+    objetivo = ents.filter((e) => norm(e.nombre).includes(q) || q.split(" ").every((t) => norm(e.nombre).split(" ").includes(t)));
+    if (!objetivo.length) return { error: `No encuentro ningún entrenador activo que se llame «${args.nombre}».` };
+  }
+  const ids = objetivo.map((e) => e.id);
+  const log = ids.length ? await ctx.db("push_notificaciones_log_app", {
+    select: "entrenador_id,titulo,cuerpo,estado,created_at", entrenador_id: inLista(ids), created_at: `gte.${desde}`, order: "created_at.desc", limit: "300",
+  }) : [];
+  const hm = (iso: string) => new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+  return {
+    ultimos_dias: dias,
+    sin_avisos_activados: ents.filter((e) => !conAvisos.has(e.id)).map((e) => e.nombre),
+    por_entrenador: objetivo.slice(0, 40).map((e) => ({
+      entrenador: e.nombre,
+      avisos_activados: conAvisos.has(e.id),
+      avisos: log.filter((l) => String(l.entrenador_id) === e.id).slice(0, args.nombre ? 15 : 4)
+        .map((l) => `${hm(l.created_at)} · ${l.titulo}${args.nombre ? ` — ${String(l.cuerpo || "").slice(0, 120)}` : ""} · ${l.estado === "enviada" ? "le llegó al móvil" : l.estado === "sin_suscripcion" ? "NO (sin avisos activados)" : l.estado}`),
+    })).filter((x) => args.nombre || x.avisos.length || !x.avisos_activados),
+  };
+}
+
+async function altasTest(ctx: Contexto, _args: Fila) {
+  const filas = await ctx.db("altas_nivel_inicial_app", {
+    select: "nombre_completo,modalidad,estado,enviado_at,respondido_at,creado_at", estado: "in.(PENDIENTE_ENVIO,ENVIADO,RESPONDIDO,VALIDADO)", order: "creado_at.desc", limit: "200",
+  });
+  const dias = (iso: string | null) => (iso ? Math.floor((Date.now() - Date.parse(iso)) / 86400000) : null);
+  const corto = (f: Fila) => `${f.nombre_completo} (${f.modalidad})`;
+  return {
+    sin_enviar: filas.filter((f) => f.estado === "PENDIENTE_ENVIO").map(corto),
+    esperando_respuesta: filas.filter((f) => f.estado === "ENVIADO").map((f) => `${corto(f)} · enviado hace ${dias(f.enviado_at) ?? "?"} días`),
+    respondidos_por_revisar: filas.filter((f) => f.estado === "RESPONDIDO").map((f) => `${corto(f)} · respondió hace ${dias(f.respondido_at) ?? "?"} días`),
+    revisados_sin_anadir: filas.filter((f) => f.estado === "VALIDADO").map(corto),
+    nota: "Esto está en Altas / Test.",
+  };
+}
+
+async function intensivosEstado(ctx: Contexto, args: Fila) {
+  const hoy = hoyMadrid();
+  const dias = await ctx.db("intensivo_dias", { select: "id,intensivo_id,numero_dia,fecha,sesion_id", fecha: `gte.${sumarDias(hoy, -10)}`, order: "fecha.asc", limit: "200" });
+  let ids = [...new Set(dias.map((d) => String(d.intensivo_id)))];
+  if (!ids.length) return { intensivos: [], texto: "No hay intensivos en curso ni próximos." };
+  const intensivos = await ctx.db("intensivos", { select: "id,nombre,estado,lugar", id: inLista(ids) });
+  if (args.nombre) {
+    const q = norm(args.nombre);
+    ids = intensivos.filter((i) => norm(i.nombre).includes(q)).map((i) => String(i.id));
+    if (!ids.length) return { error: `No encuentro un intensivo próximo que se llame «${args.nombre}».` };
+  }
+  const todosDias = await ctx.db("intensivo_dias", { select: "id,intensivo_id,numero_dia,fecha,sesion_id", intensivo_id: inLista(ids), order: "numero_dia.asc" });
+  const sesIds = todosDias.map((d) => String(d.sesion_id || "")).filter((x) => UUID.test(x));
+  const [grupos, inscritos, recs] = await Promise.all([
+    sesIds.length ? ctx.db("grupos", { select: "sesion_id,publicado,cancelado", sesion_id: inLista(sesIds) }) : Promise.resolve([]),
+    ctx.db("intensivo_alumnos", { select: "intensivo_id", intensivo_id: inLista(ids), limit: "2000" }),
+    ctx.db("intensivo_recuperaciones", { select: "intensivo_origen_id,estado", intensivo_origen_id: inLista(ids), limit: "500" }),
+  ]);
+  return {
+    intensivos: intensivos.filter((i) => ids.includes(String(i.id))).map((i) => {
+      const ds = todosDias.filter((d) => String(d.intensivo_id) === String(i.id));
+      return {
+        intensivo: i.nombre, estado: i.estado, lugar: i.lugar,
+        ninos_inscritos: inscritos.filter((x) => String(x.intensivo_id) === String(i.id)).length,
+        recuperaciones_pendientes: recs.filter((r) => String(r.intensivo_origen_id) === String(i.id) && !["Resuelta", "Descartada"].includes(String(r.estado))).length,
+        dias: ds.map((d) => {
+          const gs = grupos.filter((g) => String(g.sesion_id) === String(d.sesion_id) && !g.cancelado);
+          const pub = gs.filter((g) => g.publicado).length;
+          return `Día ${d.numero_dia} · ${diaSemana(d.fecha)} ${d.fecha}: ${String(d.fecha) < hoy ? "hecho" : gs.length ? `${gs.length} grupos (${pub} publicados)` : "sin grupos"}`;
+        }),
+      };
+    }),
+  };
+}
+
 // ------------------------- gestiones (29/10) ---------------------------------
 // Más «manos» de Paco. Igual que el resto: prepara y comprueba, la app enseña
 // un botón Confirmar y solo entonces se hace, con la sesión de Jose.
@@ -954,6 +1082,38 @@ export const HERRAMIENTAS: { def: DefHerramienta; impl: Impl }[] = [
       name: "preparar_borrar_nota",
       description: "Prepara (sin hacerlo) borrar o dar por hecha una nota de Jose (nota_id de notas_de_jose). Jose lo confirma con un botón.",
       parameters: { type: "object", properties: { nota_id: { type: "string" } }, required: ["nota_id"] },
+    } },
+  },
+  {
+    impl: disponibilidadEntrenadores,
+    def: { type: "function", function: {
+      name: "disponibilidad_entrenadores",
+      description: "Disponibilidad publicada de los entrenadores para una semana (cualquier día de esa semana; por defecto la actual): quién puede en cada turno, cuántos no pueden y quién no ha contestado todo.",
+      parameters: { type: "object", properties: { fecha: FECHA } },
+    } },
+  },
+  {
+    impl: avisosEntrenadores,
+    def: { type: "function", function: {
+      name: "avisos_entrenadores",
+      description: "Avisos (push) que se han mandado a los entrenadores en los últimos días y si les llegaron al móvil; quién no tiene los avisos activados. Con nombre, el detalle de un entrenador.",
+      parameters: { type: "object", properties: { nombre: { type: "string" }, dias: { type: "integer", description: "1 a 14, por defecto 3" } } },
+    } },
+  },
+  {
+    impl: altasTest,
+    def: { type: "function", function: {
+      name: "altas_test",
+      description: "Estado de las altas y tests de nivel de niños nuevos: sin enviar, esperando respuesta de la familia (y desde cuándo), respondidos por revisar y revisados sin añadir.",
+      parameters: { type: "object", properties: {} },
+    } },
+  },
+  {
+    impl: intensivosEstado,
+    def: { type: "function", function: {
+      name: "intensivos",
+      description: "Intensivos en curso y próximos: niños inscritos, estado de cada día (sin grupos, grupos y cuántos publicados, hecho) y recuperaciones pendientes. Con nombre, solo ese intensivo.",
+      parameters: { type: "object", properties: { nombre: { type: "string" } } },
     } },
   },
   {
