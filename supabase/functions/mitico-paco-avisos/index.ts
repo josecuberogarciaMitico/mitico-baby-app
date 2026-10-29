@@ -15,6 +15,8 @@ import webpush from 'npm:web-push@3.6.7'
 //   (2) Jose con su sesion (rol coordinador_jefe).
 // - Con la cabecera secreta y action 'enviar_avisos_pendientes' manda por push
 //   los avisos CAMBIO_TURNO_FAMILIA que la base de datos ha creado (28/10).
+// - Con action 'tick' (cron cada 5 min) manda además los recordatorios de
+//   Secretaría que ya tocan (29/10).
 // ---------------------------------------------------------------------------
 
 const CORS = {
@@ -322,6 +324,64 @@ async function crearAvisoYEnviar(admin: any, resumen: Resumen | null, dedupeKey:
   return { duplicado: false, aviso_id: aviso.id, push_estado: push.estado, dispositivos: push.enviados }
 }
 
+// Avisos creados desde la base de datos (p. ej. una familia confirma el cambio
+// de turno desde su enlace) que aún no se han mandado por push.
+async function enviarAvisosPendientes(admin: any) {
+  const desde = new Date(Date.now() - 86400000).toISOString()
+  const { data: pendientes, error: pe } = await admin
+    .from('paco_avisos').select('id,tipo,titulo,cuerpo,dedupe_key,semana_inicio')
+    .is('push_estado', null).eq('tipo', 'CAMBIO_TURNO_FAMILIA').gte('created_at', desde)
+    .order('created_at', { ascending: true }).limit(20)
+  if (pe) throw pe
+  const resultados: unknown[] = []
+  for (const a of pendientes || []) {
+    const push = await enviarPush(admin, a.titulo, a.cuerpo, a.dedupe_key || `aviso:${a.id}`, a.tipo, a.semana_inicio)
+    await admin.from('paco_avisos')
+      .update({ push_estado: push.estado, push_dispositivos: push.enviados, error: push.error })
+      .eq('id', a.id)
+    resultados.push({ id: a.id, push_estado: push.estado })
+  }
+  return resultados
+}
+
+// Recordatorios de Secretaría (29/10): tareas con «Avisarme el … a las …» cuya
+// hora ya ha llegado (como mucho 1 día de retraso), no resueltas y sin avisar.
+// Cada tarea se «reserva» antes de enviar para no avisar dos veces.
+async function enviarRecordatoriosSecretaria(admin: any) {
+  const ahora = new Date()
+  const desde = new Date(ahora.getTime() - 86400000).toISOString()
+  const { data: tareas, error } = await admin
+    .from('secretaria_coordinacion').select('id,titulo,detalle,recordar_at')
+    .lte('recordar_at', ahora.toISOString()).gte('recordar_at', desde)
+    .is('recordatorio_enviado_at', null).neq('estado', 'resuelto')
+    .order('recordar_at', { ascending: true }).limit(20)
+  if (error) throw error
+  const resultados: unknown[] = []
+  for (const t of tareas || []) {
+    const { data: reservada, error: re } = await admin
+      .from('secretaria_coordinacion').update({ recordatorio_enviado_at: ahora.toISOString() })
+      .eq('id', t.id).is('recordatorio_enviado_at', null).select('id').maybeSingle()
+    if (re) throw re
+    if (!reservada) continue
+    const titulo = `⏰ ${String(t.titulo || 'Recordatorio').slice(0, 120)}`
+    const cuerpo = String(t.detalle || '').trim().slice(0, 400) || 'Recordatorio de Secretaría.'
+    const dedupe = `secretaria:${t.id}:${t.recordar_at}`
+    const { data: aviso, error: ae } = await admin
+      .from('paco_avisos')
+      .insert({ tipo: 'RECORDATORIO_SECRETARIA', titulo, cuerpo, dedupe_key: dedupe })
+      .select('id').maybeSingle()
+    if (ae && ae.code !== '23505') throw ae
+    const push = await enviarPush(admin, titulo, cuerpo, dedupe, 'RECORDATORIO_SECRETARIA', null)
+    if (aviso?.id) {
+      await admin.from('paco_avisos')
+        .update({ push_estado: push.estado, push_dispositivos: push.enviados, error: push.error })
+        .eq('id', aviso.id)
+    }
+    resultados.push({ id: t.id, push_estado: push.estado })
+  }
+  return resultados
+}
+
 // ---------- Handler ---------------------------------------------------------
 
 Deno.serve(async (req) => {
@@ -349,21 +409,14 @@ Deno.serve(async (req) => {
       // cambio de turno desde su enlace): se mandan por push los que aún no
       // se han enviado. No toca el resumen del martes.
       if (b?.action === 'enviar_avisos_pendientes') {
-        const desde = new Date(Date.now() - 86400000).toISOString()
-        const { data: pendientes, error: pe } = await admin
-          .from('paco_avisos').select('id,tipo,titulo,cuerpo,dedupe_key,semana_inicio')
-          .is('push_estado', null).eq('tipo', 'CAMBIO_TURNO_FAMILIA').gte('created_at', desde)
-          .order('created_at', { ascending: true }).limit(20)
-        if (pe) throw pe
-        const resultados: unknown[] = []
-        for (const a of pendientes || []) {
-          const push = await enviarPush(admin, a.titulo, a.cuerpo, a.dedupe_key || `aviso:${a.id}`, a.tipo, a.semana_inicio)
-          await admin.from('paco_avisos')
-            .update({ push_estado: push.estado, push_dispositivos: push.enviados, error: push.error })
-            .eq('id', a.id)
-          resultados.push({ id: a.id, push_estado: push.estado })
-        }
-        return json({ ok: true, enviados: resultados })
+        return json({ ok: true, enviados: await enviarAvisosPendientes(admin) })
+      }
+      // Cron cada 5 minutos: recordatorios de Secretaría que ya tocan + avisos
+      // pendientes creados por la base de datos.
+      if (b?.action === 'tick') {
+        const recordatorios = await enviarRecordatoriosSecretaria(admin)
+        const avisos = await enviarAvisosPendientes(admin)
+        return json({ ok: true, recordatorios, avisos })
       }
 
       const ahora = madridParts()
