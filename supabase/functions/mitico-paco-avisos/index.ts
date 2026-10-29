@@ -1,6 +1,24 @@
 import { createClient } from 'npm:@supabase/supabase-js@2.57.4'
 // @ts-types="npm:@types/web-push@3.6.4"
 import webpush from 'npm:web-push@3.6.7'
+import {
+  type MaterialDia,
+  type Pendiente,
+  fechaCorta,
+  horaDeAvisarEntrenador,
+  horaDeAvisarJose,
+  madridAMs,
+  textoJoseConfirmaciones,
+  textoMaterial,
+  textoRecordarConfirmar,
+  textoRecordarDisponibilidad,
+  textoSegundoAvisoReportes,
+  tocaAvisarJoseConfirmar,
+  tocaMaterial,
+  tocaRecordarConfirmar,
+  tocaRecordarDisponibilidad,
+  tocaSegundoAvisoReportes,
+} from './automaticos.ts'
 
 // ---------------------------------------------------------------------------
 // mitico-paco-avisos
@@ -17,6 +35,10 @@ import webpush from 'npm:web-push@3.6.7'
 //   los avisos CAMBIO_TURNO_FAMILIA que la base de datos ha creado (28/10).
 // - Con action 'tick' (cron cada 5 min) manda además los recordatorios de
 //   Secretaría que ya tocan y, a las 08:30, el parte de la mañana (29/10).
+// - En ese mismo tick Paco «persigue» por Jose (29/10, automaticos.ts):
+//   recuerda a los entrenadores los grupos sin confirmar, la disponibilidad
+//   sin contestar y los reportes atrasados (2º aviso), avisa a Jose si un
+//   grupo sigue sin confirmar a <12 h, y el viernes manda el material del finde.
 // ---------------------------------------------------------------------------
 
 const CORS = {
@@ -170,6 +192,13 @@ async function leerTodo(consulta: (desde: number, hasta: number) => PromiseLike<
 }
 
 async function calcularResumen(admin: any, ahora = madridParts()): Promise<Resumen | null> {
+  const datos = await datosDisponibilidad(admin, ahora)
+  if (!datos) return null
+  return construirResumen(datos.semanaInicio, datos.limite, datos.entrenadores, ahora)
+}
+
+// Semana de disponibilidad vigente y, por entrenador, cuántos turnos le faltan.
+async function datosDisponibilidad(admin: any, ahora = madridParts()) {
   const lun = mondayOf(ahora.y, ahora.m, ahora.d)
   const candidatas = [lun + 7 * 86400000, lun].map(isoDate) // siguiente y actual
 
@@ -243,7 +272,12 @@ async function calcularResumen(admin: any, ahora = madridParts()): Promise<Resum
     })
   }
 
-  return construirResumen(semanaInicio, aHoraMadrid(sem.fecha_limite_publicada), entrenadores, ahora)
+  return {
+    semanaInicio,
+    limite: aHoraMadrid(sem.fecha_limite_publicada),
+    limiteRaw: sem.fecha_limite_publicada ? String(sem.fecha_limite_publicada) : '',
+    entrenadores,
+  }
 }
 
 // ---------- Push ------------------------------------------------------------
@@ -413,10 +447,11 @@ export function textoParteManana(input: {
   }
   const hayAlgo = cortas.length > 0;
   if (!lineas.length) return null;
+  const sinColocar = input.dias.some((d) => d.turnos && d.sinColocar);
   return {
     titulo: hayAlgo ? 'Parte de la mañana: hay cosas pendientes' : 'Parte de la mañana: todo listo',
     cuerpoCorto: hayAlgo ? cortas.slice(0, 4).join(' · ') : 'Los próximos días están listos.',
-    cuerpoLargo: `Buenos días, señor Cubero. Esto es lo que hay:\n\n${lineas.join('\n')}`,
+    cuerpoLargo: `Buenos días, señor Cubero. Esto es lo que hay:\n\n${lineas.join('\n')}${sinColocar ? '\n\n👉 Pulse «Proponer dónde colocarlos» y le preparo cada niño con su grupo recomendado y un botón Confirmar.' : ''}`,
   };
 }
 
@@ -478,6 +513,298 @@ async function enviarParteManana(admin: any, dedupeKey: string) {
   return { enviado: true, push_estado: push.estado }
 }
 
+// ---------- Paco persigue por Jose (29/10) ----------------------------------
+// Todo lo que sigue se lanza desde el tick de 5 minutos. Antes de enviar se
+// mira si ya existe un aviso con esa clave (en cualquier estado), para no
+// repetir nunca un aviso aunque el anterior no llegara (p. ej. sin avisos
+// activados en el móvil). Con enviar=false solo calcula (prueba).
+
+const trozos = <T,>(xs: T[], n = 100) => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n))
+
+async function clavesYaUsadas(admin: any, tabla: string, claves: string[]) {
+  const usadas = new Set<string>()
+  for (const t of trozos([...new Set(claves)])) {
+    const { data, error } = await admin.from(tabla).select('dedupe_key').in('dedupe_key', t)
+    if (error) throw error
+    for (const r of data || []) usadas.add(String(r.dedupe_key))
+  }
+  return usadas
+}
+
+async function avisarEntrenador(admin: any, a: {
+  tipo: string; semanaInicio: string; entrenadorId: string; dedupeKey: string; titulo: string; cuerpo: string; metadata?: Record<string, unknown>
+}) {
+  const { data: reserva, error } = await admin.from('push_notificaciones_log_app').insert({
+    tipo: a.tipo, semana_inicio: a.semanaInicio, entrenador_id: a.entrenadorId, dedupe_key: a.dedupeKey,
+    titulo: a.titulo, cuerpo: a.cuerpo, estado: 'reservada', metadata: { ...(a.metadata || {}), origen: 'paco' },
+  }).select('id').maybeSingle()
+  if (error) {
+    if (error.code === '23505') return 'duplicado'
+    throw error
+  }
+  const { data: subs, error: se } = await admin.from('push_subscriptions_app')
+    .select('id,endpoint,p256dh,auth_key').eq('entrenador_id', a.entrenadorId).eq('activo', true)
+  if (se) throw se
+  const ahoraIso = () => new Date().toISOString()
+  if (!subs?.length) {
+    await admin.from('push_notificaciones_log_app').update({ estado: 'sin_suscripcion', updated_at: ahoraIso() }).eq('id', reserva.id)
+    return 'sin_suscripcion'
+  }
+  webpush.setVapidDetails(Deno.env.get('VAPID_SUBJECT') || '', Deno.env.get('VAPID_PUBLIC_KEY') || '', Deno.env.get('VAPID_PRIVATE_KEY') || '')
+  const payload = JSON.stringify({
+    title: a.titulo, body: a.cuerpo, icon: '/icon-192.png', badge: '/favicon-32.png', tag: a.dedupeKey, renotify: false,
+    data: { url: '/?push=entrenador', tipo: a.tipo, semana_inicio: a.semanaInicio },
+  })
+  let enviados = 0
+  const errores: string[] = []
+  for (const s of subs) {
+    try {
+      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth_key } }, payload, { TTL: 60 * 60 * 12 })
+      enviados += 1
+    } catch (e: any) {
+      errores.push(String(e?.message || e || 'Error Web Push'))
+      const code = Number(e?.statusCode || 0)
+      if (code === 404 || code === 410) await admin.from('push_subscriptions_app').update({ activo: false, updated_at: ahoraIso() }).eq('id', s.id)
+    }
+  }
+  await admin.from('push_notificaciones_log_app').update({
+    estado: enviados ? 'enviada' : 'fallida', dispositivos_enviados: enviados,
+    error: errores.length ? errores.join(' | ').slice(0, 3000) : null, enviado_at: enviados ? ahoraIso() : null, updated_at: ahoraIso(),
+  }).eq('id', reserva.id)
+  return enviados ? 'enviada' : 'fallida'
+}
+
+/** Guarda uno o varios avisos para Jose y manda UN solo push con el resumen. */
+async function avisarJose(admin: any, filas: { tipo: string; titulo: string; cuerpo: string; dedupe_key: string }[], push: { titulo: string; cuerpo: string; tag: string; tipo: string }) {
+  const ids: string[] = []
+  for (const f of filas) {
+    const { data, error } = await admin.from('paco_avisos').insert(f).select('id').maybeSingle()
+    if (error) {
+      if (error.code === '23505') continue
+      throw error
+    }
+    if (data?.id) ids.push(String(data.id))
+  }
+  if (!ids.length) return { enviado: false }
+  const r = await enviarPush(admin, push.titulo, push.cuerpo, push.tag, push.tipo, null)
+  await admin.from('paco_avisos').update({ push_estado: r.estado, push_dispositivos: r.enviados, error: r.error }).in('id', ids)
+  return { enviado: true, push_estado: r.estado }
+}
+
+const lunesDeIso = (iso: string) => {
+  const [y, m, d] = iso.slice(0, 10).split('-').map(Number)
+  return isoDate(mondayOf(y, m, d))
+}
+
+// 1 · Grupos publicados que el entrenador aún no ha confirmado.
+async function perseguirConfirmaciones(admin: any, ahora: ReturnType<typeof madridParts>, enviar: boolean) {
+  const hoy = `${ahora.y}-${pad(ahora.m)}-${pad(ahora.d)}`
+  const ahoraMs = Date.now()
+  const { data: sesiones, error: e1 } = await admin.from('sesiones').select('id,fecha,hora_inicio')
+    .gte('fecha', hoy).lte('fecha', isoDate(Date.parse(hoy + 'T12:00:00Z') + 2 * 86400000))
+  if (e1) throw e1
+  const ses = new Map((sesiones || []).map((s: any) => [String(s.id), s]))
+  if (!ses.size) return { entrenador: [], jose: [] }
+  const { data: grupos, error: e2 } = await admin.from('grupos').select('id,sesion_id,nombre_grupo,publicado_at')
+    .in('sesion_id', [...ses.keys()]).eq('publicado', true).eq('cancelado', false)
+  if (e2) throw e2
+  const gm = new Map((grupos || []).map((g: any) => [String(g.id), g]))
+  if (!gm.size) return { entrenador: [], jose: [] }
+  const gIds = [...gm.keys()]
+  const [{ data: asig, error: e3 }, { data: extra, error: e4 }] = await Promise.all([
+    admin.from('asignaciones_entrenadores').select('grupo_id,entrenador_id,estado_confirmacion,asignado_at,created_at').in('grupo_id', gIds),
+    admin.from('grupo_entrenadores_extra_app').select('grupo_id,entrenador_id,estado_confirmacion,created_at').in('grupo_id', gIds),
+  ])
+  if (e3) throw e3
+  if (e4) throw e4
+  const sinConfirmar = [...(asig || []), ...(extra || [])]
+    .filter((a: any) => a.entrenador_id && String(a.estado_confirmacion || '').trim().toLowerCase() !== 'confirmado')
+  if (!sinConfirmar.length) return { entrenador: [], jose: [] }
+  const entIds = [...new Set(sinConfirmar.map((a: any) => String(a.entrenador_id)))]
+  const { data: ents, error: e5 } = await admin.from('entrenadores').select('id,nombre_completo').in('id', entIds)
+  if (e5) throw e5
+  const nombre = new Map((ents || []).map((e: any) => [String(e.id), String(e.nombre_completo || 'Entrenador')]))
+  const pendientes: Pendiente[] = []
+  for (const a of sinConfirmar as any[]) {
+    const g: any = gm.get(String(a.grupo_id))
+    const s: any = g && ses.get(String(g.sesion_id))
+    const inicioMs = s ? madridAMs(String(s.fecha), String(s.hora_inicio || '')) : null
+    if (!g || !s || inicioMs === null) continue
+    const desde = Math.max(...[g.publicado_at, a.asignado_at, a.created_at].map((x) => Date.parse(String(x || ''))).filter(Number.isFinite), 0)
+    pendientes.push({
+      grupoId: String(g.id), entrenadorId: String(a.entrenador_id), entrenador: String(nombre.get(String(a.entrenador_id)) || 'Entrenador'),
+      grupo: String(g.nombre_grupo || 'Grupo'), fecha: String(s.fecha).slice(0, 10), hora: String(s.hora_inicio || '').slice(0, 5), inicioMs, desdeMs: desde,
+    })
+  }
+
+  const paraEntrenador = horaDeAvisarEntrenador(ahora.h) ? pendientes.filter((p) => tocaRecordarConfirmar(p, ahoraMs)) : []
+  const paraJose = horaDeAvisarJose(ahora.h) ? pendientes.filter((p) => tocaAvisarJoseConfirmar(p, ahoraMs)) : []
+  const claveE = (p: Pendiente) => `confirmar-recordatorio:${p.grupoId}:${p.entrenadorId}`
+  const claveJ = (p: Pendiente) => `confirmacion-jose:${p.grupoId}:${p.entrenadorId}`
+  const [usadasE, usadasJ] = await Promise.all([
+    clavesYaUsadas(admin, 'push_notificaciones_log_app', paraEntrenador.map(claveE)),
+    clavesYaUsadas(admin, 'paco_avisos', paraJose.map(claveJ)),
+  ])
+  const nuevosE = paraEntrenador.filter((p) => !usadasE.has(claveE(p)))
+  const nuevosJ = paraJose.filter((p) => !usadasJ.has(claveJ(p)))
+  const resultado = {
+    entrenador: nuevosE.map((p) => `${p.entrenador} · ${p.grupo} ${p.fecha} ${p.hora}`),
+    jose: nuevosJ.map((p) => `${p.entrenador} · ${p.grupo} ${p.fecha} ${p.hora}`),
+  }
+  if (!enviar) return resultado
+  for (const p of nuevosE) {
+    const t = textoRecordarConfirmar(p)
+    await avisarEntrenador(admin, {
+      tipo: 'CONFIRMAR_GRUPO_RECORDATORIO', semanaInicio: lunesDeIso(p.fecha), entrenadorId: p.entrenadorId,
+      dedupeKey: claveE(p), titulo: t.titulo, cuerpo: t.cuerpo, metadata: { grupo_id: p.grupoId },
+    })
+  }
+  if (nuevosJ.length) {
+    const t = textoJoseConfirmaciones(nuevosJ)
+    await avisarJose(
+      admin,
+      nuevosJ.map((p) => ({ tipo: 'CONFIRMACION_PENDIENTE', titulo: t.titulo, cuerpo: textoJoseConfirmaciones([p]).cuerpoLargo, dedupe_key: claveJ(p) })),
+      { titulo: t.titulo, cuerpo: t.cuerpoCorto, tag: `confirmacion-jose:${ahoraMs}`, tipo: 'CONFIRMACION_PENDIENTE' },
+    )
+  }
+  return resultado
+}
+
+// 2 · Disponibilidad sin contestar a menos de 24 h del límite.
+async function perseguirDisponibilidad(admin: any, ahora: ReturnType<typeof madridParts>, enviar: boolean) {
+  if (!horaDeAvisarEntrenador(ahora.h)) return { entrenador: [] }
+  const datos = await datosDisponibilidad(admin, ahora)
+  if (!datos || !datos.limiteRaw) return { entrenador: [] }
+  const limiteMs = Date.parse(datos.limiteRaw)
+  if (!Number.isFinite(limiteMs) || !tocaRecordarDisponibilidad(limiteMs, Date.now())) return { entrenador: [] }
+  const faltan = datos.entrenadores.filter((e) => e.pend > 0)
+  const clave = (id: string) => `disp-recordatorio:${datos.semanaInicio}:${id}`
+  const usadas = await clavesYaUsadas(admin, 'push_notificaciones_log_app', faltan.map((e) => clave(e.id)))
+  const nuevos = faltan.filter((e) => !usadas.has(clave(e.id)))
+  if (enviar) {
+    const [, h, mi] = (datos.limite.match(/T(\d{2}):(\d{2})/) || [])
+    const cuando = `el ${DIAS[new Date(datos.limite.slice(0, 10) + 'T12:00:00Z').getUTCDay()]} ${fechaCorta(datos.limite)} a las ${h}:${mi}`
+    for (const e of nuevos) {
+      const t = textoRecordarDisponibilidad(e.pend, e.total, cuando)
+      await avisarEntrenador(admin, {
+        tipo: 'DISPONIBILIDAD_RECORDATORIO', semanaInicio: datos.semanaInicio, entrenadorId: e.id,
+        dedupeKey: clave(e.id), titulo: t.titulo, cuerpo: t.cuerpo, metadata: { pendientes: e.pend, total: e.total },
+      })
+    }
+  }
+  return { entrenador: nuevos.map((e) => `${e.nombre} (${e.pend} de ${e.total})`) }
+}
+
+// 3 · Segundo aviso de reportes (48 h después de la sesión).
+async function perseguirReportes(admin: any, ahora: ReturnType<typeof madridParts>, enviar: boolean) {
+  if (!horaDeAvisarEntrenador(ahora.h)) return { entrenador: [] }
+  const hoy = `${ahora.y}-${pad(ahora.m)}-${pad(ahora.d)}`
+  const filas = await leerTodo((a, b) => admin.from('v_reportes_pendientes_entrenador_dos_entrenadores')
+    .select('entrenador_id,entrenador,fecha,hora_fin,grupo_id,alumno_id')
+    .eq('estado_reporte', 'Falta reporte').eq('estado_asistencia', 'Presente')
+    .gte('fecha', isoDate(Date.parse(hoy + 'T12:00:00Z') - 7 * 86400000)).lt('fecha', hoy).range(a, b))
+  const ahoraMs = Date.now()
+  const grupos = new Map<string, { entrenadorId: string; entrenador: string; fecha: string; claves: Set<string> }>()
+  for (const f of filas) {
+    if (!f.entrenador_id || !f.fecha || !f.hora_fin) continue
+    const fin = madridAMs(String(f.fecha), String(f.hora_fin))
+    if (fin === null || !tocaSegundoAvisoReportes(fin, ahoraMs)) continue
+    const k = `${f.entrenador_id}|${String(f.fecha).slice(0, 10)}`
+    const g = grupos.get(k) || { entrenadorId: String(f.entrenador_id), entrenador: String(f.entrenador || ''), fecha: String(f.fecha).slice(0, 10), claves: new Set<string>() }
+    g.claves.add(`${f.grupo_id || ''}:${f.alumno_id || ''}`)
+    grupos.set(k, g)
+  }
+  const lista = [...grupos.values()]
+  const clave = (g: (typeof lista)[number]) => `reports-pending-2:${g.fecha}:${g.entrenadorId}`
+  const usadas = await clavesYaUsadas(admin, 'push_notificaciones_log_app', lista.map(clave))
+  const nuevos = lista.filter((g) => !usadas.has(clave(g)))
+  if (enviar) {
+    for (const g of nuevos) {
+      const t = textoSegundoAvisoReportes(g.claves.size, g.fecha)
+      await avisarEntrenador(admin, {
+        tipo: 'REPORTES_PENDIENTES', semanaInicio: lunesDeIso(g.fecha), entrenadorId: g.entrenadorId,
+        dedupeKey: clave(g), titulo: t.titulo, cuerpo: t.cuerpo, metadata: { fechas_entrenamiento: [g.fecha], total_reportes: g.claves.size, segundo_aviso: true },
+      })
+    }
+  }
+  return { entrenador: nuevos.map((g) => `${g.entrenador} · ${g.fecha} (${g.claves.size})`) }
+}
+
+// 8 · Viernes 10:00: material del finde.
+async function materialFinde(admin: any, ahora: ReturnType<typeof madridParts>, enviar: boolean, forzar = false) {
+  if (!forzar && !tocaMaterial(ahora.dow, ahora.h, ahora.mi)) return null
+  const hoy = `${ahora.y}-${pad(ahora.m)}-${pad(ahora.d)}`
+  const base = Date.parse(hoy + 'T12:00:00Z')
+  const finde = forzar && ahora.dow !== 5
+    ? [6, 0].map((dow) => isoDate(base + (((dow - ahora.dow + 7) % 7) || 7) * 86400000)).sort()
+    : [1, 2].map((n) => isoDate(base + n * 86400000))
+  const { data: sesiones, error: e1 } = await admin.from('sesiones').select('id,fecha').in('fecha', finde)
+  if (e1) throw e1
+  const sesFecha = new Map((sesiones || []).map((s: any) => [String(s.id), String(s.fecha).slice(0, 10)]))
+  const dias: MaterialDia[] = finde.map((fecha) => ({ fecha, camisetas: [], chaquetas: [] }))
+  if (sesFecha.size) {
+    const { data: grupos, error: e2 } = await admin.from('grupos').select('id,sesion_id').in('sesion_id', [...sesFecha.keys()]).eq('cancelado', false)
+    if (e2) throw e2
+    const gFecha = new Map((grupos || []).map((g: any) => [String(g.id), sesFecha.get(String(g.sesion_id)) || '']))
+    const gIds = [...gFecha.keys()]
+    if (gIds.length) {
+      const [ga, asig, extra] = await Promise.all([
+        leerTodo((a, b) => admin.from('grupo_alumnos').select('grupo_id,alumno_id').in('grupo_id', gIds).range(a, b)),
+        leerTodo((a, b) => admin.from('asignaciones_entrenadores').select('grupo_id,entrenador_id').in('grupo_id', gIds).range(a, b)),
+        leerTodo((a, b) => admin.from('grupo_entrenadores_extra_app').select('grupo_id,entrenador_id').in('grupo_id', gIds).range(a, b)),
+      ])
+      const aIds = [...new Set(ga.map((x: any) => String(x.alumno_id)))]
+      const eIds = [...new Set([...asig, ...extra].map((x: any) => String(x.entrenador_id || '')).filter(Boolean))]
+      const alumnos: any[] = []
+      for (const t of trozos(aIds)) {
+        const { data, error } = await admin.from('alumnos').select('id,nombre_completo,camiseta_entregada').in('id', t)
+        if (error) throw error
+        alumnos.push(...(data || []))
+      }
+      const { data: ents, error: e3 } = eIds.length
+        ? await admin.from('entrenadores').select('id,nombre_completo,chaqueta_entregada').in('id', eIds)
+        : { data: [], error: null }
+      if (e3) throw e3
+      const am = new Map(alumnos.map((a) => [String(a.id), a]))
+      const em = new Map((ents || []).map((e: any) => [String(e.id), e]))
+      for (const d of dias) {
+        const delDia = new Set(gIds.filter((g) => gFecha.get(g) === d.fecha))
+        const ninos = new Set(ga.filter((x: any) => delDia.has(String(x.grupo_id))).map((x: any) => String(x.alumno_id)))
+        const entrenadores = new Set([...asig, ...extra].filter((x: any) => delDia.has(String(x.grupo_id)) && x.entrenador_id).map((x: any) => String(x.entrenador_id)))
+        d.camisetas = [...ninos].map((id) => am.get(id)).filter((a: any) => a && a.camiseta_entregada !== true).map((a: any) => String(a.nombre_completo)).sort((x, y) => x.localeCompare(y, 'es'))
+        d.chaquetas = [...entrenadores].map((id) => em.get(id)).filter((e: any) => e && e.chaqueta_entregada !== true).map((e: any) => String(e.nombre_completo)).sort((x, y) => x.localeCompare(y, 'es'))
+      }
+    }
+  }
+  const texto = textoMaterial(dias)
+  if (!texto) return { enviado: false, motivo: 'no hace falta material' }
+  if (!enviar) return { enviado: false, prueba: true, ...texto }
+  const dedupe = forzar ? `material-prueba:${Date.now()}` : `material:${hoy}`
+  return avisarJose(admin, [{ tipo: 'MATERIAL_FINDE', titulo: texto.titulo, cuerpo: texto.cuerpoLargo, dedupe_key: dedupe }],
+    { titulo: texto.titulo, cuerpo: texto.cuerpoCorto, tag: dedupe, tipo: 'MATERIAL_FINDE' })
+}
+
+async function perseguirTodo(admin: any, enviar = true) {
+  const ahora = madridParts()
+  const salida: Record<string, unknown> = {}
+  const pasos: [string, () => Promise<unknown>][] = [
+    ['confirmaciones', () => perseguirConfirmaciones(admin, ahora, enviar)],
+    ['disponibilidad', () => perseguirDisponibilidad(admin, ahora, enviar)],
+    ['reportes', () => perseguirReportes(admin, ahora, enviar)],
+    ['material', () => materialFinde(admin, ahora, enviar)],
+  ]
+  // Cada paso por separado: si uno falla, los demás siguen.
+  for (const [nombre, paso] of pasos) {
+    try {
+      salida[nombre] = await paso()
+    } catch (e: any) {
+      console.error(`perseguir ${nombre}`, e)
+      salida[nombre] = { error: String(e?.message || e).slice(0, 200) }
+    }
+  }
+  return salida
+}
+
 // ---------- Handler ---------------------------------------------------------
 
 Deno.serve(async (req) => {
@@ -518,10 +845,20 @@ Deno.serve(async (req) => {
         if (m.h === 8 && m.mi >= 30 && m.mi < 40) {
           parte = await enviarParteManana(admin, `parte:${m.y}-${pad(m.m)}-${pad(m.d)}`)
         }
-        return json({ ok: true, recordatorios, avisos, parte })
+        // Paco persigue por Jose (confirmaciones, disponibilidad, reportes, material).
+        const persecucion = await perseguirTodo(admin)
+        return json({ ok: true, recordatorios, avisos, parte, persecucion })
       }
       if (b?.action === 'parte_prueba') {
         return json({ ok: true, parte: await enviarParteManana(admin, `parte-prueba:${Date.now()}`) })
+      }
+      // Prueba sin enviar nada: qué avisos mandaría ahora mismo.
+      if (b?.action === 'perseguir_prueba') {
+        return json({
+          ok: true,
+          persecucion: await perseguirTodo(admin, false),
+          material_finde: await materialFinde(admin, madridParts(), false, true),
+        })
       }
 
       const ahora = madridParts()

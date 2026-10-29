@@ -20,6 +20,7 @@ import {
   type AvisoPaco,
   type EstadoAvisosPush,
 } from '../lib/avisosPacoClient';
+import { botonesDeAvisoPaco } from '../features/pacoAcciones/pacoAvisosAutomaticosLogic';
 import { PacoVoz } from './PacoVoz';
 import { RespuestasPanel } from './RespuestasPanel';
 import './PacoChat.css';
@@ -418,6 +419,7 @@ export function PacoChat() {
         id: crearIdPaco(),
         autor: 'paco' as const,
         texto: p.cuerpo,
+        choices: botonesDeAvisoPaco(p) as PacoChoice[],
         escribir: true,
       })),
     ]);
