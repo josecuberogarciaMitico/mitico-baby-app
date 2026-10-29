@@ -4136,7 +4136,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                       type="button"
                                       onClick={() => void despublicarGrupo(grupo.grupo_id)}
                                       disabled={cargando}
-                                      style={botonPeligroMini}
+                                      style={{ ...botonPeligroMini, width: 'auto', flex: '0 1 auto' }}
                                     >
                                       Retirar de Vista entrenador
                                     </button>

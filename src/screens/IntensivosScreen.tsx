@@ -3,6 +3,7 @@ import { CampoSelect } from '../lib/appHelpers';
 import { IntensivePendingPlacementPanel } from '../features/intensivos/IntensivePendingPlacementPanel';
 import { moverAlumnoPropuestaIntensivo } from '../features/intensivos/intensiveProposalSync';
 import type { IntensivoDiaApp } from '../features/intensivos/intensiveTypes';
+import { estadosDiasIntensivo, siguientePasoIntensivo } from '../features/intensivos/intensivoPasos';
 
 // Meses para el filtro: 6 meses atrás y 12 adelante desde hoy (formato 'YYYY-MM',
 // el mismo que ya usa el filtro). Si el valor elegido queda fuera, se añade.
@@ -853,132 +854,212 @@ export function PantallaIntensivos(ctx: any) {
                       minWidth: 0,
                     }}
                   >
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: esVistaMovilApp
-                          ? 'repeat(2, minmax(0, 1fr))'
-                          : 'repeat(4, minmax(0, 1fr))',
-                        gap: 8,
-                      }}
-                    >
-                      <div style={{ ...miniTarjetaBlanca, padding: 10 }}>
-                        <span style={{ color: '#64748b', fontSize: 11, fontWeight: 850 }}>
-                          ALUMNOS
-                        </span>
-                        <div style={{ marginTop: 3, fontSize: 20, fontWeight: 950, color: '#0f172a' }}>
-                          {alumnosInscritosIntensivo.length}
-                        </div>
-                      </div>
+                    {(() => {
+                      // 29/10: franja con los días + «Siguiente paso» + 3 bloques
+                      // (antes: 4 tarjetas de números y 6 pestañas).
+                      const estadosDias = estadosDiasIntensivo(
+                        diasIntensivo,
+                        (diaId: string) => gruposNormalesDelDiaIntensivo(diaId)
+                      );
+                      const idsDias = new Set(diasIntensivo.map((dia: IntensivoDiaApp) => dia.intensivo_dia_id));
+                      const paso = siguientePasoIntensivo({
+                        estados: estadosDias,
+                        alumnos: alumnosInscritosIntensivo.length,
+                        recuperacionesPendientes: recuperacionesPendientesIntensivo,
+                        evaluacionesPendientes: resumenFinal.length > 0 ? diplomasPendientes : 0,
+                        hayPropuestaSinConfirmar: recomendacionesGrupoIntensivo.some(
+                          (r: { intensivo_dia_id: string }) => idsDias.has(r.intensivo_dia_id)
+                        ),
+                      });
+                      type PanelIntensivo = 'dias' | 'alumnos' | 'grupos' | 'revision' | 'asistencia' | 'diplomas';
+                      const abierto: Record<PanelIntensivo, boolean> = {
+                        dias: formularioDiaAbierto,
+                        alumnos: gestorAlumnosAbierto,
+                        grupos: gestorGruposAbierto,
+                        revision: gestorRevisionAbierto,
+                        asistencia: gestorAsistenciaAbierto,
+                        diplomas: gestorDiplomasAbierto,
+                      };
+                      const abrir = (panel: PanelIntensivo) => {
+                        if (!abierto[panel]) abrirPanelIntensivo(intensivo, panel);
+                      };
+                      const abrirDiaGrupos = (diaId: string) => {
+                        abrir('grupos');
+                        setDiaGrupoSeleccionadoId(diaId);
+                      };
+                      const bloque = formularioDiaAbierto || gestorAlumnosAbierto
+                        ? 'preparar'
+                        : gestorGruposAbierto
+                          ? 'dias'
+                          : gestorRevisionAbierto || gestorAsistenciaAbierto || gestorDiplomasAbierto || gestorMásAbierto
+                            ? 'seguimiento'
+                            : '';
+                      const colorDia: Record<string, { borde: string; fondo: string; texto: string }> = {
+                        sin_grupos: { borde: '#fdba74', fondo: '#fff7ed', texto: '#9a3412' },
+                        borrador: { borde: '#fcd34d', fondo: '#fffbeb', texto: '#92400e' },
+                        publicado: { borde: '#86efac', fondo: '#f0fdf4', texto: '#166534' },
+                        hecho: { borde: '#e2e8f0', fondo: '#f8fafc', texto: '#64748b' },
+                      };
+                      const accionPaso = () => {
+                        if (paso.tipo === 'configurar') abrir('dias');
+                        else if (paso.tipo === 'alumnos') abrir('alumnos');
+                        else if (paso.tipo === 'crear_grupos') abrirDiaGrupos(paso.diaId);
+                        else if (paso.tipo === 'abrir_dia') {
+                          const dia = diasIntensivo.find((d: IntensivoDiaApp) => d.intensivo_dia_id === paso.diaId);
+                          if (dia) void abrirIntensivoDiaEnEntrenamientosApp(dia);
+                        } else if (paso.tipo === 'recuperaciones') abrir('asistencia');
+                        else if (paso.tipo === 'evaluacion') abrir('diplomas');
+                      };
+                      const subBoton = (activo: boolean) => ({
+                        ...botonPasoIntensivo(activo),
+                        padding: '6px 12px',
+                        fontSize: 13,
+                      });
 
-                      <div style={{ ...miniTarjetaBlanca, padding: 10 }}>
-                        <span style={{ color: '#64748b', fontSize: 11, fontWeight: 850 }}>
-                          DÍAS
-                        </span>
-                        <div style={{ marginTop: 3, fontSize: 20, fontWeight: 950, color: '#0f172a' }}>
-                          {diasIntensivo.length}/4
-                        </div>
-                      </div>
+                      return (
+                        <>
+                          {estadosDias.length > 0 && (
+                            <div
+                              className="intensivo-dias-franja"
+                              style={{
+                                display: 'grid',
+                                gridTemplateColumns: esVistaMovilApp
+                                  ? 'repeat(2, minmax(0, 1fr))'
+                                  : `repeat(${Math.min(estadosDias.length, 4)}, minmax(0, 1fr))`,
+                                gap: 8,
+                              }}
+                            >
+                              {estadosDias.map((e) => {
+                                const c = colorDia[e.estado];
+                                const activo =
+                                  gestorGruposAbierto && diaSeleccionadoGrupo?.intensivo_dia_id === e.diaId;
+                                return (
+                                  <button
+                                    key={e.diaId}
+                                    type="button"
+                                    onClick={() => abrirDiaGrupos(e.diaId)}
+                                    style={{
+                                      display: 'grid',
+                                      gap: 2,
+                                      minWidth: 0,
+                                      padding: '9px 11px',
+                                      borderRadius: 14,
+                                      border: `${activo ? 2 : 1}px solid ${activo ? '#2563eb' : c.borde}`,
+                                      background: c.fondo,
+                                      textAlign: 'left',
+                                      cursor: 'pointer',
+                                      fontFamily: 'inherit',
+                                    }}
+                                  >
+                                    <strong style={{ color: '#0f172a', fontSize: 14 }}>
+                                      Día {e.numero} · {formatearFecha(e.fecha)}
+                                    </strong>
+                                    <span style={{ color: c.texto, fontSize: 12, fontWeight: 850, overflowWrap: 'anywhere' }}>
+                                      {e.texto}
+                                    </span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
 
-                      <div style={{ ...miniTarjetaBlanca, padding: 10 }}>
-                        <span style={{ color: '#64748b', fontSize: 11, fontWeight: 850 }}>
-                          GRUPOS
-                        </span>
-                        <div style={{ marginTop: 3, fontSize: 20, fontWeight: 950, color: '#0f172a' }}>
-                          {gruposBaseCursoIntensivo}
-                        </div>
-                      </div>
+                          <div
+                            style={{
+                              display: 'flex',
+                              gap: 10,
+                              flexWrap: 'wrap',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              padding: '10px 12px',
+                              borderRadius: 14,
+                              border: `1px solid ${paso.tipo === 'al_dia' ? '#bbf7d0' : '#bfdbfe'}`,
+                              background: paso.tipo === 'al_dia' ? '#f0fdf4' : '#eff6ff',
+                            }}
+                          >
+                            <div style={{ minWidth: 0, flex: '1 1 260px' }}>
+                              <span style={{ color: '#64748b', fontSize: 11, fontWeight: 900, letterSpacing: '.04em' }}>
+                                SIGUIENTE PASO
+                              </span>
+                              <div style={{ color: '#0f172a', fontWeight: 850, fontSize: 14, overflowWrap: 'anywhere' }}>
+                                {paso.texto}
+                              </div>
+                            </div>
+                            {paso.boton && (
+                              <button
+                                type="button"
+                                onClick={accionPaso}
+                                style={{ ...botonPrincipal, width: esVistaMovilApp ? '100%' : 'auto' }}
+                              >
+                                {paso.boton} →
+                              </button>
+                            )}
+                          </div>
 
-                      <div
-                        style={{
-                          ...miniTarjetaBlanca,
-                          padding: 10,
-                          border:
-                            recuperacionesPendientesIntensivo > 0 || diplomasPendientes > 0
-                              ? '1px solid rgba(249,115,22,.35)'
-                              : '1px solid rgba(22,163,74,.28)',
-                          background:
-                            recuperacionesPendientesIntensivo > 0 || diplomasPendientes > 0
-                              ? 'rgba(255,247,237,.82)'
-                              : 'rgba(240,253,244,.72)',
-                        }}
-                      >
-                        <span style={{ color: '#64748b', fontSize: 11, fontWeight: 850 }}>
-                          PENDIENTES
-                        </span>
-                        <div
-                          style={{
-                            marginTop: 3,
-                            fontSize: 20,
-                            fontWeight: 950,
-                            color:
-                              recuperacionesPendientesIntensivo > 0 || diplomasPendientes > 0
-                                ? '#c2410c'
-                                : '#15803d',
-                          }}
-                        >
-                          {recuperacionesPendientesIntensivo + diplomasPendientes}
-                        </div>
-                      </div>
-                    </div>
+                          <div
+                            id={`intensivo-opciones-${intensivo.intensivo_id}`}
+                            style={{
+                              ...barraPasosIntensivo,
+                              scrollMarginTop: 16,
+                              display: 'grid',
+                              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                              gap: 8,
+                              width: '100%',
+                              maxWidth: '100%',
+                              minWidth: 0,
+                              overflow: 'visible',
+                              marginTop: 0,
+                            }}
+                          >
+                            <button
+                              type="button"
+                              onClick={() => (bloque === 'preparar' ? cerrarPanelesIntensivo() : abrir('dias'))}
+                              style={botonPasoIntensivo(bloque === 'preparar')}
+                            >
+                              Preparar
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => (bloque === 'dias' ? cerrarPanelesIntensivo() : abrir('grupos'))}
+                              style={botonPasoIntensivo(bloque === 'dias')}
+                            >
+                              Días y grupos
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => (bloque === 'seguimiento' ? cerrarPanelesIntensivo() : abrir('revision'))}
+                              style={botonPasoIntensivo(bloque === 'seguimiento')}
+                            >
+                              Seguimiento
+                            </button>
+                          </div>
 
-                    <div
-                      id={`intensivo-opciones-${intensivo.intensivo_id}`}
-                      style={{
-                        ...barraPasosIntensivo,
-                        scrollMarginTop: 16,
-                        display: 'flex',
-                        flexWrap: 'wrap',
-                        gap: 8,
-                        width: '100%',
-                        maxWidth: '100%',
-                        minWidth: 0,
-                        overflow: 'visible',
-                        marginTop: 0,
-                      }}
-                    >
-                      <button
-                        onClick={() => abrirPanelIntensivo(intensivo, 'dias')}
-                        style={botonPasoIntensivo(formularioDiaAbierto)}
-                      >
-                        1 · Configuración
-                      </button>
+                          {bloque === 'preparar' && (
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                              <button type="button" onClick={() => abrir('dias')} style={subBoton(formularioDiaAbierto)}>
+                                Fechas ({diasIntensivo.length}/4)
+                              </button>
+                              <button type="button" onClick={() => abrir('alumnos')} style={subBoton(gestorAlumnosAbierto)}>
+                                Alumnos ({alumnosInscritosIntensivo.length})
+                              </button>
+                            </div>
+                          )}
 
-                      <button
-                        onClick={() => abrirPanelIntensivo(intensivo, 'alumnos')}
-                        style={botonPasoIntensivo(gestorAlumnosAbierto)}
-                      >
-                        2 · Alumnos
-                      </button>
-
-                      <button
-                        onClick={() => abrirPanelIntensivo(intensivo, 'grupos')}
-                        style={botonPasoIntensivo(gestorGruposAbierto)}
-                      >
-                        3 · Grupos
-                      </button>
-
-                      <button
-                        onClick={() => abrirPanelIntensivo(intensivo, 'revision')}
-                        style={botonPasoIntensivo(gestorRevisionAbierto)}
-                      >
-                        4 · Revisión
-                      </button>
-
-                      <button
-                        onClick={() => abrirPanelIntensivo(intensivo, 'asistencia')}
-                        style={botonPasoIntensivo(gestorAsistenciaAbierto)}
-                      >
-                        5 · Recuperaciones
-                      </button>
-
-                      <button
-                        onClick={() => abrirPanelIntensivo(intensivo, 'diplomas')}
-                        style={botonPasoIntensivo(gestorDiplomasAbierto)}
-                      >
-                        6 · Evaluación
-                      </button>
-                    </div>
+                          {bloque === 'seguimiento' && (
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                              <button type="button" onClick={() => abrir('revision')} style={subBoton(gestorRevisionAbierto)}>
+                                Revisión entre días
+                              </button>
+                              <button type="button" onClick={() => abrir('asistencia')} style={subBoton(gestorAsistenciaAbierto || gestorMásAbierto)}>
+                                Faltas y recuperaciones{recuperacionesPendientesIntensivo > 0 ? ` (${recuperacionesPendientesIntensivo})` : ''}
+                              </button>
+                              <button type="button" onClick={() => abrir('diplomas')} style={subBoton(gestorDiplomasAbierto)}>
+                                Evaluación{resumenFinal.length > 0 ? ` (${Math.max(resumenFinal.length - diplomasPendientes, 0)}/${resumenFinal.length})` : ''}
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
 
                     <div
                       style={{

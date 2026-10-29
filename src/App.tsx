@@ -218,6 +218,7 @@ import {
 import { PantallaIntensivos } from './screens/IntensivosScreen';
 import { OcioGroupsScreen } from './features/ocio/OcioGroupsScreen';
 import { closeWeekPublishingGroups } from './features/agenda/agendaWeekClosing';
+import { guardarBorradorPropuestaIntensivo, leerBorradorPropuestaIntensivo } from './features/intensivos/intensiveProposalDraft';
 import {
   ocioLevelRange,
   type OcioWeeklyGroup,
@@ -2220,6 +2221,15 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
   ] = useState<Record<string, string>>({});
   const [gruposExtraIntensivoPorDia, setGruposExtraIntensivoPorDia] =
     useState<Record<string, string[]>>({});
+
+  useEffect(() => {
+    if (!gestionarGruposIntensivoId) return;
+    guardarBorradorPropuestaIntensivo(gestionarGruposIntensivoId, intensivoDias.filter((d: IntensivoDiaApp) => d.intensivo_id === gestionarGruposIntensivoId).map((d: IntensivoDiaApp) => d.intensivo_dia_id), {
+      recomendaciones: recomendacionesGrupoIntensivo, destino: destinoAlumnoRecomendado, trabajo: trabajoDiarioPorGrupoRecomendado,
+      observaciones: observacionesPorGrupoRecomendado, extra: gruposExtraIntensivoPorDia,
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gestionarGruposIntensivoId, recomendacionesGrupoIntensivo, destinoAlumnoRecomendado, trabajoDiarioPorGrupoRecomendado, observacionesPorGrupoRecomendado, gruposExtraIntensivoPorDia]);
 
   const [revisionIntensivoId, setRevisionIntensivoId] = useState('');
   const [revisionIntensivoDiaId, setRevisionIntensivoDiaId] = useState('');
@@ -12006,8 +12016,9 @@ async function abrirGestionOperativaIntensivoDia(
           );
 
           // Día 1 sí nace con el trabajo/observaciones del motor común.
-          // Días 2-4 solo copian composición. Se dejan vacíos a propósito
-          // para que la preparación de cada jornada los regenere con la
+          // Días 2-4: Supabase exige un Trabajo diario al crear el grupo, así
+          // que llevan uno provisional del motor; sus Observaciones van vacías
+          // y por eso, al abrir cada jornada, se regeneran los dos con la
           // evolución real y los reportes acumulados hasta ese momento.
           const trabajoDia = esDiaInicial
             ? trabajoDiarioPorGrupoRecomendado[clavePlantilla] ||
@@ -12015,7 +12026,10 @@ async function abrirGestionOperativaIntensivoDia(
                 grupoPlantilla.nombreGrupo,
                 alumnosClonados
               )
-            : '';
+            : generarTrabajoDiarioAutomaticoGrupo(
+                grupoPlantilla.nombreGrupo,
+                alumnosClonados
+              );
 
           const observacionesDia = esDiaInicial
             ? combinarObservacionesGrupoApp(
@@ -16658,6 +16672,9 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
     if (pantalla === 'listados') cargarListados();
   }, [pantalla]);
 
+  // Un error de otra pantalla no se queda pegado al cambiar de pantalla.
+  useEffect(() => setError(''), [pantalla]);
+
   useEffect(() => {
     if (pantalla !== 'ocioGrupos') return;
     void cargarResultadosOcioSemanaDesdeSupabase();
@@ -18618,12 +18635,19 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
         ...grupoIntensivoInicial(),
         alumnos_ids: alumnosIds,
       });
-      setRecomendacionesGrupoIntensivo([]);
-      setEntrenadoresPorGrupoRecomendado({});
-      setDestinoAlumnoRecomendado({});
-      setTrabajoDiarioPorGrupoRecomendado({});
-      setObservacionesPorGrupoRecomendado({});
-      setGruposExtraIntensivoPorDia({});
+      // La propuesta sin confirmar de ESTE intensivo no se borra al reabrir;
+      // si no hay en pantalla, se recupera la guardada en el navegador.
+      const diasIds = diasDelIntensivo(intensivoId).map((dia) => dia.intensivo_dia_id);
+      if (!recomendacionesGrupoIntensivo.some((r: RecomendacionGrupoIntensivoDiaApp) => diasIds.includes(r.intensivo_dia_id))) {
+        const borrador = diasIds.every((id) => gruposNormalesDelDiaIntensivo(id).length === 0)
+          ? leerBorradorPropuestaIntensivo<RecomendacionGrupoIntensivoDiaApp>(intensivoId) : null;
+        setRecomendacionesGrupoIntensivo(borrador?.recomendaciones || []);
+        setEntrenadoresPorGrupoRecomendado({});
+        setDestinoAlumnoRecomendado(borrador?.destino || {});
+        setTrabajoDiarioPorGrupoRecomendado(borrador?.trabajo || {});
+        setObservacionesPorGrupoRecomendado(borrador?.observaciones || {});
+        setGruposExtraIntensivoPorDia(borrador?.extra || {});
+      }
       scrollPanelIntensivoApp(intensivoId);
       return;
     }
