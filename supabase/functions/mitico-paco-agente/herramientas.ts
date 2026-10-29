@@ -869,6 +869,21 @@ async function intensivosEstado(ctx: Contexto, args: Fila) {
   };
 }
 
+async function tareasSecretaria(ctx: Contexto, args: Fila) {
+  const params: Record<string, string> = {
+    select: "id,tipo,estado,prioridad,categoria,titulo,detalle,fecha_evento,fecha_limite,recordar_at,created_at",
+    order: "fecha_limite.asc.nullslast,created_at.desc", limit: "60",
+  };
+  params.estado = args.incluir_resueltas === true ? "in.(pendiente,en_curso,resuelto,referencia)" : "in.(pendiente,en_curso,referencia)";
+  const filas = await ctx.db("secretaria_coordinacion", params);
+  const q = args.buscar ? norm(args.buscar) : "";
+  const hm = (iso: string) => new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+  const lista = filas
+    .filter((f) => !q || norm(`${f.titulo} ${f.detalle || ""}`).includes(q))
+    .map((f) => `${f.tipo === "nota" ? "📝 nota" : f.estado === "en_curso" ? "⏳ en curso" : f.estado === "resuelto" ? "✓ resuelta" : "☐ pendiente"}${f.prioridad === "urgente" || f.prioridad === "alta" ? ` (${f.prioridad})` : ""} · ${f.titulo}${f.fecha_limite ? ` · límite ${f.fecha_limite}` : ""}${f.recordar_at ? ` · aviso ${hm(f.recordar_at)}` : ""}${f.detalle ? ` — ${String(f.detalle).slice(0, 140)}` : ""}`);
+  return { total: lista.length, tareas: lista.slice(0, 40), nota: "Para crear un recordatorio con aviso usa preparar_recordatorio." };
+}
+
 // ------------------------- gestiones (29/10) ---------------------------------
 // Más «manos» de Paco. Igual que el resto: prepara y comprueba, la app enseña
 // un botón Confirmar y solo entonces se hace, con la sesión de Jose.
@@ -1114,6 +1129,14 @@ export const HERRAMIENTAS: { def: DefHerramienta; impl: Impl }[] = [
       name: "intensivos",
       description: "Intensivos en curso y próximos: niños inscritos, estado de cada día (sin grupos, grupos y cuántos publicados, hecho) y recuperaciones pendientes. Con nombre, solo ese intensivo.",
       parameters: { type: "object", properties: { nombre: { type: "string" } } },
+    } },
+  },
+  {
+    impl: tareasSecretaria,
+    def: { type: "function", function: {
+      name: "tareas_secretaria",
+      description: "Tareas y notas de Secretaría de Jose (pendientes, en curso y notas; con incluir_resueltas también las hechas), con su fecha límite y la hora del aviso si tienen. «buscar» filtra por texto.",
+      parameters: { type: "object", properties: { buscar: { type: "string" }, incluir_resueltas: { type: "boolean" } } },
     } },
   },
   {

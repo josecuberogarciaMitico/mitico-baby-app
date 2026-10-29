@@ -91,3 +91,20 @@ export function pareceRecordatorioConHora(message: string) {
   if (!/\b(recuerdame|recordarme|avisame|avisarme|recordatorio)\b/.test(n)) return false;
   return /\b(a las \d|\d{1,2}:\d{2}|\d{1,2} ?h\b|manana|pasado|hoy|esta tarde|esta noche|lunes|martes|miercoles|jueves|viernes|sabado|domingo|dentro de|en \d+ (min|minutos|hora|horas))/.test(n);
 }
+
+/**
+ * ¿Es una pregunta de consulta (y no una orden)? Las consultas van directas al
+ * agente, sin pasar antes por el clasificador de acciones (un paso de IA menos).
+ */
+export function pareceConsulta(message: string) {
+  const n = message
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .trim();
+  if (!n) return false;
+  const orden = /\b(pasa|pasale|mueve|muevele|cambia|cambiale|mete|metelo|metela|publica|publicalo|apunta|apuntame|anota|recuerda|recuerdame|avisame|borra|elimina|crea|anade|quita|quitale|confirma|manda|envia|coloca|colocalo|responde|contesta|alta|test)\b/;
+  if (orden.test(n)) return false;
+  const interrogativo = /^(que|quien|quienes|cuanto|cuantos|cuantas|como|donde|cuando|cual|cuales|hay|tengo|tiene|tienen|esta|estan|me dices|dime|ensename|muestrame|revisa|mira)\b/;
+  return n.includes('?') || interrogativo.test(n.replace(/^¿\s*/, ''));
+}

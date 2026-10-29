@@ -11,7 +11,7 @@ import {
   type PropuestaAgente,
   type PropuestaGestion,
 } from '../features/pacoAcciones/pacoAgenteAcciones';
-import { pareceRecordatorioConHora } from '../features/pacoAcciones/pacoAgenteAccionesLogic';
+import { pareceConsulta, pareceRecordatorioConHora } from '../features/pacoAcciones/pacoAgenteAccionesLogic';
 import { esPropuestaNotaAgente, pareceNotaDeNino, type PropuestaNotaAgente } from '../features/pacoAcciones/pacoNotasLogic';
 import { ejecutarPropuestaNota } from '../features/pacoAcciones/pacoNotasService';
 const MITICO_AUTH_STORAGE_KEY = 'mitico_auth_session_v1';
@@ -768,8 +768,9 @@ export async function preguntarPaco(message: string) {
     borradorAlta = null;
   }
 
-  // Recordatorio con fecha u hora: directo al agente, que lo prepara con aviso.
-  if (pareceRecordatorioConHora(message)) {
+  // Recordatorio con fecha u hora, o una pregunta de consulta: directo al
+  // agente (sin pasar antes por el clasificador de acciones: más rápido).
+  if (pareceRecordatorioConHora(message) || pareceConsulta(message)) {
     const recordatorio = await llamarAgentePaco(message);
     if (recordatorio) return recordatorio;
   }

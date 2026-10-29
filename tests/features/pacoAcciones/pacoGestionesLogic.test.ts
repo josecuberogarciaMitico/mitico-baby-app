@@ -39,3 +39,15 @@ test('recordatorio con hora o día: va al agente', () => {
   equal(pareceRecordatorioConHora('recuérdame lo de las chaquetas'), false, 'sin cuándo → Secretaría');
   equal(pareceRecordatorioConHora('quién tiene grupo mañana'), false, 'no es recordatorio');
 });
+
+import { pareceConsulta } from '../../../src/features/pacoAcciones/pacoAgenteAccionesLogic';
+
+test('consultas van directas al agente; órdenes no', () => {
+  equal(pareceConsulta('¿Quién tiene grupo el sábado?'), true, 'pregunta');
+  equal(pareceConsulta('dime los niños sin colocar del domingo'), true, 'dime');
+  equal(pareceConsulta('cuántos reportes faltan'), true, 'cuántos');
+  equal(pareceConsulta('pasa a Lucía al jueves a las 17:00'), false, 'orden pasa');
+  equal(pareceConsulta('¿me publicas los grupos del sábado?'), true, 'pregunta educada → agente (publicar es suyo)');
+  equal(pareceConsulta('mete a Pablo en el grupo 2'), false, 'mete');
+  equal(pareceConsulta('alta de Juan Pérez nivel B'), false, 'alta');
+});
