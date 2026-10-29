@@ -12006,8 +12006,9 @@ async function abrirGestionOperativaIntensivoDia(
           );
 
           // Día 1 sí nace con el trabajo/observaciones del motor común.
-          // Días 2-4 solo copian composición. Se dejan vacíos a propósito
-          // para que la preparación de cada jornada los regenere con la
+          // Días 2-4: Supabase exige un Trabajo diario al crear el grupo, así
+          // que llevan uno provisional del motor; sus Observaciones van vacías
+          // y por eso, al abrir cada jornada, se regeneran los dos con la
           // evolución real y los reportes acumulados hasta ese momento.
           const trabajoDia = esDiaInicial
             ? trabajoDiarioPorGrupoRecomendado[clavePlantilla] ||
@@ -12015,7 +12016,10 @@ async function abrirGestionOperativaIntensivoDia(
                 grupoPlantilla.nombreGrupo,
                 alumnosClonados
               )
-            : '';
+            : generarTrabajoDiarioAutomaticoGrupo(
+                grupoPlantilla.nombreGrupo,
+                alumnosClonados
+              );
 
           const observacionesDia = esDiaInicial
             ? combinarObservacionesGrupoApp(
