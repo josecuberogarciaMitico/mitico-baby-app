@@ -319,7 +319,11 @@ export function SecretariaPanel() {
       origen: 'app',
     };
 
-    const recordar = form.avisoFecha ? madridAIso(form.avisoFecha, form.avisoHora) : null;
+    // Solo la hora → hoy. Solo el día → a las 09:00.
+    const recordar =
+      form.avisoFecha || form.avisoHora
+        ? madridAIso(form.avisoFecha || fechaHoyMadrid(), form.avisoHora || '09:00')
+        : null;
     if (recordar) input.recordar_at = recordar;
     else if (existente?.recordar_at) input.recordar_at = null;
 
@@ -676,7 +680,6 @@ export function SecretariaPanel() {
                     <input
                       type="time"
                       value={form.avisoHora}
-                      disabled={!form.avisoFecha}
                       onChange={(event) =>
                         setForm((actual) => ({ ...actual, avisoHora: event.target.value }))
                       }
