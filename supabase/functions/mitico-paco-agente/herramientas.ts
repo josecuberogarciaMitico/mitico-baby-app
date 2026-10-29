@@ -741,6 +741,240 @@ async function prepararCerrarNota(ctx: Contexto, args: Fila) {
   return { propuesta_nota: propuesta, nota: "Jose verá un botón para borrarla. Dile cuál es y que pulse Confirmar." };
 }
 
+// ------------------------- más ojos (29/10) ----------------------------------
+
+async function entrenadoresActivos(ctx: Contexto) {
+  const [ents, usuarios] = await Promise.all([
+    ctx.db("entrenadores", { select: "id,nombre_completo,activo", activo: "eq.true", limit: "300" }),
+    ctx.db("usuarios_app", { select: "entrenador_id", activo: "eq.true", entrenador_id: "not.is.null", limit: "300" }),
+  ]);
+  const conAcceso = new Set(usuarios.map((u) => String(u.entrenador_id)));
+  return ents.filter((e) => conAcceso.has(String(e.id))).map((e) => ({ id: String(e.id), nombre: String(e.nombre_completo) }));
+}
+
+async function disponibilidadEntrenadores(ctx: Contexto, args: Fila) {
+  const fecha = fechaValida(args.fecha) || hoyMadrid();
+  const lunes = lunesDe(fecha);
+  const [sem] = await ctx.db("disponibilidad_semanas_editor", {
+    select: "id,semana_inicio,estado,publicada_at,fecha_limite_publicada", semana_inicio: `eq.${lunes}`, limit: "1",
+  });
+  if (!sem) return { semana: lunes, estado: "sin_preparar", texto: `La disponibilidad de la semana del ${lunes} todavía no está preparada.` };
+  if (sem.estado !== "publicado" || !sem.publicada_at) return { semana: lunes, estado: sem.estado, texto: "Está en preparación: los entrenadores aún no la ven." };
+  const [turnos, respuestas, ents] = await Promise.all([
+    ctx.db("disponibilidad_turnos_editor", { select: "turno_clave,fecha,hora_inicio,hora_fin,modalidades", semana_id: `eq.${sem.id}`, version_tipo: "eq.publicado", order: "fecha.asc,hora_inicio.asc", limit: "200" }),
+    ctx.db("disponibilidad_respuestas_editor", { select: "entrenador_id,turno_clave,respuesta,comentario", semana_id: `eq.${sem.id}`, limit: "5000" }),
+    entrenadoresActivos(ctx),
+  ]);
+  const resp = new Map(respuestas.map((r) => [`${r.entrenador_id}|${r.turno_clave}`, r]));
+  const porTurno = turnos.map((t) => {
+    const disponibles: string[] = [];
+    const noPueden: string[] = [];
+    for (const e of ents) {
+      const r = resp.get(`${e.id}|${t.turno_clave}`);
+      const v = norm(r?.respuesta);
+      if (v.startsWith("DISPONIBLE") || v.startsWith("SI")) disponibles.push(e.nombre + (r?.comentario ? ` («${String(r.comentario).slice(0, 60)}»)` : ""));
+      else if (v && v !== "PENDIENTE") noPueden.push(e.nombre);
+    }
+    return { turno: `${diaSemana(t.fecha)} ${t.fecha} ${hora(t.hora_inicio)}-${hora(t.hora_fin)}`, modalidades: t.modalidades, disponibles, no_pueden: noPueden.length };
+  });
+  const claves = new Set(turnos.map((t) => String(t.turno_clave)));
+  const sinResponder = ents
+    .map((e) => ({ e, pend: [...claves].filter((k) => { const v = norm(resp.get(`${e.id}|${k}`)?.respuesta); return !v || v === "PENDIENTE"; }).length }))
+    .filter((x) => x.pend > 0)
+    .map((x) => `${x.e.nombre} (le faltan ${x.pend} de ${claves.size})`);
+  return {
+    semana: lunes, estado: "publicado", limite: sem.fecha_limite_publicada || null,
+    entrenadores: ents.length, sin_responder: sinResponder, por_turno: porTurno,
+  };
+}
+
+async function avisosEntrenadores(ctx: Contexto, args: Fila) {
+  const dias = Math.min(Math.max(Number(args.dias) || 3, 1), 14);
+  const desde = new Date(Date.now() - dias * 86400000).toISOString();
+  const [ents, subs] = await Promise.all([
+    entrenadoresActivos(ctx),
+    ctx.db("push_subscriptions_app", { select: "entrenador_id", activo: "eq.true", limit: "1000" }),
+  ]);
+  const conAvisos = new Set(subs.map((x) => String(x.entrenador_id)));
+  let objetivo = ents;
+  if (args.nombre) {
+    const q = norm(args.nombre);
+    objetivo = ents.filter((e) => norm(e.nombre).includes(q) || q.split(" ").every((t) => norm(e.nombre).split(" ").includes(t)));
+    if (!objetivo.length) return { error: `No encuentro ningún entrenador activo que se llame «${args.nombre}».` };
+  }
+  const ids = objetivo.map((e) => e.id);
+  const log = ids.length ? await ctx.db("push_notificaciones_log_app", {
+    select: "entrenador_id,titulo,cuerpo,estado,created_at", entrenador_id: inLista(ids), created_at: `gte.${desde}`, order: "created_at.desc", limit: "300",
+  }) : [];
+  const hm = (iso: string) => new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+  return {
+    ultimos_dias: dias,
+    sin_avisos_activados: ents.filter((e) => !conAvisos.has(e.id)).map((e) => e.nombre),
+    por_entrenador: objetivo.slice(0, 40).map((e) => ({
+      entrenador: e.nombre,
+      avisos_activados: conAvisos.has(e.id),
+      avisos: log.filter((l) => String(l.entrenador_id) === e.id).slice(0, args.nombre ? 15 : 4)
+        .map((l) => `${hm(l.created_at)} · ${l.titulo}${args.nombre ? ` — ${String(l.cuerpo || "").slice(0, 120)}` : ""} · ${l.estado === "enviada" ? "le llegó al móvil" : l.estado === "sin_suscripcion" ? "NO (sin avisos activados)" : l.estado}`),
+    })).filter((x) => args.nombre || x.avisos.length || !x.avisos_activados),
+  };
+}
+
+async function altasTest(ctx: Contexto, _args: Fila) {
+  const filas = await ctx.db("altas_nivel_inicial_app", {
+    select: "nombre_completo,modalidad,estado,enviado_at,respondido_at,creado_at", estado: "in.(PENDIENTE_ENVIO,ENVIADO,RESPONDIDO,VALIDADO)", order: "creado_at.desc", limit: "200",
+  });
+  const dias = (iso: string | null) => (iso ? Math.floor((Date.now() - Date.parse(iso)) / 86400000) : null);
+  const corto = (f: Fila) => `${f.nombre_completo} (${f.modalidad})`;
+  return {
+    sin_enviar: filas.filter((f) => f.estado === "PENDIENTE_ENVIO").map(corto),
+    esperando_respuesta: filas.filter((f) => f.estado === "ENVIADO").map((f) => `${corto(f)} · enviado hace ${dias(f.enviado_at) ?? "?"} días`),
+    respondidos_por_revisar: filas.filter((f) => f.estado === "RESPONDIDO").map((f) => `${corto(f)} · respondió hace ${dias(f.respondido_at) ?? "?"} días`),
+    revisados_sin_anadir: filas.filter((f) => f.estado === "VALIDADO").map(corto),
+    nota: "Esto está en Altas / Test.",
+  };
+}
+
+async function intensivosEstado(ctx: Contexto, args: Fila) {
+  const hoy = hoyMadrid();
+  const dias = await ctx.db("intensivo_dias", { select: "id,intensivo_id,numero_dia,fecha,sesion_id", fecha: `gte.${sumarDias(hoy, -10)}`, order: "fecha.asc", limit: "200" });
+  let ids = [...new Set(dias.map((d) => String(d.intensivo_id)))];
+  if (!ids.length) return { intensivos: [], texto: "No hay intensivos en curso ni próximos." };
+  const intensivos = await ctx.db("intensivos", { select: "id,nombre,estado,lugar", id: inLista(ids) });
+  if (args.nombre) {
+    const q = norm(args.nombre);
+    ids = intensivos.filter((i) => norm(i.nombre).includes(q)).map((i) => String(i.id));
+    if (!ids.length) return { error: `No encuentro un intensivo próximo que se llame «${args.nombre}».` };
+  }
+  const todosDias = await ctx.db("intensivo_dias", { select: "id,intensivo_id,numero_dia,fecha,sesion_id", intensivo_id: inLista(ids), order: "numero_dia.asc" });
+  const sesIds = todosDias.map((d) => String(d.sesion_id || "")).filter((x) => UUID.test(x));
+  const [grupos, inscritos, recs] = await Promise.all([
+    sesIds.length ? ctx.db("grupos", { select: "sesion_id,publicado,cancelado", sesion_id: inLista(sesIds) }) : Promise.resolve([]),
+    ctx.db("intensivo_alumnos", { select: "intensivo_id", intensivo_id: inLista(ids), limit: "2000" }),
+    ctx.db("intensivo_recuperaciones", { select: "intensivo_origen_id,estado", intensivo_origen_id: inLista(ids), limit: "500" }),
+  ]);
+  return {
+    intensivos: intensivos.filter((i) => ids.includes(String(i.id))).map((i) => {
+      const ds = todosDias.filter((d) => String(d.intensivo_id) === String(i.id));
+      return {
+        intensivo: i.nombre, estado: i.estado, lugar: i.lugar,
+        ninos_inscritos: inscritos.filter((x) => String(x.intensivo_id) === String(i.id)).length,
+        recuperaciones_pendientes: recs.filter((r) => String(r.intensivo_origen_id) === String(i.id) && !["Resuelta", "Descartada"].includes(String(r.estado))).length,
+        dias: ds.map((d) => {
+          const gs = grupos.filter((g) => String(g.sesion_id) === String(d.sesion_id) && !g.cancelado);
+          const pub = gs.filter((g) => g.publicado).length;
+          return `Día ${d.numero_dia} · ${diaSemana(d.fecha)} ${d.fecha}: ${String(d.fecha) < hoy ? "hecho" : gs.length ? `${gs.length} grupos (${pub} publicados)` : "sin grupos"}`;
+        }),
+      };
+    }),
+  };
+}
+
+async function tareasSecretaria(ctx: Contexto, args: Fila) {
+  const params: Record<string, string> = {
+    select: "id,tipo,estado,prioridad,categoria,titulo,detalle,fecha_evento,fecha_limite,recordar_at,created_at",
+    order: "fecha_limite.asc.nullslast,created_at.desc", limit: "60",
+  };
+  params.estado = args.incluir_resueltas === true ? "in.(pendiente,en_curso,resuelto,referencia)" : "in.(pendiente,en_curso,referencia)";
+  const filas = await ctx.db("secretaria_coordinacion", params);
+  const q = args.buscar ? norm(args.buscar) : "";
+  const hm = (iso: string) => new Intl.DateTimeFormat("es-ES", { timeZone: "Europe/Madrid", weekday: "short", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
+  const lista = filas
+    .filter((f) => !q || norm(`${f.titulo} ${f.detalle || ""}`).includes(q))
+    .map((f) => `${f.tipo === "nota" ? "📝 nota" : f.estado === "en_curso" ? "⏳ en curso" : f.estado === "resuelto" ? "✓ resuelta" : "☐ pendiente"}${f.prioridad === "urgente" || f.prioridad === "alta" ? ` (${f.prioridad})` : ""} · ${f.titulo}${f.fecha_limite ? ` · límite ${f.fecha_limite}` : ""}${f.recordar_at ? ` · aviso ${hm(f.recordar_at)}` : ""}${f.detalle ? ` — ${String(f.detalle).slice(0, 140)}` : ""}`);
+  return { total: lista.length, tareas: lista.slice(0, 40), nota: "Para crear un recordatorio con aviso usa preparar_recordatorio." };
+}
+
+// ------------------------- gestiones (29/10) ---------------------------------
+// Más «manos» de Paco. Igual que el resto: prepara y comprueba, la app enseña
+// un botón Confirmar y solo entonces se hace, con la sesión de Jose.
+
+export type PropuestaGestion =
+  | { tipo: "recordatorio"; titulo: string; detalle: string | null; recordar_at: string; cuando: string; etiqueta: string }
+  | { tipo: "publicar_grupos"; grupos: { grupo_id: string; nombre: string; turno: string; entrenador: string }[]; etiqueta: string };
+
+/** Fecha y hora de Madrid → instante ISO (UTC), teniendo en cuenta el horario de verano. */
+export function madridAIso(fecha: string, horaTxt: string) {
+  const m = `${fecha}T${horaTxt}`.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{1,2}):(\d{2})/);
+  if (!m) return null;
+  const [y, mo, d, h, mi] = m.slice(1).map(Number);
+  if (h > 23 || mi > 59) return null;
+  const deseado = Date.UTC(y, mo - 1, d, h, mi);
+  let t = deseado;
+  for (let i = 0; i < 2; i++) {
+    const p = new Intl.DateTimeFormat("en-CA", {
+      timeZone: "Europe/Madrid", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false,
+    }).formatToParts(new Date(t));
+    const g = (x: string) => Number(p.find((q) => q.type === x)?.value || 0);
+    t += deseado - Date.UTC(g("year"), g("month") - 1, g("day"), g("hour") % 24, g("minute"));
+  }
+  return new Date(t).toISOString();
+}
+
+async function prepararRecordatorio(_ctx: Contexto, args: Fila) {
+  const titulo = String(args.titulo || "").replace(/\s+/g, " ").trim().slice(0, 160);
+  if (titulo.length < 3) return { error: "Dime qué quieres que te recuerde (titulo)." };
+  const fecha = fechaValida(args.fecha);
+  if (!fecha) return { error: "Falta la fecha (YYYY-MM-DD). Calcúlala con el calendario." };
+  const horaTxt = /^\d{1,2}:\d{2}$/.test(String(args.hora || "")) ? String(args.hora) : "09:00";
+  const iso = madridAIso(fecha, horaTxt);
+  if (!iso) return { error: "Hora no válida (HH:MM)." };
+  if (Date.parse(iso) < Date.now() - 60000) return { error: "Esa fecha y hora ya han pasado: pregunta a Jose cuándo quiere el aviso." };
+  const detalle = String(args.detalle || "").trim().slice(0, 1500) || null;
+  const cuando = `${diaSemana(fecha)} ${fecha.slice(8, 10)}/${fecha.slice(5, 7)} a las ${horaTxt.padStart(5, "0")}`;
+  const propuesta: PropuestaGestion = {
+    tipo: "recordatorio", titulo, detalle, recordar_at: iso, cuando,
+    etiqueta: `Recordatorio «${titulo.slice(0, 70)}» · ${cuando}`,
+  };
+  return {
+    propuesta_gestion: propuesta,
+    nota: `Jose verá un botón para guardarlo en Secretaría con aviso al móvil el ${cuando}${args.hora ? "" : " (no dijo hora: 09:00)"}. NO digas que está hecho: que pulse Confirmar.`,
+  };
+}
+
+async function prepararPublicarGrupos(ctx: Contexto, args: Fila) {
+  const ids = (Array.isArray(args.grupo_ids) ? args.grupo_ids : [args.grupo_ids])
+    .map((x: unknown) => String(x || "")).filter((x: string) => UUID.test(x));
+  if (!ids.length) return { error: "Necesito los grupo_id a publicar: sácalos de agenda." };
+  const unicos = [...new Set(ids)].slice(0, 12);
+  const hoy = hoyMadrid();
+  const grupos = await ctx.db("v_grupos_sesion_operativa_app", {
+    select: "grupo_id,sesion_id,nombre_grupo,publicado,entrenador_id,entrenador,punto_encuentro,total_alumnos",
+    grupo_id: inLista(unicos),
+  });
+  const sesIds = [...new Set(grupos.map((g) => String(g.sesion_id)))];
+  const sesiones = sesIds.length ? await ctx.db("sesiones", { select: "id,fecha,hora_inicio,hora_fin", id: inLista(sesIds) }) : [];
+  const ses = new Map(sesiones.map((x) => [String(x.id), x]));
+  const listos: { grupo_id: string; nombre: string; turno: string; entrenador: string }[] = [];
+  const noListos: string[] = [];
+  for (const id of unicos) {
+    const g = grupos.find((x) => String(x.grupo_id) === id);
+    if (!g) { noListos.push(`${id.slice(0, 8)}: no existe o está cancelado`); continue; }
+    const s = ses.get(String(g.sesion_id));
+    const nombre = String(g.nombre_grupo || "Grupo");
+    const turno = s ? `${diaSemana(s.fecha)} ${String(s.fecha).slice(8, 10)}/${String(s.fecha).slice(5, 7)} ${hora(s.hora_inicio)}` : "";
+    const particular = norm(nombre).startsWith("PARTICULAR");
+    if (g.publicado) noListos.push(`${nombre} (${turno}): ya está publicado`);
+    else if (s && String(s.fecha) < hoy) noListos.push(`${nombre} (${turno}): ese día ya ha pasado`);
+    else if (!g.entrenador_id) noListos.push(`${nombre} (${turno}): no tiene entrenador`);
+    else if (!particular && !String(g.punto_encuentro || "").trim()) noListos.push(`${nombre} (${turno}): no tiene punto de encuentro`);
+    else if (!Number(g.total_alumnos)) noListos.push(`${nombre} (${turno}): no tiene niños`);
+    else listos.push({ grupo_id: id, nombre, turno, entrenador: String(g.entrenador || "") });
+  }
+  if (!listos.length) return { error: "Ninguno de esos grupos se puede publicar todavía.", no_listos: noListos };
+  const mismos = new Set(listos.map((l) => l.turno)).size === 1;
+  const propuesta: PropuestaGestion = {
+    tipo: "publicar_grupos", grupos: listos,
+    etiqueta: listos.length === 1
+      ? `Publicar «${listos[0].nombre}» (${listos[0].turno}) a ${listos[0].entrenador.split(" ")[0]}`
+      : `Publicar ${listos.length} grupos${mismos ? ` del ${listos[0].turno}` : ""}`,
+  };
+  return {
+    propuesta_gestion: propuesta,
+    no_listos: noListos,
+    nota: "Al confirmar se publican al entrenador (lo ve en su Vista entrenador y le llega el aviso). Di cuáles se publicarán y cuáles no y por qué. NO digas que está hecho: que pulse Confirmar.",
+  };
+}
+
 // ------------------------------ registro ------------------------------------
 
 type Impl = (ctx: Contexto, args: Fila) => Promise<unknown>;
@@ -863,6 +1097,69 @@ export const HERRAMIENTAS: { def: DefHerramienta; impl: Impl }[] = [
       name: "preparar_borrar_nota",
       description: "Prepara (sin hacerlo) borrar o dar por hecha una nota de Jose (nota_id de notas_de_jose). Jose lo confirma con un botón.",
       parameters: { type: "object", properties: { nota_id: { type: "string" } }, required: ["nota_id"] },
+    } },
+  },
+  {
+    impl: disponibilidadEntrenadores,
+    def: { type: "function", function: {
+      name: "disponibilidad_entrenadores",
+      description: "Disponibilidad publicada de los entrenadores para una semana (cualquier día de esa semana; por defecto la actual): quién puede en cada turno, cuántos no pueden y quién no ha contestado todo.",
+      parameters: { type: "object", properties: { fecha: FECHA } },
+    } },
+  },
+  {
+    impl: avisosEntrenadores,
+    def: { type: "function", function: {
+      name: "avisos_entrenadores",
+      description: "Avisos (push) que se han mandado a los entrenadores en los últimos días y si les llegaron al móvil; quién no tiene los avisos activados. Con nombre, el detalle de un entrenador.",
+      parameters: { type: "object", properties: { nombre: { type: "string" }, dias: { type: "integer", description: "1 a 14, por defecto 3" } } },
+    } },
+  },
+  {
+    impl: altasTest,
+    def: { type: "function", function: {
+      name: "altas_test",
+      description: "Estado de las altas y tests de nivel de niños nuevos: sin enviar, esperando respuesta de la familia (y desde cuándo), respondidos por revisar y revisados sin añadir.",
+      parameters: { type: "object", properties: {} },
+    } },
+  },
+  {
+    impl: intensivosEstado,
+    def: { type: "function", function: {
+      name: "intensivos",
+      description: "Intensivos en curso y próximos: niños inscritos, estado de cada día (sin grupos, grupos y cuántos publicados, hecho) y recuperaciones pendientes. Con nombre, solo ese intensivo.",
+      parameters: { type: "object", properties: { nombre: { type: "string" } } },
+    } },
+  },
+  {
+    impl: tareasSecretaria,
+    def: { type: "function", function: {
+      name: "tareas_secretaria",
+      description: "Tareas y notas de Secretaría de Jose (pendientes, en curso y notas; con incluir_resueltas también las hechas), con su fecha límite y la hora del aviso si tienen. «buscar» filtra por texto.",
+      parameters: { type: "object", properties: { buscar: { type: "string" }, incluir_resueltas: { type: "boolean" } } },
+    } },
+  },
+  {
+    impl: prepararRecordatorio,
+    def: { type: "function", function: {
+      name: "preparar_recordatorio",
+      description: "Prepara (sin guardarlo) un recordatorio para Jose en Secretaría con aviso al móvil a una fecha y hora: «recuérdame mañana a las 10 llamar a la madre de Liam», «avísame el viernes de pedir las chaquetas». Jose lo guarda con un botón. Si no dice hora, 09:00.",
+      parameters: { type: "object", properties: {
+        titulo: { type: "string", description: "Qué hay que hacer, corto (como lo diría Jose)" },
+        detalle: { type: "string", description: "Más contexto si lo hay (opcional)" },
+        fecha: FECHA,
+        hora: { type: "string", description: "HH:MM en hora de Madrid" },
+      }, required: ["titulo", "fecha"] },
+    } },
+  },
+  {
+    impl: prepararPublicarGrupos,
+    def: { type: "function", function: {
+      name: "preparar_publicar_grupos",
+      description: "Prepara (sin hacerlo) publicar al entrenador uno o varios grupos (grupo_id de agenda): comprueba que tienen entrenador, punto de encuentro y niños, y que no están ya publicados. Jose lo confirma con un botón; al publicarse, el entrenador lo ve y recibe el aviso. Para «publica los del sábado», usa antes agenda y pasa los grupo_id sin publicar.",
+      parameters: { type: "object", properties: {
+        grupo_ids: { type: "array", items: { type: "string" }, description: "Uno o varios grupo_id (máx. 12)" },
+      }, required: ["grupo_ids"] },
     } },
   },
   {

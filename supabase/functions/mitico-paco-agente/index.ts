@@ -1,12 +1,13 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { completar, type Mensaje } from "./llm.ts";
-import { Contexto, HERRAMIENTAS, ejecutarHerramienta, hoyMadrid, sumarDias, diaSemana, type Propuesta, type PropuestaNota } from "./herramientas.ts";
+import { Contexto, HERRAMIENTAS, ejecutarHerramienta, hoyMadrid, sumarDias, diaSemana, type Propuesta, type PropuestaGestion, type PropuestaNota } from "./herramientas.ts";
 
 // ---------------------------------------------------------------------------
 // mitico-paco-agente · Paco con «ojos» (23/10/2026)
 //
 // Paco decide qué datos necesita, los consulta con herramientas de SOLO
-// LECTURA (herramientas.ts) y contesta. No escribe nada en la base de datos:
+// LECTURA (herramientas.ts) y contesta. Desde el 29/10 también prepara
+// recordatorios de Secretaría y publicar grupos (siempre con Confirmar). No escribe nada en la base de datos:
 // para cambios (meter a un niño en un grupo) prepara una propuesta y la app le
 // enseña a Jose un botón Confirmar; el cambio lo hace la app con su sesión.
 // Solo coordinador_jefe.
@@ -67,6 +68,7 @@ CÓMO TRABAJAS
 - Antes de contestar sobre niños, grupos, turnos, reportes, entrenadores o material, CONSULTA los datos con tus herramientas. Nunca inventes nombres, fechas, horas, niveles ni números.
 - Si te nombran a un niño, primero buscar_alumno; si hay varios posibles, pregunta cuál (enseña nombre, edad y nivel) en vez de suponer. La app le pondrá a Jose un botón por cada niño para que solo tenga que pulsar.
 - Cuando le ofrezcas elegir entre varias cosas concretas, termina con una última línea así: OPCIONES: opción 1 | opción 2 | opción 3 (textos cortos, como mucho 6). Esa línea no se le enseña: se convierte en botones.
+- También ves la disponibilidad de los entrenadores, los avisos que les han llegado al móvil, las altas/tests de niños nuevos y el estado de los intensivos: usa esas herramientas en vez de decir que no lo sabes.
 - Puedes encadenar varias herramientas para responder algo compuesto. Interpreta las fechas con el calendario de abajo («el sábado» = el próximo sábado; «el finde» = sábado y domingo próximos).
 - Para proponer dónde colocar a un niño (alta tardía o niño sin grupo) usa opciones_para_nino y explica en una línea por qué recomiendas la primera opción. Si no hay grupo que encaje, dilo y sugiere el turno con hueco o crear grupo.
 - Respuestas cortas y ordenadas: primero lo importante, luego el detalle en viñetas. Nada de JSON ni ids internos en la respuesta.
@@ -74,7 +76,9 @@ CÓMO TRABAJAS
 CAMBIOS
 - Tú no cambias nada directamente. Para meter a un niño en un grupo de Baby (alta tardía, niño sin grupo, cambiarle de grupo en el mismo turno) usa preparar_meter_en_grupo: la app le pone a Jose un botón Confirmar y solo al pulsarlo se hace. Nunca digas que ya está hecho; di qué se hará y que pulse Confirmar.
 - Si Jose dice «mételo en el que me recomendaste», usa el grupo_id de la MEMORIA o de tu respuesta anterior.
-- Otros cambios (cambiar de turno, publicar, mandar avisos, disponibilidad) todavía no los preparas tú: dile cómo pedirlo (por ejemplo «pasa a Lucía al jueves a las 17:00» para cambiar de turno a un niño de Baby) o que lo haga desde la app.
+- Recordatorios: «recuérdame / avísame / apúntame para el … a las …» → preparar_recordatorio (se guarda en Secretaría y le llega un aviso al móvil a esa hora). Calcula la fecha con el calendario; si no dice hora, 09:00.
+- Publicar grupos al entrenador → preparar_publicar_grupos con los grupo_id de agenda (solo los que no están publicados). Explica cuáles no se pueden publicar y por qué (falta entrenador, punto…).
+- Otros cambios (cambiar de turno, poner entrenador o punto, disponibilidad) todavía no los preparas tú: dile cómo pedirlo (por ejemplo «pasa a Lucía al jueves a las 17:00» para cambiar de turno a un niño de Baby) o que lo haga desde la app.
 - Si algo no está en los datos, dilo tal cual.
 
 MEMORIA DE JOSE (notas sobre niños y familias)
@@ -156,6 +160,7 @@ Deno.serve(async (req) => {
     let candidatos: string[] = [];
     const acciones: Propuesta[] = [];
     const notas: PropuestaNota[] = [];
+    const gestiones: PropuestaGestion[] = [];
     const memoria: string[] = [];
 
     for (let vuelta = 0; vuelta <= MAX_VUELTAS; vuelta++) {
@@ -173,10 +178,10 @@ Deno.serve(async (req) => {
         let opciones = sep.opciones;
         if (!opciones.length && candidatos.length > 1 && texto.includes("?")) opciones = candidatos.slice(0, MAX_OPCIONES);
         console.log(`agente ok ${modelo} vueltas=${vuelta} herramientas=${usadas.join(",") || "-"} ${Date.now() - inicio}ms${avisos.length ? ` (fallos: ${avisos.join(" | ").slice(0, 400)})` : ""}`);
-        if (acciones.length || notas.length) opciones = [];
+        if (acciones.length || notas.length || gestiones.length) opciones = [];
         const memoriaNueva = [...memoria, ...memoriaPrevia.split("\n")].filter(Boolean);
         return J({
-          ok: true, handled: true, answer: texto, choices: [], opciones, acciones: acciones.slice(-3), notas: notas.slice(-3),
+          ok: true, handled: true, answer: texto, choices: [], opciones, acciones: acciones.slice(-3), notas: notas.slice(-3), gestiones: gestiones.slice(-3),
           memoria: [...new Set(memoriaNueva)].join("\n").slice(0, MAX_MEMORIA), modelo, herramientas: usadas,
         });
       }
@@ -194,6 +199,12 @@ Deno.serve(async (req) => {
         }
         const pn = (resultados[i] as { propuesta_nota?: PropuestaNota } | null)?.propuesta_nota;
         if (pn) notas.push(pn);
+        const pg = (resultados[i] as { propuesta_gestion?: PropuestaGestion } | null)?.propuesta_gestion;
+        if (pg) {
+          const repetida = gestiones.findIndex((g) => g.etiqueta === pg.etiqueta);
+          if (repetida >= 0) gestiones.splice(repetida, 1);
+          gestiones.push(pg);
+        }
         if (l.function.name === "buscar_alumno") {
           candidatos = Array.isArray(res?.coincidencias) ? res!.coincidencias.map((c) => String(c?.nombre || "")).filter(Boolean) : [];
         }

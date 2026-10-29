@@ -16,7 +16,7 @@ import webpush from 'npm:web-push@3.6.7'
 // - Con la cabecera secreta y action 'enviar_avisos_pendientes' manda por push
 //   los avisos CAMBIO_TURNO_FAMILIA que la base de datos ha creado (28/10).
 // - Con action 'tick' (cron cada 5 min) manda además los recordatorios de
-//   Secretaría que ya tocan (29/10).
+//   Secretaría que ya tocan y, a las 08:30, el parte de la mañana (29/10).
 // ---------------------------------------------------------------------------
 
 const CORS = {
@@ -382,6 +382,102 @@ async function enviarRecordatoriosSecretaria(admin: any) {
   return resultados
 }
 
+// Parte de la mañana (29/10): a las 08:30 de Madrid, lo que falta hoy y los
+// dos días siguientes (grupos sin publicar, sin entrenador, sin confirmar,
+// niños sin colocar), reportes atrasados y tareas de Secretaría que vencen.
+// Si no hay nada que contar, no se manda.
+export function textoParteManana(input: {
+  dias: { etiqueta: string; turnos: number; sinPublicar: number; sinEntrenador: number; sinConfirmar: number; sinColocar: number }[];
+  reportes: { total: number; porEntrenador: string[] };
+  tareas: string[];
+}) {
+  const lineas: string[] = [];
+  const cortas: string[] = [];
+  for (const d of input.dias) {
+    if (!d.turnos) continue;
+    const faltas: string[] = [];
+    if (d.sinColocar) faltas.push(`${d.sinColocar} niño${d.sinColocar === 1 ? '' : 's'} sin colocar`);
+    if (d.sinEntrenador) faltas.push(`${d.sinEntrenador} grupo${d.sinEntrenador === 1 ? '' : 's'} sin entrenador`);
+    if (d.sinPublicar) faltas.push(`${d.sinPublicar} sin publicar`);
+    if (d.sinConfirmar) faltas.push(`${d.sinConfirmar} sin confirmar por el entrenador`);
+    lineas.push(`• ${d.etiqueta} (${d.turnos} turno${d.turnos === 1 ? '' : 's'}): ${faltas.length ? faltas.join(', ') : 'todo listo ✅'}`);
+    if (faltas.length) cortas.push(`${d.etiqueta.split(' ')[0]}: ${faltas[0]}`);
+  }
+  if (input.reportes.total) {
+    lineas.push(`• Reportes atrasados: ${input.reportes.total} (${input.reportes.porEntrenador.slice(0, 6).join(', ')})`);
+    cortas.push(`${input.reportes.total} reportes atrasados`);
+  }
+  if (input.tareas.length) {
+    lineas.push(`• Secretaría para hoy: ${input.tareas.slice(0, 6).join('; ')}`);
+    cortas.push(`${input.tareas.length} tarea${input.tareas.length === 1 ? '' : 's'} de Secretaría`);
+  }
+  const hayAlgo = cortas.length > 0;
+  if (!lineas.length) return null;
+  return {
+    titulo: hayAlgo ? 'Parte de la mañana: hay cosas pendientes' : 'Parte de la mañana: todo listo',
+    cuerpoCorto: hayAlgo ? cortas.slice(0, 4).join(' · ') : 'Los próximos días están listos.',
+    cuerpoLargo: `Buenos días, señor Cubero. Esto es lo que hay:\n\n${lineas.join('\n')}`,
+  };
+}
+
+async function parteManana(admin: any, ahora = madridParts()) {
+  const hoy = `${ahora.y}-${pad(ahora.m)}-${pad(ahora.d)}`
+  const diasIso = [0, 1, 2].map((n) => isoDate(Date.parse(hoy + 'T12:00:00Z') + n * 86400000))
+  const [sesiones, tareas] = await Promise.all([
+    leerTodo((a, b) => admin.from('v_agenda_sesiones_operativa_app')
+      .select('sesion_id,fecha,alumnos_sin_grupo').gte('fecha', diasIso[0]).lte('fecha', diasIso[2]).range(a, b)),
+    admin.from('secretaria_coordinacion').select('titulo').eq('tipo', 'tarea').in('estado', ['pendiente', 'en_curso'])
+      .lte('fecha_limite', hoy).limit(20),
+  ])
+  if (tareas.error) throw tareas.error
+  const ids = sesiones.map((x: any) => String(x.sesion_id))
+  const grupos = ids.length
+    ? await leerTodo((a, b) => admin.from('v_grupos_sesion_operativa_app')
+        .select('sesion_id,publicado,entrenador_id,estado_confirmacion').in('sesion_id', ids).range(a, b))
+    : []
+  const rep = await leerTodo((a, b) => admin.from('v_reportes_pendientes_entrenador_dos_entrenadores')
+    .select('entrenador').gte('fecha', isoDate(Date.parse(hoy + 'T12:00:00Z') - 3 * 86400000)).lt('fecha', hoy).range(a, b))
+  const porEnt = new Map<string, number>()
+  for (const r of rep) porEnt.set(String(r.entrenador || '?'), (porEnt.get(String(r.entrenador || '?')) || 0) + 1)
+  const etiquetaDia = (iso: string, i: number) => `${i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : DIAS[new Date(iso + 'T12:00:00Z').getUTCDay()].replace(/^./, (c) => c.toUpperCase())} ${fmtDM(iso)}`
+  const dias = diasIso.map((iso, i) => {
+    const ses = sesiones.filter((x: any) => String(x.fecha).slice(0, 10) === iso)
+    const sesSet = new Set(ses.map((x: any) => String(x.sesion_id)))
+    const gs = grupos.filter((g: any) => sesSet.has(String(g.sesion_id)))
+    return {
+      etiqueta: etiquetaDia(iso, i),
+      turnos: ses.length,
+      sinColocar: ses.reduce((t: number, x: any) => t + Number(x.alumnos_sin_grupo || 0), 0),
+      sinEntrenador: gs.filter((g: any) => !g.entrenador_id).length,
+      sinPublicar: gs.filter((g: any) => g.entrenador_id && !g.publicado).length,
+      sinConfirmar: gs.filter((g: any) => g.publicado && g.entrenador_id && String(g.estado_confirmacion || '') !== 'Confirmado').length,
+    }
+  })
+  return textoParteManana({
+    dias,
+    reportes: { total: rep.length, porEntrenador: [...porEnt.entries()].sort((a, b) => b[1] - a[1]).map(([n, c]) => `${n.split(' ')[0]} ${c}`) },
+    tareas: (tareas.data || []).map((t: any) => String(t.titulo)),
+  })
+}
+
+async function enviarParteManana(admin: any, dedupeKey: string) {
+  const parte = await parteManana(admin)
+  if (!parte) return { enviado: false, motivo: 'nada que contar' }
+  const { data: aviso, error } = await admin
+    .from('paco_avisos')
+    .insert({ tipo: 'PARTE_MANANA', titulo: parte.titulo, cuerpo: parte.cuerpoLargo, dedupe_key: dedupeKey })
+    .select('id').maybeSingle()
+  if (error) {
+    if (error.code === '23505') return { enviado: false, motivo: 'ya enviado hoy' }
+    throw error
+  }
+  const push = await enviarPush(admin, parte.titulo, parte.cuerpoCorto, dedupeKey, 'PARTE_MANANA', null)
+  await admin.from('paco_avisos')
+    .update({ push_estado: push.estado, push_dispositivos: push.enviados, error: push.error })
+    .eq('id', aviso.id)
+  return { enviado: true, push_estado: push.estado }
+}
+
 // ---------- Handler ---------------------------------------------------------
 
 Deno.serve(async (req) => {
@@ -416,7 +512,16 @@ Deno.serve(async (req) => {
       if (b?.action === 'tick') {
         const recordatorios = await enviarRecordatoriosSecretaria(admin)
         const avisos = await enviarAvisosPendientes(admin)
-        return json({ ok: true, recordatorios, avisos })
+        // Parte de la mañana: una vez al día, en la vuelta de las 08:30 (Madrid).
+        const m = madridParts()
+        let parte: unknown = null
+        if (m.h === 8 && m.mi >= 30 && m.mi < 40) {
+          parte = await enviarParteManana(admin, `parte:${m.y}-${pad(m.m)}-${pad(m.d)}`)
+        }
+        return json({ ok: true, recordatorios, avisos, parte })
+      }
+      if (b?.action === 'parte_prueba') {
+        return json({ ok: true, parte: await enviarParteManana(admin, `parte-prueba:${Date.now()}`) })
       }
 
       const ahora = madridParts()

@@ -5,9 +5,13 @@ import {
 } from '../features/pacoAcciones/pacoAcciones';
 import {
   ejecutarPropuestaAgente,
+  ejecutarPropuestaGestion,
   esPropuestaAgente,
+  esPropuestaGestion,
   type PropuestaAgente,
+  type PropuestaGestion,
 } from '../features/pacoAcciones/pacoAgenteAcciones';
+import { pareceConsulta, pareceRecordatorioConHora } from '../features/pacoAcciones/pacoAgenteAccionesLogic';
 import { esPropuestaNotaAgente, pareceNotaDeNino, type PropuestaNotaAgente } from '../features/pacoAcciones/pacoNotasLogic';
 import { ejecutarPropuestaNota } from '../features/pacoAcciones/pacoNotasService';
 const MITICO_AUTH_STORAGE_KEY = 'mitico_auth_session_v1';
@@ -108,6 +112,11 @@ export type PacoContinuation =
   | {
       kind: 'agente_nota';
       propuesta: PropuestaNotaAgente;
+    }
+  // Más manos (29/10): recordatorio con aviso o publicar grupos; solo al pulsar.
+  | {
+      kind: 'agente_gestion';
+      propuesta: PropuestaGestion;
     }
   // Respuestas a familias: el borrador viaja dentro del boton, lo valida el servidor.
   | {
@@ -669,8 +678,12 @@ function pareceOrdenSecretaria(message: string) {
     .toLowerCase();
   // Las notas sobre un niño o su familia van al agente (memoria de Paco).
   if (pareceNotaDeNino(message)) return false;
+  // «Recuérdame/avísame … mañana / el viernes / a las 10» → recordatorio con
+  // aviso al móvil, que prepara el agente (29/10).
+  if (pareceRecordatorioConHora(message)) return false;
   return /\b(apunta|apuntame|anota|anotame|recuerdame|tarea|tareas|secretaria|notas?|marca como|resuelt[oa]|borra|elimina)\b/.test(n);
 }
+
 
 async function llamarAgentePaco(message: string): Promise<PacoResponse | null> {
   if (historialAgenteHasta < Date.now()) {
@@ -689,7 +702,9 @@ async function llamarAgentePaco(message: string): Promise<PacoResponse | null> {
     const acciones = Array.isArray(extra.acciones) ? extra.acciones.filter(esPropuestaAgente) : [];
     const notasExtra = (r as PacoResponse & { notas?: unknown }).notas;
     const notas = Array.isArray(notasExtra) ? notasExtra.filter(esPropuestaNotaAgente) : [];
-    if (acciones.length || notas.length) {
+    const gestionesExtra = (r as PacoResponse & { gestiones?: unknown }).gestiones;
+    const gestiones = Array.isArray(gestionesExtra) ? gestionesExtra.filter(esPropuestaGestion) : [];
+    if (acciones.length || notas.length || gestiones.length) {
       r.choices = [
         ...acciones.map((propuesta) => ({
           label: `✅ Confirmar: ${propuesta.etiqueta}`,
@@ -698,6 +713,10 @@ async function llamarAgentePaco(message: string): Promise<PacoResponse | null> {
         ...notas.map((propuesta) => ({
           label: `✅ Confirmar: ${propuesta.etiqueta}`,
           continuation: { kind: 'agente_nota' as const, propuesta },
+        })),
+        ...gestiones.map((propuesta) => ({
+          label: `✅ Confirmar: ${propuesta.etiqueta}`,
+          continuation: { kind: 'agente_gestion' as const, propuesta },
         })),
         { label: 'Cancelar', continuation: { kind: 'accion_cancelar' as const } },
       ];
@@ -747,6 +766,13 @@ export async function preguntarPaco(message: string) {
       return altas;
     }
     borradorAlta = null;
+  }
+
+  // Recordatorio con fecha u hora, o una pregunta de consulta: directo al
+  // agente (sin pasar antes por el clasificador de acciones: más rápido).
+  if (pareceRecordatorioConHora(message) || pareceConsulta(message)) {
+    const recordatorio = await llamarAgentePaco(message);
+    if (recordatorio) return recordatorio;
   }
 
   // Acciones sobre la app: «niños sin grupo», «pasa a Lucía al jueves»...
@@ -862,6 +888,27 @@ export async function continuarPaco(continuation: PacoContinuation) {
       return {
         ok: false,
         error: `No he podido guardarla: ${error instanceof Error ? error.message.slice(0, 160) : 'error'}. No se ha guardado nada.`,
+      } as PacoResponse;
+    }
+  }
+  if (continuation.kind === 'agente_gestion') {
+    const propuesta = (continuation as { propuesta?: unknown }).propuesta;
+    if (!esPropuestaGestion(propuesta)) {
+      return { ok: false, error: 'Esa confirmación no es válida. No he cambiado nada.' } as PacoResponse;
+    }
+    try {
+      const salida = await ejecutarPropuestaGestion(propuesta);
+      historialAgente = [
+        ...historialAgente,
+        { rol: 'assistant' as const, texto: salida.answer.slice(0, 1500) },
+      ].slice(-MAX_HISTORIAL_AGENTE);
+      return { ok: true, handled: true, answer: salida.answer, choices: [] } as PacoResponse;
+    } catch (error) {
+      const status = (error as Error & { status?: number })?.status;
+      if (status === 401 || status === 403) throw error;
+      return {
+        ok: false,
+        error: 'No he podido hacerlo. No se ha cambiado nada; inténtelo de nuevo.',
       } as PacoResponse;
     }
   }

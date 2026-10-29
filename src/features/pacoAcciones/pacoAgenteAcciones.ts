@@ -8,9 +8,23 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../../config/supabase';
 import { obtenerAccessTokenSupabaseApp } from '../../services/auth/authService';
 import { createSupabaseRestClient } from '../../services/supabase/restClient';
 import { registrarAccion } from './pacoAccionesService';
-import { esPropuestaAgente, resumenPropuesta, type PropuestaAgente } from './pacoAgenteAccionesLogic';
+import {
+  esPropuestaAgente,
+  esPropuestaGestion,
+  resumenPropuesta,
+  type PropuestaAgente,
+  type PropuestaGestion,
+} from './pacoAgenteAccionesLogic';
+import { crearEntradaSecretaria } from '../../lib/secretariaClient';
+import { llamarMiticoPush } from '../../lib/pushNotifications';
+import { GROUP_OPERATION_RPC } from '../../core/groups/groupOperations';
 
-export { esPropuestaAgente, type PropuestaAgente } from './pacoAgenteAccionesLogic';
+export {
+  esPropuestaAgente,
+  esPropuestaGestion,
+  type PropuestaAgente,
+  type PropuestaGestion,
+} from './pacoAgenteAccionesLogic';
 
 const supabase = createSupabaseRestClient({
   supabaseUrl: SUPABASE_URL,
@@ -89,6 +103,94 @@ export async function ejecutarPropuestaAgente(propuesta: unknown): Promise<{ ans
     if (estadoHttp(error) === 401) throw error;
     const detalle = error instanceof Error ? error.message : 'Error desconocido.';
     void registrarAccion({ accion: 'paco_meter_en_grupo', estado: 'error', resumen, parametros, error: detalle });
+    return { answer: `No lo he podido hacer: ${detalle.slice(0, 220)}\nNo se ha cambiado nada.` };
+  }
+}
+
+// ---- Gestiones (29/10): recordatorio con aviso y publicar grupos -----------
+// Recordatorio → tarea de Secretaría con «Avisarme el … a las …» (el aviso al
+// móvil lo manda mitico-paco-avisos). Publicar → la misma función que el botón
+// «Publicar al entrenador» de la Agenda, y después el aviso al entrenador.
+
+async function ejecutarRecordatorio(p: Extract<PropuestaGestion, { tipo: 'recordatorio' }>) {
+  const filas = await crearEntradaSecretaria({
+    tipo: 'tarea',
+    estado: 'pendiente',
+    prioridad: 'normal',
+    categoria: 'otro',
+    titulo: p.titulo,
+    detalle: p.detalle,
+    fecha_evento: p.recordar_at.slice(0, 10),
+    recordar_at: p.recordar_at,
+    origen: 'paquito_app',
+  });
+  const fila = Array.isArray(filas) ? filas[0] : null;
+  if (!fila?.id) throw new Error('Secretaría no confirmó la tarea.');
+  return `Apuntado en Secretaría, señor Cubero: «${p.titulo}». Le llegará el aviso al móvil el ${p.cuando}.`;
+}
+
+async function ejecutarPublicar(p: Extract<PropuestaGestion, { tipo: 'publicar_grupos' }>) {
+  const hechos: string[] = [];
+  const fallos: string[] = [];
+  const accessToken = await obtenerAccessTokenSupabaseApp();
+  for (const g of p.grupos) {
+    try {
+      await supabase.rpcJson(GROUP_OPERATION_RPC.publish, { p_grupo_id: g.grupo_id });
+      try {
+        await llamarMiticoPush({ supabaseUrl: SUPABASE_URL, anonKey: SUPABASE_ANON_KEY, accessToken }, 'group_published', {
+          grupo_id: g.grupo_id,
+        });
+      } catch (error) {
+        console.warn('Grupo publicado, pero no se pudo enviar el aviso push:', error);
+      }
+      hechos.push(g.grupo_id);
+    } catch (error) {
+      if (estadoHttp(error) === 401) throw error;
+      fallos.push(`${g.nombre} (${g.turno}): ${error instanceof Error ? error.message.slice(0, 140) : 'error'}`);
+    }
+  }
+  // Comprobación: se vuelve a leer si de verdad quedaron publicados.
+  const comprobados = hechos.length
+    ? await supabase
+        .query<{ id: string; publicado: boolean | null }>('grupos', `select=id,publicado&id=in.(${hechos.join(',')})`)
+        .catch(() => [])
+    : [];
+  const ok = p.grupos.filter((g) => comprobados.some((c) => c.id === g.grupo_id && c.publicado));
+  const lineas = [
+    ok.length
+      ? `Publicado${ok.length === 1 ? '' : 's'}: ${ok.map((g) => `«${g.nombre}» (${g.turno}) a ${g.entrenador.split(' ')[0] || 'su entrenador'}`).join('; ')}. Les llega el aviso.`
+      : 'No se ha publicado ninguno.',
+  ];
+  if (fallos.length) lineas.push(`No se pudo: ${fallos.join('; ')}.`);
+  if (hechos.length > ok.length) lineas.push('Ojo: alguno no aparece como publicado al volver a leer los datos. Revíselo en Entrenamientos.');
+  return { texto: lineas.join('\n'), estado: fallos.length || hechos.length > ok.length ? 'error' : 'ok', ok: ok.length };
+}
+
+export async function ejecutarPropuestaGestion(propuesta: unknown): Promise<{ answer: string }> {
+  if (!esPropuestaGestion(propuesta)) {
+    return { answer: 'Esa confirmación no es válida. No he cambiado nada; pídamelo de nuevo.' };
+  }
+  const p: PropuestaGestion = propuesta;
+  const accion = p.tipo === 'recordatorio' ? 'paco_recordatorio' : 'paco_publicar_grupos';
+  try {
+    if (p.tipo === 'recordatorio') {
+      const answer = await ejecutarRecordatorio(p);
+      void registrarAccion({ accion, estado: 'ok', resumen: p.etiqueta, parametros: { recordar_at: p.recordar_at } });
+      return { answer };
+    }
+    const r = await ejecutarPublicar(p);
+    void registrarAccion({
+      accion,
+      estado: r.estado === 'ok' ? 'ok' : 'error',
+      resumen: p.etiqueta,
+      parametros: { grupos: p.grupos.map((g) => g.grupo_id) },
+      resultado: { publicados: r.ok },
+    });
+    return { answer: `${r.ok ? 'Hecho, señor Cubero. ' : ''}${r.texto}` };
+  } catch (error) {
+    if (estadoHttp(error) === 401) throw error;
+    const detalle = error instanceof Error ? error.message : 'Error desconocido.';
+    void registrarAccion({ accion, estado: 'error', resumen: p.etiqueta, parametros: {}, error: detalle });
     return { answer: `No lo he podido hacer: ${detalle.slice(0, 220)}\nNo se ha cambiado nada.` };
   }
 }
