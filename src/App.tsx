@@ -20899,7 +20899,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       {pantalla === 'resumenDia' && (
         <DailySummaryScreen
           ctx={{
-            ejecutarFuncion,
+            ejecutarFuncion, consultarSupabase,
             setEntrenadores,
             setError,
             abrirAjustePistaSesion,

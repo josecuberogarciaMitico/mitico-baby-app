@@ -1,5 +1,6 @@
 import React from 'react';
 import type { ReportePendiente } from '../../core/sessions/operationalTypes';
+import { ReportsReviewPanel } from './ReportsReviewPanel';
 
 type ReportsScreenProps = {
   ctx: Record<string, any>;
@@ -49,10 +50,44 @@ export function ReportsScreen({ ctx }: ReportsScreenProps) {
     tarjetaEntrenadorMovil,
     tarjetaMovilVacia,
   } = ctx;
+  // Pendientes (lo de siempre) o Revisar reportes hechos (01/11).
+  const [vistaReportes, setVistaReportes] = React.useState<'pendientes' | 'revisar'>('pendientes');
 
   return (
     <>
-      {pantalla === 'reportes' &&
+      {pantalla === 'reportes' && (
+        <div role="tablist" aria-label="Reportes" style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+          {([
+            ['pendientes', 'Pendientes'],
+            ['revisar', 'Revisar reportes hechos'],
+          ] as const).map(([valor, texto]) => (
+            <button
+              key={valor}
+              type="button"
+              role="tab"
+              aria-selected={vistaReportes === valor}
+              onClick={() => setVistaReportes(valor)}
+              style={{
+                minHeight: 40,
+                padding: '8px 14px',
+                borderRadius: 999,
+                border: vistaReportes === valor ? '1px solid #0f172a' : '1px solid #cbd5e1',
+                background: vistaReportes === valor ? '#0f172a' : '#ffffff',
+                color: vistaReportes === valor ? '#ffffff' : '#0f172a',
+                fontWeight: 900,
+                fontSize: 13.5,
+                cursor: 'pointer',
+              }}
+            >
+              {texto}
+            </button>
+          ))}
+        </div>
+      )}
+      {pantalla === 'reportes' && vistaReportes === 'revisar' && (
+        <ReportsReviewPanel esVistaMovilApp={esVistaMovilApp} />
+      )}
+      {pantalla === 'reportes' && vistaReportes === 'pendientes' &&
         (() => {
           const totalReportesPendientes = reportesSemanaCierre.filter(
             (reporte) => reporte.estado_reporte === 'Falta reporte'

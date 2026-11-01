@@ -162,3 +162,39 @@ export function textoMaterial(dias: MaterialDia[]) {
     cuerpoLargo: `Señor Cubero, para este fin de semana hay que llevar ${partes.join(' y ')} (solo cuenta niños ya metidos en grupos y entrenadores asignados):\n\n${lineas.join('\n\n')}`,
   };
 }
+
+// ---- Resumen de sesión (01/11) ----------------------------------------------
+// 45 minutos antes de cada turno: grupos con su objetivo, para Jose. El cron
+// pasa cada 5 min, así que la ventana (40, 45] min recoge siempre una vuelta.
+
+export function tocaResumenSesion(inicioMs: number, ahoraMs: number) {
+  const falta = inicioMs - ahoraMs;
+  return falta > 40 * 60000 && falta <= 45 * 60000;
+}
+
+/** El apartado «OBJETIVO · …» del trabajo diario de un grupo. */
+export function objetivoDeTrabajo(trabajo: string | null | undefined) {
+  const m = String(trabajo || '').replace(/\r/g, '').match(/(?:^|\n)\s*OBJETIVO\s*·\s*([\s\S]*?)(?=\n\s*\n|$)/i);
+  return m ? m[1].replace(/\s+/g, ' ').trim() : '';
+}
+
+export type GrupoResumenSesion = { modalidad: string; nombre: string; nivel: string; entrenador: string; objetivo: string };
+
+export function textoResumenSesion(fecha: string, hora: string, grupos: GrupoResumenSesion[]) {
+  const hh = String(hora).slice(0, 5);
+  const porModalidad = new Map<string, number>();
+  for (const g of grupos) porModalidad.set(g.modalidad, (porModalidad.get(g.modalidad) || 0) + 1);
+  const reparto = [...porModalidad.entries()].map(([m, n]) => `${m} ${n}`).join(' · ');
+  const nombre = (x: string) => {
+    const p = String(x || '').trim().split(/\s+/)[0] || '';
+    return p ? p.charAt(0).toUpperCase() + p.slice(1).toLowerCase() : 'sin entrenador';
+  };
+  const lineas = grupos.map((g) =>
+    `• ${g.modalidad ? `${g.modalidad} · ` : ''}${g.nombre}${g.nivel ? ` (${g.nivel})` : ''} — ${nombre(g.entrenador)}: ${g.objetivo || 'sin trabajo diario'}`
+  );
+  return {
+    titulo: `Sesión de las ${hh}: ${grupos.length} grupo${grupos.length === 1 ? '' : 's'}`,
+    cuerpoCorto: `${reparto}. Abre Paco para ver la tabla de grupos y objetivos.`,
+    cuerpoLargo: `Señor Cubero, en 45 minutos empieza la sesión de las ${hh} (${diaSemanaIso(fecha)} ${fechaCorta(fecha)}). Objetivo de cada grupo:\n${lineas.join('\n')}\n\nPulse «Grupos y objetivos» para verlo en tabla.`,
+  };
+}

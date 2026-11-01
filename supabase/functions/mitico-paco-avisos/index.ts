@@ -8,6 +8,9 @@ import {
   horaDeAvisarEntrenador,
   horaDeAvisarJose,
   madridAMs,
+  objetivoDeTrabajo,
+  textoResumenSesion,
+  tocaResumenSesion,
   textoJoseConfirmaciones,
   textoMaterial,
   textoRecordarConfirmar,
@@ -39,6 +42,7 @@ import {
 //   recuerda a los entrenadores los grupos sin confirmar, la disponibilidad
 //   sin contestar y los reportes atrasados (2º aviso), avisa a Jose si un
 //   grupo sigue sin confirmar a <12 h, y el viernes manda el material del finde.
+// - 45 min antes de cada turno, resumen de grupos y objetivos para Jose (01/11).
 // ---------------------------------------------------------------------------
 
 const CORS = {
@@ -784,6 +788,46 @@ async function materialFinde(admin: any, ahora: ReturnType<typeof madridParts>, 
     { titulo: texto.titulo, cuerpo: texto.cuerpoCorto, tag: dedupe, tipo: 'MATERIAL_FINDE' })
 }
 
+// 45 min antes de cada turno de hoy con grupos: grupos y objetivos para Jose.
+async function resumenSesiones(admin: any, ahora: ReturnType<typeof madridParts>, enviar: boolean) {
+  const hoy = `${ahora.y}-${pad(ahora.m)}-${pad(ahora.d)}`
+  const ahoraMs = Date.now()
+  const { data: sesiones, error } = await admin.from('v_agenda_sesiones_operativa_app')
+    .select('sesion_id,fecha,hora_inicio,modalidad,total_grupos').eq('fecha', hoy)
+  if (error) throw error
+  const porHora = new Map<string, any[]>()
+  for (const s of sesiones || []) {
+    if (!Number(s.total_grupos)) continue
+    const inicio = madridAMs(hoy, String(s.hora_inicio || ''))
+    if (inicio === null || !tocaResumenSesion(inicio, ahoraMs)) continue
+    const h = String(s.hora_inicio).slice(0, 5)
+    porHora.set(h, [...(porHora.get(h) || []), s])
+  }
+  const salida: unknown[] = []
+  for (const [h, ses] of porHora) {
+    const dedupe = `resumen-sesion:${hoy}T${h}`
+    if ((await clavesYaUsadas(admin, 'paco_avisos', [dedupe])).size) continue
+    const mod = new Map(ses.map((s: any) => [String(s.sesion_id), String(s.modalidad || '')]))
+    const { data: grupos, error: ge } = await admin.from('v_grupos_sesion_operativa_app')
+      .select('sesion_id,nombre_grupo,nivel_grupo,entrenador,trabajo_diario').in('sesion_id', [...mod.keys()])
+    if (ge) throw ge
+    const lista = (grupos || [])
+      .map((g: any) => ({
+        modalidad: mod.get(String(g.sesion_id)) || '', nombre: String(g.nombre_grupo || 'Grupo'),
+        nivel: String(g.nivel_grupo || ''), entrenador: String(g.entrenador || ''), objetivo: objetivoDeTrabajo(g.trabajo_diario),
+      }))
+      .sort((a: any, b: any) => a.modalidad.localeCompare(b.modalidad, 'es') || a.nombre.localeCompare(b.nombre, 'es', { numeric: true }))
+    if (!lista.length) continue
+    const t = textoResumenSesion(hoy, h, lista)
+    salida.push({ hora: h, grupos: lista.length })
+    if (enviar) {
+      await avisarJose(admin, [{ tipo: 'RESUMEN_SESION', titulo: t.titulo, cuerpo: t.cuerpoLargo, dedupe_key: dedupe }],
+        { titulo: t.titulo, cuerpo: t.cuerpoCorto, tag: dedupe, tipo: 'RESUMEN_SESION' })
+    }
+  }
+  return salida
+}
+
 async function perseguirTodo(admin: any, enviar = true) {
   const ahora = madridParts()
   const salida: Record<string, unknown> = {}
@@ -792,6 +836,7 @@ async function perseguirTodo(admin: any, enviar = true) {
     ['disponibilidad', () => perseguirDisponibilidad(admin, ahora, enviar)],
     ['reportes', () => perseguirReportes(admin, ahora, enviar)],
     ['material', () => materialFinde(admin, ahora, enviar)],
+    ['resumen_sesion', () => resumenSesiones(admin, ahora, enviar)],
   ]
   // Cada paso por separado: si uno falla, los demás siguen.
   for (const [nombre, paso] of pasos) {
@@ -938,7 +983,7 @@ Deno.serve(async (req) => {
     if (action === 'listar') {
       const desde = new Date(Date.now() - 14 * 86400000).toISOString()
       const { data, error } = await admin
-        .from('paco_avisos').select('id,tipo,titulo,cuerpo,created_at,semana_inicio')
+        .from('paco_avisos').select('id,tipo,titulo,cuerpo,created_at,semana_inicio,dedupe_key')
         .is('leido_at', null).gte('created_at', desde).order('created_at', { ascending: true }).limit(10)
       if (error) throw error
       return json({ ok: true, items: data || [] })
