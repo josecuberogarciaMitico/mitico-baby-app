@@ -1,6 +1,7 @@
 import React from 'react';
 import { nombreHabilidad } from '../../core/reports/skillNotes';
 import {
+  buscarReportesAlumno,
   cargarReportesCoordinacion,
   editarReporteCoordinacion,
   type ReporteCoordinacion,
@@ -235,7 +236,112 @@ function TarjetaReporte({ fila, editando, setEditando, recargar }: {
   );
 }
 
+type ModoRevision = 'semana' | 'nino' | 'dia';
+
+/** Buscar por nombre (01/11): último reporte de cada niño, de cualquier fecha. */
+function BusquedaNino({ esVistaMovilApp }: { esVistaMovilApp?: boolean }) {
+  const [texto, setTexto] = React.useState('');
+  const [filas, setFilas] = React.useState<ReporteCoordinacion[] | null>(null);
+  const [cargando, setCargando] = React.useState(false);
+  const [error, setError] = React.useState('');
+  const [editando, setEditando] = React.useState('');
+  const [ultimaBusqueda, setUltimaBusqueda] = React.useState('');
+
+  async function buscar(consulta = texto, porNino = 1) {
+    const q = consulta.trim();
+    if (q.replace(/\s/g, '').length < 3) {
+      setError('Escribe al menos 3 letras del nombre.');
+      return;
+    }
+    setCargando(true);
+    setError('');
+    try {
+      const nuevas = await buscarReportesAlumno(q, porNino);
+      if (porNino > 1 && filas) {
+        // «Ver anteriores» de un niño: se sustituyen solo sus reportes.
+        const ids = new Set(nuevas.map((f) => f.alumno_id));
+        setFilas([...filas.filter((f) => !ids.has(f.alumno_id)), ...nuevas]);
+      } else {
+        setFilas(nuevas);
+        setUltimaBusqueda(q);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo buscar.');
+    } finally {
+      setCargando(false);
+    }
+  }
+
+  const porNino = new Map<string, ReporteCoordinacion[]>();
+  for (const f of filas || []) porNino.set(f.alumno_id, [...(porNino.get(f.alumno_id) || []), f]);
+  const ninos = [...porNino.values()]
+    .map((fs) => [...fs].sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))))
+    .sort((a, b) => a[0].alumno.localeCompare(b[0].alumno, 'es'));
+
+  return (
+    <section style={{ display: 'grid', gap: 10 }}>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          void buscar();
+        }}
+        style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}
+      >
+        <input
+          value={texto}
+          onChange={(e) => setTexto(e.target.value)}
+          placeholder="Nombre del niño (p. ej. Iñigo Díez)"
+          autoFocus
+          style={{ flex: '1 1 220px', minWidth: 0, minHeight: 42, padding: '8px 12px', borderRadius: 10, border: '1px solid #cbd5e1', fontSize: 14 }}
+        />
+        <button type="submit" disabled={cargando} style={{ ...boton, minHeight: 42, background: '#0f172a', color: '#ffffff', borderColor: '#0f172a' }}>
+          {cargando ? 'Buscando…' : 'Buscar'}
+        </button>
+      </form>
+      {error && <p style={{ margin: 0, color: '#b91c1c', fontWeight: 800 }}>{error}</p>}
+      {filas && ninos.length === 0 && (
+        <p style={{ margin: 0, color: '#475569' }}>No hay reportes de ningún niño que se llame «{ultimaBusqueda}».</p>
+      )}
+      {ninos.map((fs) => (
+        <section key={fs[0].alumno_id} style={{ display: 'grid', gap: 8, padding: 10, borderRadius: 16, background: '#f1f5f9', border: '1px solid #e2e8f0' }}>
+          <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <strong style={{ fontSize: 15, color: '#0f172a', overflowWrap: 'anywhere' }}>{fs[0].alumno}</strong>
+            <span style={{ fontSize: 12.5, color: '#64748b', fontWeight: 700 }}>
+              {fs.length === 1 ? 'último reporte' : `últimos ${fs.length} reportes`}
+            </span>
+            {fs.length === 1 && (
+              <button type="button" disabled={cargando} onClick={() => void buscar(fs[0].alumno, 6)} style={{ ...boton, minHeight: 32, padding: '4px 10px', fontSize: 12 }}>
+                Ver anteriores
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'grid', gap: 8, alignItems: 'start', gridTemplateColumns: esVistaMovilApp ? 'minmax(0,1fr)' : 'repeat(auto-fill, minmax(320px, 1fr))' }}>
+            {fs.map((fila) => {
+              const clave = String(fila.reporte_id);
+              return (
+                <div key={clave} style={{ display: 'grid', gap: 4 }}>
+                  <span style={{ fontSize: 12.5, fontWeight: 800, color: '#0f766e' }}>
+                    {etiquetaDia(fila.fecha)} {String(fila.fecha).slice(0, 4)} · {String(fila.hora_inicio || '').slice(0, 5)} {fila.modalidad || ''} · {fila.nombre_grupo || 'Sin grupo'}
+                  </span>
+                  <TarjetaReporte
+                    fila={fila}
+                    editando={editando === clave}
+                    setEditando={(v) => setEditando(v ? clave : '')}
+                    recargar={() => void buscar(fs[0].alumno, fs.length)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      ))}
+    </section>
+  );
+}
+
 export function ReportsReviewPanel({ esVistaMovilApp }: { esVistaMovilApp?: boolean }) {
+  const [modo, setModo] = React.useState<ModoRevision>('semana');
+  const [dia, setDia] = React.useState(() => hoyMadrid());
   const [lunes, setLunes] = React.useState(() => lunesDeIso(hoyMadrid()));
   const [filas, setFilas] = React.useState<ReporteCoordinacion[] | null>(null);
   const [error, setError] = React.useState('');
@@ -243,13 +349,16 @@ export function ReportsReviewPanel({ esVistaMovilApp }: { esVistaMovilApp?: bool
   const [busqueda, setBusqueda] = React.useState('');
   const [editando, setEditando] = React.useState('');
   const domingo = sumarDiasIso(lunes, 6);
+  const desde = modo === 'dia' ? dia : lunes;
+  const hasta = modo === 'dia' ? dia : domingo;
 
   const cargar = React.useCallback(() => {
+    if (modo === 'nino' || !/^\d{4}-\d{2}-\d{2}$/.test(desde)) return;
     setError('');
-    cargarReportesCoordinacion(lunes, domingo)
+    cargarReportesCoordinacion(desde, hasta)
       .then(setFilas)
       .catch((err) => setError(err instanceof Error ? err.message : 'No se pudieron cargar los reportes.'));
-  }, [lunes, domingo]);
+  }, [modo, desde, hasta]);
 
   React.useEffect(() => {
     setFilas(null);
@@ -271,11 +380,56 @@ export function ReportsReviewPanel({ esVistaMovilApp }: { esVistaMovilApp?: bool
       <div style={{ padding: esVistaMovilApp ? 14 : 18, borderRadius: 20, background: 'linear-gradient(135deg,#062d3f,#0b5d4f)', color: '#ffffff', display: 'grid', gap: 10 }}>
         <div>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.06em', color: '#86efac' }}>REVISAR REPORTES</div>
-          <h2 style={{ margin: '4px 0 2px', fontSize: esVistaMovilApp ? 22 : 26, lineHeight: 1.1 }}>Reportes de la semana</h2>
+          <h2 style={{ margin: '4px 0 2px', fontSize: esVistaMovilApp ? 22 : 26, lineHeight: 1.1 }}>
+            {modo === 'semana' ? 'Reportes de la semana' : modo === 'dia' ? 'Reportes de un día' : 'Buscar reportes de un niño'}
+          </h2>
           <p style={{ margin: 0, fontSize: 13, color: '#cbd5e1' }}>
-            Por día, turno y grupo. Puedes corregir lo que escribió el entrenador.
+            {modo === 'nino'
+              ? 'Escribe su nombre y te sale su último reporte, sea de cuando sea.'
+              : 'Por día, turno y grupo. Puedes corregir lo que escribió el entrenador.'}
           </p>
         </div>
+        <div role="tablist" aria-label="Cómo buscar" style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {([
+            ['semana', '📅 Semana'],
+            ['nino', '🔎 Buscar niño'],
+            ['dia', '📆 Buscar día'],
+          ] as const).map(([valor, texto]) => (
+            <button
+              key={valor}
+              type="button"
+              role="tab"
+              aria-selected={modo === valor}
+              onClick={() => setModo(valor)}
+              style={{
+                ...boton,
+                borderRadius: 999,
+                background: modo === valor ? '#86efac' : 'rgba(255,255,255,.12)',
+                color: modo === valor ? '#052e16' : '#ffffff',
+                borderColor: modo === valor ? '#86efac' : 'rgba(255,255,255,.35)',
+              }}
+            >
+              {texto}
+            </button>
+          ))}
+        </div>
+        {modo === 'dia' && (
+          <label style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: 13, fontWeight: 800 }}>
+            Día:
+            <input
+              type="date"
+              value={dia}
+              onChange={(e) => setDia(e.target.value)}
+              style={{ minHeight: 40, padding: '6px 10px', borderRadius: 10, border: '1px solid #cbd5e1', fontSize: 14, color: '#0f172a' }}
+            />
+            {total && (
+              <span style={{ fontSize: 12.5, color: '#e2e8f0', fontWeight: 600 }}>
+                {total.hechos} hecho{total.hechos === 1 ? '' : 's'} · {total.faltan} falta{total.faltan === 1 ? '' : 'n'}
+              </span>
+            )}
+          </label>
+        )}
+        {modo === 'semana' && (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
           <button type="button" onClick={() => setLunes(sumarDiasIso(lunes, -7))} style={{ ...boton, minWidth: 44 }} aria-label="Semana anterior">‹</button>
           <strong style={{ fontSize: 14 }}>
@@ -288,8 +442,13 @@ export function ReportsReviewPanel({ esVistaMovilApp }: { esVistaMovilApp?: bool
             </span>
           )}
         </div>
+        )}
       </div>
 
+      {modo === 'nino' && <BusquedaNino esVistaMovilApp={esVistaMovilApp} />}
+
+      {modo !== 'nino' && (
+      <>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
         {filtros.map(([valor, texto]) => (
           <button
@@ -317,7 +476,7 @@ export function ReportsReviewPanel({ esVistaMovilApp }: { esVistaMovilApp?: bool
 
       {error && <p style={{ margin: 0, color: '#b91c1c', fontWeight: 800 }}>{error}</p>}
       {!error && filas === null && <p style={{ margin: 0, color: '#475569' }}>Cargando reportes…</p>}
-      {filas && dias.length === 0 && <p style={{ margin: 0, color: '#475569' }}>No hay reportes con este filtro en esta semana.</p>}
+      {filas && dias.length === 0 && <p style={{ margin: 0, color: '#475569' }}>No hay reportes con este filtro {modo === 'dia' ? 'ese día' : 'en esta semana'}.</p>}
 
       {dias.map((dia) => (
         <section key={dia.fecha} style={{ display: 'grid', gap: 8 }}>
@@ -372,6 +531,8 @@ export function ReportsReviewPanel({ esVistaMovilApp }: { esVistaMovilApp?: bool
           ))}
         </section>
       ))}
+      </>
+      )}
     </section>
   );
 }
