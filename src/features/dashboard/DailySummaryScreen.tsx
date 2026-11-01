@@ -1,6 +1,8 @@
 import React from 'react';
 import { groupTrainersJacket, trainersMissingJacket } from '../../core/trainers/trainerOperations';
 import { TrackTrainerAdjustPanel } from './TrackTrainerAdjustPanel';
+import { ReportSplitPanel } from './ReportSplitPanel';
+import { SessionPlanButton } from './SessionPlanTable';
 
 // Botón pequeño común de Trabajo en pista (WhatsApp, Llamar, Camiseta, Chaqueta).
 const pildoraPista: React.CSSProperties = {
@@ -674,6 +676,11 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                   >
                                     + Añadir alumno hoy
                                   </button>
+                                  <SessionPlanButton
+                                    fecha={String(sesion.fecha || '')}
+                                    hora={horaCorta(sesion.hora_inicio)}
+                                    style={{ minHeight: 38 }}
+                                  />
                                   {sesion.origen !== 'intensivo' && (
                                   <button
                                     type="button"
@@ -1173,6 +1180,13 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                     <p style={{ margin: 0, color: '#64748b' }}>Sin listado cargado.</p>
                                   )}
                                 </div>
+
+                                {/* Dos entrenadores: quién hace el reporte de cada niño. */}
+                                <ReportSplitPanel
+                                  grupo={grupo}
+                                  consultarSupabase={ctx.consultarSupabase}
+                                  ejecutarFuncion={ctx.ejecutarFuncion}
+                                />
 
                                 {grupo.trabajo_diario && (
                                   <details

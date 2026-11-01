@@ -14,6 +14,8 @@ export type AvisoPaco = {
   cuerpo: string;
   created_at: string;
   semana_inicio: string | null;
+  // Clave del aviso (p. ej. «resumen-sesion:2026-10-31T09:45»), para sus botones.
+  dedupe_key?: string | null;
 };
 
 export type EstadoAvisosPush =

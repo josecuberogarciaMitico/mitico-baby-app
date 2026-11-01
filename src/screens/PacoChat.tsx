@@ -21,6 +21,8 @@ import {
   type EstadoAvisosPush,
 } from '../lib/avisosPacoClient';
 import { botonesDeAvisoPaco } from '../features/pacoAcciones/pacoAvisosAutomaticosLogic';
+import { SessionPlanButton } from '../features/dashboard/SessionPlanTable';
+import { sesionDeClaveAviso } from '../features/dashboard/sessionPlanLogic';
 import { PacoVoz } from './PacoVoz';
 import { RespuestasPanel } from './RespuestasPanel';
 import './PacoChat.css';
@@ -33,6 +35,8 @@ type MensajePaco = {
   acciones?: PacoAccion[];
   // Respuesta redactada para una familia (se muestra aparte, con boton Copiar).
   borrador?: string;
+  // Aviso «resumen de sesión»: botón que abre la tabla de grupos y objetivos.
+  planSesion?: { fecha: string; hora: string } | null;
   escribir?: boolean;
 };
 
@@ -420,6 +424,7 @@ export function PacoChat() {
         autor: 'paco' as const,
         texto: p.cuerpo,
         choices: botonesDeAvisoPaco(p) as PacoChoice[],
+        planSesion: sesionDeClaveAviso(p.dedupe_key),
         escribir: true,
       })),
     ]);
@@ -893,6 +898,11 @@ export function PacoChat() {
                   </div>
                 )}
 
+                {mensaje.planSesion && (
+                  <div className="paco-mensaje__choices">
+                    <SessionPlanButton fecha={mensaje.planSesion.fecha} hora={mensaje.planSesion.hora} />
+                  </div>
+                )}
                 {mensaje.choices && mensaje.choices.length > 0 && (
                   <div className="paco-mensaje__choices">
                     {mensaje.choices.map((choice) => (
