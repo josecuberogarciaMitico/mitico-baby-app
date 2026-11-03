@@ -69,6 +69,11 @@ export function cargarReportesCoordinacion(desde: string, hasta: string) {
   return api.rpcRows<ReporteCoordinacion>('obtener_reportes_coordinacion_app', { p_desde: desde, p_hasta: hasta });
 }
 
+/** Últimos reportes (de cualquier fecha) de los niños cuyo nombre contiene el texto. */
+export function buscarReportesAlumno(texto: string, porNino = 1) {
+  return api.rpcRows<ReporteCoordinacion>('buscar_reportes_alumno_coordinacion_app', { p_texto: texto, p_por_nino: porNino });
+}
+
 export function editarReporteCoordinacion(input: {
   reporteId: string;
   observaciones: string;
