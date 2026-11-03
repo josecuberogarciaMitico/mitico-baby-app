@@ -198,3 +198,26 @@ export function textoResumenSesion(fecha: string, hora: string, grupos: GrupoRes
     cuerpoLargo: `Señor Cubero, en 45 minutos empieza la sesión de las ${hh} (${diaSemanaIso(fecha)} ${fechaCorta(fecha)}). Objetivo de cada grupo:\n${lineas.join('\n')}\n\nPulse «Grupos y objetivos» para verlo en tabla.`,
   };
 }
+
+// ---- Cancelados en AimHarder (03/11) ----------------------------------------
+// Niños que han cancelado en AimHarder y siguen apuntados en una sesión de la
+// app que aún no ha empezado. Un aviso por niño y turno (no se repite).
+
+export type CanceladoAviso = { alumno: string; fecha: string; hora: string; modalidad: string; grupo: string | null; publicado: boolean };
+
+export function textoCancelados(lista: CanceladoAviso[]) {
+  if (!lista.length) return null;
+  const linea = (c: CanceladoAviso) =>
+    `• ${c.alumno} — ${c.modalidad} ${diaSemanaIso(c.fecha)} ${fechaCorta(c.fecha)} ${c.hora.slice(0, 5)}` +
+    (c.grupo ? ` (${c.grupo}${c.publicado ? ', publicado' : ''})` : ' (sin grupo)');
+  const n = lista.length;
+  const primero = lista[0];
+  return {
+    titulo: n === 1 ? `Cancelación en AimHarder: ${primero.alumno}` : `${n} cancelaciones en AimHarder`,
+    cuerpoCorto:
+      n === 1
+        ? `${primero.modalidad} ${diaSemanaIso(primero.fecha)} ${primero.hora.slice(0, 5)}${primero.grupo ? ` · ${primero.grupo}` : ''}. Sigue apuntado: quítalo en la Agenda.`
+        : `${lista.map((c) => c.alumno.split(/\s+/)[0]).join(', ')}. Siguen apuntados: quítalos en la Agenda.`,
+    cuerpoLargo: `Señor Cubero, ${n === 1 ? 'este niño ha cancelado' : 'estos niños han cancelado'} en AimHarder y ${n === 1 ? 'sigue apuntado' : 'siguen apuntados'} en la app:\n${lista.map(linea).join('\n')}\n\nEn la Agenda, arriba, pulse «Ver y quitar».`,
+  };
+}

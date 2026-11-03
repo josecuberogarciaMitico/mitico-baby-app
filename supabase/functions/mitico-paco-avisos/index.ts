@@ -2,6 +2,7 @@ import { createClient } from 'npm:@supabase/supabase-js@2.57.4'
 // @ts-types="npm:@types/web-push@3.6.4"
 import webpush from 'npm:web-push@3.6.7'
 import {
+  type CanceladoAviso,
   type MaterialDia,
   type Pendiente,
   fechaCorta,
@@ -12,6 +13,7 @@ import {
   textoResumenSesion,
   tocaResumenSesion,
   textoJoseConfirmaciones,
+  textoCancelados,
   textoMaterial,
   textoRecordarConfirmar,
   textoRecordarDisponibilidad,
@@ -828,6 +830,37 @@ async function resumenSesiones(admin: any, ahora: ReturnType<typeof madridParts>
   return salida
 }
 
+// Cancelados en AimHarder que siguen apuntados (03/11). Solo turnos que aún
+// no han empezado; un aviso por niño y turno. Se juntan en un solo push.
+async function canceladosAimHarder(admin: any, ahora: ReturnType<typeof madridParts>, enviar: boolean) {
+  if (!horaDeAvisarJose(ahora.h)) return null
+  const hoy = `${ahora.y}-${pad(ahora.m)}-${pad(ahora.d)}`
+  const { data, error } = await admin.rpc('cancelados_aimharder_app', { p_desde: hoy, p_hasta: null })
+  if (error) throw error
+  const ahoraMs = Date.now()
+  const futuros = (data || []).filter((c: any) => {
+    const inicio = madridAMs(String(c.fecha), String(c.hora_inicio || ''))
+    return inicio !== null && inicio > ahoraMs
+  })
+  if (!futuros.length) return { nuevos: 0 }
+  const clave = (c: any) => `cancelado-ah:${c.sesion_id}:${c.alumno_id}`
+  const usadas = await clavesYaUsadas(admin, 'paco_avisos', futuros.map(clave))
+  const nuevos = futuros.filter((c: any) => !usadas.has(clave(c)))
+  if (!nuevos.length) return { nuevos: 0 }
+  const lista: CanceladoAviso[] = nuevos.map((c: any) => ({
+    alumno: String(c.alumno || 'Alumno'), fecha: String(c.fecha).slice(0, 10), hora: String(c.hora_inicio || ''),
+    modalidad: String(c.modalidad || ''), grupo: c.grupo ? String(c.grupo) : null, publicado: Boolean(c.grupo_publicado),
+  }))
+  const t = textoCancelados(lista)
+  if (!t || !enviar) return { nuevos: nuevos.length, prueba: !enviar, ...t }
+  // Un aviso por niño en Paco (cada uno con su texto); un solo push con todos.
+  const filas = nuevos.map((c: any, i: number) => {
+    const uno = textoCancelados([lista[i]])!
+    return { tipo: 'CANCELACION_AIMHARDER', titulo: uno.titulo, cuerpo: uno.cuerpoLargo, dedupe_key: clave(c) }
+  })
+  return avisarJose(admin, filas, { titulo: t.titulo, cuerpo: t.cuerpoCorto, tag: `cancelado-ah:${Date.now()}`, tipo: 'CANCELACION_AIMHARDER' })
+}
+
 async function perseguirTodo(admin: any, enviar = true) {
   const ahora = madridParts()
   const salida: Record<string, unknown> = {}
@@ -837,6 +870,7 @@ async function perseguirTodo(admin: any, enviar = true) {
     ['reportes', () => perseguirReportes(admin, ahora, enviar)],
     ['material', () => materialFinde(admin, ahora, enviar)],
     ['resumen_sesion', () => resumenSesiones(admin, ahora, enviar)],
+    ['cancelados_aimharder', () => canceladosAimHarder(admin, ahora, enviar)],
   ]
   // Cada paso por separado: si uno falla, los demás siguen.
   for (const [nombre, paso] of pasos) {

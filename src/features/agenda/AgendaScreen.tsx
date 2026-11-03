@@ -32,6 +32,7 @@ import { PacoNotasSesion } from '../pacoAcciones/PacoNotasSesion';
 import { pendingAgendaStudents } from './agendaSessions';
 import { SinColocarPanel } from './SinColocarPanel';
 import { NinosGrupoPropuesto } from './NinosGrupoPropuesto';
+import { CanceladosAimHarderAviso } from './CanceladosAimHarderAviso';
 import type { SesionPlan } from './sinColocarPlanner';
 import { notifyGroupChangedAndRequestReconfirmation } from './groupChangeNotification';
 import { abrirFichaAlumno } from '../students/studentFichaStore';
@@ -1094,6 +1095,16 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                       )}
                     </div>
                   )}
+
+                {esCoordinadorApp && (
+                  <CanceladosAimHarderAviso
+                    hoyIso={hoyTableroSemana}
+                    soloLectura={Boolean(ctx.esSoloConsultaUsuarioApp)}
+                    onCambios={async () => {
+                      await cargarAgendaOperativaDirecta();
+                    }}
+                  />
+                )}
 
                 {esCoordinadorApp && altasPaco && (
                   <PacoAltasAviso
