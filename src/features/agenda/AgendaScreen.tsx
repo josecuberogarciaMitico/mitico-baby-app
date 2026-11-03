@@ -31,6 +31,7 @@ import { PacoAltasAviso } from '../baby/PacoAltasAviso';
 import { PacoNotasSesion } from '../pacoAcciones/PacoNotasSesion';
 import { pendingAgendaStudents } from './agendaSessions';
 import { SinColocarPanel } from './SinColocarPanel';
+import { NinosGrupoPropuesto } from './NinosGrupoPropuesto';
 import type { SesionPlan } from './sinColocarPlanner';
 import { notifyGroupChangedAndRequestReconfirmation } from './groupChangeNotification';
 import { abrirFichaAlumno } from '../students/studentFichaStore';
@@ -2465,6 +2466,14 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                               {opcion.total_actual} → {opcion.total_final} niños
                             </p>
                             <p style={{ margin: '6px 0 0', color: '#475569' }}>{opcion.motivo}</p>
+                            <NinosGrupoPropuesto
+                              grupoId={opcion.grupo_id}
+                              fecha={opcion.fecha}
+                              nuevoNombre={alumnoFueraPlazoNombre}
+                              nuevoNivel={alumnoFueraPlazoNivel}
+                              fichas={alumnos}
+                              consultarSupabase={consultarSupabase}
+                            />
 
                             {opcion.estado !== 'NO_ENCAJA' && (
                               <button
