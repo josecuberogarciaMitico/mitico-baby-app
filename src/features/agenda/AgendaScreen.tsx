@@ -33,6 +33,7 @@ import { pendingAgendaStudents } from './agendaSessions';
 import { SinColocarPanel } from './SinColocarPanel';
 import { NinosGrupoPropuesto } from './NinosGrupoPropuesto';
 import { CanceladosAimHarderAviso } from './CanceladosAimHarderAviso';
+import { avisoCompartirPunto, opcionesPuntoEncuentro, textoOpcionPunto } from './puntosEncuentroLogic';
 import type { SesionPlan } from './sinColocarPlanner';
 import { notifyGroupChangedAndRequestReconfirmation } from './groupChangeNotification';
 import { abrirFichaAlumno } from '../students/studentFichaStore';
@@ -4460,45 +4461,39 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                 Punto de encuentro
                                 <select
                                   value={grupo.punto_encuentro || ''}
-                                  onChange={(e) =>
-                                    cambiarPuntoGrupoAgenda(
-                                      grupo,
-                                      e.target.value
-                                    )
-                                  }
+                                  onChange={(e) => {
+                                    const elegido = e.target.value;
+                                    // Compartir punto solo si ya no hay libres, y avisando antes.
+                                    const aviso = avisoCompartirPunto(
+                                      opcionesPuntoEncuentro(
+                                        puntosEncuentroAgenda,
+                                        grupo.grupo_id,
+                                        gruposRecursosTurnoAgenda(),
+                                        grupo.punto_encuentro
+                                      ).find((o) => o.punto === elegido)
+                                    );
+                                    if (aviso && !window.confirm(aviso)) return;
+                                    void cambiarPuntoGrupoAgenda(grupo, elegido);
+                                  }}
                                   style={selectCampo}
                                 >
                                   <option value="">
                                     Selecciona punto
                                   </option>
-                                  {puntosEncuentroAgenda
-                                    .filter((punto) => {
-                                      const usadosEnOtros = new Set(
-                                        gruposRecursosTurnoAgenda()
-                                          .filter(
-                                            (otro) =>
-                                              otro.grupo_id !== grupo.grupo_id
-                                          )
-                                          .map(
-                                            (otro) =>
-                                              otro.punto_encuentro || ''
-                                          )
-                                          .filter(Boolean)
-                                      );
-
-                                      return (
-                                        punto === grupo.punto_encuentro ||
-                                        !usadosEnOtros.has(punto)
-                                      );
-                                    })
-                                    .map((punto) => (
-                                      <option
-                                        key={`${grupo.grupo_id}-punto-${punto}`}
-                                        value={punto}
-                                      >
-                                        Punto {punto}
-                                      </option>
-                                    ))}
+                                  {/* 04/11: solo libres; si ya no queda ninguno, se puede compartir (avisando). */}
+                                  {opcionesPuntoEncuentro(
+                                    puntosEncuentroAgenda,
+                                    grupo.grupo_id,
+                                    gruposRecursosTurnoAgenda(),
+                                    grupo.punto_encuentro
+                                  ).map((opcion) => (
+                                    <option
+                                      key={`${grupo.grupo_id}-punto-${opcion.punto}`}
+                                      value={opcion.punto}
+                                    >
+                                      {textoOpcionPunto(opcion)}
+                                    </option>
+                                  ))}
                                 </select>
                               </label>
 
