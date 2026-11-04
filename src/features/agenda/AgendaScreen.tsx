@@ -287,6 +287,23 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     texto: string;
   } | null>(null);
 
+  // 04/11: tras añadir a un niño (a un grupo o a la sesión) el buscador queda
+  // limpio para el siguiente; el mensaje de «añadido» se mantiene.
+  function limpiarBuscadorFueraPlazo() {
+    setAlumnoFueraPlazoNombre('');
+    setAlumnoFueraPlazoNivel('');
+    setAlumnoFueraPlazoAlumnoId('');
+    setRecomendacionesFueraPlazo([]);
+  }
+  useEffect(() => {
+    if (mensajeIncorporacionFueraPlazo) limpiarBuscadorFueraPlazo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mensajeIncorporacionFueraPlazo]);
+  useEffect(() => {
+    if (avisoFueraPlazoSesion?.ok) limpiarBuscadorFueraPlazo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [avisoFueraPlazoSesion]);
+
   // ¿La sesión abierta es de Baby? (para el alta tardía de un niño sin ficha).
   function sesionActivaEsBaby(): boolean {
     const sesion = (diasSemanaAgenda as Array<{ fecha: string }>)
@@ -2086,6 +2103,11 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                         const abrir = !mostrarAlumnoFueraPlazo;
                         setMostrarAlumnoFueraPlazo(abrir);
                         setRecomendacionesFueraPlazo([]);
+                        // Se abre limpio, sin el último niño buscado.
+                        if (abrir) {
+                          limpiarBuscadorFueraPlazo();
+                          setAvisoFueraPlazoSesion(null);
+                        }
 
                         if (abrir) {
                           try {
