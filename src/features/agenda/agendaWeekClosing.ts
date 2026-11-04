@@ -50,6 +50,47 @@ export function planWeekClosing(groups: WeekClosingGroup[]): WeekClosingPlan {
   return plan;
 }
 
+// 04/11: para decir QUÉ grupo falta (día, hora, modalidad), no solo su nombre.
+export type WeekClosingSession = {
+  sesion_id: string;
+  fecha?: string | null;
+  hora_inicio?: string | null;
+  modalidad?: string | null;
+};
+
+const WEEK_DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+export function describeClosingSession(session: WeekClosingSession | null | undefined) {
+  if (!session) return '';
+  const date = String(session.fecha || '').slice(0, 10);
+  const parts: string[] = [];
+  if (session.modalidad) parts.push(String(session.modalidad));
+  if (/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    const day = WEEK_DAYS[new Date(`${date}T12:00:00Z`).getUTCDay()];
+    parts.push(`${day} ${date.slice(8, 10)}/${date.slice(5, 7)}`);
+  }
+  const time = String(session.hora_inicio || '').slice(0, 5);
+  if (time) parts.push(time);
+  return parts.join(' · ');
+}
+
+/** Líneas de «faltan», ordenadas por día y hora: «Baby · Sáb 07/11 · 09:45 — Grupo 4: sin punto de encuentro». */
+export function describeFailedGroups(
+  failed: Array<{ group: WeekClosingGroup & { sesion_id?: string }; reason: string }>,
+  sessions: WeekClosingSession[]
+) {
+  const byId = new Map(sessions.map((session) => [session.sesion_id, session]));
+  return failed
+    .map(({ group, reason }) => {
+      const session = group.sesion_id ? byId.get(group.sesion_id) : undefined;
+      const key = `${String(session?.fecha || '9999').slice(0, 10)} ${String(session?.hora_inicio || '').slice(0, 5)} ${session?.modalidad || ''}`;
+      const where = describeClosingSession(session);
+      return { key, name: group.nombre_grupo || 'Grupo', text: `• ${where ? `${where} — ` : ''}${group.nombre_grupo || 'Grupo'}: ${reason}` };
+    })
+    .sort((a, b) => a.key.localeCompare(b.key) || a.name.localeCompare(b.name, 'es', { numeric: true }))
+    .map((line) => line.text);
+}
+
 function addDaysIso(isoDate: string, days: number) {
   const date = new Date(`${isoDate}T12:00:00Z`);
   date.setUTCDate(date.getUTCDate() + days);
@@ -73,9 +114,9 @@ export async function closeWeekPublishingGroups(deps: {
 
   try {
     const weekEnd = addDaysIso(deps.weekStart, 6);
-    const sessions = await deps.query<{ sesion_id: string }>(
+    const sessions = await deps.query<WeekClosingSession>(
       'v_agenda_sesiones_operativa_app',
-      `select=sesion_id&fecha=gte.${deps.weekStart}&fecha=lte.${weekEnd}`
+      `select=sesion_id,fecha,hora_inicio,modalidad&fecha=gte.${deps.weekStart}&fecha=lte.${weekEnd}`
     );
     const sessionIds = Array.from(new Set(sessions.map((s) => s.sesion_id).filter(Boolean)));
     const groups = sessionIds.length
@@ -97,7 +138,7 @@ export async function closeWeekPublishingGroups(deps: {
     );
     if (!ok) return;
 
-    const failed: Array<{ group: WeekClosingGroup; reason: string }> = [...plan.notReady];
+    const failed: Array<{ group: WeekClosingGroup & { sesion_id?: string }; reason: string }> = [...plan.notReady];
     for (const group of plan.toPublish) {
       try {
         await deps.runFunction(GROUP_OPERATION_RPC.publish, { p_grupo_id: group.grupo_id });
@@ -112,7 +153,7 @@ export async function closeWeekPublishingGroups(deps: {
     if (failed.length > 0) {
       notify(
         `Publicados ahora: ${published}. LA SEMANA NO SE HA CERRADO y no se ha avisado a nadie, porque faltan:\n\n` +
-          failed.map(({ group, reason }) => `• ${group.nombre_grupo || 'Grupo'}: ${reason}`).join('\n') +
+          describeFailedGroups(failed, sessions).join('\n') +
           `\n\nCompleta esos grupos (o quítalos) y vuelve a pulsar «Cerrar semana y avisar».`
       );
       return;
