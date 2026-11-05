@@ -3,12 +3,17 @@ import {
   agruparCancelados,
   canceladosPendientes,
   etiquetaTurno,
+  horasRepaso,
   textoCancelo,
+  textoHace,
   textoResumenCancelados,
+  turnosSinRepasoFiable,
   type CanceladoAimHarder,
+  type RepasoTurno,
 } from './canceladosAimHarderLogic';
 import {
   cargarCanceladosAimHarder,
+  cargarRepasoCanceladosAimHarder,
   dejarCanceladoAimHarder,
   quitarCanceladoAimHarder,
 } from '../../services/aimharder/canceladosAimHarderService';
@@ -42,6 +47,9 @@ export function CanceladosAimHarderAviso({ hoyIso, soloLectura, onCambios }: Pro
   const [abierto, setAbierto] = useState(false);
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [mensaje, setMensaje] = useState<string | null>(null);
+  // 05/11: hace cuánto se comprobó cada turno (para saber si fiarse).
+  const [repaso, setRepaso] = useState<RepasoTurno[] | null>(null);
+  const [verRepaso, setVerRepaso] = useState(false);
 
   const cargar = useCallback(async () => {
     try {
@@ -49,6 +57,11 @@ export function CanceladosAimHarderAviso({ hoyIso, soloLectura, onCambios }: Pro
     } catch {
       // Sin la función en Supabase (o sin permiso) el aviso no aparece.
       setFilas([]);
+    }
+    try {
+      setRepaso(await cargarRepasoCanceladosAimHarder(hoyIso));
+    } catch {
+      setRepaso(null);
     }
   }, [hoyIso]);
 
@@ -63,7 +76,58 @@ export function CanceladosAimHarderAviso({ hoyIso, soloLectura, onCambios }: Pro
     };
   }, [cargar]);
 
-  if (!filas.length && !mensaje) return null;
+  const ahoraMs = Date.now();
+  const turnosRepaso = (repaso || []).filter((t) => t.ninos > 0);
+  const flojos = turnosSinRepasoFiable(turnosRepaso, hoyIso, ahoraMs);
+
+  // Línea de repaso: dice si la comprobación es reciente o si no conviene fiarse.
+  const lineaRepaso = turnosRepaso.length ? (
+    <div style={{ marginTop: filas.length ? 6 : 0, fontSize: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <span style={{ flex: '1 1 200px', minWidth: 0, color: flojos.length ? '#92400e' : '#166534', fontWeight: 700 }}>
+          {flojos.length
+            ? `⏳ Repaso de AimHarder sin terminar en ${flojos.length === 1 ? '1 turno' : `${flojos.length} turnos`} de hoy/mañana: no te fíes todavía de que nadie cancelara.`
+            : filas.length
+            ? '✓ Turnos de hoy y mañana comprobados hace menos de 6 h.'
+            : '✓ AimHarder: nadie ha cancelado. Turnos de hoy y mañana comprobados hace menos de 6 h.'}
+        </span>
+        <button type="button" style={{ ...boton, minHeight: 26, padding: '3px 8px' }} onClick={() => setVerRepaso((x) => !x)}>
+          {verRepaso ? 'Ocultar' : 'Ver repaso'}
+        </button>
+      </div>
+      {verRepaso && (
+        <ul style={{ listStyle: 'none', margin: '6px 0 0', padding: 0, color: '#334155' }}>
+          {turnosRepaso.map((t) => {
+            const flojo = flojos.includes(t);
+            return (
+              <li key={t.sesion_id} style={{ padding: '3px 0', borderTop: '1px solid rgba(148,163,184,.3)', color: flojo ? '#92400e' : undefined }}>
+                {flojo ? '⏳ ' : '✓ '}
+                {etiquetaTurno(t.fecha, t.hora_inicio, t.modalidad)} · {t.ninos} niños · comprobado {textoHace(horasRepaso(t, ahoraMs))}
+                {t.sin_vincular ? ` · ${t.sin_vincular} sin enlazar con AimHarder (no se pueden comprobar)` : ''}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
+  ) : null;
+
+  if (!filas.length && !mensaje) {
+    if (!lineaRepaso) return null;
+    return (
+      <div
+        style={{
+          padding: '8px 12px',
+          borderRadius: 12,
+          background: flojos.length ? '#fffbeb' : '#f0fdf4',
+          border: `1px solid ${flojos.length ? '#fcd34d' : '#bbf7d0'}`,
+          minWidth: 0,
+        }}
+      >
+        {lineaRepaso}
+      </div>
+    );
+  }
 
   const turnos = agruparCancelados(filas);
   const quitables = filas.filter((f) => !f.protegido);
@@ -127,6 +191,7 @@ export function CanceladosAimHarderAviso({ hoyIso, soloLectura, onCambios }: Pro
           </button>
         )}
       </div>
+      {lineaRepaso}
 
       {abierto && filas.length > 0 && (
         <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
@@ -197,8 +262,9 @@ export function CanceladosAimHarderAviso({ hoyIso, soloLectura, onCambios }: Pro
             </button>
           )}
           <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>
-            Paco lo mira solo varias veces al día (más a menudo el día antes). Quitar lo saca de la sesión y de su grupo; el
-            entrenador ve su lista actualizada.
+            Paco comprueba a los apuntados de hoy y mañana cada 4 h y al resto de la semana cada 12 h. Si oficina lo vuelve a
+            apuntar como invitado (recupera), no sale aquí. Quitar lo saca de la sesión y de su grupo; el entrenador ve su
+            lista actualizada.
           </p>
         </div>
       )}
