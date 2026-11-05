@@ -95,3 +95,24 @@ test('disponibles en el turno', () => {
   equal(disponiblesEnTurno(filas, '2026-10-31', '14:30', '16:30', null), null, 'sin turno publicado');
   equal(disponiblesEnTurno(filas, '2026-11-01', '09:45', '11:45', null), null, 'sin día');
 });
+
+// ---- Pistas (05/11) ----
+import { contarPistasSesion, sumarConteosPista, textoPistas, pistaDeTexto } from '../../../src/features/agenda/agendaTablero';
+{
+  const nivelAPista = (n: string | null | undefined) => (/^(INICIACION|A\+?)$/i.test(String(n || '')) ? 'Pequeña' : n ? 'Grande' : 'Por definir');
+  const c = contarPistasSesion(
+    [
+      { pista: 'Grande', alumnos_lista: 'ANA · B · Grande || LUIS · B+ · Grande', total_alumnos: 2 },
+      { pista: 'Pequeña', alumnos_lista: 'EVA · A · Pequeña', total_alumnos: 1 },
+      { pista: 'Pequeña/Grande', alumnos_lista: null, total_alumnos: 3 },
+      { pista: null, alumnos_lista: 'PAU · A · x || ZOE · C · x', total_alumnos: 2 },
+    ],
+    [{ nivel_usado: 'INICIACION' }, { nivel_usado: null }],
+    nivelAPista
+  );
+  if (c.grande !== 6 || c.pequena !== 3 || c.sinDato !== 1) throw new Error(`pistas: ${JSON.stringify(c)}`);
+  if (textoPistas(c) !== '6 grande · 3 pequeña · 1 sin nivel') throw new Error('texto pistas');
+  if (textoPistas(sumarConteosPista([c, null, { grande: 1, pequena: 0, sinDato: 0 }])) !== '7 grande · 3 pequeña · 1 sin nivel') throw new Error('suma');
+  if (textoPistas({ grande: 0, pequena: 0, sinDato: 0 }) !== '' || pistaDeTexto('pequeña') !== 'pequena') throw new Error('vacío');
+  console.log('OK  pistas: grupo → su pista, sin grupo → la de su nivel, totales del turno y del día');
+}
