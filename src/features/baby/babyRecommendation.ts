@@ -83,20 +83,81 @@ function sortByProfile(students: AgendaRecomendacionSesionApp[], profiles: Perfi
   });
 }
 
-function babyGroupSizes(students: AgendaRecomendacionSesionApp[], band: BabyBand, profiles: PerfilOperativoAlumnoApp[]) {
+// «especial»: reparto que separa a propósito a los de transición o a los de
+// demanda alta; ahí no se reordena por edad para no deshacer esa separación.
+function babyGroupSizes(students: AgendaRecomendacionSesionApp[], band: BabyBand, profiles: PerfilOperativoAlumnoApp[]): { sizes: number[]; especial: boolean } {
   const total = students.length;
   const maximum = band.id === 'INICIACION_A' ? 4 : band.id === 'APLUS' ? 5 : band.max;
   if (band.id === 'APLUS' || band.id === 'B_BPLUS') {
     const transitions = students.filter((student) => isBabyTowLiftTransition(
       student, profiles.find((profile) => profile.alumno_id === student.alumno_id))).length;
     const rest = total - 3;
-    if (transitions >= 3 && rest >= 2 && rest <= maximum && total >= 5) return [rest, 3];
+    if (transitions >= 3 && rest >= 2 && rest <= maximum && total >= 5) return { sizes: [rest, 3], especial: true };
   }
-  if (total <= maximum) return [total];
+  if (total <= maximum) return { sizes: [total], especial: false };
   const demanding = students.filter((student) => profiles.find((profile) => profile.alumno_id === student.alumno_id)?.demanda_atencion === 'ALTA').length;
   const normal = total - demanding;
   return demanding >= 3 && demanding <= 4 && normal >= 3 && normal <= maximum
-    ? [normal, demanding] : balancedGroupSizes(total, maximum);
+    ? { sizes: [normal, demanding], especial: true } : { sizes: balancedGroupSizes(total, maximum), especial: false };
+}
+
+// ---- Edad (05/11) -------------------------------------------------------------
+// El nivel sigue mandando: la lista ya viene ordenada por nivel y se corta en
+// grupos igual que antes. Solo se intercambian de sitio niños del MISMO nivel
+// (mismo «tramo»), y solo si así los grupos quedan con edades más parecidas.
+// Si no se puede mejorar, o falta la edad, todo queda exactamente como estaba.
+
+function ageOf(student: AgendaRecomendacionSesionApp, profiles: PerfilOperativoAlumnoApp[]): number | null {
+  const fromProfile = profiles.find((item) => item.alumno_id === student.alumno_id)?.edad_aprox;
+  const age = typeof fromProfile === 'number' ? fromProfile : typeof student.edad === 'number' ? student.edad : null;
+  return age !== null && Number.isFinite(age) ? age : null;
+}
+
+function ageSpreadCost(students: AgendaRecomendacionSesionApp[], sizes: number[], ages: Map<string, number | null>): number {
+  let cost = 0;
+  let start = 0;
+  for (const size of sizes) {
+    const known = students.slice(start, start + size).map((s) => ages.get(s.alumno_id)).filter((a): a is number => a !== null && a !== undefined);
+    if (known.length > 1) cost += Math.max(...known) - Math.min(...known);
+    start += size;
+  }
+  return cost;
+}
+
+export function agruparPorEdadDentroDeNivel(
+  students: AgendaRecomendacionSesionApp[],
+  sizes: number[],
+  tierKey: (student: AgendaRecomendacionSesionApp) => string,
+  profiles: PerfilOperativoAlumnoApp[]
+): AgendaRecomendacionSesionApp[] {
+  if (sizes.length < 2) return students;
+  const ages = new Map(students.map((s) => [s.alumno_id, ageOf(s, profiles)]));
+  let current = students.slice();
+  let i = 0;
+  while (i < current.length) {
+    const key = tierKey(current[i]);
+    let j = i;
+    while (j < current.length && tierKey(current[j]) === key) j += 1;
+    // Huecos del tramo con edad conocida: solo esos se reparten por edad.
+    const slots = [];
+    for (let k = i; k < j; k += 1) if (ages.get(current[k].alumno_id) !== null) slots.push(k);
+    if (slots.length > 1) {
+      const conEdad = slots.map((k) => current[k]);
+      const porEdad = (dir: number) => conEdad.slice().sort((a, b) =>
+        dir * ((ages.get(a.alumno_id) as number) - (ages.get(b.alumno_id) as number)) || a.alumno.localeCompare(b.alumno, 'es'));
+      let best = current;
+      let bestCost = ageSpreadCost(current, sizes, ages);
+      for (const orden of [porEdad(1), porEdad(-1)]) {
+        const candidate = current.slice();
+        slots.forEach((k, n) => { candidate[k] = orden[n]; });
+        const cost = ageSpreadCost(candidate, sizes, ages);
+        if (cost < bestCost) { best = candidate; bestCost = cost; }
+      }
+      current = best;
+    }
+    i = j;
+  }
+  return current;
 }
 
 export function tamanosGruposPedagogicosApp(total: number, maximum: number): number[] {
@@ -117,10 +178,27 @@ export function aplicarCinturonPedagogicoAutomaticoAgenda(
   const output: AgendaRecomendacionSesionApp[] = [];
   for (const bandId of ['INICIACION_A', 'APLUS', 'B_BPLUS', 'C_D', 'REVIEW']) {
     const baseStudents = byBand.get(bandId) || [];
-    const students = options?.usarPerfilBaby ? sortByProfile(baseStudents, profiles) : baseStudents.slice().sort((a, b) => levelOrder(a.nivel_resumen) - levelOrder(b.nivel_resumen) || a.alumno.localeCompare(b.alumno));
-    if (!students.length) continue;
-    const band = options?.usarPerfilBaby ? functionalBand(students[0], profiles) : baseBand(students[0]);
-    const sizes = options?.usarPerfilBaby ? babyGroupSizes(students, band, profiles) : balancedGroupSizes(students.length, band.max);
+    const sortedStudents = options?.usarPerfilBaby ? sortByProfile(baseStudents, profiles) : baseStudents.slice().sort((a, b) => levelOrder(a.nivel_resumen) - levelOrder(b.nivel_resumen) || a.alumno.localeCompare(b.alumno));
+    if (!sortedStudents.length) continue;
+    const band = options?.usarPerfilBaby ? functionalBand(sortedStudents[0], profiles) : baseBand(sortedStudents[0]);
+    const reparto = options?.usarPerfilBaby
+      ? babyGroupSizes(sortedStudents, band, profiles)
+      : { sizes: balancedGroupSizes(sortedStudents.length, band.max), especial: false };
+    const sizes = reparto.sizes;
+    // 05/11: dentro del mismo nivel, juntar por edad (sin tocar el reparto especial).
+    const students = reparto.especial
+      ? sortedStudents
+      : agruparPorEdadDentroDeNivel(
+          sortedStudents,
+          sizes,
+          options?.usarPerfilBaby
+            ? (s) => {
+                const p = profiles.find((item) => item.alumno_id === s.alumno_id);
+                return `${levelOrder(s.nivel_resumen)}|${attentionPenalty(p)}|${strength(p) < 0 ? 'bajo' : 'ok'}`;
+              }
+            : (s) => String(levelOrder(s.nivel_resumen)),
+          profiles
+        );
     let start = 0;
     for (const size of sizes) {
       const chunk = students.slice(start, start + size);

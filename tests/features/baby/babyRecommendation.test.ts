@@ -66,3 +66,50 @@ test('B+ fuerte cambia de banda y deja explicación compacta visible', () => {
 test('tamaños pedagógicos evitan un grupo unitario', () => {
   equal(tamanosGruposPedagogicosApp(8, 7).join(','), '4,4', 'reparto');
 });
+
+// ---- Edad (05/11) ----
+function conEdad(id: string, level: string, edad: number | null): AgendaRecomendacionSesionApp {
+  return { ...student(id, level), edad };
+}
+function grupos(result: AgendaRecomendacionSesionApp[]) {
+  const m = new Map<string, string[]>();
+  result.forEach((r) => m.set(r.grupo_recomendado, [...(m.get(r.grupo_recomendado) || []), r.alumno_id]));
+  return [...m.values()].map((ids) => ids.slice().sort().join(''));
+}
+
+test('edad: mismo nivel → los grupos salen por edades parecidas (sin perfil, p. ej. Ocio)', () => {
+  // 8 niños B (máx. 6 → 4+4). Por nombre saldrían a,b,c,d / e,f,g,h con edades mezcladas.
+  const edades: Record<string, number> = { a: 9, b: 5, c: 9, d: 5, e: 9, f: 5, g: 9, h: 5 };
+  const data = Object.keys(edades).map((id) => conEdad(id, 'B', edades[id]));
+  const g = grupos(aplicarCinturonPedagogicoAutomaticoAgenda(data));
+  equal(g.length, 2, 'dos grupos');
+  equal(g.includes('bdfh') && g.includes('aceg'), true, 'pequeños juntos y mayores juntos');
+});
+
+test('edad: el nivel sigue mandando (no mezcla B con B+ para juntar edades)', () => {
+  const data = [
+    conEdad('b1', 'B', 5), conEdad('b2', 'B', 9), conEdad('b3', 'B', 5), conEdad('b4', 'B', 9),
+    conEdad('p1', 'B+', 5), conEdad('p2', 'B+', 9), conEdad('p3', 'B+', 5), conEdad('p4', 'B+', 9),
+  ];
+  const g = grupos(aplicarCinturonPedagogicoAutomaticoAgenda(data));
+  equal(g.includes('b1b2b3b4') && g.includes('p1p2p3p4'), true, 'B por un lado y B+ por otro, como antes');
+});
+
+test('edad: sin edades queda exactamente igual que antes', () => {
+  const data = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'].map((id) => conEdad(id, 'B', null));
+  const g = grupos(aplicarCinturonPedagogicoAutomaticoAgenda(data));
+  equal(g.join('|'), 'abcd|efgh', 'mismo reparto por nombre');
+});
+
+test('edad (Baby con perfil): reordena dentro del nivel y respeta los niños con demanda alta', () => {
+  const ids = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+  const edades = [9, 5, 9, 5, 9, 5, 9, 5];
+  const data = ids.map((id) => student(id, 'C'));
+  const perfiles = ids.map((id, i) => profile(id, { edad_aprox: edades[i] }));
+  const g = grupos(aplicarCinturonPedagogicoAutomaticoAgenda(data, { usarPerfilBaby: true, perfiles }));
+  equal(g.includes('bdfh') && g.includes('aceg'), true, 'por edad');
+  // Demanda alta: el reparto especial (normales / demanda alta) no se toca.
+  const perfiles2 = ids.map((id, i) => profile(id, { edad_aprox: edades[i], demanda_atencion: i >= 5 ? 'ALTA' : 'NORMAL' }));
+  const g2 = grupos(aplicarCinturonPedagogicoAutomaticoAgenda(data, { usarPerfilBaby: true, perfiles: perfiles2 }));
+  equal(g2.includes('fgh'), true, 'los 3 de demanda alta siguen juntos');
+});
