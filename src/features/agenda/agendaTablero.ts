@@ -115,7 +115,7 @@ export function resumenDia(sesiones: SesionTablero[]) {
 // Ayudas de la semana (27/10): qué falta, siguiente pendiente, disponibles por
 // turno y avisos de cada sesión.
 
-export type ExtrasSesion = { revisar: number; notas: number; sinConfirmar: number; sinColocar?: number };
+export type ExtrasSesion = { revisar: number; notas: number; sinConfirmar: number; sinColocar?: number; pistas?: ConteoPista };
 
 export type MotivoPendiente = 'sin_colocar' | 'sin_grupos' | 'sin_entrenador' | 'sin_publicar' | 'revisar' | 'sin_confirmar';
 
@@ -258,4 +258,62 @@ export function disponiblesEnTurno(
       .filter((id) => !activos || activos.has(id))
   );
   return ids.size;
+}
+
+// ---------------------------------------------------------------------------
+// Pista grande / pequeña (05/11): cuántos niños van a cada pista por sesión.
+// Niños ya en un grupo → la pista del grupo («Pequeña/Grande» cuenta como
+// grande, como se guardan los grupos desde el 22/10). Grupo sin pista o niños
+// sin grupo → la pista de su nivel. Sin nivel → «sin nivel».
+
+export type ConteoPista = { grande: number; pequena: number; sinDato: number };
+
+export function pistaDeTexto(pista: string | null | undefined): 'grande' | 'pequena' | null {
+  const t = String(pista || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase();
+  if (t.includes('GRANDE')) return 'grande';
+  if (t.includes('PEQUENA')) return 'pequena';
+  return null;
+}
+
+export function contarPistasSesion(
+  grupos: Array<{ pista?: string | null; alumnos_lista?: string | null; total_alumnos?: number | null }>,
+  sinGrupo: Array<{ nivel_usado?: string | null }>,
+  pistaDeNivel: (nivel: string | null | undefined) => string | null | undefined
+): ConteoPista {
+  const c: ConteoPista = { grande: 0, pequena: 0, sinDato: 0 };
+  const sumarNivel = (nivel: string | null | undefined) => {
+    const p = pistaDeTexto(pistaDeNivel(nivel));
+    if (p === 'grande') c.grande += 1;
+    else if (p === 'pequena') c.pequena += 1;
+    else c.sinDato += 1;
+  };
+  for (const g of grupos) {
+    const ninos = String(g.alumnos_lista || '')
+      .split('||')
+      .map((x) => x.split('·').map((y) => y.trim()))
+      .filter((x) => x[0]);
+    const n = ninos.length || Number(g.total_alumnos || 0);
+    const p = pistaDeTexto(g.pista);
+    if (p === 'grande') c.grande += n;
+    else if (p === 'pequena') c.pequena += n;
+    else if (ninos.length) ninos.forEach((x) => sumarNivel(x[1] || null));
+    else c.sinDato += n;
+  }
+  sinGrupo.forEach((a) => sumarNivel(a.nivel_usado));
+  return c;
+}
+
+export function sumarConteosPista(lista: Array<ConteoPista | null | undefined>): ConteoPista {
+  return lista.reduce<ConteoPista>(
+    (t, c) => (c ? { grande: t.grande + c.grande, pequena: t.pequena + c.pequena, sinDato: t.sinDato + c.sinDato } : t),
+    { grande: 0, pequena: 0, sinDato: 0 }
+  );
+}
+
+/** «12 grande · 5 pequeña» (y «· 2 sin nivel» si hay). Vacío si no hay niños. */
+export function textoPistas(c: ConteoPista | null | undefined) {
+  if (!c || !(c.grande + c.pequena + c.sinDato)) return '';
+  const partes = [`${c.grande} grande`, `${c.pequena} pequeña`];
+  if (c.sinDato) partes.push(`${c.sinDato} sin nivel`);
+  return partes.join(' · ');
 }

@@ -316,3 +316,8 @@
   font-size: 13px; font-weight: 800; cursor: pointer; font-family: inherit; max-width: 100%; white-space: normal;
 }
 .ag-cf-turno.is-activo { background: #16a34a; border-color: #16a34a; color: #fff; }
+
+/* 05/11: niños por pista (grande / pequeña). */
+.ag-pistas { font-size: 12px; font-weight: 750; color: #0f766e; }
+.ag-dia-cabecera .ag-pistas--dia { margin-top: 2px; color: #0f766e; font-size: 13px; }
+.ag-pistas--sesion { margin-top: 2px; }

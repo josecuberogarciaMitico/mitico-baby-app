@@ -15,18 +15,22 @@ import {
   ETIQUETA_MOTIVO,
   anteriorPendiente,
   columnasDelDia,
+  contarPistasSesion,
   disponiblesEnTurno,
   estadoDia,
   pasosSesion,
   pendientesSemana,
   resumenDia,
   siguientePendiente,
+  sumarConteosPista,
+  textoPistas,
   type ExtrasSesion,
   type FilaDisponibilidad,
   type MotivoPendiente,
   type PendienteSesion,
 } from './agendaTablero';
 import './AgendaTablero.css';
+import { pedagogicalBandForLevel } from '../../core/recommendations/baseRecommendation';
 import { PacoAltasAviso } from '../baby/PacoAltasAviso';
 import { PacoNotasSesion } from '../pacoAcciones/PacoNotasSesion';
 import { pendingAgendaStudents } from './agendaSessions';
@@ -522,7 +526,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
       ids.length
         ? consultarSupabase(
             'v_grupos_sesion_operativa_app',
-            `select=sesion_id,grupo_id,publicado,estado_confirmacion,entrenador_id,alumnos_lista&sesion_id=in.(${ids.join(',')})`
+            `select=sesion_id,grupo_id,publicado,estado_confirmacion,entrenador_id,alumnos_lista,pista,total_alumnos&sesion_id=in.(${ids.join(',')})`
           )
         : Promise.resolve([]),
       ejecutarFuncionAuthJson('obtener_disponibilidad_publicada_entrenadores_editor_app', {
@@ -547,8 +551,8 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     }
     // Sin colocar: solo cuenta en sesiones que ya tienen grupos (igual que dentro de la sesión).
     if (grupos.status === 'fulfilled' && Array.isArray(grupos.value)) {
-      const gruposPorSesion: Record<string, Array<{ alumnos_lista?: string | null }>> = {};
-      (grupos.value as Array<{ sesion_id: string; grupo_id?: string | null; alumnos_lista?: string | null }>).forEach((g) => {
+      const gruposPorSesion: Record<string, Array<{ alumnos_lista?: string | null; pista?: string | null; total_alumnos?: number | null }>> = {};
+      (grupos.value as Array<{ sesion_id: string; grupo_id?: string | null; alumnos_lista?: string | null; pista?: string | null; total_alumnos?: number | null }>).forEach((g) => {
         if (!g.grupo_id) return;
         (gruposPorSesion[String(g.sesion_id)] ||= []).push(g);
       });
@@ -559,6 +563,13 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
           normalizarNombreAlumnoAgendaApp
         );
         if (pendientes.length) nuevos[id].sinColocar = pendientes.length;
+        // 05/11: niños por pista (grupo → su pista; sin grupo → la de su nivel).
+        const delRoster = filasRoster.filter((f) => String(f.sesion_id) === id);
+        nuevos[id].pistas = contarPistasSesion(
+          gruposPorSesion[id] || [],
+          (gruposPorSesion[id] || []).length ? pendientes : delRoster,
+          (nivel) => pedagogicalBandForLevel(nivel).piste
+        );
       });
     }
     const alumnoIds = Array.from(new Set(filasRoster.map((f) => String(f.alumno_id)).filter(Boolean)));
@@ -1339,6 +1350,15 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                           {turnosTrabajoDiaAgenda(diaActivo.fecha).length > 0 &&
                             ` · ${turnosTrabajoDiaAgenda(diaActivo.fecha).length} ${turnosTrabajoDiaAgenda(diaActivo.fecha).length === 1 ? 'turno' : 'turnos'}`}
                         </p>
+                        {(() => {
+                          // 05/11: total del día por pista.
+                          const t = textoPistas(
+                            sumarConteosPista(
+                              (sesionesDia as SesionAgendaOperativa[]).map((x) => extrasTablero[idSesionDbTablero(x)]?.pistas)
+                            )
+                          );
+                          return t ? <p className="ag-pistas ag-pistas--dia">⛷️ Pista: {t}</p> : null;
+                        })()}
                       </header>
 
                       {(() => {
@@ -1393,6 +1413,12 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                         </span>
                                       );
                                     })()}
+                                  {(() => {
+                                    const t = textoPistas(
+                                      sumarConteosPista(columna.sesiones.map((x) => extrasTablero[idSesionDbTablero(x)]?.pistas))
+                                    );
+                                    return t && columna.turno ? <span className="ag-pistas">⛷️ {t}</span> : null;
+                                  })()}
                                 </div>
                                 {columna.sesiones.map((sesion) => {
                                   const cobertura = sessionTrainerCoverage(
@@ -1447,6 +1473,10 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                         </span>
                                       </div>
                                       <div className="ag-sesion-titulo">{sesion.titulo}</div>
+                                      {(() => {
+                                        const t = textoPistas(extrasTablero[idSesionDbTablero(sesion)]?.pistas);
+                                        return t ? <div className="ag-pistas ag-pistas--sesion">⛷️ {t}</div> : null;
+                                      })()}
                                       {(() => {
                                         const ex = extrasTablero[idSesionDbTablero(sesion)];
                                         if (!ex || (!ex.revisar && !ex.notas && !ex.sinConfirmar && !ex.sinColocar)) return null;
