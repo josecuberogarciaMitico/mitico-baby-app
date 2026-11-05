@@ -25,6 +25,8 @@ import {
 
 type Props = {
   hoyIso: string;
+  /** Cambia al pulsar «Actualizar» en la Agenda: vuelve a consultar. */
+  refresco?: number;
   soloLectura?: boolean;
   onCambios: () => Promise<void> | void;
 };
@@ -42,7 +44,7 @@ const boton: React.CSSProperties = {
   whiteSpace: 'nowrap',
 };
 
-export function CanceladosAimHarderAviso({ hoyIso, soloLectura, onCambios }: Props) {
+export function CanceladosAimHarderAviso({ hoyIso, refresco, soloLectura, onCambios }: Props) {
   const [filas, setFilas] = useState<CanceladoAimHarder[]>([]);
   const [abierto, setAbierto] = useState(false);
   const [ocupado, setOcupado] = useState<string | null>(null);
@@ -75,6 +77,10 @@ export function CanceladosAimHarderAviso({ hoyIso, soloLectura, onCambios }: Pro
       document.removeEventListener('visibilitychange', alVolver);
     };
   }, [cargar]);
+
+  useEffect(() => {
+    if (refresco) void cargar();
+  }, [refresco, cargar]);
 
   const ahoraMs = Date.now();
   const turnosRepaso = (repaso || []).filter((t) => t.ninos > 0);

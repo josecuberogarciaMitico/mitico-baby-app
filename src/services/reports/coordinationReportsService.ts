@@ -91,3 +91,12 @@ export function editarReporteCoordinacion(input: {
     p_notas_habilidades: input.notasHabilidades,
   });
 }
+
+/** Primer día (desde hoy, incluido) que tiene alguna sesión. Null si no hay. */
+export async function proximaFechaConSesiones(desdeIso: string) {
+  const filas = await api.query<{ fecha: string }>(
+    'v_agenda_sesiones_operativa_app',
+    `select=fecha&fecha=gte.${desdeIso.slice(0, 10)}&order=fecha.asc&limit=1`
+  );
+  return filas[0]?.fecha ? String(filas[0].fecha).slice(0, 10) : null;
+}
