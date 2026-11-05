@@ -497,6 +497,8 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
   ).sort() as string[];
   const firmaSesionesSemanaTablero = idsSesionesSemanaTablero.join(',');
   const [extrasTablero, setExtrasTablero] = useState<Record<string, ExtrasSesion>>({});
+  const [actualizandoAgenda, setActualizandoAgenda] = useState(false);
+  const [refrescoAgenda, setRefrescoAgenda] = useState(0);
   const [disponibilidadTablero, setDisponibilidadTablero] = useState<FilaDisponibilidad[]>([]);
   // Niños sin colocar: el contador sale aquí y la tabla en SinColocarPanel.
   const [verSinColocarSemana, setVerSinColocarSemana] = useState(false);
@@ -1022,7 +1024,27 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                   >
                     <button
                       type="button"
-                      onClick={() => { cargarAgendaOperativaDirecta(); cargarIntensivos(); cargarPlanning(); cargarListados(); cargarEntrenadores(); void cargarAsignacionesEntrenadoresSemana(); }}
+                      disabled={actualizandoAgenda}
+                      onClick={async () => {
+                        // 05/11: antes no recargaba los avisos de la semana (por revisar,
+                        // sin colocar, pistas, cancelados) ni decía nada. Ahora sí.
+                        setActualizandoAgenda(true);
+                        try {
+                          await Promise.allSettled([
+                            cargarAgendaOperativaDirecta(),
+                            cargarIntensivos(),
+                            cargarPlanning(),
+                            cargarListados(),
+                            cargarEntrenadores(),
+                            cargarAsignacionesEntrenadoresSemana(),
+                            agendaSesionActivaId ? cargarDetalleSesionAgenda(agendaSesionActivaId) : Promise.resolve(),
+                          ]);
+                          await cargarExtrasTableroSemana();
+                          setRefrescoAgenda((n) => n + 1);
+                        } finally {
+                          setActualizandoAgenda(false);
+                        }
+                      }}
                       style={{
                         ...botonSecundario,
                         minHeight: 36,
@@ -1032,7 +1054,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                         whiteSpace: 'nowrap',
                       }}
                     >
-                      Actualizar
+                      {actualizandoAgenda ? 'Actualizando…' : 'Actualizar'}
                     </button>
 
                     {esCoordinadorApp && (
@@ -1128,6 +1150,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                 {esCoordinadorApp && (
                   <CanceladosAimHarderAviso
                     hoyIso={hoyTableroSemana}
+                    refresco={refrescoAgenda}
                     soloLectura={Boolean(ctx.esSoloConsultaUsuarioApp)}
                     onCambios={async () => {
                       await cargarAgendaOperativaDirecta();
