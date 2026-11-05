@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { parseTechnicalLevel } from '../../core/levels/levelContract';
 import { moveBabyStudentBetweenSessions } from '../../services/agenda/agendaRelocationService';
 import { pendingAgendaStudents } from './agendaSessions';
+import { NinosGrupoPropuesto } from './NinosGrupoPropuesto';
 import {
   gruposParaElegir,
   planificarSinColocar,
@@ -49,6 +50,8 @@ type Props = {
   onCambios: () => Promise<void> | void;
   /** «Avisar cambios y pedir reconfirmación» de un grupo publicado que ha perdido niños. */
   avisarCambioGrupo?: (grupoId: string) => Promise<void>;
+  /** Fichas (nombre y nacimiento) para enseñar la edad de los niños del grupo. */
+  fichas?: { alumno: string; fecha_nacimiento: string | null }[];
   soloLectura: boolean;
 };
 
@@ -723,6 +726,20 @@ export function SinColocarPanel(props: Props) {
                             )
                           )}
                           {o.colocaciones.length === 1 && <span className="ag-cf-motivo">{o.colocaciones[0].motivo}</span>}
+                          {/* 05/11: niños que ya hay en el grupo propuesto, con su nivel (y edad si hay ficha). */}
+                          {o.colocaciones.map((c) => (
+                            <div key={`ninos-${c.alumno.sesionAlumnoId}`} className="ag-cf-ninos">
+                              {o.colocaciones.length > 1 && <span className="ag-cf-motivo">{c.grupo.nombre}</span>}
+                              <NinosGrupoPropuesto
+                                grupoId={c.grupo.grupoId}
+                                fecha={o.sesion.fecha}
+                                nuevoNombre={c.alumno.alumno}
+                                nuevoNivel={parseTechnicalLevel(c.alumno.nivel).status === 'VALID' ? String(parseTechnicalLevel(c.alumno.nivel).level) : ''}
+                                fichas={props.fichas || []}
+                                textoLista={c.grupo.alumnosLista}
+                              />
+                            </div>
+                          ))}
                         </div>
                       ) : (
                         <span className="ag-cf-bloqueo">Sin hueco que encaje: elige tú abajo o abre la sesión.</span>
