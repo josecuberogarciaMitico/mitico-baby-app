@@ -3,6 +3,7 @@ import { groupTrainersJacket, trainersMissingJacket } from '../../core/trainers/
 import { TrackTrainerAdjustPanel } from './TrackTrainerAdjustPanel';
 import { ReportSplitPanel } from './ReportSplitPanel';
 import { SessionPlanButton } from './SessionPlanTable';
+import { proximaFechaConSesiones } from '../../services/reports/coordinationReportsService';
 
 // Botón pequeño común de Trabajo en pista (WhatsApp, Llamar, Camiseta, Chaqueta).
 const pildoraPista: React.CSSProperties = {
@@ -117,6 +118,30 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
     totalPublicadosResumenDia,
     turnoResumenDiaAbierto,
   } = ctx;
+
+  // 05/11: al entrar en Trabajo en pista sale el día que toca: hoy si hay
+  // sesiones, y si no, el siguiente día con sesiones (no el último que se miró).
+  React.useEffect(() => {
+    let vivo = true;
+    const hoy = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Europe/Madrid',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+    proximaFechaConSesiones(hoy)
+      .then((fecha) => {
+        if (vivo) setFechaResumenDia(fecha || hoy);
+      })
+      .catch(() => {
+        if (vivo) setFechaResumenDia(hoy);
+      });
+    return () => {
+      vivo = false;
+    };
+    // Solo al abrir la pantalla.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function cambiarChaquetaEntrenador(entrenador: {
     entrenador_id: string;
