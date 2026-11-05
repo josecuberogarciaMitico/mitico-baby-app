@@ -22,6 +22,29 @@ type DailySummaryScreenProps = {
   ctx: Record<string, any>;
 };
 
+// «Ajustes en pista · hoy» (05/11): mismo aspecto para los cuatro botones.
+export function botonAjustePista(activo: boolean): React.CSSProperties {
+  return {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    width: '100%',
+    minHeight: 42,
+    padding: '8px 12px',
+    borderRadius: 12,
+    border: `1px solid ${activo ? '#0f766e' : '#d1d5db'}`,
+    background: activo ? '#ecfdf5' : '#ffffff',
+    color: activo ? '#065f46' : '#0f172a',
+    fontWeight: 800,
+    fontSize: 13.5,
+    lineHeight: 1.2,
+    textAlign: 'center',
+    cursor: 'pointer',
+    boxShadow: activo ? 'inset 0 0 0 1px #0f766e' : '0 1px 2px rgba(15, 23, 42, 0.06)',
+  };
+}
+
 export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
   // Chaqueta de entrenador: se marca SÍ / NO desde su grupo, igual que la
   // camiseta de los niños. Cambia el dato de su ficha (Entrenadores).
@@ -641,68 +664,45 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                     Cambios reales del turno. Se actualizan listado, asistencia, observaciones y responsable del reporte. El trabajo diario no se sobrescribe: el alumno usa el del grupo en el que queda hoy.
                                   </p>
                                 </div>
-                                <div style={{ display: 'flex', gap: 7, flexWrap: 'wrap' }}>
+                                {/* 05/11: los cuatro botones con el mismo estilo; el activo, en verde. */}
+                                <div
+                                  style={{
+                                    flex: '1 1 100%',
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                                    gap: 8,
+                                  }}
+                                >
                                   <button
                                     type="button"
                                     disabled={guardandoAjustePista}
-                                    onClick={() =>
-                                      abrirAjustePistaSesion(sesionOperativaId, 'mover')
-                                    }
-                                    style={{
-                                      ...botonSecundario,
-                                      minHeight: 38,
-                                      borderColor:
-                                        panelActivo && ajustePistaModo === 'mover'
-                                          ? '#0f766e'
-                                          : '#cbd5e1',
-                                      background:
-                                        panelActivo && ajustePistaModo === 'mover'
-                                          ? '#ecfdf5'
-                                          : '#fff',
-                                    }}
+                                    onClick={() => abrirAjustePistaSesion(sesionOperativaId, 'mover')}
+                                    style={botonAjustePista(panelActivo && ajustePistaModo === 'mover')}
                                   >
-                                    ⇄ Mover alumno
+                                    🔀 Mover alumno
                                   </button>
                                   <button
                                     type="button"
                                     disabled={guardandoAjustePista}
-                                    onClick={() =>
-                                      abrirAjustePistaSesion(sesionOperativaId, 'anadir')
-                                    }
-                                    style={{
-                                      ...botonPrincipal,
-                                      minHeight: 38,
-                                    }}
+                                    onClick={() => abrirAjustePistaSesion(sesionOperativaId, 'anadir')}
+                                    style={botonAjustePista(panelActivo && ajustePistaModo === 'anadir')}
                                   >
-                                    + Añadir alumno hoy
+                                    ➕ Añadir alumno hoy
                                   </button>
                                   <SessionPlanButton
                                     fecha={String(sesion.fecha || '')}
                                     hora={horaCorta(sesion.hora_inicio)}
-                                    style={{ minHeight: 38 }}
+                                    style={botonAjustePista(false)}
                                   />
                                   {sesion.origen !== 'intensivo' && (
-                                  <button
-                                    type="button"
-                                    disabled={guardandoAjustePista}
-                                    onClick={() =>
-                                      abrirAjustePistaSesion(sesionOperativaId, 'entrenadores')
-                                    }
-                                    style={{
-                                      ...botonSecundario,
-                                      minHeight: 38,
-                                      borderColor:
-                                        panelActivo && ajustePistaModo === 'entrenadores'
-                                          ? '#0f766e'
-                                          : '#cbd5e1',
-                                      background:
-                                        panelActivo && ajustePistaModo === 'entrenadores'
-                                          ? '#ecfdf5'
-                                          : '#fff',
-                                    }}
-                                  >
-                                    👥 Entrenadores
-                                  </button>
+                                    <button
+                                      type="button"
+                                      disabled={guardandoAjustePista}
+                                      onClick={() => abrirAjustePistaSesion(sesionOperativaId, 'entrenadores')}
+                                      style={botonAjustePista(panelActivo && ajustePistaModo === 'entrenadores')}
+                                    >
+                                      👥 Entrenadores
+                                    </button>
                                   )}
                                 </div>
                               </div>
