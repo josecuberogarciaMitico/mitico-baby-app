@@ -55,3 +55,52 @@ export function textoResumenCancelados(n: number) {
     ? '1 niño ha cancelado en AimHarder y sigue apuntado'
     : `${n} niños han cancelado en AimHarder y siguen apuntados`;
 }
+
+// ---- Repaso (05/11): ¿cuándo se comprobó por última vez cada turno? ----------
+
+export type RepasoTurno = {
+  sesion_id: string;
+  fecha: string;
+  hora_inicio: string;
+  modalidad: string;
+  ninos: number;
+  sin_vincular: number;
+  repaso_mas_antiguo: string | null;
+  invitados_at: string | null;
+};
+
+export function horasDesde(iso: string | null | undefined, ahoraMs: number) {
+  const t = Date.parse(String(iso || ''));
+  return Number.isFinite(t) ? Math.max(0, (ahoraMs - t) / 3600000) : null;
+}
+
+export function textoHace(horas: number | null) {
+  if (horas === null) return 'sin comprobar';
+  if (horas < 1) return 'hace menos de 1 h';
+  if (horas < 48) return `hace ${Math.round(horas)} h`;
+  return `hace ${Math.round(horas / 24)} días`;
+}
+
+/** Comprobación de un turno: la más antigua entre reservas e invitados. */
+export function horasRepaso(t: RepasoTurno, ahoraMs: number) {
+  const a = horasDesde(t.repaso_mas_antiguo, ahoraMs);
+  const b = horasDesde(t.invitados_at, ahoraMs);
+  if (a === null || b === null) return null;
+  return Math.max(a, b);
+}
+
+/**
+ * Turnos de hoy y mañana que NO están bien comprobados: algún niño sin
+ * enlazar con AimHarder o el repaso tiene más de 6 h.
+ */
+export function turnosSinRepasoFiable(turnos: RepasoTurno[], hoyIso: string, ahoraMs: number, limiteHoras = 6) {
+  const manana = new Date(`${hoyIso.slice(0, 10)}T12:00:00Z`);
+  manana.setUTCDate(manana.getUTCDate() + 1);
+  const hasta = manana.toISOString().slice(0, 10);
+  return turnos.filter((t) => {
+    const f = t.fecha.slice(0, 10);
+    if (f < hoyIso.slice(0, 10) || f > hasta || !t.ninos) return false;
+    const h = horasRepaso(t, ahoraMs);
+    return t.sin_vincular > 0 || h === null || h > limiteHoras;
+  });
+}
