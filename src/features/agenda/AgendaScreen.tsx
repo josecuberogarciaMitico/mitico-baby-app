@@ -1614,6 +1614,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
               await Promise.all([cargarAsignacionesEntrenadoresSemana(), cargarExtrasTableroSemana()]);
             }}
             soloLectura={Boolean(ctx.esSoloConsultaUsuarioApp)}
+            fichas={alumnos}
             avisarCambioGrupo={async (grupoId: string) => {
               await notifyGroupChangedAndRequestReconfirmation({
                 groupId: grupoId,

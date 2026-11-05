@@ -10,13 +10,15 @@ type Props = {
   nuevoNombre?: string;
   nuevoNivel?: string;
   fichas: { alumno: string; fecha_nacimiento: string | null }[];
-  consultarSupabase: (tabla: string, query: string) => Promise<any[]>;
+  consultarSupabase?: (tabla: string, query: string) => Promise<any[]>;
+  /** Si ya se tiene «alumnos_lista» del grupo, se usa tal cual (sin consultar). */
+  textoLista?: string | null;
 };
 
 // Caché mientras la pantalla está abierta: varias tarjetas pueden ser el mismo grupo.
 const cache = new Map<string, Promise<string>>();
 
-function cargarLista(grupoId: string, consultar: Props['consultarSupabase']) {
+function cargarLista(grupoId: string, consultar: NonNullable<Props['consultarSupabase']>) {
   let p = cache.get(grupoId);
   if (!p) {
     p = consultar('v_grupos_sesion_operativa_app', `select=alumnos_lista&grupo_id=eq.${grupoId}`).then(
@@ -42,14 +44,18 @@ const chip: React.CSSProperties = {
   textAlign: 'center',
 };
 
-export function NinosGrupoPropuesto({ grupoId, fecha, nuevoNombre, nuevoNivel, fichas, consultarSupabase }: Props) {
+export function NinosGrupoPropuesto({ grupoId, fecha, nuevoNombre, nuevoNivel, fichas, consultarSupabase, textoLista }: Props) {
   const [lista, setLista] = useState<NinoGrupoPropuesto[] | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     let vivo = true;
-    setLista(null);
     setError(false);
+    if (textoLista !== undefined || !consultarSupabase) {
+      setLista(conEdades(parsearAlumnosLista(textoLista), fichas, fecha));
+      return;
+    }
+    setLista(null);
     cargarLista(grupoId, consultarSupabase)
       .then((texto) => vivo && setLista(conEdades(parsearAlumnosLista(texto), fichas, fecha)))
       .catch(() => vivo && setError(true));
@@ -58,7 +64,7 @@ export function NinosGrupoPropuesto({ grupoId, fecha, nuevoNombre, nuevoNivel, f
     };
     // fichas se usa solo para la edad; no hace falta recargar si cambia.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grupoId, fecha]);
+  }, [grupoId, fecha, textoLista]);
 
   const fila = (n: NinoGrupoPropuesto, nuevo = false) => (
     <li
