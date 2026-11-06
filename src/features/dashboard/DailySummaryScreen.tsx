@@ -3,6 +3,7 @@ import { groupTrainersJacket, trainersMissingJacket } from '../../core/trainers/
 import { TrackTrainerAdjustPanel } from './TrackTrainerAdjustPanel';
 import { ReportSplitPanel } from './ReportSplitPanel';
 import { SessionPlanButton } from './SessionPlanTable';
+import { SelectorDiaPista } from './SelectorDiaPista';
 import { proximaFechaConSesiones } from '../../services/reports/coordinationReportsService';
 
 // Botón pequeño común de Trabajo en pista (WhatsApp, Llamar, Camiseta, Chaqueta).
@@ -235,32 +236,14 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                 </p>
               </div>
 
-              <label
-                style={{
-                  display: 'grid',
-                  gap: 5,
-                  minWidth: 190,
-                  color: '#cbd5e1',
-                  fontSize: 11,
-                  fontWeight: 900,
-                  letterSpacing: '.08em',
-                }}
-              >
-                FECHA
-                <input
-                  type="date"
-                  value={fechaResumenDiaActiva}
-                  onChange={(e) => setFechaResumenDia(e.target.value)}
-                  style={{
-                    ...inputCampo,
-                    minHeight: 44,
-                    borderRadius: 13,
-                    border: '1px solid rgba(255,255,255,.24)',
-                    background: 'rgba(255,255,255,.96)',
-                  }}
-                  aria-label="Fecha del resumen operativo"
+              {/* 06/11: semana con flechas y un botón por día (miércoles a domingo). */}
+              <div style={{ flex: '1 1 320px', maxWidth: 440, minWidth: 0 }}>
+                <SelectorDiaPista
+                  fecha={fechaResumenDiaActiva}
+                  hoy={new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date())}
+                  onCambiar={(f) => setFechaResumenDia(f)}
                 />
-              </label>
+              </div>
             </div>
 
             <label style={{ display: 'grid', gap: 7 }}>

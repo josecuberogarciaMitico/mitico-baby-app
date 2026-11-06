@@ -22,6 +22,7 @@ import {
   claveChipDiaEntrenador,
   textoEdadNino,
 } from './trainerDayNav';
+import { AvisosCambioGrupoEntrenador, ChipAvisosCambio, useAvisosCambioPendientes } from './AvisosCambioGrupo';
 
 // Edad del niño, discreta junto a su nombre (grupos y reportes del entrenador).
 function EdadNino({ edad }: { edad?: number | null }) {
@@ -161,6 +162,8 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
     turnoEntrenadorBox,
     vistaEntrenadorShell,
   } = ctx;
+  // 06/11: coordinación ve cuántos cambios tiene cada entrenador sin ver.
+  const avisosCambioPendientes = useAvisosCambioPendientes(Boolean(esCoordinadorApp));
 
   // Al abrir un grupo desde «Tareas por cerrar» (o cualquier otro salto), se
   // selecciona su día para que la tarjeta exista en pantalla y se pueda abrir.
@@ -911,6 +914,9 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
             </button>
           </div>
 
+          {/* 06/11: cambios en sus grupos publicados desde la última vez (sin push). */}
+          {esEntrenadorApp && <AvisosCambioGrupoEntrenador />}
+
           {esEntrenadorApp && (
             <article
               className="trainer-week-status-alert"
@@ -1580,6 +1586,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                   <div>
                     <p style={{ ...etiquetaSuperior, color: '#0f9f4d' }}>ENTRENADOR</p>
                     <h3 style={{ margin: 0 }}>{bloqueEntrenador.entrenador}</h3>
+                    {esCoordinadorApp && <ChipAvisosCambio pendientes={avisosCambioPendientes[bloqueEntrenador.entrenador_id]} />}
                   </div>
                   <div
                     style={{

@@ -16160,6 +16160,8 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
         p_entrenador_apoyo_id: nuevoEntrenadorApoyoId || null,
         p_responsables: null,
       });
+      // 06/11: grupo publicado → push y confirmación para el segundo nuevo.
+      if (grupo.publicado && nuevoEntrenadorApoyoId) void ejecutarPushMiticoApp('support_trainer_assigned', { grupo_id: grupo.grupo_id, entrenador_id: nuevoEntrenadorApoyoId }).catch(() => undefined);
 
       if (agendaSesionActivaId) {
         await cargarDetalleSesionAgenda(agendaSesionActivaId);

@@ -100,3 +100,17 @@ export async function proximaFechaConSesiones(desdeIso: string) {
   );
   return filas[0]?.fecha ? String(filas[0].fecha).slice(0, 10) : null;
 }
+
+/** Cuántas sesiones hay cada día entre dos fechas (para los botones de día). */
+export async function sesionesPorDia(desdeIso: string, hastaIso: string) {
+  const filas = await api.query<{ fecha: string }>(
+    'v_agenda_sesiones_operativa_app',
+    `select=fecha&fecha=gte.${desdeIso.slice(0, 10)}&fecha=lte.${hastaIso.slice(0, 10)}`
+  );
+  const cuenta: Record<string, number> = {};
+  filas.forEach((f) => {
+    const k = String(f.fecha).slice(0, 10);
+    cuenta[k] = (cuenta[k] || 0) + 1;
+  });
+  return cuenta;
+}
