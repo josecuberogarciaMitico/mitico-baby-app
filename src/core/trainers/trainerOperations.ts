@@ -166,6 +166,8 @@ export function groupTrainersJacket(
     entrenador?: string | null;
     entrenador_apoyo_id?: string | null;
     entrenador_apoyo?: string | null;
+    entrenador_tercero_id?: string | null;
+    entrenador_tercero?: string | null;
   },
   trainers: Array<{ entrenador_id: string; nombre_completo: string; chaqueta_entregada?: boolean | null }>
 ): Array<{ rol: 'principal' | 'apoyo'; entrenador_id: string; nombre_completo: string; chaqueta: boolean }> {
@@ -186,5 +188,7 @@ export function groupTrainersJacket(
   };
   add('principal', group.entrenador_id, group.entrenador);
   add('apoyo', group.entrenador_apoyo_id, group.entrenador_apoyo);
+  // 06/11: el tercero también lleva chaqueta (cuenta como apoyo).
+  add('apoyo', group.entrenador_tercero_id, group.entrenador_tercero);
   return out;
 }

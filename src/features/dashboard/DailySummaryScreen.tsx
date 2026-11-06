@@ -1042,6 +1042,7 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                       {grupo.entrenador || grupo.entrenadores || 'SIN ENTRENADOR'}
                                     </strong>
                                     {grupo.entrenador_apoyo && <> · Apoyo: {grupo.entrenador_apoyo}</>}
+                                    {grupo.entrenador_tercero && <> · Tercero: {grupo.entrenador_tercero}</>}
                                   </p>
                                   {/* Chaqueta de cada entrenador del grupo: pulsar cambia SÍ / NO en su ficha. */}
                                   <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>

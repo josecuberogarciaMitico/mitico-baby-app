@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { AlumnoResumen } from '../../core/students/studentTypes';
 import type { EntrenadorResumen } from '../../core/trainers/trainerTypes';
 import type {
+  AgendaGrupoSesionApp,
   AgendaRecomendacionSesionApp,
   RecomendacionFueraPlazoAgendaApp,
   SesionAgendaOperativa,
@@ -36,6 +37,7 @@ import { PacoNotasSesion } from '../pacoAcciones/PacoNotasSesion';
 import { pendingAgendaStudents } from './agendaSessions';
 import { SinColocarPanel } from './SinColocarPanel';
 import { NinosGrupoPropuesto } from './NinosGrupoPropuesto';
+import { ReportSplitPanel } from '../dashboard/ReportSplitPanel';
 import { CanceladosAimHarderAviso } from './CanceladosAimHarderAviso';
 import { avisoCompartirPunto, opcionesPuntoEncuentro, textoOpcionPunto } from './puntosEncuentroLogic';
 import type { SesionPlan } from './sinColocarPlanner';
@@ -448,7 +450,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
   const firmaGruposAgenda = (agendaGruposSesion || [])
     .map(
       (grupo: any) =>
-        `${grupo.grupo_id || ''}:${grupo.entrenador_id || ''}:${grupo.entrenador_apoyo_id || ''}:${grupo.total_alumnos || 0}`
+        `${grupo.grupo_id || ''}:${grupo.entrenador_id || ''}:${grupo.entrenador_apoyo_id || ''}:${grupo.entrenador_tercero_id || ''}:${grupo.total_alumnos || 0}`
     )
     .sort()
     .join('|');
@@ -506,6 +508,34 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     sesionId: string;
     sesionAlumnoId: string;
   } | null>(null);
+
+  // 06/11: tercer entrenador de un grupo (pone, cambia o quita).
+  async function cambiarTercerEntrenadorGrupoAgenda(grupo: AgendaGrupoSesionApp, nuevoId: string) {
+    if (!grupo.grupo_id) return;
+    const nombre = nuevoId
+      ? entrenadores.find((e: EntrenadorResumen) => e.entrenador_id === nuevoId)?.nombre_completo || 'este entrenador'
+      : '';
+    const ok = window.confirm(
+      nuevoId
+        ? grupo.entrenador_tercero_id
+          ? `¿Cambiar el tercer entrenador de ${grupo.nombre_grupo} a ${nombre}?\n\nSus reportes pasarán a ${nombre}. Se actualizan Vista entrenador y Cobros.`
+          : `¿Poner a ${nombre} como tercer entrenador de ${grupo.nombre_grupo}?\n\nLos reportes se reparten entre los tres (1 de cada 3 niños para ${nombre}); luego puedes ajustarlo niño a niño en «Quién hace cada reporte». Cobra el turno.`
+        : `¿Quitar el tercer entrenador de ${grupo.nombre_grupo}?\n\nSus reportes vuelven al entrenador principal.`
+    );
+    if (!ok) return;
+    setError('');
+    try {
+      await ejecutarFuncionAuthJson('guardar_tercer_entrenador_grupo_app', {
+        p_grupo_id: grupo.grupo_id,
+        p_entrenador_id: nuevoId || null,
+      });
+      if (agendaSesionActivaId) await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      await cargarAgendaOperativaDirecta();
+      await cargarAsignacionesEntrenadoresSemana();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo cambiar el tercer entrenador.');
+    }
+  }
 
   async function cargarExtrasTableroSemana() {
     if (!semanaAgendaActiva) {
@@ -4299,7 +4329,8 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                           (item) =>
                                             item.entrenador_id ===
                                             entrenador.entrenador_id
-                                        ) === indice
+                                        ) === indice &&
+                                        entrenador.entrenador_id !== grupo.entrenador_tercero_id
                                     )
                                     .map((entrenador) => (
                                       <option
@@ -4415,7 +4446,8 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                           (item) =>
                                             item.entrenador_id ===
                                             entrenador.entrenador_id
-                                        ) === indice
+                                        ) === indice &&
+                                        entrenador.entrenador_id !== grupo.entrenador_tercero_id
                                     )
                                     .map((entrenador) => (
                                       <option
@@ -4428,8 +4460,63 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                 </select>
                               </label>
 
+                              {/* 06/11: tercer entrenador (con principal y segundo puestos). */}
+                              {grupo.entrenador_id && grupo.entrenador_apoyo_id && (
+                                <label style={labelCampo}>
+                                  Tercer entrenador
+                                  <select
+                                    value={grupo.entrenador_tercero_id || ''}
+                                    disabled={cargando || Boolean(ctx.esSoloConsultaUsuarioApp)}
+                                    onChange={(e) => void cambiarTercerEntrenadorGrupoAgenda(grupo, e.target.value)}
+                                    style={selectCampo}
+                                  >
+                                    <option value="">Sin tercer entrenador</option>
+                                    {(grupo.entrenador_tercero_id &&
+                                    !entrenadoresDisponiblesSesionActiva().some(
+                                      (entrenador) => entrenador.entrenador_id === grupo.entrenador_tercero_id
+                                    )
+                                      ? ([
+                                          entrenadores.find(
+                                            (entrenador) => entrenador.entrenador_id === grupo.entrenador_tercero_id
+                                          ),
+                                        ].filter(Boolean) as EntrenadorResumen[])
+                                      : []
+                                    )
+                                      .concat(
+                                        entrenadoresDisponiblesCambioGrupoAgenda(
+                                          grupo.grupo_id,
+                                          grupo.entrenador_tercero_id,
+                                          grupo.entrenador_id
+                                        )
+                                      )
+                                      .filter(
+                                        (entrenador, indice, lista) =>
+                                          lista.findIndex((item) => item.entrenador_id === entrenador.entrenador_id) === indice &&
+                                          entrenador.entrenador_id !== grupo.entrenador_id &&
+                                          entrenador.entrenador_id !== grupo.entrenador_apoyo_id
+                                      )
+                                      .map((entrenador) => (
+                                        <option
+                                          key={`${grupo.grupo_id}-tercero-${entrenador.entrenador_id}`}
+                                          value={entrenador.entrenador_id}
+                                        >
+                                          {entrenador.nombre_completo}
+                                        </option>
+                                      ))}
+                                  </select>
+                                </label>
+                              )}
+                              {grupo.entrenador_tercero_id && (
+                                <ReportSplitPanel
+                                  grupo={grupo}
+                                  consultarSupabase={consultarSupabase as any}
+                                  ejecutarFuncion={ejecutarFuncionAuthJson}
+                                />
+                              )}
+
                               {grupo.entrenador_id &&
-                                grupo.entrenador_apoyo_id && (
+                                grupo.entrenador_apoyo_id &&
+                                !grupo.entrenador_tercero_id && (
                                   <details
                                     style={{
                                       ...avisoNeutral,
