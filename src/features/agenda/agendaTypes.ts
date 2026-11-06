@@ -34,6 +34,8 @@ export type AgendaGrupoSesionApp = {
   publicado: boolean; trabajo_diario: string | null; observaciones_importantes: string | null;
   entrenador_id: string | null; entrenador: string | null; entrenador_apoyo_id?: string | null;
   entrenador_apoyo?: string | null; estado_confirmacion: string | null;
+  /** 06/11: tercer entrenador (opcional). */
+  entrenador_tercero_id?: string | null; entrenador_tercero?: string | null;
   total_alumnos: number; alumnos_lista: string | null;
 };
 

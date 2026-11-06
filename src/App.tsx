@@ -17769,6 +17769,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
         if (grupo.entrenador_id) ocupados.add(grupo.entrenador_id);
         if (grupo.entrenador_apoyo_id)
           ocupados.add(grupo.entrenador_apoyo_id);
+        if (grupo.entrenador_tercero_id) ocupados.add(grupo.entrenador_tercero_id);
       });
 
     return ocupados;

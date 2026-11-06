@@ -13,6 +13,8 @@ type GrupoReparto = {
   entrenador?: string | null;
   entrenador_apoyo_id?: string | null;
   entrenador_apoyo?: string | null;
+  entrenador_tercero_id?: string | null;
+  entrenador_tercero?: string | null;
 };
 
 type FilaReparto = { alumno_id: string; alumno: string; entrenador_id: string | null };
@@ -38,6 +40,7 @@ export function ReportSplitPanel({ grupo, consultarSupabase, ejecutarFuncion }: 
   const grupoId = String(grupo.grupo_id || '');
   const principalId = String(grupo.entrenador_id || '');
   const apoyoId = String(grupo.entrenador_apoyo_id || '');
+  const terceroId = String(grupo.entrenador_tercero_id || '');
   const [abierto, setAbierto] = React.useState(false);
   const [filas, setFilas] = React.useState<FilaReparto[] | null>(null);
   const [guardando, setGuardando] = React.useState('');
@@ -66,6 +69,8 @@ export function ReportSplitPanel({ grupo, consultarSupabase, ejecutarFuncion }: 
   const entrenadores = [
     { id: principalId, nombre: nombreCortoEntrenador(grupo.entrenador) },
     { id: apoyoId, nombre: nombreCortoEntrenador(grupo.entrenador_apoyo) },
+    // 06/11: con tercer entrenador, el reparto es entre los tres.
+    ...(terceroId ? [{ id: terceroId, nombre: nombreCortoEntrenador(grupo.entrenador_tercero) }] : []),
   ];
 
   async function asignar(fila: FilaReparto, entrenadorId: string) {

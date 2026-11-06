@@ -117,4 +117,8 @@ test('botón de chaqueta: principal y apoyo del grupo con su estado', () => {
   equal(lista.map((t) => `${t.rol}:${t.nombre_completo}:${t.chaqueta}`).join(','), 'principal:ALFONSO JORDAN:true,apoyo:MACARENA SECO:false', 'principal por id y apoyo por nombre');
   equal(groupTrainersJacket({ entrenador_id: 'b', entrenador_apoyo_id: 'b' }, trainers).length, 1, 'sin repetir');
   equal(groupTrainersJacket({ entrenador: 'DESCONOCIDO' }, trainers).length, 0, 'desconocido fuera');
+  // 06/11: tercer entrenador.
+  const con3 = groupTrainersJacket({ entrenador_id: 'b', entrenador_apoyo_id: 'c', entrenador_tercero_id: 'd' },
+    [...trainers, { entrenador_id: 'd', nombre_completo: 'SARA VIBEKE', chaqueta_entregada: false }]);
+  equal(con3.map((t) => t.nombre_completo).join(','), 'ALFONSO JORDAN,MACARENA SECO,SARA VIBEKE', 'tercero también');
 });
