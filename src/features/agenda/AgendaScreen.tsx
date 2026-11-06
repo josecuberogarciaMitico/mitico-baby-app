@@ -529,6 +529,10 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
         p_grupo_id: grupo.grupo_id,
         p_entrenador_id: nuevoId || null,
       });
+      // Grupo publicado: push y confirmación para el tercero nuevo.
+      if (grupo.publicado && nuevoId) {
+        void ejecutarPushMiticoApp('support_trainer_assigned', { grupo_id: grupo.grupo_id, entrenador_id: nuevoId }).catch(() => undefined);
+      }
       if (agendaSesionActivaId) await cargarDetalleSesionAgenda(agendaSesionActivaId);
       await cargarAgendaOperativaDirecta();
       await cargarAsignacionesEntrenadoresSemana();

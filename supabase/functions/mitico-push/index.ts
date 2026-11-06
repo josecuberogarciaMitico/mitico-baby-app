@@ -295,6 +295,19 @@ Deno.serve(async (req) => {
       }
     }
 
+    // 06/11: ¿al cerrar la semana le dijimos «esta semana no tienes grupos»?
+    // Entonces el aviso de su grupo nuevo lo corrige: «al final sí tienes grupo».
+    const recibioSinGrupos = async (entrenadorId: string, semanaInicio: string) => {
+      const { count, error } = await admin
+        .from('push_notificaciones_log_app')
+        .select('id', { count: 'exact', head: true })
+        .eq('tipo', 'ORGANIZACION_SEMANAL_CERRADA_SIN_GRUPOS')
+        .eq('semana_inicio', semanaInicio)
+        .eq('entrenador_id', entrenadorId)
+      if (error) throw error
+      return Number(count || 0) > 0
+    }
+
     const acumular = (destino: ResumenEnvio, parcial: Partial<ResumenEnvio>) => {
       destino.sent += Number(parcial.sent || 0)
       destino.skipped += Number(parcial.skipped || 0)
@@ -502,13 +515,14 @@ Deno.serve(async (req) => {
         const nombre = String(grupo?.nombre_grupo || 'Grupo')
 
         for (const entrenadorId of entrenadores) {
+          const sinGrupos = await recibioSinGrupos(entrenadorId, semanaInicio)
           const parcial = await reservarYEnviar({
             tipo: 'GRUPO_REASIGNADO_NUEVO',
             semanaInicio,
             entrenadorId,
             dedupeKey: `group-new:${grupoId}:${entrenadorId}`,
-            titulo: 'Tienes un grupo nuevo',
-            cuerpo: `${nombre} · ${dia} ${formatoCorto(fecha)}${horas}. Entra en Mítico Baby para revisarlo y confirmarlo.`,
+            titulo: sinGrupos ? 'Al final sí tienes grupo esta semana' : 'Tienes un grupo nuevo',
+            cuerpo: `${sinGrupos ? 'Han salido grupos para ti. ' : ''}${nombre} · ${dia} ${formatoCorto(fecha)}${horas}. Entra en Mítico Baby para revisarlo y confirmarlo.`,
             metadata: { grupo_id: grupoId, motivo: 'publicado_semana_cerrada' },
           })
           acumular(resumen, parcial)
@@ -531,6 +545,58 @@ Deno.serve(async (req) => {
       }
 
       return json({ ok: true, ...resumen, entrenadores: entrenadores.length, semana_inicio: semanaInicio })
+    }
+
+    // 06/11: le ponen de segundo o tercer entrenador en un grupo ya publicado.
+    if (action === 'support_trainer_assigned') {
+      if (!esCoordinacion) return json({ error: 'No tienes permiso para notificar grupos.' }, 403)
+      const grupoId = String(body?.grupo_id || '')
+      const entrenadorId = String(body?.entrenador_id || '')
+      if (!grupoId || !entrenadorId) return json({ error: 'Faltan grupo_id o entrenador_id.' }, 400)
+
+      const { data: grupo, error: grupoError } = await admin
+        .from('grupos')
+        .select('id,nombre_grupo,publicado,sesion_id')
+        .eq('id', grupoId)
+        .maybeSingle()
+      if (grupoError) throw grupoError
+      if (!grupo) return json({ error: 'No existe el grupo.' }, 404)
+      if (!grupo.publicado) return json({ ok: true, sent: 0, skipped: true, reason: 'draft' })
+
+      const { data: extra, error: extraError } = await admin
+        .from('grupo_entrenadores_extra_app')
+        .select('entrenador_id,rol')
+        .eq('grupo_id', grupoId)
+        .eq('entrenador_id', entrenadorId)
+        .maybeSingle()
+      if (extraError) throw extraError
+      if (!extra) return json({ ok: true, sent: 0, skipped: true, reason: 'not_assigned' })
+
+      const { data: sesion, error: sesionError } = await admin
+        .from('sesiones')
+        .select('fecha,hora_inicio,hora_fin')
+        .eq('id', grupo.sesion_id)
+        .maybeSingle()
+      if (sesionError) throw sesionError
+      if (!sesion?.fecha) return json({ error: 'El grupo publicado no tiene fecha.' }, 409)
+
+      const fecha = String(sesion.fecha).slice(0, 10)
+      const semanaInicio = inicioSemanaLunes(fecha)
+      const dia = DIAS_SEMANA[new Date(`${fecha}T12:00:00Z`).getUTCDay()]
+      const horas = sesion.hora_inicio ? ` · ${hhmm(sesion.hora_inicio)}–${hhmm(sesion.hora_fin)}` : ''
+      const nombre = String(grupo.nombre_grupo || 'Grupo')
+      const sinGrupos = await recibioSinGrupos(entrenadorId, semanaInicio)
+      const papel = String(extra.rol || '') === 'tercero' ? 'tercer entrenador' : 'segundo entrenador'
+      const parcial = await reservarYEnviar({
+        tipo: 'GRUPO_REASIGNADO_NUEVO',
+        semanaInicio,
+        entrenadorId,
+        dedupeKey: `group-support:${grupoId}:${entrenadorId}`,
+        titulo: sinGrupos ? 'Al final sí tienes grupo esta semana' : 'Tienes un grupo asignado',
+        cuerpo: `${sinGrupos ? 'Han salido grupos para ti. ' : ''}${nombre} · ${dia} ${formatoCorto(fecha)}${horas} (vas de ${papel}). Entra en Mítico Baby para revisarlo y confirmarlo.`,
+        metadata: { grupo_id: grupoId, motivo: 'apoyo_grupo_publicado', rol: extra.rol },
+      })
+      return json({ ok: true, ...parcial, semana_inicio: semanaInicio })
     }
 
     if (action === 'group_changed') {
