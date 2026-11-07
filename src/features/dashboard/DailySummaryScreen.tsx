@@ -5,6 +5,8 @@ import { ReportSplitPanel } from './ReportSplitPanel';
 import { SessionPlanButton } from './SessionPlanTable';
 import { SelectorDiaPista } from './SelectorDiaPista';
 import { proximaFechaConSesiones } from '../../services/reports/coordinationReportsService';
+import { useAsistenciaPista } from './useAsistenciaPista';
+import { resumirAsistencia, textoResumenAsistencia, type EstadoAsistencia } from './asistenciaPistaLogic';
 
 // Botón pequeño común de Trabajo en pista (WhatsApp, Llamar, Camiseta, Chaqueta).
 const pildoraPista: React.CSSProperties = {
@@ -119,6 +121,27 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
     totalPublicadosResumenDia,
     turnoResumenDiaAbierto,
   } = ctx;
+
+  // 07/11: asistencia real de los grupos publicados del día (la misma que marca
+  // el entrenador). Coordinación ve quién falta y puede marcar lo que falte.
+  const gruposPublicadosDia: any[] = (sesionesResumenDia || []).flatMap((sesion: any) =>
+    gruposPublicadosSesionResumenDia(sesion)
+  );
+  const asistencia = useAsistenciaPista(
+    gruposPublicadosDia.map((grupo) => String(grupo.grupo_id || '')),
+    ctx.consultarSupabase,
+    ctx.ejecutarFuncion
+  );
+  function estadosAsistenciaGrupo(grupo: any): EstadoAsistencia[] {
+    const grupoId = String(grupo.grupo_id || '');
+    if (!grupoId) return [];
+    return alumnosGrupoResumenDia(grupo)
+      .map((texto: string) => fichaAlumnoResumenDiaDesdeTexto(texto)?.alumno_id)
+      .filter(Boolean)
+      .map((alumnoId: string) => asistencia.estadoDe(grupoId, alumnoId))
+      .filter((estado: EstadoAsistencia | null): estado is EstadoAsistencia => estado !== null);
+  }
+  const resumenAsistenciaDia = resumirAsistencia(gruposPublicadosDia.flatMap(estadosAsistenciaGrupo));
 
   // 05/11: al entrar en Trabajo en pista sale el día que toca: hoy si hay
   // sesiones, y si no, el siguiente día con sesiones (no el último que se miró).
@@ -458,6 +481,8 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                 ['Alumnos previstos', String(totalAlumnosResumenDia), totalAlumnosResumenDia > 0],
                 ['Grupos publicados', `${totalPublicadosResumenDia}/${totalGruposResumenDia}`, totalPublicadosResumenDia === totalGruposResumenDia],
                 ['Sin entrenador', String(gruposPendientesEntrenadorResumenDia.length), gruposPendientesEntrenadorResumenDia.length === 0],
+                ['Faltan hoy', String(resumenAsistenciaDia.ausentes), resumenAsistenciaDia.ausentes === 0],
+                ['Asistencia sin marcar', String(resumenAsistenciaDia.sinMarcar), resumenAsistenciaDia.sinMarcar === 0],
               ].map(([etiqueta, valor, ok]) => (
                 <div
                   key={String(etiqueta)}
@@ -508,6 +533,11 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
           )}
 
           <div style={{ display: 'grid', gap: 12, marginTop: 16 }}>
+            {asistencia.error && (
+              <div style={{ ...avisoPendiente, marginBottom: 10 }}>
+                Asistencia: {asistencia.error}
+              </div>
+            )}
             {sesionesResumenDia.length === 0 ? (
               <article style={tarjetaMovilVacia}>
                 No hay sesiones preparadas para este día.
@@ -567,6 +597,16 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                         <span style={{ fontSize: 13, opacity: 0.82 }}>
                           {gruposPublicados.length} grupos publicados · {sesion.totalAlumnos} niños
                         </span>
+                        {(() => {
+                          const texto = textoResumenAsistencia(
+                            resumirAsistencia(gruposPublicados.flatMap(estadosAsistenciaGrupo))
+                          );
+                          return texto ? (
+                            <span style={{ fontSize: 13, fontWeight: 800, opacity: 0.92 }}>
+                              Asistencia: {texto}
+                            </span>
+                          ) : null;
+                        })()}
                       </span>
                       <span style={{ fontSize: 24, fontWeight: 900 }} aria-hidden="true">
                         {turnoAbierto ? '−' : '+'}
@@ -1066,6 +1106,22 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                 <div style={{ marginTop: 12 }}>
                                   <strong style={{ display: 'block', marginBottom: 6 }}>
                                     Alumnos ({alumnosGrupo.length})
+                                    {(() => {
+                                      const r = resumirAsistencia(estadosAsistenciaGrupo(grupo));
+                                      const texto = textoResumenAsistencia(r);
+                                      return texto ? (
+                                        <span
+                                          style={{
+                                            marginLeft: 6,
+                                            fontSize: 12,
+                                            fontWeight: 900,
+                                            color: r.ausentes ? '#b91c1c' : r.sinMarcar ? '#b45309' : '#15803d',
+                                          }}
+                                        >
+                                          · {texto}
+                                        </span>
+                                      ) : null;
+                                    })()}
                                   </strong>
                                   {alumnosGrupo.length > 0 ? (
                                     <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
@@ -1102,12 +1158,33 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                               ficha?.alumno_id === guardandoCamisetaAlumnoId;
 
                                             const [nombreAlumno, ...restoAlumno] = alumno.split(' · ');
+                                            const grupoIdAsistencia = String(grupo.grupo_id || '');
+                                            const estadoAsistencia =
+                                              ficha?.alumno_id && grupoIdAsistencia
+                                                ? asistencia.estadoDe(grupoIdAsistencia, ficha.alumno_id)
+                                                : null;
+                                            const guardandoAsistencia =
+                                              Boolean(ficha?.alumno_id) &&
+                                              asistencia.guardando === `${grupoIdAsistencia}::${ficha?.alumno_id}`;
 
                                             // Dos líneas: nombre a todo lo ancho y debajo todos sus botones pequeños.
                                             return (
                                               <div style={{ display: 'grid', gap: 4, minWidth: 0 }}>
                                                 <span style={{ fontSize: 13.5, lineHeight: 1.25, overflowWrap: 'anywhere' }}>
-                                                  <strong style={{ color: '#172033' }}>{nombreAlumno}</strong>
+                                                  {estadoAsistencia === 'Ausente' && (
+                                                    <span style={{ ...pildoraPista, minHeight: 0, padding: '1px 6px', marginRight: 5, background: '#b91c1c', color: '#fff' }}>
+                                                      FALTA
+                                                    </span>
+                                                  )}
+                                                  <strong
+                                                    style={{
+                                                      color: estadoAsistencia === 'Ausente' ? '#b91c1c' : '#172033',
+                                                      textDecoration: estadoAsistencia === 'Ausente' ? 'line-through' : undefined,
+                                                    }}
+                                                  >
+                                                    {estadoAsistencia === 'Presente' ? '✓ ' : ''}
+                                                    {nombreAlumno}
+                                                  </strong>
                                                   {restoAlumno.length > 0 && (
                                                     <span style={{ color: '#64748b', fontWeight: 700 }}>
                                                       {' · '}
@@ -1117,6 +1194,41 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                                 </span>
 
                                                 <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center' }}>
+                                                  {estadoAsistencia !== null && ficha?.alumno_id && (
+                                                    <>
+                                                      {(['Presente', 'Ausente'] as const).map((opcion) => {
+                                                        const activo = estadoAsistencia === opcion;
+                                                        const esPresente = opcion === 'Presente';
+                                                        return (
+                                                          <button
+                                                            type="button"
+                                                            key={opcion}
+                                                            disabled={Boolean(asistencia.guardando)}
+                                                            onClick={() =>
+                                                              void asistencia.marcar(grupoIdAsistencia, ficha.alumno_id, opcion)
+                                                            }
+                                                            title={
+                                                              activo
+                                                                ? 'Pulsa otra vez para dejarlo sin marcar'
+                                                                : esPresente
+                                                                ? 'Marcar que ha venido'
+                                                                : 'Marcar que falta'
+                                                            }
+                                                            style={{
+                                                              ...pildoraPista,
+                                                              border: `1px solid ${esPresente ? '#16a34a' : '#dc2626'}`,
+                                                              background: activo ? (esPresente ? '#16a34a' : '#dc2626') : '#ffffff',
+                                                              color: activo ? '#ffffff' : esPresente ? '#15803d' : '#b91c1c',
+                                                              cursor: guardandoAsistencia ? 'wait' : 'pointer',
+                                                              opacity: asistencia.guardando && !guardandoAsistencia ? 0.65 : 1,
+                                                            }}
+                                                          >
+                                                            {guardandoAsistencia && activo ? '…' : esPresente ? '✓ Viene' : '✗ Falta'}
+                                                          </button>
+                                                        );
+                                                      })}
+                                                    </>
+                                                  )}
                                                   {whatsapp && (
                                                     <a
                                                       href={whatsapp}
