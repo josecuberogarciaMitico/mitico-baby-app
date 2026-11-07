@@ -9,7 +9,7 @@ import {
 } from './asistenciaPistaLogic';
 
 // Asistencia real de los grupos del día en Trabajo en pista (07/11).
-// Lee grupo_alumnos (lo mismo que ve el entrenador) y marca con la misma
+// Lee la vista del entrenador (la misma asistencia que ve él) y marca con la misma
 // función que usa el entrenador (marcar_asistencia_alumno_app).
 // Se recarga sola cada minuto para ver lo que van marcando en pista.
 
@@ -33,8 +33,11 @@ export function useAsistenciaPista(grupoIds: string[], consultarSupabase: Consul
     try {
       const partes = await Promise.all(
         trozosIds(ids).map((trozo) =>
+          // grupo_alumnos no se puede leer directamente desde la app (permiso
+          // denegado); esta vista es la que lee el entrenador y coordinación
+          // tiene acceso. Da una fila por niño y grupo con su asistencia.
           consultarSupabase<FilaAsistencia>(
-            'grupo_alumnos',
+            'v_alumnos_reporte_entrenador_app_dos_entrenadores',
             `select=grupo_id,alumno_id,estado_asistencia&grupo_id=in.(${trozo.join(',')})`
           )
         )
