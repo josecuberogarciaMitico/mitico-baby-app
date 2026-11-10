@@ -12119,10 +12119,8 @@ async function abrirGestionOperativaIntensivoDia(
       dia.intensivo_dia_id
     );
 
-    if (actuales.length === 0) {
-      setError('Este día todavía no tiene grupos creados.');
-      return;
-    }
+    // 10/11: un día vacío (p. ej. tras borrar sus grupos) también se puede crear aquí.
+    const diaVacio = actuales.length === 0;
 
     if (actuales.some((grupo) => grupo.publicado)) {
       setError('Este día ya tiene grupos publicados.');
@@ -12154,7 +12152,7 @@ async function abrirGestionOperativaIntensivoDia(
     }
 
     const confirmar = window.confirm(
-      `¿Guardar la nueva composición del Día ${dia.numero_dia}? Los otros tres días no cambian.`
+      `¿${diaVacio ? 'Crear los grupos' : 'Guardar la nueva composición'} del Día ${dia.numero_dia}? Los otros días no cambian.`
     );
     if (!confirmar) return;
 
