@@ -19,6 +19,7 @@ import type { ReporteDetalleIntensivoApp, ResumenFinalIntensivoApp } from './eva
 export type EstadoFamilia = 'Lo consigue' | 'En progreso' | 'Seguimos trabajándolo';
 
 export type InformeIntensivoFamilia = {
+  intensivoAlumnoId: string;
   nombreCompleto: string;
   nombre: string;
   intensivo: string;
@@ -29,11 +30,15 @@ export type InformeIntensivoFamilia = {
   evolucion: string;
   /** Breve descripción de la mejora: técnica pero cercana (10/11). */
   mejora: string;
-  habilidades: { nombre: string; estado: EstadoFamilia }[];
+  habilidades: { nombre: string; estado: EstadoFamilia; ayuda: string }[];
   actitud: string;
   autonomia: string;
   objetivos: string[];
   revisado: boolean;
+  /** Texto redactado por la IA (y retocado por coordinación), si ya existe. */
+  textoIA: string;
+  /** Mensaje de WhatsApp redactado por la IA, si ya existe. */
+  mensajeIA: string;
 };
 
 const NOMBRES_HABILIDAD: Map<string, string> = (() => {
@@ -111,7 +116,7 @@ const NO_PARA_FAMILIA = /revisar nivel|revisar con|coordinador|incidencia/i;
 export function construirInformeIntensivo(
   registro: ResumenFinalIntensivoApp,
   reportes: ReporteDetalleIntensivoApp[],
-  opciones: { fechas: string }
+  opciones: { fechas: string; textoIA?: string | null; mensajeIA?: string | null }
 ): InformeIntensivoFamilia {
   const orden = [...reportes].sort(
     (a, b) => String(a.fecha).localeCompare(String(b.fecha)) || (a.numero_dia || 0) - (b.numero_dia || 0)
@@ -143,7 +148,7 @@ export function construirInformeIntensivo(
   });
   const pesoEstado: Record<EstadoFamilia, number> = { 'Lo consigue': 0, 'En progreso': 1, 'Seguimos trabajándolo': 2 };
   const habilidades = [...ultima.entries()]
-    .map(([id, estado]) => ({ nombre: NOMBRES_HABILIDAD.get(id) as string, estado }))
+    .map(([id, estado]) => ({ nombre: NOMBRES_HABILIDAD.get(id) as string, estado, ayuda: AYUDA_HABILIDAD.get(id) || '' }))
     .sort((a, b) => pesoEstado[a.estado] - pesoEstado[b.estado] || a.nombre.localeCompare(b.nombre, 'es'));
 
   const ultimoCon = <K extends keyof ReporteDetalleIntensivoApp>(campo: K) =>
@@ -159,6 +164,7 @@ export function construirInformeIntensivo(
   const total = Number(registro.total_dias_intensivo || 0);
 
   return {
+    intensivoAlumnoId: String(registro.intensivo_alumno_id || ''),
     nombreCompleto: nombreBonito(registro.alumno),
     nombre,
     intensivo: registro.intensivo,
@@ -173,7 +179,19 @@ export function construirInformeIntensivo(
     autonomia: String(ultimoCon('autonomia') || '').trim(),
     objetivos,
     revisado: String(registro.estado_diploma || '').toLowerCase() === 'revisado',
+    textoIA: String(opciones.textoIA || '').trim(),
+    mensajeIA: String(opciones.mensajeIA || '').trim(),
   };
+}
+
+/** Cierre fijo (lo pone la app, no la IA): más actividades y Raquel. */
+export function cierreComercial(nombre: string) {
+  return `Además, en Mítico tenemos más Intensivos, Baby y Ocio durante toda la temporada que pueden encajarle a ${nombre}. Consultad con Raquel y os ayudará a elegir lo que mejor le vaya.`;
+}
+
+/** Párrafos del texto de la IA (respeta los saltos de línea). */
+function parrafos(texto: string) {
+  return texto.split(/\n+/).map((p) => p.trim()).filter(Boolean);
 }
 
 /** Una página del PDF por niño, siempre con la misma estructura. */
@@ -193,8 +211,12 @@ export function bloquesInformeIntensivo(inf: InformeIntensivoFamilia, fechaHoy: 
       ],
     },
     { kind: 'heading', level: 3, text: 'Su evolución' },
-    { kind: 'paragraph', runs: [{ text: inf.evolucion }], size: 11 },
-    ...(inf.mejora ? [{ kind: 'paragraph', runs: [{ text: inf.mejora }], size: 11 } as PdfBlock] : []),
+    ...(inf.textoIA
+      ? parrafos(inf.textoIA).map((p) => ({ kind: 'paragraph', runs: [{ text: p }], size: 11 }) as PdfBlock)
+      : [
+          { kind: 'paragraph', runs: [{ text: inf.evolucion }], size: 11 } as PdfBlock,
+          ...(inf.mejora ? [{ kind: 'paragraph', runs: [{ text: inf.mejora }], size: 11 } as PdfBlock] : []),
+        ]),
   ];
   if (inf.habilidades.length) {
     bloques.push({ kind: 'heading', level: 3, text: 'Habilidades trabajadas' });
@@ -215,6 +237,7 @@ export function bloquesInformeIntensivo(inf: InformeIntensivoFamilia, fechaHoy: 
     inf.objetivos.forEach((o) => bloques.push({ kind: 'paragraph', runs: [{ text: `•  ${o}` }], size: 11 }));
   }
   bloques.push({ kind: 'rule' });
+  bloques.push({ kind: 'paragraph', runs: [{ text: cierreComercial(inf.nombre) }], size: 11 });
   bloques.push({
     kind: 'paragraph',
     runs: [{ text: `Gracias por confiar en Mítico. ¡Seguimos disfrutando de la nieve con ${inf.nombre}!` }],
@@ -233,22 +256,32 @@ export function bloquesInformesMaestro(informes: InformeIntensivoFamilia[], fech
   ]);
 }
 
-/** Mensaje de WhatsApp (misma plantilla para todos). */
-export function textoWhatsappInforme(inf: InformeIntensivoFamilia) {
+/**
+ * Mensaje de WhatsApp: el de la IA si existe (si no, la plantilla), el enlace
+ * al PDF si lo hay y siempre el mismo cierre (más actividades y Raquel).
+ */
+export function textoWhatsappInforme(inf: InformeIntensivoFamilia, enlacePdf = '') {
   const consigue = inf.habilidades.filter((h) => h.estado === 'Lo consigue').map((h) => h.nombre).slice(0, 3);
-  const lineas = [
-    `Hola 👋 Os enviamos la evaluación de ${inf.nombre} del ${inf.intensivo} 🎿`,
+  const cuerpo = inf.mensajeIA
+    ? [inf.mensajeIA]
+    : [
+        `Hola 👋 Os enviamos la evaluación de ${inf.nombre} del ${inf.intensivo} 🎿`,
+        '',
+        `📅 Asistencia: ${inf.asistencia}`,
+        `🏁 ${inf.evolucion}`,
+        ...(inf.mejora ? [`📝 ${inf.mejora}`] : consigue.length ? [`✅ Ya consigue: ${consigue.join(', ')}`] : []),
+        ...(inf.objetivos.length ? [`🎯 Próximo objetivo: ${inf.objetivos.slice(0, 2).join(', ')}`] : []),
+        ...(inf.actitud ? [`💬 Actitud: ${inf.actitud}`] : []),
+      ];
+  return [
+    ...cuerpo,
     '',
-    `📅 Asistencia: ${inf.asistencia}`,
-    `🏁 ${inf.evolucion}`,
-    ...(inf.mejora ? [`📝 ${inf.mejora}`] : consigue.length ? [`✅ Ya consigue: ${consigue.join(', ')}`] : []),
-    ...(inf.objetivos.length ? [`🎯 Próximo objetivo: ${inf.objetivos.slice(0, 2).join(', ')}`] : []),
-    ...(inf.actitud ? [`💬 Actitud: ${inf.actitud}`] : []),
+    enlacePdf ? `📄 Informe completo (PDF): ${enlacePdf}` : 'Os pasamos también el informe completo en PDF.',
     '',
-    'Os pasamos también el informe completo en PDF.',
+    cierreComercial(inf.nombre),
+    '',
     '¡Gracias por confiar en Mítico! 💚',
-  ];
-  return lineas.join('\n');
+  ].join('\n');
 }
 
 export function nombreArchivoInforme(nombre: string, intensivo: string) {

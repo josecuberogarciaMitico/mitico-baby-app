@@ -58,3 +58,17 @@ test('intensivo: breve descripción de la mejora (técnica pero cercana)', () =>
   equal(inf.mejora, 'Lo que más ha mejorado: Olivia ya enlaza giros a ambos lados manteniendo el control. Ahora estamos afinando transición, que es lo que le hará dar el siguiente paso.', 'mejora');
   ok(textoWhatsappInforme(inf).includes('📝 Lo que más ha mejorado'), 'en el WhatsApp');
 });
+
+import { cierreComercial } from '../../../src/core/evaluations/intensiveFamilyReport';
+test('intensivo: texto de la IA, cierre con Raquel y enlace al PDF', () => {
+  const inf = construirInformeIntensivo(registro, [rep(1, 'A+', { paralelismo: 'Consolidado' })],
+    { fechas: '', textoIA: 'Primer párrafo de la IA.\n\nSegundo párrafo.', mensajeIA: 'Hola, mensaje de la IA.' });
+  const wa = textoWhatsappInforme(inf, 'https://x/pdf');
+  ok(wa.startsWith('Hola, mensaje de la IA.'), 'usa el mensaje de la IA');
+  ok(wa.includes('📄 Informe completo (PDF): https://x/pdf'), 'enlace');
+  ok(wa.includes(cierreComercial('Olivia')) && wa.includes('Raquel'), 'cierre comercial siempre');
+  const sinIA = textoWhatsappInforme(construirInformeIntensivo(registro, [], { fechas: '' }));
+  ok(sinIA.includes('Raquel') && sinIA.includes('Intensivos, Baby y Ocio'), 'cierre también sin IA');
+  const pdf = String.fromCharCode(...generarPdfSimple(bloquesInformesMaestro([inf], 'hoy')));
+  ok(pdf.includes('Segundo p') && pdf.includes('Raquel'), 'PDF con texto de la IA y cierre');
+});

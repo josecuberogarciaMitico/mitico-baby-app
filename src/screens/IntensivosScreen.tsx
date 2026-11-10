@@ -3462,6 +3462,7 @@ export function PantallaIntensivos(ctx: any) {
                         </button>
 
                         <BotonPdfMaestroIntensivo
+                          intensivoId={intensivo.intensivo_id}
                           intensivo={intensivo.intensivo}
                           informes={resumenFinal.map((registro) => informeFamiliaIntensivo(intensivo, registro))}
                         />
@@ -3629,6 +3630,7 @@ export function PantallaIntensivos(ctx: any) {
                               </button>
 
                               <EnvioInformeIntensivo
+                                intensivoId={intensivo.intensivo_id}
                                 informe={informeFamiliaIntensivo(intensivo, registro)}
                                 telefono={telefonoAlumnoIntensivo(registro.alumno_id)}
                               />
