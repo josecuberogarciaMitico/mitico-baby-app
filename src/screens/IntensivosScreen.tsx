@@ -1,4 +1,5 @@
 import React from 'react';
+import { composicionDesdeFilas, copiarComposicionADia, diaEditable, mismaComposicion, type FilaGrupoDia } from '../features/intensivos/copiarComposicionDias';
 import { CampoSelect } from '../lib/appHelpers';
 import { IntensivePendingPlacementPanel } from '../features/intensivos/IntensivePendingPlacementPanel';
 import { moverAlumnoPropuestaIntensivo } from '../features/intensivos/intensiveProposalSync';
@@ -90,6 +91,55 @@ export function PantallaIntensivos(ctx: any) {
     volcarListadoAlumnosIntensivo,
     contactosAimHarderIntensivo, altasTestIntensivo, nombresSinFichaVolcado,
     puedeCrearAltaTestIntensivo, crearAltasTestIntensivo, reiniciarAltasTestIntensivo } = ctx;
+
+  // 10/11: rehacer un día y que los días siguientes partan de la misma composición.
+  async function copiarDiaASiguientes(intensivo: any, origen: any) {
+    const leerDia = (diaId: string) =>
+      ejecutarFuncionConRespuesta('obtener_grupos_intensivo_dia_editables_app', { p_intensivo_dia_id: diaId }) as Promise<FilaGrupoDia[]>;
+    const posteriores = diasDelIntensivo(intensivo.intensivo_id)
+      .filter((dia: any) => dia.numero_dia > origen.numero_dia)
+      .sort((a: any, b: any) => a.numero_dia - b.numero_dia);
+    ctx.setCargando(true);
+    setError('');
+    try {
+      const composicion = composicionDesdeFilas(await leerDia(origen.intensivo_dia_id));
+      if (composicion.length === 0) throw new Error(`El Día ${origen.numero_dia} no tiene grupos que copiar.`);
+      const aCopiar: any[] = [];
+      const bloqueados: string[] = [];
+      for (const dia of posteriores) {
+        const filas = await leerDia(dia.intensivo_dia_id);
+        if (!diaEditable(filas)) bloqueados.push(`Día ${dia.numero_dia}`);
+        else if (!mismaComposicion(composicionDesdeFilas(filas), composicion)) aCopiar.push(dia);
+      }
+      const nota = bloqueados.length ? `\n\nNo se tocan (ya publicados o con entrenador): ${bloqueados.join(', ')}.` : '';
+      if (aCopiar.length === 0) {
+        window.alert(`Los días siguientes ya tienen la misma composición que el Día ${origen.numero_dia}.${nota}`);
+        return;
+      }
+      const lista = aCopiar.map((dia) => `Día ${dia.numero_dia}`).join(', ');
+      if (!window.confirm(`¿Poner en ${lista} los mismos grupos y niños que el Día ${origen.numero_dia}?\n\nSus grupos actuales se sustituyen. El Trabajo diario y las Observaciones se regeneran al abrir cada jornada.${nota}`)) return;
+      for (const dia of aCopiar) {
+        await copiarComposicionADia(dia.intensivo_dia_id, composicion, {
+          leerDia,
+          borrarGrupo: async (grupoId) => {
+            await ctx.ejecutarFuncion('borrar_grupo_intensivo_app', { p_grupo_id: grupoId });
+          },
+          crearGrupo: (diaId, g) =>
+            ctx.ejecutarFuncionAuthJson('crear_grupo_intensivo_dia_app', {
+              p_intensivo_dia_id: diaId, p_nombre_grupo: g.nombre_grupo, p_nivel_grupo: g.nivel_grupo, p_pista: g.pista,
+              p_punto_encuentro: '', p_trabajo_diario: g.trabajo_diario || '', p_observaciones_importantes: g.observaciones_importantes || '',
+              p_entrenador_id: null, p_alumnos_ids: g.alumnos_ids, p_publicado: false,
+            }),
+        });
+      }
+    } catch (err) {
+      setError(err instanceof Error ? `No se pudo copiar a los días siguientes: ${err.message}` : 'No se pudo copiar a los días siguientes.');
+    } finally {
+      await cargarIntensivos();
+      await ctx.cargarAgendaOperativaDirecta();
+      ctx.setCargando(false);
+    }
+  }
 
   function formatearAlumnoIntensivoVisible(valor: string | null | undefined) {
     const partes = String(valor || '')
@@ -2868,6 +2918,19 @@ export function PantallaIntensivos(ctx: any) {
                                     >
                                       Rehacer grupos de este día
                                     </button>
+
+                                    {diasIntensivo.some(
+                                      (dia: IntensivoDiaApp) => dia.numero_dia > diaSeleccionadoGrupo.numero_dia
+                                    ) && (
+                                      <button
+                                        type="button"
+                                        disabled={cargando}
+                                        onClick={() => void copiarDiaASiguientes(intensivo, diaSeleccionadoGrupo)}
+                                        style={botonSecundario}
+                                      >
+                                        Copiar este día a los días siguientes
+                                      </button>
+                                    )}
                                   </div>
 
                                   <small style={{ color: '#64748b' }}>
@@ -2964,12 +3027,22 @@ export function PantallaIntensivos(ctx: any) {
                                 gruposRecomendadosDia.length > 0 && (
                                   <button
                                     type="button"
-                                    onClick={() =>
-                                      guardarComposicionDiaIntensivo(
+                                    onClick={async () => {
+                                      const guardado = await guardarComposicionDiaIntensivo(
                                         intensivo,
                                         diaSeleccionadoGrupo || undefined
-                                      )
-                                    }
+                                      );
+                                      // 10/11: ofrecer que los días siguientes partan de este.
+                                      if (
+                                        guardado &&
+                                        diaSeleccionadoGrupo &&
+                                        diasIntensivo.some(
+                                          (dia: IntensivoDiaApp) => dia.numero_dia > diaSeleccionadoGrupo.numero_dia
+                                        )
+                                      ) {
+                                        await copiarDiaASiguientes(intensivo, diaSeleccionadoGrupo);
+                                      }
+                                    }}
                                     style={botonPrincipal}
                                   >
                                     {gruposDiaSeleccionado.length > 0
