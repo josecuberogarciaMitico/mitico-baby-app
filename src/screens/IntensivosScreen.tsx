@@ -2959,7 +2959,8 @@ export function PantallaIntensivos(ctx: any) {
                                   </button>
                                 )}
 
-                              {gruposDiaSeleccionado.length > 0 &&
+                              {/* 10/11: también con el día vacío si los otros días ya tienen grupos. */}
+                              {(gruposDiaSeleccionado.length > 0 || !modoPlantillaIntensivo) &&
                                 gruposRecomendadosDia.length > 0 && (
                                   <button
                                     type="button"
@@ -2971,7 +2972,9 @@ export function PantallaIntensivos(ctx: any) {
                                     }
                                     style={botonPrincipal}
                                   >
-                                    Guardar cambios de este día
+                                    {gruposDiaSeleccionado.length > 0
+                                      ? 'Guardar cambios de este día'
+                                      : 'Crear los grupos de este día'}
                                   </button>
                                 )}
 
