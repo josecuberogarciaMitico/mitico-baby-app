@@ -12161,6 +12161,7 @@ async function abrirGestionOperativaIntensivoDia(
 
     let snapshot: GrupoEditableIntensivoDiaApp[] = [];
     const nuevosIds: string[] = [];
+    let guardado = false;
 
     try {
       snapshot =
@@ -12197,6 +12198,7 @@ async function abrirGestionOperativaIntensivoDia(
 
       await cargarIntensivos();
       await cargarAgendaOperativaDirecta();
+      guardado = true;
     } catch (err) {
       for (const grupoId of [...nuevosIds].reverse()) {
         try {
@@ -12247,6 +12249,7 @@ async function abrirGestionOperativaIntensivoDia(
     }
 
     setCargando(false);
+    return guardado;
   }
 
   async function generarRecomendacionGruposIntensivo(
@@ -23404,7 +23407,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
         PantallaIntensivos({
           ...altasTestIntensivoApp,
           abrirIntensivoDiaEnEntrenamientosApp,
-          ejecutarFuncionConRespuesta,
+          ejecutarFuncionConRespuesta, ejecutarFuncion, ejecutarFuncionAuthJson, setCargando, cargarAgendaOperativaDirecta,
           recomendacionesGrupoIntensivo,
           setError,
           abrirFichaMaestraAlumnoApp,
