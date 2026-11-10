@@ -23407,7 +23407,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
         PantallaIntensivos({
           ...altasTestIntensivoApp,
           abrirIntensivoDiaEnEntrenamientosApp,
-          ejecutarFuncionConRespuesta, ejecutarFuncion, ejecutarFuncionAuthJson, setCargando, cargarAgendaOperativaDirecta,
+          ejecutarFuncionConRespuesta, ejecutarFuncion, ejecutarFuncionAuthJson, setCargando, cargarAgendaOperativaDirecta, alumnos,
           recomendacionesGrupoIntensivo,
           setError,
           abrirFichaMaestraAlumnoApp,

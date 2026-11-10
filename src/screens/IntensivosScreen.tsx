@@ -1,4 +1,6 @@
 import React from 'react';
+import { BotonPdfMaestroIntensivo, EnvioInformeIntensivo } from '../features/intensivos/IntensiveFamilyReport';
+import { construirInformeIntensivo } from '../core/evaluations/intensiveFamilyReport';
 import { composicionDesdeFilas, copiarComposicionADia, diaEditable, mismaComposicion, type FilaGrupoDia } from '../features/intensivos/copiarComposicionDias';
 import { CampoSelect } from '../lib/appHelpers';
 import { IntensivePendingPlacementPanel } from '../features/intensivos/IntensivePendingPlacementPanel';
@@ -91,6 +93,15 @@ export function PantallaIntensivos(ctx: any) {
     volcarListadoAlumnosIntensivo,
     contactosAimHarderIntensivo, altasTestIntensivo, nombresSinFichaVolcado,
     puedeCrearAltaTestIntensivo, crearAltasTestIntensivo, reiniciarAltasTestIntensivo } = ctx;
+
+  // 10/11: evaluación para la familia (plantilla fija, sin ChatGPT).
+  function informeFamiliaIntensivo(intensivo: any, registro: any) {
+    const fechas = [intensivo.fecha_inicio, intensivo.fecha_fin].filter(Boolean).map((f: string) => formatearFecha(f)).join(' – ');
+    return construirInformeIntensivo(registro, reportesDetalleAlumnoIntensivo(registro.intensivo_id, registro.alumno_id), { fechas });
+  }
+  function telefonoAlumnoIntensivo(alumnoId: string): string {
+    return String((ctx.alumnos || []).find((a: any) => a.alumno_id === alumnoId)?.telefono || '');
+  }
 
   // 10/11: rehacer un día y que los días siguientes partan de la misma composición.
   async function copiarDiaASiguientes(intensivo: any, origen: any) {
@@ -3450,6 +3461,11 @@ export function PantallaIntensivos(ctx: any) {
                           Cerrar evaluación
                         </button>
 
+                        <BotonPdfMaestroIntensivo
+                          intensivo={intensivo.intensivo}
+                          informes={resumenFinal.map((registro) => informeFamiliaIntensivo(intensivo, registro))}
+                        />
+
                         {esCerrado ? (
                           <button
                             type="button"
@@ -3611,6 +3627,11 @@ export function PantallaIntensivos(ctx: any) {
                               >
                                 Abrir ficha maestra completa
                               </button>
+
+                              <EnvioInformeIntensivo
+                                informe={informeFamiliaIntensivo(intensivo, registro)}
+                                telefono={telefonoAlumnoIntensivo(registro.alumno_id)}
+                              />
 
                               <div style={{ ...gridFormulario, marginTop: 12 }}>
                                 <label style={labelCampo}>
