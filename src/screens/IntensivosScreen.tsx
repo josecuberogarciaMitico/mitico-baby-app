@@ -1,6 +1,5 @@
 import React from 'react';
-import { BotonPdfMaestroIntensivo, EnvioInformeIntensivo } from '../features/intensivos/IntensiveFamilyReport';
-import { construirInformeIntensivo } from '../core/evaluations/intensiveFamilyReport';
+import { CopiarHistorialesIntensivo } from '../features/intensivos/CopiarHistorialesIntensivo';
 import { composicionDesdeFilas, copiarComposicionADia, diaEditable, mismaComposicion, type FilaGrupoDia } from '../features/intensivos/copiarComposicionDias';
 import { CampoSelect } from '../lib/appHelpers';
 import { IntensivePendingPlacementPanel } from '../features/intensivos/IntensivePendingPlacementPanel';
@@ -93,15 +92,6 @@ export function PantallaIntensivos(ctx: any) {
     volcarListadoAlumnosIntensivo,
     contactosAimHarderIntensivo, altasTestIntensivo, nombresSinFichaVolcado,
     puedeCrearAltaTestIntensivo, crearAltasTestIntensivo, reiniciarAltasTestIntensivo } = ctx;
-
-  // 10/11: evaluación para la familia (plantilla fija, sin ChatGPT).
-  function informeFamiliaIntensivo(intensivo: any, registro: any) {
-    const fechas = [intensivo.fecha_inicio, intensivo.fecha_fin].filter(Boolean).map((f: string) => formatearFecha(f)).join(' – ');
-    return construirInformeIntensivo(registro, reportesDetalleAlumnoIntensivo(registro.intensivo_id, registro.alumno_id), { fechas });
-  }
-  function telefonoAlumnoIntensivo(alumnoId: string): string {
-    return String((ctx.alumnos || []).find((a: any) => a.alumno_id === alumnoId)?.telefono || '');
-  }
 
   // 10/11: rehacer un día y que los días siguientes partan de la misma composición.
   async function copiarDiaASiguientes(intensivo: any, origen: any) {
@@ -3438,57 +3428,68 @@ export function PantallaIntensivos(ctx: any) {
                         overflow: 'hidden',
                       }}
                     >
-                      <h4 style={{ marginTop: 0 }}>
-                        Evaluación final · {intensivo.intensivo}
-                      </h4>
-
-                      <p style={{ marginTop: 0, color: '#475569' }}>
-                        Revisión por niño desde el resumen de los 4 días. La app da más peso al último reporte, pero tú confirmas el nivel final. Cuando todos estén Revisados aparecerá “Finalizar intensivo”; cerrar el curso no elimina recuperaciones pendientes.
-                      </p>
-
-                      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-                        <button
-                          onClick={() => autoproponerNivelesDiploma(intensivo)}
-                          style={botonPrincipal}
+                      {/* 11/11: evaluación simplificada. Aquí solo se confirma el nivel de cada niño;
+                          los informes para las familias se sacan en la página «Evaluaciones del Intensivo». */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <h4 style={{ margin: 0 }}>Evaluación final · {intensivo.intensivo}</h4>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 800,
+                            padding: '4px 10px',
+                            borderRadius: 999,
+                            background: diplomasPendientes === 0 && resumenFinal.length ? '#dcfce7' : '#fff7ed',
+                            color: diplomasPendientes === 0 && resumenFinal.length ? '#166534' : '#9a3412',
+                          }}
                         >
-                          Proponer evaluación desde reportes
-                        </button>
+                          {Math.max(resumenFinal.length - diplomasPendientes, 0)}/{resumenFinal.length} revisados
+                        </span>
+                      </div>
 
-                        <button
-                          onClick={() => setGestionarDiplomasIntensivoId(null)}
-                          style={botonSecundario}
-                        >
-                          Cerrar evaluación
-                        </button>
+                      <ol style={{ margin: '10px 0 12px', paddingLeft: 20, color: '#334155', display: 'grid', gap: 4 }}>
+                        <li>Confirma el nivel final de cada niño y ponlo en «Revisado».</li>
+                        <li>
+                          Pulsa «Copiar historial de todos» y pégalo en la página{' '}
+                          <a href="https://claude.ai/artifact/QpjTkmYj332jEWX56z3tKP" target="_blank" rel="noreferrer" style={{ fontWeight: 800 }}>
+                            Evaluaciones del Intensivo ↗
+                          </a>
+                          : te devuelve los informes y los mensajes listos para enviar.
+                        </li>
+                        <li>Cuando estén todos revisados, «Finalizar intensivo».</li>
+                      </ol>
 
-                        <BotonPdfMaestroIntensivo
-                          intensivoId={intensivo.intensivo_id}
-                          intensivo={intensivo.intensivo}
-                          informes={resumenFinal.map((registro) => informeFamiliaIntensivo(intensivo, registro))}
+                      <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <button type="button" onClick={() => autoproponerNivelesDiploma(intensivo)} style={botonSecundario}>
+                          Proponer niveles desde reportes
+                        </button>
+                        <CopiarHistorialesIntensivo
+                          total={resumenFinal.length}
+                          estilo={botonPrincipal}
+                          texto={() =>
+                            resumenFinal
+                              .map((registro) =>
+                                textoBaseDiplomaIntensivo(
+                                  registro,
+                                  reportesDetalleAlumnoIntensivo(registro.intensivo_id, registro.alumno_id)
+                                )
+                                  .replace(/\s*\|\|\s*/g, ' ')
+                                  .trim()
+                              )
+                              .join('\n\n')
+                          }
                         />
-
                         {esCerrado ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              cambiarEstadoIntensivoCurso(intensivo, 'Abierto')
-                            }
-                            style={botonSecundario}
-                          >
+                          <button type="button" onClick={() => cambiarEstadoIntensivoCurso(intensivo, 'Abierto')} style={botonSecundario}>
                             Reabrir intensivo
                           </button>
-                        ) : diplomasPendientes === 0 &&
-                          resumenFinal.length > 0 ? (
-                          <button
-                            type="button"
-                            onClick={() =>
-                              cambiarEstadoIntensivoCurso(intensivo, 'Cerrado')
-                            }
-                            style={botonPrincipal}
-                          >
+                        ) : diplomasPendientes === 0 && resumenFinal.length > 0 ? (
+                          <button type="button" onClick={() => cambiarEstadoIntensivoCurso(intensivo, 'Cerrado')} style={botonPrincipal}>
                             Finalizar intensivo
                           </button>
                         ) : null}
+                        <button type="button" onClick={() => setGestionarDiplomasIntensivoId(null)} style={botonSecundario}>
+                          Cerrar
+                        </button>
                       </div>
 
                       {resumenFinal.length === 0 && (
@@ -3497,7 +3498,7 @@ export function PantallaIntensivos(ctx: any) {
                         </div>
                       )}
 
-                      <div style={{ display: 'grid', gap: 12 }}>
+                      <div style={{ display: 'grid', gap: 10 }}>
                         {resumenFinal.map((registro) => {
                           const nivelPropuestoActual =
                             registro.nivel_final_propuesto_id ||
@@ -3508,134 +3509,41 @@ export function PantallaIntensivos(ctx: any) {
                           const edadEvaluacion = perfilOperativoAlumnoApp?.(
                             registro.alumno_id
                           )?.edad_aprox;
+                          const revisado = String(registro.estado_diploma || '').toLowerCase() === 'revisado';
+                          const reportesAlumno = reportesDetalleAlumnoIntensivo(registro.intensivo_id, registro.alumno_id);
+                          const comentarios = [
+                            registro.comentarios_tecnica,
+                            registro.comentarios_actitud,
+                            registro.comentarios_autonomia,
+                            registro.comentarios_recomendacion,
+                          ]
+                            .filter(Boolean)
+                            .filter((comentario) => !String(comentario).toLowerCase().includes('reporte demo septiembre'))
+                            .join(' · ');
 
                           return (
-                            <div key={registro.intensivo_alumno_id} style={miniTarjetaBlanca}>
-                              <h4 style={{ marginTop: 0, marginBottom: 8 }}>
-                                {registro.alumno}
-                                {edadEvaluacion !== null &&
-                                edadEvaluacion !== undefined
-                                  ? ` · ${Number(edadEvaluacion).toFixed(1)} años`
-                                  : ''}
-                              </h4>
-
-                              <div style={{ display: 'grid', gap: 4 }}>
-                                <p style={{ margin: 0 }}>
-                                  <strong>Asistencia:</strong>{' '}
-                                  {registro.dias_presente || 0} presente ·{' '}
-                                  {registro.dias_ausente || 0} ausente ·{' '}
-                                  {registro.dias_pendiente_asistencia || 0} pendiente ·{' '}
-                                  {registro.total_dias_intensivo || 0} días totales
-                                </p>
-
-                                <p style={{ margin: 0 }}>
-                                  <strong>Reportes:</strong>{' '}
-                                  {registro.total_reportes || 0} hechos ·{' '}
-                                  {registro.reportes_pendientes_estimados || 0} pendientes estimados
-                                </p>
-
-                                <p style={{ margin: 0 }}>
-                                  <strong>Niveles reportados:</strong>{' '}
-                                  {registro.niveles_reportados || '-'} ·{' '}
-                                  <strong>más alto:</strong>{' '}
-                                  {registro.nivel_mas_alto_reportado || '-'} ·{' '}
-                                  <strong>último:</strong>{' '}
-                                  {registro.nivel_ultimo_reporte || '-'}
-                                </p>
-
-                                <p style={{ margin: 0 }}>
-                                  <strong>Último reporte:</strong>{' '}
-                                  {registro.tecnica_ultimo_reporte || '-'} ·{' '}
-                                  {registro.actitud_ultimo_reporte || '-'} ·{' '}
-                                  {registro.autonomia_ultimo_reporte || '-'}
-                                </p>
-
-                                <p style={{ margin: 0 }}>
-                                  <strong>Técnicas:</strong>{' '}
-                                  {registro.tecnicas_reportadas || '-'}
-                                </p>
-
-                                <p style={{ margin: 0 }}>
-                                  <strong>Actitud:</strong>{' '}
-                                  {registro.actitudes_reportadas || '-'}
-                                </p>
-
-                                <p style={{ margin: 0 }}>
-                                  <strong>Autonomía:</strong>{' '}
-                                  {registro.autonomias_reportadas || '-'}
-                                </p>
-
-                                <p style={{ margin: 0 }}>
-                                  <strong>Incidencias:</strong>{' '}
-                                  {registro.incidencias_reportadas || '-'}
-                                </p>
-
-                                <p style={{ margin: 0 }}>
-                                  <strong>Recomendaciones reportadas:</strong>{' '}
-                                  {registro.recomendaciones_reportadas || '-'}
-                                </p>
+                            <div
+                              key={registro.intensivo_alumno_id}
+                              style={{ ...miniTarjetaBlanca, borderLeft: `4px solid ${revisado ? '#16a34a' : '#f59e0b'}` }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap', alignItems: 'baseline' }}>
+                                <strong style={{ fontSize: 15 }}>
+                                  {registro.alumno}
+                                  {edadEvaluacion !== null && edadEvaluacion !== undefined
+                                    ? ` · ${Number(edadEvaluacion).toFixed(1)} años`
+                                    : ''}
+                                </strong>
+                                <span style={{ fontSize: 12, fontWeight: 800, color: revisado ? '#166534' : '#9a3412' }}>
+                                  {revisado ? '✓ Revisado' : 'Pendiente de revisar'}
+                                </span>
                               </div>
+                              <p style={{ margin: '4px 0 10px', color: '#475569', fontSize: 13 }}>
+                                Asistencia {registro.dias_presente || 0}/{registro.total_dias_intensivo || 0} · Niveles{' '}
+                                {registro.niveles_reportados || '-'} · Reportes {registro.total_reportes || 0}
+                                {registro.autonomia_ultimo_reporte ? ` · ${registro.autonomia_ultimo_reporte}` : ''}
+                              </p>
 
-                              {(registro.comentarios_tecnica ||
-                                registro.comentarios_actitud ||
-                                registro.comentarios_autonomia ||
-                                registro.comentarios_recomendacion) && (
-                                <div style={{ ...avisoNeutral, marginTop: 10 }}>
-                                  <strong>Comentarios entrenadores:</strong>
-                                  <p style={{ marginBottom: 0 }}>
-                                    {[
-                                      registro.comentarios_tecnica,
-                                      registro.comentarios_actitud,
-                                      registro.comentarios_autonomia,
-                                      registro.comentarios_recomendacion,
-                                    ]
-                                      .filter(Boolean)
-                                      .filter((comentario) => !String(comentario).toLowerCase().includes('reporte demo septiembre'))
-                                      .join(' || ') || 'Sin comentarios útiles todavía'}
-                                  </p>
-                                </div>
-                              )}
-
-                              {(() => {
-                                const reportesAlumno = reportesDetalleAlumnoIntensivo(
-                                  registro.intensivo_id,
-                                  registro.alumno_id
-                                );
-                                const textoDiploma = textoBaseDiplomaIntensivo(registro, reportesAlumno).replaceAll('', '').replace(/\s*\|\|\s*/g, ' ').trim();
-                                return (
-                                  <details style={{ marginTop: 12 }}>
-                                    <summary style={{ cursor: 'pointer', fontWeight: 'bold' }}>
-                                      Historial técnico exacto · {reportesAlumno.length} reportes
-                                    </summary>
-                                    <textarea
-                                      readOnly
-                                      value={textoDiploma}
-                                      style={{ ...inputCampo, minHeight: 220, marginTop: 8 }}
-                                    />
-                                  </details>
-                                );
-                              })()}
-
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  abrirFichaMaestraAlumnoApp?.(
-                                    registro.alumno_id,
-                                    registro.alumno
-                                  )
-                                }
-                                style={{ ...botonSecundario, marginTop: 10 }}
-                              >
-                                Abrir ficha maestra completa
-                              </button>
-
-                              <EnvioInformeIntensivo
-                                intensivoId={intensivo.intensivo_id}
-                                informe={informeFamiliaIntensivo(intensivo, registro)}
-                                telefono={telefonoAlumnoIntensivo(registro.alumno_id)}
-                              />
-
-                              <div style={{ ...gridFormulario, marginTop: 12 }}>
+                              <div style={{ ...gridFormulario }}>
                                 <label style={labelCampo}>
                                   Nivel propuesto
                                   <select
@@ -3683,21 +3591,6 @@ export function PantallaIntensivos(ctx: any) {
                                 </label>
 
                                 <CampoSelect
-                                  label="Destino comunicado por familia · opcional"
-                                  value={registro.recomendacion_siguiente_paso || ''}
-                                  opciones={opcionesRecomendacionIntensivo}
-                                  onChange={(valor) =>
-                                    actualizarDiplomaIntensivo(
-                                      registro,
-                                      nivelPropuestoActual,
-                                      nivelConfirmadoActual,
-                                      valor,
-                                      registro.estado_diploma || 'Pendiente'
-                                    )
-                                  }
-                                />
-
-                                <CampoSelect
                                   label="Estado evaluación"
                                   value={registro.estado_diploma || 'Pendiente'}
                                   opciones={opcionesEstadoDiplomaIntensivo}
@@ -3711,8 +3604,47 @@ export function PantallaIntensivos(ctx: any) {
                                     )
                                   }
                                 />
+
+                                <CampoSelect
+                                  label="Destino comunicado por familia · opcional"
+                                  value={registro.recomendacion_siguiente_paso || ''}
+                                  opciones={opcionesRecomendacionIntensivo}
+                                  onChange={(valor) =>
+                                    actualizarDiplomaIntensivo(
+                                      registro,
+                                      nivelPropuestoActual,
+                                      nivelConfirmadoActual,
+                                      valor,
+                                      registro.estado_diploma || 'Pendiente'
+                                    )
+                                  }
+                                />
                               </div>
 
+                              <details style={{ marginTop: 10 }}>
+                                <summary style={{ cursor: 'pointer', fontWeight: 700, fontSize: 13, color: '#334155' }}>
+                                  Ver detalle de los reportes ({reportesAlumno.length})
+                                </summary>
+                                <div style={{ display: 'grid', gap: 4, marginTop: 8, fontSize: 13 }}>
+                                  <p style={{ margin: 0 }}><strong>Técnicas:</strong> {registro.tecnicas_reportadas || '-'}</p>
+                                  <p style={{ margin: 0 }}><strong>Actitud:</strong> {registro.actitudes_reportadas || '-'}</p>
+                                  <p style={{ margin: 0 }}><strong>Autonomía:</strong> {registro.autonomias_reportadas || '-'}</p>
+                                  <p style={{ margin: 0 }}><strong>Incidencias:</strong> {registro.incidencias_reportadas || '-'}</p>
+                                  {comentarios && <p style={{ margin: 0 }}><strong>Comentarios entrenadores:</strong> {comentarios}</p>}
+                                  <textarea
+                                    readOnly
+                                    value={textoBaseDiplomaIntensivo(registro, reportesAlumno).replace(/\s*\|\|\s*/g, ' ').trim()}
+                                    style={{ ...inputCampo, minHeight: 180, marginTop: 6 }}
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => abrirFichaMaestraAlumnoApp?.(registro.alumno_id, registro.alumno)}
+                                    style={{ ...botonSecundario, justifySelf: 'start' }}
+                                  >
+                                    Abrir ficha maestra
+                                  </button>
+                                </div>
+                              </details>
                             </div>
                           );
                         })}

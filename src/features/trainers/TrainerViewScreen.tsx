@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { PreparadoGrandeEtiqueta, usePreparadosGrande } from './PreparadoGrandeEtiqueta';
 import {
   AdaptiveReportFields,
   BotonesOpcion,
@@ -41,6 +42,8 @@ type TrainerViewScreenProps = {
 
 export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
   const [tareaEntrenadorAbierta, setTareaEntrenadorAbierta] = useState<string | null>(null);
+  // 11/11: A+ que pueden subir a la pista grande (etiqueta en cada niño).
+  const preparadosGrande = usePreparadosGrande();
   const [diaDisponibilidadAbierto, setDiaDisponibilidadAbierto] = useState('');
   const [dictandoObservacion, setDictandoObservacion] = useState(false);
   // Día elegido en la fila de botones, por entrenador (clave del botón).
@@ -2600,6 +2603,9 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                                                                 {alumno.nivel_alumno ||
                                                                   'SIN NIVEL'}
                                                               </strong>
+                                                              <div>
+                                                                <PreparadoGrandeEtiqueta preparado={preparadosGrande.get(alumno.alumno_id)} />
+                                                              </div>
                                                               <p
                                                                 style={{
                                                                   margin: '4px 0 0',

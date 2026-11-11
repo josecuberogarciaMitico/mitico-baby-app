@@ -1,12 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { cargarPreparadosGrande } from '../../services/agenda/pistaGrandeService';
+import { cargarPreparadosGrandeSemana } from '../../services/agenda/pistaGrandeService';
 import type { PreparadoGrande } from '../baby/pistaGrandeCache';
 
 // A+ preparados para la pista grande (11/11): aviso en Entrenamientos. Al
 // cargar deja la lista lista para el recomendador, que los junta en un grupo
 // «A+ · listos para la grande». Si la función no existe aún, no enseña nada.
 
-type Props = { refresco?: number };
+type Props = { refresco?: number; semanaInicio: string };
 
 const boton: React.CSSProperties = {
   minHeight: 32,
@@ -21,22 +21,30 @@ const boton: React.CSSProperties = {
   whiteSpace: 'nowrap',
 };
 
+function diaSemana(f: string) {
+  return ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'][new Date(`${f.slice(0, 10)}T12:00:00Z`).getUTCDay()];
+}
+
 function fechaCorta(f: string | null) {
   const m = String(f || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
   return m ? `${m[3]}/${m[2]}` : '';
 }
 
-export function PreparadosGrandeAviso({ refresco }: Props) {
+export function PreparadosGrandeAviso({ refresco, semanaInicio }: Props) {
   const [filas, setFilas] = useState<PreparadoGrande[]>([]);
   const [abierto, setAbierto] = useState(false);
 
+  // 11/11: solo los apuntados en la semana que se está viendo.
   const cargar = useCallback(async () => {
+    if (!semanaInicio) return setFilas([]);
+    const fin = new Date(`${semanaInicio.slice(0, 10)}T12:00:00Z`);
+    fin.setUTCDate(fin.getUTCDate() + 6);
     try {
-      setFilas(await cargarPreparadosGrande());
+      setFilas(await cargarPreparadosGrandeSemana(semanaInicio.slice(0, 10), fin.toISOString().slice(0, 10)));
     } catch {
       setFilas([]);
     }
-  }, []);
+  }, [semanaInicio]);
 
   useEffect(() => {
     void cargar();
@@ -50,7 +58,7 @@ export function PreparadosGrandeAviso({ refresco }: Props) {
     <div style={{ padding: '10px 12px', borderRadius: 12, background: '#f0fdf4', border: '1px solid #86efac', color: '#14532d', fontSize: 13, minWidth: 0 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <strong style={{ flex: '1 1 200px', minWidth: 0 }}>
-          🟢 {listos.length === 1 ? '1 niño de A+ preparado' : `${listos.length} niños de A+ preparados`} para la pista grande
+          🟢 {listos.length === 1 ? '1 niño de A+ preparado' : `${listos.length} niños de A+ preparados`} para la pista grande esta semana
           {casi.length > 0 && <span style={{ fontWeight: 700 }}> · {casi.length} casi</span>}
         </strong>
         <button type="button" style={boton} onClick={() => setAbierto((x) => !x)}>
@@ -64,15 +72,22 @@ export function PreparadosGrandeAviso({ refresco }: Props) {
               <div style={{ fontWeight: 800, color: '#0f172a' }}>
                 {f.estado === 'listo' ? '🟢' : '🟡'} {f.alumno}
               </div>
+              {(f.turnos || []).map((t) => (
+                <div key={`${t.fecha}${t.hora}`} style={{ fontSize: 12.5, fontWeight: 700, color: '#166534' }}>
+                  📅 {diaSemana(t.fecha)} {fechaCorta(t.fecha)} · {t.hora} · {t.modalidad}
+                  {t.grupo ? ` · ${t.grupo}` : ' · sin grupo todavía'}
+                </div>
+              ))}
               <div style={{ fontSize: 12, color: '#475569' }}>
                 {f.motivo}
-                {f.fecha ? ` · ${fechaCorta(f.fecha)}` : ''}
+                {f.fecha ? ` (dato del ${fechaCorta(f.fecha)})` : ''}
               </div>
             </div>
           ))}
           <p style={{ margin: 0, fontSize: 12, color: '#64748b' }}>
-            Al recomendar grupos, los preparados (si hay 2 o más en el turno) van juntos en «A+ · listos para la grande». Los
-            entrenadores pueden marcarlo en el reporte de A+ («¿Ha probado la pista grande?») y eso manda sobre las habilidades.
+            Al recomendar grupos, los preparados (si hay 2 o más en el turno) van juntos en «A+ · listos para la grande». Su
+            entrenador lo ve en cada niño al abrir el grupo. En el reporte de A+ («¿Ha probado la pista grande?») puede
+            confirmarlo, y eso manda sobre las habilidades.
           </p>
         </div>
       )}

@@ -1195,7 +1195,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                 )}
 
                 {/* 11/11: A+ preparados para la pista grande (también alimenta el recomendador). */}
-                {esCoordinadorApp && <PreparadosGrandeAviso refresco={refrescoAgenda} />}
+                {esCoordinadorApp && <PreparadosGrandeAviso refresco={refrescoAgenda} semanaInicio={semanaAgendaActiva || ''} />}
 
                 {/* 11/11: niño en varios turnos la misma semana (invitado sin quitar la reserva antigua). */}
                 {esCoordinadorApp && (

@@ -9,6 +9,8 @@ export type PreparadoGrande = {
   motivo: string;
   fecha: string | null;
   fuente: 'entrenador' | 'habilidades';
+  /** Turnos de la semana pedida (solo cuando se piden fechas). */
+  turnos?: { fecha: string; hora: string; modalidad: string; grupo: string | null }[] | null;
 };
 
 let actuales = new Map<string, PreparadoGrande>();
