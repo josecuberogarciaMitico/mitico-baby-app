@@ -39,6 +39,7 @@ import { SinColocarPanel } from './SinColocarPanel';
 import { NinosGrupoPropuesto } from './NinosGrupoPropuesto';
 import { ReportSplitPanel } from '../dashboard/ReportSplitPanel';
 import { CanceladosAimHarderAviso } from './CanceladosAimHarderAviso';
+import { RepetidosSemanaAviso } from './RepetidosSemanaAviso';
 import { avisoCompartirPunto, opcionesPuntoEncuentro, textoOpcionPunto } from './puntosEncuentroLogic';
 import type { SesionPlan } from './sinColocarPlanner';
 import { notifyGroupChangedAndRequestReconfirmation } from './groupChangeNotification';
@@ -1183,6 +1184,18 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
 
                 {esCoordinadorApp && (
                   <CanceladosAimHarderAviso
+                    hoyIso={hoyTableroSemana}
+                    refresco={refrescoAgenda}
+                    soloLectura={Boolean(ctx.esSoloConsultaUsuarioApp)}
+                    onCambios={async () => {
+                      await cargarAgendaOperativaDirecta();
+                    }}
+                  />
+                )}
+
+                {/* 11/11: niño en varios turnos la misma semana (invitado sin quitar la reserva antigua). */}
+                {esCoordinadorApp && (
+                  <RepetidosSemanaAviso
                     hoyIso={hoyTableroSemana}
                     refresco={refrescoAgenda}
                     soloLectura={Boolean(ctx.esSoloConsultaUsuarioApp)}
