@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { etiquetaTurno } from './canceladosAimHarderLogic';
 import { agruparRepetidos, consejoRepetido, textoResumenRepetidos, type NinoRepetido, type TurnoRepetido } from './repetidosSemanaLogic';
 import { cargarRepetidosSemana, dejarRepetidoSemana, quitarRepetidoSemana } from '../../services/aimharder/canceladosAimHarderService';
+import { PastillaAviso, botonOcultarAviso, useAvisoPlegado } from './avisoPlegable';
 
 // Niños en varios turnos la misma semana (11/11). Suele pasar cuando oficina
 // apunta al niño como invitado el día al que se cambia y no le quita la
@@ -52,7 +53,23 @@ export function RepetidosSemanaAviso({ hoyIso, refresco, soloLectura, onCambios 
     if (refresco) void cargar();
   }, [refresco, cargar]);
 
+  // 11/11: se puede quitar de aquí; vuelve solo si aparece un repetido nuevo.
+  const [oculto, setOculto] = useAvisoPlegado(`repetidos:${ninos.map((n) => n.clave).sort().join('|')}`);
+
   if (!ninos.length && !mensaje) return null;
+  if (oculto && !mensaje) {
+    return (
+      <PastillaAviso
+        texto={`🔁 Repetidos · ${ninos.length}`}
+        color="#9a3412"
+        fondo="#fff7ed"
+        onAbrir={() => {
+          setOculto(false);
+          setAbierto(true);
+        }}
+      />
+    );
+  }
 
   async function quitar(n: NinoRepetido, t: TurnoRepetido) {
     if (!window.confirm(`¿Quitar a ${n.alumno} de ${etiquetaTurno(t.fecha, t.hora_inicio, t.modalidad)}${t.grupo ? ` (y de ${t.grupo})` : ''}?\n\nAcuérdate de quitarle también esa reserva en AimHarder: si no, volverá a salir al actualizar el listado.`)) return;
@@ -83,7 +100,7 @@ export function RepetidosSemanaAviso({ hoyIso, refresco, soloLectura, onCambios 
   const cambios = ninos.filter((n) => n.pareceCambio).length;
 
   return (
-    <div style={{ padding: '10px 12px', borderRadius: 12, background: '#fff7ed', border: '1px solid #fdba74', color: '#7c2d12', fontSize: 13, minWidth: 0 }}>
+    <div style={{ padding: '10px 12px', borderRadius: 12, background: '#fff7ed', border: '1px solid #fdba74', color: '#7c2d12', fontSize: 13, minWidth: 0, flex: '1 1 100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <strong style={{ flex: '1 1 200px', minWidth: 0 }}>
           {ninos.length ? `🔁 ${textoResumenRepetidos(ninos.length)}` : '✓ Ya no hay niños repetidos'}
@@ -91,7 +108,12 @@ export function RepetidosSemanaAviso({ hoyIso, refresco, soloLectura, onCambios 
         </strong>
         {ninos.length > 0 && (
           <button type="button" style={boton} onClick={() => setAbierto((x) => !x)}>
-            {abierto ? 'Ocultar' : 'Ver'}
+            {abierto ? 'Plegar' : 'Ver'}
+          </button>
+        )}
+        {ninos.length > 0 && (
+          <button type="button" style={{ ...botonOcultarAviso, color: '#9a3412' }} onClick={() => setOculto(true)}>
+            Quitar de aquí
           </button>
         )}
       </div>

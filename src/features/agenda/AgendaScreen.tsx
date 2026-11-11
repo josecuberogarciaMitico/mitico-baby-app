@@ -1183,30 +1183,35 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                     </div>
                   )}
 
+                {/* 11/11: avisos en fila; los plegados quedan como pastillas pequeñas. */}
                 {esCoordinadorApp && (
-                  <CanceladosAimHarderAviso
-                    hoyIso={hoyTableroSemana}
-                    refresco={refrescoAgenda}
-                    soloLectura={Boolean(ctx.esSoloConsultaUsuarioApp)}
-                    onCambios={async () => {
-                      await cargarAgendaOperativaDirecta();
-                    }}
-                  />
-                )}
+                  <div className="agenda-avisos-fila" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-start', minWidth: 0 }}>
+                  {esCoordinadorApp && (
+                    <CanceladosAimHarderAviso
+                      hoyIso={hoyTableroSemana}
+                      refresco={refrescoAgenda}
+                      soloLectura={Boolean(ctx.esSoloConsultaUsuarioApp)}
+                      onCambios={async () => {
+                        await cargarAgendaOperativaDirecta();
+                      }}
+                    />
+                  )}
 
-                {/* 11/11: A+ preparados para la pista grande (también alimenta el recomendador). */}
-                {esCoordinadorApp && <PreparadosGrandeAviso refresco={refrescoAgenda} semanaInicio={semanaAgendaActiva || ''} />}
+                  {/* 11/11: A+ preparados para la pista grande (también alimenta el recomendador). */}
+                  {<PreparadosGrandeAviso refresco={refrescoAgenda} semanaInicio={semanaAgendaActiva || ''} />}
 
-                {/* 11/11: niño en varios turnos la misma semana (invitado sin quitar la reserva antigua). */}
-                {esCoordinadorApp && (
-                  <RepetidosSemanaAviso
-                    hoyIso={hoyTableroSemana}
-                    refresco={refrescoAgenda}
-                    soloLectura={Boolean(ctx.esSoloConsultaUsuarioApp)}
-                    onCambios={async () => {
-                      await cargarAgendaOperativaDirecta();
-                    }}
-                  />
+                  {/* 11/11: niño en varios turnos la misma semana (invitado sin quitar la reserva antigua). */}
+                  {esCoordinadorApp && (
+                    <RepetidosSemanaAviso
+                      hoyIso={hoyTableroSemana}
+                      refresco={refrescoAgenda}
+                      soloLectura={Boolean(ctx.esSoloConsultaUsuarioApp)}
+                      onCambios={async () => {
+                        await cargarAgendaOperativaDirecta();
+                      }}
+                    />
+                  )}
+                  </div>
                 )}
 
                 {esCoordinadorApp && altasPaco && (

@@ -17,6 +17,7 @@ import {
   dejarCanceladoAimHarder,
   quitarCanceladoAimHarder,
 } from '../../services/aimharder/canceladosAimHarderService';
+import { PastillaAviso, botonOcultarAviso, useAvisoPlegado } from './avisoPlegable';
 
 // Cancelados en AimHarder (03/11): aviso en la Agenda con los niños que han
 // cancelado en AimHarder y siguen en una sesión (y quizá en un grupo) de la
@@ -85,6 +86,8 @@ export function CanceladosAimHarderAviso({ hoyIso, refresco, soloLectura, onCamb
   const ahoraMs = Date.now();
   const turnosRepaso = (repaso || []).filter((t) => t.ninos > 0);
   const flojos = turnosSinRepasoFiable(turnosRepaso, hoyIso, ahoraMs);
+  // 11/11: el repaso (cuando nadie ha cancelado) se puede ocultar; vuelve si cambia su estado.
+  const [repasoOculto, setRepasoOculto] = useAvisoPlegado(`repaso:${hoyIso.slice(0, 10)}:${flojos.length ? 'pendiente' : 'ok'}`);
 
   // Línea de repaso: dice si la comprobación es reciente o si no conviene fiarse.
   const lineaRepaso = turnosRepaso.length ? (
@@ -120,6 +123,13 @@ export function CanceladosAimHarderAviso({ hoyIso, refresco, soloLectura, onCamb
 
   if (!filas.length && !mensaje) {
     if (!lineaRepaso) return null;
+    if (repasoOculto) {
+      return flojos.length ? (
+        <PastillaAviso texto="⏳ Repaso AimHarder pendiente" color="#92400e" fondo="#fffbeb" onAbrir={() => setRepasoOculto(false)} />
+      ) : (
+        <PastillaAviso texto="✓ AimHarder al día" color="#166534" fondo="#f0fdf4" onAbrir={() => setRepasoOculto(false)} />
+      );
+    }
     return (
       <div
         style={{
@@ -128,9 +138,15 @@ export function CanceladosAimHarderAviso({ hoyIso, refresco, soloLectura, onCamb
           background: flojos.length ? '#fffbeb' : '#f0fdf4',
           border: `1px solid ${flojos.length ? '#fcd34d' : '#bbf7d0'}`,
           minWidth: 0,
+          flex: '1 1 100%',
         }}
       >
         {lineaRepaso}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
+          <button type="button" style={{ ...botonOcultarAviso, color: '#166534' }} onClick={() => setRepasoOculto(true)}>
+            Ocultar
+          </button>
+        </div>
       </div>
     );
   }
@@ -185,6 +201,7 @@ export function CanceladosAimHarderAviso({ hoyIso, refresco, soloLectura, onCamb
         color: '#7f1d1d',
         fontSize: 13,
         minWidth: 0,
+        flex: '1 1 100%',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
