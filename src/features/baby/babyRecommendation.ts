@@ -2,6 +2,7 @@ import { technicalLevelOrder } from '../../core/levels/levelContract';
 import { balancedGroupSizes, pedagogicalBandForLevel } from '../../core/recommendations/baseRecommendation';
 import type { PerfilOperativoAlumnoApp } from '../../core/students/studentTypes';
 import type { AgendaRecomendacionSesionApp } from '../agenda/agendaTypes';
+import { preparadosGrandeActuales, type PreparadoGrande } from './pistaGrandeCache';
 
 type BabyBand = { id: string; label: string; bloque: string; pista: string; orden: number; max: number };
 
@@ -166,21 +167,32 @@ export function tamanosGruposPedagogicosApp(total: number, maximum: number): num
 
 export function aplicarCinturonPedagogicoAutomaticoAgenda(
   data: AgendaRecomendacionSesionApp[],
-  options?: { usarPerfilBaby?: boolean; perfiles?: PerfilOperativoAlumnoApp[] }
+  options?: { usarPerfilBaby?: boolean; perfiles?: PerfilOperativoAlumnoApp[]; preparadosGrande?: Map<string, PreparadoGrande> }
 ): AgendaRecomendacionSesionApp[] {
   const profiles = options?.perfiles || [];
+  const preparados = options?.preparadosGrande || preparadosGrandeActuales();
   const byBand = new Map<string, AgendaRecomendacionSesionApp[]>();
   for (const student of data) {
     const band = options?.usarPerfilBaby ? functionalBand(student, profiles) : baseBand(student);
     byBand.set(band.id, [...(byBand.get(band.id) || []), student]);
   }
+  // 11/11: A+ «listos para la grande» en su propio grupo (si hay al menos 2).
+  const listosGrande = (byBand.get('APLUS') || []).filter((s) => preparados.get(s.alumno_id)?.estado === 'listo');
+  if (listosGrande.length >= 2) {
+    const ids = new Set(listosGrande.map((s) => s.alumno_id));
+    byBand.set('APLUS', (byBand.get('APLUS') || []).filter((s) => !ids.has(s.alumno_id)));
+    byBand.set('APLUS_GRANDE', listosGrande);
+  }
   let counter = 1;
   const output: AgendaRecomendacionSesionApp[] = [];
-  for (const bandId of ['INICIACION_A', 'APLUS', 'B_BPLUS', 'C_D', 'REVIEW']) {
+  for (const bandId of ['INICIACION_A', 'APLUS', 'APLUS_GRANDE', 'B_BPLUS', 'C_D', 'REVIEW']) {
     const baseStudents = byBand.get(bandId) || [];
     const sortedStudents = options?.usarPerfilBaby ? sortByProfile(baseStudents, profiles) : baseStudents.slice().sort((a, b) => levelOrder(a.nivel_resumen) - levelOrder(b.nivel_resumen) || a.alumno.localeCompare(b.alumno));
     if (!sortedStudents.length) continue;
-    const band = options?.usarPerfilBaby ? functionalBand(sortedStudents[0], profiles) : baseBand(sortedStudents[0]);
+    const bandBase = options?.usarPerfilBaby ? functionalBand(sortedStudents[0], profiles) : baseBand(sortedStudents[0]);
+    const band = bandId === 'APLUS_GRANDE'
+      ? { ...bandBase, id: 'APLUS_GRANDE', label: 'A+ · listos para la grande', bloque: 'A+ listos para pista grande', pista: 'Grande' }
+      : bandBase;
     const reparto = options?.usarPerfilBaby
       ? babyGroupSizes(sortedStudents, band, profiles)
       : { sizes: balancedGroupSizes(sortedStudents.length, band.max), especial: false };
@@ -207,7 +219,11 @@ export function aplicarCinturonPedagogicoAutomaticoAgenda(
         const profile = profiles.find((item) => item.alumno_id === student.alumno_id);
         const promotion = options?.usarPerfilBaby && canStrongBabyBPlusJoinC(student, profile) ? 'B+ fuerte: puede tirar con C bajo por ritmo/autonomía.' : null;
         const transition = options?.usarPerfilBaby && isBabyTowLiftTransition(student, profile) ? 'Transición A+/B: percha no consolidada, priorizar ratio bajo.' : null;
-        const extra = size === 1 ? 'No crear grupo de 1. Revisión manual.' : [promotion, transition].filter(Boolean).join(' · ') || student.alertas || null;
+        const prep = preparados.get(student.alumno_id);
+        const grande = prep && band.id.startsWith('APLUS')
+          ? `${prep.estado === 'listo' ? '🟢 Preparado para la grande' : '🟡 Casi listo para la grande'}: ${prep.motivo}.`
+          : null;
+        const extra = size === 1 ? 'No crear grupo de 1. Revisión manual.' : [promotion, transition, grande].filter(Boolean).join(' · ') || student.alertas || null;
         output.push({ ...student, grupo_recomendado: name, bloque_tecnico: band.bloque, pista_recomendada: band.pista,
           orden_bloque: band.orden, orden_en_grupo: index + 1, alertas: [student.alertas, extra].filter(Boolean).join(' · ') || null });
       });

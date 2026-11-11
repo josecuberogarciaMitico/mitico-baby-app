@@ -546,6 +546,23 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
             onChange={(valor) => setFormReporte({ ...formReporte, autonomia: valor })}
           />
 
+          {/* 11/11: solo A+ · coordinación lo usa para el grupo «listos para la grande». */}
+          {reportTechnicalLevelForRender(formReporte.nivel) === 'A+' && (
+            <BotonesOpcion
+              label="¿Ha probado hoy la pista grande?"
+              ayuda="Opcional. Si no la ha probado, déjalo sin marcar. Pulsa otra vez para quitarlo."
+              opciones={[
+                { etiqueta: 'Sí, bien', valor: 'bien' },
+                { etiqueta: 'Sí, con ayuda', valor: 'con_ayuda' },
+                { etiqueta: 'Todavía no está listo', valor: 'no_listo' },
+              ]}
+              valor={formReporte.pruebaGrande || ''}
+              onChange={(valor) =>
+                setFormReporte({ ...formReporte, pruebaGrande: formReporte.pruebaGrande === valor ? '' : valor })
+              }
+            />
+          )}
+
           {esProgresionInicialReporte && (
             <details className="report-focus-optional">
               <summary>Cinta y funcionamiento en pista (opcional)</summary>
