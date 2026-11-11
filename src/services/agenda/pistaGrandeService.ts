@@ -11,11 +11,21 @@ const api = createSupabaseRestClient({
   getAccessToken: obtenerAccessTokenSupabaseApp,
 });
 
-/** Carga los preparados y los deja listos para el recomendador de grupos. */
+/** Todos los preparados: los deja listos para el recomendador de grupos. */
 export async function cargarPreparadosGrande() {
   const filas = await api.rpcRows<PreparadoGrande>('preparados_pista_grande_app', {});
   ponerPreparadosGrande(filas);
   return filas;
+}
+
+/** Solo los apuntados en esa semana, con sus turnos (para el aviso). */
+export function cargarPreparadosGrandeSemana(lunes: string, domingo: string) {
+  return api.rpcRows<PreparadoGrande>('preparados_pista_grande_app', { p_desde: lunes, p_hasta: domingo });
+}
+
+/** Vista del entrenador: niños de sus grupos preparados (coordinación ve todos). */
+export function cargarPreparadosGrandeVisibles() {
+  return api.rpcRows<{ alumno_id: string; estado: 'listo' | 'casi'; motivo: string }>('preparados_pista_grande_visibles_app', {});
 }
 
 /** Lo que marca el entrenador en el reporte de un A+: 'bien' | 'con_ayuda' | 'no_listo' | '' (quitar). */
