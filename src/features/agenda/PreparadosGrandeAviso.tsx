@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { cargarPreparadosGrandeSemana } from '../../services/agenda/pistaGrandeService';
 import type { PreparadoGrande } from '../baby/pistaGrandeCache';
+import { PastillaAviso, botonOcultarAviso, useAvisoPlegado } from './avisoPlegable';
 
 // A+ preparados para la pista grande (11/11): aviso en Entrenamientos. Al
 // cargar deja la lista lista para el recomendador, que los junta en un grupo
@@ -50,19 +51,43 @@ export function PreparadosGrandeAviso({ refresco, semanaInicio }: Props) {
     void cargar();
   }, [cargar, refresco]);
 
-  if (!filas.length) return null;
   const listos = filas.filter((f) => f.estado === 'listo');
   const casi = filas.filter((f) => f.estado === 'casi');
+  // 11/11: cuando todos tienen ya grupo, se recoge solo; se puede ocultar y volver a abrir.
+  const firma = filas
+    .map((f) => `${f.alumno_id}:${(f.turnos || []).map((t) => `${t.fecha}${t.hora}${t.grupo || '-'}`).join(',')}`)
+    .sort()
+    .join('|');
+  const todosConGrupo = filas.length > 0 && filas.every((f) => (f.turnos || []).length > 0 && (f.turnos || []).every((t) => t.grupo));
+  const [oculto, setOculto] = useAvisoPlegado(`grande:${semanaInicio.slice(0, 10)}:${firma}`, todosConGrupo);
+
+  if (!filas.length) return null;
+  if (oculto) {
+    return (
+      <PastillaAviso
+        texto={`🟢 Pista grande · ${listos.length}${casi.length ? ` + ${casi.length} casi` : ''}`}
+        color="#166534"
+        fondo="#f0fdf4"
+        onAbrir={() => {
+          setOculto(false);
+          setAbierto(true);
+        }}
+      />
+    );
+  }
 
   return (
-    <div style={{ padding: '10px 12px', borderRadius: 12, background: '#f0fdf4', border: '1px solid #86efac', color: '#14532d', fontSize: 13, minWidth: 0 }}>
+    <div style={{ padding: '10px 12px', borderRadius: 12, background: '#f0fdf4', border: '1px solid #86efac', color: '#14532d', fontSize: 13, minWidth: 0, flex: '1 1 100%' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <strong style={{ flex: '1 1 200px', minWidth: 0 }}>
           🟢 {listos.length === 1 ? '1 niño de A+ preparado' : `${listos.length} niños de A+ preparados`} para la pista grande esta semana
           {casi.length > 0 && <span style={{ fontWeight: 700 }}> · {casi.length} casi</span>}
         </strong>
         <button type="button" style={boton} onClick={() => setAbierto((x) => !x)}>
-          {abierto ? 'Ocultar' : 'Ver'}
+          {abierto ? 'Plegar' : 'Ver'}
+        </button>
+        <button type="button" style={{ ...botonOcultarAviso, color: '#166534' }} onClick={() => setOculto(true)}>
+          Quitar de aquí
         </button>
       </div>
       {abierto && (
