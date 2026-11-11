@@ -234,6 +234,7 @@ import {
   type OcioPrepararResultadoApp,
   type OcioRecomendacionCambioApp,
 } from './features/ocio/ocioTypes';
+import { cargarPreparadosGrande, marcarPruebaPistaGrande } from './services/agenda/pistaGrandeService';
 import { AdaptiveReportFields } from './screens/AdaptiveReportFields';
 import {
   ayudaAutonomiaAdaptada,
@@ -915,6 +916,7 @@ type ReporteFormState = {
   evaluacionTecnica: EvaluacionTecnicaReporte;
   mejorasHoy: string[];
   prioridades: string[];
+  pruebaGrande?: string; // 11/11: solo A+ · 'bien' | 'con_ayuda' | 'no_listo'
 };
 
 type ReporteActivo = {
@@ -4296,6 +4298,8 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
         ...(Object.keys(envio.notasHabilidades).length ? { p_notas_habilidades: envio.notasHabilidades } : {}),
       });
 
+      if (formReporte.pruebaGrande && nivelReporte === 'A+')
+        await marcarPruebaPistaGrande(alumno.grupo_id, alumno.alumno_id, formReporte.pruebaGrande).catch((e) => console.warn('prueba pista grande', e));
       cerrarFormularioReporte();
       await cargarGruposEntrenador();
       await cargarReportesPendientes();
@@ -13928,6 +13932,7 @@ async function abrirGestionOperativaIntensivoDia(
         }
       }
 
+      await cargarPreparadosGrande().catch(() => []); // 11/11: A+ listos para la grande
       const dataPedagogica = aplicarCinturonPedagogicoAutomaticoAgenda(data, {
         usarPerfilBaby: esSesionBaby && perfilesParaRecomendador.length > 0,
         perfiles: perfilesParaRecomendador,

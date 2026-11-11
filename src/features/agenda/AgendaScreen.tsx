@@ -40,6 +40,7 @@ import { NinosGrupoPropuesto } from './NinosGrupoPropuesto';
 import { ReportSplitPanel } from '../dashboard/ReportSplitPanel';
 import { CanceladosAimHarderAviso } from './CanceladosAimHarderAviso';
 import { RepetidosSemanaAviso } from './RepetidosSemanaAviso';
+import { PreparadosGrandeAviso } from './PreparadosGrandeAviso';
 import { avisoCompartirPunto, opcionesPuntoEncuentro, textoOpcionPunto } from './puntosEncuentroLogic';
 import type { SesionPlan } from './sinColocarPlanner';
 import { notifyGroupChangedAndRequestReconfirmation } from './groupChangeNotification';
@@ -1192,6 +1193,9 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                     }}
                   />
                 )}
+
+                {/* 11/11: A+ preparados para la pista grande (también alimenta el recomendador). */}
+                {esCoordinadorApp && <PreparadosGrandeAviso refresco={refrescoAgenda} />}
 
                 {/* 11/11: niño en varios turnos la misma semana (invitado sin quitar la reserva antigua). */}
                 {esCoordinadorApp && (
