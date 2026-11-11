@@ -41,6 +41,7 @@ import { ReportSplitPanel } from '../dashboard/ReportSplitPanel';
 import { CanceladosAimHarderAviso } from './CanceladosAimHarderAviso';
 import { RepetidosSemanaAviso } from './RepetidosSemanaAviso';
 import { PreparadosGrandeAviso } from './PreparadosGrandeAviso';
+import { PacoAimHarderResumen } from './PacoAimHarderResumen';
 import { avisoCompartirPunto, opcionesPuntoEncuentro, textoOpcionPunto } from './puntosEncuentroLogic';
 import type { SesionPlan } from './sinColocarPlanner';
 import { notifyGroupChangedAndRequestReconfirmation } from './groupChangeNotification';
@@ -1140,30 +1141,58 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                   </div>
                 </div>
 
-                {esCoordinadorApp &&
-                  (babyAimHarderMensaje || babyAimHarderError) && (
-                    <div style={{ display: 'grid', gap: 6 }}>
-                      {babyAimHarderMensaje && (
-                        <div
-                          style={{
-                            display: 'block',
-                            width: 'fit-content',
-                            maxWidth: '100%',
-                            padding: '6px 9px',
-                            borderRadius: 8,
-                            background: 'rgba(240,253,244,.72)',
-                            border: '1px solid rgba(134,239,172,.55)',
-                            color: '#166534',
-                            fontSize: 12,
-                            fontWeight: 600,
-                            lineHeight: 1.4,
-                            whiteSpace: 'pre-line',
-                          }}
-                        >
-                          {babyAimHarderMensaje}
-                        </div>
+                {/* 11/11: «Avisos de la semana»: todo lo pendiente en un solo panel. */}
+                <div
+                  className="ag-avisos-semana"
+                  style={{ display: 'grid', gap: 8, padding: 10, borderRadius: 14, background: 'rgba(255,255,255,.97)', color: '#0f172a', minWidth: 0 }}
+                >
+                  <strong style={{ fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#0f766e' }}>
+                    Avisos de la semana
+                  </strong>
+                    <div
+                      className={`ag-pendientes${pendientesTablero.total === 0 ? ' is-al-dia' : ''}`}
+                      aria-label="Lo que falta esta semana"
+                    >
+                      {pendientesTablero.total === 0 ? (
+                        <span className="ag-pendientes-ok">✓ Semana al día: no falta nada desde hoy.</span>
+                      ) : (
+                        <>
+                          <span className="ag-pendientes-titulo">Falta esta semana:</span>
+                          {(Object.keys(ETIQUETA_MOTIVO) as MotivoPendiente[])
+                            .filter((m) => pendientesTablero.contadores[m] > 0)
+                            .map((m) => (
+                              <button
+                                key={m}
+                                type="button"
+                                className={`ag-chip ag-chip--${m}`}
+                                onClick={() => {
+                                  if (m === 'sin_colocar') {
+                                    setVerSinColocarSemana(true);
+                                    return;
+                                  }
+                                  abrirPendienteTablero(
+                                    siguientePendiente(pendientesTablero.pendientes, '', m),
+                                    m
+                                  );
+                                }}
+                              >
+                                <strong>{pendientesTablero.contadores[m]}</strong>{' '}
+                                {ETIQUETA_MOTIVO[m][pendientesTablero.contadores[m] === 1 ? 0 : 1]}
+                              </button>
+                            ))}
+                          <button
+                            type="button"
+                            className="ag-boton ag-boton--principal ag-siguiente"
+                            onClick={() => abrirPendienteTablero(siguientePendienteTablero || pendientesTablero.pendientes[0])}
+                          >
+                            Siguiente pendiente →
+                          </button>
+                        </>
                       )}
-                      {babyAimHarderError && (
+                    </div>
+
+                  {esCoordinadorApp && babyAimHarderMensaje && <PacoAimHarderResumen mensaje={babyAimHarderMensaje} />}
+                      {esCoordinadorApp && babyAimHarderError && (
                         <div
                           style={{
                             padding: '8px 10px',
@@ -1180,9 +1209,6 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                           {babyAimHarderError}
                         </div>
                       )}
-                    </div>
-                  )}
-
                 {/* 11/11: avisos en fila; los plegados quedan como pastillas pequeñas. */}
                 {esCoordinadorApp && (
                   <div className="agenda-avisos-fila" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'flex-start', minWidth: 0 }}>
@@ -1213,6 +1239,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                   )}
                   </div>
                 )}
+                </div>
 
                 {esCoordinadorApp && altasPaco && (
                   <PacoAltasAviso
@@ -1324,47 +1351,6 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                   : [];
                 return (
                   <div className="ag-tablero">
-                    <div
-                      className={`ag-pendientes${pendientesTablero.total === 0 ? ' is-al-dia' : ''}`}
-                      aria-label="Lo que falta esta semana"
-                    >
-                      {pendientesTablero.total === 0 ? (
-                        <span className="ag-pendientes-ok">✓ Semana al día: no falta nada desde hoy.</span>
-                      ) : (
-                        <>
-                          <span className="ag-pendientes-titulo">Falta esta semana:</span>
-                          {(Object.keys(ETIQUETA_MOTIVO) as MotivoPendiente[])
-                            .filter((m) => pendientesTablero.contadores[m] > 0)
-                            .map((m) => (
-                              <button
-                                key={m}
-                                type="button"
-                                className={`ag-chip ag-chip--${m}`}
-                                onClick={() => {
-                                  if (m === 'sin_colocar') {
-                                    setVerSinColocarSemana(true);
-                                    return;
-                                  }
-                                  abrirPendienteTablero(
-                                    siguientePendiente(pendientesTablero.pendientes, '', m),
-                                    m
-                                  );
-                                }}
-                              >
-                                <strong>{pendientesTablero.contadores[m]}</strong>{' '}
-                                {ETIQUETA_MOTIVO[m][pendientesTablero.contadores[m] === 1 ? 0 : 1]}
-                              </button>
-                            ))}
-                          <button
-                            type="button"
-                            className="ag-boton ag-boton--principal ag-siguiente"
-                            onClick={() => abrirPendienteTablero(siguientePendienteTablero || pendientesTablero.pendientes[0])}
-                          >
-                            Siguiente pendiente →
-                          </button>
-                        </>
-                      )}
-                    </div>
                     <div className="ag-dias" role="tablist" aria-label="Días de la semana">
                       {diasSemanaAgenda.map((dia) => {
                         const sesionesDiaBoton = sesionesDelDiaAgenda(

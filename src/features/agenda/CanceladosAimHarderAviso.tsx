@@ -101,8 +101,13 @@ export function CanceladosAimHarderAviso({ hoyIso, refresco, soloLectura, onCamb
             : '✓ AimHarder: nadie ha cancelado. Turnos de hoy y mañana comprobados hace menos de 6 h.'}
         </span>
         <button type="button" style={{ ...boton, minHeight: 26, padding: '3px 8px' }} onClick={() => setVerRepaso((x) => !x)}>
-          {verRepaso ? 'Ocultar' : 'Ver repaso'}
+          {verRepaso ? 'Plegar' : 'Ver repaso'}
         </button>
+        {!filas.length && !mensaje && (
+          <button type="button" style={{ ...botonOcultarAviso, minHeight: 26, padding: '3px 8px', color: '#166534' }} onClick={() => setRepasoOculto(true)}>
+            Quitar de aquí
+          </button>
+        )}
       </div>
       {verRepaso && (
         <ul style={{ listStyle: 'none', margin: '6px 0 0', padding: 0, color: '#334155' }}>
@@ -142,11 +147,6 @@ export function CanceladosAimHarderAviso({ hoyIso, refresco, soloLectura, onCamb
         }}
       >
         {lineaRepaso}
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 4 }}>
-          <button type="button" style={{ ...botonOcultarAviso, color: '#166534' }} onClick={() => setRepasoOculto(true)}>
-            Ocultar
-          </button>
-        </div>
       </div>
     );
   }
