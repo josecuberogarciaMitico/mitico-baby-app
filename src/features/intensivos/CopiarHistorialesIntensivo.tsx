@@ -4,7 +4,7 @@ import React from 'react';
 // pegarlo en la página «Evaluaciones del Intensivo» (claude.ai), que redacta
 // los informes para las familias.
 
-export function CopiarHistorialesIntensivo(props: { total: number; texto: () => string; estilo: React.CSSProperties }) {
+export function CopiarHistorialesIntensivo(props: { total: number; texto: () => string; estilo: React.CSSProperties; etiqueta?: string; avisoCopiado?: string }) {
   const [aviso, setAviso] = React.useState('');
   const [texto, setTexto] = React.useState('');
 
@@ -13,7 +13,7 @@ export function CopiarHistorialesIntensivo(props: { total: number; texto: () => 
     try {
       await navigator.clipboard.writeText(t);
       setTexto('');
-      setAviso(`Copiado el historial de ${props.total} niño${props.total === 1 ? '' : 's'}. Pégalo en «Evaluaciones del Intensivo».`);
+      setAviso(props.avisoCopiado || `Copiado el historial de ${props.total} niño${props.total === 1 ? '' : 's'}. Pégalo en «Evaluaciones del Intensivo».`);
     } catch {
       // Sin permiso de portapapeles: se muestra para copiarlo a mano.
       setTexto(t);
@@ -25,7 +25,7 @@ export function CopiarHistorialesIntensivo(props: { total: number; texto: () => 
   return (
     <>
       <button type="button" onClick={() => void copiar()} disabled={!props.total} style={props.estilo}>
-        📋 Copiar historial de todos ({props.total})
+        {props.etiqueta || `📋 Copiar historial de todos (${props.total})`}
       </button>
       {aviso && <span style={{ flexBasis: '100%', fontSize: 13, fontWeight: 700, color: '#0f766e' }}>{aviso}</span>}
       {texto && (

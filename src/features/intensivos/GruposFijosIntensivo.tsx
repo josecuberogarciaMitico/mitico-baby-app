@@ -23,7 +23,8 @@ type Dia = { intensivo_dia_id: string; numero_dia: number; fecha: string; sesion
 
 type Props = {
   dias: Dia[];
-  inscritos: { alumno_id: string; alumno: string }[];
+  /** `desde`: fecha (AAAA-MM-DD) en que se apuntó; los días anteriores no cuentan para él. */
+  inscritos: { alumno_id: string; alumno: string; desde?: string | null }[];
   nivelDe: (alumnoId: string) => string | null | undefined;
   formatearFecha: (fecha: string) => string;
   leerDia: (diaId: string) => Promise<Fila[]>;
@@ -34,6 +35,11 @@ type Props = {
   recargar: () => Promise<void>;
   abrirDia: (diaId: string) => void;
   esMovil?: boolean;
+  /** Día elegido desde fuera (las tarjetas de días del intensivo). */
+  diaSelId?: string;
+  onElegirDia?: (diaId: string) => void;
+  /** Sin pestañas propias: los días se eligen con las tarjetas de arriba. */
+  sinPestanas?: boolean;
 };
 
 const boton: React.CSSProperties = {
@@ -63,11 +69,18 @@ export function GruposFijosIntensivo(props: Props) {
   const { dias, inscritos, nivelDe, formatearFecha, leerDia, recargar } = props;
   const [filas, setFilas] = useState<Record<string, Fila[]>>({});
   const [leyendo, setLeyendo] = useState(true);
-  const [diaSelId, setDiaSelId] = useState<string>('');
+  const [diaSelPropio, setDiaSelPropio] = useState<string>('');
+  const diaSelId = props.diaSelId ?? diaSelPropio;
+  const setDiaSelId = (id: string) => (props.onElegirDia ? props.onElegirDia(id) : setDiaSelPropio(id));
   const [ocupado, setOcupado] = useState(false);
   const [mensaje, setMensaje] = useState<string | null>(null);
   const [siguientes, setSiguientes] = useState(true);
 
+  const esperados = (fecha: string) => inscritos.filter((a) => !a.desde || a.desde <= fecha);
+  const pendientes = (d: Dia) => {
+    const dentro = idsColocados(grupos[d.intensivo_dia_id] || []);
+    return esperados(d.fecha).filter((a) => !dentro.has(a.alumno_id));
+  };
   const diasOrdenados = useMemo(() => [...dias].sort((a, b) => a.numero_dia - b.numero_dia), [dias]);
   const claveDias = diasOrdenados.map((d) => `${d.intensivo_dia_id}:${d.sesion_id || ''}`).join('|');
 
@@ -101,16 +114,25 @@ export function GruposFijosIntensivo(props: Props) {
   const hoy = new Date().toISOString().slice(0, 10);
   const diaSel =
     diasOrdenados.find((d) => d.intensivo_dia_id === diaSelId) ||
-    diasOrdenados.find((d) => d.fecha >= hoy && idsColocados(grupos[d.intensivo_dia_id] || []).size < inscritos.length) ||
+    diasOrdenados.find((d) => d.fecha >= hoy && pendientes(d).length > 0) ||
     diasOrdenados.find((d) => d.fecha >= hoy) ||
     diasOrdenados[diasOrdenados.length - 1];
+
+  // Si nadie ha elegido día, se avisa fuera del que se enseña (para que la
+  // tarjeta de arriba marque el mismo).
+  const diaPorDefecto = diaSel?.intensivo_dia_id || '';
+  const elegidoValido = diasOrdenados.some((d) => d.intensivo_dia_id === props.diaSelId);
+  useEffect(() => {
+    if (props.onElegirDia && !leyendo && diaPorDefecto && !elegidoValido) props.onElegirDia(diaPorDefecto);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leyendo, diaPorDefecto, elegidoValido]);
 
   if (diasOrdenados.length === 0) return null;
   if (!diaSel) return null;
 
   const gruposSel = grupos[diaSel.intensivo_dia_id] || [];
-  const colocados = idsColocados(gruposSel);
-  const sinColocar = inscritos.filter((a) => !colocados.has(a.alumno_id));
+  const sinColocar = pendientes(diaSel);
+  const esperadosSel = esperados(diaSel.fecha).length;
   const posteriores = diasOrdenados.filter((d) => d.numero_dia > diaSel.numero_dia);
   const otrosConGrupos = diasOrdenados.filter(
     (d) => d.intensivo_dia_id !== diaSel.intensivo_dia_id && (grupos[d.intensivo_dia_id] || []).length > 0
@@ -214,16 +236,25 @@ export function GruposFijosIntensivo(props: Props) {
         boxSizing: 'border-box',
       }}
     >
-      <h4 style={{ margin: '0 0 4px' }}>Grupos del intensivo</h4>
-      <p style={{ margin: '0 0 10px', color: '#64748b', fontSize: 13, lineHeight: 1.4 }}>
-        Los mismos grupos todos los días, con sus niños. Si cambias algo, puedes aplicarlo también a los días siguientes.
-      </p>
+      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 10 }}>
+        <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+          <strong style={{ fontSize: 16 }}>
+            Día {diaSel.numero_dia} · {formatearFecha(diaSel.fecha)}
+          </strong>
+          <div style={{ fontSize: 13, color: '#64748b', fontWeight: 700 }}>
+            {leyendo ? 'Cargando…' : gruposSel.length === 0 ? 'Sin grupos' : `${gruposSel.length} grupos · ${esperadosSel - sinColocar.length}/${esperadosSel} niños colocados`}
+          </div>
+        </div>
+        <button type="button" style={botonFuerte} onClick={() => props.abrirDia(diaSel.intensivo_dia_id)}>
+          Pasar a Días de entrenamiento →
+        </button>
+      </div>
 
+      {!props.sinPestanas && (
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
         {diasOrdenados.map((d) => {
           const gs = grupos[d.intensivo_dia_id] || [];
-          const n = idsColocados(gs).size;
-          const completo = gs.length > 0 && inscritos.every((a) => idsColocados(gs).has(a.alumno_id));
+          const completo = gs.length > 0 && pendientes(d).length === 0;
           const sel = d.intensivo_dia_id === diaSel.intensivo_dia_id;
           return (
             <button
@@ -243,12 +274,13 @@ export function GruposFijosIntensivo(props: Props) {
             >
               <div>Día {d.numero_dia} · {formatearFecha(d.fecha)}</div>
               <div style={{ fontSize: 11, fontWeight: 700, color: completo ? '#166534' : '#9a3412' }}>
-                {leyendo ? '…' : gs.length === 0 ? 'Sin grupos' : `${gs.length} grupos · ${n}/${inscritos.length} niños`}
+                {leyendo ? '…' : gs.length === 0 ? 'Sin grupos' : `${gs.length} grupos · ${esperados(d.fecha).length - pendientes(d).length}/${esperados(d.fecha).length} niños`}
               </div>
             </button>
           );
         })}
       </div>
+      )}
 
       {mensaje && (
         <div style={{ margin: '0 0 10px', padding: '8px 10px', borderRadius: 10, background: '#f1f5f9', fontSize: 13, color: '#0f172a' }}>
@@ -376,11 +408,8 @@ export function GruposFijosIntensivo(props: Props) {
             </div>
           )}
 
-          {gruposSel.length > 0 && (
+          {gruposSel.length > 0 && sePuedeSustituir && otrosConGrupos.length > 0 && (
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 10, alignItems: 'center' }}>
-              <button type="button" style={boton} onClick={() => props.abrirDia(diaSel.intensivo_dia_id)}>
-                Entrenadores y publicar este día →
-              </button>
               {sePuedeSustituir && otrosConGrupos.length > 0 && (
                 <select
                   disabled={ocupado}
