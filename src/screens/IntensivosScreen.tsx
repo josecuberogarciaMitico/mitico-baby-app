@@ -1176,96 +1176,7 @@ export function PantallaIntensivos(ctx: any) {
                       ) : null}
                     </div>
 
-                    <details
-                      style={{
-                        ...ayudaDesplegableCompacta,
-                        marginTop: 0,
-                        border: '1px solid #e2e8f0',
-                        borderRadius: 14,
-                        background: '#fff',
-                      }}
-                    >
-                      <summary style={{ fontWeight: 900 }}>
-                        Resumen del intensivo · {diasIntensivo.length} día{diasIntensivo.length === 1 ? '' : 's'}
-                      </summary>
-
-                      <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-                        {diasIntensivo.length === 0 && (
-                          <div style={avisoPendiente}>Sin días creados todavía.</div>
-                        )}
-
-                        {diasIntensivo.map((dia) => {
-                          const gruposDia = gruposNormalesDelDiaIntensivo(
-                            dia.intensivo_dia_id
-                          );
-                          const alumnosEnGruposDia = gruposDia.reduce(
-                            (total, grupo) => total + Number(grupo.total_alumnos || 0),
-                            0
-                          );
-                          const recuperacionesExternasDia = Math.max(
-                            0,
-                            alumnosEnGruposDia - alumnosInscritosIntensivo.length
-                          );
-                          const propiosColocadosDia = Math.min(
-                            alumnosEnGruposDia,
-                            alumnosInscritosIntensivo.length
-                          );
-                          const diaPreparado =
-                            gruposDia.length > 0 &&
-                            propiosColocadosDia >= alumnosInscritosIntensivo.length;
-
-                          return (
-                            <button
-                              key={`${intensivo.intensivo_id}-resumen-dia-${dia.intensivo_dia_id}`}
-                              type="button"
-                              onClick={() => {
-                                abrirPanelIntensivo(intensivo, 'grupos');
-                                setDiaGrupoSeleccionadoId(dia.intensivo_dia_id);
-                              }}
-                              style={{
-                                ...miniTarjetaBlanca,
-                                display: 'grid',
-                                gridTemplateColumns: esVistaMovilApp
-                                  ? 'minmax(0,1fr)'
-                                  : 'minmax(0,1fr) auto',
-                                gap: 8,
-                                alignItems: 'center',
-                                textAlign: 'left',
-                                cursor: 'pointer',
-                                border: diaPreparado
-                                  ? '1px solid rgba(22,163,74,.28)'
-                                  : '1px solid rgba(249,115,22,.32)',
-                                background: diaPreparado
-                                  ? 'rgba(240,253,244,.68)'
-                                  : 'rgba(255,247,237,.76)',
-                              }}
-                            >
-                              <div style={{ minWidth: 0 }}>
-                                <strong>
-                                  Día {dia.numero_dia} · {formatearFecha(dia.fecha)}
-                                </strong>
-                                <p style={{ margin: '4px 0 0', color: '#64748b' }}>
-                                  {dia.hora_inicio.slice(0, 5)}–{dia.hora_fin.slice(0, 5)} · {gruposDia.length} grupo{gruposDia.length === 1 ? '' : 's'}
-                                </p>
-                              </div>
-
-                              <div
-                                style={{
-                                  textAlign: esVistaMovilApp ? 'left' : 'right',
-                                  color: diaPreparado ? '#166534' : '#9a3412',
-                                  fontSize: 13,
-                                  fontWeight: 900,
-                                }}
-                              >
-                                {recuperacionesExternasDia > 0
-                                  ? `${alumnosEnGruposDia} en pista · ${alumnosInscritosIntensivo.length} propios + ${recuperacionesExternasDia} recuperación${recuperacionesExternasDia === 1 ? '' : 'es'}`
-                                  : `${propiosColocadosDia}/${alumnosInscritosIntensivo.length} inscritos colocados`}
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </details>
+                    {/* 12/11: el «Resumen del intensivo» repetía los días de arriba; se quita. */}
                   </div>
 
                   {gestorPanelControlAbierto && (
@@ -2730,13 +2641,16 @@ export function PantallaIntensivos(ctx: any) {
                         Grupos · {intensivo.intensivo}
                       </h4>
                       <p style={{ margin: '-4px 0 12px', color: '#64748b', lineHeight: 1.45 }}>
-                        Aquí colocas y mueves a los niños. Entrenadores, punto de encuentro y publicar se hacen en Días de entrenamiento. El Trabajo diario y las Observaciones se generan solos al abrir cada jornada.
+                        Elige el día en las tarjetas de arriba. Aquí colocas y mueves a los niños; entrenadores y publicar, en «Pasar a Días de entrenamiento».
                       </p>
 
                       {!modoPlantillaIntensivo && diasIntensivo.length > 0 && (
                         <GruposFijosIntensivo
                           dias={diasIntensivo}
-                          inscritos={alumnosInscritosIntensivo.map((a: any) => ({ alumno_id: a.alumno_id, alumno: a.alumno }))}
+                          inscritos={alumnosInscritosIntensivo.map((a: any) => ({ alumno_id: a.alumno_id, alumno: a.alumno, desde: String(a.created_at || '').slice(0, 10) || null }))}
+                          diaSelId={diaGrupoSeleccionadoId || ''}
+                          onElegirDia={setDiaGrupoSeleccionadoId}
+                          sinPestanas
                           nivelDe={(id) => resumenAlumnoIntensivo(id)?.nivel_resumen}
                           formatearFecha={formatearFecha}
                           leerDia={(diaId) => ejecutarFuncionConRespuesta('obtener_grupos_intensivo_dia_editables_app', { p_intensivo_dia_id: diaId })}
@@ -2778,7 +2692,8 @@ export function PantallaIntensivos(ctx: any) {
                         </div>
                       )}
 
-                      <details open={modoPlantillaIntensivo} style={{ border: '1px solid #e2e8f0', borderRadius: 14, padding: '8px 10px', background: '#fff' }}>
+                      {modoPlantillaIntensivo && (
+                      <details open style={{ border: '1px solid #e2e8f0', borderRadius: 14, padding: '8px 10px', background: '#fff' }}>
                         <summary style={{ fontWeight: 900, cursor: 'pointer' }}>
                           {modoPlantillaIntensivo ? 'Crear los grupos con el recomendador' : 'Recomendador automático (para empezar de cero)'}
                         </summary>
@@ -3438,6 +3353,7 @@ export function PantallaIntensivos(ctx: any) {
                         </>
                       )}
                       </details>
+                      )}
                     </div>
                   )}
 
@@ -3475,7 +3391,7 @@ export function PantallaIntensivos(ctx: any) {
                       <ol style={{ margin: '10px 0 12px', paddingLeft: 20, color: '#334155', display: 'grid', gap: 4 }}>
                         <li>Confirma el nivel final de cada niño y ponlo en «Revisado».</li>
                         <li>
-                          Pulsa «Copiar historial de todos» y pégalo en la página{' '}
+                          Pulsa «Copiar historial de todos» (o el de un solo niño, en su tarjeta) y pégalo en la página{' '}
                           <a href="https://claude.ai/artifact/QpjTkmYj332jEWX56z3tKP" target="_blank" rel="noreferrer" style={{ fontWeight: 800 }}>
                             Evaluaciones del Intensivo ↗
                           </a>
@@ -3562,6 +3478,17 @@ export function PantallaIntensivos(ctx: any) {
                                 <span style={{ fontSize: 12, fontWeight: 800, color: revisado ? '#166534' : '#9a3412' }}>
                                   {revisado ? '✓ Revisado' : 'Pendiente de revisar'}
                                 </span>
+                                <div style={{ flexBasis: '100%', display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+                                  <CopiarHistorialesIntensivo
+                                    total={1}
+                                    etiqueta="📋 Copiar historial de este niño"
+                                    avisoCopiado={`Copiado el historial de ${registro.alumno}. Pégalo en «Evaluaciones del Intensivo».`}
+                                    estilo={{ ...botonSecundario, padding: '6px 10px', fontSize: 13 }}
+                                    texto={() =>
+                                      textoBaseDiplomaIntensivo(registro, reportesAlumno).replace(/\s*\|\|\s*/g, ' ').trim()
+                                    }
+                                  />
+                                </div>
                               </div>
                               <p style={{ margin: '4px 0 10px', color: '#475569', fontSize: 13 }}>
                                 Asistencia {registro.dias_presente || 0}/{registro.total_dias_intensivo || 0} · Niveles{' '}
