@@ -1,5 +1,6 @@
 import React from 'react';
 import { CopiarHistorialesIntensivo } from '../features/intensivos/CopiarHistorialesIntensivo';
+import { GruposFijosIntensivo } from '../features/intensivos/GruposFijosIntensivo';
 import { composicionDesdeFilas, copiarComposicionADia, diaEditable, mismaComposicion, type FilaGrupoDia } from '../features/intensivos/copiarComposicionDias';
 import { CampoSelect } from '../lib/appHelpers';
 import { IntensivePendingPlacementPanel } from '../features/intensivos/IntensivePendingPlacementPanel';
@@ -59,7 +60,7 @@ export function PantallaIntensivos(ctx: any) {
     gestionarMásIntensivoId, gestionarPanelControlIntensivoId, gridFormulario,
     gruposDestinoRecuperacion, gruposNormalesDelDiaIntensivo, guardarDiaIntensivo, inputCampo,
     intensivoCursoAbiertoId, intensivoInicial, intensivos, intensivosFiltrados, labelCampo,
-    marcarAsistenciaIntensivo, reiniciarGruposDiaIntensivoDesdeApp, mesIntensivos, miniTarjetaBlanca, mostrarFormularioIntensivo,
+    marcarAsistenciaIntensivo, mesIntensivos, miniTarjetaBlanca, mostrarFormularioIntensivo,
     mostrarPlantillaCuatroSesionesIntensivoId, mostrarVolcadoIntensivoId,
     necesitaDosEntrenadoresGrupoApp, nivelesDiplomaIntensivo, nombreGrupoVisualApp,
     nombresGruposBaseRecomendados, observacionesAutomaticasGrupoIntensivo,
@@ -2726,12 +2727,50 @@ export function PantallaIntensivos(ctx: any) {
                       }}
                     >
                       <h4 style={{ marginTop: 0 }}>
-                        Preparar grupos por día · {intensivo.intensivo}
+                        Grupos · {intensivo.intensivo}
                       </h4>
                       <p style={{ margin: '-4px 0 12px', color: '#64748b', lineHeight: 1.45 }}>
-                        Si el día todavía no tiene grupos, aquí se genera y ajusta la propuesta inicial.
-                        En cuanto los grupos existen, la gestión real del día se hace en Días de entrenamiento: alumnos, ausencias, entrenadores, punto y publicación. El Trabajo diario y las Observaciones se generan automáticamente al abrir cada jornada y se recalculan si cambia la composición.
+                        Aquí colocas y mueves a los niños. Entrenadores, punto de encuentro y publicar se hacen en Días de entrenamiento. El Trabajo diario y las Observaciones se generan solos al abrir cada jornada.
                       </p>
+
+                      {!modoPlantillaIntensivo && diasIntensivo.length > 0 && (
+                        <GruposFijosIntensivo
+                          dias={diasIntensivo}
+                          inscritos={alumnosInscritosIntensivo.map((a: any) => ({ alumno_id: a.alumno_id, alumno: a.alumno }))}
+                          nivelDe={(id) => resumenAlumnoIntensivo(id)?.nivel_resumen}
+                          formatearFecha={formatearFecha}
+                          leerDia={(diaId) => ejecutarFuncionConRespuesta('obtener_grupos_intensivo_dia_editables_app', { p_intensivo_dia_id: diaId })}
+                          incorporar={async (sesionId, grupoId, alumnoId, nombre, nivel) => {
+                            await ejecutarFuncionConRespuesta('incorporar_alumno_fuera_plazo_grupo_app', {
+                              p_sesion_id: sesionId, p_grupo_id: grupoId, p_alumno_id: alumnoId, p_nombre_completo: nombre, p_nivel_codigo: nivel,
+                            });
+                          }}
+                          mover={async (alumnoId, origen, destino) => {
+                            await ctx.ejecutarFuncionAuthJson('mover_alumno_grupo_intensivo_dia_app', {
+                              p_alumno_id: alumnoId, p_grupo_origen_id: origen, p_grupo_destino_id: destino,
+                            });
+                          }}
+                          crearGrupo={(diaId, g) =>
+                            ctx.ejecutarFuncionAuthJson('crear_grupo_intensivo_dia_app', {
+                              p_intensivo_dia_id: diaId, p_nombre_grupo: g.nombre_grupo, p_nivel_grupo: g.nivel_grupo, p_pista: g.pista,
+                              p_punto_encuentro: '', p_trabajo_diario: g.trabajo_diario || 'Trabajo diario pendiente de generar.', p_observaciones_importantes: '',
+                              p_entrenador_id: null, p_alumnos_ids: g.alumnos_ids, p_publicado: false,
+                            })
+                          }
+                          borrarGrupo={async (grupoId) => {
+                            await ctx.ejecutarFuncion('borrar_grupo_intensivo_app', { p_grupo_id: grupoId });
+                          }}
+                          recargar={async () => {
+                            await cargarIntensivos();
+                            await ctx.cargarAgendaOperativaDirecta();
+                          }}
+                          abrirDia={(diaId) => {
+                            const d = diasIntensivo.find((x: IntensivoDiaApp) => x.intensivo_dia_id === diaId);
+                            if (d) void abrirIntensivoDiaEnEntrenamientosApp(d);
+                          }}
+                          esMovil={esVistaMovilApp}
+                        />
+                      )}
 
                       {diasIntensivo.length === 0 && (
                         <div style={avisoPendiente}>
@@ -2739,6 +2778,10 @@ export function PantallaIntensivos(ctx: any) {
                         </div>
                       )}
 
+                      <details open={modoPlantillaIntensivo} style={{ border: '1px solid #e2e8f0', borderRadius: 14, padding: '8px 10px', background: '#fff' }}>
+                        <summary style={{ fontWeight: 900, cursor: 'pointer' }}>
+                          {modoPlantillaIntensivo ? 'Crear los grupos con el recomendador' : 'Recomendador automático (para empezar de cero)'}
+                        </summary>
                       {diasIntensivo.length > 0 && (
                         <>
                           <div
@@ -2908,18 +2951,6 @@ export function PantallaIntensivos(ctx: any) {
                                       Abrir en Días de entrenamiento
                                     </button>
 
-                                    <button
-                                      type="button"
-                                      onClick={() =>
-                                        void reiniciarGruposDiaIntensivoDesdeApp(
-                                          diaSeleccionadoGrupo
-                                        )
-                                      }
-                                      style={botonPeligro}
-                                    >
-                                      Rehacer grupos de este día
-                                    </button>
-
                                     {diasIntensivo.some(
                                       (dia: IntensivoDiaApp) => dia.numero_dia > diaSeleccionadoGrupo.numero_dia
                                     ) && (
@@ -2934,12 +2965,6 @@ export function PantallaIntensivos(ctx: any) {
                                     )}
                                   </div>
 
-                                  <small style={{ color: '#64748b' }}>
-                                    “Rehacer” conserva la fecha y los alumnos del
-                                    Intensivo. Por seguridad se bloquea si el día
-                                    ya tiene reportes, asistencia real o
-                                    recuperaciones.
-                                  </small>
                                 </div>
                               )}
 
@@ -3412,6 +3437,7 @@ export function PantallaIntensivos(ctx: any) {
                           </div>
                         </>
                       )}
+                      </details>
                     </div>
                   )}
 
