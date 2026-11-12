@@ -2599,6 +2599,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                             <NinosGrupoPropuesto
                               grupoId={opcion.grupo_id}
                               fecha={opcion.fecha}
+                              version={opcion.total_actual}
                               nuevoNombre={alumnoFueraPlazoNombre}
                               nuevoNivel={alumnoFueraPlazoNivel}
                               fichas={alumnos}

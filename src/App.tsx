@@ -13360,8 +13360,8 @@ async function abrirGestionOperativaIntensivoDia(
     }
     if (grupo.alumnos_lista) {
       grupo.alumnos_lista.split(' || ').forEach((linea) => {
-        const partes = linea.split('·');
-        const nivel = partes.length > 1 ? partes[partes.length - 1].trim() : '';
+        const partes = linea.split('·').map((parte) => parte.trim());
+        const nivel = partes.slice(1).find((parte) => /^(INICIACI[OÓ]N|[A-D]\+?)$/i.test(parte))?.toUpperCase() || ''; // 12/11: «NOMBRE · C · Grande»
         if (nivel) niveles.push(nivel);
       });
     }
@@ -13523,7 +13523,8 @@ async function abrirGestionOperativaIntensivoDia(
         );
       if (!sesionActual) throw new Error('No encuentro la sesión activa en la agenda.');
 
-      const resultados: RecomendacionFueraPlazoAgendaApp[] = agendaGruposSesion
+      const gruposSesionActual = await consultarSupabase<AgendaGrupoSesionApp>('v_grupos_sesion_operativa_app', `select=*&sesion_id=${encodeURIComponent(`eq.${agendaSesionActivaId}`)}&order=nombre_grupo.asc`).catch(() => agendaGruposSesion); // 12/11: grupos al día (con el último colocado)
+      const resultados: RecomendacionFueraPlazoAgendaApp[] = gruposSesionActual
         .filter((grupo) => Boolean(grupo.grupo_id))
         .map((grupo) =>
           evaluarGrupoFueraPlazoAgenda(

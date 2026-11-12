@@ -13,21 +13,24 @@ type Props = {
   consultarSupabase?: (tabla: string, query: string) => Promise<any[]>;
   /** Si ya se tiene «alumnos_lista» del grupo, se usa tal cual (sin consultar). */
   textoLista?: string | null;
+  /** 12/11: nº de niños actual; si cambia (se ha colocado a alguien), se vuelve a leer. */
+  version?: number | string;
 };
 
 // Caché mientras la pantalla está abierta: varias tarjetas pueden ser el mismo grupo.
 const cache = new Map<string, Promise<string>>();
 
-function cargarLista(grupoId: string, consultar: NonNullable<Props['consultarSupabase']>) {
-  let p = cache.get(grupoId);
+function cargarLista(grupoId: string, consultar: NonNullable<Props['consultarSupabase']>, version: string) {
+  const clave = `${grupoId}|${version}`;
+  let p = cache.get(clave);
   if (!p) {
     p = consultar('v_grupos_sesion_operativa_app', `select=alumnos_lista&grupo_id=eq.${grupoId}`).then(
       (rows) => String(rows?.[0]?.alumnos_lista || '')
     );
-    p.catch(() => cache.delete(grupoId));
-    cache.set(grupoId, p);
+    p.catch(() => cache.delete(clave));
+    cache.set(clave, p);
     // Que una segunda búsqueda minutos después vea los cambios.
-    setTimeout(() => cache.delete(grupoId), 60_000);
+    setTimeout(() => cache.delete(clave), 60_000);
   }
   return p;
 }
@@ -44,7 +47,7 @@ const chip: React.CSSProperties = {
   textAlign: 'center',
 };
 
-export function NinosGrupoPropuesto({ grupoId, fecha, nuevoNombre, nuevoNivel, fichas, consultarSupabase, textoLista }: Props) {
+export function NinosGrupoPropuesto({ grupoId, fecha, nuevoNombre, nuevoNivel, fichas, consultarSupabase, textoLista, version }: Props) {
   const [lista, setLista] = useState<NinoGrupoPropuesto[] | null>(null);
   const [error, setError] = useState(false);
 
@@ -56,7 +59,7 @@ export function NinosGrupoPropuesto({ grupoId, fecha, nuevoNombre, nuevoNivel, f
       return;
     }
     setLista(null);
-    cargarLista(grupoId, consultarSupabase)
+    cargarLista(grupoId, consultarSupabase, String(version ?? ''))
       .then((texto) => vivo && setLista(conEdades(parsearAlumnosLista(texto), fichas, fecha)))
       .catch(() => vivo && setError(true));
     return () => {
@@ -64,7 +67,7 @@ export function NinosGrupoPropuesto({ grupoId, fecha, nuevoNombre, nuevoNivel, f
     };
     // fichas se usa solo para la edad; no hace falta recargar si cambia.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grupoId, fecha, textoLista]);
+  }, [grupoId, fecha, textoLista, version]);
 
   const fila = (n: NinoGrupoPropuesto, nuevo = false) => (
     <li
