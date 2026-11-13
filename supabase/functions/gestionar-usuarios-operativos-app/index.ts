@@ -223,14 +223,35 @@ Deno.serve(async (req) => {
         (u) => String(u.email || '').toLowerCase() === email,
       )
 
+      // 13/11: cuenta de Authentication sin perfil en la app (p. ej. tras un
+      // reenvío de invitación antiguo que borraba el perfil). En vez de
+      // bloquear, se le vuelve a crear el perfil enlazado a esa cuenta.
       if (authExistente) {
-        return json(
-          {
-            message:
-              'Ese email ya existe en Authentication. Revísalo antes de crear el acceso.',
-          },
-          409,
-        )
+        const { error: enlaceError } = await admin.from('usuarios_app').insert({
+          auth_user_id: authExistente.id,
+          email,
+          nombre,
+          rol,
+          entrenador_id: null,
+          activo: true,
+        })
+
+        if (enlaceError) {
+          return json(
+            {
+              message:
+                'Ese email ya tiene cuenta, pero no se pudo crear su perfil en la app.',
+            },
+            500,
+          )
+        }
+
+        return json({
+          ok: true,
+          message: authExistente.confirmed_at
+            ? 'Ya tenía cuenta: perfil recuperado. Puede entrar con su contraseña; si no la recuerda, usa «Recuperar contraseña».'
+            : 'Ya tenía una invitación pendiente: perfil recuperado. Usa «Reenviar invitación» si no le llegó el correo.',
+        })
       }
 
       const { data: invitacion, error: inviteError } =
@@ -287,7 +308,7 @@ Deno.serve(async (req) => {
 
     const { data: perfil, error: perfilError } = await admin
       .from('usuarios_app')
-      .select('id, auth_user_id, email, nombre, rol, activo')
+      .select('id, auth_user_id, email, nombre, rol, entrenador_id, activo')
       .eq('id', usuarioId)
       .maybeSingle()
 
@@ -447,6 +468,10 @@ Deno.serve(async (req) => {
 
       const redirectTo = String(body?.redirect_to || '').trim()
 
+      // OJO (13/11): usuarios_app.auth_user_id tiene ON DELETE CASCADE, así que
+      // borrar la cuenta de Authentication borra también el perfil. Por eso,
+      // después de invitar, el perfil se vuelve a escribir entero (upsert por
+      // id) y no con un update, que no encontraba la fila y no daba error.
       const { error: deleteError } = await admin.auth.admin.deleteUser(
         perfil.auth_user_id,
       )
@@ -477,13 +502,18 @@ Deno.serve(async (req) => {
         )
       }
 
-      const { error: updateError } = await admin
-        .from('usuarios_app')
-        .update({
+      const { error: updateError } = await admin.from('usuarios_app').upsert(
+        {
+          id: perfil.id,
           auth_user_id: invitacion.user.id,
+          email: perfil.email,
+          nombre: perfil.nombre,
+          rol: perfil.rol,
+          entrenador_id: perfil.entrenador_id ?? null,
           activo: true,
-        })
-        .eq('id', perfil.id)
+        },
+        { onConflict: 'id' },
+      )
 
       if (updateError) {
         return json(

@@ -8375,7 +8375,7 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
           ? `${window.location.origin}${window.location.pathname}`
           : '';
 
-      await llamarGestionUsuariosOperativos('crear', {
+      const resultadoCrear = await llamarGestionUsuariosOperativos('crear', {
         nombre,
         email,
         rol,
@@ -8390,7 +8390,7 @@ NO se borrarán grupos, reportes, asistencia ni cobros.`
       setMostrarAltaUsuarioOperativo(false);
       await cargarUsuariosOperativos();
 
-      window.alert(`Invitación enviada a ${email}.`);
+      window.alert(resultadoCrear?.message || `Invitación enviada a ${email}.`);
     } catch (err) {
       setError(
         err instanceof Error
