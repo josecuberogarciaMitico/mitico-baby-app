@@ -1,4 +1,5 @@
 import React from 'react';
+import { agruparPorSemana, etiquetaSemana, semanasDeTemporada, sumarDias } from './snowZoneSemanas';
 import type { TipoListadoAlumnosApp } from '../seasons/seasonTypes';
 
 type ManagementReportsScreenProps = {
@@ -187,8 +188,9 @@ export function ManagementReportsScreen({ ctx }: ManagementReportsScreenProps) {
 
             <div style={{ padding: '16px 18px 18px' }}>
               <p style={{ margin: '0 0 14px', color: '#475569', lineHeight: 1.4 }}>
-                Solo Baby e Intensivos (Ocio no cuenta). Cuenta asistencia real por día. Un grupo marcado
-                como Pequeña/Grande computa como Pista grande.
+                Cuenta Baby e Intensivos (Ocio no cuenta), por semanas de entreno de lunes a domingo. Solo
+                suma los niños marcados como presentes: un día que todavía no se ha entrenado, o sin la
+                asistencia pasada, sale a 0. Un grupo Pequeña/Grande cuenta como Pista grande.
               </p>
 
               <div
@@ -248,28 +250,42 @@ export function ManagementReportsScreen({ ctx }: ManagementReportsScreenProps) {
                   </label>
                 ) : (
                   <label style={{ ...labelCampo, minWidth: 0, width: '100%' }}>
-                    Semana desde
-                    <input
-                      type="date"
-                      value={snowZoneSemanaInicio}
-                      onChange={(e) => {
-                        const valor = e.target.value;
-                        if (!valor) return;
-                        const fecha = new Date(`${valor}T12:00:00`);
-                        const diaSemana = fecha.getDay();
-                        const desplazamiento =
-                          diaSemana === 0 ? -6 : 1 - diaSemana;
-                        fecha.setDate(fecha.getDate() + desplazamiento);
-                        setSnowZoneSemanaInicio(fechaIsoEditor(fecha));
-                      }}
-                      style={{
-                        ...inputCampo,
-                        width: '100%',
-                        minWidth: 0,
-                        maxWidth: '100%',
-                        boxSizing: 'border-box',
-                      }}
-                    />
+                    Semana de entreno
+                    <div style={{ display: 'flex', gap: 6, minWidth: 0 }}>
+                      <button
+                        type="button"
+                        title="Semana anterior"
+                        onClick={() => setSnowZoneSemanaInicio(sumarDias(snowZoneSemanaInicio, -7))}
+                        style={{ ...botonSecundario, minHeight: 46, padding: '0 12px', flex: '0 0 auto' }}
+                      >
+                        ‹
+                      </button>
+                      <select
+                        value={snowZoneSemanaInicio}
+                        onChange={(e) => setSnowZoneSemanaInicio(e.target.value)}
+                        style={{ ...inputCampo, flex: '1 1 auto', width: '100%', minWidth: 0, boxSizing: 'border-box' }}
+                      >
+                        {(() => {
+                          const lista = semanasDeTemporada(new Date().toISOString().slice(0, 10));
+                          if (!lista.some((w) => w.inicio === snowZoneSemanaInicio)) {
+                            lista.push({ inicio: snowZoneSemanaInicio, fin: sumarDias(snowZoneSemanaInicio, 6), etiqueta: etiquetaSemana(snowZoneSemanaInicio, sumarDias(snowZoneSemanaInicio, 6)), enCurso: false, futura: false });
+                          }
+                          return lista.map((w) => (
+                            <option key={w.inicio} value={w.inicio}>
+                              {w.etiqueta}
+                            </option>
+                          ));
+                        })()}
+                      </select>
+                      <button
+                        type="button"
+                        title="Semana siguiente"
+                        onClick={() => setSnowZoneSemanaInicio(sumarDias(snowZoneSemanaInicio, 7))}
+                        style={{ ...botonSecundario, minHeight: 46, padding: '0 12px', flex: '0 0 auto' }}
+                      >
+                        ›
+                      </button>
+                    </div>
                   </label>
                 )}
 
@@ -442,7 +458,17 @@ export function ManagementReportsScreen({ ctx }: ManagementReportsScreenProps) {
                           </tr>
                         </thead>
                         <tbody>
-                          {snowZoneDias.map((fila) => (
+                          {agruparPorSemana(snowZoneDias).flatMap((semana) => [
+                            ...(snowZoneModo === 'mensual'
+                              ? [
+                                  <tr key={`cab-${semana.inicio}`} style={{ background: '#eff6ff' }}>
+                                    <td colSpan={4} style={{ padding: '8px 12px', fontWeight: 900, color: '#1d4ed8', fontSize: 13 }}>
+                                      {etiquetaSemana(semana.inicio, semana.fin)}
+                                    </td>
+                                  </tr>,
+                                ]
+                              : []),
+                            ...semana.filas.map((fila) => (
                             <tr key={fila.fecha}>
                               <td
                                 style={{
@@ -482,7 +508,20 @@ export function ManagementReportsScreen({ ctx }: ManagementReportsScreenProps) {
                                 {fila.total}
                               </td>
                             </tr>
-                          ))}
+                            )),
+                            ...(snowZoneModo === 'mensual'
+                              ? [
+                                  <tr key={`sub-${semana.inicio}`} style={{ background: '#f8fafc' }}>
+                                    <td style={{ padding: '8px 12px', fontWeight: 800, color: '#334155', fontSize: 13 }}>
+                                      Subtotal semana
+                                    </td>
+                                    <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 800 }}>{semana.pista_pequena}</td>
+                                    <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 800 }}>{semana.pista_grande}</td>
+                                    <td style={{ padding: '8px 12px', textAlign: 'center', fontWeight: 900 }}>{semana.total}</td>
+                                  </tr>,
+                                ]
+                              : []),
+                          ])}
                         </tbody>
                         <tfoot>
                           <tr style={{ background: '#f8fafc' }}>
@@ -530,6 +569,8 @@ export function ManagementReportsScreen({ ctx }: ManagementReportsScreenProps) {
                     >
                       Periodo: {formatearFecha(periodo.desde)} –{' '}
                       {formatearFecha(periodo.hasta)}
+                      {periodo.hasta >= new Date().toISOString().slice(0, 10) &&
+                        ' · Periodo en curso: faltan los días que aún no se han entrenado.'}
                     </p>
                   </>
                 );
