@@ -9,6 +9,7 @@ import {
 import {
   obtenerFilasAvisosReportes,
   revisarAvisoReporte,
+  subirNivelCandidato,
 } from '../../services/reports/coordinationAlertsService';
 import { abrirFichaAlumno } from '../students/studentFichaStore';
 
@@ -16,7 +17,8 @@ import { abrirFichaAlumno } from '../students/studentFichaStore';
  * Fase 3 (02/10/2026): avisos flotantes de reportes para coordinación.
  * Un botón pequeño arriba a la derecha («N avisos») que se abre en un panel con:
  *  - cambios de nivel marcados por entrenadores → Confirmar / Deshacer;
- *  - candidatos a subir (todos los focos conseguidos) → Visto.
+ *  - candidatos a subir (todos los focos conseguidos) → Subir a X / Todavía no
+ *    (14/11: antes solo «Visto»; el nivel nunca cambia solo, lo confirma coordinación).
  * Se actualiza cada minuto y al volver a la app. Solo lectura salvo esas marcas.
  */
 const INTERVALO_MS = 60000;
@@ -93,8 +95,22 @@ export function CoordinationAlerts(props: { onNivelCambiado?: () => void }) {
 
   if (avisos.length === 0) return null;
 
-  async function accion(aviso: AvisoCoordinacion, tipo: 'confirmar' | 'deshacer' | 'visto') {
+  async function accion(aviso: AvisoCoordinacion, tipo: 'confirmar' | 'deshacer' | 'visto' | 'subir') {
     setError('');
+    if (aviso.tipo === 'candidato' && tipo === 'subir') {
+      if (!window.confirm(`¿Subir a ${aviso.alumno} a ${nombreNivel(aviso.siguiente)}?\n\nSe cambia el nivel de su ficha y el de sus próximos turnos.`)) return;
+      setOcupado(aviso.id);
+      try {
+        await subirNivelCandidato(aviso.alumnoId, aviso.siguiente);
+        onNivelRef.current?.();
+        await cargar(true);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : 'No se ha podido cambiar el nivel.');
+      } finally {
+        setOcupado(null);
+      }
+      return;
+    }
     if (aviso.tipo === 'candidato') {
       const nuevos = new Set(vistos);
       nuevos.add(claveCandidato(aviso.alumnoId, aviso.nivel));
@@ -191,8 +207,13 @@ export function CoordinationAlerts(props: { onNivelCambiado?: () => void }) {
                     <strong>{aviso.alumno}: listo para {nombreNivel(aviso.siguiente)}</strong>
                     <span>Tiene los {aviso.focos} focos de {nombreNivel(aviso.nivel)} conseguidos.</span>
                     <div className="mitico-avisos-reportes__acciones">
+                      <button type="button" className="is-ok" disabled={ocupado === aviso.id} onClick={() => void accion(aviso, 'subir')}>
+                        {ocupado === aviso.id ? 'Guardando…' : `Subir a ${nombreNivel(aviso.siguiente)}`}
+                      </button>
+                      <button type="button" disabled={ocupado === aviso.id} title="Deja de avisar hasta que cambie su nivel" onClick={() => void accion(aviso, 'visto')}>
+                        Todavía no
+                      </button>
                       <button type="button" onClick={() => abrirFichaAlumno(aviso.alumnoId)}>Ficha</button>
-                      <button type="button" className="is-ok" onClick={() => void accion(aviso, 'visto')}>Visto</button>
                     </div>
                   </>
                 )}

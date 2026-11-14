@@ -23,3 +23,8 @@ export function revisarAvisoReporte(reporteId: string, accion: AccionAvisoReport
     p_nivel_codigo: nivel || null,
   });
 }
+
+/** «Candidato a subir» → Subir de nivel (migración 20261114_subir_nivel_candidato). */
+export function subirNivelCandidato(alumnoId: string, nivel: string): Promise<void> {
+  return supabase.rpcVoid('subir_nivel_candidato_app', { p_alumno_id: alumnoId, p_nivel_codigo: nivel });
+}
