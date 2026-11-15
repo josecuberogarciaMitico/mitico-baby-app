@@ -586,6 +586,7 @@ import { AltasPendientesBadge, AltasRespondidasAviso } from './features/admin/Al
 import { useAltasRespondidasAviso } from './features/admin/useAltasRespondidasAviso';
 import { UserAccessScreen } from './features/admin/UserAccessScreen';
 import { descargarInformeSnowZonePdf } from './features/reports/snowZonePdf';
+import { aplicarMarcasRecientes, marcarAsistenciaRapida } from './features/trainers/asistenciaRapida';
 import { DailySummaryScreen } from './features/dashboard/DailySummaryScreen';
 import { HomeScreen } from './features/dashboard/HomeScreen';
 import { OcioStudentsScreen } from './features/ocio/OcioStudentsScreen';
@@ -3971,10 +3972,9 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setCargando(false);
   }
 
-  async function cargarGruposEntrenador() {
-    setCargando(true);
+  async function cargarGruposEntrenador(silencioso = false) {
+    if (!silencioso) { setCargando(true); setDetalle(null); }
     setError('');
-    setDetalle(null);
 
     try {
       const grupos = await consultarSupabase<GrupoEntrenadorApp>(
@@ -3993,15 +3993,14 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       );
 
       setGruposEntrenador(grupos);
-      setAlumnosReporteEntrenador(alumnosEstado);
+      setAlumnosReporteEntrenador(aplicarMarcasRecientes(alumnosEstado));
       setReportesPendientes(reportesEstado);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
-      setGruposEntrenador([]);
-      setAlumnosReporteEntrenador([]);
+      if (!silencioso) { setGruposEntrenador([]); setAlumnosReporteEntrenador([]); }
     }
 
-    setCargando(false);
+    if (!silencioso) setCargando(false);
   }
 
   async function publicarGrupo(grupoId: string) {
@@ -4090,50 +4089,24 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     setCargando(false);
   }
 
-  async function marcarAsistencia(
-    grupoId: string,
-    alumnoId: string,
-    estado: string
-  ) {
-    const scrollActual = window.scrollY;
-    setCargando(true);
+  // 15/11: el botón responde al momento y la vista se refresca por detrás (asistenciaRapida.ts).
+  async function marcarAsistencia(grupoId: string, alumnoId: string, estado: string) {
+    const esEste = (a: AlumnoReporteEntrenador) => a.grupo_id === grupoId && a.alumno_id === alumnoId;
     setError('');
-
-    try {
-      await ejecutarFuncion(GROUP_OPERATION_RPC.markAttendance, {
-        p_grupo_id: grupoId,
-        p_alumno_id: alumnoId,
-        p_estado_asistencia: requireAttendanceState(estado),
-      });
-
-      await cargarGruposEntrenador();
-
-      // En Intensivos, una ausencia marcada por el entrenador genera la
-      // recuperación en backend. Refrescamos también la sección Intensivos
-      // para que coordinación la vea sin tener que pulsar ningún actualizar.
-      if (
-        intensivoDias.some((dia) =>
-          gruposEntrenador.some(
-            (grupo) =>
-              grupo.grupo_id === grupoId &&
-              grupo.fecha === dia.fecha &&
-              String(grupo.modalidad || '').toUpperCase() === 'INTENSIVOS'
-          )
-        )
-      ) {
-        await cargarIntensivos();
-      }
-
-      if (pantalla === 'reportes') await cargarReportesPendientes();
-      setTimeout(
-        () => window.scrollTo({ top: scrollActual, behavior: 'auto' }),
-        0
-      );
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error desconocido');
-    }
-
-    setCargando(false);
+    await marcarAsistenciaRapida(grupoId, alumnoId, requireAttendanceState(estado), {
+      anterior: alumnosReporteEntrenador.find(esEste)?.estado_asistencia || 'Pendiente',
+      poner: (valor) => setAlumnosReporteEntrenador((lista) => lista.map((a) => (esEste(a) ? { ...a, estado_asistencia: valor } : a))),
+      guardar: (valor) =>
+        ejecutarFuncion(GROUP_OPERATION_RPC.markAttendance, { p_grupo_id: grupoId, p_alumno_id: alumnoId, p_estado_asistencia: valor }),
+      refrescar: async () => {
+        await cargarGruposEntrenador(true);
+        // Intensivos: la falta genera recuperación; coordinación la ve al momento.
+        const esIntensivo = gruposEntrenador.some((g) => g.grupo_id === grupoId && String(g.modalidad || '').toUpperCase() === 'INTENSIVOS');
+        if (esIntensivo && esCoordinadorApp) await cargarIntensivos();
+        if (pantalla === 'reportes') await cargarReportesPendientes();
+      },
+      avisarError: setError,
+    });
   }
 
   function enfocarFormularioReporteEntrenador(
