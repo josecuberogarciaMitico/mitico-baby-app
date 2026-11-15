@@ -2,6 +2,7 @@ import React from 'react';
 import { groupTrainersJacket, trainersMissingJacket } from '../../core/trainers/trainerOperations';
 import { TrackTrainerAdjustPanel } from './TrackTrainerAdjustPanel';
 import { ReportSplitPanel } from './ReportSplitPanel';
+import { MensajesCoordinacion } from './MensajesCoordinacion';
 import { SessionPlanButton } from './SessionPlanTable';
 import { SelectorDiaPista } from './SelectorDiaPista';
 import { proximaFechaConSesiones } from '../../services/reports/coordinationReportsService';
@@ -414,6 +415,18 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                 </div>
               );
             })()}
+
+            <MensajesCoordinacion
+              entrenadores={entrenadores || []}
+              idsDelDia={Array.from(
+                new Set(
+                  gruposPublicadosDia
+                    .flatMap((g: any) => [g.entrenador_id, g.entrenador_apoyo_id, g.entrenador_tercero_id])
+                    .filter(Boolean)
+                    .map(String)
+                )
+              )}
+            />
 
             {(() => {
               const sinChaqueta = trainersMissingJacket(

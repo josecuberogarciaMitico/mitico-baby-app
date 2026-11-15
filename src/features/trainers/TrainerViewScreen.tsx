@@ -24,6 +24,7 @@ import {
   textoEdadNino,
 } from './trainerDayNav';
 import { AvisosCambioGrupoEntrenador, ChipAvisosCambio, useAvisosCambioPendientes } from './AvisosCambioGrupo';
+import { MensajesEntrenador } from './MensajesEntrenador';
 
 // Edad del niño, discreta junto a su nombre (grupos y reportes del entrenador).
 function EdadNino({ edad }: { edad?: number | null }) {
@@ -935,6 +936,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
           </div>
 
           {/* 06/11: cambios en sus grupos publicados desde la última vez (sin push). */}
+          {esEntrenadorApp && <MensajesEntrenador onRepartoHecho={() => void actualizarVistaEntrenadorCompletaApp()} />}
           {esEntrenadorApp && <AvisosCambioGrupoEntrenador />}
 
           {esEntrenadorApp && (
