@@ -2883,6 +2883,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                       marginTop: 16,
                     }}
                   >
+                    {!ctx.esSoloConsultaUsuarioApp && (
                     <button
                       onClick={() =>
                         generarRecomendacionAgendaSesion(agendaSesionActivaId)
@@ -2891,6 +2892,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                     >
                       Generar grupos recomendados
                     </button>
+                    )}
                     <button
                       onClick={crearGrupoManualAgenda}
                       style={botonSecundario}

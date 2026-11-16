@@ -13866,6 +13866,7 @@ async function abrirGestionOperativaIntensivoDia(
   }
 
   async function generarRecomendacionAgendaSesion(sesionId: string) {
+    if (esSoloConsultaUsuarioApp) return; // «Solo consulta»: sin recomendador de grupos
     if (!sesionId) {
       setError('Primero carga o selecciona una sesión.');
       return;
@@ -20147,7 +20148,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       className={`mitico-app-shell ${esCoordinadorApp ? 'with-sidebar' : 'trainer-only'} ${esVistaMovilApp ? 'is-mobile' : ''}`}
       style={layout}
     >
-      {esCoordinadorApp && !esAdministracionApp && !esSoloConsultaUsuarioApp && <CoordinationAlerts onNivelCambiado={() => void cargarAlumnos()} />}
+      {esCoordinadorApp && !esAdministracionApp && <CoordinationAlerts onNivelCambiado={() => void cargarAlumnos()} soloLectura={esSoloConsultaUsuarioApp} />}
       {esCoordinadorApp && (
         <StudentFichaSheet alumnos={alumnos} ocioAlumnos={ocioAlumnos} historialPorAlumno={historialReportesFichaPorAlumno} cargandoHistorialId={historialReportesFichaCargandoId} cargarHistorial={cargarHistorialReportesAlumnoFichaApp} formatDate={formatearFecha} cargarAlumnos={cargarAlumnos} />
       )}
@@ -20367,7 +20368,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
                     <IconoNavegacionApp tipo="cierre" />
                     <span>Cierre semanal</span>
                   </button>
-                  {esCoordinadorApp && !esAdministracionApp && !esSoloConsultaUsuarioApp && (
+                  {esCoordinadorApp && !esAdministracionApp && (
                     <button className={`mitico-nav-item ${pantalla === 'mensajes' ? 'is-active' : ''}`} onClick={() => abrirPantallaConScroll('mensajes')}>
                       <IconoNavegacionApp tipo="mensajes" />
                       <span>Mensajes internos <ContadorMensajes /></span>
@@ -21513,6 +21514,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       {pantalla === 'ocioGrupos' && (
         <OcioGroupsScreen
           ctx={{
+            esSoloConsultaUsuarioApp,
             abrirAltaTestDesdeOcioAimHarder,
             abrirFormularioCambioOcio,
             abrirGrupoOcioEnTrabajoSemanal,
@@ -21670,6 +21672,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       {pantalla === 'ocioCambios' && (
         <OcioChangesScreen
           ctx={{
+            esSoloConsultaUsuarioApp,
             abrirFormularioCambioOcio,
             agendaBloqueBlanco,
             agendaCabeceraLinea,
@@ -21995,7 +21998,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
           }}
         />
       )}
-      {pantalla === 'mensajes' && <PantallaMensajesInternos entrenadores={entrenadores} />}
+      {pantalla === 'mensajes' && <PantallaMensajesInternos entrenadores={entrenadores} soloLectura={esSoloConsultaUsuarioApp} />}
       {pantalla === 'reportes' && (
         <ReportsScreen
           ctx={{
@@ -23395,7 +23398,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
 
       {pantalla === 'intensivos' &&
         PantallaIntensivos({
-          ...altasTestIntensivoApp,
+          ...altasTestIntensivoApp, esSoloConsultaUsuarioApp,
           abrirIntensivoDiaEnEntrenamientosApp,
           ejecutarFuncionConRespuesta, ejecutarFuncion, ejecutarFuncionAuthJson, setCargando, cargarAgendaOperativaDirecta, alumnos,
           recomendacionesGrupoIntensivo,

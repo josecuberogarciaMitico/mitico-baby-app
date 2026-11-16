@@ -35,6 +35,8 @@ type Props = {
   recargar: () => Promise<void>;
   abrirDia: (diaId: string) => void;
   esMovil?: boolean;
+  /** «Solo consulta»: no enseñar sugerencias de grupo. */
+  sinRecomendar?: boolean;
   /** Día elegido desde fuera (las tarjetas de días del intensivo). */
   diaSelId?: string;
   onElegirDia?: (diaId: string) => void;
@@ -316,7 +318,7 @@ export function GruposFijosIntensivo(props: Props) {
                     ))}
                   </div>
                 </>
-              ) : (
+              ) : props.sinRecomendar ? null : (
                 <p style={{ margin: '4px 0 0', fontSize: 13 }}>Usa el recomendador de abajo para crear los primeros grupos.</p>
               )}
             </div>
@@ -330,7 +332,7 @@ export function GruposFijosIntensivo(props: Props) {
               <div style={{ display: 'grid', gap: 6, marginTop: 6 }}>
                 {sinColocar.map((nino) => {
                   const nivel = nivelNino(nino.alumno_id);
-                  const rec = grupoRecomendado(nivel, gruposSel);
+                  const rec = props.sinRecomendar ? null : grupoRecomendado(nivel, gruposSel);
                   return (
                     <div key={nino.alumno_id} style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', background: '#fff', borderRadius: 10, padding: '6px 8px' }}>
                       <span style={{ flex: '1 1 160px', minWidth: 0, fontWeight: 700, overflowWrap: 'anywhere' }}>

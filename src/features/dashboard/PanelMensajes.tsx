@@ -141,7 +141,7 @@ function Tarjeta({ m, conSesion }: { m: MensajeEnviado; conSesion?: boolean; key
   );
 }
 
-export function PantallaMensajesInternos({ entrenadores }: { entrenadores: Entrenador[] }) {
+export function PantallaMensajesInternos({ entrenadores, soloLectura = false }: { entrenadores: Entrenador[]; soloLectura?: boolean }) {
   const [enviados, setEnviados] = useState<MensajeEnviado[] | null>(null);
   const [pestana, setPestana] = useState<Pestana | null>(null);
   const [error, setError] = useState('');
@@ -166,7 +166,7 @@ export function PantallaMensajesInternos({ entrenadores }: { entrenadores: Entre
   const pendientes = lista.filter((m) => pendientesDeMensaje(m) > 0);
   const textos = lista.filter((m) => m.tipo === 'texto');
   const grupos = repartosPorSesion(lista);
-  const activa: Pestana = pestana ?? (pendientes.length ? 'pendientes' : 'nuevo');
+  const activa: Pestana = pestana ?? (pendientes.length ? 'pendientes' : soloLectura ? 'repartos' : 'nuevo');
 
   const pestanas: { id: Pestana; texto: string; n?: number }[] = [
     { id: 'pendientes', texto: 'Sin responder', n: pendientes.length },
@@ -198,6 +198,7 @@ export function PantallaMensajesInternos({ entrenadores }: { entrenadores: Entre
             Últimos 7 días. Los repartos de reportes se piden en Trabajo en pista, en cada grupo.
           </p>
         </div>
+        {!soloLectura && (
         <button
           type="button"
           onClick={() => setPestana('nuevo')}
@@ -214,6 +215,7 @@ export function PantallaMensajesInternos({ entrenadores }: { entrenadores: Entre
         >
           ✏️ Escribir un mensaje nuevo
         </button>
+        )}
       </div>
 
       <div
@@ -299,7 +301,7 @@ export function PantallaMensajesInternos({ entrenadores }: { entrenadores: Entre
         </div>
       )}
 
-      {activa === 'nuevo' && (
+      {activa === 'nuevo' && !soloLectura && (
         <div style={{ padding: 16, borderRadius: 18, background: '#fff', border: '1px solid #e2e8f0' }}>
           <EscribirMensaje
             entrenadores={entrenadores}

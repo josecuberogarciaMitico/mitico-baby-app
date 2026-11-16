@@ -55,7 +55,7 @@ function hoyIso() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export function CoordinationAlerts(props: { onNivelCambiado?: () => void }) {
+export function CoordinationAlerts(props: { onNivelCambiado?: () => void; soloLectura?: boolean }) {
   const [filas, setFilas] = useState<FilaAvisoReporte[]>([]);
   const [vistos, setVistos] = useState<Set<string>>(() => leerVistos());
   const [abierto, setAbierto] = useState(false);
@@ -212,10 +212,12 @@ export function CoordinationAlerts(props: { onNivelCambiado?: () => void }) {
                       {aviso.entrenador || 'Entrenador'} · {aviso.modalidad || ''} · {fechaCorta(aviso.fecha)}. Ya se ha aplicado en su ficha.
                     </span>
                     <div className="mitico-avisos-reportes__acciones">
+                      {!props.soloLectura && (
                       <button type="button" className="is-ok" disabled={ocupado === aviso.id} onClick={() => void accion(aviso, 'confirmar')}>
                         Confirmar
                       </button>
-                      {aviso.puedeDeshacer ? (
+                      )}
+                      {props.soloLectura ? null : aviso.puedeDeshacer ? (
                         <>
                           {!aviso.nivelAnterior && (
                             <select
@@ -250,12 +252,16 @@ export function CoordinationAlerts(props: { onNivelCambiado?: () => void }) {
                     <strong>{aviso.alumno}: listo para {nombreNivel(aviso.siguiente)}</strong>
                     <span>Tiene los {aviso.focos} focos de {nombreNivel(aviso.nivel)} conseguidos.</span>
                     <div className="mitico-avisos-reportes__acciones">
-                      <button type="button" className="is-ok" disabled={ocupado === aviso.id} onClick={() => void accion(aviso, 'subir')}>
-                        {ocupado === aviso.id ? 'Guardando…' : `Subir a ${nombreNivel(aviso.siguiente)}`}
-                      </button>
-                      <button type="button" disabled={ocupado === aviso.id} title="Deja de avisar hasta que cambie su nivel" onClick={() => void accion(aviso, 'visto')}>
-                        Todavía no
-                      </button>
+                      {!props.soloLectura && (
+                        <>
+                          <button type="button" className="is-ok" disabled={ocupado === aviso.id} onClick={() => void accion(aviso, 'subir')}>
+                            {ocupado === aviso.id ? 'Guardando…' : `Subir a ${nombreNivel(aviso.siguiente)}`}
+                          </button>
+                          <button type="button" disabled={ocupado === aviso.id} title="Deja de avisar hasta que cambie su nivel" onClick={() => void accion(aviso, 'visto')}>
+                            Todavía no
+                          </button>
+                        </>
+                      )}
                       <button type="button" onClick={() => abrirFichaAlumno(aviso.alumnoId)}>Ficha</button>
                       <button type="button" onClick={() => void alternarReporte(aviso)}>
                         {reporteAbierto[aviso.id] ? 'Ocultar reporte' : '📄 Último reporte'}

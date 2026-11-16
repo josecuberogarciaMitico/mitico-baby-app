@@ -846,7 +846,7 @@ export function OcioGroupsScreen({ ctx }: OcioGroupsScreenProps) {
               <div style={agendaVacio}>
                 Aún no hay grupos estables para {ocioTurnoVista}.
               </div>
-              {alumnosSinGrupoTurno.length > 0 && (
+              {alumnosSinGrupoTurno.length > 0 && !ctx.esSoloConsultaUsuarioApp && (
                 <details
                   style={{
                     border: '1px solid #dbeafe',

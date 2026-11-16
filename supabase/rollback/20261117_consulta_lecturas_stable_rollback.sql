@@ -6,6 +6,4 @@ alter function public.obtener_contexto_tecnico_reportes_app() volatile;
 alter function public.obtener_estado_avisos_entrenadores_app() volatile;
 alter function public.obtener_historial_reportes_adaptativo_alumno_app(uuid) volatile;
 alter function public.comprobar_posibles_alumnos_nueva_alta_app(text, date) volatile;
-alter function public.recomendar_grupos_sesion_operativa_app(uuid) volatile;
-alter function public.recomendar_grupos_intensivo_dia_app(uuid) volatile;
 alter function public.obtener_grupos_intensivo_dia_editables_app(uuid) volatile;
