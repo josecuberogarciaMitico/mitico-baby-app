@@ -1696,7 +1696,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
               (miticoFadeUp) deja un transform que lo «atrapaba» y la barra de
               Volver/Cerrar quedaba fuera de la pantalla. */}
           <SinColocarPanel
-            abierta={verSinColocarSemana}
+            abierta={verSinColocarSemana && !ctx.esSoloConsultaUsuarioApp /* «Solo consulta»: sin recomendador de colocación */}
             onCerrar={() => setVerSinColocarSemana(false)}
             sesiones={sesionesPlanSinColocar}
             hoyIso={hoyTableroSemana}
