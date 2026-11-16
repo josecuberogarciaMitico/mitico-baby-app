@@ -25,6 +25,7 @@ import {
 } from './trainerDayNav';
 import { AvisosCambioGrupoEntrenador, ChipAvisosCambio, useAvisosCambioPendientes } from './AvisosCambioGrupo';
 import { MensajesEntrenador } from './MensajesEntrenador';
+import { DisponibilidadSemanaEntrenador } from './DisponibilidadSemanaEntrenador';
 
 // Edad del niño, discreta junto a su nombre (grupos y reportes del entrenador).
 function EdadNino({ edad }: { edad?: number | null }) {
@@ -1348,200 +1349,19 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                         </div>
                       </header>
 
-                      {grupo.semanas.map((semana) => {
-                        const diasPublicados =
-                          diasDisponibilidadVistaEntrenador(semana.turnos);
-
-                        return (
-                          <section
-                            key={`disp-vista-${grupo.entrenador_id}-${semana.inicio}`}
-                            className="trainer-week-block"
-                            style={bloqueSemanaMovil}
-                          >
-                            <div style={cabeceraSemanaMovil}>
-                              <div>
-                                <p style={etiquetaSuperior}>SEMANA PUBLICADA</p>
-                                <h4 style={{ margin: 0 }}>
-                                  {rangoSemanaAgenda(semana.inicio)}
-                                </h4>
-                              </div>
-                              <span style={miniBadge}>
-                                {semana.turnos.length} turnos
-                              </span>
-                            </div>
-
-                            <div className="trainer-day-grid">
-                              {diasPublicados.map((dia, indiceDia) => {
-                                const pendientesDia = dia.turnos.filter(
-                                  (turno) =>
-                                    (turno.respuesta || 'Pendiente') ===
-                                    'Pendiente'
-                                ).length;
-                                const nombreDia = capitalizarPrimera(
-                                  new Date(
-                                    `${dia.fecha}T00:00:00`
-                                  ).toLocaleDateString('es-ES', {
-                                    weekday: 'long',
-                                  })
-                                );
-                                const claveDiaDisponibilidad = `${grupo.entrenador_id}-${dia.fecha}`;
-                                const abrirDiaPorDefecto =
-                                  dia.fecha === hoyAgendaClave ||
-                                  diasPublicados.length === 1 ||
-                                  (indiceDia === 0 && pendientesDia > 0);
-                                const diaEstaAbierto = diaDisponibilidadAbierto
-                                  ? diaDisponibilidadAbierto ===
-                                    claveDiaDisponibilidad
-                                  : abrirDiaPorDefecto;
-
-                                return (
-                                  <details
-                                    key={`disp-vista-dia-${grupo.entrenador_id}-${dia.fecha}`}
-                                    className="trainer-day-accordion"
-                                    style={diaEntrenadorCard}
-                                    open={diaEstaAbierto}
-                                    onToggle={(event) =>
-                                      gestionarDiaDisponibilidad(
-                                        claveDiaDisponibilidad,
-                                        event
-                                      )
-                                    }
-                                  >
-                                    <summary
-                                      className="trainer-accordion-summary"
-                                      onClick={enfocarAcordeonEntrenadorAlAbrir}
-                                    >
-                                      <div style={{ display: 'grid' }}>
-                                        <strong>{nombreDia}</strong>
-                                        <span>{formatearFecha(dia.fecha)}</span>
-                                      </div>
-                                      <div style={resumenChipsMovil}>
-                                        <span>{dia.turnos.length} turnos</span>
-                                        {pendientesDia > 0 && (
-                                          <span>{pendientesDia} pendientes</span>
-                                        )}
-                                      </div>
-                                    </summary>
-
-                                    <div className="trainer-shift-list">
-                                      {dia.turnos.map((turno) => {
-                                        const respuesta =
-                                          turno.respuesta || 'Pendiente';
-                                        const disponibilidadConfirmada =
-                                          respuesta !== 'Pendiente';
-
-                                        return (
-                                          <div
-                                            key={`disp-vista-turno-${turno.id}`}
-                                            className="trainer-availability-row"
-                                            style={miniTarjetaBlanca}
-                                          >
-                                            <div className="trainer-availability-main">
-                                              <strong>
-                                                {turno.hora_inicio.slice(0, 5)}–
-                                                {turno.hora_fin.slice(0, 5)}
-                                              </strong>
-                                              {turno.nombre_turno && (
-                                                <span>{turno.nombre_turno}</span>
-                                              )}
-                                            </div>
-                                            <div className="trainer-availability-actions">
-                                              <button
-                                                type="button"
-                                                disabled={disponibilidadConfirmada}
-                                                aria-pressed={respuesta === 'Disponible'}
-                                                className={`trainer-soft-button trainer-soft-button--success ${
-                                                  respuesta === 'Disponible'
-                                                    ? 'is-active'
-                                                    : ''
-                                                }`}
-                                                onClick={() =>
-                                                  responderDisponibilidadRapida(
-                                                    turno,
-                                                    'Disponible'
-                                                  )
-                                                }
-                                                style={{
-                                                  cursor: disponibilidadConfirmada
-                                                    ? 'default'
-                                                    : 'pointer',
-                                                  opacity:
-                                                    disponibilidadConfirmada &&
-                                                    respuesta !== 'Disponible'
-                                                      ? 0.48
-                                                      : 1,
-                                                }}
-                                              >
-                                                Disponible
-                                              </button>
-                                              <button
-                                                type="button"
-                                                disabled={disponibilidadConfirmada}
-                                                aria-pressed={respuesta === 'No puedo'}
-                                                className={`trainer-soft-button trainer-soft-button--danger ${
-                                                  respuesta === 'No puedo'
-                                                    ? 'is-active'
-                                                    : ''
-                                                }`}
-                                                onClick={() =>
-                                                  responderDisponibilidadRapida(
-                                                    turno,
-                                                    'No puedo'
-                                                  )
-                                                }
-                                                style={{
-                                                  cursor: disponibilidadConfirmada
-                                                    ? 'default'
-                                                    : 'pointer',
-                                                  opacity:
-                                                    disponibilidadConfirmada &&
-                                                    respuesta !== 'No puedo'
-                                                      ? 0.48
-                                                      : 1,
-                                                }}
-                                              >
-                                                No disponible
-                                              </button>
-                                            </div>
-
-                                            {disponibilidadConfirmada && (
-                                              <div
-                                                style={{
-                                                  gridColumn: '1 / -1',
-                                                  marginTop: 7,
-                                                  padding: '9px 11px',
-                                                  borderRadius: 11,
-                                                  border: '1px solid #bbf7d0',
-                                                  background: '#f0fdf4',
-                                                  color: '#166534',
-                                                  fontSize: 12,
-                                                  lineHeight: 1.4,
-                                                }}
-                                              >
-                                                <strong>✓ Disponibilidad confirmada</strong>
-                                                <span
-                                                  style={{
-                                                    display: 'block',
-                                                    marginTop: 2,
-                                                    color: '#475569',
-                                                    fontWeight: 700,
-                                                  }}
-                                                >
-                                                  Si necesitas cambiarla, contacta con coordinación.
-                                                </span>
-                                              </div>
-                                            )}
-                                          </div>
-                                        );
-                                      })}
-                                    </div>
-                                  </details>
-                                );
-                              })}
-                            </div>
-                          </section>
-                        );
-                      })}
+                      {grupo.semanas.map((semana) => (
+                        // 16/11: toda la semana a la vista, sin desplegables (DisponibilidadSemanaEntrenador).
+                        <React.Fragment key={`disp-vista-${grupo.entrenador_id}-${semana.inicio}`}>
+                          <DisponibilidadSemanaEntrenador
+                            rango={rangoSemanaAgenda(semana.inicio)}
+                            dias={diasDisponibilidadVistaEntrenador(semana.turnos)}
+                            hoy={hoyAgendaClave}
+                            onResponder={(turno, respuesta) =>
+                              responderDisponibilidadRapida(turno as any, respuesta)
+                            }
+                          />
+                        </React.Fragment>
+                      ))}
                     </article>
                   ))}
               </section>

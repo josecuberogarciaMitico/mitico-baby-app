@@ -94,3 +94,39 @@ export const MENSAJES_RAPIDOS = [
   'Revisad los reportes pendientes de hoy antes de iros.',
   'Recordad pasar asistencia al empezar.',
 ];
+
+/** «15/11 · 09:45» desde el texto del reparto («15/11 · 09:45. Marca…»). */
+export function sesionDeReparto(cuerpo: string | null | undefined) {
+  const m = String(cuerpo || '').match(/^(\d{2}\/\d{2}) · (\d{2}:\d{2})/);
+  return m ? `${m[1]} · ${m[2]}` : '';
+}
+
+/** «Grupo 2 · Nivel B» desde «Repartid los reportes de Grupo 2 · Nivel B». */
+export const grupoDeReparto = (titulo: string) => titulo.replace(/^Repartid los reportes de\s*/i, '');
+
+export const pendientesDeMensaje = (m: Pick<MensajeEnviado, 'tipo' | 'destinos' | 'cerrado_at'>) =>
+  m.tipo === 'reparto'
+    ? m.cerrado_at
+      ? 0
+      : m.destinos.filter((d) => !d.ok_at).length
+    : m.destinos.filter((d) => !d.leido_at).length;
+
+/** Repartos agrupados por turno (día · hora), el más reciente primero. */
+export function repartosPorSesion(enviados: MensajeEnviado[]) {
+  const mapa = new Map<string, MensajeEnviado[]>();
+  for (const m of enviados.filter((x) => x.tipo === 'reparto')) {
+    const k = sesionDeReparto(m.cuerpo) || 'Sin fecha';
+    mapa.set(k, [...(mapa.get(k) || []), m]);
+  }
+  const orden = (k: string) => {
+    const [d, h] = k.split(' · ');
+    const [dd, mm] = (d || '').split('/');
+    return `${mm || ''}${dd || ''}${h || ''}`;
+  };
+  return [...mapa.entries()]
+    .sort((a, b) => orden(b[0]).localeCompare(orden(a[0])))
+    .map(([sesion, mensajes]) => ({
+      sesion,
+      mensajes: mensajes.sort((a, b) => grupoDeReparto(a.titulo).localeCompare(grupoDeReparto(b.titulo), 'es', { numeric: true })),
+    }));
+}
