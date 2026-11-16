@@ -2,7 +2,6 @@ import React from 'react';
 import { groupTrainersJacket, trainersMissingJacket } from '../../core/trainers/trainerOperations';
 import { TrackTrainerAdjustPanel } from './TrackTrainerAdjustPanel';
 import { ReportSplitPanel } from './ReportSplitPanel';
-import { MensajesCoordinacion } from './MensajesCoordinacion';
 import { SessionPlanButton } from './SessionPlanTable';
 import { SelectorDiaPista } from './SelectorDiaPista';
 import { proximaFechaConSesiones } from '../../services/reports/coordinationReportsService';
@@ -416,18 +415,7 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
               );
             })()}
 
-            <MensajesCoordinacion
-              entrenadores={entrenadores || []}
-              idsDelDia={Array.from(
-                new Set(
-                  gruposPublicadosDia
-                    .flatMap((g: any) => [g.entrenador_id, g.entrenador_apoyo_id, g.entrenador_tercero_id])
-                    .filter(Boolean)
-                    .map(String)
-                )
-              )}
-            />
-
+            {/* 16/11: «Mensaje a los entrenadores» se quita de aquí: está en Mensajes internos. */}
             {(() => {
               const sinChaqueta = trainersMissingJacket(
                 sesionesResumenDia.flatMap((sesion: any) => gruposPublicadosSesionResumenDia(sesion)),

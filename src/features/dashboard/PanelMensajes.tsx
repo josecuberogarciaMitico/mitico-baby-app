@@ -23,7 +23,8 @@ export function ContadorMensajes() {
   const cargar = useCallback(async () => {
     try {
       const enviados = await cargarMensajesEnviados(7);
-      setPendientes(enviados.reduce((n, m) => n + pendientesDeRespuesta(m), 0));
+      // Mensajes (no personas) que aún tienen a alguien sin leer o sin dar OK.
+      setPendientes(enviados.filter((m) => pendientesDeRespuesta(m) > 0).length);
     } catch {
       setPendientes(0);
     }
@@ -36,7 +37,7 @@ export function ContadorMensajes() {
   if (!pendientes) return null;
   return (
     <span
-      aria-label={`${pendientes} sin responder`}
+      aria-label={`${pendientes} mensaje${pendientes === 1 ? '' : 's'} sin responder del todo`}
       style={{
         marginLeft: 6,
         verticalAlign: 'middle',
@@ -169,8 +170,9 @@ export function PantallaMensajesInternos({ entrenadores }: { entrenadores: Entre
 
   const pestanas: { id: Pestana; texto: string; n?: number }[] = [
     { id: 'pendientes', texto: 'Sin responder', n: pendientes.length },
-    { id: 'repartos', texto: 'Repartos', n: lista.length - textos.length },
-    { id: 'mensajes', texto: 'Mensajes', n: textos.length },
+    // 16/11: los números solo cuentan lo que sigue pendiente.
+    { id: 'repartos', texto: 'Repartos', n: pendientes.filter((m) => m.tipo === 'reparto').length },
+    { id: 'mensajes', texto: 'Mensajes', n: pendientes.filter((m) => m.tipo === 'texto').length },
   ];
 
   const vacio = (t: string) => (
