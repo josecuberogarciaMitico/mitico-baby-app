@@ -19,6 +19,7 @@
     "src/features/agenda/**/*.ts",
     "src/features/trainers/trainerDayNav.ts",
     "src/features/trainers/asistenciaRapida.ts",
+    "src/features/trainers/mensajesEntrenadorLogic.ts",
     "src/features/pacoAcciones/pacoAccionesLogic.ts",
     "src/features/pacoAcciones/pacoAgenteAccionesLogic.ts",
     "src/features/pacoAcciones/pacoNotasLogic.ts",
