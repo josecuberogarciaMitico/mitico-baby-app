@@ -20,6 +20,9 @@ export function OcioRelocationRecommender({ ctx }: OcioRelocationRecommenderProp
     setOcioCambioForm,
   } = ctx;
 
+  // «Solo consulta» (Mónica): sin recomendador de grupos.
+  if (ctx.esSoloConsultaUsuarioApp) return null;
+
     if (!ocioCambioForm.alumnoId) return null;
 
     if (!ocioCambioForm.diaDestino) {

@@ -8,9 +8,12 @@ import {
 } from '../../core/reports/coordinationAlerts';
 import {
   obtenerFilasAvisosReportes,
+  obtenerHistorialReportesAlumno,
   revisarAvisoReporte,
   subirNivelCandidato,
 } from '../../services/reports/coordinationAlertsService';
+import { ReporteHistorialTarjeta } from '../../components/students/StudentHistoryPanel';
+import type { HistorialReporteAlumnoFichaApp } from '../../core/reports/reportTypes';
 import { abrirFichaAlumno } from '../students/studentFichaStore';
 
 /**
@@ -52,13 +55,49 @@ function hoyIso() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
-export function CoordinationAlerts(props: { onNivelCambiado?: () => void }) {
+export function CoordinationAlerts(props: { onNivelCambiado?: () => void; soloLectura?: boolean }) {
   const [filas, setFilas] = useState<FilaAvisoReporte[]>([]);
   const [vistos, setVistos] = useState<Set<string>>(() => leerVistos());
   const [abierto, setAbierto] = useState(false);
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [nivelElegido, setNivelElegido] = useState<Record<string, string>>({});
+  // 16/11: ver el reporte completo del entrenador sin salir del aviso.
+  const [reporteAbierto, setReporteAbierto] = useState<Record<string, HistorialReporteAlumnoFichaApp | 'cargando' | 'error'>>({});
+
+  async function alternarReporte(aviso: AvisoCoordinacion) {
+    if (reporteAbierto[aviso.id]) {
+      const { [aviso.id]: _quitado, ...resto } = reporteAbierto;
+      setReporteAbierto(resto);
+      return;
+    }
+    setReporteAbierto((r) => ({ ...r, [aviso.id]: 'cargando' }));
+    try {
+      const historial = await obtenerHistorialReportesAlumno(aviso.alumnoId);
+      const elegido =
+        (aviso.tipo === 'nivel' ? historial.find((h) => h.reporte_id === aviso.reporteId) : null) ||
+        [...historial].sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)))[0];
+      setReporteAbierto((r) => ({ ...r, [aviso.id]: elegido || 'error' }));
+    } catch {
+      setReporteAbierto((r) => ({ ...r, [aviso.id]: 'error' }));
+    }
+  }
+
+  const fechaLarga = (f: string) => {
+    const [y, m, d] = String(f || '').split('-');
+    return d && m && y ? `${d}/${m}/${y}` : f;
+  };
+  const verReporte = (aviso: AvisoCoordinacion) => {
+    const r = reporteAbierto[aviso.id];
+    if (!r) return null;
+    if (r === 'cargando') return <span className="mitico-avisos-reportes__nota">Cargando reporte…</span>;
+    if (r === 'error') return <span className="mitico-avisos-reportes__nota">No se pudo cargar el reporte. Ábrelo desde su ficha.</span>;
+    return (
+      <div style={{ marginTop: 6 }}>
+        <ReporteHistorialTarjeta report={r} currentLevel={aviso.tipo === 'nivel' ? aviso.nivelNuevo : aviso.nivel} formatDate={fechaLarga} />
+      </div>
+    );
+  };
   const ultimaCarga = useRef(0);
   const onNivelRef = useRef(props.onNivelCambiado);
   onNivelRef.current = props.onNivelCambiado;
@@ -173,10 +212,12 @@ export function CoordinationAlerts(props: { onNivelCambiado?: () => void }) {
                       {aviso.entrenador || 'Entrenador'} · {aviso.modalidad || ''} · {fechaCorta(aviso.fecha)}. Ya se ha aplicado en su ficha.
                     </span>
                     <div className="mitico-avisos-reportes__acciones">
+                      {!props.soloLectura && (
                       <button type="button" className="is-ok" disabled={ocupado === aviso.id} onClick={() => void accion(aviso, 'confirmar')}>
                         Confirmar
                       </button>
-                      {aviso.puedeDeshacer ? (
+                      )}
+                      {props.soloLectura ? null : aviso.puedeDeshacer ? (
                         <>
                           {!aviso.nivelAnterior && (
                             <select
@@ -198,7 +239,11 @@ export function CoordinationAlerts(props: { onNivelCambiado?: () => void }) {
                         <span className="mitico-avisos-reportes__nota">Hay un reporte posterior: cámbialo desde su ficha.</span>
                       )}
                       <button type="button" onClick={() => abrirFichaAlumno(aviso.alumnoId)}>Ficha</button>
+                      <button type="button" onClick={() => void alternarReporte(aviso)}>
+                        {reporteAbierto[aviso.id] ? 'Ocultar reporte' : '📄 Ver reporte'}
+                      </button>
                     </div>
+                    {verReporte(aviso)}
                   </>
                 )}
                 {aviso.tipo === 'candidato' && (
@@ -207,14 +252,22 @@ export function CoordinationAlerts(props: { onNivelCambiado?: () => void }) {
                     <strong>{aviso.alumno}: listo para {nombreNivel(aviso.siguiente)}</strong>
                     <span>Tiene los {aviso.focos} focos de {nombreNivel(aviso.nivel)} conseguidos.</span>
                     <div className="mitico-avisos-reportes__acciones">
-                      <button type="button" className="is-ok" disabled={ocupado === aviso.id} onClick={() => void accion(aviso, 'subir')}>
-                        {ocupado === aviso.id ? 'Guardando…' : `Subir a ${nombreNivel(aviso.siguiente)}`}
-                      </button>
-                      <button type="button" disabled={ocupado === aviso.id} title="Deja de avisar hasta que cambie su nivel" onClick={() => void accion(aviso, 'visto')}>
-                        Todavía no
-                      </button>
+                      {!props.soloLectura && (
+                        <>
+                          <button type="button" className="is-ok" disabled={ocupado === aviso.id} onClick={() => void accion(aviso, 'subir')}>
+                            {ocupado === aviso.id ? 'Guardando…' : `Subir a ${nombreNivel(aviso.siguiente)}`}
+                          </button>
+                          <button type="button" disabled={ocupado === aviso.id} title="Deja de avisar hasta que cambie su nivel" onClick={() => void accion(aviso, 'visto')}>
+                            Todavía no
+                          </button>
+                        </>
+                      )}
                       <button type="button" onClick={() => abrirFichaAlumno(aviso.alumnoId)}>Ficha</button>
+                      <button type="button" onClick={() => void alternarReporte(aviso)}>
+                        {reporteAbierto[aviso.id] ? 'Ocultar reporte' : '📄 Último reporte'}
+                      </button>
                     </div>
+                    {verReporte(aviso)}
                   </>
                 )}
               </li>

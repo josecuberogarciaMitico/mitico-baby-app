@@ -23,7 +23,8 @@ export function ContadorMensajes() {
   const cargar = useCallback(async () => {
     try {
       const enviados = await cargarMensajesEnviados(7);
-      setPendientes(enviados.reduce((n, m) => n + pendientesDeRespuesta(m), 0));
+      // Mensajes (no personas) que aún tienen a alguien sin leer o sin dar OK.
+      setPendientes(enviados.filter((m) => pendientesDeRespuesta(m) > 0).length);
     } catch {
       setPendientes(0);
     }
@@ -36,7 +37,7 @@ export function ContadorMensajes() {
   if (!pendientes) return null;
   return (
     <span
-      aria-label={`${pendientes} sin responder`}
+      aria-label={`${pendientes} mensaje${pendientes === 1 ? '' : 's'} sin responder del todo`}
       style={{
         marginLeft: 6,
         verticalAlign: 'middle',
@@ -140,7 +141,7 @@ function Tarjeta({ m, conSesion }: { m: MensajeEnviado; conSesion?: boolean; key
   );
 }
 
-export function PantallaMensajesInternos({ entrenadores }: { entrenadores: Entrenador[] }) {
+export function PantallaMensajesInternos({ entrenadores, soloLectura = false }: { entrenadores: Entrenador[]; soloLectura?: boolean }) {
   const [enviados, setEnviados] = useState<MensajeEnviado[] | null>(null);
   const [pestana, setPestana] = useState<Pestana | null>(null);
   const [error, setError] = useState('');
@@ -165,12 +166,13 @@ export function PantallaMensajesInternos({ entrenadores }: { entrenadores: Entre
   const pendientes = lista.filter((m) => pendientesDeMensaje(m) > 0);
   const textos = lista.filter((m) => m.tipo === 'texto');
   const grupos = repartosPorSesion(lista);
-  const activa: Pestana = pestana ?? (pendientes.length ? 'pendientes' : 'nuevo');
+  const activa: Pestana = pestana ?? (pendientes.length ? 'pendientes' : soloLectura ? 'repartos' : 'nuevo');
 
   const pestanas: { id: Pestana; texto: string; n?: number }[] = [
     { id: 'pendientes', texto: 'Sin responder', n: pendientes.length },
-    { id: 'repartos', texto: 'Repartos', n: lista.length - textos.length },
-    { id: 'mensajes', texto: 'Mensajes', n: textos.length },
+    // 16/11: los números solo cuentan lo que sigue pendiente.
+    { id: 'repartos', texto: 'Repartos', n: pendientes.filter((m) => m.tipo === 'reparto').length },
+    { id: 'mensajes', texto: 'Mensajes', n: pendientes.filter((m) => m.tipo === 'texto').length },
   ];
 
   const vacio = (t: string) => (
@@ -196,6 +198,7 @@ export function PantallaMensajesInternos({ entrenadores }: { entrenadores: Entre
             Últimos 7 días. Los repartos de reportes se piden en Trabajo en pista, en cada grupo.
           </p>
         </div>
+        {!soloLectura && (
         <button
           type="button"
           onClick={() => setPestana('nuevo')}
@@ -212,6 +215,7 @@ export function PantallaMensajesInternos({ entrenadores }: { entrenadores: Entre
         >
           ✏️ Escribir un mensaje nuevo
         </button>
+        )}
       </div>
 
       <div
@@ -297,7 +301,7 @@ export function PantallaMensajesInternos({ entrenadores }: { entrenadores: Entre
         </div>
       )}
 
-      {activa === 'nuevo' && (
+      {activa === 'nuevo' && !soloLectura && (
         <div style={{ padding: 16, borderRadius: 18, background: '#fff', border: '1px solid #e2e8f0' }}>
           <EscribirMensaje
             entrenadores={entrenadores}

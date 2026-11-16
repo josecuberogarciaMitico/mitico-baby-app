@@ -2683,6 +2683,7 @@ export function PantallaIntensivos(ctx: any) {
                             if (d) void abrirIntensivoDiaEnEntrenamientosApp(d);
                           }}
                           esMovil={esVistaMovilApp}
+                          sinRecomendar={Boolean(ctx.esSoloConsultaUsuarioApp)}
                         />
                       )}
 
@@ -2692,7 +2693,7 @@ export function PantallaIntensivos(ctx: any) {
                         </div>
                       )}
 
-                      {modoPlantillaIntensivo && (
+                      {modoPlantillaIntensivo && !ctx.esSoloConsultaUsuarioApp && (
                       <details open style={{ border: '1px solid #e2e8f0', borderRadius: 14, padding: '8px 10px', background: '#fff' }}>
                         <summary style={{ fontWeight: 900, cursor: 'pointer' }}>
                           {modoPlantillaIntensivo ? 'Crear los grupos con el recomendador' : 'Recomendador automático (para empezar de cero)'}
