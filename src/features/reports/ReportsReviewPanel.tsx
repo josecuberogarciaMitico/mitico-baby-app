@@ -17,6 +17,7 @@ import {
   tieneTextoEscrito,
   type FiltroRevision,
 } from './reportsReviewLogic';
+import { CalidadReportesPanel } from './CalidadReportesPanel';
 
 // Revisar reportes (01/11): todos los reportes de una semana por día, turno y
 // grupo, con lo que rellenó cada entrenador y los que faltan. Coordinación
@@ -236,7 +237,7 @@ function TarjetaReporte({ fila, editando, setEditando, recargar }: {
   );
 }
 
-type ModoRevision = 'semana' | 'nino' | 'dia';
+type ModoRevision = 'semana' | 'nino' | 'dia' | 'calidad';
 
 /** Buscar por nombre (01/11): último reporte de cada niño, de cualquier fecha. */
 function BusquedaNino({ esVistaMovilApp }: { esVistaMovilApp?: boolean }) {
@@ -353,7 +354,7 @@ export function ReportsReviewPanel({ esVistaMovilApp }: { esVistaMovilApp?: bool
   const hasta = modo === 'dia' ? dia : domingo;
 
   const cargar = React.useCallback(() => {
-    if (modo === 'nino' || !/^\d{4}-\d{2}-\d{2}$/.test(desde)) return;
+    if (modo === 'nino' || modo === 'calidad' || !/^\d{4}-\d{2}-\d{2}$/.test(desde)) return;
     setError('');
     cargarReportesCoordinacion(desde, hasta)
       .then(setFilas)
@@ -381,10 +382,12 @@ export function ReportsReviewPanel({ esVistaMovilApp }: { esVistaMovilApp?: bool
         <div>
           <div style={{ fontSize: 11, fontWeight: 900, letterSpacing: '.06em', color: '#86efac' }}>REVISAR REPORTES</div>
           <h2 style={{ margin: '4px 0 2px', fontSize: esVistaMovilApp ? 22 : 26, lineHeight: 1.1 }}>
-            {modo === 'semana' ? 'Reportes de la semana' : modo === 'dia' ? 'Reportes de un día' : 'Buscar reportes de un niño'}
+            {modo === 'semana' ? 'Reportes de la semana' : modo === 'dia' ? 'Reportes de un día' : modo === 'calidad' ? 'Calidad de los reportes' : 'Buscar reportes de un niño'}
           </h2>
           <p style={{ margin: 0, fontSize: 13, color: '#cbd5e1' }}>
-            {modo === 'nino'
+            {modo === 'calidad'
+              ? 'Qué entrenadores rellenan con detalle y quién va a menos. Toca uno para ver sus reportes poco detallados.'
+              : modo === 'nino'
               ? 'Escribe su nombre y te sale su último reporte, sea de cuando sea.'
               : 'Por día, turno y grupo. Puedes corregir lo que escribió el entrenador.'}
           </p>
@@ -394,6 +397,7 @@ export function ReportsReviewPanel({ esVistaMovilApp }: { esVistaMovilApp?: bool
             ['semana', '📅 Semana'],
             ['nino', '🔎 Buscar niño'],
             ['dia', '📆 Buscar día'],
+            ['calidad', '🚦 Calidad'],
           ] as const).map(([valor, texto]) => (
             <button
               key={valor}
@@ -446,8 +450,9 @@ export function ReportsReviewPanel({ esVistaMovilApp }: { esVistaMovilApp?: bool
       </div>
 
       {modo === 'nino' && <BusquedaNino esVistaMovilApp={esVistaMovilApp} />}
+      {modo === 'calidad' && <CalidadReportesPanel esVistaMovilApp={esVistaMovilApp} />}
 
-      {modo !== 'nino' && (
+      {modo !== 'nino' && modo !== 'calidad' && (
       <>
       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
         {filtros.map(([valor, texto]) => (

@@ -559,6 +559,27 @@ export const NOTA_HABILIDAD_MIN = 10;
 export const NOTA_HABILIDAD_MAX = 300;
 
 /**
+ * 17/11/2026 (Jose): un reporte con TODO en «Lo consigue» y nada escrito no es
+ * fiable (puede proponer subir de nivel sin pruebas). En ese caso hace falta al
+ * menos una frase: en la nota de alguna habilidad o en la observación.
+ * Solo cuenta lo valorado (no «No trabajado»).
+ */
+export function faltaJustificacionTodoConsigue(
+  evaluacion: Record<string, string | null | undefined> | null | undefined,
+  notas: Record<string, string | null | undefined> | null | undefined,
+  observacion?: string | null
+): boolean {
+  const valores = Object.values(evaluacion || {}).filter((v) => v && v !== 'No trabajado');
+  if (valores.length === 0 || !valores.every((v) => v === 'Consolidado')) return false;
+  const algoEscrito =
+    Object.values(notas || {}).some((n) => String(n || '').trim().length >= NOTA_HABILIDAD_MIN) ||
+    String(observacion || '').trim().length >= NOTA_HABILIDAD_MIN;
+  return !algoEscrito;
+}
+export const MENSAJE_JUSTIFICAR_TODO_CONSIGUE =
+  'Has marcado todo «Lo consigue». Escribe al menos una frase (en una habilidad o en la observación) contando qué has visto hoy: sin eso coordinación no puede fiarse si toca subirle de nivel.';
+
+/**
  * Valida el reporte por focos y calcula los campos que Supabase sigue
  * necesitando (ritmo, mejoras, prioridades y progresión inicial), para no
  * cambiar la función de guardado ni romper a quien lee esas columnas.
@@ -600,6 +621,16 @@ export function prepararEnvioReporteFocos(
     if (nota.length > NOTA_HABILIDAD_MAX) {
       return { ok: false, error: `La nota de «${h.nombre}» es demasiado larga (máximo ${NOTA_HABILIDAD_MAX} caracteres).` };
     }
+  }
+
+  if (
+    faltaJustificacionTodoConsigue(
+      Object.fromEntries(valoradas.map((h) => [h.id, form.evaluacionTecnica[h.id]])),
+      notas,
+      form.observaciones
+    )
+  ) {
+    return { ok: false, error: MENSAJE_JUSTIFICAR_TODO_CONSIGUE };
   }
 
   const valor = (id: string) => form.evaluacionTecnica[id];
