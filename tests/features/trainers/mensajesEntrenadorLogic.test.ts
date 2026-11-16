@@ -1,4 +1,4 @@
-import { resumenDestinos, ultimoRepartoGrupo, vistaReparto, type Reparto } from '../../../src/features/trainers/mensajesEntrenadorLogic';
+import { grupoDeReparto, pendientesDeMensaje, repartosPorSesion, resumenDestinos, sesionDeReparto, ultimoRepartoGrupo, vistaReparto, type Reparto } from '../../../src/features/trainers/mensajesEntrenadorLogic';
 
 function equal<T>(actual: T, expected: T, label: string) {
   if (actual !== expected) throw new Error(`${label}: esperado ${String(expected)}, recibido ${String(actual)}`);
@@ -72,4 +72,20 @@ test('reparto: un niño con reporte hecho se queda con quien lo hizo', () => {
   equal(deAna.fijos[0].hecho, true, 'marcado como hecho');
   equal(deAna.obligatorios.join(), '1', 'Luis lo reportó Ana: no lo puede soltar');
   equal(deAna.preseleccion.sort().join(), '1,2', 'preselección');
+});
+
+test('panel: repartos por turno y pendientes', () => {
+  const d = (ok: boolean) => ({ entrenador_id: ok ? 'a' : 'b', entrenador: 'X', leido_at: null, ok_at: ok ? 'x' : null });
+  const r = (grupo: string, sesion: string, cerrado: boolean) => ({
+    mensaje_id: grupo + sesion, tipo: 'reparto' as const, titulo: `Repartid los reportes de ${grupo}`,
+    cuerpo: `${sesion}. Marca…`, created_at: '2026-11-16T10:00:00Z', grupo_id: 'g', cerrado_at: cerrado ? 'x' : null, destinos: [d(true), d(false)],
+  });
+  const lista = [r('Grupo 2 · B', '15/11 · 09:45', false), r('Grupo 1 · A', '15/11 · 09:45', true), r('Grupo 1 · A', '14/11 · 09:45', false)];
+  const g = repartosPorSesion(lista);
+  equal(g.length, 2, 'dos turnos');
+  equal(g[0].sesion, '15/11 · 09:45', 'el más reciente primero');
+  equal(grupoDeReparto(g[0].mensajes[0].titulo), 'Grupo 1 · A', 'grupos ordenados');
+  equal(sesionDeReparto('15/11 · 09:45. Marca'), '15/11 · 09:45', 'sesión');
+  equal(pendientesDeMensaje(lista[0]), 1, 'reparto abierto: 1 sin OK');
+  equal(pendientesDeMensaje(lista[1]), 0, 'reparto cerrado: 0');
 });
