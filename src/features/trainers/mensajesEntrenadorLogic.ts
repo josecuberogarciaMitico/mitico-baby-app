@@ -1,7 +1,15 @@
 // Mensajes de coordinación a los entrenadores (16/11). Lógica pura.
 
 export type EntrenadorReparto = { entrenador_id: string; entrenador: string; ok_at: string | null; leido_at: string | null };
-export type AlumnoReparto = { alumno_id: string; alumno: string; entrenador_id: string | null; fijo: boolean };
+export type AlumnoReparto = {
+  alumno_id: string;
+  alumno: string;
+  entrenador_id: string | null;
+  /** Lo tiene un compañero que ya dio el OK. */
+  fijo: boolean;
+  /** Quién hizo ya su reporte (16/11: nadie espera a nadie para reportar). */
+  reportado_por?: string | null;
+};
 export type Reparto = { entrenadores: EntrenadorReparto[]; alumnos: AlumnoReparto[] };
 
 export type MensajeEntrenador = {
@@ -32,17 +40,29 @@ export type MensajeEnviado = {
 
 export const nombreCorto = (n: string | null | undefined) => String(n || '').trim().split(/\s+/)[0] || '—';
 
-/** Lo que ve un entrenador en el reparto: niños fijos (de quien ya dio OK) y libres. */
+/**
+ * Lo que ve un entrenador en el reparto: niños fijos (de un compañero que ya
+ * dio OK o que ya hizo su reporte) y libres. Los que ya reporté yo van
+ * marcados y no se pueden soltar.
+ */
 export function vistaReparto(r: Reparto, yo: string) {
   const nombre = new Map(r.entrenadores.map((e) => [e.entrenador_id, e.entrenador]));
-  const fijos = r.alumnos.filter((a) => a.fijo && a.entrenador_id !== yo);
-  const libres = r.alumnos.filter((a) => !(a.fijo && a.entrenador_id !== yo));
+  const deOtro = (a: AlumnoReparto) =>
+    Boolean(a.reportado_por && a.reportado_por !== yo) || (a.fijo && a.entrenador_id !== yo);
+  const fijos = r.alumnos.filter(deOtro);
+  const libres = r.alumnos.filter((a) => !deOtro(a));
+  const obligatorios = libres.filter((a) => a.reportado_por === yo).map((a) => a.alumno_id);
   const companeros = r.entrenadores.filter((e) => e.entrenador_id !== yo);
   const pendientes = companeros.filter((e) => !e.ok_at);
   return {
-    fijos: fijos.map((a) => ({ ...a, de: nombreCorto(nombre.get(a.entrenador_id || '')) })),
+    fijos: fijos.map((a) => ({
+      ...a,
+      de: nombreCorto(nombre.get((a.reportado_por && a.reportado_por !== yo ? a.reportado_por : a.entrenador_id) || '')),
+      hecho: Boolean(a.reportado_por && a.reportado_por !== yo),
+    })),
     libres,
-    preseleccion: libres.filter((a) => a.entrenador_id === yo).map((a) => a.alumno_id),
+    obligatorios,
+    preseleccion: Array.from(new Set([...libres.filter((a) => a.entrenador_id === yo).map((a) => a.alumno_id), ...obligatorios])),
     soyUltimo: pendientes.length === 0,
     companerosOk: companeros.filter((e) => e.ok_at).map((e) => nombreCorto(e.entrenador)),
     companerosPendientes: pendientes.map((e) => nombreCorto(e.entrenador)),

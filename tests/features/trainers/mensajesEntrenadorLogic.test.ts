@@ -54,3 +54,22 @@ test('resumen para coordinación', () => {
   equal(ultimoRepartoGrupo(enviados, 'g')?.mensaje_id, 'b', 'el último');
   equal(ultimoRepartoGrupo(enviados, 'otro'), null, 'otro grupo');
 });
+
+test('reparto: un niño con reporte hecho se queda con quien lo hizo', () => {
+  const abierto: Reparto = {
+    entrenadores: [
+      { entrenador_id: 'ana', entrenador: 'ANA', ok_at: null, leido_at: null },
+      { entrenador_id: 'pedro', entrenador: 'PEDRO', ok_at: null, leido_at: null },
+    ],
+    alumnos: [
+      { alumno_id: '1', alumno: 'LUIS', entrenador_id: 'ana', fijo: false, reportado_por: 'ana' },
+      { alumno_id: '2', alumno: 'JAIME', entrenador_id: 'ana', fijo: false, reportado_por: null },
+      { alumno_id: '3', alumno: 'MARTA', entrenador_id: 'pedro', fijo: false, reportado_por: 'pedro' },
+    ],
+  };
+  const deAna = vistaReparto(abierto, 'ana');
+  equal(deAna.fijos.map((a) => a.alumno).join(), 'MARTA', 'Marta la reportó Pedro');
+  equal(deAna.fijos[0].hecho, true, 'marcado como hecho');
+  equal(deAna.obligatorios.join(), '1', 'Luis lo reportó Ana: no lo puede soltar');
+  equal(deAna.preseleccion.sort().join(), '1,2', 'preselección');
+});

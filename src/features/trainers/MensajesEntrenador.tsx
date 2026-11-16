@@ -113,6 +113,7 @@ export function MensajesEntrenador({ onRepartoHecho }: { onRepartoHecho?: () => 
         const marcados = v.soyUltimo ? v.libres.map((a) => a.alumno_id) : elegidos[m.mensaje_id] ?? v.preseleccion;
         const nombresMarcados = v.libres.filter((a) => marcados.includes(a.alumno_id)).map((a) => a.alumno);
         const alternar = (id: string) =>
+          !v.obligatorios.includes(id) &&
           setElegidos((prev) => {
             const actual = prev[m.mensaje_id] ?? v.preseleccion;
             return { ...prev, [m.mensaje_id]: actual.includes(id) ? actual.filter((x) => x !== id) : [...actual, id] };
@@ -126,8 +127,8 @@ export function MensajesEntrenador({ onRepartoHecho }: { onRepartoHecho?: () => 
 
             {v.fijos.length > 0 && (
               <div style={{ fontSize: 13, background: '#fff', borderRadius: 10, padding: '8px 10px' }}>
-                <strong>Ya confirmado por tu compañero:</strong>{' '}
-                {v.fijos.map((a) => `${a.alumno} (${a.de})`).join(', ')}
+                <strong>De tu compañero:</strong>{' '}
+                {v.fijos.map((a) => `${a.alumno} (${a.de}${a.hecho ? ', reporte hecho' : ''})`).join(', ')}
               </div>
             )}
 
@@ -142,6 +143,7 @@ export function MensajesEntrenador({ onRepartoHecho }: { onRepartoHecho?: () => 
                     ? 'Eres el último en confirmar: estos niños son tuyos.'
                     : 'Marca los niños que has llevado tú (los que dejes sin marcar se los queda tu compañero):'}
                 </p>
+                <p style={{ margin: 0, fontSize: 12 }}>Puedes ir haciendo tus reportes ya, sin esperar a tu compañero.</p>
                 <div style={{ display: 'grid', gap: 6 }}>
                   {v.libres.map((a) => {
                     const mio = marcados.includes(a.alumno_id);
@@ -165,11 +167,12 @@ export function MensajesEntrenador({ onRepartoHecho }: { onRepartoHecho?: () => 
                         <input
                           type="checkbox"
                           checked={mio}
-                          disabled={v.soyUltimo || ocupado === m.mensaje_id}
+                          disabled={v.soyUltimo || v.obligatorios.includes(a.alumno_id) || ocupado === m.mensaje_id}
                           onChange={() => alternar(a.alumno_id)}
                           style={{ width: 20, height: 20, flex: '0 0 auto' }}
                         />
                         {a.alumno}
+                        {v.obligatorios.includes(a.alumno_id) && <span style={{ fontSize: 12, fontWeight: 700 }}>· reporte hecho</span>}
                       </label>
                     );
                   })}

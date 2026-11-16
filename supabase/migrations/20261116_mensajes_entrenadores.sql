@@ -6,6 +6,9 @@
 --    vez. Los niños de quien ya dio OK quedan fijos: el siguiente solo puede
 --    repartir los niños libres. Cuando todos han dado OK, el reparto se cierra.
 --    Coordinación lo puede seguir cambiando desde Trabajo en pista.
+--    (16/11) Nadie espera a nadie: cada uno puede hacer los reportes de sus
+--    niños en cualquier momento. Un niño con el reporte ya hecho se queda con
+--    quien lo hizo (ni se puede coger ni soltar).
 -- Las tablas no tienen políticas: solo se usan a través de estas funciones.
 -- Rollback: 20261116_mensajes_entrenadores_rollback.sql
 
@@ -143,7 +146,7 @@ begin
   values ('reparto',
           'Repartid los reportes de ' || v_grupo,
           to_char(v_fecha, 'DD/MM') || ' · ' || to_char(v_hora, 'HH24:MI') ||
-          '. Marca los niños que has llevado tú y pulsa OK. Solo se puede hacer una vez.',
+          '. Marca los niños que has llevado tú y pulsa OK (solo una vez). Puedes ir haciendo tus reportes sin esperar a tu compañero.',
           p_grupo_id, auth.uid())
   returning id into v_id;
 
@@ -175,7 +178,10 @@ as $$
         order by e.orden, e.entrenador) from ents e), '[]'::jsonb),
     'alumnos', coalesce((select jsonb_agg(jsonb_build_object(
         'alumno_id', a.id, 'alumno', a.nombre_completo, 'entrenador_id', r.entrenador_id,
-        'fijo', exists (select 1 from ents e where e.entrenador_id = r.entrenador_id and e.ok_at is not null))
+        'fijo', exists (select 1 from ents e where e.entrenador_id = r.entrenador_id and e.ok_at is not null),
+        'reportado_por', (select rp.entrenador_id from public.reportes rp
+                          where rp.grupo_id = m.grupo_id and rp.alumno_id = ga.alumno_id
+                          order by rp.created_at desc limit 1))
         order by a.nombre_completo)
       from m
       join public.grupo_alumnos ga on ga.grupo_id = m.grupo_id
@@ -280,6 +286,21 @@ begin
     raise exception 'Alguno de esos niños ya lo ha confirmado tu compañero.';
   end if;
 
+  -- Un niño con el reporte ya hecho se queda con quien lo hizo.
+  if exists (
+    select 1 from unnest(v_mis) x(id)
+    where exists (select 1 from public.reportes rp where rp.grupo_id = v_m.grupo_id and rp.alumno_id = x.id
+                  and rp.entrenador_id is distinct from v_ent)
+  ) then
+    raise exception 'Alguno de esos niños ya tiene el reporte hecho por tu compañero.';
+  end if;
+  if exists (
+    select 1 from public.reportes rp
+    where rp.grupo_id = v_m.grupo_id and rp.entrenador_id = v_ent and not (rp.alumno_id = any(v_mis))
+  ) then
+    raise exception 'Ya has hecho el reporte de algún niño que no has marcado: márcalo.';
+  end if;
+
   -- Los demás entrenadores que aún no han dado OK.
   select array_agg(d.entrenador_id) into v_pendientes
   from public.mensajes_entrenador_destino_app d
@@ -292,6 +313,8 @@ begin
     left join public.mensajes_entrenador_destino_app d on d.mensaje_id = p_mensaje_id and d.entrenador_id = r.entrenador_id
     where ga.grupo_id = v_m.grupo_id
       and coalesce(d.ok_at is null or r.entrenador_id = v_ent, true)
+      and not exists (select 1 from public.reportes rp where rp.grupo_id = ga.grupo_id and rp.alumno_id = ga.alumno_id
+                      and rp.entrenador_id is distinct from v_ent)
       and not (ga.alumno_id = any(v_mis))
   ) then
     raise exception 'Eres el último en confirmar: los niños que quedan son tuyos.';
