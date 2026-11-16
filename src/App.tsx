@@ -587,6 +587,7 @@ import { useAltasRespondidasAviso } from './features/admin/useAltasRespondidasAv
 import { UserAccessScreen } from './features/admin/UserAccessScreen';
 import { descargarInformeSnowZonePdf } from './features/reports/snowZonePdf';
 import { aplicarMarcasRecientes, marcarAsistenciaRapida } from './features/trainers/asistenciaRapida';
+import { PanelMensajes } from './features/dashboard/PanelMensajes';
 import { DailySummaryScreen } from './features/dashboard/DailySummaryScreen';
 import { HomeScreen } from './features/dashboard/HomeScreen';
 import { OcioStudentsScreen } from './features/ocio/OcioStudentsScreen';
@@ -20144,6 +20145,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       style={layout}
     >
       {esCoordinadorApp && !esAdministracionApp && !esSoloConsultaUsuarioApp && <CoordinationAlerts onNivelCambiado={() => void cargarAlumnos()} />}
+      {esCoordinadorApp && !esAdministracionApp && !esSoloConsultaUsuarioApp && <PanelMensajes entrenadores={entrenadores} />}
       {esCoordinadorApp && (
         <StudentFichaSheet alumnos={alumnos} ocioAlumnos={ocioAlumnos} historialPorAlumno={historialReportesFichaPorAlumno} cargandoHistorialId={historialReportesFichaCargandoId} cargarHistorial={cargarHistorialReportesAlumnoFichaApp} formatDate={formatearFecha} cargarAlumnos={cargarAlumnos} />
       )}

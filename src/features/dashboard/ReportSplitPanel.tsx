@@ -79,6 +79,14 @@ export function ReportSplitPanel({ grupo, consultarSupabase, ejecutarFuncion }: 
     if (abierto) void cargarReparto();
   }, [abierto, filas, cargar, cargarReparto]);
 
+  // Mientras está abierto y el reparto sin cerrar, se actualiza solo cada 30 s.
+  const repartoAbierto = Boolean(reparto && !reparto.cerrado_at);
+  React.useEffect(() => {
+    if (!abierto || !repartoAbierto) return;
+    const t = window.setInterval(() => void Promise.all([cargar(), cargarReparto()]), 30000);
+    return () => window.clearInterval(t);
+  }, [abierto, repartoAbierto, cargar, cargarReparto]);
+
   if (!grupoId || !principalId || !apoyoId) return null;
 
   const entrenadores = [

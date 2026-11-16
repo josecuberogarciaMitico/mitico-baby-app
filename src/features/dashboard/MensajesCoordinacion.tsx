@@ -5,12 +5,18 @@ import { cargarMensajesEnviados, enviarMensajeEntrenadores } from '../../service
 // Trabajo en pista (16/11): escribir a los entrenadores desde la app y ver
 // quién lo ha leído. Les sale arriba en su vista hasta que pulsan «Leído».
 
-type Entrenador = { id: string; nombre_completo?: string | null; activo?: boolean | null };
+// La lista de la app (v_panel_entrenadores) trae `entrenador_id`; se acepta también `id`.
+type Entrenador = { id?: string; entrenador_id?: string; nombre_completo?: string | null; activo?: boolean | null };
 
 type Props = {
   entrenadores: Entrenador[];
   /** Entrenadores con grupo el día que se está viendo. */
   idsDelDia: string[];
+  /** Días hacia atrás de la lista de enviados (2 por defecto). */
+  dias?: number;
+  abiertoInicial?: boolean;
+  /** Panel global: primero la lista de enviados y «Escribir» plegado. */
+  modoPanel?: boolean;
 };
 
 const chip = (activo: boolean): React.CSSProperties => ({
@@ -25,8 +31,8 @@ const chip = (activo: boolean): React.CSSProperties => ({
   cursor: 'pointer',
 });
 
-export function MensajesCoordinacion({ entrenadores, idsDelDia }: Props) {
-  const [abierto, setAbierto] = useState(false);
+export function MensajesCoordinacion({ entrenadores, idsDelDia, dias = 2, abiertoInicial = false, modoPanel = false }: Props) {
+  const [abierto, setAbierto] = useState(abiertoInicial);
   const [texto, setTexto] = useState('');
   const [para, setPara] = useState<string[]>([]);
   const [enviados, setEnviados] = useState<MensajeEnviado[]>([]);
@@ -37,7 +43,8 @@ export function MensajesCoordinacion({ entrenadores, idsDelDia }: Props) {
   const activos = useMemo(
     () =>
       (entrenadores || [])
-        .filter((e) => e.activo !== false)
+        .map((e) => ({ ...e, id: String(e.id || e.entrenador_id || '') }))
+        .filter((e) => e.id && e.activo !== false)
         .sort((a, b) => String(a.nombre_completo || '').localeCompare(String(b.nombre_completo || ''), 'es')),
     [entrenadores]
   );
@@ -45,18 +52,18 @@ export function MensajesCoordinacion({ entrenadores, idsDelDia }: Props) {
 
   const cargar = useCallback(async () => {
     try {
-      setEnviados(await cargarMensajesEnviados(2));
+      setEnviados(await cargarMensajesEnviados(dias));
       setDisponible(true);
     } catch {
       setDisponible(false);
     }
-  }, []);
+  }, [dias]);
 
   useEffect(() => {
     void cargar();
-    const t = window.setInterval(() => void cargar(), 60000);
+    const t = window.setInterval(() => void cargar(), abierto ? 30000 : 60000);
     return () => window.clearInterval(t);
-  }, [cargar]);
+  }, [cargar, abierto]);
 
   if (!disponible) return null;
 
@@ -82,24 +89,8 @@ export function MensajesCoordinacion({ entrenadores, idsDelDia }: Props) {
   const alternar = (id: string) => setPara((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
   const mismos = (a: string[], b: string[]) => a.length === b.length && a.every((x) => b.includes(x));
 
-  return (
-    <details
-      open={abierto}
-      onToggle={(e) => setAbierto((e.target as HTMLDetailsElement).open)}
-      style={{ border: '1px solid #c7d2fe', borderRadius: 14, background: '#eef2ff', overflow: 'hidden', minWidth: 0 }}
-    >
-      <summary style={{ cursor: 'pointer', padding: '11px 14px', fontWeight: 900, color: '#312e81' }}>
-        ✉️ Mensaje a los entrenadores
-        {textos.length > 0 && (
-          <span style={{ fontWeight: 700, color: '#4338ca' }}>
-            {' · '}
-            {textos.length} enviado{textos.length === 1 ? '' : 's'}
-            {sinLeer > 0 ? ` · ${sinLeer} sin leer` : ' · todo leído'}
-          </span>
-        )}
-      </summary>
-
-      <div style={{ padding: '0 14px 14px', display: 'grid', gap: 10 }}>
+  const compositor = (
+    <>
         <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           {MENSAJES_RAPIDOS.map((m) => (
             <button key={m} type="button" style={chip(texto === m)} onClick={() => setTexto(m)}>
@@ -160,17 +151,25 @@ export function MensajesCoordinacion({ entrenadores, idsDelDia }: Props) {
           {ocupado ? 'Enviando…' : `Enviar${para.length ? ` a ${para.length}` : ''}`}
         </button>
         {aviso && <p style={{ margin: 0, fontSize: 13, fontWeight: 800, color: '#312e81' }}>{aviso}</p>}
+    </>
+  );
 
+  const lista = (
+    <>
         {enviados.length > 0 && (
           <div style={{ display: 'grid', gap: 6 }}>
-            <strong style={{ fontSize: 13 }}>Enviados (últimos 2 días)</strong>
+            <strong style={{ fontSize: 13 }}>Enviados (últimos {dias} días)</strong>
             {enviados.map((m) => (
               <details key={m.mensaje_id} style={{ background: '#fff', borderRadius: 10, padding: '7px 10px' }}>
                 <summary style={{ cursor: 'pointer', fontSize: 13 }}>
-                  <strong>{m.tipo === 'reparto' ? '📝 ' : ''}{m.titulo}</strong>
+                  <strong>
+                    {m.tipo === 'reparto' ? '📝 ' : ''}
+                    {m.titulo}
+                    {m.tipo === 'reparto' && m.cuerpo ? ` (${m.cuerpo.split('.')[0]})` : ''}
+                  </strong>
                   <span style={{ color: '#475569' }}>
                     {' · '}
-                    {new Date(m.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(m.created_at).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                     {' · '}
                     {resumenDestinos(m)}
                   </span>
@@ -199,6 +198,43 @@ export function MensajesCoordinacion({ entrenadores, idsDelDia }: Props) {
             ))}
           </div>
         )}
+    </>
+  );
+
+  // Panel global (16/11): primero quién ha respondido; escribir, plegado.
+  if (modoPanel) {
+    return (
+      <div style={{ display: 'grid', gap: 10 }}>
+        {enviados.length === 0 && <p style={{ margin: 0, fontSize: 13, color: '#475569' }}>No has enviado mensajes estos días.</p>}
+        {lista}
+        <details style={{ border: '1px solid #c7d2fe', borderRadius: 12, background: '#eef2ff' }}>
+          <summary style={{ cursor: 'pointer', padding: '10px 12px', fontWeight: 900, color: '#312e81' }}>✏️ Escribir un mensaje</summary>
+          <div style={{ padding: '0 12px 12px', display: 'grid', gap: 10 }}>{compositor}</div>
+        </details>
+      </div>
+    );
+  }
+
+  return (
+    <details
+      open={abierto}
+      onToggle={(e) => setAbierto((e.target as HTMLDetailsElement).open)}
+      style={{ border: '1px solid #c7d2fe', borderRadius: 14, background: '#eef2ff', overflow: 'hidden', minWidth: 0 }}
+    >
+      <summary style={{ cursor: 'pointer', padding: '11px 14px', fontWeight: 900, color: '#312e81' }}>
+        ✉️ Mensaje a los entrenadores
+        {textos.length > 0 && (
+          <span style={{ fontWeight: 700, color: '#4338ca' }}>
+            {' · '}
+            {textos.length} enviado{textos.length === 1 ? '' : 's'}
+            {sinLeer > 0 ? ` · ${sinLeer} sin leer` : ' · todo leído'}
+          </span>
+        )}
+      </summary>
+
+      <div style={{ padding: '0 14px 14px', display: 'grid', gap: 10 }}>
+        {compositor}
+        {lista}
       </div>
     </details>
   );
