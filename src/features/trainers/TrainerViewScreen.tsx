@@ -25,6 +25,7 @@ import {
 } from './trainerDayNav';
 import { AvisosCambioGrupoEntrenador, ChipAvisosCambio, useAvisosCambioPendientes } from './AvisosCambioGrupo';
 import { MensajesEntrenador } from './MensajesEntrenador';
+import { CalidadPropiaEntrenador, ReportesDevueltosEntrenador } from './CalidadEntrenador';
 import { DisponibilidadSemanaEntrenador } from './DisponibilidadSemanaEntrenador';
 
 // Edad del niño, discreta junto a su nombre (grupos y reportes del entrenador).
@@ -940,6 +941,9 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
           {/* 06/11: cambios en sus grupos publicados desde la última vez (sin push). */}
           {esEntrenadorApp && <MensajesEntrenador onRepartoHecho={() => void actualizarVistaEntrenadorCompletaApp()} />}
           {esEntrenadorApp && <AvisosCambioGrupoEntrenador />}
+          {/* 17/11: reportes devueltos por coordinación y calidad propia (arriba si va mal). */}
+          {esEntrenadorApp && <ReportesDevueltosEntrenador />}
+          {esEntrenadorApp && <CalidadPropiaEntrenador posicion="arriba" />}
 
           {esEntrenadorApp && (
             <article
@@ -2657,6 +2661,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                 })()}
               </details>
             ))}
+          {esEntrenadorApp && <CalidadPropiaEntrenador posicion="abajo" />}
         </section>
       )}
 

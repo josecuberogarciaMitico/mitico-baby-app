@@ -1,4 +1,4 @@
-import { calidadPorEntrenador, calidadReporte, fallosDe, semaforoDe } from '../../../src/features/reports/calidadReportes';
+import { calidadPorEntrenador, calidadPropia, calidadReporte, consejosDe, fallosDe, formatoNota, notaReporte, semaforoDe } from '../../../src/features/reports/calidadReportes';
 import { faltaJustificacionTodoConsigue, notaSuficiente, prepararEnvioReporteFocos } from '../../../src/lib/adaptiveReport';
 
 function equal<T>(actual: T, expected: T, label: string) {
@@ -41,33 +41,48 @@ test('calidad: letras y observación de un reporte', () => {
   equal(calidadReporte({ reporte_id: 'r', fecha: '2026-11-15', entrenador: 'X', evaluacion_tecnica: null }).pocoDetallado, false, 'sin evaluación no se marca');
 });
 
-test('calidad: semáforo', () => {
-  const p = (reportes: number, pct: number, letras: number, extra: Partial<{ faltan: number; pctTarde: number; pctIgualGrupo: number }> = {}) => ({
-    reportes, pocoDetallados: 0, pctPocoDetallados: pct, letrasMedia: letras, pctConObservacion: 0, faltan: 0, pctTarde: 0, pctIgualGrupo: 0, ...extra,
-  });
-  equal(semaforoDe(p(3, 100, 0)), 'sin_datos', 'poca muestra');
-  equal(semaforoDe(p(10, 50, 200)), 'rojo', 'muchos poco detallados');
-  equal(semaforoDe(p(10, 0, 20)), 'rojo', 'casi no escribe');
-  equal(semaforoDe(p(10, 20, 200)), 'amarillo', 'algunos');
-  equal(semaforoDe(p(10, 0, 60)), 'amarillo', 'escribe poco');
-  equal(semaforoDe(p(10, 10, 120)), 'verde', 'bien');
-  equal(semaforoDe(p(10, 0, 200, { pctTarde: 50 })), 'amarillo', 'rellena tarde');
-  equal(semaforoDe(p(10, 0, 200, { pctIgualGrupo: 30 })), 'amarillo', 'igual a todo el grupo');
-  equal(semaforoDe(p(10, 0, 200, { faltan: 3 })), 'amarillo', 'le faltan');
-  equal(semaforoDe(p(0, 0, 0, { faltan: 4 })), 'rojo', 'no hace ninguno y le faltan');
+const periodoFalso = (o: object = {}) => ({
+  reportes: 10, nota: 9, partes: { detalle: 1, concreto: 1, personal: 1, aTiempo: 1 }, faltan: 0, pctTarde: 0, pctIgualGrupo: 0,
+  pocoDetallados: 0, pctPocoDetallados: 0, letrasMedia: 200, ...o,
 });
 
-test('calidad: en qué falla, en frases', () => {
-  const p = (o: object) => ({ reportes: 10, pocoDetallados: 0, pctPocoDetallados: 0, letrasMedia: 200, pctConObservacion: 0, faltan: 0, pctTarde: 0, pctIgualGrupo: 0, ...o });
-  equal(fallosDe(p({}), p({}), false).length, 0, 'sin fallos');
-  const f = fallosDe(p({ pocoDetallados: 5, pctPocoDetallados: 50, letrasMedia: 28, faltan: 3, pctTarde: 60, pctIgualGrupo: 25 }), p({ letrasMedia: 200 }), true);
-  equal(f[0], 'Marca todo «Lo consigue» sin escribir nada en 5 de 10 reportes (50%).', 'primero la calidad');
-  equal(f[1], 'Va a menos: ahora escribe 28 letras por reporte; antes 200.', 'va a menos');
-  equal(f[f.length - 1], 'Le faltan 3 reportes por hacer.', 'al final lo que falta');
-  equal(fallosDe(p({ reportes: 0, faltan: 4 }), p({}), false)[0], 'Le faltan 4 reportes por hacer.', 'sin reportes, solo lo que falta');
+test('calidad: nota de 0 a 10 de cada reporte', () => {
+  const base = { fecha: '2026-11-15', valoradas: 2, aMejorar: 1, letras: 60, pocoDetallado: false, igualGrupo: false, diasTarde: 0 };
+  equal(notaReporte(base)?.total, 10, 'todo bien = 10');
+  equal(notaReporte({ ...base, aMejorar: 0, letras: 0, pocoDetallado: true })?.total, 3, 'todo «Lo consigue» sin escribir = 3');
+  equal(notaReporte({ ...base, aMejorar: 2 })?.total, 8, '60 letras para dos habilidades a mejorar = medio detalle');
+  equal(notaReporte({ ...base, diasTarde: 1 })?.total, 10, 'al día siguiente no resta');
+  equal(notaReporte({ ...base, diasTarde: 2 })?.total, 9.3, 'dos días después: medio punto de «a tiempo»');
+  equal(notaReporte({ ...base, diasTarde: 5 })?.total, 8.5, 'muy tarde: sin «a tiempo»');
+  equal(notaReporte({ ...base, igualGrupo: true })?.total, 8.5, 'igual que todo el grupo');
+  equal(notaReporte({ ...base, valoradas: 0 }), null, 'sin habilidades valoradas no se puntúa');
+});
+
+test('calidad: semáforo por nota', () => {
+  equal(semaforoDe(periodoFalso({ reportes: 3, nota: 2 })), 'sin_datos', 'poca muestra');
+  equal(semaforoDe(periodoFalso({ nota: 6.2 })), 'rojo', 'menos de 6,5');
+  equal(semaforoDe(periodoFalso({ nota: 7.4 })), 'amarillo', 'entre 6,5 y 8');
+  equal(semaforoDe(periodoFalso({ nota: 8.6 })), 'verde', '8 o más');
+  equal(semaforoDe(periodoFalso({ nota: 9, faltan: 3 })), 'amarillo', 'buena nota pero le faltan reportes');
+  equal(semaforoDe(periodoFalso({ reportes: 0, nota: null, faltan: 4 })), 'rojo', 'no hace ninguno y le faltan');
+  equal(formatoNota(6.2), '6,2', 'coma decimal');
+});
+
+test('calidad: en qué falla (coordinación) y consejos (entrenador)', () => {
+  equal(fallosDe(periodoFalso(), periodoFalso(), false).length, 0, 'sin fallos');
+  const malo = periodoFalso({ nota: 4.1, pocoDetallados: 5, pctPocoDetallados: 50, letrasMedia: 28, faltan: 3, pctTarde: 60, pctIgualGrupo: 25, partes: { detalle: 0.4, concreto: 0.5, personal: 0.7, aTiempo: 0.4 } });
+  const f = fallosDe(malo, periodoFalso({ nota: 8.9 }), true);
+  equal(f[0], 'Marca todo «Lo consigue» sin escribir nada en 5 de 10 reportes (50%).', 'primero lo poco detallado');
+  equal(f[1], 'Va a menos: su nota ha bajado de 8,9 a 4,1.', 'va a menos');
+  equal(f.some((x) => x.startsWith('Escribe poco')), true, 'escribe poco');
   equal(f.some((x) => x.includes('misma valoración')), true, 'igual al grupo');
   equal(f.some((x) => x.startsWith('Rellena tarde')), true, 'tarde');
-  equal(fallosDe(p({ letrasMedia: 50 }), p({}), false)[0], 'Escribe poco: 50 letras de media por reporte.', 'escribe poco');
+  equal(f[f.length - 1], 'Le faltan 3 reportes por hacer.', 'al final lo que falta');
+  equal(fallosDe(periodoFalso({ reportes: 0, faltan: 4 }), periodoFalso(), false)[0], 'Le faltan 4 reportes por hacer.', 'sin reportes, solo lo que falta');
+  const c = consejosDe(malo);
+  equal(c.length, 4, 'cuatro consejos');
+  equal(c[0].startsWith('Cuando lo consigue todo'), true, 'primero lo de «Lo consigue»');
+  equal(consejosDe(periodoFalso()).length, 0, 'si va bien, sin consejos');
 });
 
 test('calidad: por entrenador, reciente frente a antes y «va a menos»', () => {
@@ -91,6 +106,8 @@ test('calidad: por entrenador, reciente frente a antes y «va a menos»', () => 
   equal(r[0].reciente.pocoDetallados, 4, 'cuatro vacíos');
   equal(r[0].anterior.reportes, 4, 'antes');
   equal(r[0].vaAMenos, true, 'va a menos');
+  equal(r[0].reciente.nota, 3.9, 'nota reciente de Sergio');
+  equal(r[0].anterior.nota, 10, 'nota de antes');
   equal(r[0].ejemplos[0].fecha, '2026-11-15', 'ejemplos del más nuevo');
   equal(r[1].semaforo, 'verde', 'Ana verde');
   equal(r[1].reciente.reportes, 4, 'pendiente no cuenta');
@@ -115,6 +132,24 @@ test('calidad: faltan, tarde e igual a todo el grupo', () => {
   equal(luis.reciente.pctIgualGrupo, 75, 'igual al grupo');
   equal(luis.semaforo, 'amarillo', 'amarillo');
   equal(luis.fallos.length, 3, 'tres fallos');
+});
+
+test('calidad: lo que ve el propio entrenador (su nota y la del equipo)', () => {
+  const r = (fecha: string, esMio: boolean, total10: boolean) => ({
+    fecha, esMio, valoradas: 2, aMejorar: total10 ? 1 : 0, letras: total10 ? 80 : 0, pocoDetallado: !total10, igualGrupo: false, diasTarde: 0,
+  });
+  const filas = [
+    ...['2026-11-14', '2026-11-15', '2026-11-12', '2026-11-11'].map((f) => r(f, true, false)),
+    ...['2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23'].map((f) => r(f, true, true)),
+    ...['2026-11-14', '2026-11-15', '2026-11-13', '2026-11-12'].map((f) => r(f, false, true)),
+  ];
+  const yo = calidadPropia(filas, '2026-11-16');
+  equal(yo.reciente.nota, 3, 'mi nota');
+  equal(yo.anterior.nota, 10, 'antes');
+  equal(yo.equipo, 6.5, 'media del equipo (con los míos)');
+  equal(yo.semaforo, 'rojo', 'rojo');
+  equal(yo.vaAMenos, true, 'va a menos');
+  equal(yo.consejos[0].startsWith('Cuando lo consigue todo'), true, 'consejo principal');
 });
 
 test('notas: mínimo 30 letras y 5 palabras, y sin copiar la misma en dos habilidades', () => {
