@@ -8,9 +8,12 @@ import {
 } from '../../core/reports/coordinationAlerts';
 import {
   obtenerFilasAvisosReportes,
+  obtenerHistorialReportesAlumno,
   revisarAvisoReporte,
   subirNivelCandidato,
 } from '../../services/reports/coordinationAlertsService';
+import { ReporteHistorialTarjeta } from '../../components/students/StudentHistoryPanel';
+import type { HistorialReporteAlumnoFichaApp } from '../../core/reports/reportTypes';
 import { abrirFichaAlumno } from '../students/studentFichaStore';
 
 /**
@@ -59,6 +62,42 @@ export function CoordinationAlerts(props: { onNivelCambiado?: () => void }) {
   const [ocupado, setOcupado] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [nivelElegido, setNivelElegido] = useState<Record<string, string>>({});
+  // 16/11: ver el reporte completo del entrenador sin salir del aviso.
+  const [reporteAbierto, setReporteAbierto] = useState<Record<string, HistorialReporteAlumnoFichaApp | 'cargando' | 'error'>>({});
+
+  async function alternarReporte(aviso: AvisoCoordinacion) {
+    if (reporteAbierto[aviso.id]) {
+      const { [aviso.id]: _quitado, ...resto } = reporteAbierto;
+      setReporteAbierto(resto);
+      return;
+    }
+    setReporteAbierto((r) => ({ ...r, [aviso.id]: 'cargando' }));
+    try {
+      const historial = await obtenerHistorialReportesAlumno(aviso.alumnoId);
+      const elegido =
+        (aviso.tipo === 'nivel' ? historial.find((h) => h.reporte_id === aviso.reporteId) : null) ||
+        [...historial].sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)))[0];
+      setReporteAbierto((r) => ({ ...r, [aviso.id]: elegido || 'error' }));
+    } catch {
+      setReporteAbierto((r) => ({ ...r, [aviso.id]: 'error' }));
+    }
+  }
+
+  const fechaLarga = (f: string) => {
+    const [y, m, d] = String(f || '').split('-');
+    return d && m && y ? `${d}/${m}/${y}` : f;
+  };
+  const verReporte = (aviso: AvisoCoordinacion) => {
+    const r = reporteAbierto[aviso.id];
+    if (!r) return null;
+    if (r === 'cargando') return <span className="mitico-avisos-reportes__nota">Cargando reporte…</span>;
+    if (r === 'error') return <span className="mitico-avisos-reportes__nota">No se pudo cargar el reporte. Ábrelo desde su ficha.</span>;
+    return (
+      <div style={{ marginTop: 6 }}>
+        <ReporteHistorialTarjeta report={r} currentLevel={aviso.tipo === 'nivel' ? aviso.nivelNuevo : aviso.nivel} formatDate={fechaLarga} />
+      </div>
+    );
+  };
   const ultimaCarga = useRef(0);
   const onNivelRef = useRef(props.onNivelCambiado);
   onNivelRef.current = props.onNivelCambiado;
@@ -198,7 +237,11 @@ export function CoordinationAlerts(props: { onNivelCambiado?: () => void }) {
                         <span className="mitico-avisos-reportes__nota">Hay un reporte posterior: cámbialo desde su ficha.</span>
                       )}
                       <button type="button" onClick={() => abrirFichaAlumno(aviso.alumnoId)}>Ficha</button>
+                      <button type="button" onClick={() => void alternarReporte(aviso)}>
+                        {reporteAbierto[aviso.id] ? 'Ocultar reporte' : '📄 Ver reporte'}
+                      </button>
                     </div>
+                    {verReporte(aviso)}
                   </>
                 )}
                 {aviso.tipo === 'candidato' && (
@@ -214,7 +257,11 @@ export function CoordinationAlerts(props: { onNivelCambiado?: () => void }) {
                         Todavía no
                       </button>
                       <button type="button" onClick={() => abrirFichaAlumno(aviso.alumnoId)}>Ficha</button>
+                      <button type="button" onClick={() => void alternarReporte(aviso)}>
+                        {reporteAbierto[aviso.id] ? 'Ocultar reporte' : '📄 Último reporte'}
+                      </button>
                     </div>
+                    {verReporte(aviso)}
                   </>
                 )}
               </li>

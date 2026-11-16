@@ -2,6 +2,7 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../../config/supabase';
 import { obtenerAccessTokenSupabaseApp } from '../auth/authService';
 import { createSupabaseRestClient } from '../supabase/restClient';
 import type { FilaAvisoReporte } from '../../core/reports/coordinationAlerts';
+import type { HistorialReporteAlumnoFichaApp } from '../../core/reports/reportTypes';
 
 const supabase = createSupabaseRestClient({
   supabaseUrl: SUPABASE_URL,
@@ -27,4 +28,11 @@ export function revisarAvisoReporte(reporteId: string, accion: AccionAvisoReport
 /** «Candidato a subir» → Subir de nivel (migración 20261114_subir_nivel_candidato). */
 export function subirNivelCandidato(alumnoId: string, nivel: string): Promise<void> {
   return supabase.rpcVoid('subir_nivel_candidato_app', { p_alumno_id: alumnoId, p_nivel_codigo: nivel });
+}
+
+/** Historial completo de reportes de un alumno (el mismo que la ficha). */
+export function obtenerHistorialReportesAlumno(alumnoId: string): Promise<HistorialReporteAlumnoFichaApp[]> {
+  return supabase.rpcRows<HistorialReporteAlumnoFichaApp>('obtener_historial_reportes_adaptativo_alumno_app', {
+    p_alumno_id: alumnoId,
+  });
 }

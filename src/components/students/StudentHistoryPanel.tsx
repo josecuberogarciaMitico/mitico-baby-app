@@ -133,94 +133,115 @@ export function StudentHistoryPanel({
 
       {!loading && filtered.length > 0 && (
         <div style={{ display: 'grid', gap: 10 }}>
-          {filtered.map((report, index) => {
-            const dailyObjective = extractDailyWorkObjective(report.trabajo_diario);
-            const lifts = Array.isArray(report.remontes) ? report.remontes.filter(Boolean) : [];
-            const improvements = Array.isArray(report.mejoras_hoy) && report.mejoras_hoy.length
-              ? report.mejoras_hoy
-              : report.mejora_hoy ? [report.mejora_hoy] : [];
-            const priorities = Array.isArray(report.prioridades_proxima_sesion) && report.prioridades_proxima_sesion.length
-              ? report.prioridades_proxima_sesion
-              : report.recomendacion ? [report.recomendacion] : [];
-            // Escala de 3 pasos (Todavía no / A veces / Lo consigue); «Correcto» antiguo = A veces.
-            const nombres = new Map(
-              competenciasReporte(report.nivel_reportado || currentLevel).map((c) => [c.id, c.nombre])
-            );
-            const skills = Object.entries(report.evaluacion_tecnica || {})
-              .map(([id, valor]) => ({
-                id,
-                nombre: nombres.get(id) || id.replaceAll('_', ' '),
-                puntos: puntosDeValor(valor),
-                nota: String(report.notas_habilidades?.[id] || '').trim(),
-              }))
-              .filter((item) => item.puntos !== null);
-            const actitud = [report.actitud, report.actitud_comentario].filter(Boolean).join(' · ');
-
-            return (
-              <article
-                key={report.reporte_id || `${studentId}-${report.fecha}-${report.modalidad}-${index}`}
-                style={{ border: '1px solid #dbeafe', borderRadius: 16, padding: 14, background: '#ffffff' }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-                  <div>
-                    <strong style={{ fontSize: 16 }}>{formatDate(report.fecha)}</strong>
-                    <div style={{ marginTop: 3, color: '#64748b', fontWeight: 700 }}>
-                      {[report.modalidad, report.grupo].filter(Boolean).join(' · ') || 'Sesión técnica'}
-                    </div>
-                    {report.entrenador && <div style={{ marginTop: 2, color: '#64748b', fontSize: 13 }}>Entrenador: {report.entrenador}</div>}
-                  </div>
-                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                    {report.nivel_reportado && <span style={badge}>Nivel {report.nivel_reportado}</span>}
-                    {report.pista && <span style={badge}>Pista {report.pista.toLowerCase()}</span>}
-                    {lifts.length > 0 && <span style={badge}>{lifts.join(', ')}</span>}
-                    {report.tecnica && <span style={badge}>{report.tecnica}</span>}
-                    {Number(report.reporte_version || 1) < 2 && <span style={{ ...badge, background: '#f8fafc' }}>Formato anterior</span>}
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gap: 7, marginTop: 11, lineHeight: 1.45 }}>
-                  {dailyObjective && <p style={{ margin: 0 }}><strong>Trabajo:</strong> {dailyObjective}</p>}
-                  {report.autonomia && <p style={{ margin: 0 }}><strong>Autonomía:</strong> {report.autonomia}</p>}
-                  {skills.length > 0 && (
-                    <div className="ficha-report-skills">
-                      {skills.map((item) => (
-                        <div key={item.id} className="ficha-report-skill">
-                          <span className={`ficha-step p${item.puntos}`}>
-                            {item.nombre}: <b>{ETIQUETA_PASO[item.puntos as 0 | 1 | 2]}</b>
-                          </span>
-                          {item.nota && <span className="ficha-report-note">«{item.nota}»</span>}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {actitud && <p style={{ margin: 0 }}><strong>Actitud:</strong> {actitud}</p>}
-                  {improvements.length > 0 && <p style={{ margin: 0 }}><strong>Mejoró:</strong> {improvements.join(' · ')}</p>}
-                  {report.observaciones_generales && (
-                    <div style={{ ...notice, borderColor: '#bbf7d0', background: '#f0fdf4', color: '#166534', padding: 10 }}>
-                      <strong>Observación:</strong> {report.observaciones_generales}
-                    </div>
-                  )}
-                  {priorities.length > 0 && <p style={{ margin: 0 }}><strong>Siguiente paso:</strong> {priorities.join(' · ')}</p>}
-                </div>
-
-                <details style={{ marginTop: 10, borderTop: '1px solid #e2e8f0', paddingTop: 9 }}>
-                  <summary style={{ cursor: 'pointer', fontWeight: 850, color: '#475569' }}>
-                    Ver trabajo del día y datos completos
-                  </summary>
-                  {report.trabajo_diario && (
-                    <div style={{ marginTop: 10, padding: 10, borderRadius: 12, background: '#f8fafc', whiteSpace: 'pre-wrap', color: '#334155' }}>
-                      {report.trabajo_diario}
-                    </div>
-                  )}
-                  <p style={{ margin: '10px 0 0', lineHeight: 1.5 }}>
-                    Actitud: {actitud || '-'} · Técnica: {report.tecnica || '-'} · Autonomía: {report.autonomia || '-'} · Pista: {report.pista || '-'} · Remontes: {lifts.join(', ') || '-'} · Ritmo: {report.ritmo_grupo || '-'} · Incidencia: {report.incidencia || '-'}
-                  </p>
-                </details>
-              </article>
-            );
-          })}
+          {filtered.map((report, index) => (
+            <ReporteHistorialTarjeta
+              key={report.reporte_id || `${studentId}-${report.fecha}-${report.modalidad}-${index}`}
+              report={report}
+              currentLevel={currentLevel}
+              formatDate={formatDate}
+            />
+          ))}
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Un reporte completo (16/11: se usa también en los avisos de reportes para
+ * ver el reporte del entrenador sin ir a la ficha).
+ */
+export function ReporteHistorialTarjeta({
+  report,
+  currentLevel,
+  formatDate,
+}: {
+  report: HistorialReporteAlumnoFichaApp;
+  currentLevel: string;
+  formatDate: (date: string) => string;
+  key?: string;
+}) {
+  const dailyObjective = extractDailyWorkObjective(report.trabajo_diario);
+  const lifts = Array.isArray(report.remontes) ? report.remontes.filter(Boolean) : [];
+  const improvements = Array.isArray(report.mejoras_hoy) && report.mejoras_hoy.length
+    ? report.mejoras_hoy
+    : report.mejora_hoy ? [report.mejora_hoy] : [];
+  const priorities = Array.isArray(report.prioridades_proxima_sesion) && report.prioridades_proxima_sesion.length
+    ? report.prioridades_proxima_sesion
+    : report.recomendacion ? [report.recomendacion] : [];
+  // Escala de 3 pasos (Todavía no / A veces / Lo consigue); «Correcto» antiguo = A veces.
+  const nombres = new Map(
+    competenciasReporte(report.nivel_reportado || currentLevel).map((c) => [c.id, c.nombre])
+  );
+  const skills = Object.entries(report.evaluacion_tecnica || {})
+    .map(([id, valor]) => ({
+      id,
+      nombre: nombres.get(id) || id.replaceAll('_', ' '),
+      puntos: puntosDeValor(valor),
+      nota: String(report.notas_habilidades?.[id] || '').trim(),
+    }))
+    .filter((item) => item.puntos !== null);
+  const actitud = [report.actitud, report.actitud_comentario].filter(Boolean).join(' · ');
+
+  return (
+    <article
+      style={{ border: '1px solid #dbeafe', borderRadius: 16, padding: 14, background: '#ffffff' }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start', flexWrap: 'wrap' }}>
+        <div>
+          <strong style={{ fontSize: 16 }}>{formatDate(report.fecha)}</strong>
+          <div style={{ marginTop: 3, color: '#64748b', fontWeight: 700 }}>
+            {[report.modalidad, report.grupo].filter(Boolean).join(' · ') || 'Sesión técnica'}
+          </div>
+          {report.entrenador && <div style={{ marginTop: 2, color: '#64748b', fontSize: 13 }}>Entrenador: {report.entrenador}</div>}
+        </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+          {report.nivel_reportado && <span style={badge}>Nivel {report.nivel_reportado}</span>}
+          {report.pista && <span style={badge}>Pista {report.pista.toLowerCase()}</span>}
+          {lifts.length > 0 && <span style={badge}>{lifts.join(', ')}</span>}
+          {report.tecnica && <span style={badge}>{report.tecnica}</span>}
+          {Number(report.reporte_version || 1) < 2 && <span style={{ ...badge, background: '#f8fafc' }}>Formato anterior</span>}
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gap: 7, marginTop: 11, lineHeight: 1.45 }}>
+        {dailyObjective && <p style={{ margin: 0 }}><strong>Trabajo:</strong> {dailyObjective}</p>}
+        {report.autonomia && <p style={{ margin: 0 }}><strong>Autonomía:</strong> {report.autonomia}</p>}
+        {skills.length > 0 && (
+          <div className="ficha-report-skills">
+            {skills.map((item) => (
+              <div key={item.id} className="ficha-report-skill">
+                <span className={`ficha-step p${item.puntos}`}>
+                  {item.nombre}: <b>{ETIQUETA_PASO[item.puntos as 0 | 1 | 2]}</b>
+                </span>
+                {item.nota && <span className="ficha-report-note">«{item.nota}»</span>}
+              </div>
+            ))}
+          </div>
+        )}
+        {actitud && <p style={{ margin: 0 }}><strong>Actitud:</strong> {actitud}</p>}
+        {improvements.length > 0 && <p style={{ margin: 0 }}><strong>Mejoró:</strong> {improvements.join(' · ')}</p>}
+        {report.observaciones_generales && (
+          <div style={{ ...notice, borderColor: '#bbf7d0', background: '#f0fdf4', color: '#166534', padding: 10 }}>
+            <strong>Observación:</strong> {report.observaciones_generales}
+          </div>
+        )}
+        {priorities.length > 0 && <p style={{ margin: 0 }}><strong>Siguiente paso:</strong> {priorities.join(' · ')}</p>}
+      </div>
+
+      <details style={{ marginTop: 10, borderTop: '1px solid #e2e8f0', paddingTop: 9 }}>
+        <summary style={{ cursor: 'pointer', fontWeight: 850, color: '#475569' }}>
+          Ver trabajo del día y datos completos
+        </summary>
+        {report.trabajo_diario && (
+          <div style={{ marginTop: 10, padding: 10, borderRadius: 12, background: '#f8fafc', whiteSpace: 'pre-wrap', color: '#334155' }}>
+            {report.trabajo_diario}
+          </div>
+        )}
+        <p style={{ margin: '10px 0 0', lineHeight: 1.5 }}>
+          Actitud: {actitud || '-'} · Técnica: {report.tecnica || '-'} · Autonomía: {report.autonomia || '-'} · Pista: {report.pista || '-'} · Remontes: {lifts.join(', ') || '-'} · Ritmo: {report.ritmo_grupo || '-'} · Incidencia: {report.incidencia || '-'}
+        </p>
+      </details>
+    </article>
   );
 }
