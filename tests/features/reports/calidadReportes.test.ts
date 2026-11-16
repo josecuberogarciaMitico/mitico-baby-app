@@ -1,5 +1,5 @@
 import { calidadPorEntrenador, calidadReporte, fallosDe, semaforoDe } from '../../../src/features/reports/calidadReportes';
-import { faltaJustificacionTodoConsigue, prepararEnvioReporteFocos } from '../../../src/lib/adaptiveReport';
+import { faltaJustificacionTodoConsigue, notaSuficiente, prepararEnvioReporteFocos } from '../../../src/lib/adaptiveReport';
 
 function equal<T>(actual: T, expected: T, label: string) {
   if (actual !== expected) throw new Error(`${label}: esperado ${String(expected)}, recibido ${String(actual)}`);
@@ -10,8 +10,9 @@ const todoOk = { cuna_frenada: 'Consolidado', control_velocidad: 'Consolidado' }
 
 test('calidad: todo «Lo consigue» sin nada escrito = poco detallado', () => {
   equal(faltaJustificacionTodoConsigue(todoOk, {}, ''), true, 'sin nada');
-  equal(faltaJustificacionTodoConsigue(todoOk, { cuna_frenada: 'Frena bien en la cuña' }, ''), false, 'con una nota');
-  equal(faltaJustificacionTodoConsigue(todoOk, {}, 'Muy buen día, frena solo'), false, 'con observación');
+  equal(faltaJustificacionTodoConsigue(todoOk, { cuna_frenada: 'Frena bien en la cuña al final de la bajada' }, ''), false, 'con una nota');
+  equal(faltaJustificacionTodoConsigue(todoOk, {}, 'Muy buen día, frena solo en toda la pista'), false, 'con observación');
+  equal(faltaJustificacionTodoConsigue(todoOk, { cuna_frenada: 'Frena bien en la cuña' }, ''), true, 'una nota corta no basta');
   equal(faltaJustificacionTodoConsigue(todoOk, { cuna_frenada: 'ok' }, 'bien'), true, 'textos demasiado cortos no cuentan');
   equal(faltaJustificacionTodoConsigue({ cuna_frenada: 'Consolidado', direccion_giro: 'En desarrollo' }, {}, ''), false, 'no todo consigue');
   equal(faltaJustificacionTodoConsigue({ cuna_frenada: 'Consolidado', direccion_giro: 'No trabajado' }, {}, ''), true, '«No trabajado» no cuenta');
@@ -27,13 +28,13 @@ test('calidad: el entrenador no puede enviar todo «Lo consigue» sin escribir n
   const r = prepararEnvioReporteFocos(form, 'A');
   equal(r.ok, false, 'bloqueado');
   if (!r.ok) equal(r.error.includes('Lo consigue'), true, 'explica el motivo');
-  equal(prepararEnvioReporteFocos({ ...form, notasHabilidades: { cuna_frenada: 'Frena en cuña él solo' } }, 'A').ok, true, 'con una nota sí');
-  equal(prepararEnvioReporteFocos({ ...form, observaciones: 'Ha bajado todo el día solo' }, 'A').ok, true, 'con observación sí');
+  equal(prepararEnvioReporteFocos({ ...form, notasHabilidades: { cuna_frenada: 'Frena en cuña él solo en toda la bajada' } }, 'A').ok, true, 'con una nota sí');
+  equal(prepararEnvioReporteFocos({ ...form, observaciones: 'Ha bajado todo el día solo y sin caerse' }, 'A').ok, true, 'con observación sí');
 });
 
 test('calidad: letras y observación de un reporte', () => {
-  const c = calidadReporte({ reporte_id: 'r', fecha: '2026-11-15', entrenador: 'X', evaluacion_tecnica: todoOk, notas_habilidades: { cuna_frenada: '12345' }, observaciones: 'Hola qué tal' });
-  equal(c.letras, 17, 'letras');
+  const c = calidadReporte({ reporte_id: 'r', fecha: '2026-11-15', entrenador: 'X', evaluacion_tecnica: todoOk, notas_habilidades: { cuna_frenada: '12345' }, observaciones: 'Ha bajado solo toda la mañana sin caerse' });
+  equal(c.letras, 45, 'letras');
   equal(c.conObservacion, true, 'observación');
   equal(c.todoConsigue, true, 'todo consigue');
   equal(c.pocoDetallado, false, 'tiene observación');
@@ -70,7 +71,7 @@ test('calidad: en qué falla, en frases', () => {
 });
 
 test('calidad: por entrenador, reciente frente a antes y «va a menos»', () => {
-  const nota = (n: number) => ({ cuna_frenada: 'x'.repeat(n) });
+  const nota = (n: number) => ({ cuna_frenada: 'Frena bien y gira con control. '.repeat(10).slice(0, n) });
   const filas = [
     // Sergio: antes escribía mucho, ahora casi nada y varios «todo consigue» vacíos.
     ...['2026-10-20', '2026-10-21', '2026-10-22', '2026-10-23'].map((fecha, i) => ({ reporte_id: `s${i}`, fecha, entrenador: 'SERGIO', evaluacion_tecnica: { cuna_frenada: 'En desarrollo' }, notas_habilidades: nota(200) })),
@@ -98,7 +99,7 @@ test('calidad: por entrenador, reciente frente a antes y «va a menos»', () => 
 
 test('calidad: faltan, tarde e igual a todo el grupo', () => {
   const ok = { cuna_frenada: 'En desarrollo' };
-  const nota = { cuna_frenada: 'x'.repeat(150) };
+  const nota = { cuna_frenada: 'Frena bien y gira con control. '.repeat(5) };
   const filas = [
     // Mismo grupo, misma valoración a los 3 niños, enviados dos días después.
     ...[1, 2, 3].map((i) => ({ reporte_id: `g${i}`, estado: 'Hecho', fecha: '2026-11-13', grupo_id: 'G1', enviado_at: '2026-11-15T09:00:00Z', entrenador: 'LUIS', evaluacion_tecnica: ok, notas_habilidades: nota })),
@@ -114,4 +115,25 @@ test('calidad: faltan, tarde e igual a todo el grupo', () => {
   equal(luis.reciente.pctIgualGrupo, 75, 'igual al grupo');
   equal(luis.semaforo, 'amarillo', 'amarillo');
   equal(luis.fallos.length, 3, 'tres fallos');
+});
+
+test('notas: mínimo 30 letras y 5 palabras, y sin copiar la misma en dos habilidades', () => {
+  equal(notaSuficiente('No siempre gira'), false, 'demasiado corta');
+  equal(notaSuficiente('Le cuesta mantener la posición de cuña'), true, 'bien');
+  equal(notaSuficiente('................................'), false, 'puntos no valen');
+  equal(notaSuficiente('aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'), false, 'una sola palabra no vale');
+  equal(notaSuficiente('a a a a a a a a a a a a a a a a a'), false, 'letras sueltas no son palabras');
+  const form = {
+    nivel: 'A', actitud: 'Buena', autonomia: 'Necesita ayuda puntual', incidencia: 'Sin incidencia',
+    observaciones: '', remontes: '', cunaFrenada: '', giroInicial: '',
+    evaluacionTecnica: { cuna_frenada: 'En desarrollo', direccion_giro: 'Necesita mejorar' } as never,
+  };
+  const corta = prepararEnvioReporteFocos({ ...form, notasHabilidades: { cuna_frenada: 'No siempre la realiza', direccion_giro: 'No controla la dirección cuando coge velocidad' } }, 'A');
+  equal(corta.ok, false, 'nota corta bloquea');
+  if (!corta.ok) equal(corta.error.includes('5 palabras'), true, 'dice el mínimo');
+  const copia = 'Le cuesta mucho todavía, hay que repetir con el monitor';
+  const repetida = prepararEnvioReporteFocos({ ...form, notasHabilidades: { cuna_frenada: copia, direccion_giro: copia.toUpperCase() + '.' } }, 'A');
+  equal(repetida.ok, false, 'misma nota en dos habilidades bloquea');
+  if (!repetida.ok) equal(repetida.error.includes('misma nota'), true, 'explica por qué');
+  equal(prepararEnvioReporteFocos({ ...form, notasHabilidades: { cuna_frenada: 'Le cuesta mantener la cuña al final de la bajada', direccion_giro: 'No controla la dirección cuando coge velocidad' } }, 'A').ok, true, 'notas buenas pasan');
 });

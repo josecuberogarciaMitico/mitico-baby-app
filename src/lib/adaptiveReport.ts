@@ -555,8 +555,26 @@ export type EnvioReporteFocos = {
 export function notaObligatoria(valor: ValorTecnicoReporte | undefined): boolean {
   return Boolean(valor) && valor !== 'Consolidado' && valor !== 'No trabajado';
 }
-export const NOTA_HABILIDAD_MIN = 10;
+/** 17/11/2026 (Jose): de 10 a 30 letras y al menos 5 palabras, para que se esfuercen. */
+export const NOTA_HABILIDAD_MIN = 30;
+export const NOTA_PALABRAS_MIN = 5;
 export const NOTA_HABILIDAD_MAX = 300;
+
+/** Palabras de verdad (con al menos 2 letras): «...» o «a a a» no cuentan. */
+export function palabrasNota(texto: string | null | undefined): number {
+  return String(texto || '')
+    .trim()
+    .split(/\s+/)
+    .filter((w) => /\p{L}.*\p{L}/u.test(w)).length;
+}
+
+/** ¿La nota es suficiente? Al menos 30 letras y 5 palabras. */
+export function notaSuficiente(texto: string | null | undefined): boolean {
+  const t = String(texto || '').trim();
+  return t.length >= NOTA_HABILIDAD_MIN && palabrasNota(t) >= NOTA_PALABRAS_MIN;
+}
+
+const normalizarNota = (t: string) => t.trim().toLowerCase().replace(/[\s.,;:!¡?¿]+/g, ' ').trim();
 
 /**
  * 17/11/2026 (Jose): un reporte con TODO en «Lo consigue» y nada escrito no es
@@ -572,12 +590,11 @@ export function faltaJustificacionTodoConsigue(
   const valores = Object.values(evaluacion || {}).filter((v) => v && v !== 'No trabajado');
   if (valores.length === 0 || !valores.every((v) => v === 'Consolidado')) return false;
   const algoEscrito =
-    Object.values(notas || {}).some((n) => String(n || '').trim().length >= NOTA_HABILIDAD_MIN) ||
-    String(observacion || '').trim().length >= NOTA_HABILIDAD_MIN;
+    Object.values(notas || {}).some((n) => notaSuficiente(n)) || notaSuficiente(observacion);
   return !algoEscrito;
 }
 export const MENSAJE_JUSTIFICAR_TODO_CONSIGUE =
-  'Has marcado todo «Lo consigue». Escribe al menos una frase (en una habilidad o en la observación) contando qué has visto hoy: sin eso coordinación no puede fiarse si toca subirle de nivel.';
+  'Has marcado todo «Lo consigue». Escribe al menos una frase de 5 palabras (en una habilidad o en la observación) contando qué has visto hoy: sin eso coordinación no puede fiarse si toca subirle de nivel.';
 
 /**
  * Valida el reporte por focos y calcula los campos que Supabase sigue
@@ -615,12 +632,25 @@ export function prepararEnvioReporteFocos(
   const notas = form.notasHabilidades || {};
   for (const h of valoradas) {
     const nota = String(notas[h.id] || '').trim();
-    if (notaObligatoria(form.evaluacionTecnica[h.id]) && nota.length < NOTA_HABILIDAD_MIN) {
-      return { ok: false, error: `Escribe una nota en «${h.nombre}»: qué has visto hoy, con tus palabras.` };
+    if (notaObligatoria(form.evaluacionTecnica[h.id]) && !notaSuficiente(nota)) {
+      return {
+        ok: false,
+        error: `Escribe más en «${h.nombre}» (mínimo ${NOTA_PALABRAS_MIN} palabras y ${NOTA_HABILIDAD_MIN} letras): qué le falta y cuándo le cuesta. Puedes dictarlo con el micro.`,
+      };
     }
     if (nota.length > NOTA_HABILIDAD_MAX) {
       return { ok: false, error: `La nota de «${h.nombre}» es demasiado larga (máximo ${NOTA_HABILIDAD_MAX} caracteres).` };
     }
+  }
+
+  // No vale copiar la misma nota en dos habilidades.
+  const vistas = new Map<string, string>();
+  for (const h of valoradas) {
+    const nota = normalizarNota(String(notas[h.id] || ''));
+    if (!nota) continue;
+    const otra = vistas.get(nota);
+    if (otra) return { ok: false, error: `Has puesto la misma nota en «${otra}» y «${h.nombre}». Cada habilidad necesita lo suyo.` };
+    vistas.set(nota, h.nombre);
   }
 
   if (

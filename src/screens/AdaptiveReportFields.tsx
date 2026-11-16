@@ -6,6 +6,9 @@ import {
   faltaJustificacionTodoConsigue,
   NOTA_HABILIDAD_MAX,
   NOTA_HABILIDAD_MIN,
+  NOTA_PALABRAS_MIN,
+  notaSuficiente,
+  palabrasNota,
   notaObligatoria,
   PASOS_REPORTE,
   habilidadesDelNivel,
@@ -116,7 +119,7 @@ function FilaHabilidad(props: {
   const { habilidad } = props;
   const [dictando, setDictando] = useState(false);
   const obligatoria = notaObligatoria(props.valor);
-  const notaCorta = obligatoria && props.nota.trim().length < NOTA_HABILIDAD_MIN;
+  const notaCorta = obligatoria && !notaSuficiente(props.nota);
   const indice = PASOS_REPORTE.findIndex((paso) => paso.valor === props.valor);
   return (
     <div className={`report-focus-skill${indice < 0 ? ' is-untouched' : ''}`}>
@@ -157,14 +160,21 @@ function FilaHabilidad(props: {
               maxLength={NOTA_HABILIDAD_MAX}
               readOnly={dictando}
               rows={2}
-              placeholder={obligatoria ? 'Con tus palabras: qué le falta, en qué momento le cuesta…' : 'Opcional: algún detalle de cómo lo consigue.'}
+              placeholder={obligatoria ? 'Ej.: le cuesta abrir la cuña al final de la bajada y frena tarde' : 'Opcional: algún detalle de cómo lo consigue.'}
               onChange={(e) => props.onNota(e.target.value)}
             />
           </label>
           <DictationButton value={props.nota} maxLength={NOTA_HABILIDAD_MAX} onListeningChange={setDictando} onChange={props.onNota} />
           <span className={notaCorta ? 'report-focus-hint is-pending' : 'report-focus-hint'}>
             {props.nota.trim().length}/{NOTA_HABILIDAD_MAX}
-            {notaCorta ? ` · Obligatoria (mínimo ${NOTA_HABILIDAD_MIN} caracteres)` : ''}
+            {notaCorta
+              ? ` · Faltan ${[
+                  NOTA_HABILIDAD_MIN - props.nota.trim().length > 0 ? `${NOTA_HABILIDAD_MIN - props.nota.trim().length} letras` : '',
+                  NOTA_PALABRAS_MIN - palabrasNota(props.nota) > 0 ? `${NOTA_PALABRAS_MIN - palabrasNota(props.nota)} palabras` : '',
+                ]
+                  .filter(Boolean)
+                  .join(' y ')} (mínimo ${NOTA_PALABRAS_MIN} palabras y ${NOTA_HABILIDAD_MIN} letras)`
+              : ''}
           </span>
         </div>
       )}
