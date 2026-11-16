@@ -587,7 +587,7 @@ import { useAltasRespondidasAviso } from './features/admin/useAltasRespondidasAv
 import { UserAccessScreen } from './features/admin/UserAccessScreen';
 import { descargarInformeSnowZonePdf } from './features/reports/snowZonePdf';
 import { aplicarMarcasRecientes, marcarAsistenciaRapida } from './features/trainers/asistenciaRapida';
-import { PanelMensajes } from './features/dashboard/PanelMensajes';
+import { ContadorMensajes, PantallaMensajesInternos } from './features/dashboard/PanelMensajes';
 import { DailySummaryScreen } from './features/dashboard/DailySummaryScreen';
 import { HomeScreen } from './features/dashboard/HomeScreen';
 import { OcioStudentsScreen } from './features/ocio/OcioStudentsScreen';
@@ -1254,6 +1254,8 @@ function IconoNavegacionApp({ tipo }: { tipo: string }) {
       return <svg {...comun}><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5"/><path d="M9.5 21v-6h5v6"/></svg>;
     case 'agenda':
       return <svg {...comun}><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/><path d="M8 14h3M13 14h3M8 17h3"/></svg>;
+    case 'mensajes':
+      return <svg {...comun}><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>;
     case 'cierre':
       return <svg {...comun}><circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.2 2.2L16 9"/></svg>;
     case 'fichas':
@@ -1360,6 +1362,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
     | 'analisis'
     | 'intensivos'
     | 'listados'
+    | 'mensajes'
   >(esEntrenadorApp ? 'entrenador' : 'inicio');
 
   const contenidoPantallaRef = useRef<HTMLDivElement | null>(null);
@@ -20145,7 +20148,6 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       style={layout}
     >
       {esCoordinadorApp && !esAdministracionApp && !esSoloConsultaUsuarioApp && <CoordinationAlerts onNivelCambiado={() => void cargarAlumnos()} />}
-      {esCoordinadorApp && !esAdministracionApp && !esSoloConsultaUsuarioApp && <PanelMensajes entrenadores={entrenadores} />}
       {esCoordinadorApp && (
         <StudentFichaSheet alumnos={alumnos} ocioAlumnos={ocioAlumnos} historialPorAlumno={historialReportesFichaPorAlumno} cargandoHistorialId={historialReportesFichaCargandoId} cargarHistorial={cargarHistorialReportesAlumnoFichaApp} formatDate={formatearFecha} cargarAlumnos={cargarAlumnos} />
       )}
@@ -20365,6 +20367,12 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
                     <IconoNavegacionApp tipo="cierre" />
                     <span>Cierre semanal</span>
                   </button>
+                  {esCoordinadorApp && !esAdministracionApp && !esSoloConsultaUsuarioApp && (
+                    <button className={`mitico-nav-item ${pantalla === 'mensajes' ? 'is-active' : ''}`} onClick={() => abrirPantallaConScroll('mensajes')}>
+                      <IconoNavegacionApp tipo="mensajes" />
+                      <span>Mensajes internos <ContadorMensajes /></span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="mitico-nav-group">
@@ -21987,6 +21995,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
           }}
         />
       )}
+      {pantalla === 'mensajes' && <PantallaMensajesInternos entrenadores={entrenadores} />}
       {pantalla === 'reportes' && (
         <ReportsScreen
           ctx={{

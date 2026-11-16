@@ -17,6 +17,8 @@ type Props = {
   abiertoInicial?: boolean;
   /** Panel global: primero la lista de enviados y «Escribir» plegado. */
   modoPanel?: boolean;
+  /** En modo panel, «Escribir un mensaje» abierto de entrada. */
+  escribirAbierto?: boolean;
 };
 
 const chip = (activo: boolean): React.CSSProperties => ({
@@ -31,7 +33,7 @@ const chip = (activo: boolean): React.CSSProperties => ({
   cursor: 'pointer',
 });
 
-export function MensajesCoordinacion({ entrenadores, idsDelDia, dias = 2, abiertoInicial = false, modoPanel = false }: Props) {
+export function MensajesCoordinacion({ entrenadores, idsDelDia, dias = 2, abiertoInicial = false, modoPanel = false, escribirAbierto = false }: Props) {
   const [abierto, setAbierto] = useState(abiertoInicial);
   const [texto, setTexto] = useState('');
   const [para, setPara] = useState<string[]>([]);
@@ -207,7 +209,7 @@ export function MensajesCoordinacion({ entrenadores, idsDelDia, dias = 2, abiert
       <div style={{ display: 'grid', gap: 10 }}>
         {enviados.length === 0 && <p style={{ margin: 0, fontSize: 13, color: '#475569' }}>No has enviado mensajes estos días.</p>}
         {lista}
-        <details style={{ border: '1px solid #c7d2fe', borderRadius: 12, background: '#eef2ff' }}>
+        <details open={escribirAbierto || undefined} style={{ border: '1px solid #c7d2fe', borderRadius: 12, background: '#eef2ff' }}>
           <summary style={{ cursor: 'pointer', padding: '10px 12px', fontWeight: 900, color: '#312e81' }}>✏️ Escribir un mensaje</summary>
           <div style={{ padding: '0 12px 12px', display: 'grid', gap: 10 }}>{compositor}</div>
         </details>
