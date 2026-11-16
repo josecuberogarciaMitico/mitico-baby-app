@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { DictationButton } from '../components/reports/DictationButton';
 import {
   ACTITUD_GENERAL,
+  MENSAJE_JUSTIFICAR_TODO_CONSIGUE,
+  faltaJustificacionTodoConsigue,
   NOTA_HABILIDAD_MAX,
   NOTA_HABILIDAD_MIN,
   notaObligatoria,
@@ -186,6 +188,8 @@ export function AdaptiveReportFields(props: {
   actitudDestacar: string[];
   evaluacion: EvaluacionTecnicaReporte;
   notas: Record<string, string>;
+  /** Para avisar si todo es «Lo consigue» sin nada escrito (17/11). */
+  observaciones?: string;
   onNota: (id: string, texto: string) => void;
   referenciaNivel: Array<[string, string]>;
   onNivel: (nivel: string) => void;
@@ -299,6 +303,15 @@ export function AdaptiveReportFields(props: {
             </div>
             <span className="report-focus-hint">Salen los focos del nivel y lo trabajado hoy. Valora lo que hayas visto. Con «Todavía no» y «A veces» escribe o dicta qué le falta; si no has podido verla, déjala sin tocar.</span>
             <div className="report-focus-skills">{visibles.map(fila)}</div>
+            {faltaJustificacionTodoConsigue(
+              Object.fromEntries(habilidades.map((h) => [h.id, props.evaluacion[h.id]])),
+              props.notas,
+              props.observaciones
+            ) && (
+              <div className="report-focus-warn" role="status">
+                <b>✍️ {MENSAJE_JUSTIFICAR_TODO_CONSIGUE}</b>
+              </div>
+            )}
           </>
         )}
       </div>

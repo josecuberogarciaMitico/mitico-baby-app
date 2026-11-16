@@ -15,6 +15,8 @@ import {
 import { ReporteHistorialTarjeta } from '../../components/students/StudentHistoryPanel';
 import type { HistorialReporteAlumnoFichaApp } from '../../core/reports/reportTypes';
 import { abrirFichaAlumno } from '../students/studentFichaStore';
+import { cargarReportesCoordinacion } from '../../services/reports/coordinationReportsService';
+import { calidadReporte } from './calidadReportes';
 
 /**
  * Fase 3 (02/10/2026): avisos flotantes de reportes para coordinación.
@@ -98,6 +100,8 @@ export function CoordinationAlerts(props: { onNivelCambiado?: () => void; soloLe
       </div>
     );
   };
+  // 17/11: reportes «poco detallados» (todo «Lo consigue» y nada escrito) → ⚠ en el aviso.
+  const [pocoDetallados, setPocoDetallados] = useState<Set<string>>(new Set());
   const ultimaCarga = useRef(0);
   const onNivelRef = useRef(props.onNivelCambiado);
   onNivelRef.current = props.onNivelCambiado;
@@ -107,7 +111,20 @@ export function CoordinationAlerts(props: { onNivelCambiado?: () => void; soloLe
     if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
     ultimaCarga.current = Date.now();
     try {
-      setFilas(await obtenerFilasAvisosReportes());
+      const nuevas = await obtenerFilasAvisosReportes();
+      setFilas(nuevas);
+      const fechas = nuevas.map((f) => String(f.fecha || '')).filter(Boolean).sort();
+      if (fechas.length) {
+        // Máximo 31 días por consulta (límite de la función).
+        const hace30 = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+        cargarReportesCoordinacion(fechas[0] > hace30 ? fechas[0] : hace30, hoyIso())
+          .then((reportes) =>
+            setPocoDetallados(
+              new Set(reportes.filter((r) => r.reporte_id && calidadReporte(r).pocoDetallado).map((r) => String(r.reporte_id)))
+            )
+          )
+          .catch(() => undefined); // sin marca si no se puede comprobar
+      }
     } catch {
       // Sin la migración o sin conexión no se muestra nada (no molesta).
     }
@@ -133,6 +150,23 @@ export function CoordinationAlerts(props: { onNivelCambiado?: () => void; soloLe
   }, [avisos.length]);
 
   if (avisos.length === 0) return null;
+
+  /** Reporte en el que se basa el aviso: el que cambió el nivel, o el último del niño. */
+  const reporteDelAviso = (aviso: AvisoCoordinacion) =>
+    aviso.tipo === 'nivel'
+      ? aviso.reporteId
+      : [...filas]
+          .filter((f) => f.alumno_id === aviso.alumnoId)
+          .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)))[0]?.reporte_id;
+  const avisoPocoFiable = (aviso: AvisoCoordinacion) => {
+    const id = reporteDelAviso(aviso);
+    if (!id || !pocoDetallados.has(id)) return null;
+    return (
+      <span className="mitico-avisos-reportes__poco-fiable" role="note">
+        ⚠ Reporte poco detallado: todo «Lo consigue» y nada escrito. Compruébalo antes de fiarte.
+      </span>
+    );
+  };
 
   async function accion(aviso: AvisoCoordinacion, tipo: 'confirmar' | 'deshacer' | 'visto' | 'subir') {
     setError('');
@@ -211,6 +245,7 @@ export function CoordinationAlerts(props: { onNivelCambiado?: () => void; soloLe
                     <span>
                       {aviso.entrenador || 'Entrenador'} · {aviso.modalidad || ''} · {fechaCorta(aviso.fecha)}. Ya se ha aplicado en su ficha.
                     </span>
+                    {avisoPocoFiable(aviso)}
                     <div className="mitico-avisos-reportes__acciones">
                       {!props.soloLectura && (
                       <button type="button" className="is-ok" disabled={ocupado === aviso.id} onClick={() => void accion(aviso, 'confirmar')}>
@@ -251,6 +286,7 @@ export function CoordinationAlerts(props: { onNivelCambiado?: () => void; soloLe
                     <span className="mitico-avisos-reportes__tipo">Candidato a subir</span>
                     <strong>{aviso.alumno}: listo para {nombreNivel(aviso.siguiente)}</strong>
                     <span>Tiene los {aviso.focos} focos de {nombreNivel(aviso.nivel)} conseguidos.</span>
+                    {avisoPocoFiable(aviso)}
                     <div className="mitico-avisos-reportes__acciones">
                       {!props.soloLectura && (
                         <>

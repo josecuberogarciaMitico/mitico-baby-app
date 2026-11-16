@@ -528,6 +528,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
           actitudDestacar={formReporte.actitudDestacar || []}
           evaluacion={formReporte.evaluacionTecnica}
           notas={formReporte.notasHabilidades || {}}
+          observaciones={formReporte.observaciones}
           onNota={(id, texto) =>
             setFormReporte((actual: typeof formReporte) => ({
               ...actual,
