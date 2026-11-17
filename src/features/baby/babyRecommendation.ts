@@ -161,13 +161,203 @@ export function agruparPorEdadDentroDeNivel(
   return current;
 }
 
+// ---- B y B+ (17/11) -----------------------------------------------------------
+// Jose: no mezclar B y B+ si no hace falta. Con el MISMO número de grupos, se
+// eligen los tamaños (de 3 al máximo) para que los cortes caigan donde cambia el
+// nivel. Si no se puede sin un grupo más, se mezcla lo mínimo posible (y la
+// edad decide quién pasa, con agruparPorEdadDentroDeNivel).
+
+/** Tamaños de grupo (mismo número de grupos) con los cortes lo más cerca posible de los cambios de nivel. */
+export function tamanosAlineadosConNivel(niveles: number[], sizes: number[], maximum: number): number[] {
+  const total = niveles.length;
+  const grupos = sizes.length;
+  if (grupos < 2 || total !== sizes.reduce((a, b) => a + b, 0)) return sizes;
+  const cambios: number[] = [];
+  for (let i = 1; i < total; i += 1) if (niveles[i] !== niveles[i - 1]) cambios.push(i);
+  if (!cambios.length) return sizes;
+  const minimo = Math.min(3, ...sizes);
+  const coste = (partes: number[]) => {
+    const cortes: number[] = [];
+    partes.reduce((acc, p) => (cortes.push(acc + p), acc + p), 0);
+    cortes.pop();
+    // Niños que quedan en un grupo con otro nivel: distancia de cada cambio de nivel a su corte más cercano.
+    return cambios.reduce((s, c) => s + Math.min(...cortes.map((k) => Math.abs(k - c))), 0);
+  };
+  const desequilibrio = (partes: number[]) => Math.max(...partes) - Math.min(...partes);
+  let mejor = sizes;
+  let mejorCoste = coste(sizes);
+  const probar = (partes: number[], resto: number) => {
+    if (partes.length === grupos - 1) {
+      if (resto < minimo || resto > maximum) return;
+      const candidata = [...partes, resto];
+      const c = coste(candidata);
+      if (c < mejorCoste || (c === mejorCoste && desequilibrio(candidata) < desequilibrio(mejor))) {
+        mejor = candidata;
+        mejorCoste = c;
+      }
+      return;
+    }
+    for (let p = minimo; p <= maximum && p < resto; p += 1) probar([...partes, p], resto - p);
+  };
+  probar([], total);
+  return mejor;
+}
+
+// ---- Reparto óptimo Baby (17/11, Jose) ------------------------------------------
+// «Que los grupos sean los más óptimos para trabajar en pista contando con todas
+// las variables». Decisiones de Jose:
+//   1. Prioridad: NIVEL > EDAD > FUERZA > atención.
+//   2. Número de grupos: el mínimo, salvo que UNO MÁS compense (evita mezclar
+//      niveles o deja las edades mucho más parecidas).
+//   3. Atención ALTA: juntos en un grupo pequeño (el reparto especial de siempre).
+//   4. Cada niño con su nivel (el B+ fuerte con C se mantiene como hasta ahora).
+// Cómo: se ordena por nivel y edad y se buscan los cortes que dan el menor
+// «coste» (programación dinámica: prueba todos los repartos posibles).
+
+export type NinoReparto = { nivel: number; edad: number | null; fuerza: number };
+export type RepartoOptimo = { orden: number[]; tamanos: number[]; grupoExtra: null | 'niveles' | 'edades' };
+
+const PESO = { nivel: 10, edad: 1, fuerza: 0.3, equilibrio: 0.15 };
+/** Un grupo más solo si la diferencia de edad máxima de un grupo baja al menos esto (años). */
+export const MEJORA_EDAD_GRUPO_EXTRA = 1.5;
+
+function costeGrupo(ninos: NinoReparto[], tamanoMedio: number): number {
+  const porNivel = new Map<number, number>();
+  ninos.forEach((n) => porNivel.set(n.nivel, (porNivel.get(n.nivel) || 0) + 1));
+  const mezclados = ninos.length - Math.max(...porNivel.values());
+  const edades = ninos.map((n) => n.edad).filter((e): e is number => e !== null);
+  const rangoEdad = edades.length > 1 ? Math.max(...edades) - Math.min(...edades) : 0;
+  const fuerzas = ninos.map((n) => n.fuerza);
+  const rangoFuerza = Math.max(...fuerzas) - Math.min(...fuerzas);
+  return PESO.nivel * mezclados + PESO.edad * rangoEdad + PESO.fuerza * rangoFuerza + PESO.equilibrio * (ninos.length - tamanoMedio) ** 2;
+}
+
+function mejoresCortes(ninos: NinoReparto[], grupos: number, maximo: number): { tamanos: number[]; coste: number } | null {
+  const n = ninos.length;
+  const minimo = Math.min(3, n);
+  if (grupos * minimo > n || grupos * maximo < n) return null;
+  const medio = n / grupos;
+  // f[g][i]: mejor coste poniendo los i primeros en g grupos.
+  const f: number[][] = Array.from({ length: grupos + 1 }, () => Array(n + 1).fill(Infinity));
+  const desde: number[][] = Array.from({ length: grupos + 1 }, () => Array(n + 1).fill(-1));
+  f[0][0] = 0;
+  for (let g = 1; g <= grupos; g += 1)
+    for (let i = 1; i <= n; i += 1)
+      for (let t = minimo; t <= maximo && t <= i; t += 1) {
+        const previo = f[g - 1][i - t];
+        if (!Number.isFinite(previo)) continue;
+        const c = previo + costeGrupo(ninos.slice(i - t, i), medio);
+        if (c < f[g][i] - 1e-9) {
+          f[g][i] = c;
+          desde[g][i] = i - t;
+        }
+      }
+  if (!Number.isFinite(f[grupos][n])) return null;
+  const tamanos: number[] = [];
+  for (let g = grupos, i = n; g > 0; g -= 1) {
+    const j = desde[g][i];
+    tamanos.unshift(i - j);
+    i = j;
+  }
+  return { tamanos, coste: f[grupos][n] };
+}
+
+const resumen = (ninos: NinoReparto[], tamanos: number[]) => {
+  let inicio = 0;
+  let mezclados = 0;
+  let peorEdad = 0;
+  for (const t of tamanos) {
+    const g = ninos.slice(inicio, inicio + t);
+    const porNivel = new Map<number, number>();
+    g.forEach((x) => porNivel.set(x.nivel, (porNivel.get(x.nivel) || 0) + 1));
+    mezclados += g.length - Math.max(...porNivel.values());
+    const e = g.map((x) => x.edad).filter((v): v is number => v !== null);
+    if (e.length > 1) peorEdad = Math.max(peorEdad, Math.max(...e) - Math.min(...e));
+    inicio += t;
+  }
+  return { mezclados, peorEdad };
+};
+
+/** Mejor reparto de un bloque: orden de los niños (índices) y tamaños de los grupos. */
+export function repartoOptimoBaby(ninos: NinoReparto[], maximo: number): RepartoOptimo {
+  const orden = ninos
+    .map((n, i) => ({ n, i }))
+    .sort((a, b) => b.n.nivel - a.n.nivel || (a.n.edad ?? 99) - (b.n.edad ?? 99) || b.n.fuerza - a.n.fuerza || a.i - b.i)
+    .map((x) => x.i);
+  const ordenados = orden.map((i) => ninos[i]);
+  const n = ninos.length;
+  if (n <= 2) return { orden, tamanos: n ? [n] : [], grupoExtra: null };
+  const minimoGrupos = Math.max(1, Math.ceil(n / maximo));
+  let base = mejoresCortes(ordenados, minimoGrupos, maximo);
+  let grupos = minimoGrupos;
+  while (!base && grupos < n) {
+    grupos += 1;
+    base = mejoresCortes(ordenados, grupos, maximo);
+  }
+  if (!base) return { orden, tamanos: [n], grupoExtra: null };
+  const pulir = (tamanos: number[]) => mejorarIntercambiando(orden, ninos, tamanos);
+  const conBase = pulir(base.tamanos);
+  const extra = mejoresCortes(ordenados, grupos + 1, maximo);
+  if (extra) {
+    const conExtra = pulir(extra.tamanos);
+    const a = resumen(conBase.map((i) => ninos[i]), base.tamanos);
+    const b = resumen(conExtra.map((i) => ninos[i]), extra.tamanos);
+    if (a.mezclados > 0 && b.mezclados === 0) return { orden: conExtra, tamanos: extra.tamanos, grupoExtra: 'niveles' };
+    if (b.mezclados <= a.mezclados && a.peorEdad - b.peorEdad >= MEJORA_EDAD_GRUPO_EXTRA)
+      return { orden: conExtra, tamanos: extra.tamanos, grupoExtra: 'edades' };
+  }
+  return { orden: conBase, tamanos: base.tamanos, grupoExtra: null };
+}
+
+/**
+ * Mejora el reparto intercambiando niños entre grupos mientras baje el coste
+ * (p. ej. si hay que mezclar, que pase el de edad más parecida, no el más pequeño).
+ * Mismos tamaños; devuelve el nuevo orden (índices).
+ */
+function mejorarIntercambiando(orden: number[], ninos: NinoReparto[], tamanos: number[]): number[] {
+  const grupos: number[][] = [];
+  let inicio = 0;
+  for (const t of tamanos) {
+    grupos.push(orden.slice(inicio, inicio + t));
+    inicio += t;
+  }
+  const medio = orden.length / Math.max(tamanos.length, 1);
+  const coste = (g: number[]) => costeGrupo(g.map((i) => ninos[i]), medio);
+  for (let vuelta = 0; vuelta < 50; vuelta += 1) {
+    let mejora = false;
+    for (let a = 0; a < grupos.length; a += 1)
+      for (let b = a + 1; b < grupos.length; b += 1)
+        for (let x = 0; x < grupos[a].length; x += 1)
+          for (let y = 0; y < grupos[b].length; y += 1) {
+            const antes = coste(grupos[a]) + coste(grupos[b]);
+            const ga = grupos[a].slice();
+            const gb = grupos[b].slice();
+            [ga[x], gb[y]] = [gb[y], ga[x]];
+            if (coste(ga) + coste(gb) < antes - 1e-9) {
+              grupos[a] = ga;
+              grupos[b] = gb;
+              mejora = true;
+            }
+          }
+    if (!mejora) break;
+  }
+  // Dentro de cada grupo, por edad (para que se lea ordenado).
+  return grupos.flatMap((g) => g.slice().sort((i, j) => ninos[j].nivel - ninos[i].nivel || (ninos[i].edad ?? 99) - (ninos[j].edad ?? 99)));
+}
+
 export function tamanosGruposPedagogicosApp(total: number, maximum: number): number[] {
   return balancedGroupSizes(total, maximum);
 }
 
 export function aplicarCinturonPedagogicoAutomaticoAgenda(
   data: AgendaRecomendacionSesionApp[],
-  options?: { usarPerfilBaby?: boolean; perfiles?: PerfilOperativoAlumnoApp[]; preparadosGrande?: Map<string, PreparadoGrande> }
+  options?: {
+    usarPerfilBaby?: boolean;
+    perfiles?: PerfilOperativoAlumnoApp[];
+    preparadosGrande?: Map<string, PreparadoGrande>;
+    /** Solo Baby (17/11): no mezclar B y B+ si salen los mismos grupos, y el nombre y el bloque dicen los niveles reales del grupo. */
+    esBaby?: boolean;
+  }
 ): AgendaRecomendacionSesionApp[] {
   const profiles = options?.perfiles || [];
   const preparados = options?.preparadosGrande || preparadosGrandeActuales();
@@ -196,12 +386,35 @@ export function aplicarCinturonPedagogicoAutomaticoAgenda(
     const reparto = options?.usarPerfilBaby
       ? babyGroupSizes(sortedStudents, band, profiles)
       : { sizes: balancedGroupSizes(sortedStudents.length, band.max), especial: false };
-    const sizes = reparto.sizes;
+    // 17/11 (Baby, Jose): reparto óptimo por nivel > edad > fuerza, con un grupo
+    // más si compensa. El reparto especial (transición / atención alta) no se toca.
+    const optimo = Boolean(options?.esBaby) && band.id !== 'REVIEW' && !reparto.especial;
+    const maximoBloque = band.id === 'INICIACION_A' ? 4 : band.id.startsWith('APLUS') ? 5 : band.max;
+    const plan = optimo
+      ? repartoOptimoBaby(
+          sortedStudents.map((s) => {
+            const p = profiles.find((item) => item.alumno_id === s.alumno_id);
+            // El B+ fuerte que va con C cuenta como C (no es «mezcla»).
+            const nivel = band.id === 'C_D' && options?.usarPerfilBaby && canStrongBabyBPlusJoinC(s, p) ? levelOrder('C') : levelOrder(s.nivel_resumen);
+            return { nivel: Number.isFinite(nivel) ? nivel : 0, edad: ageOf(s, profiles), fuerza: strength(p) };
+          }),
+          maximoBloque
+        )
+      : null;
+    const ordenados = plan ? plan.orden.map((i) => sortedStudents[i]) : sortedStudents;
+    const sizes = plan ? plan.tamanos : reparto.sizes;
+    const avisoExtra = plan?.grupoExtra === 'niveles'
+      ? 'Se propone un grupo más para no mezclar niveles.'
+      : plan?.grupoExtra === 'edades'
+        ? 'Se propone un grupo más para que las edades sean más parecidas.'
+        : null;
     // 05/11: dentro del mismo nivel, juntar por edad (sin tocar el reparto especial).
     const students = reparto.especial
       ? sortedStudents
-      : agruparPorEdadDentroDeNivel(
-          sortedStudents,
+      : plan
+        ? ordenados
+        : agruparPorEdadDentroDeNivel(
+          ordenados,
           sizes,
           options?.usarPerfilBaby
             ? (s) => {
@@ -214,7 +427,14 @@ export function aplicarCinturonPedagogicoAutomaticoAgenda(
     let start = 0;
     for (const size of sizes) {
       const chunk = students.slice(start, start + size);
-      const name = size === 1 ? `REVISAR · ${chunk[0]?.alumno || band.label}` : `Grupo ${counter++} · Nivel ${band.label}`;
+      // 17/11 (Baby): si todos son B+, el grupo se llama «B+», no «B / B+».
+      const nivelesReales = Array.from(new Set(chunk.map((s) => s.nivel_resumen).filter((n): n is string => Boolean(n))))
+        .sort((a, b) => levelOrder(a) - levelOrder(b));
+      const label = options?.esBaby && ['INICIACION_A', 'B_BPLUS', 'C_D'].includes(band.id) && nivelesReales.length
+        ? nivelesReales.map((n) => (/^INICIACION$/i.test(n) ? 'INICIACIÓN' : n)).join(' / ')
+        : band.label;
+      const bloque = label === band.label ? band.bloque : label;
+      const name = size === 1 ? `REVISAR · ${chunk[0]?.alumno || band.label}` : `Grupo ${counter++} · Nivel ${label}`;
       chunk.forEach((student, index) => {
         const profile = profiles.find((item) => item.alumno_id === student.alumno_id);
         const promotion = options?.usarPerfilBaby && canStrongBabyBPlusJoinC(student, profile) ? 'B+ fuerte: puede tirar con C bajo por ritmo/autonomía.' : null;
@@ -223,8 +443,8 @@ export function aplicarCinturonPedagogicoAutomaticoAgenda(
         const grande = prep && band.id.startsWith('APLUS')
           ? `${prep.estado === 'listo' ? '🟢 Preparado para la grande' : '🟡 Casi listo para la grande'}: ${prep.motivo}.`
           : null;
-        const extra = size === 1 ? 'No crear grupo de 1. Revisión manual.' : [promotion, transition, grande].filter(Boolean).join(' · ') || student.alertas || null;
-        output.push({ ...student, grupo_recomendado: name, bloque_tecnico: band.bloque, pista_recomendada: band.pista,
+        const extra = size === 1 ? 'No crear grupo de 1. Revisión manual.' : [promotion, transition, grande, index === 0 ? avisoExtra : null].filter(Boolean).join(' · ') || student.alertas || null;
+        output.push({ ...student, grupo_recomendado: name, bloque_tecnico: bloque, pista_recomendada: band.pista,
           orden_bloque: band.orden, orden_en_grupo: index + 1, alertas: [student.alertas, extra].filter(Boolean).join(' · ') || null });
       });
       start += size;

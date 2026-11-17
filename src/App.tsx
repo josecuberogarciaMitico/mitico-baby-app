@@ -13747,6 +13747,7 @@ async function abrirGestionOperativaIntensivoDia(
                 usarPerfilBaby:
                   esBabyAlternativa && perfilesParaRecomendador.length > 0,
                 perfiles: perfilesParaRecomendador,
+                esBaby: esBabyAlternativa,
               });
 
             const propuestaPorGrupo = new Map<
@@ -13915,6 +13916,7 @@ async function abrirGestionOperativaIntensivoDia(
       const dataPedagogica = aplicarCinturonPedagogicoAutomaticoAgenda(data, {
         usarPerfilBaby: esSesionBaby && perfilesParaRecomendador.length > 0,
         perfiles: perfilesParaRecomendador,
+        esBaby: esSesionBaby,
       });
       setAgendaRecomendaciones(dataPedagogica);
       setAlternativasTurnoAgendaPorAlumno({});

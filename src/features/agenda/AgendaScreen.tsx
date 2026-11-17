@@ -430,12 +430,27 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
   >([]);
 
   const gruposPropuestaActuales = gruposRecomendadosAgenda();
+  // 17/11: el desplegable «Mover a» usa los MISMOS nombres que los títulos de
+  // los grupos (que se numeran por el orden en pantalla) y no ofrece grupos que
+  // se han quedado vacíos: antes, «Grupo 5» del desplegable podía ser otro
+  // grupo (o uno vacío) y el niño acababa solo en un grupo de 1.
+  const opcionesDestinoAgenda: Array<{ valor: string; etiqueta: string }> = [
+    // (Las particulares tienen su propia opción «Mover a particular».)
+    ...gruposPropuestaActuales
+      .map(([nombreGrupo, alumnosGrupo], indice) => ({ valor: nombreGrupo, etiqueta: nombreGrupoPropuestaApp(alumnosGrupo, indice) }))
+      .filter((opcion) => !esGrupoParticularAgenda(opcion.valor)),
+    ...(gruposAgendaManuales as string[])
+      .filter((manual) => !gruposPropuestaActuales.some(([nombreGrupo]) => nombreGrupo === manual))
+      .map((manual) => ({ valor: manual, etiqueta: `${manual} (vacío)` })),
+  ];
   const candidatosReubicacionBaby: BabyRelocationStudent[] = [];
   const candidatosVistos = new Set<string>();
   gruposPropuestaActuales.forEach(([nombreGrupo, alumnosGrupo]) => {
     if (esGrupoParticularAgenda(nombreGrupo)) return;
-    const validacion = textoValidacionPedagogicaGrupoApp(alumnosGrupo);
-    if (alumnosGrupo.length !== 1 && validacion.estado !== 'BLOQUEADO') return;
+    // 17/11 (Jose): proponer OTRO DÍA solo si el niño se ha quedado solo en su
+    // grupo. Un grupo bloqueado (p. ej. 8 niños) se arregla dentro del mismo
+    // turno; antes salía «Revisión manual» con otros días para cada uno de sus niños.
+    if (alumnosGrupo.length !== 1) return;
     alumnosGrupo.forEach((alumno: AgendaRecomendacionSesionApp) => {
       if (candidatosVistos.has(alumno.alumno_id)) return;
       candidatosVistos.add(alumno.alumno_id);
@@ -3182,13 +3197,13 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                             height: 42,
                                           }}
                                         >
-                                          {nombresGruposAgendaBase().map(
+                                          {opcionesDestinoAgenda.map(
                                             (grupoDestino) => (
                                               <option
-                                                key={`${alumno.alumno_id}-${grupoDestino}`}
-                                                value={grupoDestino}
+                                                key={`${alumno.alumno_id}-${grupoDestino.valor}`}
+                                                value={grupoDestino.valor}
                                               >
-                                                {grupoDestino}
+                                                {grupoDestino.etiqueta}
                                               </option>
                                             )
                                           )}

@@ -3,6 +3,7 @@ import {
   canStrongBabyBPlusJoinC,
   explicacionCompactaPropuestaBabyApp,
   isBabyTowLiftTransition,
+  tamanosAlineadosConNivel,
   tamanosGruposPedagogicosApp,
 } from '../../../src/features/baby/babyRecommendation';
 import type { PerfilOperativoAlumnoApp } from '../../../src/core/students/studentTypes';
@@ -112,4 +113,78 @@ test('edad (Baby con perfil): reordena dentro del nivel y respeta los niños con
   const perfiles2 = ids.map((id, i) => profile(id, { edad_aprox: edades[i], demanda_atencion: i >= 5 ? 'ALTA' : 'NORMAL' }));
   const g2 = grupos(aplicarCinturonPedagogicoAutomaticoAgenda(data, { usarPerfilBaby: true, perfiles: perfiles2 }));
   equal(g2.includes('fgh'), true, 'los 3 de demanda alta siguen juntos');
+});
+
+test('B y B+ (Baby): separados si salen los mismos grupos', () => {
+  // 6 B+ y 5 B → antes 6+5 con un B+ entre los B; ahora 6 B+ y 5 B.
+  const data = [...['p1', 'p2', 'p3', 'p4', 'p5', 'p6'].map((id) => conEdad(id, 'B+', 6)), ...['b1', 'b2', 'b3', 'b4', 'b5'].map((id) => conEdad(id, 'B', 5))];
+  const sep = grupos(aplicarCinturonPedagogicoAutomaticoAgenda(data, { esBaby: true }));
+  equal(sep.length, 2, 'los mismos dos grupos');
+  equal(sep.includes('p1p2p3p4p5p6') && sep.includes('b1b2b3b4b5'), true, 'B+ por un lado y B por otro');
+  // Ocio (sin la opción): exactamente como antes.
+  const antes = grupos(aplicarCinturonPedagogicoAutomaticoAgenda(data));
+  equal(antes.includes('b1b2b3b4b5'), false, 'sin la opción, como antes (mezcla)');
+});
+
+test('Baby: un grupo más si así no se mezclan niveles (decisión de Jose)', () => {
+  // 3 B+ y 9 B, máx. 6 → con 2 grupos habría que mezclar; con 3, B+ por un lado y B en dos grupos.
+  const data = [
+    ...['p1', 'p2', 'p3'].map((id) => conEdad(id, 'B+', 6.5)),
+    conEdad('b1', 'B', 4.5), conEdad('b2', 'B', 4.6), conEdad('b3', 'B', 4.7), conEdad('b4', 'B', 4.8), conEdad('b5', 'B', 4.9),
+    conEdad('b6', 'B', 5.0), conEdad('b7', 'B', 6.0), conEdad('b8', 'B', 6.1), conEdad('b9', 'B', 6.2),
+  ];
+  const out = aplicarCinturonPedagogicoAutomaticoAgenda(data, { esBaby: true });
+  const g = grupos(out);
+  equal(g.length, 3, 'un grupo más');
+  equal(g.includes('p1p2p3'), true, 'B+ solos');
+  equal(g.includes('b7b8b9') || g.includes('b6b7b8b9'), true, 'los B mayores juntos');
+  equal(out.some((r) => /grupo más para no mezclar niveles/.test(r.alertas || '')), true, 'se explica por qué');
+});
+
+test('Baby: si no se puede evitar mezclar, pasa el de edad más parecida', () => {
+  // 2 B+ (no llegan a grupo) y 4 B: un grupo de 6 (o 2+4 no vale). Con 7 B: 2 grupos y un B con los B+.
+  const data = [conEdad('p1', 'B+', 6.5), conEdad('p2', 'B+', 6.8), conEdad('b1', 'B', 4.6), conEdad('b2', 'B', 4.8), conEdad('b3', 'B', 4.9), conEdad('b4', 'B', 5.3), conEdad('b5', 'B', 5.5), conEdad('b6', 'B', 5.7), conEdad('b7', 'B', 4.7)];
+  const g = grupos(aplicarCinturonPedagogicoAutomaticoAgenda(data, { esBaby: true }));
+  equal(g.length, 2, 'dos grupos');
+  equal(g.includes('b6p1p2'), true, 'el B de más edad con los B+');
+});
+
+test('tamaños alineados con el nivel', () => {
+  equal(tamanosAlineadosConNivel([4, 4, 4, 4, 4, 3, 3, 3, 3, 3, 3], [6, 5], 6).join('+'), '5+6', 'corte justo en el cambio');
+  equal(tamanosAlineadosConNivel([4, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3], [6, 6], 6).join('+'), '6+6', 'imposible sin grupo extra: igual');
+  equal(tamanosAlineadosConNivel([3, 3, 3, 3, 3, 3], [6], 6).join('+'), '6', 'un solo nivel: igual');
+});
+
+test('nombre del grupo (Baby): dice los niveles que hay de verdad', () => {
+  const data = [...['p1', 'p2', 'p3', 'p4', 'p5', 'p6'].map((id) => conEdad(id, 'B+', 6)), ...['b1', 'b2', 'b3', 'b4', 'b5'].map((id) => conEdad(id, 'B', 5))];
+  const out = aplicarCinturonPedagogicoAutomaticoAgenda(data, { esBaby: true });
+  const de = (id: string) => out.find((r) => r.alumno_id === id)!;
+  equal(de('p1').grupo_recomendado.endsWith('Nivel B+'), true, 'todos B+: «Nivel B+»');
+  equal(de('p1').bloque_tecnico, 'B+', 'bloque B+');
+  equal(de('b1').grupo_recomendado.endsWith('Nivel B'), true, 'todos B: «Nivel B»');
+  const mezcla = aplicarCinturonPedagogicoAutomaticoAgenda([conEdad('x', 'B+', 6), conEdad('y', 'B', 5), conEdad('z', 'B', 5)], { esBaby: true });
+  equal(mezcla[0].grupo_recomendado.endsWith('Nivel B / B+'), true, 'mezclado: «B / B+»');
+  // Ocio: como antes.
+  equal(aplicarCinturonPedagogicoAutomaticoAgenda(data)[0].bloque_tecnico, 'B / B+', 'Ocio sin cambios');
+});
+
+test('Baby: en Iniciación / A manda el nivel y luego la edad (con perfil)', () => {
+  // 3 A y 4 Iniciación (máx. 4) → 2 grupos: A por un lado, Iniciación por otro.
+  const kids: Array<[string, string, number]> = [['a1', 'A', 4.8], ['i1', 'INICIACION', 3.2], ['a2', 'A', 3.4], ['i2', 'INICIACION', 4.7], ['a3', 'A', 4.2], ['i3', 'INICIACION', 3.5], ['i4', 'INICIACION', 3.9]];
+  const data = kids.map(([id, n, e]) => conEdad(id, n, e));
+  const perfiles = kids.map(([id, , e]) => profile(id, { edad_aprox: e, fuerza_nivel: id === 'a2' ? 'BAJO' : 'ADECUADO' }));
+  const out = aplicarCinturonPedagogicoAutomaticoAgenda(data, { usarPerfilBaby: true, perfiles, esBaby: true });
+  const g = grupos(out);
+  equal(g.includes('a1a2a3') && g.includes('i1i2i3i4'), true, 'separados por nivel aunque uno sea «bajo»');
+  equal(out.find((r) => r.alumno_id === 'i1')!.grupo_recomendado.endsWith('Nivel INICIACIÓN'), true, 'con tilde');
+  // Sin «esBaby» (Ocio u otros), como antes.
+  equal(grupos(aplicarCinturonPedagogicoAutomaticoAgenda(data, { usarPerfilBaby: true, perfiles })).includes('a1a2a3'), false, 'sin la opción, como antes');
+});
+
+test('Baby: si hay que mezclar, pasa el de edad más parecida y los grupos van por edad', () => {
+  // 2 B+ y 6 B (máx. 6): con 2 grupos no se puede separar sin un grupo de 2 → un B con los B+: el mayor.
+  const data = [conEdad('p1', 'B+', 6.5), conEdad('p2', 'B+', 6.8), conEdad('b1', 'B', 4.6), conEdad('b2', 'B', 4.8), conEdad('b3', 'B', 4.9), conEdad('b4', 'B', 5.3), conEdad('b5', 'B', 5.5), conEdad('b6', 'B', 5.7)];
+  const perfiles = data.map((d) => profile(d.alumno_id, { edad_aprox: d.edad as number }));
+  const g = grupos(aplicarCinturonPedagogicoAutomaticoAgenda(data, { usarPerfilBaby: true, perfiles, esBaby: true }));
+  equal(g.includes('b6p1p2'), true, 'el B de más edad va con los B+');
 });
