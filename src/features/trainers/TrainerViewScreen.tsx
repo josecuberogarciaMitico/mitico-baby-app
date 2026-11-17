@@ -27,6 +27,7 @@ import { AvisosCambioGrupoEntrenador, ChipAvisosCambio, useAvisosCambioPendiente
 import { MensajesEntrenador } from './MensajesEntrenador';
 import { CalidadPropiaEntrenador, ReportesDevueltosEntrenador } from './CalidadEntrenador';
 import { DisponibilidadSemanaEntrenador } from './DisponibilidadSemanaEntrenador';
+import { enviarDisponibilidadCompleta } from './disponibilidadEnvio';
 
 // Edad del niño, discreta junto a su nombre (grupos y reportes del entrenador).
 function EdadNino({ edad }: { edad?: number | null }) {
@@ -146,7 +147,8 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
     referenciaTecnicaReporteApp,
     renderAyudaRapidaPantallaApp,
     repartoEntrenadoresDelGrupo,
-    responderDisponibilidadRapida,
+    guardarRespuestaDisponibilidadApp,
+    ejecutarPushMiticoApp,
     resumenChipsMovil,
     seccionGrupoEntrenador,
     semanaDisponibilidadVistaEntrenadorInicio,
@@ -349,7 +351,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
   const textoRecordatorioDisponibilidad = (editor: any) => {
     const fechaLimite: string | null | undefined = editor?.fecha_limite;
     if (!fechaLimite) {
-      return 'Responde cuanto antes para que coordinación pueda organizar los grupos de la semana.';
+      return 'Responde cuanto antes para que coordinación pueda organizar los grupos de la semana. No se envía hasta que marques todos los turnos.';
     }
 
     const [fechaSolo, horaSolo] = fechaLimite.split('T');
@@ -366,7 +368,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
       return `La disponibilidad de esta semana se cerró el ${diaLimite} ${fechaLimiteFormateada} a las ${horaLimite}. Si necesitas comunicar algún cambio, contacta con Jose por privado.`;
     }
 
-    return `Responde antes de las ${horaLimite} del ${diaLimite} ${fechaLimiteFormateada} para que coordinación pueda organizar los grupos de la semana.`;
+    return `Responde antes de las ${horaLimite} del ${diaLimite} ${fechaLimiteFormateada} para que coordinación pueda organizar los grupos de la semana. No se envía hasta que marques todos los turnos.`;
   };
 
   function renderFormularioReporteEntrenador(
@@ -1010,7 +1012,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                 let titulo = 'Organización semanal en preparación';
                 let detalle = disponibilidadPublicada
                   ? pendientes > 0
-                    ? `La disponibilidad está abierta. Te quedan ${pendientes} respuesta(s) por completar.`
+                    ? `La disponibilidad de la semana está publicada. Te quedan ${pendientes} turno(s) por marcar: no se envía hasta que los marques todos y pulses «Enviar disponibilidad».`
                     : 'Disponibilidad recibida. Te avisaremos cuando haya grupos publicados para ti.'
                   : 'La disponibilidad de esta semana todavía no está publicada.';
 
@@ -1361,9 +1363,18 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                             rango={rangoSemanaAgenda(semana.inicio)}
                             dias={diasDisponibilidadVistaEntrenador(semana.turnos)}
                             hoy={hoyAgendaClave}
-                            onResponder={(turno, respuesta) =>
-                              responderDisponibilidadRapida(turno as any, respuesta)
-                            }
+                            onEnviar={async (respuestas) => {
+                              // 17/11: se envía todo junto; una sola recarga y un solo aviso al final.
+                              const r = await enviarDisponibilidadCompleta(respuestas, (t, resp) =>
+                                guardarRespuestaDisponibilidadApp(t as any, resp)
+                              );
+                              const primero: any = respuestas[0]?.turno;
+                              if (primero) await cargarDisponibilidad(primero.fecha_inicio, true);
+                              const ultimo = r.guardadas[r.guardadas.length - 1];
+                              if (r.ok && ultimo)
+                                void Promise.resolve(ejecutarPushMiticoApp('availability_response_updated', { respuesta_id: ultimo })).catch(() => undefined);
+                              return r;
+                            }}
                           />
                         </React.Fragment>
                       ))}
@@ -1884,8 +1895,16 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                   <section style={avisoPendiente}>
                     <strong>Disponibilidad pendiente en la app</strong>
                     <p style={{ margin: '6px 0 10px' }}>
-                      Rellena estos turnos para que Jose pueda montar la semana.
+                      Marca todos estos turnos en «Disponibilidad» y pulsa «Enviar disponibilidad»: no se envía hasta que estén todos.
                     </p>
+                    <button
+                      type="button"
+                      className="trainer-soft-button trainer-soft-button--success"
+                      style={{ marginBottom: 10 }}
+                      onClick={() => setTabVistaEntrenador('disponibilidad')}
+                    >
+                      Ir a Disponibilidad →
+                    </button>
                     <div style={{ display: 'grid', gap: 8 }}>
                       {disponibilidadVistaEntrenador
                         .filter(
@@ -1915,40 +1934,10 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                               )}{' '}
                               {formatearFecha(turno.fecha)}
                             </strong>
-                            <p style={{ margin: '4px 0 8px' }}>
+                            <p style={{ margin: '4px 0 0' }}>
                               {turno.hora_inicio.slice(0, 5)}–
                               {turno.hora_fin.slice(0, 5)}
                             </p>
-                            <div
-                              style={{
-                                display: 'flex',
-                                gap: 6,
-                                flexWrap: 'wrap',
-                              }}
-                            >
-                              <button
-                                className="trainer-soft-button trainer-soft-button--success"
-                                onClick={() =>
-                                  responderDisponibilidadRapida(
-                                    turno,
-                                    'Disponible'
-                                  )
-                                }
-                              >
-                                Disponible
-                              </button>
-                              <button
-                                className="trainer-soft-button trainer-soft-button--danger"
-                                onClick={() =>
-                                  responderDisponibilidadRapida(
-                                    turno,
-                                    'No puedo'
-                                  )
-                                }
-                              >
-                                No disponible
-                              </button>
-                            </div>
                           </div>
                         ))}
                     </div>

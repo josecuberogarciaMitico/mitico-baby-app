@@ -21883,6 +21883,9 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       {pantalla === 'entrenador' && (
         <TrainerViewScreen
           ctx={{
+            // 17/11: la disponibilidad se envía entera (ver disponibilidadEnvio.ts).
+            guardarRespuestaDisponibilidadApp: (t: DisponibilidadEntrenador, r: string) => ejecutarFuncionAuthJson('responder_disponibilidad_editor_app', { p_respuesta_id: t.id, p_respuesta: r, p_comentario: t.comentario || null }),
+            ejecutarPushMiticoApp,
             abrirFormularioReporte,
             abrirGrupoDesdeTareaEntrenador,
             activarPushEntrenadorApp,
