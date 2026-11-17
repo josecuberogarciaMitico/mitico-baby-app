@@ -1,4 +1,4 @@
-import { grupoDeReparto, pendientesDeMensaje, repartosPorSesion, resumenDestinos, sesionDeReparto, ultimoRepartoGrupo, vistaReparto, type Reparto } from '../../../src/features/trainers/mensajesEntrenadorLogic';
+import { grupoDeReparto, nombresCortosDistintos, pendientesDeMensaje, repartosPorSesion, resumenDestinos, sesionDeReparto, ultimoRepartoGrupo, vistaReparto, type Reparto } from '../../../src/features/trainers/mensajesEntrenadorLogic';
 
 function equal<T>(actual: T, expected: T, label: string) {
   if (actual !== expected) throw new Error(`${label}: esperado ${String(expected)}, recibido ${String(actual)}`);
@@ -88,4 +88,17 @@ test('panel: repartos por turno y pendientes', () => {
   equal(sesionDeReparto('15/11 · 09:45. Marca'), '15/11 · 09:45', 'sesión');
   equal(pendientesDeMensaje(lista[0]), 1, 'reparto abierto: 1 sin OK');
   equal(pendientesDeMensaje(lista[1]), 0, 'reparto cerrado: 0');
+});
+
+test('nombres cortos: si dos se llaman igual, se distinguen por el apellido', () => {
+  const m = nombresCortosDistintos(['SERGIO AVENDAÑO', 'SERGIO HAPANYUK', 'SARA MARTINEZ', 'SARA VIBEKE', 'CARLOS CUADRA', 'CARLOS TALAVERA', 'ZOE SCHROLL', 'MARIO  MORALES', 'ANA PEREZ', 'ANA PRIETO', 'JOSE']);
+  equal(m.get('SERGIO AVENDAÑO'), 'SERGIO A.', 'inicial del apellido');
+  equal(m.get('SERGIO HAPANYUK'), 'SERGIO H.', 'inicial del apellido');
+  equal(m.get('SARA VIBEKE'), 'SARA V.', 'Sara');
+  equal(m.get('CARLOS TALAVERA'), 'CARLOS T.', 'Carlos');
+  equal(m.get('ZOE SCHROLL'), 'ZOE', 'sin repetir, solo el nombre');
+  equal(m.get('MARIO  MORALES'), 'MARIO', 'espacios dobles');
+  equal(m.get('ANA PEREZ'), 'ANA PEREZ', 'misma inicial: apellido entero');
+  equal(m.get('ANA PRIETO'), 'ANA PRIETO', 'misma inicial: apellido entero');
+  equal(m.get('JOSE'), 'JOSE', 'sin apellido');
 });

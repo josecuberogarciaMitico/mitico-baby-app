@@ -41,6 +41,34 @@ export type MensajeEnviado = {
 export const nombreCorto = (n: string | null | undefined) => String(n || '').trim().split(/\s+/)[0] || '—';
 
 /**
+ * Etiquetas cortas que no se repiten: el nombre y, si dos se llaman igual, la
+ * inicial del apellido (SERGIO A. / SERGIO H.); si aún coinciden, el apellido
+ * entero. Devuelve la etiqueta de cada nombre completo.
+ */
+export function nombresCortosDistintos(nombres: Array<string | null | undefined>): Map<string, string> {
+  const limpios = Array.from(new Set(nombres.map((n) => String(n || '').trim()).filter(Boolean)));
+  const partes = (n: string) => n.split(/\s+/);
+  const etiqueta = (n: string, nivel: number) => {
+    const [nombre, ...resto] = partes(n);
+    if (nivel === 0 || !resto.length) return nombre;
+    if (nivel === 1) return `${nombre} ${resto[0][0]}.`;
+    return [nombre, ...resto].join(' ');
+  };
+  const nivel = new Map(limpios.map((n) => [n, 0]));
+  for (let vuelta = 0; vuelta < 2; vuelta += 1) {
+    const cuenta = new Map<string, number>();
+    limpios.forEach((n) => {
+      const e = etiqueta(n, nivel.get(n) || 0);
+      cuenta.set(e, (cuenta.get(e) || 0) + 1);
+    });
+    limpios.forEach((n) => {
+      if ((cuenta.get(etiqueta(n, nivel.get(n) || 0)) || 0) > 1) nivel.set(n, (nivel.get(n) || 0) + 1);
+    });
+  }
+  return new Map(limpios.map((n) => [n, etiqueta(n, nivel.get(n) || 0)]));
+}
+
+/**
  * Lo que ve un entrenador en el reparto: niños fijos (de un compañero que ya
  * dio OK o que ya hizo su reporte) y libres. Los que ya reporté yo van
  * marcados y no se pueden soltar.
