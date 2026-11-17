@@ -1,4 +1,4 @@
-import { calidadPorEntrenador, calidadPropia, notaEquipoDe, vistaEntrenadorDesde, calidadReporte, consejosDe, fallosDe, formatoNota, notaReporte, semaforoDe } from '../../../src/features/reports/calidadReportes';
+import { calidadPorEntrenador, calidadPropia, notaEquipoDe, vistaEntrenadorDesde, calidadReporte, consejosDe, fortalezasDe, fallosDe, formatoNota, notaReporte, semaforoDe } from '../../../src/features/reports/calidadReportes';
 import { faltaJustificacionTodoConsigue, notaSuficiente, prepararEnvioReporteFocos } from '../../../src/lib/adaptiveReport';
 
 function equal<T>(actual: T, expected: T, label: string) {
@@ -81,8 +81,11 @@ test('calidad: en qué falla (coordinación) y consejos (entrenador)', () => {
   equal(fallosDe(periodoFalso({ reportes: 0, faltan: 4 }), periodoFalso(), false)[0], 'No ha hecho 4 reportes (cuentan como 0 en su nota).', 'sin reportes, solo lo que falta');
   const c = consejosDe(malo);
   equal(c.length, 5, 'cinco consejos');
-  equal(c[0].startsWith('Tienes 3 reportes sin hacer'), true, 'primero lo que no ha hecho');
-  equal(c[1].startsWith('Cuando lo consigue todo'), true, 'luego lo de «Lo consigue»');
+  equal(c[0].startsWith('Ponte al día con los 3 reportes pendientes'), true, 'primero lo que no ha hecho');
+  equal(c[1].startsWith('Cuando un niño lo consigue todo'), true, 'luego lo de «Lo consigue»');
+  equal(c.some((x) => /nota|calidad/i.test(x)), false, 'al entrenador no se le habla de nota ni de calidad');
+  equal(fortalezasDe(malo).length, 0, 'nada que destacar si todo falla');
+  equal(fortalezasDe(periodoFalso()).length, 4, 'si va bien, cuatro cosas que hace bien');
   equal(consejosDe(periodoFalso()).length, 0, 'si va bien, sin consejos');
 });
 
@@ -154,7 +157,10 @@ test('calidad: lo que ve el propio entrenador (su nota y la del equipo)', () => 
   equal(conFalta.reciente.nota, 2.8, 'la del 13 cuenta como 0');
   equal(yo.semaforo, 'rojo', 'rojo');
   equal(yo.vaAMenos, true, 'va a menos');
-  equal(yo.consejos[0].startsWith('Cuando lo consigue todo'), true, 'consejo principal');
+  equal(yo.consejos[0].startsWith('Cuando un niño lo consigue todo'), true, 'consejo principal');
+  equal(yo.consejos.some((c) => /nota|calidad/i.test(c)), false, 'sin hablar de nota ni calidad');
+  equal(conFalta.consejos[0].startsWith('Ponte al día con el reporte pendiente'), true, 'pendientes primero, en positivo');
+  equal(Array.isArray(yo.fortalezas), true, 'lo que ya hace bien');
 });
 
 test('notas: mínimo 30 letras y 5 palabras, y sin copiar la misma en dos habilidades', () => {
