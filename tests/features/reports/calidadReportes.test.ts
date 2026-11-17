@@ -112,7 +112,7 @@ test('calidad: por entrenador, reciente frente a antes y «va a menos»', () => 
   equal(r.length, 2, 'dos entrenadores');
   equal(r[0].entrenador, 'SERGIO', 'el peor primero');
   equal(r[0].semaforo, 'rojo', 'Sergio en rojo');
-  equal(r[0].reciente.reportes, 5, '14 días');
+  equal(r[0].reciente.reportes, 5, 'últimos 7 días');
   equal(r[0].reciente.pocoDetallados, 4, 'cuatro vacíos');
   equal(r[0].anterior.reportes, 4, 'antes');
   equal(r[0].vaAMenos, true, 'va a menos');

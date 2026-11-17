@@ -7,7 +7,7 @@
 //  - Concreto (3): no marca todo «Lo consigue» sin escribir nada.
 //  - A tiempo (2,5): el mismo día o el siguiente (2 días: la mitad; más: 0).
 //  - Personal (1): no pone la misma valoración a todo el grupo.
-// La nota de un entrenador es la media de sus reportes de los últimos 14 días,
+// La nota de un entrenador es la media de sus reportes de los últimos 7 días,
 // y CADA REPORTE SIN HACER CUENTA COMO UN 0 (con un día de margen: cuenta a
 // partir de los 2 días de la sesión). El color sale solo de la nota.
 // Las mismas reglas están en SQL en calidad_reportes_equipo_app (lo que ve el
@@ -141,7 +141,8 @@ export type CalidadEntrenador = {
   ejemplos: Array<ReporteParaCalidad & { calidad: CalidadReporte; nota: number }>;
 };
 
-export const DIAS_RECIENTE = 14;
+/** Ventana de la nota (Jose, 17/11: 7 días, igual para él y para el entrenador). */
+export const DIAS_RECIENTE = 7;
 /** Con menos de estos reportes recientes no se pone color (poca muestra). */
 export const MINIMO_REPORTES = 4;
 export const UMBRAL = { tarde: 40, igualGrupo: 20, rojo: 6.5, verde: 8, bajada: 1.5 };
@@ -302,7 +303,7 @@ export function restarDias(iso: string, dias: number): string {
 type Hecho = ReporteParaCalidad & RasgosReporte & { calidad: CalidadReporte };
 
 /**
- * Agrupa por entrenador. «Reciente» = desde hoy-13 hasta hoy (14 días);
+ * Agrupa por entrenador. «Reciente» = los últimos DIAS_RECIENTE días (7);
  * «anterior» = todo lo de antes que venga en la lista. Solo cuenta reportes
  * hechos (con reporte_id). Ordena del peor al mejor.
  */

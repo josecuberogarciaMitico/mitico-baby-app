@@ -23,7 +23,7 @@ import {
 } from './calidadReportes';
 
 // Calidad de reportes por entrenador (17/11/2026). Nota de 0 a 10 de los
-// últimos 14 días, con quién hablar, en qué falla cada uno y los reportes
+// últimos 7 días, con quién hablar, en qué falla cada uno y los reportes
 // flojos, que se pueden devolver al entrenador para que los complete.
 
 const SEMANAS = 8;
@@ -95,7 +95,7 @@ function Tarjeta({
         <div style={{ display: 'grid', gridTemplateColumns: esMovil ? 'repeat(2, minmax(0,1fr))' : 'repeat(4, minmax(0,1fr))', gap: 6 }}>
           {[
             [r.nota === null ? '—' : `${formatoNota(r.nota)} / 10`, 'nota de calidad'],
-            [`${r.reportes}${r.faltan ? ` · ${r.faltan} sin hacer` : ''}`, 'reportes (14 días)'],
+            [`${r.reportes}${r.faltan ? ` · ${r.faltan} sin hacer` : ''}`, `reportes (${DIAS_RECIENTE} días)`],
             [`${r.pocoDetallados}${r.reportes ? ` · ${r.pctPocoDetallados}%` : ''}`, 'todo «Lo consigue» sin escribir'],
             [`${r.pctTarde}%`, 'rellenados 2+ días tarde'],
           ].map(([valor, etiqueta]) => (
