@@ -1,20 +1,9 @@
 import React from 'react';
-import {
-  esPendiente,
-  estadoEnvio,
-  guardarBorrador,
-  leerBorrador,
-  limpiarBorrador,
-  type Borrador,
-  type RespuestaDisponibilidad,
-} from './disponibilidadEnvio';
 
-// Disponibilidad del entrenador en el móvil (16/11). Toda la semana a la vista,
-// con botones grandes.
-// 17/11 (Jose): ya no se envía turno a turno. Marca todos los turnos y solo
-// entonces puede pulsar «Enviar disponibilidad». Lo marcado se guarda como
-// borrador en el móvil por si sale de la app. Una respuesta enviada no se cambia
-// desde aquí (igual que antes): se habla con coordinación.
+// Disponibilidad del entrenador en el móvil (16/11). Antes: un desplegable por
+// día que había que abrir uno a uno. Ahora toda la semana a la vista, con lo
+// que falta por contestar arriba y botones grandes. Una respuesta enviada no
+// se cambia desde aquí (igual que antes): se habla con coordinación.
 
 export type TurnoDisponibilidad = {
   id: string;
@@ -29,23 +18,19 @@ type Props = {
   rango: string;
   dias: { fecha: string; turnos: TurnoDisponibilidad[] }[];
   hoy: string;
-  /** Envía todas las respuestas juntas. Devuelve si fue bien. */
-  onEnviar: (
-    respuestas: Array<{ turno: TurnoDisponibilidad; respuesta: RespuestaDisponibilidad }>
-  ) => Promise<{ ok: boolean; error?: string }>;
+  onResponder: (turno: TurnoDisponibilidad, respuesta: 'Disponible' | 'No puedo') => void;
 };
 
 const DIAS = ['DOM', 'LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB'];
 
-function botonRespuesta(tipo: 'si' | 'no', marcado: boolean): React.CSSProperties {
-  const color = tipo === 'si' ? '#16a34a' : '#ef4444';
+function botonRespuesta(tipo: 'si' | 'no'): React.CSSProperties {
   return {
     flex: '1 1 0',
     minHeight: 48,
     borderRadius: 14,
-    border: `2px solid ${color}`,
-    background: marcado ? color : '#fff',
-    color: marcado ? '#fff' : tipo === 'si' ? '#15803d' : '#dc2626',
+    border: `2px solid ${tipo === 'si' ? '#16a34a' : '#ef4444'}`,
+    background: '#fff',
+    color: tipo === 'si' ? '#15803d' : '#dc2626',
     fontSize: 16,
     fontWeight: 900,
     cursor: 'pointer',
@@ -53,56 +38,11 @@ function botonRespuesta(tipo: 'si' | 'no', marcado: boolean): React.CSSPropertie
   };
 }
 
-export function DisponibilidadSemanaEntrenador({ rango, dias, hoy, onEnviar }: Props) {
+export function DisponibilidadSemanaEntrenador({ rango, dias, hoy, onResponder }: Props) {
   const turnos = dias.flatMap((d) => d.turnos);
-  const [borrador, setBorrador] = React.useState<Borrador>(() => limpiarBorrador(turnos, leerBorrador()));
-  const [enviando, setEnviando] = React.useState(false);
-  const [error, setError] = React.useState('');
-
-  const claveTurnos = turnos.map((t) => `${t.id}:${t.respuesta || ''}`).join('|');
-  React.useEffect(() => {
-    // Al recargar (p. ej. tras enviar), se olvida lo que ya no está pendiente.
-    setBorrador((b) => limpiarBorrador(turnos, b));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [claveTurnos]);
-
-  // Guarda el borrador de esta semana sin pisar el de otras semanas.
-  React.useEffect(() => {
-    const mios = new Set(turnos.map((t) => t.id));
-    const otros = Object.fromEntries(Object.entries(leerBorrador()).filter(([id]) => !mios.has(id)));
-    guardarBorrador({ ...otros, ...borrador });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [borrador]);
-
-  const marcar = (id: string, respuesta: RespuestaDisponibilidad) => {
-    setError('');
-    setBorrador((b) => {
-      // Pulsar otra vez lo mismo lo desmarca.
-      const { [id]: actual, ...resto } = b;
-      return actual === respuesta ? resto : { ...resto, [id]: respuesta };
-    });
-  };
-
-  const estado = estadoEnvio(turnos, borrador);
-  const enviadas = estado.total - estado.pendientes;
-  const pct = estado.total ? Math.round(((enviadas + estado.marcados) / estado.total) * 100) : 0;
-  const hayPendientes = estado.pendientes > 0;
-
-  async function enviar() {
-    if (!estado.listo || enviando) return;
-    const resumen = `Puedo: ${estado.puedo} · No puedo: ${estado.noPuedo}`;
-    if (!window.confirm(`¿Enviar tu disponibilidad de la semana ${rango}?\n\n${resumen}\n\nUna vez enviada, para cambiarla tendrás que hablar con coordinación.`)) return;
-    setEnviando(true);
-    setError('');
-    const respuestas = turnos.filter(esPendiente).map((turno) => ({ turno, respuesta: borrador[turno.id] }));
-    try {
-      const r = await onEnviar(respuestas);
-      if (!r.ok) setError(r.error || 'No se pudo enviar todo. Lo que falta sigue marcado: vuelve a pulsar «Enviar».');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'No se pudo enviar la disponibilidad.');
-    }
-    setEnviando(false);
-  }
+  const pendientes = turnos.filter((t) => (t.respuesta || 'Pendiente') === 'Pendiente').length;
+  const hechos = turnos.length - pendientes;
+  const pct = turnos.length ? Math.round((hechos / turnos.length) * 100) : 0;
 
   return (
     <section style={{ display: 'grid', gap: 12, minWidth: 0 }}>
@@ -110,31 +50,19 @@ export function DisponibilidadSemanaEntrenador({ rango, dias, hoy, onEnviar }: P
         style={{
           padding: '14px 16px',
           borderRadius: 18,
-          background: hayPendientes ? '#fff7ed' : '#f0fdf4',
-          border: `1px solid ${hayPendientes ? '#fdba74' : '#86efac'}`,
-          display: 'grid',
-          gap: 8,
+          background: pendientes ? '#fff7ed' : '#f0fdf4',
+          border: `1px solid ${pendientes ? '#fdba74' : '#86efac'}`,
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
           <strong style={{ fontSize: 17, color: '#0f172a' }}>Semana {rango}</strong>
-          <span style={{ fontSize: 13, fontWeight: 800, color: hayPendientes ? '#9a3412' : '#166534' }}>
-            {!hayPendientes
-              ? '✓ Disponibilidad enviada'
-              : estado.faltan > 0
-                ? `Te ${estado.faltan === 1 ? 'falta' : 'faltan'} ${estado.faltan} de ${estado.pendientes} por marcar`
-                : '✓ Todo marcado: ya puedes enviarla'}
+          <span style={{ fontSize: 13, fontWeight: 800, color: pendientes ? '#9a3412' : '#166534' }}>
+            {pendientes ? `Te faltan ${pendientes} de ${turnos.length}` : '✓ Todo contestado'}
           </span>
         </div>
-        <div style={{ height: 8, borderRadius: 999, background: 'rgba(15,23,42,.08)', overflow: 'hidden' }}>
-          <div style={{ width: `${pct}%`, height: '100%', borderRadius: 999, background: hayPendientes ? '#f97316' : '#16a34a' }} />
+        <div style={{ marginTop: 10, height: 8, borderRadius: 999, background: 'rgba(15,23,42,.08)', overflow: 'hidden' }}>
+          <div style={{ width: `${pct}%`, height: '100%', borderRadius: 999, background: pendientes ? '#f97316' : '#16a34a' }} />
         </div>
-        {hayPendientes && (
-          <span role="note" style={{ fontSize: 13, color: '#7c2d12', lineHeight: 1.4 }}>
-            ⚠️ <b>Tu disponibilidad no se envía hasta que marques todos los turnos.</b> Lo que marques se queda guardado en el
-            móvil hasta que pulses «Enviar disponibilidad».
-          </span>
-        )}
       </div>
 
       {dias.map((dia) => {
@@ -159,12 +87,9 @@ export function DisponibilidadSemanaEntrenador({ rango, dias, hoy, onEnviar }: P
 
             <div style={{ display: 'grid', gap: 8, minWidth: 0 }}>
               {dia.turnos.map((turno) => {
-                const pendiente = esPendiente(turno);
-                const marcado = borrador[turno.id];
-                const respuesta = pendiente ? marcado : turno.respuesta;
+                const respuesta = turno.respuesta || 'Pendiente';
+                const pendiente = respuesta === 'Pendiente';
                 const si = respuesta === 'Disponible';
-                const no = respuesta === 'No puedo';
-                const borde = si ? '#16a34a' : no ? '#ef4444' : '#f97316';
                 return (
                   <div
                     key={turno.id}
@@ -172,8 +97,8 @@ export function DisponibilidadSemanaEntrenador({ rango, dias, hoy, onEnviar }: P
                       padding: 12,
                       borderRadius: 16,
                       background: '#fff',
-                      border: `1px solid ${si ? '#bbf7d0' : no ? '#fecaca' : '#fdba74'}`,
-                      borderLeft: `5px solid ${borde}`,
+                      border: `1px solid ${pendiente ? '#fdba74' : si ? '#bbf7d0' : '#fecaca'}`,
+                      borderLeft: `5px solid ${pendiente ? '#f97316' : si ? '#16a34a' : '#ef4444'}`,
                       boxShadow: '0 4px 14px rgba(15,23,42,.05)',
                       display: 'grid',
                       gap: 10,
@@ -203,15 +128,15 @@ export function DisponibilidadSemanaEntrenador({ rango, dias, hoy, onEnviar }: P
                     </div>
                     {pendiente ? (
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button type="button" aria-pressed={si} disabled={enviando} style={botonRespuesta('si', si)} onClick={() => marcar(turno.id, 'Disponible')}>
+                        <button type="button" style={botonRespuesta('si')} onClick={() => onResponder(turno, 'Disponible')}>
                           ✓ Puedo
                         </button>
-                        <button type="button" aria-pressed={no} disabled={enviando} style={botonRespuesta('no', no)} onClick={() => marcar(turno.id, 'No puedo')}>
+                        <button type="button" style={botonRespuesta('no')} onClick={() => onResponder(turno, 'No puedo')}>
                           ✗ No puedo
                         </button>
                       </div>
                     ) : (
-                      <span style={{ fontSize: 12, color: '#64748b' }}>Enviado. Para cambiarlo, habla con coordinación.</span>
+                      <span style={{ fontSize: 12, color: '#64748b' }}>Para cambiarlo, habla con coordinación.</span>
                     )}
                   </div>
                 );
@@ -220,49 +145,6 @@ export function DisponibilidadSemanaEntrenador({ rango, dias, hoy, onEnviar }: P
           </div>
         );
       })}
-
-      {hayPendientes && (
-        <div
-          style={{
-            position: 'sticky',
-            bottom: 8,
-            zIndex: 2,
-            display: 'grid',
-            gap: 6,
-            padding: 10,
-            borderRadius: 18,
-            background: 'rgba(255,255,255,.96)',
-            boxShadow: '0 -6px 24px rgba(15,23,42,.12)',
-          }}
-        >
-          {error && (
-            <span role="alert" style={{ fontSize: 13, fontWeight: 800, color: '#b91c1c' }}>
-              {error}
-            </span>
-          )}
-          <button
-            type="button"
-            disabled={!estado.listo || enviando}
-            onClick={() => void enviar()}
-            style={{
-              minHeight: 54,
-              borderRadius: 14,
-              border: 'none',
-              background: estado.listo ? '#16a34a' : '#cbd5e1',
-              color: estado.listo ? '#fff' : '#475569',
-              fontSize: 16.5,
-              fontWeight: 900,
-              cursor: estado.listo && !enviando ? 'pointer' : 'not-allowed',
-            }}
-          >
-            {enviando
-              ? 'Enviando…'
-              : estado.listo
-                ? `Enviar disponibilidad (${estado.pendientes} turnos)`
-                : `Te ${estado.faltan === 1 ? 'falta' : 'faltan'} ${estado.faltan} turno${estado.faltan === 1 ? '' : 's'} por marcar`}
-          </button>
-        </div>
-      )}
     </section>
   );
 }

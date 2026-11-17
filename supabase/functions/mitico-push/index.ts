@@ -398,7 +398,7 @@ Deno.serve(async (req) => {
           entrenadorId,
           dedupeKey: `disp-open:${semanaInicio}:v${Number(semana.version_publicada || 0)}:${entrenadorId}`,
           titulo: 'Ya puedes enviar tu disponibilidad',
-          cuerpo: `Semana ${rango} publicada. Marca todos los turnos en Mítico Baby: no se envía hasta que respondas todo.`,
+          cuerpo: `Semana ${rango}. Entra en Mítico Baby y marca cuándo puedes trabajar.`,
           metadata: { version_publicada: Number(semana.version_publicada || 0) },
         })
         acumular(resumen, parcial)
