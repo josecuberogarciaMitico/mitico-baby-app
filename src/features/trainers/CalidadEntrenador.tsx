@@ -23,7 +23,6 @@ import {
   calidadPropia,
   formatoNota,
   MINIMO_REPORTES,
-  REPORTES_PARA_VOLVER,
   tarjetaSigueCerrada,
   UMBRAL,
   type CierreTarjeta,
@@ -60,7 +59,7 @@ const CLAVE_CIERRE = 'mitico_tus_reportes_cerrada_v1';
 function leerCierre(): CierreTarjeta | null {
   try {
     const v = JSON.parse(localStorage.getItem(CLAVE_CIERRE) || 'null');
-    return v && typeof v.fecha === 'string' && typeof v.nota === 'number' ? v : null;
+    return v && typeof v.fecha === 'string' ? { fecha: v.fecha } : null;
   } catch {
     return null;
   }
@@ -103,15 +102,13 @@ export function CalidadPropiaEntrenador({ posicion }: { posicion: 'arriba' | 'ab
   const vaBien = datos.semaforo === 'verde';
   // Arriba solo si va mal; abajo solo si va bien.
   if ((posicion === 'arriba') === vaBien) return null;
-  // Cerrada con «Entendido»: no vuelve hasta 5 reportes nuevos o si la nota baja (Jose, 17/11).
-  const fechasHechas = filas.filter((f) => f.es_mio && !f.es_falta).map((f) => f.fecha);
-  if (tarjetaSigueCerrada(cierre, fechasHechas, datos.reciente.nota)) return null;
-  const nota = datos.reciente.nota;
+  // Cerrada con «Entendido»: no vuelve hasta el lunes siguiente (Jose, 17/11).
+  if (tarjetaSigueCerrada(cierre, hoyMadrid())) return null;
   return (
     <TarjetaCalidadPropia
       datos={datos}
       onCerrar={() => {
-        const nuevo = { fecha: hoyMadrid(), nota };
+        const nuevo = { fecha: hoyMadrid() };
         guardarCierre(nuevo);
         setCierre(nuevo);
       }}
@@ -182,7 +179,7 @@ export function TarjetaCalidadPropia({ datos, onCerrar }: { datos: DatosCalidadP
           >
             Entendido
           </button>
-          <span style={{ fontSize: 12, color: '#64748b' }}>Te la volvemos a enseñar cuando hagas {REPORTES_PARA_VOLVER} reportes más.</span>
+          <span style={{ fontSize: 12, color: '#64748b' }}>Te la volvemos a enseñar el lunes.</span>
         </div>
       )}
     </article>

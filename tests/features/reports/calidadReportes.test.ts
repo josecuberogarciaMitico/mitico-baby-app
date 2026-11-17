@@ -201,11 +201,11 @@ test('calidad: «ver como lo ve el entrenador» desde el panel', () => {
   equal(v.reciente.nota, 4, 'su nota');
 });
 
-test('«Tus reportes»: cerrada con «Entendido» hasta 5 reportes nuevos o si la nota baja', () => {
-  const cierre = { fecha: '2026-11-17', nota: 7.2 };
-  equal(tarjetaSigueCerrada(null, [], 7), false, 'sin cerrar: se ve');
-  equal(tarjetaSigueCerrada(cierre, ['2026-11-15', '2026-11-17', '2026-11-18', '2026-11-19'], 7.4), true, 'solo 2 nuevos: sigue cerrada');
-  equal(tarjetaSigueCerrada(cierre, ['2026-11-18', '2026-11-18', '2026-11-19', '2026-11-21', '2026-11-22'], 7.4), false, '5 nuevos: vuelve');
-  equal(tarjetaSigueCerrada(cierre, ['2026-11-18'], 6.2), false, 'la nota baja 1 punto: vuelve antes');
-  equal(tarjetaSigueCerrada(cierre, ['2026-11-18'], 6.5), true, 'baja menos de 1: sigue cerrada');
+test('«Tus reportes»: cerrada con «Entendido» hasta el lunes siguiente', () => {
+  const cierre = { fecha: '2026-11-17' }; // martes
+  equal(tarjetaSigueCerrada(null, '2026-11-17'), false, 'sin cerrar: se ve');
+  equal(tarjetaSigueCerrada(cierre, '2026-11-17'), true, 'el mismo día: oculta');
+  equal(tarjetaSigueCerrada(cierre, '2026-11-22'), true, 'el domingo: oculta');
+  equal(tarjetaSigueCerrada(cierre, '2026-11-23'), false, 'el lunes: vuelve');
+  equal(tarjetaSigueCerrada({ fecha: '2026-11-23' }, '2026-11-29'), true, 'cerrada un lunes: oculta toda esa semana');
 });

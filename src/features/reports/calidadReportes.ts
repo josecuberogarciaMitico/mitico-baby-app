@@ -264,17 +264,19 @@ export function fortalezasDe(p: PeriodoCalidad): string[] {
     .map((x) => x.texto);
 }
 
-/** «Tus reportes» cerrada con «Entendido»: vuelve tras estos reportes nuevos. */
-export const REPORTES_PARA_VOLVER = 5;
-/** …o antes si la nota baja esto o más respecto a cuando la cerró. */
-export const BAJADA_PARA_VOLVER = 1;
-export type CierreTarjeta = { fecha: string; nota: number };
+/** «Tus reportes» cerrada con «Entendido» (Jose, 17/11): vuelve el lunes siguiente. */
+export type CierreTarjeta = { fecha: string };
 
-/** ¿Sigue oculta la tarjeta? Cuenta los reportes hechos de sesiones posteriores al cierre. */
-export function tarjetaSigueCerrada(cierre: CierreTarjeta | null, fechasHechas: string[], notaActual: number): boolean {
-  if (!cierre) return false;
-  if (cierre.nota - notaActual >= BAJADA_PARA_VOLVER) return false;
-  return fechasHechas.filter((f) => f > cierre.fecha).length < REPORTES_PARA_VOLVER;
+/** Lunes (YYYY-MM-DD) de la semana de una fecha. */
+export function lunesDe(iso: string): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+
+/** ¿Sigue oculta? Sí mientras sea la misma semana (lunes a domingo) en que la cerró. */
+export function tarjetaSigueCerrada(cierre: CierreTarjeta | null, hoyIso: string): boolean {
+  return Boolean(cierre?.fecha) && lunesDe(cierre!.fecha) === lunesDe(hoyIso);
 }
 
 export const formatoNota =(n: number | null) => (n === null ? '—' : n.toFixed(1).replace('.', ','));
