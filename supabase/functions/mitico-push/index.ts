@@ -391,14 +391,32 @@ Deno.serve(async (req) => {
       const resumen: ResumenEnvio = { sent: 0, skipped: 0, failed: 0, without_subscription: 0, duplicate: 0 }
       const rango = rangoSemana(semanaInicio)
 
+      // 17/11: quien tiene reportes pendientes de sesiones pasadas no puede enviar
+      // la disponibilidad hasta terminarlos (la app se lo bloquea): se le avisa ya.
+      const hoyMadrid = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid' }).format(new Date())
+      const { data: pendientesFilas, error: pendientesError } = await admin
+        .from('v_reportes_pendientes_entrenador_dos_entrenadores_raw_s2')
+        .select('entrenador_id')
+        .in('estado_reporte', ['Falta reporte', 'Asistencia sin confirmar'])
+        .lt('fecha', hoyMadrid)
+      if (pendientesError) throw pendientesError
+      const pendientesPorEntrenador = new Map<string, number>()
+      for (const fila of pendientesFilas || []) {
+        const id = String((fila as any).entrenador_id || '')
+        if (id) pendientesPorEntrenador.set(id, (pendientesPorEntrenador.get(id) || 0) + 1)
+      }
+
       for (const entrenadorId of entrenadores) {
+        const debe = pendientesPorEntrenador.get(entrenadorId) || 0
         const parcial = await reservarYEnviar({
           tipo: 'DISPONIBILIDAD_ABIERTA',
           semanaInicio,
           entrenadorId,
           dedupeKey: `disp-open:${semanaInicio}:v${Number(semana.version_publicada || 0)}:${entrenadorId}`,
-          titulo: 'Ya puedes enviar tu disponibilidad',
-          cuerpo: `Semana ${rango}. Entra en Mítico Baby y marca cuándo puedes trabajar.`,
+          titulo: debe ? 'Disponibilidad publicada: antes termina tus reportes' : 'Ya puedes enviar tu disponibilidad',
+          cuerpo: debe
+            ? `Semana ${rango}. No podrás enviar tu disponibilidad hasta que termines tus ${debe} ${debe === 1 ? 'reporte pendiente' : 'reportes pendientes'}.`
+            : `Semana ${rango}. Entra en Mítico Baby y marca cuándo puedes trabajar.`,
           metadata: { version_publicada: Number(semana.version_publicada || 0) },
         })
         acumular(resumen, parcial)

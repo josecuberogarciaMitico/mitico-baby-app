@@ -27,6 +27,7 @@ import { AvisosCambioGrupoEntrenador, ChipAvisosCambio, useAvisosCambioPendiente
 import { MensajesEntrenador } from './MensajesEntrenador';
 import { CalidadPropiaEntrenador, ReportesDevueltosEntrenador } from './CalidadEntrenador';
 import { DisponibilidadSemanaEntrenador } from './DisponibilidadSemanaEntrenador';
+import { ahoraMadrid, pendientesQueBloqueanDisponibilidad, totalNinosPendientes, type PendienteDisponibilidad } from './bloqueoDisponibilidad';
 
 // Edad del niño, discreta junto a su nombre (grupos y reportes del entrenador).
 function EdadNino({ edad }: { edad?: number | null }) {
@@ -345,6 +346,46 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
         entrenador_id: grupoUnico.entrenador_id,
       });
     };
+
+  // 17/11 (Jose): con reportes pendientes de sesiones ya terminadas, el entrenador
+  // no puede rellenar ni enviar la disponibilidad (coordinación no se bloquea).
+  const bloqueoDisponibilidadDe = (entrenadorId: string): PendienteDisponibilidad[] =>
+    esEntrenadorApp && entrenadorId
+      ? pendientesQueBloqueanDisponibilidad(pendientesEntrenadorVista(entrenadorId), entrenadorId, ahoraMadrid())
+      : [];
+  const miBloqueoDisponibilidad = bloqueoDisponibilidadDe(
+    String(disponibilidadVistaEntrenador.find((t: any) => t.entrenador_id)?.entrenador_id || '')
+  );
+  const tarjetaBloqueoDisponibilidad = (entrenadorId: string, lista: PendienteDisponibilidad[], rango?: string) => (
+    <section
+      role="alert"
+      style={{ padding: 14, borderRadius: 16, border: '2px solid #f97316', background: '#fff7ed', color: '#7c2d12', display: 'grid', gap: 8 }}
+    >
+      <strong style={{ fontSize: 16 }}>🔒 Primero termina tus reportes</strong>
+      <span style={{ fontSize: 14, lineHeight: 1.4 }}>
+        La disponibilidad{rango ? ` de la semana ${rango}` : ''} está publicada, pero <b>no puedes rellenarla ni enviarla</b> hasta que
+        termines lo pendiente: {totalNinosPendientes(lista)} reporte{totalNinosPendientes(lista) === 1 ? '' : 's'} en {lista.length} grupo
+        {lista.length === 1 ? '' : 's'}.
+      </span>
+      {lista.map((g) => (
+        <div key={g.grupo_id} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', background: '#fff', borderRadius: 12, padding: '8px 10px' }}>
+          <span style={{ flex: '1 1 160px', minWidth: 0, fontSize: 13.5, overflowWrap: 'anywhere' }}>
+            <b>
+              {capitalizarPrimera(new Date(`${g.fecha}T00:00:00`).toLocaleDateString('es-ES', { weekday: 'long' }))} {formatearFecha(g.fecha)}
+            </b>{' '}
+            · {String(g.hora_inicio || '').slice(0, 5)} · {g.nombre_grupo} · {g.ninos} niño{g.ninos === 1 ? '' : 's'}
+          </span>
+          <button
+            type="button"
+            className="trainer-soft-button trainer-soft-button--success"
+            onClick={() => abrirGrupoDesdeTareaEntrenador(g.grupo_id, entrenadorId)}
+          >
+            Hacerlos →
+          </button>
+        </div>
+      ))}
+    </section>
+  );
 
   const textoRecordatorioDisponibilidad = (editor: any) => {
     const fechaLimite: string | null | undefined = editor?.fecha_limite;
@@ -1009,7 +1050,9 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
 
                 let titulo = 'Organización semanal en preparación';
                 let detalle = disponibilidadPublicada
-                  ? pendientes > 0
+                  ? pendientes > 0 && miBloqueoDisponibilidad.length > 0
+                    ? `La disponibilidad de la semana está publicada, pero no puedes enviarla hasta que termines tus ${totalNinosPendientes(miBloqueoDisponibilidad)} reporte(s) pendiente(s).`
+                    : pendientes > 0
                     ? `La disponibilidad está abierta. Te quedan ${pendientes} respuesta(s) por completar.`
                     : 'Disponibilidad recibida. Te avisaremos cuando haya grupos publicados para ti.'
                   : 'La disponibilidad de esta semana todavía no está publicada.';
@@ -1030,6 +1073,14 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                   titulo = 'Organización semanal terminada';
                   detalle =
                     'Esta semana no tienes grupos asignados. Gracias por tu disponibilidad. Si surge algo durante la semana, aparecerá aquí y coordinación se pondrá en contacto contigo.';
+                }
+                // 17/11: disponibilidad publicada pero bloqueada por reportes pendientes.
+                if (
+                  miBloqueoDisponibilidad.length > 0 &&
+                  totalDisponibilidadPendienteVistaEntrenador > 0 &&
+                  !detalle.includes('no puedes enviarla')
+                ) {
+                  detalle += ` 🔒 La disponibilidad de la semana está publicada, pero no puedes enviarla hasta que termines tus ${totalNinosPendientes(miBloqueoDisponibilidad)} reporte(s) pendiente(s).`;
                 }
 
                 const pushActivo = Boolean(estado?.push_activo);
@@ -1319,6 +1370,8 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                       ? `✓ Ya has enviado tu disponibilidad de ${
                           disponibilidadEsSemanaQueViene ? 'la semana que viene' : 'esta semana'
                         }. Te avisaremos en cuanto haya grupos publicados para ti.`
+                      : miBloqueoDisponibilidad.length > 0
+                      ? '🔒 La disponibilidad está publicada, pero no puedes enviarla hasta que termines tus reportes pendientes.'
                       : textoRecordatorioDisponibilidad(disponibilidadEditorVista)}
                   </p>
                 </section>
@@ -1354,7 +1407,13 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                         </div>
                       </header>
 
-                      {grupo.semanas.map((semana) => (
+                      {grupo.pendientes > 0 && bloqueoDisponibilidadDe(grupo.entrenador_id).length > 0 ? (
+                        tarjetaBloqueoDisponibilidad(
+                          grupo.entrenador_id,
+                          bloqueoDisponibilidadDe(grupo.entrenador_id),
+                          grupo.semanas[0] ? rangoSemanaAgenda(grupo.semanas[0].inicio) : undefined
+                        )
+                      ) : grupo.semanas.map((semana) => (
                         // 16/11: toda la semana a la vista, sin desplegables (DisponibilidadSemanaEntrenador).
                         <React.Fragment key={`disp-vista-${grupo.entrenador_id}-${semana.inicio}`}>
                           <DisponibilidadSemanaEntrenador
@@ -1884,7 +1943,9 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                   <section style={avisoPendiente}>
                     <strong>Disponibilidad pendiente en la app</strong>
                     <p style={{ margin: '6px 0 10px' }}>
-                      Rellena estos turnos para que Jose pueda montar la semana.
+                      {bloqueoDisponibilidadDe(bloqueEntrenador.entrenador_id).length > 0
+                        ? '🔒 No puedes rellenarlos hasta que termines tus reportes pendientes (están más abajo).'
+                        : 'Rellena estos turnos para que Jose pueda montar la semana.'}
                     </p>
                     <div style={{ display: 'grid', gap: 8 }}>
                       {disponibilidadVistaEntrenador
@@ -1919,6 +1980,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                               {turno.hora_inicio.slice(0, 5)}–
                               {turno.hora_fin.slice(0, 5)}
                             </p>
+                            {bloqueoDisponibilidadDe(bloqueEntrenador.entrenador_id).length === 0 && (
                             <div
                               style={{
                                 display: 'flex',
@@ -1949,6 +2011,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                                 No disponible
                               </button>
                             </div>
+                            )}
                           </div>
                         ))}
                     </div>
