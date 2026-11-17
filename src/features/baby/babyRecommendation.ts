@@ -244,17 +244,33 @@ export function aplicarCinturonPedagogicoAutomaticoAgenda(
     const reparto = options?.usarPerfilBaby
       ? babyGroupSizes(sortedStudents, band, profiles)
       : { sizes: balancedGroupSizes(sortedStudents.length, band.max), especial: false };
-    // 17/11: en B / B+, los cortes donde cambia el nivel si salen los mismos grupos.
-    const sizes = options?.esBaby && band.id === 'B_BPLUS' && !reparto.especial
-      ? tamanosAlineadosConNivel(sortedStudents.map((s) => levelOrder(s.nivel_resumen)), reparto.sizes, band.max)
+    // 17/11 (Baby, Jose): en Iniciación / A y en B / B+ manda el NIVEL y después la
+    // EDAD (antes la fuerza/atención del perfil podía colar un B+ entre los B), y los
+    // cortes caen donde cambia el nivel si salen los mismos grupos. El reparto
+    // especial (transición / demanda alta) no se toca.
+    const porNivelYEdad = Boolean(options?.esBaby) && ['INICIACION_A', 'B_BPLUS'].includes(band.id) && !reparto.especial;
+    const ordenados = porNivelYEdad
+      ? sortedStudents.slice().sort((a, b) => {
+          const nivel = levelOrder(b.nivel_resumen) - levelOrder(a.nivel_resumen);
+          if (nivel) return nivel;
+          const ea = ageOf(a, profiles);
+          const eb = ageOf(b, profiles);
+          if (ea !== null && eb !== null && ea !== eb) return ea - eb;
+          return a.alumno.localeCompare(b.alumno, 'es');
+        })
+      : sortedStudents;
+    const sizes = porNivelYEdad
+      ? tamanosAlineadosConNivel(ordenados.map((s) => levelOrder(s.nivel_resumen)), reparto.sizes, band.id === 'INICIACION_A' ? 4 : band.max)
       : reparto.sizes;
     // 05/11: dentro del mismo nivel, juntar por edad (sin tocar el reparto especial).
     const students = reparto.especial
       ? sortedStudents
       : agruparPorEdadDentroDeNivel(
-          sortedStudents,
+          ordenados,
           sizes,
-          options?.usarPerfilBaby
+          porNivelYEdad
+            ? (s) => String(levelOrder(s.nivel_resumen))
+            : options?.usarPerfilBaby
             ? (s) => {
                 const p = profiles.find((item) => item.alumno_id === s.alumno_id);
                 return `${levelOrder(s.nivel_resumen)}|${attentionPenalty(p)}|${strength(p) < 0 ? 'bajo' : 'ok'}`;
@@ -269,7 +285,7 @@ export function aplicarCinturonPedagogicoAutomaticoAgenda(
       const nivelesReales = Array.from(new Set(chunk.map((s) => s.nivel_resumen).filter((n): n is string => Boolean(n))))
         .sort((a, b) => levelOrder(a) - levelOrder(b));
       const label = options?.esBaby && ['INICIACION_A', 'B_BPLUS', 'C_D'].includes(band.id) && nivelesReales.length
-        ? nivelesReales.join(' / ')
+        ? nivelesReales.map((n) => (/^INICIACION$/i.test(n) ? 'INICIACIÓN' : n)).join(' / ')
         : band.label;
       const bloque = label === band.label ? band.bloque : label;
       const name = size === 1 ? `REVISAR · ${chunk[0]?.alumno || band.label}` : `Grupo ${counter++} · Nivel ${label}`;

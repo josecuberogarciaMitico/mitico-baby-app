@@ -156,3 +156,24 @@ test('nombre del grupo (Baby): dice los niveles que hay de verdad', () => {
   // Ocio: como antes.
   equal(aplicarCinturonPedagogicoAutomaticoAgenda(data)[0].bloque_tecnico, 'B / B+', 'Ocio sin cambios');
 });
+
+test('Baby: en Iniciación / A manda el nivel y luego la edad (con perfil)', () => {
+  // 3 A y 4 Iniciación (máx. 4) → 2 grupos: A por un lado, Iniciación por otro.
+  const kids: Array<[string, string, number]> = [['a1', 'A', 4.8], ['i1', 'INICIACION', 3.2], ['a2', 'A', 3.4], ['i2', 'INICIACION', 4.7], ['a3', 'A', 4.2], ['i3', 'INICIACION', 3.5], ['i4', 'INICIACION', 3.9]];
+  const data = kids.map(([id, n, e]) => conEdad(id, n, e));
+  const perfiles = kids.map(([id, , e]) => profile(id, { edad_aprox: e, fuerza_nivel: id === 'a2' ? 'BAJO' : 'ADECUADO' }));
+  const out = aplicarCinturonPedagogicoAutomaticoAgenda(data, { usarPerfilBaby: true, perfiles, esBaby: true });
+  const g = grupos(out);
+  equal(g.includes('a1a2a3') && g.includes('i1i2i3i4'), true, 'separados por nivel aunque uno sea «bajo»');
+  equal(out.find((r) => r.alumno_id === 'i1')!.grupo_recomendado.endsWith('Nivel INICIACIÓN'), true, 'con tilde');
+  // Sin «esBaby» (Ocio u otros), como antes.
+  equal(grupos(aplicarCinturonPedagogicoAutomaticoAgenda(data, { usarPerfilBaby: true, perfiles })).includes('a1a2a3'), false, 'sin la opción, como antes');
+});
+
+test('Baby: si hay que mezclar, pasa el de edad más parecida y los grupos van por edad', () => {
+  // 2 B+ y 6 B (máx. 6): con 2 grupos no se puede separar sin un grupo de 2 → un B con los B+: el mayor.
+  const data = [conEdad('p1', 'B+', 6.5), conEdad('p2', 'B+', 6.8), conEdad('b1', 'B', 4.6), conEdad('b2', 'B', 4.8), conEdad('b3', 'B', 4.9), conEdad('b4', 'B', 5.3), conEdad('b5', 'B', 5.5), conEdad('b6', 'B', 5.7)];
+  const perfiles = data.map((d) => profile(d.alumno_id, { edad_aprox: d.edad as number }));
+  const g = grupos(aplicarCinturonPedagogicoAutomaticoAgenda(data, { usarPerfilBaby: true, perfiles, esBaby: true }));
+  equal(g.includes('b6p1p2'), true, 'el B de más edad va con los B+');
+});
