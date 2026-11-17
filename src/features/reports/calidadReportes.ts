@@ -98,6 +98,8 @@ export type Semaforo = 'verde' | 'amarillo' | 'rojo' | 'sin_datos';
 
 export type PeriodoCalidad = {
   reportes: number;
+  /** Reportes con nota (con habilidades valoradas). */
+  puntuados: number;
   /** Nota media 0-10 (null si no hay reportes puntuables). */
   nota: number | null;
   /** Media de cada parte de la nota, de 0 a 1 (1 = todo bien). */
@@ -142,6 +144,7 @@ export function periodo(items: RasgosReporte[], faltan = 0): PeriodoCalidad {
   const poco = items.filter((r) => r.pocoDetallado).length;
   return {
     reportes: n,
+    puntuados: k,
     nota: k ? redondear(media((x) => x.total)) : null,
     partes: {
       detalle: media((x) => x.detalle / PUNTOS.detalle),
@@ -333,4 +336,21 @@ export function calidadPropia(
     vaAMenos: vaAMenosDe(reciente, anterior),
     consejos: consejosDe(reciente),
   };
+}
+
+/** Nota media del equipo a partir del resultado por entrenador (ponderada por reportes puntuados). */
+export function notaEquipoDe(lista: CalidadEntrenador[]): number | null {
+  let suma = 0;
+  let n = 0;
+  lista.forEach((c) => {
+    if (c.reciente.nota === null || !c.reciente.puntuados) return;
+    suma += c.reciente.nota * c.reciente.puntuados;
+    n += c.reciente.puntuados;
+  });
+  return n ? redondear(suma / n) : null;
+}
+
+/** Lo que vería un entrenador en su tarjeta, calculado desde el panel de coordinación. */
+export function vistaEntrenadorDesde(c: CalidadEntrenador, equipo: number | null) {
+  return { reciente: c.reciente, anterior: c.anterior, equipo, semaforo: c.semaforo, vaAMenos: c.vaAMenos, consejos: consejosDe(c.reciente) };
 }

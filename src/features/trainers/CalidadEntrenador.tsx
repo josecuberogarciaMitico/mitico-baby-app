@@ -74,7 +74,15 @@ export function CalidadPropiaEntrenador({ posicion }: { posicion: 'arriba' | 'ab
   const vaBien = datos.semaforo === 'verde';
   // Arriba solo si va mal; abajo solo si va bien.
   if ((posicion === 'arriba') === vaBien) return null;
+  return <TarjetaCalidadPropia datos={datos} />;
+}
 
+export type DatosCalidadPropia = ReturnType<typeof calidadPropia>;
+
+/** La tarjeta tal cual la ve el entrenador (también la usa coordinación para «Ver como lo ve el entrenador»). */
+export function TarjetaCalidadPropia({ datos }: { datos: DatosCalidadPropia }) {
+  if (datos.reciente.nota === null) return null;
+  const vaBien = datos.semaforo === 'verde';
   const color = COLOR[datos.semaforo];
   const nota = datos.reciente.nota;
   const pctBarra = Math.max(4, Math.min(100, nota * 10));
