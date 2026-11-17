@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { EscribirMensaje } from './EscribirMensaje';
+import { NotificacionesEntrenadores } from './NotificacionesEntrenadores';
 import {
   grupoDeReparto,
   nombreCorto,
@@ -59,7 +60,7 @@ export function ContadorMensajes() {
   );
 }
 
-type Pestana = 'pendientes' | 'repartos' | 'mensajes' | 'nuevo';
+type Pestana = 'pendientes' | 'repartos' | 'mensajes' | 'avisos' | 'nuevo';
 
 const horaCorta = (iso: string) =>
   new Date(iso).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
@@ -173,6 +174,8 @@ export function PantallaMensajesInternos({ entrenadores, soloLectura = false }: 
     // 16/11: los números solo cuentan lo que sigue pendiente.
     { id: 'repartos', texto: 'Repartos', n: pendientes.filter((m) => m.tipo === 'reparto').length },
     { id: 'mensajes', texto: 'Mensajes', n: pendientes.filter((m) => m.tipo === 'texto').length },
+    // 17/11: lo que les llega al móvil (regla de avisos).
+    { id: 'avisos', texto: '🔔 Avisos' },
   ];
 
   const vacio = (t: string) => (
@@ -220,7 +223,7 @@ export function PantallaMensajesInternos({ entrenadores, soloLectura = false }: 
 
       <div
         role="tablist"
-        style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 4, padding: 4, borderRadius: 16, background: '#eef2ff' }}
+        style={{ display: 'grid', gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 4, padding: 4, borderRadius: 16, background: '#eef2ff' }}
       >
         {pestanas.map((p) => {
           const sel = activa === p.id;
@@ -300,6 +303,8 @@ export function PantallaMensajesInternos({ entrenadores, soloLectura = false }: 
           {textos.length === 0 ? vacio('No has enviado mensajes estos días.') : textos.map((m) => <Tarjeta key={m.mensaje_id} m={m} />)}
         </div>
       )}
+
+      {activa === 'avisos' && <NotificacionesEntrenadores />}
 
       {activa === 'nuevo' && !soloLectura && (
         <div style={{ padding: 16, borderRadius: 18, background: '#fff', border: '1px solid #e2e8f0' }}>
