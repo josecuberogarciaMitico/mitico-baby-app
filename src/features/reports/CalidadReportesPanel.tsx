@@ -76,8 +76,8 @@ function Tarjeta({
   const r = c.reciente;
   const [verComoEl, setVerComoEl] = React.useState(false);
   const leSale =
-    r.reportes < MINIMO_REPORTES || r.nota === null
-      ? `Ahora mismo no le sale: necesita ${MINIMO_REPORTES} reportes en ${DIAS_RECIENTE} días y tiene ${r.reportes}.`
+    r.reportes + r.faltan < MINIMO_REPORTES || r.nota === null
+      ? `Ahora mismo no le sale: necesita ${MINIMO_REPORTES} reportes en ${DIAS_RECIENTE} días y tiene ${r.reportes + r.faltan}.`
       : c.semaforo === 'verde'
         ? 'Le sale abajo, al final de su vista (va bien).'
         : 'Le sale arriba del todo al abrir la app (va mal).';
@@ -95,7 +95,7 @@ function Tarjeta({
         <div style={{ display: 'grid', gridTemplateColumns: esMovil ? 'repeat(2, minmax(0,1fr))' : 'repeat(4, minmax(0,1fr))', gap: 6 }}>
           {[
             [r.nota === null ? '—' : `${formatoNota(r.nota)} / 10`, 'nota de calidad'],
-            [`${r.reportes}`, 'reportes (14 días)'],
+            [`${r.reportes}${r.faltan ? ` · ${r.faltan} sin hacer` : ''}`, 'reportes (14 días)'],
             [`${r.pocoDetallados}${r.reportes ? ` · ${r.pctPocoDetallados}%` : ''}`, 'todo «Lo consigue» sin escribir'],
             [`${r.pctTarde}%`, 'rellenados 2+ días tarde'],
           ].map(([valor, etiqueta]) => (
@@ -297,13 +297,13 @@ export function CalidadReportesPanel({ esVistaMovilApp, soloLectura = false }: {
       ))}
       <details style={{ padding: 12, borderRadius: 14, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 13, color: '#334155', lineHeight: 1.45 }}>
         <summary style={{ cursor: 'pointer', fontWeight: 900 }}>¿Cómo se mide?</summary>
-        Cada reporte tiene una nota de 0 a 10: <b>detalle</b> (4 puntos: unas {LETRAS_POR_HABILIDAD} letras por cada habilidad que no le sale; si todo lo
-        consigue, una frase), <b>concreto</b> (3: no marcar todo «Lo consigue» sin escribir nada), <b>personal</b> (1,5: no poner la misma
-        valoración a todo el grupo) y <b>a tiempo</b> (1,5: el mismo día o el siguiente; a los 2 días, la mitad). La nota del entrenador es la media
-        de los últimos {DIAS_RECIENTE} días. <b>Verde</b> desde {formatoNota(UMBRAL.verde)}, <b>rojo</b> por debajo de {formatoNota(UMBRAL.rojo)}; también
-        amarillo si le faltan {UMBRAL.faltan} reportes o más. <b>↓ Va a menos</b>: su nota baja {formatoNota(UMBRAL.bajada)} puntos o más respecto a las
-        semanas anteriores. Con menos de {MINIMO_REPORTES} reportes no se pone color. Los entrenadores ven su propia nota y la media del equipo, nunca la
-        de otros.
+        Cada reporte tiene una nota de 0 a 10: <b>detalle</b> (3,5 puntos: unas {LETRAS_POR_HABILIDAD} letras por cada habilidad que no le sale;
+        si todo lo consigue, una frase), <b>concreto</b> (3: no marcar todo «Lo consigue» sin escribir nada), <b>a tiempo</b> (2,5: el mismo
+        día o el siguiente; a los 2 días, la mitad; después, 0) y <b>personal</b> (1: no poner la misma valoración a todo el grupo). La nota del
+        entrenador es la media de los últimos {DIAS_RECIENTE} días y <b>cada reporte sin hacer cuenta como un 0</b> (a partir de los 2 días de la
+        sesión). <b>Verde</b> desde {formatoNota(UMBRAL.verde)}, <b>rojo</b> por debajo de {formatoNota(UMBRAL.rojo)}. <b>↓ Va a menos</b>: su nota
+        baja {formatoNota(UMBRAL.bajada)} puntos o más respecto a las semanas anteriores. Con menos de {MINIMO_REPORTES} reportes no se pone color.
+        Los entrenadores ven su propia nota y la media del equipo, nunca la de otros.
       </details>
     </section>
   );

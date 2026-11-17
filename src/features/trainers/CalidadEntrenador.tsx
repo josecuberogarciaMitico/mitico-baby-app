@@ -60,6 +60,7 @@ export function CalidadPropiaEntrenador({ posicion }: { posicion: 'arriba' | 'ab
   const datos = calidadPropia(
     filas.map((f) => ({
       esMio: Boolean(f.es_mio),
+      esFalta: Boolean(f.es_falta),
       fecha: f.fecha,
       valoradas: Number(f.valoradas) || 0,
       aMejorar: Number(f.a_mejorar) || 0,
@@ -70,7 +71,7 @@ export function CalidadPropiaEntrenador({ posicion }: { posicion: 'arriba' | 'ab
     })),
     hoyMadrid()
   );
-  if (datos.reciente.reportes < MINIMO_REPORTES || datos.reciente.nota === null) return null;
+  if (datos.reciente.reportes + datos.reciente.faltan < MINIMO_REPORTES || datos.reciente.nota === null) return null;
   const vaBien = datos.semaforo === 'verde';
   // Arriba solo si va mal; abajo solo si va bien.
   if ((posicion === 'arriba') === vaBien) return null;
@@ -113,7 +114,7 @@ export function TarjetaCalidadPropia({ datos }: { datos: DatosCalidadPropia }) {
           )}
         </div>
         <span style={{ fontSize: 12, color: '#64748b' }}>
-          {datos.reciente.reportes} reportes
+          {datos.reciente.reportes} reportes{datos.reciente.faltan ? ` · ${datos.reciente.faltan} sin hacer` : ''}
           {datos.vaAMenos && datos.anterior.nota !== null ? ` · antes tenías ${formatoNota(datos.anterior.nota)}` : ''}
         </span>
       </div>

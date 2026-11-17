@@ -1,12 +1,15 @@
 // Calidad de los reportes (17/11/2026). Lógica pura, sin navegador.
 //
-// Cada reporte tiene una NOTA de 0 a 10 (decisión de Jose: calidad, no letras):
-//  - Detalle (4): escribe lo que ve en lo que no le sale (unas 60 letras por
+// Cada reporte tiene una NOTA de 0 a 10 (decisión de Jose: calidad, no letras).
+// Reparto del 17/11 (Jose: «rellenar tarde pesa más»):
+//  - Detalle (3,5): escribe lo que ve en lo que no le sale (unas 60 letras por
 //    habilidad a mejorar; si todo lo consigue, una frase).
 //  - Concreto (3): no marca todo «Lo consigue» sin escribir nada.
-//  - Personal (1,5): no pone la misma valoración a todo el grupo.
-//  - A tiempo (1,5): el mismo día o el siguiente (2 días: la mitad; más: 0).
-// La nota de un entrenador es la media de sus reportes de los últimos 14 días.
+//  - A tiempo (2,5): el mismo día o el siguiente (2 días: la mitad; más: 0).
+//  - Personal (1): no pone la misma valoración a todo el grupo.
+// La nota de un entrenador es la media de sus reportes de los últimos 14 días,
+// y CADA REPORTE SIN HACER CUENTA COMO UN 0 (con un día de margen: cuenta a
+// partir de los 2 días de la sesión). El color sale solo de la nota.
 // Las mismas reglas están en SQL en calidad_reportes_equipo_app (lo que ve el
 // entrenador): si se cambian aquí, cambiarlas también allí.
 
@@ -53,7 +56,7 @@ export type RasgosReporte = {
 
 export type NotaReporte = { total: number; detalle: number; concreto: number; personal: number; aTiempo: number };
 
-export const PUNTOS = { detalle: 4, concreto: 3, personal: 1.5, aTiempo: 1.5 };
+export const PUNTOS = { detalle: 3.5, concreto: 3, personal: 1, aTiempo: 2.5 };
 /** Letras que se esperan por cada habilidad a mejorar (la mitad del equipo escribe ~58). */
 export const LETRAS_POR_HABILIDAD = 60;
 
@@ -104,7 +107,7 @@ export type PeriodoCalidad = {
   nota: number | null;
   /** Media de cada parte de la nota, de 0 a 1 (1 = todo bien). */
   partes: { detalle: number; concreto: number; personal: number; aTiempo: number };
-  /** Reportes que faltan por hacer (días ya pasados). */
+  /** Reportes sin hacer que ya cuentan como 0 (2 días o más desde la sesión). */
   faltan: number;
   /** % de reportes enviados 2 días o más después de la sesión (el día siguiente es normal). */
   pctTarde: number;
@@ -133,19 +136,24 @@ export type CalidadEntrenador = {
 export const DIAS_RECIENTE = 14;
 /** Con menos de estos reportes recientes no se pone color (poca muestra). */
 export const MINIMO_REPORTES = 4;
-export const UMBRAL = { tarde: 40, igualGrupo: 20, faltan: 3, rojo: 6.5, verde: 8, bajada: 1.5 };
+export const UMBRAL = { tarde: 40, igualGrupo: 20, rojo: 6.5, verde: 8, bajada: 1.5 };
+/** Un reporte sin hacer cuenta como 0 a partir de estos días desde la sesión. */
+export const DIAS_MARGEN_FALTA = 2;
 
 export function periodo(items: RasgosReporte[], faltan = 0): PeriodoCalidad {
   const conNota = items.map((r) => ({ r, n: notaReporte(r) })).filter((x): x is { r: RasgosReporte; n: NotaReporte } => Boolean(x.n));
   const n = items.length;
   const k = conNota.length;
   const media = (f: (x: NotaReporte) => number) => (k ? conNota.reduce((s, x) => s + f(x.n), 0) / k : 1);
+  // Los que faltan cuentan como 0 en la nota (no en las partes, que explican los hechos).
+  const divisor = k + faltan;
+  const sumaTotal = conNota.reduce((s, x) => s + x.n.total, 0);
   const pct = (c: number) => (n ? Math.round((100 * c) / n) : 0);
   const poco = items.filter((r) => r.pocoDetallado).length;
   return {
     reportes: n,
     puntuados: k,
-    nota: k ? redondear(media((x) => x.total)) : null,
+    nota: divisor ? redondear(sumaTotal / divisor) : null,
     partes: {
       detalle: media((x) => x.detalle / PUNTOS.detalle),
       concreto: media((x) => x.concreto / PUNTOS.concreto),
@@ -162,9 +170,9 @@ export function periodo(items: RasgosReporte[], faltan = 0): PeriodoCalidad {
 }
 
 export function semaforoDe(p: PeriodoCalidad): Semaforo {
-  if (p.reportes < MINIMO_REPORTES || p.nota === null) return p.faltan >= UMBRAL.faltan ? 'rojo' : 'sin_datos';
+  if (p.reportes + p.faltan < MINIMO_REPORTES || p.nota === null) return 'sin_datos';
   if (p.nota < UMBRAL.rojo) return 'rojo';
-  if (p.nota < UMBRAL.verde || p.faltan >= UMBRAL.faltan) return 'amarillo';
+  if (p.nota < UMBRAL.verde) return 'amarillo';
   return 'verde';
 }
 
@@ -181,13 +189,9 @@ export function vaAMenosDe(reciente: PeriodoCalidad, anterior: PeriodoCalidad): 
 /** Frases de «en qué falla», para coordinación. */
 export function fallosDe(reciente: PeriodoCalidad, anterior: PeriodoCalidad, vaAMenos: boolean): string[] {
   const f: string[] = [];
-  const faltan = () => {
-    if (reciente.faltan >= UMBRAL.faltan) f.push(`Le faltan ${reciente.faltan} reportes por hacer.`);
-  };
-  if (reciente.reportes === 0) {
-    faltan();
-    return f;
-  }
+  if (reciente.faltan > 0)
+    f.push(`No ha hecho ${reciente.faltan} ${reciente.faltan === 1 ? 'reporte' : 'reportes'} (cuentan como 0 en su nota).`);
+  if (reciente.reportes === 0) return f;
   if (reciente.pctPocoDetallados >= 15)
     f.push(`Marca todo «Lo consigue» sin escribir nada en ${reciente.pocoDetallados} de ${reciente.reportes} reportes (${reciente.pctPocoDetallados}%).`);
   if (vaAMenos && anterior.nota !== null && reciente.nota !== null)
@@ -198,13 +202,14 @@ export function fallosDe(reciente: PeriodoCalidad, anterior: PeriodoCalidad, vaA
     f.push(`Pone la misma valoración a todo el grupo en el ${reciente.pctIgualGrupo}% de sus reportes.`);
   if (reciente.pctTarde >= UMBRAL.tarde)
     f.push(`Rellena tarde: el ${reciente.pctTarde}% dos días o más después de la sesión (sale de memoria).`);
-  faltan();
   return f;
 }
 
 /** «Lo que te baja la nota», para el propio entrenador (en segunda persona). */
 export function consejosDe(p: PeriodoCalidad): string[] {
   const c: string[] = [];
+  if (p.faltan > 0)
+    c.push(`Tienes ${p.faltan} ${p.faltan === 1 ? 'reporte sin hacer' : 'reportes sin hacer'}: cada uno cuenta como un 0 en tu nota.`);
   if (p.reportes === 0) return c;
   if (p.partes.concreto < 0.9) c.push('Cuando lo consigue todo, cuenta en una frase qué has visto: si no, nadie puede fiarse para subirle de nivel.');
   if (p.partes.detalle < 0.75) c.push('Cuenta más en lo que le cuesta: qué le falta y en qué momento. Si vas con prisa, díctalo con el micro.');
@@ -262,7 +267,7 @@ export function calidadPorEntrenador(filas: ReporteParaCalidad[], hoyIso: string
   filas.forEach((f) => {
     if (!f.entrenador) return;
     if (!f.reporte_id) {
-      if (f.estado === 'Falta reporte' && f.fecha >= corte && f.fecha < hoyIso)
+      if (f.estado === 'Falta reporte' && f.fecha >= corte && f.fecha <= restarDias(hoyIso, DIAS_MARGEN_FALTA))
         faltanRecientes.set(f.entrenador, (faltanRecientes.get(f.entrenador) || 0) + 1);
       if (!porEntrenador.has(f.entrenador)) porEntrenador.set(f.entrenador, []);
       return;
@@ -321,17 +326,23 @@ export function notaEquipo(items: RasgosReporte[]): number | null {
 
 /** Lo que ve el propio entrenador: su periodo reciente, el anterior y la media del equipo. */
 export function calidadPropia(
-  filas: Array<RasgosReporte & { esMio: boolean }>,
+  filas: Array<RasgosReporte & { esMio: boolean; esFalta?: boolean }>,
   hoyIso: string
 ): { reciente: PeriodoCalidad; anterior: PeriodoCalidad; equipo: number | null; semaforo: Semaforo; vaAMenos: boolean; consejos: string[] } {
   const corte = restarDias(hoyIso, DIAS_RECIENTE - 1);
-  const mias = filas.filter((f) => f.esMio);
-  const reciente = periodo(mias.filter((f) => f.fecha >= corte));
-  const anterior = periodo(mias.filter((f) => f.fecha < corte));
+  const limiteFalta = restarDias(hoyIso, DIAS_MARGEN_FALTA);
+  const hechas = filas.filter((f) => !f.esFalta);
+  const cuentaFaltas = (lista: typeof filas, desde: string, hasta: string) =>
+    lista.filter((f) => f.esFalta && f.fecha >= desde && f.fecha < hasta && f.fecha <= limiteFalta).length;
+  const mias = hechas.filter((f) => f.esMio);
+  const misFaltas = filas.filter((f) => f.esMio);
+  const reciente = periodo(mias.filter((f) => f.fecha >= corte), cuentaFaltas(misFaltas, corte, '9999-12-31'));
+  // «Antes» solo con lo hecho (igual que en el panel de coordinación).
+  const anterior = periodo(mias.filter((f) => f.fecha < corte), 0);
   return {
     reciente,
     anterior,
-    equipo: notaEquipo(filas.filter((f) => f.fecha >= corte)),
+    equipo: periodo(hechas.filter((f) => f.fecha >= corte), cuentaFaltas(filas, corte, '9999-12-31')).nota,
     semaforo: semaforoDe(reciente),
     vaAMenos: vaAMenosDe(reciente, anterior),
     consejos: consejosDe(reciente),
@@ -343,9 +354,10 @@ export function notaEquipoDe(lista: CalidadEntrenador[]): number | null {
   let suma = 0;
   let n = 0;
   lista.forEach((c) => {
-    if (c.reciente.nota === null || !c.reciente.puntuados) return;
-    suma += c.reciente.nota * c.reciente.puntuados;
-    n += c.reciente.puntuados;
+    const peso = c.reciente.puntuados + c.reciente.faltan;
+    if (c.reciente.nota === null || !peso) return;
+    suma += c.reciente.nota * peso;
+    n += peso;
   });
   return n ? redondear(suma / n) : null;
 }

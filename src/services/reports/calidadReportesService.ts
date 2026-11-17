@@ -12,6 +12,8 @@ const api = createSupabaseRestClient({
 
 export type FilaCalidadEquipo = {
   es_mio: boolean;
+  /** Reporte sin hacer (cuenta como 0). Desde la migración 20261117_calidad_cuenta_faltas. */
+  es_falta?: boolean | null;
   fecha: string;
   valoradas: number;
   a_mejorar: number;
