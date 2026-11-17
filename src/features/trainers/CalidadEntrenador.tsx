@@ -19,11 +19,11 @@ import {
   type FilaCalidadEquipo,
   type ReporteDevuelto,
 } from '../../services/reports/calidadReportesService';
-import { calidadPropia, formatoNota, MINIMO_REPORTES, type Semaforo } from '../reports/calidadReportes';
+import { calidadPropia, formatoNota, MINIMO_REPORTES, UMBRAL } from '../reports/calidadReportes';
 
 // Vista del entrenador (17/11/2026):
-//  - «Tus reportes»: su nota de calidad (0-10) frente a la media del equipo y
-//    lo que le baja la nota. Arriba si va mal; abajo, discreta, si va bien.
+//  - «Tus reportes»: su nota (0-10) frente al objetivo, puntos fuertes y qué
+//    hacer para subirla. Arriba si va mal; abajo, discreta, si va bien.
 //  - Reportes devueltos por coordinación: solo completa notas y observación.
 // Sin la migración en Supabase no se enseña nada.
 
@@ -39,11 +39,12 @@ function filasCalidad(): Promise<FilaCalidadEquipo[]> {
   return cacheCalidad.promesa;
 }
 
-const COLOR: Record<Semaforo, { fondo: string; borde: string; punto: string; texto: string }> = {
-  rojo: { fondo: '#fef2f2', borde: '#fca5a5', punto: '#dc2626', texto: 'Mejorable' },
-  amarillo: { fondo: '#fffbeb', borde: '#fcd34d', punto: '#d97706', texto: 'Puede ir mejor' },
-  verde: { fondo: '#f0fdf4', borde: '#86efac', punto: '#16a34a', texto: '¡Muy bien!' },
-  sin_datos: { fondo: '#f8fafc', borde: '#e2e8f0', punto: '#94a3b8', texto: '' },
+// Tono directo, profesional y en positivo (17/11, Jose): la nota se ve, frente
+// a un objetivo (no frente al equipo), sin rojo ni palabra «calidad».
+const ESTILO: Record<'bien' | 'cerca' | 'lejos', { fondo: string; borde: string; acento: string; texto: string }> = {
+  bien: { fondo: '#f0fdf4', borde: '#86efac', acento: '#15803d', texto: 'Objetivo cumplido' },
+  cerca: { fondo: '#fffbeb', borde: '#fcd34d', acento: '#b45309', texto: 'Cerca del objetivo' },
+  lejos: { fondo: '#fffbeb', borde: '#fcd34d', acento: '#b45309', texto: 'Por debajo del objetivo' },
 };
 
 export function CalidadPropiaEntrenador({ posicion }: { posicion: 'arriba' | 'abajo' }) {
@@ -83,50 +84,52 @@ export type DatosCalidadPropia = ReturnType<typeof calidadPropia>;
 /** La tarjeta tal cual la ve el entrenador (también la usa coordinación para «Ver como lo ve el entrenador»). */
 export function TarjetaCalidadPropia({ datos }: { datos: DatosCalidadPropia }) {
   if (datos.reciente.nota === null) return null;
-  const vaBien = datos.semaforo === 'verde';
-  const color = COLOR[datos.semaforo];
   const nota = datos.reciente.nota;
+  const estilo = ESTILO[datos.semaforo === 'verde' ? 'bien' : datos.semaforo === 'amarillo' ? 'cerca' : 'lejos'];
   const pctBarra = Math.max(4, Math.min(100, nota * 10));
-  const pctEquipo = datos.equipo === null ? null : Math.min(100, datos.equipo * 10);
+  const pctObjetivo = UMBRAL.verde * 10;
+  const caja: React.CSSProperties = { background: '#fff', borderRadius: 12, padding: '10px 12px', display: 'grid', gap: 4, fontSize: 13.5, lineHeight: 1.4 };
+  const titulo: React.CSSProperties = { fontSize: 12, letterSpacing: '.04em', color: estilo.acento };
 
   return (
     <article
-      aria-label="Calidad de tus reportes"
-      style={{ borderRadius: 18, padding: 14, display: 'grid', gap: 10, background: color.fondo, border: `1px solid ${color.borde}`, marginBottom: 12 }}
+      aria-label="Tus reportes"
+      style={{ borderRadius: 18, padding: 14, display: 'grid', gap: 10, background: estilo.fondo, border: `1px solid ${estilo.borde}`, marginBottom: 12 }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span aria-hidden style={{ width: 12, height: 12, borderRadius: 999, background: color.punto }} />
-        <strong style={{ fontSize: 16, flex: '1 1 180px', minWidth: 0 }}>📝 Calidad de tus reportes · últimos 14 días</strong>
-        <span style={{ fontSize: 12.5, fontWeight: 900, color: color.punto }}>{color.texto}</span>
+        <strong style={{ fontSize: 16, flex: '1 1 180px', minWidth: 0 }}>📋 Tus reportes · últimos 14 días</strong>
+        <span style={{ fontSize: 12.5, fontWeight: 900, color: estilo.acento }}>{estilo.texto}</span>
       </div>
       <div style={{ background: '#fff', borderRadius: 12, padding: '10px 12px', display: 'grid', gap: 6 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 30, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{formatoNota(nota)}</span>
           <span style={{ fontSize: 14, fontWeight: 800, color: '#64748b' }}>/ 10</span>
-          {datos.equipo !== null && (
-            <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 800, color: '#334155' }}>Media del equipo: {formatoNota(datos.equipo)}</span>
-          )}
+          <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 800, color: '#334155' }}>Objetivo: {formatoNota(UMBRAL.verde)}</span>
         </div>
         <div style={{ position: 'relative', height: 10, borderRadius: 999, background: '#e2e8f0' }}>
-          <span style={{ position: 'absolute', inset: 0, width: `${pctBarra}%`, borderRadius: 999, background: color.punto }} />
-          {pctEquipo !== null && (
-            <span title="Media del equipo" style={{ position: 'absolute', top: -4, bottom: -4, left: `calc(${pctEquipo}% - 1px)`, width: 3, borderRadius: 2, background: '#0f172a' }} />
-          )}
+          <span style={{ position: 'absolute', inset: 0, width: `${pctBarra}%`, borderRadius: 999, background: estilo.acento }} />
+          <span title="Objetivo" style={{ position: 'absolute', top: -4, bottom: -4, left: `calc(${pctObjetivo}% - 1px)`, width: 3, borderRadius: 2, background: '#0f172a' }} />
         </div>
         <span style={{ fontSize: 12, color: '#64748b' }}>
-          {datos.reciente.reportes} reportes{datos.reciente.faltan ? ` · ${datos.reciente.faltan} sin hacer` : ''}
-          {datos.vaAMenos && datos.anterior.nota !== null ? ` · antes tenías ${formatoNota(datos.anterior.nota)}` : ''}
+          {datos.reciente.reportes} reportes{datos.reciente.faltan ? ` · ${datos.reciente.faltan} pendientes` : ''}
+          {datos.vaAMenos && datos.anterior.nota !== null ? ` · antes: ${formatoNota(datos.anterior.nota)}` : ''}
         </span>
       </div>
-      {datos.consejos.length > 0 ? (
-        <div style={{ background: '#fff', borderRadius: 12, padding: '10px 12px', display: 'grid', gap: 4, fontSize: 13.5, lineHeight: 1.4 }}>
-          <strong style={{ fontSize: 12, letterSpacing: '.04em' }}>💡 LO QUE TE BAJA LA NOTA</strong>
-          {datos.consejos.map((c) => (
-            <span key={c}>• {c}</span>
+      {datos.fortalezas.length > 0 && (
+        <div style={caja}>
+          <strong style={titulo}>PUNTOS FUERTES</strong>
+          {datos.fortalezas.map((f) => (
+            <span key={f}>✓ {f}</span>
           ))}
         </div>
-      ) : (
-        vaBien && <span style={{ fontSize: 13.5 }}>👏 Tus reportes están entre los más completos del equipo. Gracias.</span>
+      )}
+      {datos.consejos.length > 0 && (
+        <div style={caja}>
+          <strong style={titulo}>PARA SUBIR LA NOTA</strong>
+          {datos.consejos.map((c) => (
+            <span key={c}>→ {c}</span>
+          ))}
+        </div>
       )}
     </article>
   );

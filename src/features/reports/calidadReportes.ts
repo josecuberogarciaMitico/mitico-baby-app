@@ -205,17 +205,34 @@ export function fallosDe(reciente: PeriodoCalidad, anterior: PeriodoCalidad, vaA
   return f;
 }
 
-/** «Lo que te baja la nota», para el propio entrenador (en segunda persona). */
+/**
+ * Qué hacer para subir la nota, para el propio entrenador (en segunda persona).
+ * Tono directo y profesional, en positivo (Jose, 17/11): qué hacer, no lo que
+ * hace mal.
+ */
 export function consejosDe(p: PeriodoCalidad): string[] {
   const c: string[] = [];
   if (p.faltan > 0)
-    c.push(`Tienes ${p.faltan} ${p.faltan === 1 ? 'reporte sin hacer' : 'reportes sin hacer'}: cada uno cuenta como un 0 en tu nota.`);
+    c.push(
+      `Completa ${p.faltan === 1 ? 'el reporte pendiente' : `los ${p.faltan} reportes pendientes`}: mientras falten, cuentan como 0 en la nota.`
+    );
   if (p.reportes === 0) return c;
-  if (p.partes.concreto < 0.9) c.push('Cuando lo consigue todo, cuenta en una frase qué has visto: si no, nadie puede fiarse para subirle de nivel.');
-  if (p.partes.detalle < 0.75) c.push('Cuenta más en lo que le cuesta: qué le falta y en qué momento. Si vas con prisa, díctalo con el micro.');
-  if (p.partes.personal < 0.9) c.push('Valora a cada niño por separado: no pongas lo mismo a todo el grupo.');
-  if (p.partes.aTiempo < 0.75) c.push('Hazlos el mismo día o al siguiente: de memoria salen peor.');
+  if (p.partes.concreto < 0.9) c.push('Cuando marques «Lo consigue» en todo, añade una frase con lo que has visto: es lo que justifica subirle de nivel.');
+  if (p.partes.detalle < 0.75) c.push('En lo que le cuesta, indica qué le falta y en qué momento. Puedes dictarlo con el micro.');
+  if (p.partes.personal < 0.9) c.push('Valora a cada niño por separado, aunque el grupo vaya parecido.');
+  if (p.partes.aTiempo < 0.75) c.push('Rellénalos el mismo día de la sesión o al siguiente.');
   return c;
+}
+
+/** Puntos fuertes (lo que ya hace bien). */
+export function fortalezasDe(p: PeriodoCalidad): string[] {
+  if (p.reportes === 0) return [];
+  const f: string[] = [];
+  if (p.partes.aTiempo >= 0.75) f.push('Reportes al día.');
+  if (p.partes.personal >= 0.9) f.push('Valoración individual de cada niño.');
+  if (p.partes.concreto >= 0.9) f.push('Justificas los «Lo consigue».');
+  if (p.partes.detalle >= 0.75) f.push('Buen detalle en lo que les cuesta.');
+  return f;
 }
 
 export const formatoNota = (n: number | null) => (n === null ? '—' : n.toFixed(1).replace('.', ','));
@@ -328,7 +345,7 @@ export function notaEquipo(items: RasgosReporte[]): number | null {
 export function calidadPropia(
   filas: Array<RasgosReporte & { esMio: boolean; esFalta?: boolean }>,
   hoyIso: string
-): { reciente: PeriodoCalidad; anterior: PeriodoCalidad; equipo: number | null; semaforo: Semaforo; vaAMenos: boolean; consejos: string[] } {
+): { reciente: PeriodoCalidad; anterior: PeriodoCalidad; equipo: number | null; semaforo: Semaforo; vaAMenos: boolean; consejos: string[]; fortalezas: string[] } {
   const corte = restarDias(hoyIso, DIAS_RECIENTE - 1);
   const limiteFalta = restarDias(hoyIso, DIAS_MARGEN_FALTA);
   const hechas = filas.filter((f) => !f.esFalta);
@@ -346,6 +363,7 @@ export function calidadPropia(
     semaforo: semaforoDe(reciente),
     vaAMenos: vaAMenosDe(reciente, anterior),
     consejos: consejosDe(reciente),
+    fortalezas: fortalezasDe(reciente),
   };
 }
 
@@ -364,5 +382,5 @@ export function notaEquipoDe(lista: CalidadEntrenador[]): number | null {
 
 /** Lo que vería un entrenador en su tarjeta, calculado desde el panel de coordinación. */
 export function vistaEntrenadorDesde(c: CalidadEntrenador, equipo: number | null) {
-  return { reciente: c.reciente, anterior: c.anterior, equipo, semaforo: c.semaforo, vaAMenos: c.vaAMenos, consejos: consejosDe(c.reciente) };
+  return { reciente: c.reciente, anterior: c.anterior, equipo, semaforo: c.semaforo, vaAMenos: c.vaAMenos, consejos: consejosDe(c.reciente), fortalezas: fortalezasDe(c.reciente) };
 }
