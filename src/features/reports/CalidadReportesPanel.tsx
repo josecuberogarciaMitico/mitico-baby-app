@@ -7,6 +7,7 @@ import {
   type EstadoDevolucion,
 } from '../../services/reports/calidadReportesService';
 import { abrirFichaAlumno } from '../students/studentFichaStore';
+import { TarjetaCalidadPropia } from '../trainers/CalidadEntrenador';
 import { sumarDiasIso } from './reportsReviewLogic';
 import {
   calidadPorEntrenador,
@@ -14,7 +15,9 @@ import {
   formatoNota,
   LETRAS_POR_HABILIDAD,
   MINIMO_REPORTES,
+  notaEquipoDe,
   UMBRAL,
+  vistaEntrenadorDesde,
   type CalidadEntrenador,
   type Semaforo,
 } from './calidadReportes';
@@ -58,8 +61,10 @@ function Tarjeta({
   devoluciones,
   onDevolver,
   onAnular,
+  equipo,
 }: {
   c: CalidadEntrenador;
+  equipo: number | null;
   esMovil?: boolean;
   soloLectura?: boolean;
   devoluciones: Map<string, EstadoDevolucion>;
@@ -69,6 +74,13 @@ function Tarjeta({
 }) {
   const color = COLOR[c.semaforo];
   const r = c.reciente;
+  const [verComoEl, setVerComoEl] = React.useState(false);
+  const leSale =
+    r.reportes < MINIMO_REPORTES || r.nota === null
+      ? `Ahora mismo no le sale: necesita ${MINIMO_REPORTES} reportes en ${DIAS_RECIENTE} días y tiene ${r.reportes}.`
+      : c.semaforo === 'verde'
+        ? 'Le sale abajo, al final de su vista (va bien).'
+        : 'Le sale arriba del todo al abrir la app (va mal).';
   return (
     <details style={{ borderRadius: 16, background: color.fondo, border: `1px solid ${color.borde}`, overflow: 'hidden' }}>
       <summary style={{ cursor: 'pointer', padding: '12px 14px', listStyle: 'none', display: 'grid', gap: 6 }}>
@@ -108,6 +120,26 @@ function Tarjeta({
         </span>
       </summary>
       <div style={{ padding: '0 14px 12px', display: 'grid', gap: 6 }}>
+        <button
+          type="button"
+          onClick={() => setVerComoEl((v) => !v)}
+          aria-expanded={verComoEl}
+          style={{ ...botonPeq, justifySelf: 'start', borderColor: '#0f172a' }}
+        >
+          {verComoEl ? 'Ocultar su vista' : '👁 Ver como lo ve el entrenador'}
+        </button>
+        {verComoEl && (
+          <div style={{ display: 'grid', gap: 6, padding: 10, borderRadius: 14, background: '#e2e8f0' }}>
+            <span style={{ fontSize: 12.5, fontWeight: 800, color: '#334155' }}>📱 {leSale}</span>
+            {r.nota === null ? (
+              <span style={{ fontSize: 13, color: '#475569' }}>Sin reportes con nota en estos días.</span>
+            ) : (
+              <div style={{ maxWidth: 420 }}>
+                <TarjetaCalidadPropia datos={vistaEntrenadorDesde(c, equipo)} />
+              </div>
+            )}
+          </div>
+        )}
         {c.ejemplos.length === 0 ? (
           <span style={{ fontSize: 13, color: '#475569' }}>Ningún reporte flojo en los últimos {DIAS_RECIENTE} días.</span>
         ) : (
@@ -194,6 +226,7 @@ export function CalidadReportesPanel({ esVistaMovilApp, soloLectura = false }: {
   }, [hoy, cargarDevoluciones]);
 
   const resultado = React.useMemo(() => (filas ? calidadPorEntrenador(filas, hoy) : []), [filas, hoy]);
+  const equipo = React.useMemo(() => notaEquipoDe(resultado), [resultado]);
 
   async function devolver(reporteId: string, alumno: string) {
     const motivo = window.prompt(`Devolver el reporte de ${alumno} al entrenador.\n\n¿Qué le dices? (lo verá al abrir la app)`, MOTIVO_POR_DEFECTO);
@@ -259,6 +292,7 @@ export function CalidadReportesPanel({ esVistaMovilApp, soloLectura = false }: {
           devoluciones={devueltos}
           onDevolver={(id, alumno) => void devolver(id, alumno)}
           onAnular={(id) => void anular(id)}
+          equipo={equipo}
         />
       ))}
       <details style={{ padding: 12, borderRadius: 14, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 13, color: '#334155', lineHeight: 1.45 }}>

@@ -1,4 +1,4 @@
-import { calidadPorEntrenador, calidadPropia, calidadReporte, consejosDe, fallosDe, formatoNota, notaReporte, semaforoDe } from '../../../src/features/reports/calidadReportes';
+import { calidadPorEntrenador, calidadPropia, notaEquipoDe, vistaEntrenadorDesde, calidadReporte, consejosDe, fallosDe, formatoNota, notaReporte, semaforoDe } from '../../../src/features/reports/calidadReportes';
 import { faltaJustificacionTodoConsigue, notaSuficiente, prepararEnvioReporteFocos } from '../../../src/lib/adaptiveReport';
 
 function equal<T>(actual: T, expected: T, label: string) {
@@ -42,7 +42,7 @@ test('calidad: letras y observación de un reporte', () => {
 });
 
 const periodoFalso = (o: object = {}) => ({
-  reportes: 10, nota: 9, partes: { detalle: 1, concreto: 1, personal: 1, aTiempo: 1 }, faltan: 0, pctTarde: 0, pctIgualGrupo: 0,
+  reportes: 10, puntuados: 10, nota: 9, partes: { detalle: 1, concreto: 1, personal: 1, aTiempo: 1 }, faltan: 0, pctTarde: 0, pctIgualGrupo: 0,
   pocoDetallados: 0, pctPocoDetallados: 0, letrasMedia: 200, ...o,
 });
 
@@ -171,4 +171,15 @@ test('notas: mínimo 30 letras y 5 palabras, y sin copiar la misma en dos habili
   equal(repetida.ok, false, 'misma nota en dos habilidades bloquea');
   if (!repetida.ok) equal(repetida.error.includes('misma nota'), true, 'explica por qué');
   equal(prepararEnvioReporteFocos({ ...form, notasHabilidades: { cuna_frenada: 'Le cuesta mantener la cuña al final de la bajada', direccion_giro: 'No controla la dirección cuando coge velocidad' } }, 'A').ok, true, 'notas buenas pasan');
+});
+
+test('calidad: «ver como lo ve el entrenador» desde el panel', () => {
+  const c = (nombre: string, nota: number | null, puntuados: number) => ({
+    entrenador: nombre, reciente: periodoFalso({ nota, puntuados, reportes: puntuados }), anterior: periodoFalso(), semaforo: 'verde' as const, vaAMenos: false, fallos: [], ejemplos: [],
+  });
+  equal(notaEquipoDe([c('A', 4, 10), c('B', 10, 30), c('C', null, 0)]), 8.5, 'media ponderada por reportes');
+  equal(notaEquipoDe([]), null, 'sin datos');
+  const v = vistaEntrenadorDesde(c('A', 4, 10), 8.5);
+  equal(v.equipo, 8.5, 'lleva la media del equipo');
+  equal(v.reciente.nota, 4, 'su nota');
 });
