@@ -43,7 +43,7 @@ test('calidad: letras y observación de un reporte', () => {
 
 const periodoFalso = (o: object = {}) => ({
   reportes: 10, puntuados: 10, nota: 9, partes: { detalle: 1, concreto: 1, personal: 1, aTiempo: 1 }, faltan: 0, pctTarde: 0, pctIgualGrupo: 0,
-  pocoDetallados: 0, pctPocoDetallados: 0, letrasMedia: 200, ...o,
+  pocoDetallados: 0, pctPocoDetallados: 0, letrasMedia: 200, nTarde: 0, nIgualGrupo: 0, nCortos: 0, letrasPorHabilidad: 120, notaHechos: 9, ...o,
 });
 
 test('calidad: nota de 0 a 10 de cada reporte', () => {
@@ -70,7 +70,7 @@ test('calidad: semáforo por nota', () => {
 
 test('calidad: en qué falla (coordinación) y consejos (entrenador)', () => {
   equal(fallosDe(periodoFalso(), periodoFalso(), false).length, 0, 'sin fallos');
-  const malo = periodoFalso({ nota: 4.1, pocoDetallados: 5, pctPocoDetallados: 50, letrasMedia: 28, faltan: 3, pctTarde: 60, pctIgualGrupo: 25, partes: { detalle: 0.4, concreto: 0.5, personal: 0.7, aTiempo: 0.4 } });
+  const malo = periodoFalso({ nota: 4.1, notaHechos: 5.3, pocoDetallados: 5, pctPocoDetallados: 50, letrasMedia: 28, faltan: 3, pctTarde: 60, pctIgualGrupo: 25, nTarde: 6, nIgualGrupo: 3, nCortos: 7, partes: { detalle: 0.4, concreto: 0.5, personal: 0.7, aTiempo: 0.4 } });
   const f = fallosDe(malo, periodoFalso({ nota: 8.9 }), true);
   equal(f[0], 'No ha hecho 3 reportes (cuentan como 0 en su nota).', 'primero lo que no ha hecho');
   equal(f[1], 'Marca todo «Lo consigue» sin escribir nada en 5 de 10 reportes (50%).', 'después lo poco detallado');
@@ -80,13 +80,22 @@ test('calidad: en qué falla (coordinación) y consejos (entrenador)', () => {
   equal(f.some((x) => x.startsWith('Rellena tarde')), true, 'tarde');
   equal(fallosDe(periodoFalso({ reportes: 0, faltan: 4 }), periodoFalso(), false)[0], 'No ha hecho 4 reportes (cuentan como 0 en su nota).', 'sin reportes, solo lo que falta');
   const c = consejosDe(malo);
-  equal(c.length, 5, 'cinco consejos');
-  equal(c[0].startsWith('Completa los 3 reportes pendientes'), true, 'primero lo que no ha hecho');
-  equal(c[1].startsWith('Cuando marques «Lo consigue» en todo'), true, 'luego lo de «Lo consigue»');
+  equal(c.length, 3, 'como mucho tres pasos');
+  equal(c[0], 'Completa los 3 reportes pendientes: mientras falten cuentan como 0 (+1,2).', 'primero lo pendiente, con lo que sube');
+  equal(c[1].startsWith('En 7 de 10 reportes te quedas corto'), true, 'luego lo que más sube (detalle +1,6), con sus cifras');
+  equal(c[2].startsWith('En 5 de 10 reportes marcaste todo «Lo consigue»'), true, 'después «Lo consigue» (+1,2)');
   equal(c.some((x) => /calidad/i.test(x)), false, 'al entrenador no se le habla de «calidad»');
   equal(fortalezasDe(malo).length, 0, 'nada que destacar si todo falla');
-  equal(fortalezasDe(periodoFalso()).length, 4, 'si va bien, cuatro cosas que hace bien');
-  equal(consejosDe(periodoFalso()).length, 0, 'si va bien, sin consejos');
+  // Va bien (8,6) pero no perfecto: también tiene un siguiente paso, y distinto según sus datos.
+  const bueno = periodoFalso({ nota: 8.6, nTarde: 2, pctTarde: 20, partes: { detalle: 0.85, concreto: 1, personal: 1, aTiempo: 0.9 }, nCortos: 3, letrasPorHabilidad: 70 });
+  const cb = consejosDe(bueno);
+  equal(cb.length, 2, 'dos pasos para el 10');
+  equal(cb[0].startsWith('En 3 de 10 reportes te quedas corto'), true, 'lo que más le sube primero (detalle +0,5)');
+  equal(cb[1].startsWith('2 de 10 reportes los enviaste'), true, 'después lo de a tiempo (+0,3)');
+  equal(fortalezasDe(bueno).join(' | '), 'Siempre explicas lo que has visto cuando un niño lo consigue todo. | 8 de 10 reportes enviados a tiempo. | Valoras a cada niño por separado.', 'puntos fuertes con cifras');
+  equal(consejosDe(periodoFalso({ nota: 10 })).length, 0, 'perfecto: sin pasos');
+  equal(consejosDe(periodoFalso({ reportes: 0, puntuados: 0, nota: 0, notaHechos: null, faltan: 4 }))[0], 'Completa los 4 reportes pendientes: mientras falten cuentan como 0.', 'sin ningún reporte hecho, también se le dice');
+  equal(fortalezasDe(periodoFalso())[0], 'Describes bien lo que les cuesta: 120 letras por habilidad de media.', 'lo que más pesa primero');
 });
 
 test('calidad: por entrenador, reciente frente a antes y «va a menos»', () => {
@@ -157,9 +166,9 @@ test('calidad: lo que ve el propio entrenador (su nota y la del equipo)', () => 
   equal(conFalta.reciente.nota, 2.8, 'la del 13 cuenta como 0');
   equal(yo.semaforo, 'rojo', 'rojo');
   equal(yo.vaAMenos, true, 'va a menos');
-  equal(yo.consejos[0].startsWith('Cuando marques «Lo consigue» en todo'), true, 'consejo principal');
+  equal(yo.consejos.some((c) => /marcaste todo «Lo consigue»/.test(c)), true, 'consejo principal');
   equal(yo.consejos.some((c) => /calidad/i.test(c)), false, 'sin hablar de «calidad»');
-  equal(conFalta.consejos[0].startsWith('Completa el reporte pendiente'), true, 'pendientes primero, en positivo');
+  equal(conFalta.consejos[0].startsWith('Completa el reporte pendiente'), true, 'pendientes primero');
   equal(Array.isArray(yo.fortalezas), true, 'lo que ya hace bien');
 });
 
