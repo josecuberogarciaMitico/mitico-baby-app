@@ -118,6 +118,14 @@ export type PeriodoCalidad = {
   pctPocoDetallados: number;
   /** Letras escritas de media por reporte. */
   letrasMedia: number;
+  /** Cuántos reportes: enviados 2+ días tarde, igual que todo el grupo, cortos en lo que les cuesta. */
+  nTarde: number;
+  nIgualGrupo: number;
+  nCortos: number;
+  /** Letras por habilidad a mejorar, de media (reportes puntuados). */
+  letrasPorHabilidad: number;
+  /** Nota media solo de los reportes hechos (sin contar los que faltan). */
+  notaHechos: number | null;
 };
 
 export type CalidadEntrenador = {
@@ -166,6 +174,11 @@ export function periodo(items: RasgosReporte[], faltan = 0): PeriodoCalidad {
     pocoDetallados: poco,
     pctPocoDetallados: pct(poco),
     letrasMedia: n ? Math.round(items.reduce((s, r) => s + r.letras, 0) / n) : 0,
+    nTarde: items.filter((r) => (r.diasTarde ?? 0) >= 2).length,
+    nIgualGrupo: items.filter((r) => r.igualGrupo).length,
+    nCortos: conNota.filter((x) => x.r.letras < LETRAS_POR_HABILIDAD * Math.max(x.r.aMejorar, 1)).length,
+    letrasPorHabilidad: k ? Math.round(conNota.reduce((s, x) => s + x.r.letras / Math.max(x.r.aMejorar, 1), 0) / k) : 0,
+    notaHechos: k ? redondear(sumaTotal / k) : null,
   };
 }
 
@@ -207,32 +220,68 @@ export function fallosDe(reciente: PeriodoCalidad, anterior: PeriodoCalidad, vaA
 
 /**
  * Qué hacer para subir la nota, para el propio entrenador (en segunda persona).
- * Tono directo y profesional, en positivo (Jose, 17/11): qué hacer, no lo que
- * hace mal.
+ * Tono directo y profesional (Jose, 17/11). Personal: con sus cifras y
+ * ordenado por cuánto le sube la nota cada paso; también a quien va bien
+ * (le dice qué le falta para el 10). Máximo 3.
  */
 export function consejosDe(p: PeriodoCalidad): string[] {
-  const c: string[] = [];
-  if (p.faltan > 0)
-    c.push(
-      `Completa ${p.faltan === 1 ? 'el reporte pendiente' : `los ${p.faltan} reportes pendientes`}: mientras falten, cuentan como 0 en la nota.`
-    );
-  if (p.reportes === 0) return c;
-  if (p.partes.concreto < 0.9) c.push('Cuando marques «Lo consigue» en todo, añade una frase con lo que has visto: es lo que justifica subirle de nivel.');
-  if (p.partes.detalle < 0.75) c.push('En lo que le cuesta, indica qué le falta y en qué momento. Puedes dictarlo con el micro.');
-  if (p.partes.personal < 0.9) c.push('Valora a cada niño por separado, aunque el grupo vaya parecido.');
-  if (p.partes.aTiempo < 0.75) c.push('Rellénalos el mismo día de la sesión o al siguiente.');
-  return c;
+  const total = p.puntuados + p.faltan;
+  if (!total) return [];
+  const peso = p.puntuados / total;
+  const gana = (parte: keyof typeof PUNTOS) => PUNTOS[parte] * (1 - p.partes[parte]) * peso;
+  const mas = (n: number) => `(+${formatoNota(n)})`;
+  const de = (k: number) => `${k} de ${p.reportes}`;
+  const pasos: Array<{ puntos: number; texto: string }> = [];
+  if (p.faltan > 0) {
+    const pts = p.notaHechos !== null && p.nota !== null ? p.notaHechos - p.nota : 0;
+    pasos.push({
+      puntos: pts + 100, // siempre lo primero
+      texto: `Completa ${p.faltan === 1 ? 'el reporte pendiente' : `los ${p.faltan} reportes pendientes`}: mientras falten cuentan como 0${pts >= 0.05 ? ` ${mas(pts)}` : ''}.`,
+    });
+  }
+  if (p.reportes > 0) {
+    if (p.pocoDetallados > 0)
+      pasos.push({
+        puntos: gana('concreto'),
+        texto: `En ${de(p.pocoDetallados)} reportes marcaste todo «Lo consigue» sin una frase. Añade lo que has visto: es lo que justifica subirle de nivel ${mas(gana('concreto'))}.`,
+      });
+    if (p.nCortos > 0)
+      pasos.push({
+        puntos: gana('detalle'),
+        texto: `En ${de(p.nCortos)} reportes te quedas corto en lo que le cuesta (menos de ${LETRAS_POR_HABILIDAD} letras por habilidad). Indica qué le falta y en qué momento; puedes dictarlo ${mas(gana('detalle'))}.`,
+      });
+    if (p.nTarde > 0)
+      pasos.push({
+        puntos: gana('aTiempo'),
+        texto: `${de(p.nTarde)} reportes los enviaste 2 días o más después de la sesión. Rellénalos el mismo día o al siguiente ${mas(gana('aTiempo'))}.`,
+      });
+    if (p.nIgualGrupo > 0)
+      pasos.push({
+        puntos: gana('personal'),
+        texto: `En ${de(p.nIgualGrupo)} reportes pusiste la misma valoración a todo el grupo. Diferencia a cada niño ${mas(gana('personal'))}.`,
+      });
+  }
+  return pasos
+    .filter((x) => x.puntos >= 0.05)
+    .sort((a, b) => b.puntos - a.puntos)
+    .slice(0, 3)
+    .map((x) => x.texto);
 }
 
-/** Puntos fuertes (lo que ya hace bien). */
+/** Puntos fuertes, con sus cifras (solo lo que hace de verdad bien). Máximo 3. */
 export function fortalezasDe(p: PeriodoCalidad): string[] {
   if (p.reportes === 0) return [];
-  const f: string[] = [];
-  if (p.partes.aTiempo >= 0.75) f.push('Reportes al día.');
-  if (p.partes.personal >= 0.9) f.push('Valoración individual de cada niño.');
-  if (p.partes.concreto >= 0.9) f.push('Justificas los «Lo consigue».');
-  if (p.partes.detalle >= 0.75) f.push('Buen detalle en lo que les cuesta.');
-  return f;
+  const f: Array<{ peso: number; texto: string }> = [];
+  if (p.nTarde === 0) f.push({ peso: PUNTOS.aTiempo, texto: `Los ${p.reportes} reportes enviados a tiempo.` });
+  else if (p.partes.aTiempo >= 0.9) f.push({ peso: PUNTOS.aTiempo, texto: `${p.reportes - p.nTarde} de ${p.reportes} reportes enviados a tiempo.` });
+  if (p.puntuados > 0 && p.partes.detalle >= 0.9)
+    f.push({ peso: PUNTOS.detalle, texto: `Describes bien lo que les cuesta: ${p.letrasPorHabilidad} letras por habilidad de media.` });
+  if (p.pocoDetallados === 0 && p.puntuados > 0) f.push({ peso: PUNTOS.concreto, texto: 'Siempre explicas lo que has visto cuando un niño lo consigue todo.' });
+  if (p.nIgualGrupo === 0 && p.puntuados > 0) f.push({ peso: PUNTOS.personal, texto: 'Valoras a cada niño por separado.' });
+  return f
+    .sort((a, b) => b.peso - a.peso)
+    .slice(0, 3)
+    .map((x) => x.texto);
 }
 
 export const formatoNota = (n: number | null) => (n === null ? '—' : n.toFixed(1).replace('.', ','));
