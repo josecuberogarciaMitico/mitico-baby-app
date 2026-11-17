@@ -19,7 +19,15 @@ import {
   type FilaCalidadEquipo,
   type ReporteDevuelto,
 } from '../../services/reports/calidadReportesService';
-import { calidadPropia, formatoNota, MINIMO_REPORTES, UMBRAL } from '../reports/calidadReportes';
+import {
+  calidadPropia,
+  formatoNota,
+  MINIMO_REPORTES,
+  REPORTES_PARA_VOLVER,
+  tarjetaSigueCerrada,
+  UMBRAL,
+  type CierreTarjeta,
+} from '../reports/calidadReportes';
 
 // Vista del entrenador (17/11/2026):
 //  - «Tus reportes»: su nota (0-10) frente al objetivo, puntos fuertes y qué
@@ -47,7 +55,26 @@ const ESTILO: Record<'bien' | 'cerca' | 'lejos', { fondo: string; borde: string;
   lejos: { fondo: '#fffbeb', borde: '#fcd34d', acento: '#b45309', texto: 'Por debajo del objetivo' },
 };
 
+// Cuándo la cerró (solo en este móvil; si no se puede guardar, sale como siempre).
+const CLAVE_CIERRE = 'mitico_tus_reportes_cerrada_v1';
+function leerCierre(): CierreTarjeta | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(CLAVE_CIERRE) || 'null');
+    return v && typeof v.fecha === 'string' && typeof v.nota === 'number' ? v : null;
+  } catch {
+    return null;
+  }
+}
+function guardarCierre(c: CierreTarjeta) {
+  try {
+    localStorage.setItem(CLAVE_CIERRE, JSON.stringify(c));
+  } catch {
+    /* sin almacenamiento: solo se oculta hasta recargar */
+  }
+}
+
 export function CalidadPropiaEntrenador({ posicion }: { posicion: 'arriba' | 'abajo' }) {
+  const [cierre, setCierre] = React.useState<CierreTarjeta | null>(leerCierre);
   const [filas, setFilas] = React.useState<FilaCalidadEquipo[] | null>(null);
   React.useEffect(() => {
     let vivo = true;
@@ -76,13 +103,26 @@ export function CalidadPropiaEntrenador({ posicion }: { posicion: 'arriba' | 'ab
   const vaBien = datos.semaforo === 'verde';
   // Arriba solo si va mal; abajo solo si va bien.
   if ((posicion === 'arriba') === vaBien) return null;
-  return <TarjetaCalidadPropia datos={datos} />;
+  // Cerrada con «Entendido»: no vuelve hasta 5 reportes nuevos o si la nota baja (Jose, 17/11).
+  const fechasHechas = filas.filter((f) => f.es_mio && !f.es_falta).map((f) => f.fecha);
+  if (tarjetaSigueCerrada(cierre, fechasHechas, datos.reciente.nota)) return null;
+  const nota = datos.reciente.nota;
+  return (
+    <TarjetaCalidadPropia
+      datos={datos}
+      onCerrar={() => {
+        const nuevo = { fecha: hoyMadrid(), nota };
+        guardarCierre(nuevo);
+        setCierre(nuevo);
+      }}
+    />
+  );
 }
 
 export type DatosCalidadPropia = ReturnType<typeof calidadPropia>;
 
 /** La tarjeta tal cual la ve el entrenador (también la usa coordinación para «Ver como lo ve el entrenador»). */
-export function TarjetaCalidadPropia({ datos }: { datos: DatosCalidadPropia }) {
+export function TarjetaCalidadPropia({ datos, onCerrar }: { datos: DatosCalidadPropia; onCerrar?: () => void }) {
   if (datos.reciente.nota === null) return null;
   const nota = datos.reciente.nota;
   const estilo = ESTILO[datos.semaforo === 'verde' ? 'bien' : datos.semaforo === 'amarillo' ? 'cerca' : 'lejos'];
@@ -132,6 +172,18 @@ export function TarjetaCalidadPropia({ datos }: { datos: DatosCalidadPropia }) {
         </div>
       ) : (
         datos.semaforo === 'verde' && <span style={{ fontSize: 13.5, fontWeight: 700, color: estilo.acento }}>Sigue así.</span>
+      )}
+      {onCerrar && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <button
+            type="button"
+            onClick={onCerrar}
+            style={{ minHeight: 40, padding: '0 16px', borderRadius: 12, border: `1px solid ${estilo.borde}`, background: '#fff', color: estilo.acento, fontWeight: 900, cursor: 'pointer' }}
+          >
+            Entendido
+          </button>
+          <span style={{ fontSize: 12, color: '#64748b' }}>Te la volvemos a enseñar cuando hagas {REPORTES_PARA_VOLVER} reportes más.</span>
+        </div>
       )}
     </article>
   );

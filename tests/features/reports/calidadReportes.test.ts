@@ -1,4 +1,4 @@
-import { calidadPorEntrenador, calidadPropia, notaEquipoDe, vistaEntrenadorDesde, calidadReporte, consejosDe, fortalezasDe, fallosDe, formatoNota, notaReporte, semaforoDe } from '../../../src/features/reports/calidadReportes';
+import { calidadPorEntrenador, calidadPropia, notaEquipoDe, vistaEntrenadorDesde, calidadReporte, consejosDe, fortalezasDe, tarjetaSigueCerrada, fallosDe, formatoNota, notaReporte, semaforoDe } from '../../../src/features/reports/calidadReportes';
 import { faltaJustificacionTodoConsigue, notaSuficiente, prepararEnvioReporteFocos } from '../../../src/lib/adaptiveReport';
 
 function equal<T>(actual: T, expected: T, label: string) {
@@ -199,4 +199,13 @@ test('calidad: «ver como lo ve el entrenador» desde el panel', () => {
   const v = vistaEntrenadorDesde(c('A', 4, 10), 8.5);
   equal(v.equipo, 8.5, 'lleva la media del equipo');
   equal(v.reciente.nota, 4, 'su nota');
+});
+
+test('«Tus reportes»: cerrada con «Entendido» hasta 5 reportes nuevos o si la nota baja', () => {
+  const cierre = { fecha: '2026-11-17', nota: 7.2 };
+  equal(tarjetaSigueCerrada(null, [], 7), false, 'sin cerrar: se ve');
+  equal(tarjetaSigueCerrada(cierre, ['2026-11-15', '2026-11-17', '2026-11-18', '2026-11-19'], 7.4), true, 'solo 2 nuevos: sigue cerrada');
+  equal(tarjetaSigueCerrada(cierre, ['2026-11-18', '2026-11-18', '2026-11-19', '2026-11-21', '2026-11-22'], 7.4), false, '5 nuevos: vuelve');
+  equal(tarjetaSigueCerrada(cierre, ['2026-11-18'], 6.2), false, 'la nota baja 1 punto: vuelve antes');
+  equal(tarjetaSigueCerrada(cierre, ['2026-11-18'], 6.5), true, 'baja menos de 1: sigue cerrada');
 });

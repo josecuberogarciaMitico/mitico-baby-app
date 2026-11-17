@@ -264,7 +264,20 @@ export function fortalezasDe(p: PeriodoCalidad): string[] {
     .map((x) => x.texto);
 }
 
-export const formatoNota = (n: number | null) => (n === null ? '—' : n.toFixed(1).replace('.', ','));
+/** «Tus reportes» cerrada con «Entendido»: vuelve tras estos reportes nuevos. */
+export const REPORTES_PARA_VOLVER = 5;
+/** …o antes si la nota baja esto o más respecto a cuando la cerró. */
+export const BAJADA_PARA_VOLVER = 1;
+export type CierreTarjeta = { fecha: string; nota: number };
+
+/** ¿Sigue oculta la tarjeta? Cuenta los reportes hechos de sesiones posteriores al cierre. */
+export function tarjetaSigueCerrada(cierre: CierreTarjeta | null, fechasHechas: string[], notaActual: number): boolean {
+  if (!cierre) return false;
+  if (cierre.nota - notaActual >= BAJADA_PARA_VOLVER) return false;
+  return fechasHechas.filter((f) => f > cierre.fecha).length < REPORTES_PARA_VOLVER;
+}
+
+export const formatoNota =(n: number | null) => (n === null ? '—' : n.toFixed(1).replace('.', ','));
 
 /** Día (Madrid) en que se envió. */
 function diaEnvio(iso: string | null | undefined): string {
