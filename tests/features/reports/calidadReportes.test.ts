@@ -1,4 +1,4 @@
-import { calidadPorEntrenador, calidadPropia, notaEquipoDe, vistaEntrenadorDesde, calidadReporte, consejosDe, fortalezasDe, tarjetaSigueCerrada, fallosDe, formatoNota, notaReporte, semaforoDe } from '../../../src/features/reports/calidadReportes';
+import { calidadPorEntrenador, calidadPropia, notaEquipoDe, periodoEntrenador, calidadReporte, consejosDe, fortalezasDe, tarjetaSigueCerrada, fallosDe, formatoNota, notaReporte, semaforoDe } from '../../../src/features/reports/calidadReportes';
 import { faltaJustificacionTodoConsigue, notaSuficiente, prepararEnvioReporteFocos } from '../../../src/lib/adaptiveReport';
 
 function equal<T>(actual: T, expected: T, label: string) {
@@ -112,7 +112,7 @@ test('calidad: por entrenador, reciente frente a antes y «va a menos»', () => 
   equal(r.length, 2, 'dos entrenadores');
   equal(r[0].entrenador, 'SERGIO', 'el peor primero');
   equal(r[0].semaforo, 'rojo', 'Sergio en rojo');
-  equal(r[0].reciente.reportes, 5, '14 días');
+  equal(r[0].reciente.reportes, 5, 'últimos 7 días');
   equal(r[0].reciente.pocoDetallados, 4, 'cuatro vacíos');
   equal(r[0].anterior.reportes, 4, 'antes');
   equal(r[0].vaAMenos, true, 'va a menos');
@@ -192,13 +192,31 @@ test('notas: mínimo 30 letras y 5 palabras, y sin copiar la misma en dos habili
 
 test('calidad: «ver como lo ve el entrenador» desde el panel', () => {
   const c = (nombre: string, nota: number | null, puntuados: number) => ({
-    entrenador: nombre, reciente: periodoFalso({ nota, puntuados, reportes: puntuados }), anterior: periodoFalso(), semaforo: 'verde' as const, vaAMenos: false, fallos: [], ejemplos: [],
+    entrenador: nombre, reciente: periodoFalso({ nota, puntuados, reportes: puntuados }), anterior: periodoFalso(), semaforo: 'verde' as const, vaAMenos: false, fallos: [], ejemplos: [], hechos: [], faltasFechas: [],
   });
   equal(notaEquipoDe([c('A', 4, 10), c('B', 10, 30), c('C', null, 0)]), 8.5, 'media ponderada por reportes');
   equal(notaEquipoDe([]), null, 'sin datos');
-  const v = vistaEntrenadorDesde(c('A', 4, 10), 8.5);
-  equal(v.equipo, 8.5, 'lleva la media del equipo');
-  equal(v.reciente.nota, 4, 'su nota');
+});
+
+test('tarjeta del entrenador: 7 días, o sus últimos 4 reportes si esa semana hizo menos', () => {
+  const r = (fecha: string, bien: boolean) => ({ fecha, valoradas: 3, aMejorar: bien ? 1 : 0, letras: bien ? 90 : 0, pocoDetallado: !bien, igualGrupo: false, diasTarde: 0 });
+  const hoy = '2026-11-17';
+  // Semana con 5 reportes: últimos 7 días.
+  const semana = periodoEntrenador([r('2026-11-11', true), r('2026-11-13', true), r('2026-11-14', false), r('2026-11-15', true), r('2026-11-16', true), r('2026-11-01', false)], [], hoy);
+  equal(semana.ventana.tipo, 'dias', '7 días');
+  equal(semana.reciente.reportes, 5, 'los de la semana');
+  equal(semana.anterior.reportes, 1, 'lo de antes, aparte');
+  // Semana con 1 reporte: sus últimos 4.
+  const poca = periodoEntrenador([r('2026-11-15', true), r('2026-11-08', true), r('2026-11-07', false), r('2026-11-01', true), r('2026-10-25', false)], [], hoy);
+  equal(poca.ventana.tipo === 'ultimos' && poca.ventana.n, 4, 'sus últimos 4 reportes');
+  equal(poca.reciente.reportes, 4, 'cuatro');
+  equal(poca.reciente.nota, 8.4, 'nota de esos cuatro (uno vacío: 3,5)');
+  // Pendientes de esta semana cuentan para llegar a 4.
+  const conFaltas = periodoEntrenador([r('2026-11-14', true), r('2026-11-01', true)], ['2026-11-13', '2026-11-12', '2026-11-11'], hoy);
+  equal(conFaltas.ventana.tipo, 'dias', 'con los pendientes ya hay 4 en la semana');
+  equal(conFaltas.reciente.faltan, 3, 'tres pendientes');
+  // Sin bastantes en total: no hay tarjeta (sin datos).
+  equal(periodoEntrenador([r('2026-11-15', true)], [], hoy).reciente.reportes, 1, 'solo uno: sin tarjeta');
 });
 
 test('«Tus reportes»: cerrada con «Entendido» hasta el lunes siguiente', () => {

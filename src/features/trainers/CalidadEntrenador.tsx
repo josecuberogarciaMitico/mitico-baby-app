@@ -134,7 +134,7 @@ export function TarjetaCalidadPropia({ datos, onCerrar }: { datos: DatosCalidadP
       style={{ borderRadius: 18, padding: 14, display: 'grid', gap: 10, background: estilo.fondo, border: `1px solid ${estilo.borde}`, marginBottom: 12 }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <strong style={{ fontSize: 16, flex: '1 1 180px', minWidth: 0 }}>📋 Tus reportes · últimos 14 días</strong>
+        <strong style={{ fontSize: 16, flex: '1 1 180px', minWidth: 0 }}>📋 Tus reportes · {datos.ventana.tipo === 'dias' ? `últimos ${datos.ventana.dias} días` : `tus últimos ${datos.ventana.n} reportes`}</strong>
         <span style={{ fontSize: 12.5, fontWeight: 900, color: estilo.acento }}>{estilo.texto}</span>
       </div>
       <div style={{ background: '#fff', borderRadius: 12, padding: '10px 12px', display: 'grid', gap: 6 }}>
@@ -162,7 +162,7 @@ export function TarjetaCalidadPropia({ datos, onCerrar }: { datos: DatosCalidadP
       )}
       {datos.consejos.length > 0 ? (
         <div style={caja}>
-          <strong style={titulo}>{datos.semaforo === 'verde' ? 'PARA EL 10' : 'TU FOCO ESTAS SEMANAS'}</strong>
+          <strong style={titulo}>{datos.semaforo === 'verde' ? 'PARA EL 10' : 'TU FOCO ESTA SEMANA'}</strong>
           {datos.consejos.map((c) => (
             <span key={c}>→ {c}</span>
           ))}

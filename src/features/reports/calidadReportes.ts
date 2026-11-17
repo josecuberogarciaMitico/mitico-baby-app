@@ -139,9 +139,19 @@ export type CalidadEntrenador = {
   fallos: string[];
   /** Reportes flojos recientes (nota por debajo de 6,5), del más nuevo al más viejo. */
   ejemplos: Array<ReporteParaCalidad & { calidad: CalidadReporte; nota: number }>;
+  /** Para calcular su tarjeta igual que la ve él: sus reportes hechos y las fechas de los que faltan. */
+  hechos: RasgosReporte[];
+  faltasFechas: string[];
 };
 
+/** Ventana de la nota en el panel de coordinación (14 días). */
 export const DIAS_RECIENTE = 14;
+/**
+ * Ventana de la tarjeta del entrenador (Jose, 17/11): 7 días. Si en esos días
+ * tiene menos de MINIMO_REPORTES, se usan sus últimos MINIMO_REPORTES reportes.
+ */
+export const DIAS_ENTRENADOR = 7;
+export type VentanaEntrenador = { tipo: 'dias'; dias: number } | { tipo: 'ultimos'; n: number };
 /** Con menos de estos reportes recientes no se pone color (poca muestra). */
 export const MINIMO_REPORTES = 4;
 export const UMBRAL = { tarde: 40, igualGrupo: 20, rojo: 6.5, verde: 8, bajada: 1.5 };
@@ -325,9 +335,11 @@ export function calidadPorEntrenador(filas: ReporteParaCalidad[], hoyIso: string
 
   const porEntrenador = new Map<string, Hecho[]>();
   const faltanRecientes = new Map<string, number>();
+  const faltasFechas = new Map<string, string[]>();
   filas.forEach((f) => {
     if (!f.entrenador) return;
     if (!f.reporte_id) {
+      if (f.estado === 'Falta reporte') faltasFechas.set(f.entrenador, [...(faltasFechas.get(f.entrenador) || []), f.fecha]);
       if (f.estado === 'Falta reporte' && f.fecha >= corte && f.fecha <= restarDias(hoyIso, DIAS_MARGEN_FALTA))
         faltanRecientes.set(f.entrenador, (faltanRecientes.get(f.entrenador) || 0) + 1);
       if (!porEntrenador.has(f.entrenador)) porEntrenador.set(f.entrenador, []);
@@ -368,6 +380,8 @@ export function calidadPorEntrenador(filas: ReporteParaCalidad[], hoyIso: string
           .map((r) => ({ ...r, nota: notaReporte(r)?.total ?? 10 }))
           .filter((r) => r.nota < UMBRAL.rojo)
           .sort((a, b) => String(b.fecha).localeCompare(String(a.fecha))),
+        hechos: lista,
+        faltasFechas: faltasFechas.get(entrenador) || [],
       };
     })
     .filter((c) => c.reciente.reportes + c.anterior.reportes + c.reciente.faltan > 0)
@@ -385,30 +399,59 @@ export function notaEquipo(items: RasgosReporte[]): number | null {
   return periodo(items).nota;
 }
 
-/** Lo que ve el propio entrenador: su periodo reciente, el anterior y la media del equipo. */
-export function calidadPropia(
-  filas: Array<RasgosReporte & { esMio: boolean; esFalta?: boolean }>,
+/**
+ * El periodo de la tarjeta del entrenador: últimos 7 días o, si ahí tiene
+ * menos de MINIMO_REPORTES (contando los pendientes), sus últimos reportes.
+ */
+export function periodoEntrenador(
+  mias: RasgosReporte[],
+  faltasFechas: string[],
   hoyIso: string
-): { reciente: PeriodoCalidad; anterior: PeriodoCalidad; equipo: number | null; semaforo: Semaforo; vaAMenos: boolean; consejos: string[]; fortalezas: string[] } {
+): { reciente: PeriodoCalidad; anterior: PeriodoCalidad; ventana: VentanaEntrenador } {
+  const corte = restarDias(hoyIso, DIAS_ENTRENADOR - 1);
+  const limiteFalta = restarDias(hoyIso, DIAS_MARGEN_FALTA);
+  const faltan = faltasFechas.filter((f) => f >= corte && f <= limiteFalta).length;
+  const recientes = mias.filter((f) => f.fecha >= corte);
+  if (recientes.length + faltan >= MINIMO_REPORTES)
+    return {
+      reciente: periodo(recientes, faltan),
+      anterior: periodo(mias.filter((f) => f.fecha < corte), 0),
+      ventana: { tipo: 'dias', dias: DIAS_ENTRENADOR },
+    };
+  const orden = [...mias].sort((a, b) => b.fecha.localeCompare(a.fecha));
+  const usados = orden.slice(0, Math.max(MINIMO_REPORTES - faltan, recientes.length));
+  return {
+    reciente: periodo(usados, faltan),
+    anterior: periodo(orden.slice(usados.length), 0),
+    ventana: { tipo: 'ultimos', n: usados.length },
+  };
+}
+
+function vistaDe(p: { reciente: PeriodoCalidad; anterior: PeriodoCalidad; ventana: VentanaEntrenador }, equipo: number | null) {
+  return {
+    reciente: p.reciente,
+    anterior: p.anterior,
+    ventana: p.ventana,
+    equipo,
+    semaforo: semaforoDe(p.reciente),
+    vaAMenos: vaAMenosDe(p.reciente, p.anterior),
+    consejos: consejosDe(p.reciente),
+    fortalezas: fortalezasDe(p.reciente),
+  };
+}
+
+/** Lo que ve el propio entrenador en su tarjeta. */
+export function calidadPropia(filas: Array<RasgosReporte & { esMio: boolean; esFalta?: boolean }>, hoyIso: string) {
   const corte = restarDias(hoyIso, DIAS_RECIENTE - 1);
   const limiteFalta = restarDias(hoyIso, DIAS_MARGEN_FALTA);
   const hechas = filas.filter((f) => !f.esFalta);
-  const cuentaFaltas = (lista: typeof filas, desde: string, hasta: string) =>
-    lista.filter((f) => f.esFalta && f.fecha >= desde && f.fecha < hasta && f.fecha <= limiteFalta).length;
-  const mias = hechas.filter((f) => f.esMio);
-  const misFaltas = filas.filter((f) => f.esMio);
-  const reciente = periodo(mias.filter((f) => f.fecha >= corte), cuentaFaltas(misFaltas, corte, '9999-12-31'));
-  // «Antes» solo con lo hecho (igual que en el panel de coordinación).
-  const anterior = periodo(mias.filter((f) => f.fecha < corte), 0);
-  return {
-    reciente,
-    anterior,
-    equipo: periodo(hechas.filter((f) => f.fecha >= corte), cuentaFaltas(filas, corte, '9999-12-31')).nota,
-    semaforo: semaforoDe(reciente),
-    vaAMenos: vaAMenosDe(reciente, anterior),
-    consejos: consejosDe(reciente),
-    fortalezas: fortalezasDe(reciente),
-  };
+  const faltasEquipo = filas.filter((f) => f.esFalta && f.fecha >= corte && f.fecha <= limiteFalta).length;
+  const p = periodoEntrenador(
+    hechas.filter((f) => f.esMio),
+    filas.filter((f) => f.esMio && f.esFalta).map((f) => f.fecha),
+    hoyIso
+  );
+  return vistaDe(p, periodo(hechas.filter((f) => f.fecha >= corte), faltasEquipo).nota);
 }
 
 /** Nota media del equipo a partir del resultado por entrenador (ponderada por reportes puntuados). */
@@ -424,7 +467,7 @@ export function notaEquipoDe(lista: CalidadEntrenador[]): number | null {
   return n ? redondear(suma / n) : null;
 }
 
-/** Lo que vería un entrenador en su tarjeta, calculado desde el panel de coordinación. */
-export function vistaEntrenadorDesde(c: CalidadEntrenador, equipo: number | null) {
-  return { reciente: c.reciente, anterior: c.anterior, equipo, semaforo: c.semaforo, vaAMenos: c.vaAMenos, consejos: consejosDe(c.reciente), fortalezas: fortalezasDe(c.reciente) };
+/** Lo que vería un entrenador en su tarjeta, calculado desde el panel de coordinación (mismo cálculo que él). */
+export function vistaEntrenadorDesde(c: CalidadEntrenador, equipo: number | null, hoyIso: string) {
+  return vistaDe(periodoEntrenador(c.hechos, c.faltasFechas, hoyIso), equipo);
 }

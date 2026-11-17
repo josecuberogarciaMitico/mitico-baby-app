@@ -11,6 +11,7 @@ import { TarjetaCalidadPropia } from '../trainers/CalidadEntrenador';
 import { sumarDiasIso } from './reportsReviewLogic';
 import {
   calidadPorEntrenador,
+  DIAS_ENTRENADOR,
   DIAS_RECIENTE,
   formatoNota,
   LETRAS_POR_HABILIDAD,
@@ -75,10 +76,13 @@ function Tarjeta({
   const color = COLOR[c.semaforo];
   const r = c.reciente;
   const [verComoEl, setVerComoEl] = React.useState(false);
+  // Su tarjeta se calcula como la ve él (7 días o sus últimos reportes).
+  const suVista = vistaEntrenadorDesde(c, equipo, hoyMadrid());
+  const sr = suVista.reciente;
   const leSale =
-    r.reportes + r.faltan < MINIMO_REPORTES || r.nota === null
-      ? `Ahora mismo no le sale: necesita ${MINIMO_REPORTES} reportes en ${DIAS_RECIENTE} días y tiene ${r.reportes + r.faltan}.`
-      : c.semaforo === 'verde'
+    sr.reportes + sr.faltan < MINIMO_REPORTES || sr.nota === null
+      ? `Ahora mismo no le sale: necesita ${MINIMO_REPORTES} reportes y tiene ${sr.reportes + sr.faltan}.`
+      : suVista.semaforo === 'verde'
         ? 'Le sale abajo, al final de su vista (va bien).'
         : 'Le sale arriba del todo al abrir la app (va mal).';
   return (
@@ -95,7 +99,7 @@ function Tarjeta({
         <div style={{ display: 'grid', gridTemplateColumns: esMovil ? 'repeat(2, minmax(0,1fr))' : 'repeat(4, minmax(0,1fr))', gap: 6 }}>
           {[
             [r.nota === null ? '—' : `${formatoNota(r.nota)} / 10`, 'nota de calidad'],
-            [`${r.reportes}${r.faltan ? ` · ${r.faltan} sin hacer` : ''}`, 'reportes (14 días)'],
+            [`${r.reportes}${r.faltan ? ` · ${r.faltan} sin hacer` : ''}`, `reportes (${DIAS_RECIENTE} días)`],
             [`${r.pocoDetallados}${r.reportes ? ` · ${r.pctPocoDetallados}%` : ''}`, 'todo «Lo consigue» sin escribir'],
             [`${r.pctTarde}%`, 'rellenados 2+ días tarde'],
           ].map(([valor, etiqueta]) => (
@@ -131,11 +135,11 @@ function Tarjeta({
         {verComoEl && (
           <div style={{ display: 'grid', gap: 6, padding: 10, borderRadius: 14, background: '#e2e8f0' }}>
             <span style={{ fontSize: 12.5, fontWeight: 800, color: '#334155' }}>📱 {leSale}</span>
-            {r.nota === null ? (
+            {sr.nota === null ? (
               <span style={{ fontSize: 13, color: '#475569' }}>Sin reportes con nota en estos días.</span>
             ) : (
               <div style={{ maxWidth: 420 }}>
-                <TarjetaCalidadPropia datos={vistaEntrenadorDesde(c, equipo)} />
+                <TarjetaCalidadPropia datos={suVista} />
               </div>
             )}
           </div>
@@ -303,7 +307,7 @@ export function CalidadReportesPanel({ esVistaMovilApp, soloLectura = false }: {
         entrenador es la media de los últimos {DIAS_RECIENTE} días y <b>cada reporte sin hacer cuenta como un 0</b> (a partir de los 2 días de la
         sesión). <b>Verde</b> desde {formatoNota(UMBRAL.verde)}, <b>rojo</b> por debajo de {formatoNota(UMBRAL.rojo)}. <b>↓ Va a menos</b>: su nota
         baja {formatoNota(UMBRAL.bajada)} puntos o más respecto a las semanas anteriores. Con menos de {MINIMO_REPORTES} reportes no se pone color.
-        Los entrenadores ven su propia nota y la media del equipo, nunca la de otros.
+        Cada entrenador ve solo su propia nota frente al objetivo, de sus últimos {DIAS_ENTRENADOR} días (o de sus últimos {MINIMO_REPORTES} reportes si esa semana hizo menos), nunca la de otros.
       </details>
     </section>
   );
