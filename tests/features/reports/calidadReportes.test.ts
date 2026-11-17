@@ -1,4 +1,4 @@
-import { calidadPorEntrenador, calidadPropia, notaEquipoDe, vistaEntrenadorDesde, calidadReporte, consejosDe, fortalezasDe, fallosDe, formatoNota, notaReporte, semaforoDe } from '../../../src/features/reports/calidadReportes';
+import { calidadPorEntrenador, calidadPropia, notaEquipoDe, vistaEntrenadorDesde, calidadReporte, consejosDe, fortalezasDe, tarjetaSigueCerrada, fallosDe, formatoNota, notaReporte, semaforoDe } from '../../../src/features/reports/calidadReportes';
 import { faltaJustificacionTodoConsigue, notaSuficiente, prepararEnvioReporteFocos } from '../../../src/lib/adaptiveReport';
 
 function equal<T>(actual: T, expected: T, label: string) {
@@ -199,4 +199,13 @@ test('calidad: «ver como lo ve el entrenador» desde el panel', () => {
   const v = vistaEntrenadorDesde(c('A', 4, 10), 8.5);
   equal(v.equipo, 8.5, 'lleva la media del equipo');
   equal(v.reciente.nota, 4, 'su nota');
+});
+
+test('«Tus reportes»: cerrada con «Entendido» hasta el lunes siguiente', () => {
+  const cierre = { fecha: '2026-11-17' }; // martes
+  equal(tarjetaSigueCerrada(null, '2026-11-17'), false, 'sin cerrar: se ve');
+  equal(tarjetaSigueCerrada(cierre, '2026-11-17'), true, 'el mismo día: oculta');
+  equal(tarjetaSigueCerrada(cierre, '2026-11-22'), true, 'el domingo: oculta');
+  equal(tarjetaSigueCerrada(cierre, '2026-11-23'), false, 'el lunes: vuelve');
+  equal(tarjetaSigueCerrada({ fecha: '2026-11-23' }, '2026-11-29'), true, 'cerrada un lunes: oculta toda esa semana');
 });

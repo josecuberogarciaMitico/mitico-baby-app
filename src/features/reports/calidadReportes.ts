@@ -264,7 +264,22 @@ export function fortalezasDe(p: PeriodoCalidad): string[] {
     .map((x) => x.texto);
 }
 
-export const formatoNota = (n: number | null) => (n === null ? '—' : n.toFixed(1).replace('.', ','));
+/** «Tus reportes» cerrada con «Entendido» (Jose, 17/11): vuelve el lunes siguiente. */
+export type CierreTarjeta = { fecha: string };
+
+/** Lunes (YYYY-MM-DD) de la semana de una fecha. */
+export function lunesDe(iso: string): string {
+  const d = new Date(`${iso}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+}
+
+/** ¿Sigue oculta? Sí mientras sea la misma semana (lunes a domingo) en que la cerró. */
+export function tarjetaSigueCerrada(cierre: CierreTarjeta | null, hoyIso: string): boolean {
+  return Boolean(cierre?.fecha) && lunesDe(cierre!.fecha) === lunesDe(hoyIso);
+}
+
+export const formatoNota =(n: number | null) => (n === null ? '—' : n.toFixed(1).replace('.', ','));
 
 /** Día (Madrid) en que se envió. */
 function diaEnvio(iso: string | null | undefined): string {
