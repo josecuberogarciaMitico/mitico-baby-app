@@ -161,13 +161,61 @@ export function agruparPorEdadDentroDeNivel(
   return current;
 }
 
+// ---- B y B+ (17/11) -----------------------------------------------------------
+// Jose: no mezclar B y B+ si no hace falta. Con el MISMO número de grupos, se
+// eligen los tamaños (de 3 al máximo) para que los cortes caigan donde cambia el
+// nivel. Si no se puede sin un grupo más, se mezcla lo mínimo posible (y la
+// edad decide quién pasa, con agruparPorEdadDentroDeNivel).
+
+/** Tamaños de grupo (mismo número de grupos) con los cortes lo más cerca posible de los cambios de nivel. */
+export function tamanosAlineadosConNivel(niveles: number[], sizes: number[], maximum: number): number[] {
+  const total = niveles.length;
+  const grupos = sizes.length;
+  if (grupos < 2 || total !== sizes.reduce((a, b) => a + b, 0)) return sizes;
+  const cambios: number[] = [];
+  for (let i = 1; i < total; i += 1) if (niveles[i] !== niveles[i - 1]) cambios.push(i);
+  if (!cambios.length) return sizes;
+  const minimo = Math.min(3, ...sizes);
+  const coste = (partes: number[]) => {
+    const cortes: number[] = [];
+    partes.reduce((acc, p) => (cortes.push(acc + p), acc + p), 0);
+    cortes.pop();
+    // Niños que quedan en un grupo con otro nivel: distancia de cada cambio de nivel a su corte más cercano.
+    return cambios.reduce((s, c) => s + Math.min(...cortes.map((k) => Math.abs(k - c))), 0);
+  };
+  const desequilibrio = (partes: number[]) => Math.max(...partes) - Math.min(...partes);
+  let mejor = sizes;
+  let mejorCoste = coste(sizes);
+  const probar = (partes: number[], resto: number) => {
+    if (partes.length === grupos - 1) {
+      if (resto < minimo || resto > maximum) return;
+      const candidata = [...partes, resto];
+      const c = coste(candidata);
+      if (c < mejorCoste || (c === mejorCoste && desequilibrio(candidata) < desequilibrio(mejor))) {
+        mejor = candidata;
+        mejorCoste = c;
+      }
+      return;
+    }
+    for (let p = minimo; p <= maximum && p < resto; p += 1) probar([...partes, p], resto - p);
+  };
+  probar([], total);
+  return mejor;
+}
+
 export function tamanosGruposPedagogicosApp(total: number, maximum: number): number[] {
   return balancedGroupSizes(total, maximum);
 }
 
 export function aplicarCinturonPedagogicoAutomaticoAgenda(
   data: AgendaRecomendacionSesionApp[],
-  options?: { usarPerfilBaby?: boolean; perfiles?: PerfilOperativoAlumnoApp[]; preparadosGrande?: Map<string, PreparadoGrande> }
+  options?: {
+    usarPerfilBaby?: boolean;
+    perfiles?: PerfilOperativoAlumnoApp[];
+    preparadosGrande?: Map<string, PreparadoGrande>;
+    /** Solo Baby (17/11): no mezclar B y B+ si salen los mismos grupos, y el nombre y el bloque dicen los niveles reales del grupo. */
+    esBaby?: boolean;
+  }
 ): AgendaRecomendacionSesionApp[] {
   const profiles = options?.perfiles || [];
   const preparados = options?.preparadosGrande || preparadosGrandeActuales();
@@ -196,7 +244,10 @@ export function aplicarCinturonPedagogicoAutomaticoAgenda(
     const reparto = options?.usarPerfilBaby
       ? babyGroupSizes(sortedStudents, band, profiles)
       : { sizes: balancedGroupSizes(sortedStudents.length, band.max), especial: false };
-    const sizes = reparto.sizes;
+    // 17/11: en B / B+, los cortes donde cambia el nivel si salen los mismos grupos.
+    const sizes = options?.esBaby && band.id === 'B_BPLUS' && !reparto.especial
+      ? tamanosAlineadosConNivel(sortedStudents.map((s) => levelOrder(s.nivel_resumen)), reparto.sizes, band.max)
+      : reparto.sizes;
     // 05/11: dentro del mismo nivel, juntar por edad (sin tocar el reparto especial).
     const students = reparto.especial
       ? sortedStudents
@@ -214,7 +265,14 @@ export function aplicarCinturonPedagogicoAutomaticoAgenda(
     let start = 0;
     for (const size of sizes) {
       const chunk = students.slice(start, start + size);
-      const name = size === 1 ? `REVISAR · ${chunk[0]?.alumno || band.label}` : `Grupo ${counter++} · Nivel ${band.label}`;
+      // 17/11 (Baby): si todos son B+, el grupo se llama «B+», no «B / B+».
+      const nivelesReales = Array.from(new Set(chunk.map((s) => s.nivel_resumen).filter((n): n is string => Boolean(n))))
+        .sort((a, b) => levelOrder(a) - levelOrder(b));
+      const label = options?.esBaby && ['INICIACION_A', 'B_BPLUS', 'C_D'].includes(band.id) && nivelesReales.length
+        ? nivelesReales.join(' / ')
+        : band.label;
+      const bloque = label === band.label ? band.bloque : label;
+      const name = size === 1 ? `REVISAR · ${chunk[0]?.alumno || band.label}` : `Grupo ${counter++} · Nivel ${label}`;
       chunk.forEach((student, index) => {
         const profile = profiles.find((item) => item.alumno_id === student.alumno_id);
         const promotion = options?.usarPerfilBaby && canStrongBabyBPlusJoinC(student, profile) ? 'B+ fuerte: puede tirar con C bajo por ritmo/autonomía.' : null;
@@ -224,7 +282,7 @@ export function aplicarCinturonPedagogicoAutomaticoAgenda(
           ? `${prep.estado === 'listo' ? '🟢 Preparado para la grande' : '🟡 Casi listo para la grande'}: ${prep.motivo}.`
           : null;
         const extra = size === 1 ? 'No crear grupo de 1. Revisión manual.' : [promotion, transition, grande].filter(Boolean).join(' · ') || student.alertas || null;
-        output.push({ ...student, grupo_recomendado: name, bloque_tecnico: band.bloque, pista_recomendada: band.pista,
+        output.push({ ...student, grupo_recomendado: name, bloque_tecnico: bloque, pista_recomendada: band.pista,
           orden_bloque: band.orden, orden_en_grupo: index + 1, alertas: [student.alertas, extra].filter(Boolean).join(' · ') || null });
       });
       start += size;

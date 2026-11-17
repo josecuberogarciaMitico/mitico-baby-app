@@ -84,6 +84,7 @@ async function buildTargetsForSession(
   const proposal = aplicarCinturonPedagogicoAutomaticoAgenda(baseProposal, {
     usarPerfilBaby: profiles.length > 0,
     perfiles: profiles,
+    esBaby: true,
   });
 
   groupProposalRows(proposal).forEach((students, groupName) => {
