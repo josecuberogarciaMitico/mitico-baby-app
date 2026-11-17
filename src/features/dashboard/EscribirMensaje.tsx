@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { MENSAJES_RAPIDOS, nombreCorto } from '../trainers/mensajesEntrenadorLogic';
+import { MENSAJES_RAPIDOS, nombreCorto, nombresCortosDistintos } from '../trainers/mensajesEntrenadorLogic';
 import { enviarMensajeEntrenadores } from '../../services/trainers/mensajesEntrenadorService';
 
 // Escribir un mensaje a los entrenadores (16/11). Se usa en Trabajo en pista y
@@ -43,6 +43,8 @@ export function EscribirMensaje({ entrenadores, idsDelDia = [], onEnviado }: Pro
         .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es')),
     [entrenadores]
   );
+  // Si dos se llaman igual, se distinguen por el apellido (SERGIO A. / SERGIO H.).
+  const etiquetas = useMemo(() => nombresCortosDistintos(activos.map((e) => e.nombre)), [activos]);
   const delDia = useMemo(() => activos.filter((e) => idsDelDia.includes(e.id)).map((e) => e.id), [activos, idsDelDia]);
   const todos = activos.map((e) => e.id);
   const q = buscar.trim().toLowerCase();
@@ -125,7 +127,7 @@ export function EscribirMensaje({ entrenadores, idsDelDia = [], onEnviado }: Pro
           {visibles.map((e) => (
             <button key={e.id} type="button" style={chip(para.includes(e.id))} onClick={() => alternar(e.id)} title={e.nombre}>
               {para.includes(e.id) ? '✓ ' : ''}
-              {nombreCorto(e.nombre)}
+              {etiquetas.get(e.nombre.trim()) || nombreCorto(e.nombre)}
             </button>
           ))}
           {visibles.length === 0 && <span style={{ fontSize: 13, color: '#64748b' }}>Ningún entrenador con ese nombre.</span>}
