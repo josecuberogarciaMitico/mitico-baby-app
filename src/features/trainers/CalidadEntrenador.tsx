@@ -19,11 +19,11 @@ import {
   type FilaCalidadEquipo,
   type ReporteDevuelto,
 } from '../../services/reports/calidadReportesService';
-import { calidadPropia, MINIMO_REPORTES } from '../reports/calidadReportes';
+import { calidadPropia, formatoNota, MINIMO_REPORTES, UMBRAL } from '../reports/calidadReportes';
 
 // Vista del entrenador (17/11/2026):
-//  - «Tus reportes»: lo que ya hace bien y su siguiente paso (sin nota ni
-//    comparación con el equipo). Arriba si va mal; abajo, discreta, si va bien.
+//  - «Tus reportes»: su nota (0-10) frente al objetivo, puntos fuertes y qué
+//    hacer para subirla. Arriba si va mal; abajo, discreta, si va bien.
 //  - Reportes devueltos por coordinación: solo completa notas y observación.
 // Sin la migración en Supabase no se enseña nada.
 
@@ -39,10 +39,13 @@ function filasCalidad(): Promise<FilaCalidadEquipo[]> {
   return cacheCalidad.promesa;
 }
 
-// Tono profesional y en positivo (17/11, Jose): sin nota, sin comparar con el
-// equipo y sin rojo. El color solo distingue «va bien» del resto.
-const ESTILO_BIEN = { fondo: '#f0fdf4', borde: '#86efac', acento: '#15803d' };
-const ESTILO_MEJORA = { fondo: '#f5f8ff', borde: '#c7d2fe', acento: '#3730a3' };
+// Tono directo, profesional y en positivo (17/11, Jose): la nota se ve, frente
+// a un objetivo (no frente al equipo), sin rojo ni palabra «calidad».
+const ESTILO: Record<'bien' | 'cerca' | 'lejos', { fondo: string; borde: string; acento: string; texto: string }> = {
+  bien: { fondo: '#f0fdf4', borde: '#86efac', acento: '#15803d', texto: 'Objetivo cumplido' },
+  cerca: { fondo: '#fffbeb', borde: '#fcd34d', acento: '#b45309', texto: 'Cerca del objetivo' },
+  lejos: { fondo: '#fffbeb', borde: '#fcd34d', acento: '#b45309', texto: 'Por debajo del objetivo' },
+};
 
 export function CalidadPropiaEntrenador({ posicion }: { posicion: 'arriba' | 'abajo' }) {
   const [filas, setFilas] = React.useState<FilaCalidadEquipo[] | null>(null);
@@ -81,8 +84,10 @@ export type DatosCalidadPropia = ReturnType<typeof calidadPropia>;
 /** La tarjeta tal cual la ve el entrenador (también la usa coordinación para «Ver como lo ve el entrenador»). */
 export function TarjetaCalidadPropia({ datos }: { datos: DatosCalidadPropia }) {
   if (datos.reciente.nota === null) return null;
-  const vaBien = datos.semaforo === 'verde';
-  const estilo = vaBien ? ESTILO_BIEN : ESTILO_MEJORA;
+  const nota = datos.reciente.nota;
+  const estilo = ESTILO[datos.semaforo === 'verde' ? 'bien' : datos.semaforo === 'amarillo' ? 'cerca' : 'lejos'];
+  const pctBarra = Math.max(4, Math.min(100, nota * 10));
+  const pctObjetivo = UMBRAL.verde * 10;
   const caja: React.CSSProperties = { background: '#fff', borderRadius: 12, padding: '10px 12px', display: 'grid', gap: 4, fontSize: 13.5, lineHeight: 1.4 };
   const titulo: React.CSSProperties = { fontSize: 12, letterSpacing: '.04em', color: estilo.acento };
 
@@ -91,31 +96,40 @@ export function TarjetaCalidadPropia({ datos }: { datos: DatosCalidadPropia }) {
       aria-label="Tus reportes"
       style={{ borderRadius: 18, padding: 14, display: 'grid', gap: 10, background: estilo.fondo, border: `1px solid ${estilo.borde}`, marginBottom: 12 }}
     >
-      <div style={{ display: 'grid', gap: 2 }}>
-        <strong style={{ fontSize: 16 }}>📋 Tus reportes · últimos 14 días</strong>
-        <span style={{ fontSize: 12.5, color: '#475569' }}>
-          {datos.reciente.reportes} {datos.reciente.reportes === 1 ? 'reporte hecho' : 'reportes hechos'}
-          {datos.reciente.faltan ? ` · ${datos.reciente.faltan} pendiente${datos.reciente.faltan === 1 ? '' : 's'}` : ''}
-          {' · '}Con ellos las familias ven cómo avanza su hijo y decidimos cuándo sube de nivel.
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+        <strong style={{ fontSize: 16, flex: '1 1 180px', minWidth: 0 }}>📋 Tus reportes · últimos 14 días</strong>
+        <span style={{ fontSize: 12.5, fontWeight: 900, color: estilo.acento }}>{estilo.texto}</span>
+      </div>
+      <div style={{ background: '#fff', borderRadius: 12, padding: '10px 12px', display: 'grid', gap: 6 }}>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: 30, fontWeight: 900, color: '#0f172a', lineHeight: 1 }}>{formatoNota(nota)}</span>
+          <span style={{ fontSize: 14, fontWeight: 800, color: '#64748b' }}>/ 10</span>
+          <span style={{ marginLeft: 'auto', fontSize: 13, fontWeight: 800, color: '#334155' }}>Objetivo: {formatoNota(UMBRAL.verde)}</span>
+        </div>
+        <div style={{ position: 'relative', height: 10, borderRadius: 999, background: '#e2e8f0' }}>
+          <span style={{ position: 'absolute', inset: 0, width: `${pctBarra}%`, borderRadius: 999, background: estilo.acento }} />
+          <span title="Objetivo" style={{ position: 'absolute', top: -4, bottom: -4, left: `calc(${pctObjetivo}% - 1px)`, width: 3, borderRadius: 2, background: '#0f172a' }} />
+        </div>
+        <span style={{ fontSize: 12, color: '#64748b' }}>
+          {datos.reciente.reportes} reportes{datos.reciente.faltan ? ` · ${datos.reciente.faltan} pendientes` : ''}
+          {datos.vaAMenos && datos.anterior.nota !== null ? ` · antes: ${formatoNota(datos.anterior.nota)}` : ''}
         </span>
       </div>
       {datos.fortalezas.length > 0 && (
         <div style={caja}>
-          <strong style={titulo}>👍 LO QUE YA HACES BIEN</strong>
+          <strong style={titulo}>PUNTOS FUERTES</strong>
           {datos.fortalezas.map((f) => (
-            <span key={f}>• {f}</span>
+            <span key={f}>✓ {f}</span>
           ))}
         </div>
       )}
-      {datos.consejos.length > 0 ? (
+      {datos.consejos.length > 0 && (
         <div style={caja}>
-          <strong style={titulo}>🎯 TU SIGUIENTE PASO</strong>
+          <strong style={titulo}>PARA SUBIR LA NOTA</strong>
           {datos.consejos.map((c) => (
-            <span key={c}>• {c}</span>
+            <span key={c}>→ {c}</span>
           ))}
         </div>
-      ) : (
-        vaBien && <span style={{ fontSize: 13.5 }}>👏 Tus reportes están muy completos. Gracias por el esfuerzo.</span>
       )}
     </article>
   );

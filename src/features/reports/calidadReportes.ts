@@ -206,34 +206,32 @@ export function fallosDe(reciente: PeriodoCalidad, anterior: PeriodoCalidad, vaA
 }
 
 /**
- * Siguientes pasos, para el propio entrenador (en segunda persona). Tono
- * profesional y en positivo (petición de Jose, 17/11): qué hacer y para qué,
- * sin hablar de nota ni de calidad.
+ * Qué hacer para subir la nota, para el propio entrenador (en segunda persona).
+ * Tono directo y profesional, en positivo (Jose, 17/11): qué hacer, no lo que
+ * hace mal.
  */
 export function consejosDe(p: PeriodoCalidad): string[] {
   const c: string[] = [];
   if (p.faltan > 0)
     c.push(
-      `Ponte al día con ${p.faltan === 1 ? 'el reporte pendiente' : `los ${p.faltan} reportes pendientes`}: las familias y el equipo cuentan con ellos.`
+      `Completa ${p.faltan === 1 ? 'el reporte pendiente' : `los ${p.faltan} reportes pendientes`}: mientras falten, cuentan como 0 en la nota.`
     );
   if (p.reportes === 0) return c;
-  if (p.partes.concreto < 0.9)
-    c.push('Cuando un niño lo consigue todo, añade una frase con lo que has visto: es lo que nos permite subirle de nivel con seguridad.');
-  if (p.partes.detalle < 0.75)
-    c.push('En lo que le cuesta, cuenta qué le falta y en qué momento. Si vas justo de tiempo, el micro te lo escribe.');
-  if (p.partes.personal < 0.9) c.push('Valora a cada niño por separado: cada uno avanza a su ritmo y la familia lo agradece.');
-  if (p.partes.aTiempo < 0.75) c.push('Intenta hacerlos el mismo día o al siguiente: con el recuerdo fresco salen mejor y te llevan menos tiempo.');
+  if (p.partes.concreto < 0.9) c.push('Cuando marques «Lo consigue» en todo, añade una frase con lo que has visto: es lo que justifica subirle de nivel.');
+  if (p.partes.detalle < 0.75) c.push('En lo que le cuesta, indica qué le falta y en qué momento. Puedes dictarlo con el micro.');
+  if (p.partes.personal < 0.9) c.push('Valora a cada niño por separado, aunque el grupo vaya parecido.');
+  if (p.partes.aTiempo < 0.75) c.push('Rellénalos el mismo día de la sesión o al siguiente.');
   return c;
 }
 
-/** Lo que ya hace bien (para empezar en positivo). */
+/** Puntos fuertes (lo que ya hace bien). */
 export function fortalezasDe(p: PeriodoCalidad): string[] {
   if (p.reportes === 0) return [];
   const f: string[] = [];
-  if (p.partes.aTiempo >= 0.75) f.push('Los haces a tiempo.');
-  if (p.partes.personal >= 0.9) f.push('Valoras a cada niño por separado.');
-  if (p.partes.concreto >= 0.9) f.push('Explicas lo que ves cuando un niño lo consigue.');
-  if (p.partes.detalle >= 0.75) f.push('Cuentas bien lo que les cuesta.');
+  if (p.partes.aTiempo >= 0.75) f.push('Reportes al día.');
+  if (p.partes.personal >= 0.9) f.push('Valoración individual de cada niño.');
+  if (p.partes.concreto >= 0.9) f.push('Justificas los «Lo consigue».');
+  if (p.partes.detalle >= 0.75) f.push('Buen detalle en lo que les cuesta.');
   return f;
 }
 
