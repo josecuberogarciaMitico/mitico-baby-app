@@ -219,68 +219,48 @@ export function fallosDe(reciente: PeriodoCalidad, anterior: PeriodoCalidad, vaA
 }
 
 /**
- * Qué hacer para subir la nota, para el propio entrenador (en segunda persona).
- * Tono directo y profesional (Jose, 17/11). Personal: con sus cifras y
- * ordenado por cuánto le sube la nota cada paso; también a quien va bien
- * (le dice qué le falta para el 10). Máximo 3.
+ * El foco del propio entrenador (en segunda persona). Jose, 17/11: profesional,
+ * en positivo y SIN sensación de control (nada de «X de Y reportes» ni puntos).
+ * Se elige con sus datos (lo que más le subiría la nota), así cada uno ve lo
+ * suyo. Si va bien (≥ objetivo) solo un foco, y ninguno si lo que le falta es
+ * poca cosa. Lo pendiente va siempre primero.
  */
 export function consejosDe(p: PeriodoCalidad): string[] {
   const total = p.puntuados + p.faltan;
   if (!total) return [];
   const peso = p.puntuados / total;
   const gana = (parte: keyof typeof PUNTOS) => PUNTOS[parte] * (1 - p.partes[parte]) * peso;
-  const mas = (n: number) => `(+${formatoNota(n)})`;
-  const de = (k: number) => `${k} de ${p.reportes}`;
-  const pasos: Array<{ puntos: number; texto: string }> = [];
-  if (p.faltan > 0) {
-    const pts = p.notaHechos !== null && p.nota !== null ? p.notaHechos - p.nota : 0;
-    pasos.push({
-      puntos: pts + 100, // siempre lo primero
-      texto: `Completa ${p.faltan === 1 ? 'el reporte pendiente' : `los ${p.faltan} reportes pendientes`}: mientras falten cuentan como 0${pts >= 0.05 ? ` ${mas(pts)}` : ''}.`,
-    });
-  }
-  if (p.reportes > 0) {
-    if (p.pocoDetallados > 0)
-      pasos.push({
-        puntos: gana('concreto'),
-        texto: `En ${de(p.pocoDetallados)} reportes marcaste todo «Lo consigue» sin una frase. Añade lo que has visto: es lo que justifica subirle de nivel ${mas(gana('concreto'))}.`,
-      });
-    if (p.nCortos > 0)
-      pasos.push({
-        puntos: gana('detalle'),
-        texto: `En ${de(p.nCortos)} reportes te quedas corto en lo que le cuesta (menos de ${LETRAS_POR_HABILIDAD} letras por habilidad). Indica qué le falta y en qué momento; puedes dictarlo ${mas(gana('detalle'))}.`,
-      });
-    if (p.nTarde > 0)
-      pasos.push({
-        puntos: gana('aTiempo'),
-        texto: `${de(p.nTarde)} reportes los enviaste 2 días o más después de la sesión. Rellénalos el mismo día o al siguiente ${mas(gana('aTiempo'))}.`,
-      });
-    if (p.nIgualGrupo > 0)
-      pasos.push({
-        puntos: gana('personal'),
-        texto: `En ${de(p.nIgualGrupo)} reportes pusiste la misma valoración a todo el grupo. Diferencia a cada niño ${mas(gana('personal'))}.`,
-      });
-  }
-  return pasos
-    .filter((x) => x.puntos >= 0.05)
+  const c: string[] = [];
+  if (p.faltan > 0)
+    c.push(`Tienes ${p.faltan === 1 ? 'un reporte pendiente' : `${p.faltan} reportes pendientes`}: en cuanto los completes, tu nota sube.`);
+  if (p.puntuados === 0) return c;
+  const textos: Record<keyof typeof PUNTOS, string> = {
+    detalle: 'Desarrolla un poco más lo que le cuesta a cada niño: qué le falta y en qué momento. El micro te ayuda a hacerlo rápido.',
+    concreto: 'Cuando un niño lo consigue todo, añade una frase con lo que has visto: nos da seguridad para subirle de nivel.',
+    aTiempo: 'Intenta rellenarlos el mismo día o al siguiente, con la sesión reciente.',
+    personal: 'Diferencia la valoración de cada niño, aunque el grupo vaya parecido.',
+  };
+  const vaBien = p.nota !== null && p.nota >= UMBRAL.verde;
+  const focos = (Object.keys(PUNTOS) as Array<keyof typeof PUNTOS>)
+    .map((k) => ({ k, puntos: gana(k) }))
+    .filter((x) => x.puntos >= (vaBien ? 0.3 : 0.2))
     .sort((a, b) => b.puntos - a.puntos)
-    .slice(0, 3)
-    .map((x) => x.texto);
+    .slice(0, vaBien ? 1 : 2);
+  focos.forEach((x) => c.push(textos[x.k]));
+  return c;
 }
 
-/** Puntos fuertes, con sus cifras (solo lo que hace de verdad bien). Máximo 3. */
+/** Lo que mejor hace (sin cifras). Máximo 2. */
 export function fortalezasDe(p: PeriodoCalidad): string[] {
-  if (p.reportes === 0) return [];
+  if (p.puntuados === 0) return [];
   const f: Array<{ peso: number; texto: string }> = [];
-  if (p.nTarde === 0) f.push({ peso: PUNTOS.aTiempo, texto: `Los ${p.reportes} reportes enviados a tiempo.` });
-  else if (p.partes.aTiempo >= 0.9) f.push({ peso: PUNTOS.aTiempo, texto: `${p.reportes - p.nTarde} de ${p.reportes} reportes enviados a tiempo.` });
-  if (p.puntuados > 0 && p.partes.detalle >= 0.9)
-    f.push({ peso: PUNTOS.detalle, texto: `Describes bien lo que les cuesta: ${p.letrasPorHabilidad} letras por habilidad de media.` });
-  if (p.pocoDetallados === 0 && p.puntuados > 0) f.push({ peso: PUNTOS.concreto, texto: 'Siempre explicas lo que has visto cuando un niño lo consigue todo.' });
-  if (p.nIgualGrupo === 0 && p.puntuados > 0) f.push({ peso: PUNTOS.personal, texto: 'Valoras a cada niño por separado.' });
+  if (p.partes.detalle >= 0.9) f.push({ peso: PUNTOS.detalle, texto: 'Explicas bien lo que le cuesta a cada niño.' });
+  if (p.partes.concreto >= 0.95) f.push({ peso: PUNTOS.concreto, texto: 'Justificas cuando un niño lo consigue todo.' });
+  if (p.partes.aTiempo >= 0.9) f.push({ peso: PUNTOS.aTiempo, texto: 'Tus reportes llegan a tiempo.' });
+  if (p.partes.personal >= 0.95) f.push({ peso: PUNTOS.personal, texto: 'Valoras a cada niño por separado.' });
   return f
     .sort((a, b) => b.peso - a.peso)
-    .slice(0, 3)
+    .slice(0, 2)
     .map((x) => x.texto);
 }
 

@@ -80,22 +80,19 @@ test('calidad: en qué falla (coordinación) y consejos (entrenador)', () => {
   equal(f.some((x) => x.startsWith('Rellena tarde')), true, 'tarde');
   equal(fallosDe(periodoFalso({ reportes: 0, faltan: 4 }), periodoFalso(), false)[0], 'No ha hecho 4 reportes (cuentan como 0 en su nota).', 'sin reportes, solo lo que falta');
   const c = consejosDe(malo);
-  equal(c.length, 3, 'como mucho tres pasos');
-  equal(c[0], 'Completa los 3 reportes pendientes: mientras falten cuentan como 0 (+1,2).', 'primero lo pendiente, con lo que sube');
-  equal(c[1].startsWith('En 7 de 10 reportes te quedas corto'), true, 'luego lo que más sube (detalle +1,6), con sus cifras');
-  equal(c[2].startsWith('En 5 de 10 reportes marcaste todo «Lo consigue»'), true, 'después «Lo consigue» (+1,2)');
-  equal(c.some((x) => /calidad/i.test(x)), false, 'al entrenador no se le habla de «calidad»');
+  equal(c.length, 3, 'pendientes + dos focos');
+  equal(c[0], 'Tienes 3 reportes pendientes: en cuanto los completes, tu nota sube.', 'primero lo pendiente');
+  equal(c[1].startsWith('Desarrolla un poco más'), true, 'el foco que más le sube');
+  equal(c.some((x) => /calidad|\d+ de \d+|\(\+/i.test(x)), false, 'sin «calidad», sin «X de Y» y sin puntos');
   equal(fortalezasDe(malo).length, 0, 'nada que destacar si todo falla');
-  // Va bien (8,6) pero no perfecto: también tiene un siguiente paso, y distinto según sus datos.
-  const bueno = periodoFalso({ nota: 8.6, nTarde: 2, pctTarde: 20, partes: { detalle: 0.85, concreto: 1, personal: 1, aTiempo: 0.9 }, nCortos: 3, letrasPorHabilidad: 70 });
-  const cb = consejosDe(bueno);
-  equal(cb.length, 2, 'dos pasos para el 10');
-  equal(cb[0].startsWith('En 3 de 10 reportes te quedas corto'), true, 'lo que más le sube primero (detalle +0,5)');
-  equal(cb[1].startsWith('2 de 10 reportes los enviaste'), true, 'después lo de a tiempo (+0,3)');
-  equal(fortalezasDe(bueno).join(' | '), 'Siempre explicas lo que has visto cuando un niño lo consigue todo. | 8 de 10 reportes enviados a tiempo. | Valoras a cada niño por separado.', 'puntos fuertes con cifras');
-  equal(consejosDe(periodoFalso({ nota: 10 })).length, 0, 'perfecto: sin pasos');
-  equal(consejosDe(periodoFalso({ reportes: 0, puntuados: 0, nota: 0, notaHechos: null, faltan: 4 }))[0], 'Completa los 4 reportes pendientes: mientras falten cuentan como 0.', 'sin ningún reporte hecho, también se le dice');
-  equal(fortalezasDe(periodoFalso())[0], 'Describes bien lo que les cuesta: 120 letras por habilidad de media.', 'lo que más pesa primero');
+  // Va bien (8,6): un solo foco, el suyo.
+  const bueno = periodoFalso({ nota: 8.6, partes: { detalle: 0.85, concreto: 1, personal: 1, aTiempo: 0.9 } });
+  equal(consejosDe(bueno).join('|'), 'Desarrolla un poco más lo que le cuesta a cada niño: qué le falta y en qué momento. El micro te ayuda a hacerlo rápido.', 'un solo foco si va bien');
+  equal(fortalezasDe(bueno).join(' | '), 'Justificas cuando un niño lo consigue todo. | Tus reportes llegan a tiempo.', 'como mucho dos, sin cifras');
+  // Va muy bien y lo que le falta es poca cosa: nada que corregir.
+  equal(consejosDe(periodoFalso({ nota: 9.8, partes: { detalle: 0.97, concreto: 1, personal: 1, aTiempo: 0.95 } })).length, 0, 'sin buscarle pegas');
+  equal(consejosDe(periodoFalso({ reportes: 0, puntuados: 0, nota: 0, notaHechos: null, faltan: 4 }))[0], 'Tienes 4 reportes pendientes: en cuanto los completes, tu nota sube.', 'sin ningún reporte hecho');
+  equal(fortalezasDe(periodoFalso())[0], 'Explicas bien lo que le cuesta a cada niño.', 'lo que más pesa primero');
 });
 
 test('calidad: por entrenador, reciente frente a antes y «va a menos»', () => {
@@ -166,9 +163,9 @@ test('calidad: lo que ve el propio entrenador (su nota y la del equipo)', () => 
   equal(conFalta.reciente.nota, 2.8, 'la del 13 cuenta como 0');
   equal(yo.semaforo, 'rojo', 'rojo');
   equal(yo.vaAMenos, true, 'va a menos');
-  equal(yo.consejos.some((c) => /marcaste todo «Lo consigue»/.test(c)), true, 'consejo principal');
+  equal(yo.consejos.some((c) => c.startsWith('Cuando un niño lo consigue todo')), true, 'consejo principal');
   equal(yo.consejos.some((c) => /calidad/i.test(c)), false, 'sin hablar de «calidad»');
-  equal(conFalta.consejos[0].startsWith('Completa el reporte pendiente'), true, 'pendientes primero');
+  equal(conFalta.consejos[0].startsWith('Tienes un reporte pendiente'), true, 'pendientes primero');
   equal(Array.isArray(yo.fortalezas), true, 'lo que ya hace bien');
 });
 

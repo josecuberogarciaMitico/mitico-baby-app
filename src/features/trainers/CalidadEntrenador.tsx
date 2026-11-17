@@ -117,19 +117,21 @@ export function TarjetaCalidadPropia({ datos }: { datos: DatosCalidadPropia }) {
       </div>
       {datos.fortalezas.length > 0 && (
         <div style={caja}>
-          <strong style={titulo}>PUNTOS FUERTES</strong>
+          <strong style={titulo}>LO QUE MEJOR HACES</strong>
           {datos.fortalezas.map((f) => (
             <span key={f}>✓ {f}</span>
           ))}
         </div>
       )}
-      {datos.consejos.length > 0 && (
+      {datos.consejos.length > 0 ? (
         <div style={caja}>
-          <strong style={titulo}>PARA SUBIR LA NOTA</strong>
+          <strong style={titulo}>{datos.semaforo === 'verde' ? 'PARA EL 10' : 'TU FOCO ESTAS SEMANAS'}</strong>
           {datos.consejos.map((c) => (
             <span key={c}>→ {c}</span>
           ))}
         </div>
+      ) : (
+        datos.semaforo === 'verde' && <span style={{ fontSize: 13.5, fontWeight: 700, color: estilo.acento }}>Sigue así.</span>
       )}
     </article>
   );
