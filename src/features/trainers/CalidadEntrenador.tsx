@@ -163,7 +163,7 @@ export function TarjetaCalidadPropia({ datos, onCerrar }: { datos: DatosCalidadP
       )}
       {datos.consejos.length > 0 ? (
         <div style={caja}>
-          <strong style={titulo}>{datos.semaforo === 'verde' ? 'PARA EL 10' : 'TU FOCO ESTAS SEMANAS'}</strong>
+          <strong style={titulo}>{datos.semaforo === 'verde' ? 'PARA EL 10' : 'TU FOCO ESTA SEMANA'}</strong>
           {datos.consejos.map((c) => (
             <span key={c}>→ {c}</span>
           ))}
