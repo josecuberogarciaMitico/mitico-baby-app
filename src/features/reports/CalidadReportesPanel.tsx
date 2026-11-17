@@ -1,13 +1,30 @@
 import React from 'react';
 import { cargarReportesCoordinacion, type ReporteCoordinacion } from '../../services/reports/coordinationReportsService';
+import {
+  anularDevolucion,
+  cargarEstadoDevoluciones,
+  devolverReporte,
+  type EstadoDevolucion,
+} from '../../services/reports/calidadReportesService';
 import { abrirFichaAlumno } from '../students/studentFichaStore';
 import { sumarDiasIso } from './reportsReviewLogic';
-import { calidadPorEntrenador, DIAS_RECIENTE, MINIMO_REPORTES, type CalidadEntrenador, type Semaforo } from './calidadReportes';
+import {
+  calidadPorEntrenador,
+  DIAS_RECIENTE,
+  formatoNota,
+  LETRAS_POR_HABILIDAD,
+  MINIMO_REPORTES,
+  UMBRAL,
+  type CalidadEntrenador,
+  type Semaforo,
+} from './calidadReportes';
 
-// Calidad de reportes por entrenador (17/11/2026). Mira las últimas 8 semanas:
-// lo reciente (14 días) con semáforo y lo de antes para ver si alguien va a menos.
+// Calidad de reportes por entrenador (17/11/2026). Nota de 0 a 10 de los
+// últimos 14 días, con quién hablar, en qué falla cada uno y los reportes
+// flojos, que se pueden devolver al entrenador para que los complete.
 
 const SEMANAS = 8;
+const MOTIVO_POR_DEFECTO = 'Cuenta qué has visto en pista: así no se puede saber cómo va el niño.';
 
 const hoyMadrid = () =>
   new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Madrid', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -24,7 +41,32 @@ function fechaCorta(f: string) {
   return d && m ? `${d}/${m}` : f;
 }
 
-function Tarjeta({ c, esMovil }: { c: CalidadEntrenador; esMovil?: boolean; key?: string }) {
+const botonPeq: React.CSSProperties = {
+  minHeight: 34,
+  padding: '4px 12px',
+  borderRadius: 10,
+  border: '1px solid #cbd5e1',
+  background: '#fff',
+  fontWeight: 800,
+  cursor: 'pointer',
+};
+
+function Tarjeta({
+  c,
+  esMovil,
+  soloLectura,
+  devoluciones,
+  onDevolver,
+  onAnular,
+}: {
+  c: CalidadEntrenador;
+  esMovil?: boolean;
+  soloLectura?: boolean;
+  devoluciones: Map<string, EstadoDevolucion>;
+  onDevolver: (reporteId: string, alumno: string) => void;
+  onAnular: (reporteId: string) => void;
+  key?: string;
+}) {
   const color = COLOR[c.semaforo];
   const r = c.reciente;
   return (
@@ -40,9 +82,9 @@ function Tarjeta({ c, esMovil }: { c: CalidadEntrenador; esMovil?: boolean; key?
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: esMovil ? 'repeat(2, minmax(0,1fr))' : 'repeat(4, minmax(0,1fr))', gap: 6 }}>
           {[
+            [r.nota === null ? '—' : `${formatoNota(r.nota)} / 10`, 'nota de calidad'],
             [`${r.reportes}`, 'reportes (14 días)'],
-            [`${r.pocoDetallados}${r.reportes ? ` · ${r.pctPocoDetallados}%` : ''}`, 'poco detallados'],
-            [`${r.letrasMedia}`, 'letras escritas de media'],
+            [`${r.pocoDetallados}${r.reportes ? ` · ${r.pctPocoDetallados}%` : ''}`, 'todo «Lo consigue» sin escribir'],
             [`${r.pctTarde}%`, 'rellenados 2+ días tarde'],
           ].map(([valor, etiqueta]) => (
             <div key={etiqueta} style={{ background: '#fff', borderRadius: 10, padding: '6px 8px', minWidth: 0 }}>
@@ -61,31 +103,56 @@ function Tarjeta({ c, esMovil }: { c: CalidadEntrenador; esMovil?: boolean; key?
         )}
         <span style={{ fontSize: 12.5, color: '#475569' }}>
           {c.anterior.reportes
-            ? `Antes (semanas previas): ${c.anterior.reportes} reportes · ${c.anterior.letrasMedia} letras de media · ${c.anterior.pctPocoDetallados}% poco detallados`
+            ? `Antes (semanas previas): nota ${formatoNota(c.anterior.nota)} · ${c.anterior.reportes} reportes`
             : 'Sin reportes de las semanas anteriores para comparar.'}
         </span>
       </summary>
       <div style={{ padding: '0 14px 12px', display: 'grid', gap: 6 }}>
         {c.ejemplos.length === 0 ? (
-          <span style={{ fontSize: 13, color: '#475569' }}>Ningún reporte poco detallado en los últimos {DIAS_RECIENTE} días.</span>
+          <span style={{ fontSize: 13, color: '#475569' }}>Ningún reporte flojo en los últimos {DIAS_RECIENTE} días.</span>
         ) : (
           <>
-            <strong style={{ fontSize: 13, color: '#0f172a' }}>Reportes poco detallados (todo «Lo consigue» y nada escrito):</strong>
-            {c.ejemplos.map((e) => (
-              <div key={String(e.reporte_id)} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', background: '#fff', borderRadius: 10, padding: '6px 10px' }}>
-                <span style={{ fontWeight: 800, color: '#64748b', fontSize: 13 }}>{fechaCorta(e.fecha)}</span>
-                <span style={{ flex: '1 1 160px', minWidth: 0, fontWeight: 800, fontSize: 13.5, overflowWrap: 'anywhere' }}>{e.alumno || 'Alumno'}</span>
-                {e.alumno_id && (
-                  <button
-                    type="button"
-                    onClick={() => abrirFichaAlumno(e.alumno_id)}
-                    style={{ minHeight: 34, padding: '4px 12px', borderRadius: 10, border: '1px solid #cbd5e1', background: '#fff', fontWeight: 800, cursor: 'pointer' }}
-                  >
-                    Ficha
-                  </button>
-                )}
-              </div>
-            ))}
+            <strong style={{ fontSize: 13, color: '#0f172a' }}>Reportes flojos (nota por debajo de {formatoNota(UMBRAL.rojo)}):</strong>
+            {c.ejemplos.map((e) => {
+              const id = String(e.reporte_id);
+              const dev = devoluciones.get(id);
+              return (
+                <div key={id} style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', background: '#fff', borderRadius: 10, padding: '6px 10px' }}>
+                  <span style={{ fontWeight: 800, color: '#64748b', fontSize: 13 }}>{fechaCorta(e.fecha)}</span>
+                  <span style={{ flex: '1 1 160px', minWidth: 0, fontWeight: 800, fontSize: 13.5, overflowWrap: 'anywhere' }}>
+                    {e.alumno || 'Alumno'} <span style={{ color: '#dc2626' }}>· {formatoNota(e.nota)}</span>
+                    {e.calidad.pocoDetallado && <span style={{ color: '#64748b', fontWeight: 600 }}> · todo «Lo consigue» y nada escrito</span>}
+                  </span>
+                  {dev?.completado_devolucion_at ? (
+                    <span style={{ fontSize: 12.5, fontWeight: 900, color: '#166534' }}>✓ Completado tras devolverlo</span>
+                  ) : dev ? (
+                    <>
+                      <span style={{ fontSize: 12.5, fontWeight: 900, color: '#c2410c' }}>↩️ Devuelto · esperando</span>
+                      {!soloLectura && (
+                        <button type="button" style={botonPeq} onClick={() => onAnular(id)}>
+                          Anular
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    !soloLectura && (
+                      <button
+                        type="button"
+                        style={{ ...botonPeq, borderColor: '#fb923c', color: '#c2410c' }}
+                        onClick={() => onDevolver(id, e.alumno || 'el alumno')}
+                      >
+                        ↩️ Devolver
+                      </button>
+                    )
+                  )}
+                  {e.alumno_id && (
+                    <button type="button" onClick={() => abrirFichaAlumno(e.alumno_id)} style={botonPeq}>
+                      Ficha
+                    </button>
+                  )}
+                </div>
+              );
+            })}
           </>
         )}
       </div>
@@ -93,10 +160,22 @@ function Tarjeta({ c, esMovil }: { c: CalidadEntrenador; esMovil?: boolean; key?
   );
 }
 
-export function CalidadReportesPanel({ esVistaMovilApp }: { esVistaMovilApp?: boolean }) {
+export function CalidadReportesPanel({ esVistaMovilApp, soloLectura = false }: { esVistaMovilApp?: boolean; soloLectura?: boolean }) {
   const [filas, setFilas] = React.useState<ReporteCoordinacion[] | null>(null);
+  const [devueltos, setDevueltos] = React.useState<Map<string, EstadoDevolucion>>(new Map());
+  const [puedeDevolver, setPuedeDevolver] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [aviso, setAviso] = React.useState('');
   const hoy = hoyMadrid();
+
+  const cargarDevoluciones = React.useCallback(() => {
+    cargarEstadoDevoluciones(sumarDiasIso(hoy, -(DIAS_RECIENTE + 7)))
+      .then((lista) => {
+        setDevueltos(new Map((lista || []).map((d) => [String(d.reporte_id), d])));
+        setPuedeDevolver(true);
+      })
+      .catch(() => setPuedeDevolver(false)); // sin la migración: no se ofrece «Devolver»
+  }, [hoy]);
 
   React.useEffect(() => {
     let vivo = true;
@@ -108,16 +187,45 @@ export function CalidadReportesPanel({ esVistaMovilApp }: { esVistaMovilApp?: bo
     ])
       .then(([a, b]) => vivo && setFilas([...a, ...b]))
       .catch((e) => vivo && setError(e instanceof Error ? e.message : 'No se pudieron cargar los reportes.'));
+    cargarDevoluciones();
     return () => {
       vivo = false;
     };
-  }, [hoy]);
+  }, [hoy, cargarDevoluciones]);
 
   const resultado = React.useMemo(() => (filas ? calidadPorEntrenador(filas, hoy) : []), [filas, hoy]);
+
+  async function devolver(reporteId: string, alumno: string) {
+    const motivo = window.prompt(`Devolver el reporte de ${alumno} al entrenador.\n\n¿Qué le dices? (lo verá al abrir la app)`, MOTIVO_POR_DEFECTO);
+    if (motivo === null) return;
+    setAviso('');
+    try {
+      await devolverReporte(reporteId, motivo.trim() || MOTIVO_POR_DEFECTO);
+      setAviso(`↩️ Reporte de ${alumno} devuelto. Le saldrá al entrenador para completarlo.`);
+      cargarDevoluciones();
+    } catch (e) {
+      setAviso(e instanceof Error ? e.message : 'No se pudo devolver.');
+    }
+  }
+
+  async function anular(reporteId: string) {
+    if (!window.confirm('¿Anular la devolución? Al entrenador le dejará de salir.')) return;
+    try {
+      await anularDevolucion(reporteId);
+      cargarDevoluciones();
+    } catch (e) {
+      setAviso(e instanceof Error ? e.message : 'No se pudo anular.');
+    }
+  }
 
   return (
     <section style={{ display: 'grid', gap: 10 }}>
       {error && <p style={{ margin: 0, color: '#b91c1c', fontWeight: 800 }}>{error}</p>}
+      {aviso && (
+        <p role="status" style={{ margin: 0, padding: '8px 12px', borderRadius: 10, background: '#fff7ed', color: '#9a3412', fontWeight: 800 }}>
+          {aviso}
+        </p>
+      )}
       {!error && filas === null && <p style={{ margin: 0, color: '#475569' }}>Cargando reportes…</p>}
       {filas && resultado.length === 0 && <p style={{ margin: 0, color: '#475569' }}>No hay reportes en estas semanas.</p>}
       {filas && resultado.length > 0 && (() => {
@@ -130,7 +238,9 @@ export function CalidadReportesPanel({ esVistaMovilApp }: { esVistaMovilApp?: bo
             {hablar.map((c) => (
               <div key={c.entrenador} style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
                 <span aria-hidden style={{ width: 10, height: 10, borderRadius: 999, background: COLOR[c.semaforo].punto, flex: '0 0 auto' }} />
-                <b style={{ minWidth: 0 }}>{c.entrenador}</b>
+                <b style={{ minWidth: 0 }}>
+                  {c.entrenador} · {formatoNota(c.reciente.nota)}
+                </b>
                 <span style={{ color: '#cbd5e1', fontSize: 13, flex: '1 1 220px', minWidth: 0 }}>
                   {c.fallos[0]}
                   {c.fallos.length > 1 ? ` (+${c.fallos.length - 1} más)` : ''}
@@ -141,15 +251,25 @@ export function CalidadReportesPanel({ esVistaMovilApp }: { esVistaMovilApp?: bo
         );
       })()}
       {resultado.map((c) => (
-        <Tarjeta key={c.entrenador} c={c} esMovil={esVistaMovilApp} />
+        <Tarjeta
+          key={c.entrenador}
+          c={c}
+          esMovil={esVistaMovilApp}
+          soloLectura={soloLectura || !puedeDevolver}
+          devoluciones={devueltos}
+          onDevolver={(id, alumno) => void devolver(id, alumno)}
+          onAnular={(id) => void anular(id)}
+        />
       ))}
       <details style={{ padding: 12, borderRadius: 14, background: '#f8fafc', border: '1px solid #e2e8f0', fontSize: 13, color: '#334155', lineHeight: 1.45 }}>
         <summary style={{ cursor: 'pointer', fontWeight: 900 }}>¿Cómo se mide?</summary>
-        Últimos {DIAS_RECIENTE} días frente a las semanas anteriores (hasta {SEMANAS} semanas). Un reporte es{' '}
-        <b>poco detallado</b> si marca todo «Lo consigue» y no tiene nada escrito: puede proponer subir de nivel sin pruebas.{' '}
-        <b>Rojo</b>: 30% o más poco detallados, o menos de 30 letras de media. <b>Amarillo</b>: 15% o más poco detallados, menos de 80 letras,
-        el 40% o más rellenados dos días o más tarde, la misma valoración a todo el grupo en el 20% o más, o 3 reportes sin hacer.{' '}
-        <b>↓ Va a menos</b>: escribe la mitad o menos que antes. Con menos de {MINIMO_REPORTES} reportes no se pone color.
+        Cada reporte tiene una nota de 0 a 10: <b>detalle</b> (4 puntos: unas {LETRAS_POR_HABILIDAD} letras por cada habilidad que no le sale; si todo lo
+        consigue, una frase), <b>concreto</b> (3: no marcar todo «Lo consigue» sin escribir nada), <b>personal</b> (1,5: no poner la misma
+        valoración a todo el grupo) y <b>a tiempo</b> (1,5: el mismo día o el siguiente; a los 2 días, la mitad). La nota del entrenador es la media
+        de los últimos {DIAS_RECIENTE} días. <b>Verde</b> desde {formatoNota(UMBRAL.verde)}, <b>rojo</b> por debajo de {formatoNota(UMBRAL.rojo)}; también
+        amarillo si le faltan {UMBRAL.faltan} reportes o más. <b>↓ Va a menos</b>: su nota baja {formatoNota(UMBRAL.bajada)} puntos o más respecto a las
+        semanas anteriores. Con menos de {MINIMO_REPORTES} reportes no se pone color. Los entrenadores ven su propia nota y la media del equipo, nunca la
+        de otros.
       </details>
     </section>
   );

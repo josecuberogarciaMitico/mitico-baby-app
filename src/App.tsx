@@ -22002,6 +22002,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       {pantalla === 'reportes' && (
         <ReportsScreen
           ctx={{
+            esSoloConsultaUsuarioApp,
             abrirPendienteCierreSemanal,
             anioInicioTemporadaAgenda,
             botonMenu,

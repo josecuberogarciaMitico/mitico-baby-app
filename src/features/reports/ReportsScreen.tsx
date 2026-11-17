@@ -85,7 +85,7 @@ export function ReportsScreen({ ctx }: ReportsScreenProps) {
         </div>
       )}
       {pantalla === 'reportes' && vistaReportes === 'revisar' && (
-        <ReportsReviewPanel esVistaMovilApp={esVistaMovilApp} />
+        <ReportsReviewPanel esVistaMovilApp={esVistaMovilApp} soloLectura={Boolean(ctx.esSoloConsultaUsuarioApp)} />
       )}
       {pantalla === 'reportes' && vistaReportes === 'pendientes' &&
         (() => {

@@ -340,7 +340,7 @@ function BusquedaNino({ esVistaMovilApp }: { esVistaMovilApp?: boolean }) {
   );
 }
 
-export function ReportsReviewPanel({ esVistaMovilApp }: { esVistaMovilApp?: boolean }) {
+export function ReportsReviewPanel({ esVistaMovilApp, soloLectura = false }: { esVistaMovilApp?: boolean; soloLectura?: boolean }) {
   const [modo, setModo] = React.useState<ModoRevision>('semana');
   const [dia, setDia] = React.useState(() => hoyMadrid());
   const [lunes, setLunes] = React.useState(() => lunesDeIso(hoyMadrid()));
@@ -450,7 +450,7 @@ export function ReportsReviewPanel({ esVistaMovilApp }: { esVistaMovilApp?: bool
       </div>
 
       {modo === 'nino' && <BusquedaNino esVistaMovilApp={esVistaMovilApp} />}
-      {modo === 'calidad' && <CalidadReportesPanel esVistaMovilApp={esVistaMovilApp} />}
+      {modo === 'calidad' && <CalidadReportesPanel esVistaMovilApp={esVistaMovilApp} soloLectura={soloLectura} />}
 
       {modo !== 'nino' && modo !== 'calidad' && (
       <>

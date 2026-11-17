@@ -31,7 +31,7 @@ function test(name: string, run: () => void) {
 type FormPrueba = Parameters<typeof prepararSinNotas>[0];
 function prepararEnvioReporteFocos(form: FormPrueba, partida: string) {
   const notas = form.notasHabilidades ?? Object.fromEntries(
-    Object.keys(form.evaluacionTecnica || {}).map((id) => [id, 'Nota de prueba con detalle'])
+    Object.keys(form.evaluacionTecnica || {}).map((id) => [id, `Nota de prueba con detalle suficiente sobre ${id}`])
   );
   return prepararSinNotas({ ...form, notasHabilidades: notas }, partida);
 }
@@ -189,13 +189,13 @@ test('notas por habilidad: obligatorias con «Todavía no» y «A veces», opcio
   if (!sinNota.ok) equal(sinNota.error.includes('Rotación de piernas'), true, 'dice qué habilidad');
   const corta = prepararSinNotas({ ...base, notasHabilidades: { paralelismo: 'Ya junta los esquís', rotacion_piernas: 'bien' } }, 'C');
   equal(corta.ok, false, '«bien» no basta');
-  const sinNotaLoConsigue = prepararSinNotas({ ...base, notasHabilidades: { rotacion_piernas: 'El tronco acompaña el giro' } }, 'C');
+  const sinNotaLoConsigue = prepararSinNotas({ ...base, notasHabilidades: { rotacion_piernas: 'El tronco acompaña el giro sin bloquear la cadera' } }, 'C');
   if (!sinNotaLoConsigue.ok) throw new Error(sinNotaLoConsigue.error);
   equal('paralelismo' in sinNotaLoConsigue.envio.notasHabilidades, false, 'con «Lo consigue» la nota es opcional y no se envía vacía');
-  const ok = prepararSinNotas({ ...base, observaciones: '', notasHabilidades: { paralelismo: '  Ya junta en la parte fácil ', rotacion_piernas: 'El tronco acompaña el giro', canteo: 'no es de C' } }, 'C');
+  const ok = prepararSinNotas({ ...base, observaciones: '', notasHabilidades: { paralelismo: '  Ya junta en la parte fácil ', rotacion_piernas: 'El tronco acompaña el giro sin bloquear la cadera', canteo: 'no es de C' } }, 'C');
   if (!ok.ok) throw new Error(ok.error);
   equal(ok.envio.notasHabilidades.paralelismo, 'Ya junta en la parte fácil', 'se recorta');
   equal('canteo' in ok.envio.notasHabilidades, false, 'solo notas de habilidades valoradas');
-  const larga = prepararSinNotas({ ...base, notasHabilidades: { paralelismo: 'x'.repeat(301), rotacion_piernas: 'El tronco acompaña el giro' } }, 'C');
+  const larga = prepararSinNotas({ ...base, notasHabilidades: { paralelismo: 'x'.repeat(301), rotacion_piernas: 'El tronco acompaña el giro sin bloquear la cadera' } }, 'C');
   equal(larga.ok, false, 'máximo 300');
 });
