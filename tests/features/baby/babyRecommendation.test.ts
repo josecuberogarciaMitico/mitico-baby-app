@@ -126,16 +126,27 @@ test('B y B+ (Baby): separados si salen los mismos grupos', () => {
   equal(antes.includes('b1b2b3b4b5'), false, 'sin la opción, como antes (mezcla)');
 });
 
-test('B y B+ (Baby): si separarlos pide un grupo más, se mezcla lo mínimo y pasa el B de más edad', () => {
-  // 3 B+ y 9 B, máx. 6 → 2 grupos. Separar daría 3 grupos, así que un grupo lleva 3 B+ y 3 B.
+test('Baby: un grupo más si así no se mezclan niveles (decisión de Jose)', () => {
+  // 3 B+ y 9 B, máx. 6 → con 2 grupos habría que mezclar; con 3, B+ por un lado y B en dos grupos.
   const data = [
     ...['p1', 'p2', 'p3'].map((id) => conEdad(id, 'B+', 6.5)),
     conEdad('b1', 'B', 4.5), conEdad('b2', 'B', 4.6), conEdad('b3', 'B', 4.7), conEdad('b4', 'B', 4.8), conEdad('b5', 'B', 4.9),
     conEdad('b6', 'B', 5.0), conEdad('b7', 'B', 6.0), conEdad('b8', 'B', 6.1), conEdad('b9', 'B', 6.2),
   ];
+  const out = aplicarCinturonPedagogicoAutomaticoAgenda(data, { esBaby: true });
+  const g = grupos(out);
+  equal(g.length, 3, 'un grupo más');
+  equal(g.includes('p1p2p3'), true, 'B+ solos');
+  equal(g.includes('b7b8b9') || g.includes('b6b7b8b9'), true, 'los B mayores juntos');
+  equal(out.some((r) => /grupo más para no mezclar niveles/.test(r.alertas || '')), true, 'se explica por qué');
+});
+
+test('Baby: si no se puede evitar mezclar, pasa el de edad más parecida', () => {
+  // 2 B+ (no llegan a grupo) y 4 B: un grupo de 6 (o 2+4 no vale). Con 7 B: 2 grupos y un B con los B+.
+  const data = [conEdad('p1', 'B+', 6.5), conEdad('p2', 'B+', 6.8), conEdad('b1', 'B', 4.6), conEdad('b2', 'B', 4.8), conEdad('b3', 'B', 4.9), conEdad('b4', 'B', 5.3), conEdad('b5', 'B', 5.5), conEdad('b6', 'B', 5.7), conEdad('b7', 'B', 4.7)];
   const g = grupos(aplicarCinturonPedagogicoAutomaticoAgenda(data, { esBaby: true }));
-  equal(g.length, 2, 'sin grupo extra');
-  equal(g.includes('b7b8b9p1p2p3'), true, 'los B mayores van con los B+');
+  equal(g.length, 2, 'dos grupos');
+  equal(g.includes('b6p1p2'), true, 'el B de más edad con los B+');
 });
 
 test('tamaños alineados con el nivel', () => {
