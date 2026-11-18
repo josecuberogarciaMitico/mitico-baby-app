@@ -41,7 +41,6 @@ import { NinosGrupoPropuesto } from './NinosGrupoPropuesto';
 import { ReportSplitPanel } from '../dashboard/ReportSplitPanel';
 import { CanceladosAimHarderAviso } from './CanceladosAimHarderAviso';
 import { RepetidosSemanaAviso } from './RepetidosSemanaAviso';
-import { DividirGrupoAgenda } from './DividirGrupoAgenda';
 import { nivelesDe } from './dividirGrupoLogic';
 import { PreparadosGrandeAviso } from './PreparadosGrandeAviso';
 import { PacoAimHarderResumen } from './PacoAimHarderResumen';
@@ -764,6 +763,11 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
           fuerza: fuerza[String(perfil?.fuerza_nivel || '')] || 0,
         };
       });
+  }
+
+  // 18/11: «➕ Grupo nuevo» en «Cambiar de grupo» (no en Intensivos ni particulares; el grupo debe quedarse con alguien).
+  function puedeGrupoNuevoAgenda(grupo: AgendaGrupoSesionApp, contextoIntensivo: unknown) {
+    return !contextoIntensivo && !esNombreGrupoParticularApp(grupo.nombre_grupo) && Number(grupo.total_alumnos || 0) >= 2;
   }
 
   async function dividirGrupoAgenda(grupo: AgendaGrupoSesionApp, alumnosIds: string[]): Promise<boolean> {
@@ -3992,7 +3996,8 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                               </div>
                                             )}
 
-                                            {agendaGruposSesion.length > 1 && (
+                                            {(agendaGruposSesion.length > 1 ||
+                                              puedeGrupoNuevoAgenda(grupo, contextoIntensivo)) && (
                                               <label
                                                 style={{
                                                   ...labelCampo,
@@ -4008,7 +4013,10 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                                   onChange={(e) => {
                                                     const destino =
                                                       e.target.value;
-                                                    if (destino) {
+                                                    if (destino === '__NUEVO__') {
+                                                      // 18/11: crea un grupo nuevo con este niño (divide el grupo).
+                                                      void dividirGrupoAgenda(grupo, [alumnoSesion.alumno_id]);
+                                                    } else if (destino) {
                                                       void moverAlumnoEntreGruposAgenda(
                                                         alumnoSesion,
                                                         grupo,
@@ -4057,6 +4065,11 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                                         </option>
                                                       )
                                                     )}
+                                                  {puedeGrupoNuevoAgenda(grupo, contextoIntensivo) && (
+                                                    <option value="__NUEVO__">
+                                                      ➕ Grupo nuevo (con este niño)
+                                                    </option>
+                                                  )}
                                                 </select>
                                               </label>
                                             )}
@@ -4091,19 +4104,6 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                   })}
                               </div>
                             )}
-                            {/* 18/11: dividir un grupo ya creado en dos. */}
-                            {agendaPestanaProceso !== 'publicar' &&
-                              !contextoIntensivoSesionAgenda(grupo.sesion_id) &&
-                              !esNombreGrupoParticularApp(grupo.nombre_grupo) && (
-                                <div style={{ marginTop: 10 }}>
-                                  <DividirGrupoAgenda
-                                    key={`dividir-${grupo.grupo_id}-${grupo.total_alumnos}`}
-                                    ninos={ninosParaDividirAgenda(grupo)}
-                                    cargando={cargando}
-                                    onDividir={(ids) => dividirGrupoAgenda(grupo, ids)}
-                                  />
-                                </div>
-                              )}
                             <details
                               id={`agenda-trabajo-grupo-${grupo.grupo_id}`}
                               style={{
