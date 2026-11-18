@@ -13332,6 +13332,7 @@ async function abrirGestionOperativaIntensivoDia(
     if (grupo.nivel_grupo) {
       const coincidencias = grupo.nivel_grupo
         .toUpperCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // 18/11: «INICIACIÓN» no debe leerse como «C» y «A»
         .match(/INICIACION|A\+|A|B\+\+|B\+|B|C\+|C|D\+|D/g);
       if (coincidencias) niveles.push(...coincidencias);
     }
