@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { AlumnoResumen } from '../../core/students/studentTypes';
 import type { EntrenadorResumen } from '../../core/trainers/trainerTypes';
 import type {
+  AgendaAlumnoSesionApp,
   AgendaGrupoSesionApp,
   AgendaRecomendacionSesionApp,
   RecomendacionFueraPlazoAgendaApp,
@@ -40,6 +41,8 @@ import { NinosGrupoPropuesto } from './NinosGrupoPropuesto';
 import { ReportSplitPanel } from '../dashboard/ReportSplitPanel';
 import { CanceladosAimHarderAviso } from './CanceladosAimHarderAviso';
 import { RepetidosSemanaAviso } from './RepetidosSemanaAviso';
+import { DividirGrupoAgenda } from './DividirGrupoAgenda';
+import { nivelesDe } from './dividirGrupoLogic';
 import { PreparadosGrandeAviso } from './PreparadosGrandeAviso';
 import { PacoAimHarderResumen } from './PacoAimHarderResumen';
 import { avisoCompartirPunto, opcionesPuntoEncuentro, textoOpcionPunto } from './puntosEncuentroLogic';
@@ -740,6 +743,62 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     // La firma contiene exactamente los alumnos/niveles que necesitan alternativa.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [agendaSesionActivaId, firmaCandidatosReubicacion]);
+
+  // 18/11: niños de un grupo creado, para «Dividir en dos grupos».
+  function ninosParaDividirAgenda(grupo: AgendaGrupoSesionApp) {
+    const fuerza: Record<string, number> = { MUY_FUERTE: 2, FUERTE: 1, BAJO: -2 };
+    return String(grupo.alumnos_lista || '')
+      .split(' || ')
+      .map((linea) => {
+        const nombre = normalizarNombreAlumnoAgendaApp(linea);
+        return (agendaAlumnosSesion as AgendaAlumnoSesionApp[]).find((a) => normalizarNombreAlumnoAgendaApp(a.alumno) === nombre);
+      })
+      .filter((a): a is AgendaAlumnoSesionApp => Boolean(a))
+      .map((a) => {
+        const perfil = perfilOperativoAlumnoApp(a.alumno_id);
+        return {
+          alumno_id: a.alumno_id,
+          alumno: a.alumno,
+          nivel: a.nivel_usado,
+          edad: typeof perfil?.edad_aprox === 'number' ? perfil.edad_aprox : null,
+          fuerza: fuerza[String(perfil?.fuerza_nivel || '')] || 0,
+        };
+      });
+  }
+
+  async function dividirGrupoAgenda(grupo: AgendaGrupoSesionApp, alumnosIds: string[]): Promise<boolean> {
+    const ninos = ninosParaDividirAgenda(grupo).filter((n) => alumnosIds.includes(n.alumno_id));
+    if (!ninos.length) return false;
+    const niveles = nivelesDe(ninos.map((n) => n.nivel));
+    const nombre = `Grupo ${(agendaGruposSesion as AgendaGrupoSesionApp[]).length + 1} · Nivel ${niveles}`;
+    const comoPropuesta = ninos.map((n) => {
+      const a = (agendaAlumnosSesion as AgendaAlumnoSesionApp[]).find((x) => x.alumno_id === n.alumno_id);
+      return {
+        sesion_id: grupo.sesion_id, alumno_id: n.alumno_id, alumno: n.alumno, nivel_resumen: n.nivel || '',
+        pista_recomendada: a?.pista_recomendada || grupo.pista || '', pista_alumno: a?.pista_recomendada || grupo.pista || '',
+        grupo_recomendado: nombre, bloque_tecnico: niveles, orden_en_grupo: 0, alertas: null,
+      } as unknown as AgendaRecomendacionSesionApp;
+    });
+    if (!window.confirm(`¿Crear «${nombre}» con ${ninos.map((n) => n.alumno).join(', ')}?\n\nSe crea sin publicar y sin entrenador. Los demás se quedan en ${grupo.nombre_grupo}.`)) return false;
+    setError('');
+    try {
+      await ejecutarFuncionAuthJson('dividir_grupo_sesion_operativa_app', {
+        p_grupo_id: grupo.grupo_id,
+        p_alumnos_ids: ninos.map((n) => n.alumno_id),
+        p_nombre_grupo: nombre,
+        p_nivel_grupo: niveles,
+        p_trabajo_diario: trabajoDiarioAutomaticoAgenda(nombre, comoPropuesta),
+      });
+      if (agendaSesionActivaId) await cargarDetalleSesionAgenda(agendaSesionActivaId, { preservarScroll: true });
+      await cargarAgendaOperativaDirecta();
+      await cargarPlanning();
+      await cargarGruposEntrenador();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo dividir el grupo.');
+      return false;
+    }
+  }
 
   async function moverAlumnoAlternativaBaby(
     alumno: AgendaRecomendacionSesionApp,
@@ -3975,8 +4034,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                                     )
                                                     .map(
                                                       (
-                                                        destino,
-                                                        indiceDestino
+                                                        destino
                                                       ) => (
                                                         <option
                                                           key={`${grupo.grupo_id}-${alumnoSesion.alumno_id}-destino-${destino.grupo_id}`}
@@ -3984,9 +4042,12 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                                             destino.grupo_id
                                                           }
                                                         >
+                                                          {/* 18/11: mismo número que el título del grupo (antes se renumeraban al quitar el grupo actual). */}
                                                           {nombreGrupoVisualApp(
                                                             destino,
-                                                            indiceDestino
+                                                            agendaGruposSesion.findIndex(
+                                                              (g: AgendaGrupoSesionApp) => g.grupo_id === destino.grupo_id
+                                                            )
                                                           )}{' '}
                                                           ·{' '}
                                                           {
@@ -4030,6 +4091,19 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                   })}
                               </div>
                             )}
+                            {/* 18/11: dividir un grupo ya creado en dos. */}
+                            {agendaPestanaProceso !== 'publicar' &&
+                              !contextoIntensivoSesionAgenda(grupo.sesion_id) &&
+                              !esNombreGrupoParticularApp(grupo.nombre_grupo) && (
+                                <div style={{ marginTop: 10 }}>
+                                  <DividirGrupoAgenda
+                                    key={`dividir-${grupo.grupo_id}-${grupo.total_alumnos}`}
+                                    ninos={ninosParaDividirAgenda(grupo)}
+                                    cargando={cargando}
+                                    onDividir={(ids) => dividirGrupoAgenda(grupo, ids)}
+                                  />
+                                </div>
+                              )}
                             <details
                               id={`agenda-trabajo-grupo-${grupo.grupo_id}`}
                               style={{
