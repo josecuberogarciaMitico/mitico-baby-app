@@ -430,13 +430,23 @@ Deno.serve(async (req) => {
         )
       }
 
-      const { error: updateError } = await admin
-        .from('usuarios_app')
-        .update({
+      // 18/11 (caso Julia Fernández): usuarios_app.auth_user_id tiene ON DELETE
+      // CASCADE, así que borrar la cuenta de Authentication borra también el
+      // perfil del entrenador y el update de antes no encontraba la fila (sin
+      // dar error): el entrenador se quedaba sin acceso. Se vuelve a escribir
+      // el perfil entero (upsert por id), como en gestionar-usuarios-operativos-app.
+      const { error: updateError } = await admin.from('usuarios_app').upsert(
+        {
+          id: perfil.id,
           auth_user_id: invitacion.user.id,
+          email: perfil.email,
+          nombre: perfil.nombre,
+          rol: 'entrenador',
+          entrenador_id: entrenadorId,
           activo: true,
-        })
-        .eq('id', perfil.id)
+        },
+        { onConflict: 'id' },
+      )
 
       if (updateError) {
         return json(
