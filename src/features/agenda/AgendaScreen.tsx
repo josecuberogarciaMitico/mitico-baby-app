@@ -42,6 +42,7 @@ import { ReportSplitPanel } from '../dashboard/ReportSplitPanel';
 import { CanceladosAimHarderAviso } from './CanceladosAimHarderAviso';
 import { RepetidosSemanaAviso } from './RepetidosSemanaAviso';
 import { avisoRatioGrupoBaby, nivelesDe } from './dividirGrupoLogic';
+import { GruposTableroAgenda, VentanaAjustesTablero, nombreTablero, type GrupoTablero } from './GruposTableroAgenda';
 import { PreparadosGrandeAviso } from './PreparadosGrandeAviso';
 import { PacoAimHarderResumen } from './PacoAimHarderResumen';
 import { avisoCompartirPunto, opcionesPuntoEncuentro, textoOpcionPunto } from './puntosEncuentroLogic';
@@ -693,6 +694,8 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
       const destino = e.target as HTMLElement | null;
       // Esc dentro de un campo de texto no cierra (podría perder lo escrito).
       if (destino && /^(INPUT|TEXTAREA|SELECT)$/.test(destino.tagName)) return;
+      // 19/11: con la ventana de ajustes o el menú ⋯ del tablero abiertos, Esc cierra solo eso.
+      if (document.querySelector('.gt-ajustes-cab, .gt-menu')) return;
       cerrarPanelTrabajoAgenda();
     };
     window.addEventListener('keydown', alPulsar);
@@ -766,6 +769,89 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
   }
 
   // 18/11: «➕ Grupo nuevo» en «Cambiar de grupo» (no en Intensivos ni particulares; el grupo debe quedarse con alguien).
+  // 19/11: tablero de grupos en «Organizar» (Jose: «mil scroll, tosco»). Se recuerda en este navegador.
+  const [vistaTableroAgenda, setVistaTableroAgenda] = useState<boolean>(() => {
+    try { return localStorage.getItem('mitico_agenda_vista_tablero_v1') !== 'lista'; } catch { return true; }
+  });
+  const [grupoAjustesTablero, setGrupoAjustesTablero] = useState<string | null>(null);
+  function cambiarVistaTableroAgenda(tablero: boolean) {
+    setVistaTableroAgenda(tablero);
+    setGrupoAjustesTablero(null);
+    try { localStorage.setItem('mitico_agenda_vista_tablero_v1', tablero ? 'tablero' : 'lista'); } catch { /* sin almacenamiento */ }
+  }
+  const tableroAgendaActivo = agendaPestanaProceso === 'organizar' && vistaTableroAgenda;
+
+  function gruposParaTableroAgenda(): GrupoTablero[] {
+    const esBaby = sesionActivaEsBaby();
+    return agendaGruposSesion.map((grupo: AgendaGrupoSesionApp, indice: number) => {
+      const contexto = contextoIntensivoSesionAgenda(grupo.sesion_id);
+      const visual = String(nombreGrupoVisualApp(grupo, indice));
+      const pistaTxt = String(grupo.pista || '').toLowerCase();
+      const ninos = String(grupo.alumnos_lista || '')
+        .split(' || ')
+        .filter((x) => x.trim())
+        .map((alumnoGrupo, i) => {
+          const alumnoSesion = (agendaAlumnosSesion as AgendaAlumnoSesionApp[]).find(
+            (a) => normalizarNombreAlumnoAgendaApp(a.alumno) === normalizarNombreAlumnoAgendaApp(alumnoGrupo)
+          );
+          const [nombre, nivel] = String(formatearAlumnoListadoOperativo(alumnoGrupo)).split(' · ');
+          const edad = alumnoSesion ? perfilOperativoAlumnoApp(alumnoSesion.alumno_id)?.edad_aprox : null;
+          const asis = contexto && alumnoSesion ? asistenciaAlumnoIntensivoAgenda(grupo, alumnoSesion.alumno_id) : null;
+          const estadoAsis = String(asis?.estado || '');
+          const noViene = ['NO_PRESENTADO', 'BAJA_AVISADA'].includes(estadoAsis);
+          return {
+            clave: `${grupo.grupo_id}-${i}`,
+            alumnoId: alumnoSesion?.alumno_id || null,
+            nombre: nombreTablero(nombre || alumnoGrupo),
+            nivel: nivel ? (/^INICIACION$/i.test(nivel) ? 'INICIACIÓN' : nivel) : null,
+            edad: edad ?? null,
+            asistencia: contexto
+              ? noViene ? 'No viene · recuperación' : estadoAsis === 'PRESENTE' ? 'Presente' : estadoAsis === 'LLEGA_TARDE' ? 'Llega tarde' : null
+              : null,
+            noViene,
+            puedeMarcarNoViene: Boolean(contexto) && estadoAsis !== 'PRESENTE' && estadoAsis !== 'LLEGA_TARDE',
+          };
+        });
+      const particular = esNombreGrupoParticularApp(grupo.nombre_grupo);
+      return {
+        id: grupo.grupo_id,
+        titulo: `Grupo ${indice + 1}`,
+        niveles: ninos.some((n) => n.nivel)
+          ? nivelesDe(ninos.map((n) => n.nivel))
+          : visual.includes(' · Nivel ') ? visual.split(' · Nivel ').slice(1).join(' · Nivel ') : visual,
+        pista: pistaTxt.includes('grande') ? 'grande' : pistaTxt.includes('peque') ? 'pequena' : 'otra',
+        pistaTexto: String(etiquetaPistaVisualApp(grupo.pista)).replace('PISTA ', ''),
+        punto: particular ? 'Particular · CON JOSE' : `Punto ${grupo.punto_encuentro || '-'}`,
+        entrenadores: grupo.entrenador_id ? String(nombresEntrenadoresDelGrupo(grupo.grupo_id, grupo.entrenador) || grupo.entrenador || '') : 'Sin entrenador',
+        sinEntrenador: !grupo.entrenador_id,
+        estado: grupo.publicado ? 'Publicado' : 'En preparación',
+        publicado: Boolean(grupo.publicado),
+        aviso: esBaby && grupo.publicado ? avisoRatioGrupoBaby(grupo) : null,
+        intensivo: Boolean(contexto),
+        puedeGrupoNuevo: puedeGrupoNuevoAgenda(grupo, contexto),
+        ninos,
+      };
+    });
+  }
+
+  function accionTableroAgenda(grupoId: string, alumnoId: string) {
+    const grupo = agendaGruposSesion.find((g: AgendaGrupoSesionApp) => g.grupo_id === grupoId);
+    const alumnoSesion = (agendaAlumnosSesion as AgendaAlumnoSesionApp[]).find((a) => a.alumno_id === alumnoId);
+    if (!grupo || !alumnoSesion) {
+      setError('No encuentro el niño o el grupo. Actualiza la sesión y vuelve a intentarlo.');
+      return null;
+    }
+    return { grupo, alumnoSesion };
+  }
+
+  function abrirTrabajoTableroAgenda(grupoId: string) {
+    setGrupoAjustesTablero(grupoId);
+    window.setTimeout(() => {
+      const el = document.getElementById(`agenda-trabajo-grupo-${grupoId}`) as HTMLDetailsElement | null;
+      if (el) { el.open = true; el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
+    }, 60);
+  }
+
   function puedeGrupoNuevoAgenda(grupo: AgendaGrupoSesionApp, contextoIntensivo: unknown) {
     return !contextoIntensivo && !esNombreGrupoParticularApp(grupo.nombre_grupo) && Number(grupo.total_alumnos || 0) >= 2;
   }
@@ -3796,9 +3882,58 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                         <span style={{ color: '#64748b', fontSize: 12, fontWeight: 800 }}>
                           {agendaGruposSesion.length} {agendaGruposSesion.length === 1 ? 'grupo' : 'grupos'}
                         </span>
+                        {agendaPestanaProceso === 'organizar' && agendaGruposSesion.length > 0 && (
+                          <span className="gt-vista" role="group" aria-label="Forma de ver los grupos">
+                            <button type="button" className={vistaTableroAgenda ? 'is-activa' : ''} onClick={() => cambiarVistaTableroAgenda(true)}>
+                              Tablero
+                            </button>
+                            <button type="button" className={!vistaTableroAgenda ? 'is-activa' : ''} onClick={() => cambiarVistaTableroAgenda(false)}>
+                              Ver como antes
+                            </button>
+                          </span>
+                        )}
                       </div>
+                      {tableroAgendaActivo && (
+                        <GruposTableroAgenda
+                          grupos={gruposParaTableroAgenda()}
+                          cargando={Boolean(cargando)}
+                          grupoAbierto={grupoAjustesTablero}
+                          onMover={(origenId, alumnoId, destinoId) => {
+                            const r = accionTableroAgenda(origenId, alumnoId);
+                            if (r) void moverAlumnoEntreGruposAgenda(r.alumnoSesion, r.grupo, destinoId);
+                          }}
+                          onGrupoNuevo={(grupoId, alumnoId) => {
+                            const r = accionTableroAgenda(grupoId, alumnoId);
+                            if (r) void dividirGrupoAgenda(r.grupo, [alumnoId]);
+                          }}
+                          onQuitar={(grupoId, alumnoId) => {
+                            const r = accionTableroAgenda(grupoId, alumnoId);
+                            if (r) void quitarAlumnoAgenda(r.alumnoSesion, r.grupo);
+                          }}
+                          onNoViene={(grupoId, alumnoId, noVieneAhora) => {
+                            const r = accionTableroAgenda(grupoId, alumnoId);
+                            if (!r) return;
+                            if (noVieneAhora) void restaurarVieneIntensivoDesdeAgenda(r.alumnoSesion, r.grupo);
+                            else void marcarNoVieneIntensivoDesdeAgenda(r.alumnoSesion, r.grupo);
+                          }}
+                          onAjustes={(grupoId) => setGrupoAjustesTablero(grupoId)}
+                          onTrabajo={abrirTrabajoTableroAgenda}
+                        />
+                      )}
+                      {(!tableroAgendaActivo || grupoAjustesTablero) && (
+                      <VentanaAjustesTablero
+                        activa={tableroAgendaActivo}
+                        titulo={(() => {
+                          const i = agendaGruposSesion.findIndex((g: AgendaGrupoSesionApp) => g.grupo_id === grupoAjustesTablero);
+                          return i >= 0 ? String(nombreGrupoVisualApp(agendaGruposSesion[i], i)) : 'Grupo';
+                        })()}
+                        onCerrar={() => {
+                          setGrupoAjustesTablero(null);
+                          window.setTimeout(() => document.querySelector('.gt-tablero')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 30);
+                        }}
+                      >
                       <div style={{ display: 'grid', gap: 10 }}>
-                        {agendaGruposSesion.map((grupo, indiceGrupoCreado) => (
+                        {agendaGruposSesion.map((grupo, indiceGrupoCreado) => tableroAgendaActivo && grupo.grupo_id !== grupoAjustesTablero ? null : (
                           <article
                             key={grupo.grupo_id}
                             style={{
@@ -4762,6 +4897,8 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                           </article>
                         ))}
                       </div>
+                      </VentanaAjustesTablero>
+                      )}
                     </section>
                   )}
                 </article>
