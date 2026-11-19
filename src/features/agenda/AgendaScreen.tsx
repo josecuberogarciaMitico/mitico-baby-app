@@ -42,7 +42,7 @@ import { ReportSplitPanel } from '../dashboard/ReportSplitPanel';
 import { CanceladosAimHarderAviso } from './CanceladosAimHarderAviso';
 import { RepetidosSemanaAviso } from './RepetidosSemanaAviso';
 import { avisoRatioGrupoBaby, nivelesDe } from './dividirGrupoLogic';
-import { GruposTableroAgenda, VentanaAjustesTablero, nombreTablero, type GrupoTablero } from './GruposTableroAgenda';
+import { CifrasSesionAgenda, GruposTableroAgenda, PublicarListaAgenda, VentanaAjustesTablero, nombreTablero, type GrupoPublicarFila, type GrupoTablero } from './GruposTableroAgenda';
 import { PreparadosGrandeAviso } from './PreparadosGrandeAviso';
 import { PacoAimHarderResumen } from './PacoAimHarderResumen';
 import { avisoCompartirPunto, opcionesPuntoEncuentro, textoOpcionPunto } from './puntosEncuentroLogic';
@@ -780,6 +780,44 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     try { localStorage.setItem('mitico_agenda_vista_tablero_v1', tablero ? 'tablero' : 'lista'); } catch { /* sin almacenamiento */ }
   }
   const tableroAgendaActivo = agendaPestanaProceso === 'organizar' && vistaTableroAgenda;
+  // 19/11: el Paso 3 también en lista compacta (mismo botón «Ver como antes»).
+  const listaPublicarActiva = agendaPestanaProceso === 'publicar' && vistaTableroAgenda;
+  const vistaNuevaAgendaActiva = tableroAgendaActivo || listaPublicarActiva;
+
+  function filasPublicarAgenda(): GrupoPublicarFila[] {
+    const esBaby = sesionActivaEsBaby();
+    return gruposParaTableroAgenda().map((t) => {
+      const grupo = agendaGruposSesion.find((g: AgendaGrupoSesionApp) => g.grupo_id === t.id) as AgendaGrupoSesionApp;
+      const particular = esNombreGrupoParticularApp(grupo.nombre_grupo);
+      const listo = Boolean(grupo.entrenador_id) && (particular || Boolean(grupo.punto_encuentro));
+      return {
+        id: t.id,
+        titulo: t.titulo,
+        niveles: t.niveles,
+        detalle: `${t.ninos.length} ${t.ninos.length === 1 ? 'niño' : 'niños'} · ${t.pistaTexto.charAt(0)}${t.pistaTexto.slice(1).toLowerCase()} · ${t.punto}`,
+        pista: t.pista,
+        entrenadores: t.entrenadores,
+        sinEntrenador: t.sinEntrenador,
+        publicado: Boolean(grupo.publicado),
+        confirmado: grupo.estado_confirmacion === 'Confirmado',
+        listo,
+        falta: !grupo.entrenador_id ? 'Falta entrenador' : !listo ? 'Falta punto de encuentro' : null,
+        aviso: esBaby ? avisoRatioGrupoBaby(grupo) : null,
+      };
+    });
+  }
+
+  function avisarCambiosGrupoAgenda(grupoId: string) {
+    void notifyGroupChangedAndRequestReconfirmation({
+      groupId: grupoId,
+      runFunction: ejecutarFuncionAuthJson,
+      sendPush: ejecutarPushMiticoApp,
+      reload: async () => {
+        await Promise.allSettled([cargarAgendaOperativaDirecta(), cargarGruposEntrenador(), cargarPlanning()]);
+        if (agendaSesionActivaId) await cargarDetalleSesionAgenda(agendaSesionActivaId);
+      },
+    }).catch((err) => setError(err instanceof Error ? err.message : 'Error desconocido'));
+  }
 
   function gruposParaTableroAgenda(): GrupoTablero[] {
     const esBaby = sesionActivaEsBaby();
@@ -2117,7 +2155,47 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                   id="agenda-sesion-trabajo"
                   style={{ ...tarjetaResaltada, scrollMarginTop: 16 }}
                 >
-                  <h3 style={{ marginTop: 0 }}>Sesión seleccionada</h3>
+                  {/* 19/11: cifras de la sesión en una fila de etiquetas (antes 5 cajas grandes y el título «Sesión seleccionada»). */}
+                  {(() => {
+                    const totalAlumnosGrupos = agendaGruposSesion.reduce(
+                      (total, grupo) => total + Number(grupo.total_alumnos || 0),
+                      0
+                    );
+                    const totalAlumnosOperativos =
+                      agendaGruposSesion.length > 0 ? totalAlumnosGrupos : agendaAlumnosSesion.length;
+                    const abrirDetectados = (filtro: 'TODOS' | 'NUEVO' | 'CONOCIDO') => {
+                      setAgendaFiltroAlumnos(filtro);
+                      requestAnimationFrame(() => {
+                        const detalle = document.getElementById('agenda-alumnos-detectados') as HTMLDetailsElement | null;
+                        if (detalle) detalle.open = true;
+                        detalle?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                      });
+                    };
+                    const cifras = [
+                      { clave: 'alumnos', valor: totalAlumnosOperativos, texto: 'en grupos', tono: 'ok' as const, onClick: () => abrirDetectados('TODOS') },
+                      {
+                        clave: 'grupos', valor: agendaGruposSesion.length, texto: agendaGruposSesion.length === 1 ? 'grupo' : 'grupos',
+                        onClick: () => {
+                          setAgendaPestanaProceso('organizar');
+                          requestAnimationFrame(() => document.getElementById('agenda-grupos-creados')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+                        },
+                      },
+                      { clave: 'test', valor: agendaAlumnosSesion.filter((a) => a.estado_en_listado === 'PENDIENTE_TEST').length, texto: 'pendientes test', onClick: () => abrirDetectados('NUEVO') },
+                      { clave: 'conocidos', valor: agendaAlumnosSesion.filter((a) => a.estado_en_listado === 'CONOCIDO').length, texto: 'conocidos', onClick: () => abrirDetectados('CONOCIDO') },
+                      ...(agendaGruposSesion.length > 0
+                        ? [{
+                            clave: 'colocar', valor: alumnosPendientesColocar.length, texto: 'sin colocar',
+                            tono: alumnosPendientesColocar.length ? ('aviso' as const) : undefined,
+                            onClick: () => {
+                              setAgendaPestanaProceso('crear');
+                              setAgendaMostrarPendientesColocar(true);
+                              requestAnimationFrame(() => document.getElementById('agenda-pendientes-colocar')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+                            },
+                          }]
+                        : []),
+                    ];
+                    return <CifrasSesionAgenda cifras={cifras} />;
+                  })()}
 
                   {esCoordinadorApp && (
                     <PacoNotasSesion
@@ -2126,223 +2204,53 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                     />
                   )}
 
+                  {/* 19/11: pasos con ✓ y resumen de cómo va cada uno. */}
                   {(() => {
-                    const totalAlumnosGrupos = agendaGruposSesion.reduce(
-                      (total, grupo) =>
-                        total + Number(grupo.total_alumnos || 0),
-                      0
-                    );
-                    const totalAlumnosOperativos =
-                      agendaGruposSesion.length > 0
-                        ? totalAlumnosGrupos
-                        : agendaAlumnosSesion.length;
-
+                    const n = agendaGruposSesion.length;
+                    const conEnt = agendaGruposSesion.filter((g) => Boolean(g.entrenador_id)).length;
+                    const conPunto = agendaGruposSesion.filter((g) => esNombreGrupoParticularApp(g.nombre_grupo) || Boolean(g.punto_encuentro)).length;
+                    const pub = agendaGruposSesion.filter((g) => g.publicado).length;
+                    const pasos = [
+                      { clave: 'crear' as const, num: 1, etiqueta: 'Crear grupos', hecho: n > 0, resumen: n > 0 ? `${agendaAlumnosSesion.length} niños · ${n} ${n === 1 ? 'grupo creado' : 'grupos creados'}` : `${agendaAlumnosSesion.length} niños · sin grupos` },
+                      { clave: 'organizar' as const, num: 2, etiqueta: 'Organizar', hecho: n > 0 && conEnt === n && conPunto === n, resumen: n > 0 ? (conEnt === n && conPunto === n ? `${n} con entrenador y punto` : `${conEnt}/${n} con entrenador · ${conPunto}/${n} con punto`) : 'Primero crea los grupos' },
+                      { clave: 'publicar' as const, num: 3, etiqueta: 'Publicar', hecho: n > 0 && pub === n, resumen: n > 0 ? `${pub} de ${n} publicados` : 'Nada que publicar aún' },
+                    ];
                     return (
-                  <div style={gridMiniMetricas}>
-                    <button
-                      type="button"
-                      style={{ ...miniMetrica, cursor: 'pointer', textAlign: 'left' }}
-                      onClick={() => {
-                        setAgendaFiltroAlumnos('TODOS');
-                        requestAnimationFrame(() => {
-                          const detalle = document.getElementById('agenda-alumnos-detectados') as HTMLDetailsElement | null;
-                          if (detalle) detalle.open = true;
-                          detalle?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        });
-                      }}
-                    >
-                      <strong>{totalAlumnosOperativos}</strong>
-                      <span>alumnos en grupos</span>
-                    </button>
-                    <button
-                      type="button"
-                      style={{ ...miniMetrica, cursor: 'pointer', textAlign: 'left' }}
-                      onClick={() => {
-                        setAgendaPestanaProceso('organizar');
-                        requestAnimationFrame(() => {
-                          document
-                            .getElementById('agenda-grupos-creados')
-                            ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        });
-                      }}
-                    >
-                      <strong>{agendaGruposSesion.length}</strong>
-                      <span>grupos creados</span>
-                    </button>
-                    <button
-                      type="button"
-                      style={{ ...miniMetrica, cursor: 'pointer', textAlign: 'left' }}
-                      onClick={() => {
-                        setAgendaFiltroAlumnos('NUEVO');
-                        requestAnimationFrame(() => {
-                          const detalle = document.getElementById('agenda-alumnos-detectados') as HTMLDetailsElement | null;
-                          if (detalle) detalle.open = true;
-                          detalle?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        });
-                      }}
-                    >
-                      <strong>
-                        {
-                          agendaAlumnosSesion.filter(
-                            (a) => a.estado_en_listado === 'PENDIENTE_TEST'
-                          ).length
-                        }
-                      </strong>
-                      <span>pendientes test</span>
-                    </button>
-                    <button
-                      type="button"
-                      style={{ ...miniMetrica, cursor: 'pointer', textAlign: 'left' }}
-                      onClick={() => {
-                        setAgendaFiltroAlumnos('CONOCIDO');
-                        requestAnimationFrame(() => {
-                          const detalle = document.getElementById('agenda-alumnos-detectados') as HTMLDetailsElement | null;
-                          if (detalle) detalle.open = true;
-                          detalle?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                        });
-                      }}
-                    >
-                      <strong>
-                        {
-                          agendaAlumnosSesion.filter(
-                            (a) => a.estado_en_listado === 'CONOCIDO'
-                          ).length
-                        }
-                      </strong>
-                      <span>conocidos</span>
-                    </button>
-                    {agendaGruposSesion.length > 0 && (
-                      <button
-                        type="button"
-                        style={{
-                          ...miniMetrica,
-                          cursor: 'pointer',
-                          textAlign: 'left',
-                          border: alumnosPendientesColocar.length
-                            ? '1px solid #fdba74'
-                            : miniMetrica.border,
-                          background: alumnosPendientesColocar.length
-                            ? '#fff7ed'
-                            : miniMetrica.background,
-                        }}
-                        onClick={() => {
-                          setAgendaPestanaProceso('crear');
-                          setAgendaMostrarPendientesColocar(true);
-                          requestAnimationFrame(() => {
-                            document
-                              .getElementById('agenda-pendientes-colocar')
-                              ?.scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'start',
-                              });
-                          });
-                        }}
-                      >
-                        <strong
-                          style={
-                            alumnosPendientesColocar.length
-                              ? { color: '#c2410c' }
-                              : undefined
-                          }
-                        >
-                          {alumnosPendientesColocar.length}
-                        </strong>
-                        <span>pendientes de colocar</span>
-                      </button>
-                    )}
-                  </div>
+                      <div className="gs-pasos">
+                        {pasos.map((p) => (
+                          <button
+                            key={`agenda-paso-${p.clave}`}
+                            type="button"
+                            className={`gs-paso${p.hecho ? ' is-hecho' : ''}${agendaPestanaProceso === p.clave ? ' is-activo' : ''}`}
+                            onClick={() => setAgendaPestanaProceso(p.clave)}
+                          >
+                            <span className="gs-paso-n">{p.hecho && agendaPestanaProceso !== p.clave ? '✓' : p.num}</span>
+                            <span className="gs-paso-txt">
+                              <b>{p.num} · {p.etiqueta}</b>
+                              <small>{p.resumen}</small>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
                     );
                   })()}
 
-                  <div
-                    style={{
-                      marginTop: 16,
-                      padding: 6,
-                      borderRadius: 16,
-                      background: '#eef3f8',
-                      border: '1px solid #dbe4ee',
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-                      gap: 6,
-                    }}
-                  >
-                    {([
-                      ['crear', '1', 'Crear grupos'],
-                      ['organizar', '2', 'Organizar'],
-                      ['publicar', '3', 'Publicar'],
-                    ] as const).map(([clave, numero, etiqueta]) => {
-                      const activa = agendaPestanaProceso === clave;
-                      return (
-                        <button
-                          key={`agenda-paso-${clave}`}
-                          type="button"
-                          onClick={() => setAgendaPestanaProceso(clave)}
-                          style={{
-                            border: activa ? '1px solid #2563eb' : '1px solid transparent',
-                            background: activa ? '#ffffff' : 'transparent',
-                            color: activa ? '#0f172a' : '#64748b',
-                            borderRadius: 12,
-                            padding: esVistaMovilApp ? '9px 5px' : '10px 12px',
-                            fontWeight: 900,
-                            cursor: 'pointer',
-                            boxShadow: activa ? '0 4px 12px rgba(37,99,235,.10)' : 'none',
-                            minWidth: 0,
-                          }}
-                        >
-                          <span
-                            style={{
-                              display: 'block',
-                              fontSize: 10,
-                              color: activa ? '#2563eb' : '#94a3b8',
-                              marginBottom: 2,
-                            }}
-                          >
-                            PASO {numero}
-                          </span>
-                          <span style={{ fontSize: esVistaMovilApp ? 12 : 13 }}>
-                            {etiqueta}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: 8,
-                      padding: '9px 11px',
-                      borderRadius: 11,
-                      background: '#f8fafc',
-                      border: '1px solid #e2e8f0',
-                      color: '#475569',
-                      fontSize: 12,
-                      fontWeight: 750,
-                    }}
-                  >
-                    {agendaPestanaProceso === 'crear'
-                      ? 'Recomienda, revisa la composición y crea los grupos. Entrenador y punto se completan después.'
-                      : agendaPestanaProceso === 'organizar'
-                      ? `${agendaGruposSesion.length} grupos · ${
-                          agendaGruposSesion.filter((grupo) => Boolean(grupo.entrenador_id)).length
-                        } con entrenador · ${
-                          agendaGruposSesion.filter(
-                            (grupo) =>
-                              esNombreGrupoParticularApp(grupo.nombre_grupo) ||
-                              Boolean(grupo.punto_encuentro)
-                          ).length
-                        } con punto preparado`
-                      : `${
-                          agendaGruposSesion.filter((grupo) => grupo.publicado).length
-                        } publicados · ${
-                          agendaGruposSesion.filter(
-                            (grupo) =>
-                              !grupo.publicado &&
-                              Boolean(grupo.entrenador_id) &&
-                              (esNombreGrupoParticularApp(grupo.nombre_grupo) ||
-                                Boolean(grupo.punto_encuentro))
-                          ).length
-                        } listos para publicar`}
-                  </div>
+                  {agendaPestanaProceso === 'crear' && (
+                    <div
+                      style={{
+                        marginTop: 8,
+                        padding: '9px 11px',
+                        borderRadius: 11,
+                        background: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        color: '#475569',
+                        fontSize: 12,
+                        fontWeight: 750,
+                      }}
+                    >
+                      Recomienda, revisa la composición y crea los grupos. Entrenador y punto se completan después.
+                    </div>
+                  )}
 
                   {agendaPestanaProceso === 'crear' && (
                     <>
@@ -3882,10 +3790,10 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                         <span style={{ color: '#64748b', fontSize: 12, fontWeight: 800 }}>
                           {agendaGruposSesion.length} {agendaGruposSesion.length === 1 ? 'grupo' : 'grupos'}
                         </span>
-                        {agendaPestanaProceso === 'organizar' && agendaGruposSesion.length > 0 && (
+                        {(agendaPestanaProceso === 'organizar' || agendaPestanaProceso === 'publicar') && agendaGruposSesion.length > 0 && (
                           <span className="gt-vista" role="group" aria-label="Forma de ver los grupos">
                             <button type="button" className={vistaTableroAgenda ? 'is-activa' : ''} onClick={() => cambiarVistaTableroAgenda(true)}>
-                              Tablero
+                              {agendaPestanaProceso === 'publicar' ? 'Lista' : 'Tablero'}
                             </button>
                             <button type="button" className={!vistaTableroAgenda ? 'is-activa' : ''} onClick={() => cambiarVistaTableroAgenda(false)}>
                               Ver como antes
@@ -3920,7 +3828,20 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                           onTrabajo={abrirTrabajoTableroAgenda}
                         />
                       )}
-                      {(!tableroAgendaActivo || grupoAjustesTablero) && (
+                      {listaPublicarActiva && (
+                        <PublicarListaAgenda
+                          grupos={filasPublicarAgenda()}
+                          cargando={Boolean(cargando)}
+                          onPublicar={(id) => void publicarGrupo(id)}
+                          onAvisarCambios={avisarCambiosGrupoAgenda}
+                          onRetirar={(id) => void despublicarGrupo(id)}
+                          onVerGrupo={(id) => {
+                            setAgendaPestanaProceso('organizar');
+                            setGrupoAjustesTablero(id);
+                          }}
+                        />
+                      )}
+                      {!listaPublicarActiva && (!tableroAgendaActivo || grupoAjustesTablero) && (
                       <VentanaAjustesTablero
                         activa={tableroAgendaActivo}
                         titulo={(() => {

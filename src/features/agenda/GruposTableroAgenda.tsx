@@ -262,3 +262,129 @@ export function VentanaAjustesTablero({ activa, titulo, onCerrar, children }: {
     </>
   );
 }
+
+// ---------------------------------------------------------------------------
+// 19/11/2026 (Jose): Paso 3 «Publicar» en lista compacta, un grupo por línea.
+// Mismas acciones de siempre (las pasa AgendaScreen): publicar, avisar cambios
+// y, en ⋯, retirar de Vista entrenador y ver el grupo completo.
+
+export type GrupoPublicarFila = {
+  id: string;
+  titulo: string;
+  niveles: string;
+  detalle: string;
+  pista: 'grande' | 'pequena' | 'otra';
+  entrenadores: string;
+  sinEntrenador: boolean;
+  publicado: boolean;
+  confirmado: boolean;
+  listo: boolean;
+  falta: string | null;
+  aviso: string | null;
+};
+
+export function PublicarListaAgenda({ grupos, cargando, onPublicar, onAvisarCambios, onRetirar, onVerGrupo }: {
+  grupos: GrupoPublicarFila[];
+  cargando: boolean;
+  onPublicar: (grupoId: string) => void;
+  onAvisarCambios: (grupoId: string) => void;
+  onRetirar: (grupoId: string) => void;
+  onVerGrupo: (grupoId: string) => void;
+}) {
+  const [menu, setMenu] = useState<{ id: string; top: number; left: number } | null>(null);
+  useEffect(() => {
+    if (!menu) return;
+    const cerrar = () => setMenu(null);
+    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') setMenu(null); };
+    const t = window.setTimeout(() => {
+      window.addEventListener('click', cerrar);
+      window.addEventListener('scroll', cerrar, true);
+    }, 150);
+    window.addEventListener('keydown', tecla);
+    return () => {
+      window.clearTimeout(t);
+      window.removeEventListener('click', cerrar);
+      window.removeEventListener('scroll', cerrar, true);
+      window.removeEventListener('keydown', tecla);
+    };
+  }, [menu]);
+  const grupoMenu = menu ? grupos.find((g) => g.id === menu.id) : null;
+
+  return (
+    <div className="gp-lista">
+      {grupos.map((g) => (
+        <div key={g.id} className={`gp-fila gp-fila--${g.pista}`}>
+          <div className="gp-grupo">
+            <b>{g.titulo} <span className="gp-niveles">{g.niveles}</span></b>
+            <small>{g.detalle}</small>
+          </div>
+          <div className={`gp-ent${g.sinEntrenador ? ' is-falta' : ''}`}>{g.entrenadores}</div>
+          <div className="gp-estado">
+            {g.publicado ? (
+              <>
+                <span className="gp-chip is-pub">✓ Publicado</span>
+                <span className={`gp-chip ${g.confirmado ? 'is-conf' : 'is-pend'}`}>{g.confirmado ? 'Confirmado' : 'Sin confirmar'}</span>
+              </>
+            ) : g.listo ? (
+              <span className="gp-chip is-listo">Listo para publicar</span>
+            ) : (
+              <span className="gp-chip is-no" title={g.falta || ''}>{g.falta || 'Pendiente de completar'}</span>
+            )}
+            {g.aviso && <span className="gp-chip is-aviso" title={g.aviso}>⚠️ {g.aviso}</span>}
+          </div>
+          <div className="gp-acciones">
+            {!g.publicado && (
+              <button type="button" className="gp-btn is-pri" disabled={cargando || !g.listo} title={g.listo ? 'Publicar este grupo en Vista entrenador' : g.falta || ''} onClick={() => onPublicar(g.id)}>
+                Publicar
+              </button>
+            )}
+            {g.publicado && g.confirmado && (
+              <button type="button" className="gp-btn" disabled={cargando} title="El entrenador ya había confirmado. Úsalo si el grupo ha cambiado y debe volver a confirmar." onClick={() => onAvisarCambios(g.id)}>
+                Avisar cambios
+              </button>
+            )}
+            <button
+              type="button"
+              className="gt-mas"
+              aria-label={`Más opciones de ${g.titulo}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                const r = e.currentTarget.getBoundingClientRect();
+                setMenu({ id: g.id, top: Math.min(r.bottom + 4, window.innerHeight - 110), left: Math.max(8, r.right - 240) });
+              }}
+            >
+              ⋯
+            </button>
+          </div>
+        </div>
+      ))}
+      {menu && grupoMenu && createPortal(
+        <div className="gt-menu" style={{ top: menu.top, left: menu.left, width: 240 }} onClick={(e) => e.stopPropagation()}>
+          <div className="gt-menu-nombre">{grupoMenu.titulo} · {grupoMenu.niveles}</div>
+          <button type="button" onClick={() => { setMenu(null); onVerGrupo(grupoMenu.id); }}>Ver grupo completo</button>
+          {grupoMenu.publicado && (
+            <button type="button" className="is-peligro" disabled={cargando} onClick={() => { setMenu(null); onRetirar(grupoMenu.id); }}>
+              Retirar de Vista entrenador
+            </button>
+          )}
+        </div>,
+        document.body
+      )}
+    </div>
+  );
+}
+
+/** Cabecera de la sesión: cifras en una fila de etiquetas (antes, 5 cajas grandes). */
+export function CifrasSesionAgenda({ cifras }: {
+  cifras: Array<{ clave: string; valor: number; texto: string; tono?: 'ok' | 'aviso'; onClick: () => void }>;
+}) {
+  return (
+    <div className="gs-cifras">
+      {cifras.map((c) => (
+        <button key={c.clave} type="button" className={`gs-cifra${c.tono ? ` is-${c.tono}` : ''}`} onClick={c.onClick}>
+          <b>{c.valor}</b> {c.texto}
+        </button>
+      ))}
+    </div>
+  );
+}
