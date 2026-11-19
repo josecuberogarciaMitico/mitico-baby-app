@@ -9,3 +9,26 @@ export function nivelesDe(niveles: Array<string | null>): string {
     .map((n) => (/^INICIACION$/i.test(n) ? 'INICIACIÓN' : n));
   return lista.join(' / ') || 'Sin nivel';
 }
+
+/**
+ * 19/11/2026 (Jose): un grupo publicado se puede cambiar sin despublicarlo aunque
+ * quede fuera de ratio; en vez de bloquear, el grupo se marca con este aviso.
+ * Misma regla que evaluar_ratio_baby_grupo_operativa_app (Supabase).
+ */
+export function avisoRatioGrupoBaby(g: {
+  nombre_grupo?: string | null; nivel_grupo?: string | null; pista?: string | null; total_alumnos: number;
+  entrenador_id?: string | null; entrenador_apoyo_id?: string | null; entrenador_tercero_id?: string | null;
+}): string | null {
+  const total = Number(g.total_alumnos || 0);
+  if (/^PARTICULAR · /i.test(String(g.nombre_grupo || '').trim())) return null;
+  const sinTilde = (t: string | null | undefined) => String(t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toUpperCase().trim();
+  const nivel = sinTilde(g.nivel_grupo);
+  const pista = sinTilde(g.pista);
+  const bajo = pista.includes('PEQUENA') || nivel.includes('INICIACION') || nivel.includes('DEBUT')
+    || (!/[BCD]/.test(nivel) && nivel.includes('A'));
+  const entrenadores = new Set([g.entrenador_id, g.entrenador_apoyo_id, g.entrenador_tercero_id].filter(Boolean)).size;
+  if (total <= 1) return `Grupo de ${total} niño${total === 1 ? '' : 's'}: muévelo a otro grupo o hazlo particular.`;
+  if (total >= 8) return `${total} niños: con 8 o más hay que dividirlo en 2 grupos.`;
+  if (bajo && total >= 5 && entrenadores < 2) return `${total} niños en grupo de iniciación / pista pequeña: falta 2.º entrenador.`;
+  return null;
+}

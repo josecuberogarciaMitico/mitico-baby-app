@@ -15806,6 +15806,8 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
     }
   }
 
+  // 19/11: mismo número que en pantalla (posición en la sesión), no el guardado.
+  const nombreGrupoEnSesionAgenda = (g: AgendaGrupoSesionApp) => { const i = agendaGruposSesion.findIndex((x) => x.grupo_id === g.grupo_id); return nombreGrupoVisualApp(g, i >= 0 ? i : undefined); };
   async function moverAlumnoEntreGruposAgenda(
     alumno: AgendaAlumnoSesionApp,
     grupoOrigen: AgendaGrupoSesionApp,
@@ -15823,7 +15825,7 @@ Confirma solo si los padres han aceptado el cambio de día/horario.`
     }
 
     const confirmar = window.confirm(
-      `¿Mover a ${alumno.alumno} de ${nombreGrupoVisualApp(grupoOrigen)} a ${nombreGrupoVisualApp(grupoDestino)}?\n\nEl cambio es solo de composición: no cambia el entrenador ni su confirmación.`
+      `¿Mover a ${alumno.alumno} de ${nombreGrupoEnSesionAgenda(grupoOrigen)} a ${nombreGrupoEnSesionAgenda(grupoDestino)}?\n\nEl cambio es solo de composición: no cambia el entrenador ni su confirmación.`
     );
     if (!confirmar) return;
 
