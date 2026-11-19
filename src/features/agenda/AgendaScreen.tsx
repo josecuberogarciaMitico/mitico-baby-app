@@ -41,7 +41,7 @@ import { NinosGrupoPropuesto } from './NinosGrupoPropuesto';
 import { ReportSplitPanel } from '../dashboard/ReportSplitPanel';
 import { CanceladosAimHarderAviso } from './CanceladosAimHarderAviso';
 import { RepetidosSemanaAviso } from './RepetidosSemanaAviso';
-import { nivelesDe } from './dividirGrupoLogic';
+import { avisoRatioGrupoBaby, nivelesDe } from './dividirGrupoLogic';
 import { PreparadosGrandeAviso } from './PreparadosGrandeAviso';
 import { PacoAimHarderResumen } from './PacoAimHarderResumen';
 import { avisoCompartirPunto, opcionesPuntoEncuentro, textoOpcionPunto } from './puntosEncuentroLogic';
@@ -3836,6 +3836,12 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                 ? 'CON JOSE'
                                 : `Punto ${grupo.punto_encuentro || '-'}`}
                             </p>
+                            {/* 19/11: grupo publicado fuera de ratio → aviso (ya no obliga a despublicar). */}
+                            {grupo.publicado && sesionActivaEsBaby() && avisoRatioGrupoBaby(grupo) && (
+                              <p style={{ margin: '6px 0 0', padding: '6px 10px', borderRadius: 10, background: '#fef2f2', border: '1px solid #fca5a5', color: '#b91c1c', fontSize: 12, fontWeight: 800 }}>
+                                ⚠️ {avisoRatioGrupoBaby(grupo)}
+                              </p>
+                            )}
                             {/* Clase particular de 1 o 2 niños (p. ej. dos hermanas): no se le
                                 proponen más niños y no necesita punto de encuentro. */}
                             {!ctx.esSoloConsultaUsuarioApp &&
@@ -4278,7 +4284,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                     }}
                                   >
                                     {grupo.publicado
-                                      ? 'Visible en su Vista entrenador.'
+                                      ? 'Visible en su Vista entrenador. Para cambiarlo no hace falta retirarlo: hazlo en «Organizar» y el entrenador lo verá al momento.'
                                       : !grupo.entrenador_id
                                       ? 'Falta asignar entrenador. El grupo ya está creado.'
                                       : !esNombreGrupoParticularApp(grupo.nombre_grupo) &&
