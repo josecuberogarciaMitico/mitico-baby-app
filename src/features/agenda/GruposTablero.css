@@ -60,3 +60,62 @@
 #agenda-sesion-trabajo .gt-menu button { min-height: 0; padding-top: 7px !important; padding-bottom: 7px !important; }
 #agenda-sesion-trabajo .gt-vista button { min-height: 0; padding-top: 6px !important; padding-bottom: 6px !important; }
 #agenda-sesion-trabajo .gt-pie button { min-height: 0; padding-top: 6px !important; padding-bottom: 6px !important; }
+
+/* ---------- 19/11: cabecera de cifras, pasos y Paso 3 en lista ---------- */
+.gs-cifras { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
+.gs-cifra { display: inline-flex; align-items: baseline; gap: 5px; padding: 5px 11px; border-radius: 999px; background: #f8fafc; border: 1px solid #e2e8f0; font: inherit; font-size: 12px; font-weight: 800; color: #334155; cursor: pointer; }
+.gs-cifra b { font-size: 15px; font-weight: 900; color: #0f172a; }
+.gs-cifra:hover { border-color: #94a3b8; }
+.gs-cifra.is-ok { background: #f0fdf4; border-color: #bbf7d0; }
+.gs-cifra.is-aviso { background: #fff7ed; border-color: #fdba74; }
+.gs-cifra.is-aviso b { color: #c2410c; }
+#agenda-sesion-trabajo .gs-cifra { min-height: 0; padding-top: 5px !important; padding-bottom: 5px !important; }
+.gs-pasos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 4px; }
+.gs-paso { display: flex; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 14px; background: #fff; border: 1px solid #e2e8f0; cursor: pointer; text-align: left; font: inherit; color: #0f172a; min-width: 0; }
+.gs-paso:hover { border-color: #94a3b8; }
+.gs-paso-n { width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center; font-weight: 900; font-size: 13px; background: #e2e8f0; color: #475569; flex: none; }
+.gs-paso.is-hecho .gs-paso-n { background: #dcfce7; color: #166534; }
+.gs-paso.is-activo { border: 2px solid #1d4ed8; padding: 8px 10px; background: #eff6ff; }
+.gs-paso.is-activo .gs-paso-n { background: #1d4ed8; color: #fff; }
+.gs-paso-txt { min-width: 0; }
+.gs-paso-txt b { display: block; font-size: 14px; font-weight: 900; }
+.gs-paso-txt small { display: block; color: #64748b; font-weight: 700; font-size: 12px; line-height: 1.25; }
+#agenda-sesion-trabajo .gs-paso { min-height: 0; padding-top: 9px !important; padding-bottom: 9px !important; }
+#agenda-sesion-trabajo .gs-paso.is-activo { padding-top: 8px !important; padding-bottom: 8px !important; }
+.gp-lista { display: grid; gap: 6px; }
+.gp-fila { display: flex; flex-wrap: wrap; gap: 6px 12px; align-items: center; padding: 9px 10px 9px 12px; background: #fff; border: 1px solid #e2e8f0; border-left: 5px solid #cbd5e1; border-radius: 12px; min-width: 0; }
+.gp-fila--grande { border-left-color: #2563eb; }
+.gp-fila--pequena { border-left-color: #16a34a; }
+.gp-grupo { min-width: 0; flex: 1 1 170px; }
+.gp-grupo b { display: block; font-size: 14px; font-weight: 900; color: #0f172a; }
+.gp-niveles { font-size: 12px; color: #1e293b; }
+.gp-grupo small { display: block; color: #64748b; font-size: 12px; font-weight: 700; }
+.gp-ent { flex: 0 1 140px; font-size: 13px; font-weight: 800; color: #0f172a; min-width: 0; overflow-wrap: anywhere; }
+.gp-ent.is-falta { color: #b45309; }
+.gp-estado { flex: 1 1 170px; display: flex; flex-wrap: wrap; gap: 4px; min-width: 0; }
+.gp-chip { display: inline-flex; align-items: center; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 900; white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.gp-chip.is-pub { background: #dcfce7; color: #166534; }
+.gp-chip.is-conf { background: #dbeafe; color: #1e40af; }
+.gp-chip.is-pend { background: #fef3c7; color: #b45309; }
+.gp-chip.is-listo { background: #e0e7ff; color: #3730a3; }
+.gp-chip.is-no { background: #f1f5f9; color: #475569; }
+.gp-chip.is-aviso { background: #fef2f2; color: #b91c1c; white-space: normal; border-radius: 10px; }
+.gp-acciones { margin-left: auto; display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
+.gp-btn { border: 1px solid #e2e8f0; background: #fff; border-radius: 10px; padding: 6px 11px; font: inherit; font-size: 12.5px; font-weight: 800; color: #0f172a; cursor: pointer; white-space: nowrap; }
+.gp-btn.is-pri { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+.gp-btn:disabled { opacity: .5; cursor: not-allowed; }
+.gp-acciones .gt-mas { border: 0; background: transparent; font-size: 18px; line-height: 1; color: #94a3b8; cursor: pointer; padding: 2px 6px; border-radius: 6px; }
+#agenda-sesion-trabajo .gp-btn { min-height: 0; padding-top: 6px !important; padding-bottom: 6px !important; }
+#agenda-sesion-trabajo .gp-acciones .gt-mas { min-height: 0; height: 28px; padding-top: 2px !important; padding-bottom: 2px !important; }
+@media (max-width: 700px) {
+  .gs-pasos { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; }
+  .gs-paso { flex-direction: column; align-items: flex-start; gap: 4px; padding: 7px 8px; }
+  .gs-paso-txt b { font-size: 12.5px; }
+  .gs-paso-txt small { white-space: normal; font-size: 11px; }
+}
+/* App.css da formato de cajas grandes a «#agenda-sesion-trabajo > div:first-of-type»
+   (las cifras antiguas). Ahora ese primer bloque es la fila de etiquetas: se anula aquí. */
+#agenda-sesion-trabajo > div.gs-cifras.gs-cifras { display: flex !important; flex-wrap: wrap; gap: 6px !important; margin: 2px 0 10px !important; grid-template-columns: none !important; }
+#agenda-sesion-trabajo > div.gs-cifras > button.gs-cifra { min-height: 0 !important; padding: 5px 11px !important; border-radius: 999px !important; border: 1px solid #e2e8f0 !important; background: #f8fafc !important; box-shadow: none !important; font-weight: 800 !important; width: auto; }
+#agenda-sesion-trabajo > div.gs-cifras > button.gs-cifra.is-ok { background: #f0fdf4 !important; border-color: #bbf7d0 !important; }
+#agenda-sesion-trabajo > div.gs-cifras > button.gs-cifra.is-aviso { background: #fff7ed !important; border-color: #fdba74 !important; }
