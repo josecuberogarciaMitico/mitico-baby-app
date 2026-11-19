@@ -28,6 +28,8 @@ import { MensajesEntrenador } from './MensajesEntrenador';
 import { CalidadPropiaEntrenador, ReportesDevueltosEntrenador } from './CalidadEntrenador';
 import { DisponibilidadSemanaEntrenador } from './DisponibilidadSemanaEntrenador';
 import { ahoraMadrid, pendientesQueBloqueanDisponibilidad, totalNinosPendientes, type PendienteDisponibilidad } from './bloqueoDisponibilidad';
+import { nivelLegible, nombreLegible, pasoGrupoEntrenador, siguienteTareaEntrenador } from './vistaEntrenadorNuevaLogic';
+import './TrainerViewNueva.css';
 
 // Edad del niño, discreta junto a su nombre (grupos y reportes del entrenador).
 function EdadNino({ edad }: { edad?: number | null }) {
@@ -46,6 +48,17 @@ type TrainerViewScreenProps = {
 
 export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
   const [tareaEntrenadorAbierta, setTareaEntrenadorAbierta] = useState<string | null>(null);
+  // 19/11 (Jose): vista nueva del entrenador. «Ver como antes» vuelve a la de
+  // siempre; se recuerda en este móvil. Todas las acciones son las de siempre.
+  const [tvNueva, setTvNueva] = useState<boolean>(() => {
+    try { return localStorage.getItem('mitico_entrenador_vista_v1') !== 'antes'; } catch { return true; }
+  });
+  const cambiarVistaEntrenador = (nueva: boolean) => {
+    setTvNueva(nueva);
+    try { localStorage.setItem('mitico_entrenador_vista_v1', nueva ? 'nueva' : 'antes'); } catch { /* sin almacenamiento */ }
+  };
+  const [verTareasTv2, setVerTareasTv2] = useState('');
+  const [panelTv2, setPanelTv2] = useState<Record<string, '' | 'trab' | 'obs'>>({});
   // 11/11: A+ que pueden subir a la pista grande (etiqueta en cada niño).
   const preparadosGrande = usePreparadosGrande();
   const [diaDisponibilidadAbierto, setDiaDisponibilidadAbierto] = useState('');
@@ -732,10 +745,28 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
     );
   }
 
+  // Vista nueva: el aviso de la semana solo sale si hay algo que hacer o saber
+  // (activar avisos, disponibilidad pendiente o bloqueada, o aún sin grupos).
+  const estadoSemanaTv2 = estadoSemanaPushEntrenadorApp;
+  const gruposPublicadosTv2 = Number(estadoSemanaTv2?.total_grupos_publicados ?? totalGruposVistaEntrenador);
+  const pushActivoTv2 = Boolean(estadoSemanaTv2?.push_activo);
+  const permisoTv2 = typeof permisoPushMitico === 'function' ? permisoPushMitico() : 'default';
+  const mostrarAvisoSemanaTv2 =
+    (!pushActivoTv2 && permisoTv2 !== 'denied') ||
+    gruposPublicadosTv2 === 0 ||
+    Number(totalDisponibilidadPendienteVistaEntrenador || 0) > 0 ||
+    miBloqueoDisponibilidad.length > 0;
+  const diaCortoTv2 = (fecha: string) =>
+    fecha
+      ? capitalizarPrimera(
+          new Date(`${fecha}T00:00:00`).toLocaleDateString('es-ES', { weekday: 'short', day: 'numeric' }).replace(',', '')
+        )
+      : '';
+
   return (
     <>
       {pantalla === 'entrenador' && (
-        <section className="trainer-view" style={vistaEntrenadorShell}>
+        <section className={`trainer-view${tvNueva ? ' tv2' : ''}`} style={vistaEntrenadorShell}>
           <style>{`
             @media (max-width: 600px) {
               .trainer-view {
@@ -846,6 +877,22 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
             }
           `}</style>
 
+          {tvNueva ? (
+            // La semana y el nombre ya salen en la barra de arriba de la app: aquí solo ayuda y actualizar.
+            <div className="tv2-barra">
+              <span className="tv2-ayuda">{renderAyudaRapidaPantallaApp()}</span>
+              <button
+                type="button"
+                className="tv2-ib"
+                title="Actualizar"
+                aria-label="Actualizar"
+                onClick={() => void actualizarVistaEntrenadorCompletaApp()}
+                disabled={cargando}
+              >
+                {cargando ? '…' : '↻'}
+              </button>
+            </div>
+          ) : (
           <div
             className="trainer-hero trainer-hero--modern"
             style={{
@@ -978,6 +1025,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
               {cargando ? 'Actualizando...' : 'Actualizar vista'}
             </button>
           </div>
+          )}
 
           {/* 06/11: cambios en sus grupos publicados desde la última vez (sin push). */}
           {esEntrenadorApp && <MensajesEntrenador onRepartoHecho={() => void actualizarVistaEntrenadorCompletaApp()} />}
@@ -986,7 +1034,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
           {esEntrenadorApp && <ReportesDevueltosEntrenador />}
           {esEntrenadorApp && <CalidadPropiaEntrenador posicion="arriba" />}
 
-          {esEntrenadorApp && (
+          {esEntrenadorApp && (!tvNueva || mostrarAvisoSemanaTv2) && (
             <article
               className="trainer-week-status-alert"
               style={(() => {
@@ -1328,9 +1376,17 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                 }}
               >
                 Grupos y reportes
+                {tvNueva && Number(totalTareasPendientesVistaEntrenador || 0) > 0 && (
+                  <i className="tv2-badge">{totalTareasPendientesVistaEntrenador}</i>
+                )}
               </button>
             </div>
           </article>
+
+          <div className="tv2-vista" role="group" aria-label="Forma de ver la pantalla">
+            <button type="button" className={tvNueva ? 'is-on' : ''} onClick={() => cambiarVistaEntrenador(true)}>Vista nueva</button>
+            <button type="button" className={!tvNueva ? 'is-on' : ''} onClick={() => cambiarVistaEntrenador(false)}>Ver como antes</button>
+          </div>
 
           {cargando && <p>Cargando vista entrenador...</p>}
 
@@ -1486,6 +1542,8 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                   style={{
                     ...cabeceraEntrenadorMovil,
                     justifyContent: 'flex-start',
+                    // Vista nueva: el entrenador ya sabe quién es (sale arriba); solo coordinación ve la cabecera.
+                    ...(tvNueva && esEntrenadorApp ? { display: 'none' } : {}),
                   }}
                   onClick={enfocarAcordeonEntrenadorAlAbrir}
                 >
@@ -1508,7 +1566,59 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                   </div>
                 </summary>
 
-                {(pendientesEntrenadorVista(
+                {tvNueva && (() => {
+                  const sig = siguienteTareaEntrenador(
+                    gruposSinConfirmarEntrenadorVista(bloqueEntrenador.entrenador_id),
+                    pendientesEntrenadorVista(bloqueEntrenador.entrenador_id)
+                  );
+                  if (!sig) {
+                    return Number(bloqueEntrenador.total_grupos || 0) > 0 ? (
+                      <div className="tv2-ahora is-ok">
+                        <small>TODO AL DÍA</small>
+                        <b>No tienes nada pendiente ✓</b>
+                      </div>
+                    ) : null;
+                  }
+                  const grupoTxt = String(sig.nombre_grupo || 'tu grupo').split(' · ')[0];
+                  const cuando = [diaCortoTv2(sig.fecha), sig.hora_inicio].filter(Boolean).join(' · ');
+                  const textos =
+                    sig.tipo === 'confirmar'
+                      ? { t: `Confirma tu grupo · ${grupoTxt}`, d: cuando, b: 'Abrir y confirmar →' }
+                      : sig.tipo === 'lista'
+                      ? { t: `Pasa lista · ${grupoTxt}`, d: `${cuando} · falta pasar lista`, b: 'Abrir grupo y pasar lista →' }
+                      : { t: `Haz tus reportes · ${grupoTxt}`, d: `${cuando} · ${sig.cuantos} ${sig.cuantos === 1 ? 'reporte' : 'reportes'} por hacer`, b: 'Abrir grupo y hacer reportes →' };
+                  return (
+                    <div className="tv2-ahora">
+                      <small>LO SIGUIENTE QUE TE TOCA</small>
+                      <b>{textos.t}</b>
+                      <p>{textos.d}</p>
+                      <button
+                        type="button"
+                        className="tv2-ahora-btn"
+                        onClick={() => abrirGrupoDesdeTareaEntrenador(sig.grupo_id, bloqueEntrenador.entrenador_id)}
+                      >
+                        {textos.b}
+                      </button>
+                      {sig.total > 1 && (
+                        <button
+                          type="button"
+                          className="tv2-ahora-mas"
+                          onClick={() =>
+                            setVerTareasTv2((actual) =>
+                              actual === bloqueEntrenador.entrenador_id ? '' : bloqueEntrenador.entrenador_id
+                            )
+                          }
+                        >
+                          {verTareasTv2 === bloqueEntrenador.entrenador_id
+                            ? 'Ocultar la lista de tareas'
+                            : `Ver todas las tareas (${sig.total})`}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {(!tvNueva || verTareasTv2 === bloqueEntrenador.entrenador_id) && (pendientesEntrenadorVista(
                   bloqueEntrenador.entrenador_id
                 ).length > 0 ||
                   gruposSinConfirmarEntrenadorVista(
@@ -2189,7 +2299,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                                                   esGrupoActivo
                                                     ? 'is-sheet-open'
                                                     : ''
-                                                }`}
+                                                }${tvNueva ? ' tv2-sheet' : ''}`}
                                                 data-active-section={
                                                   esGrupoActivo
                                                     ? seccionGrupoEntrenador
@@ -2205,6 +2315,241 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                                                   borderRadius: 18,
                                                 }}
                                               >
+                                                {tvNueva ? (() => {
+                                                  // 19/11: vista nueva del grupo (cerrado: tarjeta corta; abierto: ficha).
+                                                  const nombreVisual = String(nombreGrupoVisualApp(grupo, indiceGrupoEntrenadorTurno));
+                                                  const tituloTv2 = nombreVisual.split(' · ')[0];
+                                                  const nivelTv2 =
+                                                    nivelLegible(grupo.nivel_grupo) ||
+                                                    nivelLegible(nombreVisual.split(' · Nivel ')[1]);
+                                                  const pistaGrande = String(grupo.pista || '').toLowerCase().includes('grande');
+                                                  const horaTv2 = `${String(grupo.hora_inicio || '').slice(0, 5)}–${String(grupo.hora_fin || '').slice(0, 5)}`;
+                                                  const companerosTv2 = (repartoGrupo as Array<{ entrenador_id: string; entrenador: string }>)
+                                                    .filter((r) => r.entrenador_id !== grupo.entrenador_id)
+                                                    .map((r) => nombreLegible(r.entrenador));
+                                                  const hayRepartoTv2 = repartoGrupo.length > 1;
+                                                  // Reportes por hacer: sus niños que han venido y aún sin reporte enviado
+                                                  // (así el paso cambia al momento, sin esperar al refresco).
+                                                  const porHacerTv2 = alumnosPropios.filter(
+                                                    (a) => a.estado_asistencia === 'Presente' && a.estado_reporte !== 'Reporte enviado'
+                                                  ).length;
+                                                  const pasoTv2 = pasoGrupoEntrenador({
+                                                    confirmado: !confirmacionPropiaPendiente,
+                                                    total: alumnosGrupo.length,
+                                                    pendientesLista: pendientes,
+                                                    reportesPorHacer: Math.max(faltaReporte, porHacerTv2),
+                                                  });
+                                                  const confirmarTv2 = confirmacionPropiaPendiente && (
+                                                    <button
+                                                      type="button"
+                                                      className="tv2-btn is-confirmar"
+                                                      onClick={() => confirmarGrupoEntrenador(grupo.grupo_id, grupo.entrenador_id)}
+                                                    >
+                                                      Confirmar mi participación
+                                                    </button>
+                                                  );
+                                                  const abrirTv2 = () => {
+                                                    if (esGrupoActivo) {
+                                                      cerrarGrupoEntrenador();
+                                                      return;
+                                                    }
+                                                    marcarGrupoVistoPorEntrenador(grupo.entrenador_id, grupo.grupo_id);
+                                                    setSeccionGrupoEntrenador('asistencia');
+                                                    setGrupoActivoEntrenador({ grupo_id: grupo.grupo_id, entrenador_id: grupo.entrenador_id });
+                                                  };
+
+                                                  if (!esGrupoActivo) {
+                                                    return (
+                                                      <div className="tv2-card">
+                                                        <div className="tv2-card-l1">
+                                                          <div className="tv2-card-tit">
+                                                            <b>{tituloTv2}{nivelTv2 ? ` · ${nivelTv2}` : ''}</b>
+                                                            <span>
+                                                              {horaTv2} · Pista {String(grupo.pista || '-').toLowerCase()}
+                                                              {companerosTv2.length > 0 ? ` · con ${companerosTv2.join(' y ')}` : ''}
+                                                            </span>
+                                                          </div>
+                                                          <div className="tv2-punto"><small>PUNTO</small>{grupo.punto_encuentro || '-'}</div>
+                                                        </div>
+                                                        <div className="tv2-chips">
+                                                          <span className="tv2-chip">{alumnosGrupo.length || grupo.total_alumnos} niños</span>
+                                                          {confirmacionPropiaPendiente ? (
+                                                            <span className="tv2-chip is-conf">Sin confirmar</span>
+                                                          ) : pendientes > 0 ? (
+                                                            <span className="tv2-chip is-lista">Lista {presentes + ausentes}/{alumnosGrupo.length}</span>
+                                                          ) : alumnosGrupo.length > 0 ? (
+                                                            <span className="tv2-chip is-ok">✓ Lista hecha</span>
+                                                          ) : null}
+                                                          {alumnosPropios.length > 0 && (
+                                                            faltaReporte > 0 ? (
+                                                              <span className="tv2-chip is-rep">📝 {faltaReporte} {faltaReporte === 1 ? 'reporte tuyo' : 'reportes tuyos'}</span>
+                                                            ) : reportesEnviados === alumnosPropios.length ? (
+                                                              <span className="tv2-chip is-ok">✓ Reportes hechos</span>
+                                                            ) : null
+                                                          )}
+                                                        </div>
+                                                        {confirmarTv2}
+                                                        <button type="button" className="tv2-btn is-abrir" aria-expanded={false} onClick={abrirTv2}>
+                                                          Abrir grupo
+                                                        </button>
+                                                      </div>
+                                                    );
+                                                  }
+
+                                                  const panelAbierto = panelTv2[grupo.grupo_id] || '';
+                                                  const cambiarPanel = (cual: 'trab' | 'obs') =>
+                                                    setPanelTv2((actual) => ({ ...actual, [grupo.grupo_id]: actual[grupo.grupo_id] === cual ? '' : cual }));
+                                                  const total = alumnosGrupo.length;
+                                                  return (
+                                                    <div className="tv2-ficha">
+                                                      <div className="tv2-ficha-top">
+                                                        <div>
+                                                          <small>{diaCortoTv2(grupo.fecha)} · {horaTv2}</small>
+                                                          <b>{tituloTv2}</b>
+                                                        </div>
+                                                        <button type="button" className="tv2-cerrar" onClick={cerrarGrupoEntrenador}>
+                                                          {esVistaMovilApp ? 'Cerrar' : 'Plegar'}
+                                                        </button>
+                                                      </div>
+
+                                                      <div className="tv2-card-l1">
+                                                        <div className="tv2-card-tit">
+                                                          <div className="tv2-tags">
+                                                            <span className="tv2-tag">{grupo.modalidad}</span>
+                                                            <span className={`tv2-tag ${pistaGrande ? 'is-grande' : 'is-pista'}`}>Pista {String(grupo.pista || '-').toLowerCase()}</span>
+                                                          </div>
+                                                          <b style={{ marginTop: 5 }}>{nivelTv2 || 'Sin nivel'}</b>
+                                                          <span>{total} {total === 1 ? 'niño' : 'niños'}</span>
+                                                        </div>
+                                                        <div className="tv2-punto"><small>PUNTO</small>{grupo.punto_encuentro || '-'}</div>
+                                                      </div>
+
+                                                      {companerosTv2.length > 0 && (
+                                                        <p className="tv2-con">
+                                                          Con <b>{companerosTv2.join(' y ')}</b> ·{' '}
+                                                          {alumnosPropios.length > 0
+                                                            ? `📝 Te tocan ${alumnosPropios.length} ${alumnosPropios.length === 1 ? 'reporte' : 'reportes'} (marcados abajo)`
+                                                            : 'No tienes reportes en este grupo'}
+                                                        </p>
+                                                      )}
+
+                                                      <div className={`tv2-paso is-${pasoTv2}`}>
+                                                        <b>
+                                                          {pasoTv2 === 'confirmar'
+                                                            ? 'Confirma que vas a este grupo'
+                                                            : pasoTv2 === 'lista'
+                                                            ? '1 · Pasa lista'
+                                                            : pasoTv2 === 'reportes'
+                                                            ? '2 · Haz tus reportes'
+                                                            : '✓ Todo hecho en este grupo'}
+                                                        </b>
+                                                        {total > 0 && (
+                                                          <div className="tv2-paso-fila">
+                                                            <div className="tv2-barra-asis" aria-hidden="true">
+                                                              <span className="v" style={{ width: `${(presentes / total) * 100}%` }} />
+                                                              <span className="f" style={{ width: `${(ausentes / total) * 100}%` }} />
+                                                            </div>
+                                                            <span>
+                                                              {pasoTv2 === 'reportes'
+                                                                ? `${Math.max(faltaReporte, porHacerTv2)} por hacer`
+                                                                : pasoTv2 === 'hecho'
+                                                                ? `${presentes} vinieron · ${ausentes} faltaron`
+                                                                : `${presentes + ausentes}/${total} marcados`}
+                                                            </span>
+                                                          </div>
+                                                        )}
+                                                      </div>
+                                                      {confirmarTv2}
+
+                                                      <ul className="tv2-ninos">
+                                                        {alumnosGrupo.map((alumno) => {
+                                                          const mio = alumno.entrenador_id === grupo.entrenador_id;
+                                                          const estado = alumno.estado_asistencia;
+                                                          const nombre = nombreLegible(alumno.alumno);
+                                                          const reporteHecho = alumno.estado_reporte === 'Reporte enviado';
+                                                          return (
+                                                            <li
+                                                              key={`${grupo.grupo_id}-${alumno.alumno_id}`}
+                                                              className={`tv2-nino${estado === 'Presente' ? ' is-viene' : ''}${estado === 'Ausente' ? ' is-falta' : ''}`}
+                                                            >
+                                                              <div className="tv2-nino-fila">
+                                                                <div className="tv2-nino-nm">
+                                                                  <b>{nombre}</b>
+                                                                  <div className="tv2-sub">
+                                                                    <span className="tv2-nv">{nivelLegible(alumno.nivel_alumno) || 'Sin nivel'}</span>
+                                                                    {alumno.edad !== null && alumno.edad !== undefined && (
+                                                                      <span className="tv2-ed">{textoEdadNino(alumno.edad)}</span>
+                                                                    )}
+                                                                    {mio && reporteHecho ? (
+                                                                      <span className="tv2-r is-hecho">✓ Reporte enviado</span>
+                                                                    ) : hayRepartoTv2 ? (
+                                                                      mio ? (
+                                                                        <span className="tv2-r is-mio">📝 Tu reporte</span>
+                                                                      ) : (
+                                                                        <span className="tv2-r is-otro">
+                                                                          Reporte de {nombreLegible(alumno.entrenador || 'otro').split(' ')[0]}
+                                                                        </span>
+                                                                      )
+                                                                    ) : null}
+                                                                    <PreparadoGrandeEtiqueta preparado={preparadosGrande.get(alumno.alumno_id)} />
+                                                                  </div>
+                                                                </div>
+                                                                <div className="tv2-seg">
+                                                                  <button
+                                                                    type="button"
+                                                                    className={`si${estado === 'Presente' ? ' is-on' : ''}`}
+                                                                    aria-pressed={estado === 'Presente'}
+                                                                    aria-label={`${nombre} ha venido`}
+                                                                    title={estado === 'Presente' ? 'Pulsa otra vez para dejarlo sin marcar' : 'Ha venido'}
+                                                                    onClick={() =>
+                                                                      marcarAsistencia(grupo.grupo_id, alumno.alumno_id, estado === 'Presente' ? 'Pendiente' : 'Presente')
+                                                                    }
+                                                                  >
+                                                                    ✓
+                                                                  </button>
+                                                                  <button
+                                                                    type="button"
+                                                                    className={`no${estado === 'Ausente' ? ' is-on' : ''}`}
+                                                                    aria-pressed={estado === 'Ausente'}
+                                                                    aria-label={`${nombre} falta`}
+                                                                    title={estado === 'Ausente' ? 'Pulsa otra vez para dejarlo sin marcar' : 'Falta'}
+                                                                    onClick={() =>
+                                                                      marcarAsistencia(grupo.grupo_id, alumno.alumno_id, estado === 'Ausente' ? 'Pendiente' : 'Ausente')
+                                                                    }
+                                                                  >
+                                                                    ✕
+                                                                  </button>
+                                                                </div>
+                                                              </div>
+                                                              {mio && alumno.estado_reporte === 'Falta reporte' && !formularioAbierto(alumno) && (
+                                                                <button type="button" className="tv2-hacer" onClick={() => abrirFormularioReporte(alumno)}>
+                                                                  📝 Hacer reporte de {nombre.split(' ')[0]}
+                                                                </button>
+                                                              )}
+                                                              {mio && formularioAbierto(alumno) && renderFormularioReporteEntrenador(alumno, grupo.nivel_grupo, 'inline')}
+                                                            </li>
+                                                          );
+                                                        })}
+                                                      </ul>
+
+                                                      <div className="tv2-pie">
+                                                        <button type="button" className={panelAbierto === 'trab' ? 'is-on' : ''} onClick={() => cambiarPanel('trab')}>
+                                                          <span>📋</span>Trabajo diario
+                                                        </button>
+                                                        <button type="button" className={panelAbierto === 'obs' ? 'is-on' : ''} onClick={() => cambiarPanel('obs')}>
+                                                          <span>⚠️</span>Observaciones
+                                                        </button>
+                                                      </div>
+                                                      {panelAbierto === 'trab' && (
+                                                        <div className="tv2-panel">{formatearTrabajoDiario(grupo.trabajo_diario ?? null)}</div>
+                                                      )}
+                                                      {panelAbierto === 'obs' && (
+                                                        <div className="tv2-panel">{formatearObservaciones(grupo.observaciones_importantes ?? null)}</div>
+                                                      )}
+                                                    </div>
+                                                  );
+                                                })() : (
+                                                <>
                                                 <div className="trainer-group-sheet-header">
                                                   <div>
                                                     <span className="trainer-group-sheet-kicker">
@@ -2687,7 +3032,8 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                                                     )}
                                                   </div>
                                                 </details>
-
+                                                </>
+                                                )}
                                               </article>
                                             );
 
