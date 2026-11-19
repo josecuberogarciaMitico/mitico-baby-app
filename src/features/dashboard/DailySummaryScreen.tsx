@@ -7,6 +7,7 @@ import { SelectorDiaPista } from './SelectorDiaPista';
 import { proximaFechaConSesiones } from '../../services/reports/coordinationReportsService';
 import { useAsistenciaPista } from './useAsistenciaPista';
 import { resumirAsistencia, textoResumenAsistencia, type EstadoAsistencia } from './asistenciaPistaLogic';
+import { GruposPistaTurno, nombreCortoPista, type GrupoPista } from './GruposPista';
 
 // Botón pequeño común de Trabajo en pista (WhatsApp, Llamar, Camiseta, Chaqueta).
 const pildoraPista: React.CSSProperties = {
@@ -53,6 +54,16 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
   // Chaqueta de entrenador: se marca SÍ / NO desde su grupo, igual que la
   // camiseta de los niños. Cambia el dato de su ficha (Entrenadores).
   const [guardandoChaquetaId, setGuardandoChaquetaId] = React.useState('');
+  // 19/11 (Jose): vista nueva de los grupos en pista (uno abierto cada vez).
+  // «Ver como antes» vuelve a la de siempre; se recuerda en este navegador.
+  const [vistaPistaNueva, setVistaPistaNueva] = React.useState<boolean>(() => {
+    try { return localStorage.getItem('mitico_pista_vista_v1') !== 'antes'; } catch { return true; }
+  });
+  const [grupoPistaAbierto, setGrupoPistaAbierto] = React.useState('');
+  function cambiarVistaPista(nueva: boolean) {
+    setVistaPistaNueva(nueva);
+    try { localStorage.setItem('mitico_pista_vista_v1', nueva ? 'nueva' : 'antes'); } catch { /* sin almacenamiento */ }
+  }
   const {
     abrirAjustePistaSesion,
     abrirResultadoAlumnoResumenDia,
@@ -142,6 +153,109 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
       .filter((estado: EstadoAsistencia | null): estado is EstadoAsistencia => estado !== null);
   }
   const resumenAsistenciaDia = resumirAsistencia(gruposPublicadosDia.flatMap(estadosAsistenciaGrupo));
+
+  // Al buscar un niño, su grupo se abre en la vista nueva para poder verlo.
+  React.useEffect(() => {
+    if (grupoResumenDiaDestacado) setGrupoPistaAbierto(`resumen-grupo-${grupoResumenDiaDestacado}`);
+  }, [grupoResumenDiaDestacado]);
+
+  // Datos de cada grupo para la vista nueva. Las acciones son las de siempre.
+  function datosGruposPista(sesion: any, gruposPublicados: any[], sesionOperativaId: string): GrupoPista[] {
+    return gruposPublicados.map((grupo: any, indice: number) => {
+      const claveGrupo = String(grupo.grupo_id || `${sesion.id}-${indice}`);
+      const grupoIdAsistencia = String(grupo.grupo_id || '');
+      const visual = String(nombreGrupoVisualApp(grupo, indice));
+      const pistaTxt = String(grupo.pista || '').toLowerCase();
+      const r = resumirAsistencia(estadosAsistenciaGrupo(grupo));
+      const alumnosGrupo: string[] = alumnosGrupoResumenDia(grupo);
+      const nombresEnt = [
+        grupo.entrenador || grupo.entrenadores,
+        grupo.entrenador_apoyo,
+        grupo.entrenador_tercero,
+      ].filter(Boolean).map((n: string) => nombreCortoPista(n));
+      return {
+        id: claveGrupo,
+        domId: `resumen-grupo-${claveGrupo}`,
+        titulo: `Grupo ${indice + 1}`,
+        niveles: visual.includes(' · Nivel ') ? visual.split(' · Nivel ').slice(1).join(' · Nivel ') : visual,
+        punto: String(grupo.punto_encuentro || '-'),
+        pistaTexto: grupo.pista ? `Pista ${grupo.pista}` : 'Sin pista',
+        pista: pistaTxt.includes('grande') ? 'grande' : pistaTxt.includes('peque') ? 'pequena' : 'otra',
+        textoEntrenadores: nombresEnt.length ? nombresEnt.join(' + ') : 'SIN ENTRENADOR',
+        sinEntrenador: !(grupo.entrenador || grupo.entrenadores),
+        destacado: grupoResumenDiaDestacado === claveGrupo,
+        entrenadores: groupTrainersJacket(grupo, entrenadores || []).map((e) => {
+          const norm = (t: string) => textoSinAcentosGrupoApp(String(t || '')).trim();
+          const esTercero = grupo.entrenador_tercero && norm(grupo.entrenador_tercero) === norm(e.nombre_completo);
+          return {
+            id: e.entrenador_id,
+            nombre: nombreCortoPista(e.nombre_completo),
+            rol: esTercero ? 'Tercero' : e.rol === 'apoyo' ? 'Apoyo' : null,
+            chaqueta: e.chaqueta,
+            guardando: guardandoChaquetaId === e.entrenador_id,
+            ocupado: Boolean(guardandoChaquetaId),
+            onChaqueta: () => void cambiarChaquetaEntrenador(e),
+          };
+        }),
+        resumen: { presentes: r.presentes, ausentes: r.ausentes, sinMarcar: r.sinMarcar, total: alumnosGrupo.length },
+        ninos: alumnosGrupo.map((alumno: string, alumnoIndice: number) => {
+          const ficha = fichaAlumnoResumenDiaDesdeTexto(alumno);
+          const telefono = telefonoAlumnoResumenDia(alumno);
+          const [nombreAlumno, ...restoAlumno] = alumno.split(' · ');
+          const estado =
+            ficha?.alumno_id && grupoIdAsistencia ? asistencia.estadoDe(grupoIdAsistencia, ficha.alumno_id) : undefined;
+          return {
+            clave: `${grupo.grupo_id || indice}-${alumnoIndice}`,
+            domId: `resumen-alumno-${claveGrupo}-${claveDomAlumnoResumenDia(alumno.split('·')[0])}`,
+            nombre: nombreAlumno,
+            detalle: restoAlumno.join(' · ').replace(/\bINICIACION\b/g, 'INICIACIÓN'),
+            // Igual que la vista de siempre: sin fila de asistencia (null) no se puede marcar;
+            // «Pendiente» es «sin marcar» y sí lleva ✓ / ✕.
+            estado: estado === 'Presente' || estado === 'Ausente' ? estado : estado === 'Pendiente' ? null : undefined,
+            guardandoAsistencia: Boolean(ficha?.alumno_id) && asistencia.guardando === `${grupoIdAsistencia}::${ficha?.alumno_id}`,
+            asistenciaOcupada: Boolean(asistencia.guardando),
+            destacado:
+              grupoResumenDiaDestacado === claveGrupo &&
+              Boolean(alumnoResumenDiaDestacado) &&
+              textoSinAcentosGrupoApp(alumno.split('·')[0]) === alumnoResumenDiaDestacado,
+            whatsapp: hrefWhatsappAlumnoResumenDia(telefono) || null,
+            llamada: hrefTelefonoAlumnoResumenDia(telefono) || null,
+            tieneFicha: Boolean(ficha),
+            camisetaPendiente: ficha?.camiseta_entregada === false,
+            guardandoCamiseta: Boolean(ficha?.alumno_id) && ficha?.alumno_id === guardandoCamisetaAlumnoId,
+            onMarcar: (opcion: 'Presente' | 'Ausente') => {
+              if (ficha?.alumno_id && grupoIdAsistencia) void asistencia.marcar(grupoIdAsistencia, ficha.alumno_id, opcion);
+            },
+            onCamiseta: () => {
+              if (ficha) void actualizarCamisetaAlumnoResumenDia(ficha, ficha.camiseta_entregada === false);
+            },
+            onMover:
+              sesionOperativaId && ficha?.alumno_id && grupo.grupo_id && gruposPublicados.length > 1
+                ? () => {
+                    if (!(ajustePistaSesionId === sesionOperativaId && ajustePistaModo === 'mover')) {
+                      abrirAjustePistaSesion(sesionOperativaId, 'mover');
+                    }
+                    setMovimientoPistaAlumno(`${grupo.grupo_id}::${ficha.alumno_id}`);
+                    setMovimientoPistaDestino('');
+                    window.setTimeout(
+                      () => document.getElementById(`ajuste-pista-${sesionOperativaId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }),
+                      80
+                    );
+                  }
+                : null,
+          };
+        }),
+        // «Quién hace cada reporte» solo existe con dos entrenadores (como en la vista de siempre).
+        reportes:
+          grupo.grupo_id && grupo.entrenador_id && grupo.entrenador_apoyo_id ? (
+            <ReportSplitPanel grupo={grupo} consultarSupabase={ctx.consultarSupabase} ejecutarFuncion={ctx.ejecutarFuncion} />
+          ) : null,
+        trabajo: grupo.trabajo_diario ? String(grupo.trabajo_diario) : null,
+        observaciones: grupo.observaciones_importantes ? formatearObservaciones(grupo.observaciones_importantes) : null,
+        hayObservaciones: Boolean(grupo.observaciones_importantes),
+      };
+    });
+  }
 
   // 05/11: al entrar en Trabajo en pista sale el día que toca: hoy si hay
   // sesiones, y si no, el siguiente día con sesiones (no el último que se miró).
@@ -679,8 +793,10 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
 
                           return (
                             <div
+                              id={`ajuste-pista-${sesionOperativaId}`}
                               style={{
                                 gridColumn: '1 / -1',
+                                scrollMarginTop: 70,
                                 padding: 13,
                                 borderRadius: 16,
                                 border: '1px solid #bae6d3',
@@ -1023,8 +1139,34 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                           <div style={tarjetaMovilVacia}>
                             No hay grupos publicados en este turno.
                           </div>
+                        ) : vistaPistaNueva ? (
+                          <>
+                            <div className="gpi-vista" role="group" aria-label="Forma de ver los grupos" style={{ gridColumn: '1 / -1' }}>
+                              <button type="button" className="is-activa" onClick={() => cambiarVistaPista(true)}>Vista nueva</button>
+                              <button type="button" onClick={() => cambiarVistaPista(false)}>Ver como antes</button>
+                            </div>
+                            <GruposPistaTurno
+                              grupos={datosGruposPista(
+                                sesion,
+                                gruposPublicados,
+                                String(sesion.agendaDirecta?.sesion_id || sesion.dia?.sesion_id || '')
+                              )}
+                              abierto={
+                                grupoPistaAbierto ||
+                                (gruposPublicados.length === 1
+                                  ? `resumen-grupo-${String(gruposPublicados[0].grupo_id || `${sesion.id}-0`)}`
+                                  : '')
+                              }
+                              onAbrir={(domId) => setGrupoPistaAbierto(domId || ' ')}
+                            />
+                          </>
                         ) : (
-                          gruposPublicados.map((grupo: any, indice: number) => {
+                          <>
+                          <div className="gpi-vista" role="group" aria-label="Forma de ver los grupos" style={{ gridColumn: '1 / -1' }}>
+                            <button type="button" onClick={() => cambiarVistaPista(true)}>Vista nueva</button>
+                            <button type="button" className="is-activa" onClick={() => cambiarVistaPista(false)}>Ver como antes</button>
+                          </div>
+                          {gruposPublicados.map((grupo: any, indice: number) => {
                             const alumnosGrupo = alumnosGrupoResumenDia(grupo);
                             return (
                               <div
@@ -1376,7 +1518,8 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                 )}
                               </div>
                             );
-                          })
+                          })}
+                          </>
                         )}
                       </div>
                     )}
