@@ -17,6 +17,8 @@ export type NinoTablero = {
   asistencia?: string | null;
   noViene?: boolean;
   puedeMarcarNoViene?: boolean;
+  /** Enlace de WhatsApp de la familia (si la ficha tiene teléfono). */
+  whatsapp?: string | null;
 };
 
 export type GrupoTablero = {
@@ -156,8 +158,14 @@ export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, o
                 }}
                 onDragEnd={() => { setArrastre(null); setSobre(null); }}
               >
-                <span className="gt-nombre" title={n.nombre}>
-                  {n.nombre}
+                <span className="gt-nombre" title={n.whatsapp ? `WhatsApp a la familia de ${n.nombre}` : n.nombre}>
+                  {n.whatsapp ? (
+                    <a className="gt-wa" href={n.whatsapp} target="_blank" rel="noreferrer" draggable={false}>
+                      {n.nombre}
+                    </a>
+                  ) : (
+                    n.nombre
+                  )}
                   {n.asistencia && <small className="gt-asis">{n.asistencia}</small>}
                 </span>
                 {n.nivel && <span className="gt-nivel">{n.nivel}</span>}

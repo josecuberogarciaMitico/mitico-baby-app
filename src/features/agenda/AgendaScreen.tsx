@@ -49,6 +49,7 @@ import { avisoCompartirPunto, opcionesPuntoEncuentro, textoOpcionPunto } from '.
 import type { SesionPlan } from './sinColocarPlanner';
 import { notifyGroupChangedAndRequestReconfirmation } from './groupChangeNotification';
 import { abrirFichaAlumno } from '../students/studentFichaStore';
+import { familyWhatsappUrl } from '../../core/students/masterStudent';
 import {
   sessionTrainerCoverage,
   type AgendaTrainerAssignmentRow,
@@ -868,6 +869,14 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
               : null,
             noViene,
             puedeMarcarNoViene: Boolean(contexto) && estadoAsis !== 'PRESENTE' && estadoAsis !== 'LLEGA_TARDE',
+            // 20/11: pinchar el nombre abre el WhatsApp de la familia (teléfono de la ficha).
+            whatsapp: alumnoSesion
+              ? familyWhatsappUrl(
+                  (alumnos as Array<{ alumno_id: string; telefono?: string | null }> | undefined)?.find(
+                    (a) => a.alumno_id === alumnoSesion.alumno_id
+                  )?.telefono
+                )
+              : null,
           };
         });
       const particular = esNombreGrupoParticularApp(grupo.nombre_grupo);
