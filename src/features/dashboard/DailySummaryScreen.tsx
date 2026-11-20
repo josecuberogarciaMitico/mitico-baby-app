@@ -29,25 +29,26 @@ type DailySummaryScreenProps = {
 };
 
 // «Ajustes en pista · hoy» (05/11): mismo aspecto para los cuatro botones.
+// 20/11: botones tipo pastilla en una barra compacta; el activo, en verde lleno.
 export function botonAjustePista(activo: boolean): React.CSSProperties {
   return {
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    width: '100%',
-    minHeight: 42,
-    padding: '8px 12px',
-    borderRadius: 12,
-    border: `1px solid ${activo ? '#0f766e' : '#d1d5db'}`,
-    background: activo ? '#ecfdf5' : '#ffffff',
-    color: activo ? '#065f46' : '#0f172a',
+    minHeight: 36,
+    padding: '7px 14px',
+    borderRadius: 999,
+    border: `1px solid ${activo ? '#0f766e' : '#e2e8f0'}`,
+    background: activo ? '#0f766e' : '#ffffff',
+    color: activo ? '#ffffff' : '#0f172a',
     fontWeight: 800,
     fontSize: 13.5,
     lineHeight: 1.2,
     textAlign: 'center',
+    whiteSpace: 'nowrap',
     cursor: 'pointer',
-    boxShadow: activo ? 'inset 0 0 0 1px #0f766e' : '0 1px 2px rgba(15, 23, 42, 0.06)',
+    boxShadow: activo ? '0 4px 12px rgba(15, 118, 110, .25)' : '0 1px 2px rgba(15, 23, 42, 0.05)',
   };
 }
 
@@ -746,10 +747,10 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                               style={{
                                 gridColumn: '1 / -1',
                                 scrollMarginTop: 70,
-                                padding: 13,
+                                padding: panelActivo ? 12 : '4px 0',
                                 borderRadius: 16,
-                                border: '1px solid #bae6d3',
-                                background: 'linear-gradient(135deg,#f0fdf4,#f8fafc)',
+                                border: panelActivo ? '1px solid #bae6d3' : '1px solid transparent',
+                                background: panelActivo ? '#f8fafc' : 'transparent',
                                 display: 'grid',
                                 gap: 10,
                               }}
@@ -763,28 +764,21 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                   alignItems: 'center',
                                 }}
                               >
-                                <div>
-                                  <strong style={{ color: '#065f46', fontSize: 15 }}>
-                                    Ajustes en pista · hoy
-                                  </strong>
-                                  <p
-                                    style={{
-                                      margin: '3px 0 0',
-                                      color: '#475569',
-                                      fontSize: 12,
-                                      lineHeight: 1.4,
-                                    }}
-                                  >
-                                    Cambios reales del turno. Se actualizan listado, asistencia, observaciones y responsable del reporte. El trabajo diario no se sobrescribe: el alumno usa el del grupo en el que queda hoy.
-                                  </p>
-                                </div>
-                                {/* 05/11: los cuatro botones con el mismo estilo; el activo, en verde. */}
+                                {/* 20/11: barra compacta. La explicación larga va en la ayuda (title)
+                                    y, resumida, solo cuando hay un ajuste abierto. */}
+                                <strong
+                                  title="Cambios reales del turno. Se actualizan listado, asistencia, observaciones y responsable del reporte. El trabajo diario no se sobrescribe: el alumno usa el del grupo en el que queda hoy."
+                                  style={{ color: '#64748b', fontSize: 11, fontWeight: 900, letterSpacing: '.08em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}
+                                >
+                                  Ajustes de hoy
+                                </strong>
                                 <div
                                   style={{
-                                    flex: '1 1 100%',
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                                    gap: 8,
+                                    flex: '1 1 300px',
+                                    minWidth: 0,
+                                    display: 'flex',
+                                    flexWrap: 'wrap',
+                                    gap: 6,
                                   }}
                                 >
                                   <button
@@ -820,6 +814,12 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                                   )}
                                 </div>
                               </div>
+
+                              {panelActivo && (
+                                <p style={{ margin: 0, color: '#64748b', fontSize: 12, lineHeight: 1.4 }}>
+                                  Solo cambia el turno de hoy (listado, asistencia y quién hace el reporte). El trabajo diario es el del grupo en el que queda.
+                                </p>
+                              )}
 
                               {panelActivo && mensajeAjustePista && (
                                 <div
