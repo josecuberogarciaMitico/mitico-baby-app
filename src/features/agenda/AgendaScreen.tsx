@@ -66,6 +66,9 @@ type AgendaScreenProps = {
   ctx: Record<string, any>;
 };
 
+// Últimas asignaciones de entrenadores cargadas (sobrevive a salir y volver a la pantalla).
+let cacheAsignacionesSemanaAgenda: { semana: string; filas: AgendaTrainerAssignmentRow[] } | null = null;
+
 export function AgendaScreen({ ctx }: AgendaScreenProps) {
   const [agendaPestanaProceso, setAgendaPestanaProceso] = useState<
     'crear' | 'organizar' | 'publicar'
@@ -428,9 +431,25 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
       setAnadiendoFueraPlazoSesion(false);
     }
   }
-  const [agendaTrainerAssignmentRows, setAgendaTrainerAssignmentRows] = useState<
+  // 20/11: las asignaciones de la semana se recuerdan al salir y volver a
+  // Entrenamientos (antes empezaban vacías y los días salían en naranja
+  // «pendiente» hasta que llegaba la consulta). Se refrescan igual al entrar.
+  const [agendaTrainerAssignmentRows, setAgendaTrainerAssignmentRowsEstado] = useState<
     AgendaTrainerAssignmentRow[]
-  >([]);
+  >(() => {
+    const cache = cacheAsignacionesSemanaAgenda;
+    return cache && cache.semana === semanaAgendaActiva ? cache.filas : [];
+  });
+  const [semanaAsignacionesCargada, setSemanaAsignacionesCargada] = useState<string>(() => {
+    const cache = cacheAsignacionesSemanaAgenda;
+    return cache && cache.semana === semanaAgendaActiva ? cache.semana : '';
+  });
+  function setAgendaTrainerAssignmentRows(filas: AgendaTrainerAssignmentRow[], semana = semanaAgendaActiva) {
+    setAgendaTrainerAssignmentRowsEstado(filas);
+    setSemanaAsignacionesCargada(semana || '');
+    cacheAsignacionesSemanaAgenda = semana ? { semana, filas } : null;
+  }
+  const asignacionesSemanaListas = Boolean(semanaAgendaActiva) && semanaAsignacionesCargada === semanaAgendaActiva;
 
   const gruposPropuestaActuales = gruposRecomendadosAgenda();
   // 17/11: el desplegable «Mover a» usa los MISMOS nombres que los títulos de
@@ -490,7 +509,8 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
       setAgendaTrainerAssignmentRows(
         Array.isArray(assignmentRows)
           ? (assignmentRows as AgendaTrainerAssignmentRow[])
-          : []
+          : [],
+        semanaAgendaActiva
       );
     } catch (errorResumen) {
       console.warn('No se pudieron cargar las asignaciones semanales de entrenadores.', errorResumen);
@@ -1559,12 +1579,18 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                           dia.fecha
                         ) as SesionAgendaOperativa[];
                         const resumen = resumenDia(sesionesDiaBoton);
-                        const estado = estadoDia(sesionesDiaBoton, (s) =>
+                        const estadoCalculado = estadoDia(sesionesDiaBoton, (s) =>
                           sessionTrainerCoverage(
                             s as SesionAgendaOperativa,
                             agendaTrainerAssignmentRows
                           )
                         );
+                        // 20/11: mientras no han llegado los entrenadores de la
+                        // semana, el punto sale gris (cargando), no naranja.
+                        const estado =
+                          estadoCalculado === 'pendiente' && !asignacionesSemanaListas
+                            ? 'cargando'
+                            : estadoCalculado;
                         const activo = dia.fecha === diaActivo.fecha;
                         const esHoy = dia.fecha === hoyTablero;
                         const pasado = dia.fecha < hoyTablero;
