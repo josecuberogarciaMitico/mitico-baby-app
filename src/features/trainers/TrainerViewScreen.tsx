@@ -47,6 +47,8 @@ type TrainerViewScreenProps = {
 
 export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
   const [tareaEntrenadorAbierta, setTareaEntrenadorAbierta] = useState<string | null>(null);
+  // 20/11: el detalle de «tareas por cerrar» se abre con «Ver todo».
+  const [tareasVisiblesEntrenador, setTareasVisiblesEntrenador] = useState<Record<string, boolean>>({});
   // 11/11: A+ que pueden subir a la pista grande (etiqueta en cada niño).
   const preparadosGrande = usePreparadosGrande();
   const [diaDisponibilidadAbierto, setDiaDisponibilidadAbierto] = useState('');
@@ -66,7 +68,6 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
     alumnosDelGrupo,
     ayudaReporteEntrenadorCaja,
     avisoPendiente,
-    badgeModalidadMovil,
     bloqueInfoEntrenador,
     bloqueSemanaMovil,
     bloqueTexto,
@@ -83,7 +84,6 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
     cerrarGrupoEntrenador,
     confirmarGrupoEntrenador,
     contadorGrandeMovil,
-    contadorNinosMovil,
     createPortal,
     diaEntrenadorCard,
     diasDisponibilidadVistaEntrenador,
@@ -114,7 +114,6 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
     grupoActivoEntrenador,
     grupoReporteActivo,
     grupoEntrenadorCardMovil,
-    grupoEntrenadorTopMovil,
     gruposEntrenador,
     grupoTienePendientesVistaEntrenador,
     gridFormulario,
@@ -1229,39 +1228,6 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
             >
               <button
                 type="button"
-                className="trainer-section-tab trainer-section-tab--availability"
-                aria-pressed={tabVistaEntrenador === 'disponibilidad'}
-                onClick={() => {
-                  setTabVistaEntrenador('disponibilidad');
-                  if (esEntrenadorApp) void cargarDisponibilidad();
-                }}
-                style={{
-                  minHeight: 46,
-                  padding: '10px 13px',
-                  borderRadius: 11,
-                  border: '1px solid transparent',
-                  background:
-                    tabVistaEntrenador === 'disponibilidad' ? '#ffffff' : 'transparent',
-                  color:
-                    tabVistaEntrenador === 'disponibilidad'
-                      ? '#0f172a'
-                      : '#475569',
-                  fontSize: 13,
-                  fontWeight: 900,
-                  textAlign: 'center',
-                  boxShadow:
-                    tabVistaEntrenador === 'disponibilidad'
-                      ? '0 2px 8px rgba(15,23,42,.10)'
-                      : 'none',
-                  cursor: 'pointer',
-                  transition:
-                    'background .15s ease, color .15s ease, box-shadow .15s ease, border-color .15s ease',
-                }}
-              >
-                Disponibilidad
-              </button>
-              <button
-                type="button"
                 className="trainer-section-tab trainer-section-tab--groups"
                 aria-pressed={tabVistaEntrenador === 'grupos'}
                 onClick={() => setTabVistaEntrenador('grupos')}
@@ -1292,6 +1258,39 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                 {totalTareasPendientesVistaEntrenador > 0 && (
                   <i className="trainer-v2-tab-badge">{totalTareasPendientesVistaEntrenador}</i>
                 )}
+              </button>
+              <button
+                type="button"
+                className="trainer-section-tab trainer-section-tab--availability"
+                aria-pressed={tabVistaEntrenador === 'disponibilidad'}
+                onClick={() => {
+                  setTabVistaEntrenador('disponibilidad');
+                  if (esEntrenadorApp) void cargarDisponibilidad();
+                }}
+                style={{
+                  minHeight: 46,
+                  padding: '10px 13px',
+                  borderRadius: 11,
+                  border: '1px solid transparent',
+                  background:
+                    tabVistaEntrenador === 'disponibilidad' ? '#ffffff' : 'transparent',
+                  color:
+                    tabVistaEntrenador === 'disponibilidad'
+                      ? '#0f172a'
+                      : '#475569',
+                  fontSize: 13,
+                  fontWeight: 900,
+                  textAlign: 'center',
+                  boxShadow:
+                    tabVistaEntrenador === 'disponibilidad'
+                      ? '0 2px 8px rgba(15,23,42,.10)'
+                      : 'none',
+                  cursor: 'pointer',
+                  transition:
+                    'background .15s ease, color .15s ease, box-shadow .15s ease, border-color .15s ease',
+                }}
+              >
+                Disponibilidad
               </button>
             </div>
           </article>
@@ -1487,62 +1486,75 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                       gap: 8,
                     }}
                   >
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        gap: 10,
-                        flexWrap: 'wrap',
-                      }}
-                    >
-                      <div>
-                        <strong
-                          style={{
-                            display: 'block',
-                            fontSize: 14,
-                            color: '#8a3d08',
-                          }}
-                        >
-                          Tareas por cerrar
-                        </strong>
-                      </div>
+                    {/* 20/11: aviso único en rojo suave con botón directo (maqueta aprobada).
+                        El detalle de cada tarea sigue debajo, con «Ver todo». */}
+                    {(() => {
+                      const eid = bloqueEntrenador.entrenador_id;
+                      const conf = gruposSinConfirmarEntrenadorVista(eid);
+                      const pend = pendientesEntrenadorVista(eid);
+                      const asis = pend.filter(
+                        (r) => r.estado_reporte === 'Asistencia sin confirmar' || r.estado_asistencia === 'Pendiente'
+                      );
+                      const reps = pend.filter((r) => r.estado_reporte === 'Falta reporte');
+                      const fechaCorta = (f?: string | null) => {
+                        if (!f) return '';
+                        const d = new Date(`${String(f).slice(0, 10)}T00:00:00`);
+                        const dia = d.toLocaleDateString('es-ES', { weekday: 'short' }).replace('.', '');
+                        return `${dia.charAt(0).toUpperCase()}${dia.slice(1)} ${d.getDate()}`;
+                      };
+                      const nombreCorto = (n?: string | null) => String(n || '').replace(/\s*·\s*Nivel\s*/i, ' · ');
+                      let titulo = '';
+                      let detalle = '';
+                      let boton = '';
+                      let accion = () => {};
+                      if (conf.length > 0) {
+                        const g = conf[0];
+                        titulo = conf.length === 1 ? 'Tienes 1 grupo por confirmar' : `Tienes ${conf.length} grupos por confirmar`;
+                        detalle = `${fechaCorta(g.fecha)} · ${nombreCorto(g.nombre_grupo)}`;
+                        boton = 'Confirmar →';
+                        accion = () => abrirGrupoDesdeTareaEntrenador(g.grupo_id, g.entrenador_id, 'asistencia');
+                      } else if (asis.length > 0) {
+                        const r = asis[0];
+                        titulo = 'Te falta pasar lista';
+                        detalle = `${fechaCorta(r.fecha)} · ${nombreCorto(r.nombre_grupo)}`;
+                        boton = 'Pasar lista →';
+                        accion = () => abrirGrupoDesdeTareaEntrenador(r.grupo_id, r.entrenador_id, 'asistencia');
+                      } else if (reps.length > 0) {
+                        const r = reps[0];
+                        titulo = reps.length === 1 ? 'Te queda 1 reporte' : `Te quedan ${reps.length} reportes`;
+                        detalle = `${fechaCorta(r.fecha)} · ${nombreCorto(r.nombre_grupo)}`;
+                        boton = 'Hacer reportes →';
+                        accion = () => abrirGrupoDesdeTareaEntrenador(r.grupo_id, r.entrenador_id, 'asistencia', r);
+                      }
+                      const total = conf.length + asis.length + reps.length;
+                      const verTodo = Boolean(tareasVisiblesEntrenador[eid]);
+                      return (
+                        <div className="trainer-v2-aviso">
+                          <span className="trainer-v2-aviso-ic" aria-hidden="true">📝</span>
+                          <div className="trainer-v2-aviso-tx">
+                            <b>{titulo}</b>
+                            <span>{detalle}</span>
+                          </div>
+                          {boton && (
+                            <button type="button" className="trainer-v2-aviso-btn" onClick={accion}>
+                              {boton}
+                            </button>
+                          )}
+                          {total > 1 && (
+                            <button
+                              type="button"
+                              className="trainer-v2-aviso-ver"
+                              aria-expanded={verTodo}
+                              onClick={() => setTareasVisiblesEntrenador((a) => ({ ...a, [eid]: !a[eid] }))}
+                            >
+                              {verTodo ? 'Ocultar detalle' : `Ver todo (${total})`}
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })()}
 
-                      <span
-                        style={{
-                          padding: '4px 8px',
-                          borderRadius: 999,
-                          background: '#fff7ed',
-                          border: '1px solid #fed7aa',
-                          color: '#9a4b0d',
-                          fontSize: 11,
-                          fontWeight: 900,
-                          whiteSpace: 'nowrap',
-                        }}
-                      >
-                        {
-                          gruposSinConfirmarEntrenadorVista(
-                            bloqueEntrenador.entrenador_id
-                          ).length +
-                          pendientesEntrenadorVista(
-                            bloqueEntrenador.entrenador_id
-                          ).filter(
-                            (reporte) =>
-                              reporte.estado_reporte === 'Falta reporte'
-                          ).length +
-                          pendientesEntrenadorVista(
-                            bloqueEntrenador.entrenador_id
-                          ).filter(
-                            (reporte) =>
-                              reporte.estado_reporte ===
-                                'Asistencia sin confirmar' ||
-                              reporte.estado_asistencia === 'Pendiente'
-                          ).length
-                        }{' '}
-                        pendientes
-                      </span>
-                    </div>
-
+                    {tareasVisiblesEntrenador[bloqueEntrenador.entrenador_id] && (
                     <div
                       style={{
                         display: 'grid',
@@ -1896,6 +1908,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                           );
                         })}
                     </div>
+                    )}
                   </section>
                 )}
 
@@ -2203,48 +2216,62 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                                                   </button>
                                                 </div>
 
-                                                <div
-                                                  style={
-                                                    grupoEntrenadorTopMovil
-                                                  }
-                                                >
-                                                  <div>
-                                                    <p
-                                                      style={
-                                                        badgeModalidadMovil
-                                                      }
-                                                    >
-                                                      {grupo.modalidad}
-                                                    </p>
-                                                    <h3
-                                                      style={{
-                                                        margin: '4px 0',
-                                                      }}
-                                                    >
-                                                      {nombreGrupoVisualApp(
-                                                        grupo,
-                                                        indiceGrupoEntrenadorTurno
-                                                      )}
-                                                    </h3>
-                                                    <p style={{ margin: 0 }}>
-                                                      Nivel{' '}
-                                                      {grupo.nivel_grupo || '-'}{' '}
-                                                      · Pista{' '}
-                                                      {grupo.pista || '-'} ·
-                                                      Punto{' '}
-                                                      {grupo.punto_encuentro ||
-                                                        '-'}
-                                                    </p>
-                                                  </div>
-                                                  <div
-                                                    style={contadorNinosMovil}
-                                                  >
-                                                    <strong>
-                                                      {grupo.total_alumnos}
-                                                    </strong>
-                                                    <span>niños</span>
-                                                  </div>
-                                                </div>
+                                                {/* 20/11: cabecera compacta del grupo (como la maqueta aprobada):
+                                                    título, hora · pista · con quién, punto y etiquetas. */}
+                                                {(() => {
+                                                  type ResponsableTop = { entrenador_id: string; entrenador: string; alumnos: Array<{ alumno: string }> };
+                                                  const equipo = (repartoGrupo as ResponsableTop[]) || [];
+                                                  const conQuien = equipo
+                                                    .filter((r) => r.entrenador_id !== grupo.entrenador_id)
+                                                    .map((r) => {
+                                                      const partes = String(r.entrenador || '').trim().split(/\s+/);
+                                                      const nom = (partes[0] || '').charAt(0).toUpperCase() + (partes[0] || '').slice(1).toLowerCase();
+                                                      return partes[1] ? `${nom} ${partes[1].charAt(0).toUpperCase()}.` : nom;
+                                                    })
+                                                    .filter(Boolean)
+                                                    .join(' y ');
+                                                  const mios = equipo.length > 1
+                                                    ? equipo.find((r) => r.entrenador_id === grupo.entrenador_id)?.alumnos.length || 0
+                                                    : 0;
+                                                  const pista = String(grupo.pista || '').trim();
+                                                  return (
+                                                    <>
+                                                      <div className="trainer-v2-top">
+                                                        <div style={{ minWidth: 0 }}>
+                                                          <h3>
+                                                            {nombreGrupoVisualApp(
+                                                              grupo,
+                                                              indiceGrupoEntrenadorTurno
+                                                            )}
+                                                          </h3>
+                                                          <p>
+                                                            {String(grupo.hora_inicio || '').slice(0, 5)}–{String(grupo.hora_fin || '').slice(0, 5)}
+                                                            {pista ? ` · Pista ${pista.toLowerCase()}` : ''}
+                                                            {String(grupo.modalidad || '').toLowerCase() !== 'baby' && grupo.modalidad ? ` · ${grupo.modalidad}` : ''}
+                                                            {conQuien ? ` · con ${conQuien}` : ''}
+                                                          </p>
+                                                        </div>
+                                                        <div className="trainer-v2-punto">
+                                                          <small>PUNTO</small>
+                                                          {grupo.punto_encuentro || '-'}
+                                                        </div>
+                                                      </div>
+                                                      <div className="trainer-v2-etiquetas">
+                                                        <span>{grupo.total_alumnos} niños</span>
+                                                        {asistenciaCompleta ? (
+                                                          <span>Lista {alumnosGrupo.length - pendientes}/{alumnosGrupo.length}</span>
+                                                        ) : (
+                                                          <span className="is-aviso">Lista {alumnosGrupo.length - pendientes}/{alumnosGrupo.length}</span>
+                                                        )}
+                                                        {mios > 0 && <span className="is-rep">📝 {mios} {mios === 1 ? 'reporte tuyo' : 'reportes tuyos'}</span>}
+                                                        {confirmacionPropiaPendiente && <span className="is-aviso">Pendiente de confirmar</span>}
+                                                        {!confirmacionPropiaPendiente && asistenciaCompleta && faltaReporte > 0 && (
+                                                          <span className="is-pendiente">Faltan {faltaReporte} {faltaReporte === 1 ? 'reporte' : 'reportes'}</span>
+                                                        )}
+                                                      </div>
+                                                    </>
+                                                  );
+                                                })()}
 
                                                 {repartoGrupo.length > 1 && (() => {
                                                   // Equipo en una línea: con quién va y de qué niños hace el reporte.

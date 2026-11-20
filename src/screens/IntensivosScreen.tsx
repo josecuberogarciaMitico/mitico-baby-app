@@ -662,8 +662,12 @@ export function PantallaIntensivos(ctx: any) {
               const totalVolcadoNuevos = resultadoVolcadoIntensivo.filter(
                 (registro) => registro.resultado !== 'EXISTENTE'
               ).length;
+              // 20/11: «añadidos» = solo los que no estaban ya inscritos.
               const totalVolcadoExistentes = resultadoVolcadoIntensivo.filter(
-                (registro) => registro.resultado === 'EXISTENTE'
+                (registro) => registro.resultado === 'EXISTENTE' && !registro.ya_estaba
+              ).length;
+              const totalVolcadoYaEstaban = resultadoVolcadoIntensivo.filter(
+                (registro) => registro.resultado === 'EXISTENTE' && registro.ya_estaba
               ).length;
               const alumnosInscritosIntensivo = alumnosDelIntensivo(
                 intensivo.intensivo_id
@@ -1710,7 +1714,8 @@ export function PantallaIntensivos(ctx: any) {
                           {resultadoVolcadoIntensivo.length > 0 && (
                             <div style={{ marginTop: 12 }}>
                               <div style={avisoCompleto}>
-                                {resultadoVolcadoIntensivo.length} alumnos leídos · {totalVolcadoExistentes} añadidos al intensivo
+                                {resultadoVolcadoIntensivo.length} alumnos leídos · {totalVolcadoExistentes} nuevos añadidos al intensivo
+                                {totalVolcadoYaEstaban > 0 ? ` · ${totalVolcadoYaEstaban} ya estaban (no se tocan)` : ''}
                                 {totalVolcadoNuevos > 0
                                   ? ` · ${totalVolcadoNuevos} sin ficha (pendientes de Alta/Test, NO añadidos)`
                                   : ''}
@@ -1739,7 +1744,9 @@ export function PantallaIntensivos(ctx: any) {
                                     return (
                                       <div key={registro.alumno_id} style={miniTarjetaBlanca}>
                                         <strong>{registro.alumno}</strong>
-                                        {` · Añadido · Nivel: ${registro.nivel_resumen || 'SIN NIVEL'}`}
+                                        {registro.ya_estaba
+                                          ? ' · Ya estaba inscrito'
+                                          : ` · ✅ Añadido ahora · Nivel: ${registro.nivel_resumen || 'SIN NIVEL'}`}
                                       </div>
                                     );
                                   }
