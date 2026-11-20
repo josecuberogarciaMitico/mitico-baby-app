@@ -1096,6 +1096,22 @@ export function PantallaIntensivos(ctx: any) {
                             </div>
                           )}
 
+                          {/* 20/11 (Jose): añadir niños también desde «Días y grupos» (antes solo en Preparar → Alumnos). */}
+                          {bloque === 'dias' && (
+                            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  abrir('alumnos');
+                                  setMostrarVolcadoIntensivoId(intensivo.intensivo_id);
+                                }}
+                                style={subBoton(false)}
+                              >
+                                + Añadir niños ({alumnosInscritosIntensivo.length} inscritos)
+                              </button>
+                            </div>
+                          )}
+
                           {bloque === 'seguimiento' && (
                             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                               <button type="button" onClick={() => abrir('revision')} style={subBoton(gestorRevisionAbierto)}>
