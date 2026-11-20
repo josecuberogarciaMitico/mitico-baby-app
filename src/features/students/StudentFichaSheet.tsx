@@ -15,6 +15,7 @@ import {
 } from '../../core/reports/skillProgress';
 import { cerrarFichaAlumno, abrirFichaAlumno, useFichaAlumnoAbierta } from './studentFichaStore';
 import { FamilyLetterPanel } from './FamilyLetterPanel';
+import { StudentLevelTestPanel, type TestAltaAlumnoApp } from './StudentLevelTestPanel';
 import { RawStudentDump } from '../reports/RawStudentDump';
 import { textoBrutoAlumno } from '../../core/reports/rawStudentExport';
 
@@ -32,6 +33,9 @@ type Props = {
   formatDate: (fecha: string) => string;
   /** Carga la lista de alumnos si todavía no está (p. ej. al abrir desde la Agenda). */
   cargarAlumnos?: () => Promise<unknown> | void;
+  /** Test de alta que contestó la familia (20/11). Sin esto no se muestra. */
+  cargarTestAlta?: (alumnoId: string) => Promise<TestAltaAlumnoApp[]>;
+  detallePreguntaTest?: (clave: string, respuesta: string | null) => { pregunta: string; respuestaTexto: string };
 };
 
 const normalizar = (texto: string) =>
@@ -164,6 +168,15 @@ export function StudentFichaSheet(props: Props) {
           <div><b>{reportes[0]?.fecha ? props.formatDate(reportes[0].fecha) : '—'}</b><span>último</span></div>
           <div><b>{nivel ? `${resumen.focosConseguidos}/${resumen.focos}` : '—'}</b><span>focos conseguidos</span></div>
         </div>
+
+        {props.cargarTestAlta && props.detallePreguntaTest && (
+          <StudentLevelTestPanel
+            alumnoId={alumnoId}
+            cargar={props.cargarTestAlta}
+            detallePregunta={props.detallePreguntaTest}
+            formatDate={props.formatDate}
+          />
+        )}
 
         {cartaAbierta ? (
           <FamilyLetterPanel
