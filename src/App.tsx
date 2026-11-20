@@ -16555,9 +16555,10 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
 
   useEffect(() => {
     if (pantalla === 'agenda') {
-      cargarAgendaOperativaDirecta();
+      // 20/11: los intensivos (15 consultas) esperan a que llegue la agenda,
+      // para que los días y grupos de Entrenamientos salgan antes.
+      void cargarAgendaOperativaDirecta().finally(() => void cargarIntensivos());
       cargarWhatsappGruposApp();
-      cargarIntensivos();
       cargarPlanning();
       cargarListados();
       cargarEntrenadores();
@@ -16703,7 +16704,14 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       pantalla === 'ocioSemana' ||
       pantalla === 'intensivos'
     ) {
-      void cargarContextoCerebroTrabajoDiarioApp();
+      // 20/11: en Entrenamientos se pide un poco después (es pesado y solo
+      // hace falta al abrir una sesión), para no frenar la carga de la semana.
+      if (pantalla !== 'agenda') {
+        void cargarContextoCerebroTrabajoDiarioApp();
+        return;
+      }
+      const t = window.setTimeout(() => void cargarContextoCerebroTrabajoDiarioApp(), 1200);
+      return () => window.clearTimeout(t);
     }
   }, [pantalla]);
 
