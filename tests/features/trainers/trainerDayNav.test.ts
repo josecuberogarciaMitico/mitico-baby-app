@@ -48,8 +48,8 @@ test('semana anterior primero y luego un botón por día en orden', () => {
 });
 
 test('títulos cortos del día', () => {
-  equal(tituloDiaCortoEntrenador('2026-10-23'), 'Vie 23', 'viernes');
-  equal(tituloDiaCortoEntrenador('2026-10-25'), 'Dom 25', 'domingo');
+  equal(tituloDiaCortoEntrenador('2026-10-23'), 'Vie 23 oct', 'viernes');
+  equal(tituloDiaCortoEntrenador('2026-10-25'), 'Dom 25 oct', 'domingo');
 });
 
 test('día por defecto: hoy, si no el primero con pendientes, si no el primero', () => {
@@ -79,7 +79,7 @@ test('varias semanas anteriores se distinguen por fecha', () => {
     '2026-10-19',
     (grupo) => grupo.pendiente
   );
-  equal(varias.map((chip) => chip.titulo), ['Semana 05/10', 'Semana 12/10', 'Vie 23'], 'títulos');
+  equal(varias.map((chip) => chip.titulo), ['Semana 05/10', 'Semana 12/10', 'Vie 23 oct'], 'títulos');
 });
 
 test('edad del niño: texto corto y nada si no hay dato válido', () => {

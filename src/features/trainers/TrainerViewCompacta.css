@@ -10,7 +10,8 @@
   border: 1px solid rgba(255, 255, 255, .2) !important; background: rgba(255, 255, 255, .1) !important; color: #e2e8f0 !important;
 }
 .trainer-view.trainer-v2 .trainer-hero-chips > .trainer-v2-chip--ok {
-  background: rgba(74, 222, 128, .16) !important; border-color: rgba(74, 222, 128, .35) !important; color: #bbf7d0 !important;
+  /* 20/11: el mismo verde de los botones (antes era otro verde distinto) */
+  background: #0f766e !important; border-color: #0f766e !important; color: #ffffff !important;
 }
 .trainer-view.trainer-v2 .trainer-hero-chips > .trainer-v2-chip--pendiente {
   background: #ffffff !important; border-color: #ffffff !important; color: #065f46 !important; font-weight: 900;
@@ -98,3 +99,8 @@
 .trainer-view.trainer-v2 .trainer-group-card:not(.is-sheet-open) > .trainer-team-line,
 .trainer-view.trainer-v2 .trainer-group-card:not(.is-sheet-open) > .trainer-group-action-status { display: none !important; }
 .trainer-view.trainer-v2 .trainer-group-card { gap: 9px !important; }
+
+/* 20/11 (Jose): un solo verde. La tarjeta del grupo cerrada va en blanco (sin fondo ni borde verde claro). */
+.trainer-view.trainer-v2 .trainer-group-card:not(.is-sheet-open) {
+  background: #ffffff !important; border: 1px solid #e2e8f0 !important; box-shadow: 0 6px 16px rgba(15, 23, 42, .06) !important;
+}

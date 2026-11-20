@@ -1228,39 +1228,6 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
             >
               <button
                 type="button"
-                className="trainer-section-tab trainer-section-tab--groups"
-                aria-pressed={tabVistaEntrenador === 'grupos'}
-                onClick={() => setTabVistaEntrenador('grupos')}
-                style={{
-                  minHeight: 46,
-                  padding: '10px 13px',
-                  borderRadius: 11,
-                  border: '1px solid transparent',
-                  background:
-                    tabVistaEntrenador === 'grupos' ? '#ffffff' : 'transparent',
-                  color:
-                    tabVistaEntrenador === 'grupos'
-                      ? '#0f172a'
-                      : '#475569',
-                  fontSize: 13,
-                  fontWeight: 900,
-                  textAlign: 'center',
-                  boxShadow:
-                    tabVistaEntrenador === 'grupos'
-                      ? '0 2px 8px rgba(15,23,42,.10)'
-                      : 'none',
-                  cursor: 'pointer',
-                  transition:
-                    'background .15s ease, color .15s ease, box-shadow .15s ease, border-color .15s ease',
-                }}
-              >
-                Grupos y reportes
-                {totalTareasPendientesVistaEntrenador > 0 && (
-                  <i className="trainer-v2-tab-badge">{totalTareasPendientesVistaEntrenador}</i>
-                )}
-              </button>
-              <button
-                type="button"
                 className="trainer-section-tab trainer-section-tab--availability"
                 aria-pressed={tabVistaEntrenador === 'disponibilidad'}
                 onClick={() => {
@@ -1291,6 +1258,39 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                 }}
               >
                 Disponibilidad
+              </button>
+              <button
+                type="button"
+                className="trainer-section-tab trainer-section-tab--groups"
+                aria-pressed={tabVistaEntrenador === 'grupos'}
+                onClick={() => setTabVistaEntrenador('grupos')}
+                style={{
+                  minHeight: 46,
+                  padding: '10px 13px',
+                  borderRadius: 11,
+                  border: '1px solid transparent',
+                  background:
+                    tabVistaEntrenador === 'grupos' ? '#ffffff' : 'transparent',
+                  color:
+                    tabVistaEntrenador === 'grupos'
+                      ? '#0f172a'
+                      : '#475569',
+                  fontSize: 13,
+                  fontWeight: 900,
+                  textAlign: 'center',
+                  boxShadow:
+                    tabVistaEntrenador === 'grupos'
+                      ? '0 2px 8px rgba(15,23,42,.10)'
+                      : 'none',
+                  cursor: 'pointer',
+                  transition:
+                    'background .15s ease, color .15s ease, box-shadow .15s ease, border-color .15s ease',
+                }}
+              >
+                Grupos y reportes
+                {totalTareasPendientesVistaEntrenador > 0 && (
+                  <i className="trainer-v2-tab-badge">{totalTareasPendientesVistaEntrenador}</i>
+                )}
               </button>
             </div>
           </article>
@@ -2012,8 +2012,8 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                     chipsDias.find((chip) => chip.clave === claveElegida) || null;
 
                   return (
-                    <section className="trainer-days-box" aria-label="Mis días">
-                      <strong className="trainer-days-box-title">Mis días</strong>
+                    <section className="trainer-days-box" aria-label="Tus días de trabajo esta semana">
+                      <strong className="trainer-days-box-title">Tus días de trabajo esta semana</strong>
                       <nav
                         className="trainer-day-chips"
                         aria-label="Días con grupos"
