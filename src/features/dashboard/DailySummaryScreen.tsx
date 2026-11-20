@@ -8,6 +8,7 @@ import { proximaFechaConSesiones } from '../../services/reports/coordinationRepo
 import { useAsistenciaPista } from './useAsistenciaPista';
 import { resumirAsistencia, textoResumenAsistencia, type EstadoAsistencia } from './asistenciaPistaLogic';
 import { GruposPistaTurno, nombreCortoPista, type GrupoPista } from './GruposPista';
+import './PistaCabecera.css';
 
 // Botón pequeño común de Trabajo en pista (WhatsApp, Llamar, Camiseta, Chaqueta).
 const pildoraPista: React.CSSProperties = {
@@ -316,25 +317,27 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
       {pantalla === 'resumenDia' && (
         <section>
           <div
+            className="pc-cab"
             style={{
               position: 'relative',
               overflow: 'hidden',
-              padding: 20,
-              borderRadius: 24,
+              padding: '14px 16px',
+              borderRadius: 22,
               border: '1px solid rgba(15,118,110,.42)',
               background:
                 'linear-gradient(135deg, #06283b 0%, #08384b 52%, #0f5c4d 100%)',
               boxShadow: '0 16px 36px rgba(6,40,59,.18)',
               color: '#ffffff',
               display: 'grid',
-              gap: 16,
+              gap: 12,
             }}
           >
+            {/* 20/11: cabecera compacta: sin texto de explicación, cifras pequeñas y buscador en línea. */}
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'space-between',
-                gap: 16,
+                gap: 12,
                 alignItems: 'flex-start',
                 flexWrap: 'wrap',
               }}
@@ -353,24 +356,15 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                 </p>
                 <h2
                   style={{
-                    margin: '4px 0 0',
-                    fontSize: 28,
-                    letterSpacing: '-.025em',
+                    margin: '2px 0 6px',
+                    fontSize: 22,
+                    letterSpacing: '-.01em',
                     color: '#ffffff',
                   }}
                 >
                   Control del día
                 </h2>
               {renderAyudaRapidaPantallaApp()}
-                <p
-                  style={{
-                    margin: '7px 0 0',
-                    color: '#cbd5e1',
-                    lineHeight: 1.45,
-                  }}
-                >
-                  Turnos, grupos, alumnos, entrenadores y puntos de encuentro del día.
-                </p>
               </div>
 
               {/* 06/11: semana con flechas y un botón por día (miércoles a domingo). */}
@@ -383,26 +377,34 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
               </div>
             </div>
 
-            <label style={{ display: 'grid', gap: 7 }}>
-              <strong style={{ color: '#e2e8f0', fontSize: 13 }}>
-                Buscar alumno en los grupos publicados
-              </strong>
-              <input
-                type="search"
-                value={busquedaAlumnoResumenDia}
-                onChange={(e) => setBusquedaAlumnoResumenDia(e.target.value)}
-                placeholder="Nombre o apellidos del niño…"
-                style={{
-                  ...inputCampo,
-                  width: '100%',
-                  minHeight: 48,
-                  fontSize: 16,
-                  borderRadius: 14,
-                  border: '1px solid rgba(255,255,255,.22)',
-                  background: 'rgba(255,255,255,.98)',
-                }}
-              />
-            </label>
+            <div className="pc-fila">
+              <div className="pc-cifras">
+                {(
+                  [
+                    ['sin marcar', String(resumenAsistenciaDia.sinMarcar), resumenAsistenciaDia.sinMarcar > 0 ? 'mal' : 'bien'],
+                    ['publicados', `${totalPublicadosResumenDia}/${totalGruposResumenDia}`, totalPublicadosResumenDia === totalGruposResumenDia ? 'bien' : 'mal'],
+                    ['niños', String(totalAlumnosResumenDia), ''],
+                    ['sin entrenador', String(gruposPendientesEntrenadorResumenDia.length), gruposPendientesEntrenadorResumenDia.length === 0 ? 'bien' : 'mal'],
+                    ['faltan hoy', String(resumenAsistenciaDia.ausentes), resumenAsistenciaDia.ausentes > 0 ? 'mal' : ''],
+                  ] as Array<[string, string, string]>
+                ).map(([etiqueta, valor, tono]) => (
+                  <span key={etiqueta} className={`pc-cifra${tono ? ` is-${tono}` : ''}`}>
+                    <b>{valor}</b>
+                    {etiqueta}
+                  </span>
+                ))}
+              </div>
+              <label className="pc-buscar">
+                <span aria-hidden="true">🔎</span>
+                <input
+                  type="search"
+                  value={busquedaAlumnoResumenDia}
+                  onChange={(e) => setBusquedaAlumnoResumenDia(e.target.value)}
+                  placeholder="Buscar niño en los grupos…"
+                  aria-label="Buscar alumno en los grupos publicados"
+                />
+              </label>
+            </div>
 
             {textoBusquedaAlumnoResumenDia && (
               <div style={{ display: 'grid', gap: 8 }}>
@@ -449,6 +451,8 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
 
             {(() => {
               const pendientesCamiseta = alumnosCamisetaPendienteResumenDia();
+              // 20/11: solo sale si falta entregar alguna camiseta.
+              if (pendientesCamiseta.length === 0) return null;
 
               return (
                 <div
@@ -584,61 +588,6 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
               );
             })()}
 
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))',
-                gap: 10,
-              }}
-            >
-              {[
-                ['Turnos', String(sesionesResumenDia.length), sesionesResumenDia.length > 0],
-                ['Alumnos previstos', String(totalAlumnosResumenDia), totalAlumnosResumenDia > 0],
-                ['Grupos publicados', `${totalPublicadosResumenDia}/${totalGruposResumenDia}`, totalPublicadosResumenDia === totalGruposResumenDia],
-                ['Sin entrenador', String(gruposPendientesEntrenadorResumenDia.length), gruposPendientesEntrenadorResumenDia.length === 0],
-                ['Faltan hoy', String(resumenAsistenciaDia.ausentes), resumenAsistenciaDia.ausentes === 0],
-                ['Asistencia sin marcar', String(resumenAsistenciaDia.sinMarcar), resumenAsistenciaDia.sinMarcar === 0],
-              ].map(([etiqueta, valor, ok]) => (
-                <div
-                  key={String(etiqueta)}
-                  style={{
-                    padding: '12px 14px',
-                    borderRadius: 16,
-                    background: ok
-                      ? 'rgba(255,255,255,.10)'
-                      : 'rgba(255,247,237,.13)',
-                    border: ok
-                      ? '1px solid rgba(255,255,255,.18)'
-                      : '1px solid rgba(251,146,60,.38)',
-                    minWidth: 0,
-                  }}
-                >
-                  <strong
-                    style={{
-                      display: 'block',
-                      color: '#cbd5e1',
-                      fontSize: 10,
-                      textTransform: 'uppercase',
-                      letterSpacing: '.06em',
-                    }}
-                  >
-                    {etiqueta}
-                  </strong>
-                  <span
-                    style={{
-                      display: 'block',
-                      marginTop: 4,
-                      color: '#ffffff',
-                      fontSize: 25,
-                      lineHeight: 1,
-                      fontWeight: 950,
-                    }}
-                  >
-                    {valor}
-                  </span>
-                </div>
-              ))}
-            </div>
           </div>
 
           {gruposPendientesEntrenadorResumenDia.length > 0 && (

@@ -1,0 +1,67 @@
+/* Entrenamientos · cabecera compacta (20/11/2026). Prefijo ag-cab-. Mismo verde de siempre. */
+.ag-cab {
+  position: relative; z-index: 6; border-radius: 22px; padding: 14px 16px; color: #fff; display: grid; gap: 12px; min-width: 0;
+  background: linear-gradient(135deg, #062d3f 0%, #083b4d 58%, #0b5d4f 100%);
+  border: 1px solid rgba(16, 185, 129, .28); box-shadow: 0 14px 34px rgba(15, 23, 42, .14);
+}
+.ag-cab-l1 { display: flex; align-items: center; gap: 10px 12px; flex-wrap: wrap; min-width: 0; }
+.ag-cab-tit { display: grid; gap: 1px; margin-right: auto; min-width: 0; }
+.ag-cab-tit small { font-size: 11px; font-weight: 900; letter-spacing: .12em; color: #86efac; }
+.ag-cab-tit b { font-size: 22px; font-weight: 900; letter-spacing: -.01em; line-height: 1.15; }
+
+.ag-cab-sem { display: flex; align-items: center; gap: 4px; padding: 4px; border-radius: 14px; background: rgba(255, 255, 255, .08); border: 1px solid rgba(255, 255, 255, .16); }
+.ag-cab-sem span { font-size: 14px; font-weight: 850; padding: 0 6px; white-space: nowrap; }
+.ag-cab .ag-cab-sem button {
+  width: 34px; height: 34px; min-height: 0; padding: 0; border: 0; border-radius: 10px; background: transparent;
+  color: #e2e8f0; font: inherit; font-size: 18px; font-weight: 900; cursor: pointer;
+}
+.ag-cab .ag-cab-sem button:hover:not(:disabled) { background: rgba(255, 255, 255, .12); }
+.ag-cab .ag-cab-sem button:disabled { opacity: .3; cursor: default; }
+
+.ag-cab-acc { position: relative; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ag-cab .ag-cab-btn {
+  height: 38px; min-height: 0; padding: 0 12px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .2);
+  background: rgba(255, 255, 255, .07); color: #e2e8f0; font: inherit; font-size: 13.5px; font-weight: 800;
+  cursor: pointer; white-space: nowrap;
+}
+.ag-cab .ag-cab-btn:hover:not(:disabled), .ag-cab .ag-cab-btn.is-on { background: rgba(255, 255, 255, .16); }
+.ag-cab .ag-cab-btn:disabled { opacity: .6; cursor: wait; }
+
+.ag-cab-menu {
+  position: absolute; top: 44px; right: 0; z-index: 30; min-width: 280px; max-width: calc(100vw - 32px);
+  display: grid; gap: 2px; padding: 6px; border-radius: 14px; background: #fff; color: #0f172a;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, .28);
+}
+.ag-cab .ag-cab-menu button {
+  display: block; width: 100%; min-height: 0; text-align: left; border: 0; background: none; padding: 10px 12px;
+  border-radius: 10px; font: inherit; font-size: 14.5px; font-weight: 800; color: #0f172a; cursor: pointer;
+}
+.ag-cab .ag-cab-menu button:hover:not(:disabled) { background: #f1f5f9; }
+.ag-cab .ag-cab-menu button:disabled { opacity: .5; cursor: default; }
+.ag-cab-menu small { display: block; margin-top: 1px; font-size: 12px; font-weight: 650; color: #64748b; }
+.ag-cab-temp { display: grid; gap: 4px; padding: 8px 12px 6px; margin-top: 2px; border-top: 1px solid #e2e8f0; font-size: 12px; font-weight: 850; color: #64748b; }
+.ag-cab-temp select { font: inherit; font-size: 14px; font-weight: 750; color: #0f172a; padding: 7px 8px; border-radius: 9px; border: 1px solid #cbd5e1; background: #fff; }
+
+/* Avisos de la semana: una fila de etiquetas, sin cajas dentro de cajas. */
+.ag-cab-avisos { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-start; min-width: 0; }
+.ag-cab-avisos > * { min-width: 0; }
+.ag-cab .ag-pendientes { padding: 0; background: none; border: 0; gap: 6px; }
+.ag-cab .ag-pendientes.is-al-dia { background: none; border: 0; }
+.ag-cab .ag-pendientes-titulo { display: none; }
+.ag-cab .ag-pendientes-ok {
+  display: inline-flex; align-items: center; padding: 6px 12px; border-radius: 999px; font-size: 13px;
+  background: rgba(74, 222, 128, .14); color: #bbf7d0; border: 1px solid rgba(74, 222, 128, .3);
+}
+.ag-cab .ag-chip { min-height: 0; background: #fef3c7; border-color: #fde68a; color: #92400e; font-weight: 850; padding: 6px 12px; }
+.ag-cab .ag-chip:hover { background: #fde68a; }
+.ag-cab .ag-chip--sin_confirmar { background: #dbeafe; border-color: #bfdbfe; color: #1e40af; }
+.ag-cab .ag-chip--revisar { background: #ede9fe; border-color: #ddd6fe; color: #5b21b6; }
+.ag-cab .ag-siguiente { margin-left: 0; min-height: 0; padding: 6px 13px; border-radius: 999px; font-size: 13px; }
+.ag-cab .agenda-avisos-fila { display: contents !important; }
+
+@media (max-width: 760px) {
+  .ag-cab { padding: 12px; border-radius: 18px; gap: 10px; }
+  .ag-cab-tit b { font-size: 19px; }
+  .ag-cab-sem { order: 3; width: 100%; justify-content: space-between; }
+  .ag-cab-menu { right: auto; left: 0; }
+}

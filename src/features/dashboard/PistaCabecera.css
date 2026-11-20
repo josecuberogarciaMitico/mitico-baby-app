@@ -1,0 +1,25 @@
+/* Trabajo en pista · cabecera compacta (20/11/2026). Prefijo pc-. */
+.pc-fila { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; min-width: 0; }
+.pc-cifras { display: flex; flex-wrap: wrap; gap: 6px; margin-right: auto; min-width: 0; }
+.pc-cifra {
+  display: inline-flex; align-items: baseline; gap: 6px; padding: 6px 11px; border-radius: 12px;
+  background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .14);
+  font-size: 13px; font-weight: 800; color: #cbd5e1; white-space: nowrap;
+}
+.pc-cifra b { font-size: 18px; font-weight: 950; color: #fff; line-height: 1; }
+.pc-cifra.is-bien b { color: #86efac; }
+.pc-cifra.is-mal { background: #fef3c7; border-color: #fde68a; color: #92400e; }
+.pc-cifra.is-mal b { color: #b45309; }
+.pc-buscar {
+  flex: 1 1 240px; max-width: 360px; display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px;
+  border-radius: 12px; background: rgba(255, 255, 255, .97); border: 1px solid rgba(255, 255, 255, .22);
+}
+.pc-buscar input {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: transparent; font: inherit; font-size: 15px; color: #0f172a;
+  padding: 0; min-height: 0; box-shadow: none;
+}
+@media (max-width: 760px) {
+  .pc-cab { padding: 12px !important; border-radius: 18px !important; }
+  .pc-buscar { max-width: none; flex-basis: 100%; }
+  .pc-buscar input { font-size: 16px; }
+}
