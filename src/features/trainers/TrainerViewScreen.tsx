@@ -27,6 +27,7 @@ import { AvisosCambioGrupoEntrenador, ChipAvisosCambio, useAvisosCambioPendiente
 import { MensajesEntrenador } from './MensajesEntrenador';
 import { CalidadPropiaEntrenador, ReportesDevueltosEntrenador } from './CalidadEntrenador';
 import { DisponibilidadSemanaEntrenador } from './DisponibilidadSemanaEntrenador';
+import './TrainerViewCompacta.css';
 import { ahoraMadrid, pendientesQueBloqueanDisponibilidad, totalNinosPendientes, type PendienteDisponibilidad } from './bloqueoDisponibilidad';
 
 // Edad del niño, discreta junto a su nombre (grupos y reportes del entrenador).
@@ -145,7 +146,6 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
     permisoPushMitico,
     rangoSemanaAgenda,
     referenciaTecnicaReporteApp,
-    renderAyudaRapidaPantallaApp,
     repartoEntrenadoresDelGrupo,
     responderDisponibilidadRapida,
     resumenChipsMovil,
@@ -353,6 +353,18 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
     esEntrenadorApp && entrenadorId
       ? pendientesQueBloqueanDisponibilidad(pendientesEntrenadorVista(entrenadorId), entrenadorId, ahoraMadrid())
       : [];
+  // 20/11: cabecera compacta de Vista entrenador.
+  const semanaPreparadaVistaEntrenador = (() => {
+    const estado = estadoSemanaPushEntrenadorApp;
+    const publicados = Number(estado?.total_grupos_publicados ?? totalGruposVistaEntrenador);
+    return Boolean(esEntrenadorApp && estado?.organizacion_cerrada && publicados > 0);
+  })();
+  const saludoVistaEntrenador = (() => {
+    if (!esEntrenadorApp) return 'Mi semana de trabajo';
+    const nombre = String(gruposSemanalVistaEntrenador?.[0]?.entrenador || '').trim().split(/\s+/)[0] || '';
+    if (!nombre) return 'Mi semana de trabajo';
+    return `Hola, ${nombre.charAt(0).toUpperCase()}${nombre.slice(1).toLowerCase()}`;
+  })();
   const miBloqueoDisponibilidad = bloqueoDisponibilidadDe(
     String(disponibilidadVistaEntrenador.find((t: any) => t.entrenador_id)?.entrenador_id || '')
   );
@@ -735,7 +747,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
   return (
     <>
       {pantalla === 'entrenador' && (
-        <section className="trainer-view" style={vistaEntrenadorShell}>
+        <section className="trainer-view trainer-v2" style={vistaEntrenadorShell}>
           <style>{`
             @media (max-width: 600px) {
               .trainer-view {
@@ -847,7 +859,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
           `}</style>
 
           <div
-            className="trainer-hero trainer-hero--modern"
+            className="trainer-hero trainer-hero--modern trainer-v2-hero"
             style={{
               ...entrenadorHeroApp,
               display: 'grid',
@@ -856,9 +868,9 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                 : 'minmax(0, 1fr) auto',
               alignItems: esVistaMovilApp ? 'stretch' : 'end',
               gap: esVistaMovilApp ? 16 : 22,
-              minHeight: esVistaMovilApp ? 245 : 220,
-              padding: esVistaMovilApp ? '22px 20px' : '28px 30px',
-              borderRadius: 24,
+              minHeight: esVistaMovilApp ? 190 : 150,
+              padding: esVistaMovilApp ? '16px 16px' : '18px 20px',
+              borderRadius: 22,
               border: '1px solid rgba(255,255,255,.12)',
               backgroundImage: esVistaMovilApp
                 ? `linear-gradient(180deg, rgba(4,39,55,.42) 0%, rgba(4,39,55,.70) 46%, rgba(4,39,55,.96) 100%), url('/mitico-entrenador-esqui-v2.jpg')`
@@ -878,30 +890,23 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                   color: '#86efac',
                 }}
               >
-                VISTA ENTRENADOR
+                {/* 20/11: cabecera compacta: sin «Ayuda rápida» ni frase de explicación;
+                    la semana va en esta línea. */}
+                VISTA ENTRENADOR · SEMANA{' '}
+                {semanaVistaEntrenadorInicio
+                  ? rangoSemanaAgenda(semanaVistaEntrenadorInicio)
+                  : '-'}
               </p>
               <h2
                 style={{
-                  margin: '5px 0 4px',
+                  margin: '4px 0 0',
                   color: '#ffffff',
-                  fontSize: esVistaMovilApp ? 24 : 30,
-                  lineHeight: 1.08,
+                  fontSize: esVistaMovilApp ? 22 : 24,
+                  lineHeight: 1.1,
                 }}
               >
-                Mi semana de trabajo
+                {saludoVistaEntrenador}
               </h2>
-              <p
-                style={{
-                  margin: 0,
-                  maxWidth: 720,
-                  color: '#cbd5e1',
-                  fontSize: 13,
-                  lineHeight: 1.45,
-                }}
-              >
-                Consulta tu disponibilidad, grupos publicados, asistencia y reportes pendientes desde una sola pantalla.
-              </p>
-              {renderAyudaRapidaPantallaApp()}
               <div
                 className="trainer-hero-chips"
                 style={{
@@ -912,21 +917,9 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                   marginTop: 12,
                 }}
               >
-                <span
-                  className="trainer-current-week-chip"
-                  style={{
-                    padding: '7px 10px',
-                    borderRadius: 999,
-                    border: '1px solid rgba(255,255,255,.16)',
-                    background: 'rgba(255,255,255,.08)',
-                    color: '#e2e8f0',
-                  }}
-                >
-                  <strong style={{ color: '#86efac' }}>Semana</strong>{' '}
-                  {semanaVistaEntrenadorInicio
-                    ? rangoSemanaAgenda(semanaVistaEntrenadorInicio)
-                    : '-'}
-                </span>
+                {semanaPreparadaVistaEntrenador && (
+                  <span className="trainer-v2-chip trainer-v2-chip--ok">✓ Grupos preparados</span>
+                )}
 
                 <span
                   style={{
@@ -937,22 +930,17 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                     color: '#e2e8f0',
                   }}
                 >
-                  {totalGruposTrabajoVisibleVistaEntrenador} grupos
+                  {totalGruposTrabajoVisibleVistaEntrenador}{' '}
+                  {totalGruposTrabajoVisibleVistaEntrenador === 1 ? 'grupo' : 'grupos'}
                 </span>
 
                 {totalTareasPendientesVistaEntrenador > 0 && (
                   <span
                     data-trainer-pending-summary="true"
-                    style={{
-                      padding: '7px 10px',
-                      borderRadius: 999,
-                      border: '1px solid rgba(251,146,60,.34)',
-                      background: 'rgba(249,115,22,.16)',
-                      color: '#ffedd5',
-                      fontWeight: 900,
-                    }}
+                    className="trainer-v2-chip trainer-v2-chip--pendiente"
                   >
-                    {totalTareasPendientesVistaEntrenador} tareas pendientes
+                    {totalTareasPendientesVistaEntrenador}{' '}
+                    {totalTareasPendientesVistaEntrenador === 1 ? 'tarea pendiente' : 'tareas pendientes'}
                   </span>
                 )}
               </div>
@@ -975,7 +963,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                 boxShadow: '0 8px 18px rgba(22,163,74,.22)',
               }}
             >
-              {cargando ? 'Actualizando...' : 'Actualizar vista'}
+              {cargando ? 'Actualizando…' : '↻ Actualizar'}
             </button>
           </div>
 
@@ -986,7 +974,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
           {esEntrenadorApp && <ReportesDevueltosEntrenador />}
           {esEntrenadorApp && <CalidadPropiaEntrenador posicion="arriba" />}
 
-          {esEntrenadorApp && (
+          {esEntrenadorApp && !(semanaPreparadaVistaEntrenador && Boolean(estadoSemanaPushEntrenadorApp?.push_activo)) && (
             <article
               className="trainer-week-status-alert"
               style={(() => {
@@ -1186,24 +1174,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                         </button>
                       )}
 
-                      {pushActivo && (
-                        <span
-                          style={{
-                            display: 'inline-flex',
-                            minHeight: 40,
-                            alignItems: 'center',
-                            padding: '8px 11px',
-                            borderRadius: 12,
-                            background: 'rgba(255,255,255,.72)',
-                            border: '1px solid rgba(15,23,42,.10)',
-                            color: '#166534',
-                            fontSize: 12,
-                            fontWeight: 900,
-                          }}
-                        >
-                          Avisos activados ✓
-                        </span>
-                      )}
+                      {/* 20/11: «Avisos activados ✓» sobraba: solo se avisa si NO están activados. */}
 
                       {permiso === 'denied' && !pushActivo && (
                         <span
@@ -1250,10 +1221,10 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                   : 'repeat(2, minmax(0, 1fr))',
                 gap: 7,
                 width: '100%',
-                padding: 5,
-                border: '1px solid #dbe3ec',
-                borderRadius: 15,
-                background: '#f1f5f9',
+                padding: 4,
+                border: '1px solid transparent',
+                borderRadius: 16,
+                background: '#e2e8f0',
               }}
             >
               <button
@@ -1268,24 +1239,19 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                   minHeight: 46,
                   padding: '10px 13px',
                   borderRadius: 11,
-                  border:
-                    tabVistaEntrenador === 'disponibilidad'
-                      ? '1px solid #0f766e'
-                      : '1px solid transparent',
+                  border: '1px solid transparent',
                   background:
-                    tabVistaEntrenador === 'disponibilidad'
-                      ? 'linear-gradient(135deg, #0f766e 0%, #0b5d55 100%)'
-                      : 'transparent',
+                    tabVistaEntrenador === 'disponibilidad' ? '#ffffff' : 'transparent',
                   color:
                     tabVistaEntrenador === 'disponibilidad'
-                      ? '#ffffff'
+                      ? '#0f172a'
                       : '#475569',
                   fontSize: 13,
                   fontWeight: 900,
                   textAlign: 'center',
                   boxShadow:
                     tabVistaEntrenador === 'disponibilidad'
-                      ? '0 7px 16px rgba(15,118,110,.20)'
+                      ? '0 2px 8px rgba(15,23,42,.10)'
                       : 'none',
                   cursor: 'pointer',
                   transition:
@@ -1303,24 +1269,19 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                   minHeight: 46,
                   padding: '10px 13px',
                   borderRadius: 11,
-                  border:
-                    tabVistaEntrenador === 'grupos'
-                      ? '1px solid #0f766e'
-                      : '1px solid transparent',
+                  border: '1px solid transparent',
                   background:
-                    tabVistaEntrenador === 'grupos'
-                      ? 'linear-gradient(135deg, #0f766e 0%, #0b5d55 100%)'
-                      : 'transparent',
+                    tabVistaEntrenador === 'grupos' ? '#ffffff' : 'transparent',
                   color:
                     tabVistaEntrenador === 'grupos'
-                      ? '#ffffff'
+                      ? '#0f172a'
                       : '#475569',
                   fontSize: 13,
                   fontWeight: 900,
                   textAlign: 'center',
                   boxShadow:
                     tabVistaEntrenador === 'grupos'
-                      ? '0 7px 16px rgba(15,118,110,.20)'
+                      ? '0 2px 8px rgba(15,23,42,.10)'
                       : 'none',
                   cursor: 'pointer',
                   transition:
@@ -1328,6 +1289,9 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                 }}
               >
                 Grupos y reportes
+                {totalTareasPendientesVistaEntrenador > 0 && (
+                  <i className="trainer-v2-tab-badge">{totalTareasPendientesVistaEntrenador}</i>
+                )}
               </button>
             </div>
           </article>
@@ -1477,7 +1441,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
             gruposSemanalVistaEntrenador.map((bloqueEntrenador) => (
               <details
                 key={bloqueEntrenador.entrenador_id}
-                className="trainer-entrenador-block"
+                className={`trainer-entrenador-block${esEntrenadorApp ? ' trainer-v2-propio' : ''}`}
                 style={tarjetaEntrenadorMovil}
                 open
               >
@@ -1515,6 +1479,7 @@ export function TrainerViewScreen({ ctx }: TrainerViewScreenProps) {
                     bloqueEntrenador.entrenador_id
                   ).length > 0) && (
                   <section
+                    className="trainer-v2-tareas"
                     style={{
                       ...avisoPendiente,
                       padding: 12,
