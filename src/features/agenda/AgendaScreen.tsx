@@ -816,15 +816,9 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
 
   // 18/11: «➕ Grupo nuevo» en «Cambiar de grupo» (no en Intensivos ni particulares; el grupo debe quedarse con alguien).
   // 19/11: tablero de grupos en «Organizar» (Jose: «mil scroll, tosco»). Se recuerda en este navegador.
-  const [vistaTableroAgenda, setVistaTableroAgenda] = useState<boolean>(() => {
-    try { return localStorage.getItem('mitico_agenda_vista_tablero_v1') !== 'lista'; } catch { return true; }
-  });
+  // 20/11 (Jose): se quita «Ver como antes»: siempre la vista nueva.
+  const vistaTableroAgenda = true;
   const [grupoAjustesTablero, setGrupoAjustesTablero] = useState<string | null>(null);
-  function cambiarVistaTableroAgenda(tablero: boolean) {
-    setVistaTableroAgenda(tablero);
-    setGrupoAjustesTablero(null);
-    try { localStorage.setItem('mitico_agenda_vista_tablero_v1', tablero ? 'tablero' : 'lista'); } catch { /* sin almacenamiento */ }
-  }
   const tableroAgendaActivo = agendaPestanaProceso === 'organizar' && vistaTableroAgenda;
   // 19/11: el Paso 3 también en lista compacta (mismo botón «Ver como antes»).
   const listaPublicarActiva = agendaPestanaProceso === 'publicar' && vistaTableroAgenda;
@@ -3697,16 +3691,6 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                         <span style={{ color: '#64748b', fontSize: 12, fontWeight: 800 }}>
                           {agendaGruposSesion.length} {agendaGruposSesion.length === 1 ? 'grupo' : 'grupos'}
                         </span>
-                        {(agendaPestanaProceso === 'organizar' || agendaPestanaProceso === 'publicar') && agendaGruposSesion.length > 0 && (
-                          <span className="gt-vista" role="group" aria-label="Forma de ver los grupos">
-                            <button type="button" className={vistaTableroAgenda ? 'is-activa' : ''} onClick={() => cambiarVistaTableroAgenda(true)}>
-                              {agendaPestanaProceso === 'publicar' ? 'Lista' : 'Tablero'}
-                            </button>
-                            <button type="button" className={!vistaTableroAgenda ? 'is-activa' : ''} onClick={() => cambiarVistaTableroAgenda(false)}>
-                              Ver como antes
-                            </button>
-                          </span>
-                        )}
                       </div>
                       {tableroAgendaActivo && (
                         <GruposTableroAgenda

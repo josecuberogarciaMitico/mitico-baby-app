@@ -57,15 +57,9 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
   // camiseta de los niños. Cambia el dato de su ficha (Entrenadores).
   const [guardandoChaquetaId, setGuardandoChaquetaId] = React.useState('');
   // 19/11 (Jose): vista nueva de los grupos en pista (uno abierto cada vez).
-  // «Ver como antes» vuelve a la de siempre; se recuerda en este navegador.
-  const [vistaPistaNueva, setVistaPistaNueva] = React.useState<boolean>(() => {
-    try { return localStorage.getItem('mitico_pista_vista_v1') !== 'antes'; } catch { return true; }
-  });
+  // 20/11 (Jose): se quita «Ver como antes»: siempre la vista nueva.
+  const vistaPistaNueva = true;
   const [grupoPistaAbierto, setGrupoPistaAbierto] = React.useState('');
-  function cambiarVistaPista(nueva: boolean) {
-    setVistaPistaNueva(nueva);
-    try { localStorage.setItem('mitico_pista_vista_v1', nueva ? 'nueva' : 'antes'); } catch { /* sin almacenamiento */ }
-  }
   const {
     abrirAjustePistaSesion,
     abrirResultadoAlumnoResumenDia,
@@ -1090,10 +1084,6 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                           </div>
                         ) : vistaPistaNueva ? (
                           <>
-                            <div className="gpi-vista" role="group" aria-label="Forma de ver los grupos" style={{ gridColumn: '1 / -1' }}>
-                              <button type="button" className="is-activa" onClick={() => cambiarVistaPista(true)}>Vista nueva</button>
-                              <button type="button" onClick={() => cambiarVistaPista(false)}>Ver como antes</button>
-                            </div>
                             <GruposPistaTurno
                               grupos={datosGruposPista(
                                 sesion,
@@ -1111,10 +1101,6 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                           </>
                         ) : (
                           <>
-                          <div className="gpi-vista" role="group" aria-label="Forma de ver los grupos" style={{ gridColumn: '1 / -1' }}>
-                            <button type="button" onClick={() => cambiarVistaPista(true)}>Vista nueva</button>
-                            <button type="button" className="is-activa" onClick={() => cambiarVistaPista(false)}>Ver como antes</button>
-                          </div>
                           {gruposPublicados.map((grupo: any, indice: number) => {
                             const alumnosGrupo = alumnosGrupoResumenDia(grupo);
                             return (
