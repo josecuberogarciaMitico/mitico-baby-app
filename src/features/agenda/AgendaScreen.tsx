@@ -32,6 +32,8 @@ import {
   type PendienteSesion,
 } from './agendaTablero';
 import './AgendaTablero.css';
+import './AgendaCabecera.css';
+import { mesesTemporadaAgenda } from './agendaCalendar';
 import { pedagogicalBandForLevel } from '../../core/recommendations/baseRecommendation';
 import { PacoAltasAviso } from '../baby/PacoAltasAviso';
 import { PacoNotasSesion } from '../pacoAcciones/PacoNotasSesion';
@@ -203,7 +205,6 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     labelCampo,
     marcarNoVieneIntensivoDesdeAgenda,
     mensajeIncorporacionFueraPlazo,
-    mesAgendaActivo,
     mesesAgenda,
     miniMetrica,
     miniTarjetaBlanca,
@@ -213,7 +214,6 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     necesitaDosEntrenadoresGrupoApp,
     nombreGrupoPropuestaApp,
     nombreGrupoVisualApp,
-    nombreMesAgendaDesdeClave,
     nombreTemporadaAgenda,
     nombresEntrenadoresDelGrupo,
     nombresGruposAgendaBase,
@@ -230,7 +230,6 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     publicarGrupo,
     puntosEncuentroAgenda,
     quitarAlumnoAgenda,
-    rangoEntrenosSemanaAgenda,
     rangoSemanaAgenda,
     recomendacionesFueraPlazo,
     refrescarSesionBabyDesdeAimHarder,
@@ -243,9 +242,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
     restaurarVieneIntensivoDesdeAgenda,
     setResponsablesManualesGrupoAgenda,
     selectCampo,
-    selectCampoAgenda,
     semanaAgendaActiva,
-    semanasAgenda,
     sesionesDelDiaAgenda,
     setAgendaDiaCompactoActivo,
     setAgendaFiltroAlumnos,
@@ -542,6 +539,34 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
   const firmaSesionesSemanaTablero = idsSesionesSemanaTablero.join(',');
   const [extrasTablero, setExtrasTablero] = useState<Record<string, ExtrasSesion>>({});
   const [actualizandoAgenda, setActualizandoAgenda] = useState(false);
+  // 20/11: cabecera compacta. Menú «Semana ⋯» y semana anterior/siguiente con ‹ ›.
+  const [menuSemanaAgendaAbierto, setMenuSemanaAgendaAbierto] = useState(false);
+  useEffect(() => {
+    if (!menuSemanaAgendaAbierto) return;
+    const cerrar = () => setMenuSemanaAgendaAbierto(false);
+    window.addEventListener('click', cerrar);
+    return () => window.removeEventListener('click', cerrar);
+  }, [menuSemanaAgendaAbierto]);
+  /** La semana de al lado (lunes) y el mes/temporada en que cae; null si se sale de las temporadas. */
+  function semanaVecinaAgenda(delta: -1 | 1) {
+    if (!semanaAgendaActiva) return null;
+    const semana = addIsoDays(semanaAgendaActiva, delta * 7);
+    // El mes del lunes; si no es de temporada (p. ej. 31/08), el del domingo.
+    for (const mes of [semana.slice(0, 7), addIsoDays(semana, 6).slice(0, 7)]) {
+      if ((mesesAgenda as string[]).includes(mes)) return { semana, mes, anio: anioInicioTemporadaAgenda as number };
+      const [a, m] = mes.split('-').map(Number);
+      const anio = m >= 7 ? a : a - 1;
+      if ((opcionesTemporadaAgenda as number[]).includes(anio) && mesesTemporadaAgenda(anio).includes(mes)) return { semana, mes, anio };
+    }
+    return null;
+  }
+  function irSemanaVecinaAgenda(delta: -1 | 1) {
+    const v = semanaVecinaAgenda(delta);
+    if (!v) return;
+    if (v.anio !== anioInicioTemporadaAgenda) setAnioInicioTemporadaAgenda(v.anio);
+    setMesAgenda(v.mes);
+    cambiarSemanaTrabajoApp(v.semana);
+  }
   const [refrescoAgenda, setRefrescoAgenda] = useState(0);
   const [disponibilidadTablero, setDisponibilidadTablero] = useState<FilaDisponibilidad[]>([]);
   // Niños sin colocar: el contador sale aquí y la tabla en SinColocarPanel.
@@ -1184,202 +1209,121 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
           style={agendaShellCompacto}
           className={`ag-shell${agendaFormularioAbierto || agendaSesionActivaId ? ' ag-shell--con-panel' : ''}`}
         >
-          <article
-            style={{
-              borderRadius: 24,
-              padding: 20,
-              background:
-                'linear-gradient(135deg, #062d3f 0%, #083b4d 58%, #0b5d4f 100%)',
-              border: '1px solid rgba(16,185,129,0.28)',
-              boxShadow: '0 18px 44px rgba(15,23,42,0.16)',
-              color: '#ffffff',
-              display: 'grid',
-              gap: 16,
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                gap: 16,
-                alignItems: 'flex-start',
-                flexWrap: 'wrap',
-              }}
-            >
-              <div style={{ minWidth: 0, flex: '1 1 420px' }}>
-                <p
-                  style={{
-                    margin: 0,
-                    fontSize: 11,
-                    fontWeight: 900,
-                    letterSpacing: 1.15,
-                    color: '#86efac',
-                  }}
-                >
-                  TRABAJO SEMANAL · AGENDA
-                </p>
-                <h2 style={{ margin: '4px 0 0', fontSize: 30, color: '#fff' }}>
-                  Días de entrenamiento
-                </h2>
-              {renderAyudaRapidaPantallaApp()}
-                <p
-                  style={{
-                    margin: '7px 0 0',
-                    color: '#cbd5e1',
-                    lineHeight: 1.4,
-                  }}
-                >
-                  Semana compacta: eliges semana, abres un día y trabajas solo una
-                  sesión. Sin bajar toda la pantalla.
-                </p>
+          {/* 20/11: cabecera compacta (mismo verde). La semana se cambia con ‹ ›;
+              las acciones de la semana van en «Semana ⋯»; los avisos, en una fila. */}
+          <article className="ag-cab">
+            <div className="ag-cab-l1">
+              <div className="ag-cab-tit">
+                <small>ENTRENAMIENTOS</small>
+                <b>Días de entrenamiento</b>
               </div>
-
-              <div
-                style={{
-                  flex: '1 1 640px',
-                  minWidth: 0,
-                  padding: '11px 13px',
-                  borderRadius: 16,
-                  background: 'rgba(255,255,255,0.10)',
-                  border: '1px solid rgba(255,255,255,0.16)',
-                  display: 'grid',
-                  gap: 10,
-                }}
-              >
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    justifyContent: 'space-between',
-                    gap: 16,
-                    flexWrap: 'wrap',
+              <div className="ag-cab-sem" aria-label="Semana">
+                <button type="button" title="Semana anterior" aria-label="Semana anterior" disabled={!semanaVecinaAgenda(-1)} onClick={() => irSemanaVecinaAgenda(-1)}>‹</button>
+                <span>{semanaAgendaActiva ? rangoSemanaAgenda(semanaAgendaActiva) : 'Sin semana'}</span>
+                <button type="button" title="Semana siguiente" aria-label="Semana siguiente" disabled={!semanaVecinaAgenda(1)} onClick={() => irSemanaVecinaAgenda(1)}>›</button>
+              </div>
+              <div className="ag-cab-acc">
+                <button
+                  type="button"
+                  className="ag-cab-btn"
+                  disabled={actualizandoAgenda}
+                  title="Vuelve a leer los datos de la semana"
+                  onClick={async () => {
+                    // 05/11: antes no recargaba los avisos de la semana (por revisar,
+                    // sin colocar, pistas, cancelados) ni decía nada. Ahora sí.
+                    setActualizandoAgenda(true);
+                    try {
+                      await Promise.allSettled([
+                        cargarAgendaOperativaDirecta(),
+                        cargarIntensivos(),
+                        cargarPlanning(),
+                        cargarListados(),
+                        cargarEntrenadores(),
+                        cargarAsignacionesEntrenadoresSemana(),
+                        agendaSesionActivaId ? cargarDetalleSesionAgenda(agendaSesionActivaId) : Promise.resolve(),
+                      ]);
+                      await cargarExtrasTableroSemana();
+                      setRefrescoAgenda((n) => n + 1);
+                    } finally {
+                      setActualizandoAgenda(false);
+                    }
                   }}
                 >
-                  <div style={{ display: 'grid', gap: 4, minWidth: 220 }}>
-                    <span
-                      style={{
-                        fontSize: 10,
-                        fontWeight: 900,
-                        letterSpacing: 0.8,
-                        color: '#a7f3d0',
-                        textTransform: 'uppercase',
-                      }}
-                    >
-                      Semana completa
-                    </span>
-                    <strong style={{ fontSize: 16 }}>
-                      {semanaAgendaActiva
-                        ? rangoSemanaAgenda(semanaAgendaActiva)
-                        : 'Sin semana'}
-                    </strong>
-                    <span style={{ color: '#cbd5e1', fontSize: 13 }}>
-                      Entrenos:{' '}
-                      {semanaAgendaActiva
-                        ? rangoEntrenosSemanaAgenda(semanaAgendaActiva)
-                        : '-'}
-                    </span>
-                  </div>
-
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'flex-end',
-                      gap: 8,
-                      flexWrap: 'wrap',
-                      flex: '1 1 420px',
-                    }}
-                  >
-                    <button
-                      type="button"
-                      disabled={actualizandoAgenda}
-                      onClick={async () => {
-                        // 05/11: antes no recargaba los avisos de la semana (por revisar,
-                        // sin colocar, pistas, cancelados) ni decía nada. Ahora sí.
-                        setActualizandoAgenda(true);
-                        try {
-                          await Promise.allSettled([
-                            cargarAgendaOperativaDirecta(),
-                            cargarIntensivos(),
-                            cargarPlanning(),
-                            cargarListados(),
-                            cargarEntrenadores(),
-                            cargarAsignacionesEntrenadoresSemana(),
-                            agendaSesionActivaId ? cargarDetalleSesionAgenda(agendaSesionActivaId) : Promise.resolve(),
-                          ]);
-                          await cargarExtrasTableroSemana();
-                          setRefrescoAgenda((n) => n + 1);
-                        } finally {
-                          setActualizandoAgenda(false);
-                        }
-                      }}
-                      style={{
-                        ...botonSecundario,
-                        minHeight: 36,
-                        padding: '8px 12px',
-                        background: 'rgba(255,255,255,0.96)',
-                        color: '#0f172a',
-                        whiteSpace: 'nowrap',
-                      }}
-                    >
-                      {actualizandoAgenda ? 'Actualizando…' : 'Actualizar'}
-                    </button>
-
+                  {actualizandoAgenda ? 'Actualizando…' : '↻ Actualizar'}
+                </button>
+                <button
+                  type="button"
+                  className={`ag-cab-btn${menuSemanaAgendaAbierto ? ' is-on' : ''}`}
+                  aria-expanded={menuSemanaAgendaAbierto}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setMenuSemanaAgendaAbierto((v) => !v);
+                  }}
+                >
+                  {babyAimHarderCargandoSemana ? 'Cargando semana…' : cerrandoSemanaPushApp ? 'Avisando…' : 'Semana ⋯'}
+                </button>
+                {menuSemanaAgendaAbierto && (
+                  <div className="ag-cab-menu" onClick={(e) => e.stopPropagation()}>
                     {esCoordinadorApp && (
                       <>
                         <button
                           type="button"
-                          onClick={() =>
-                            void cerrarOrganizacionSemanalPushApp(semanaAgendaActiva)
-                          }
-                          disabled={cerrandoSemanaPushApp || !semanaAgendaActiva}
-                          style={{
-                            ...botonSecundario,
-                            minHeight: 36,
-                            padding: '8px 12px',
-                            background: 'rgba(255,255,255,0.96)',
-                            color: '#0f766e',
-                            whiteSpace: 'nowrap',
-                          }}
-                        >
-                          {cerrandoSemanaPushApp
-                            ? 'Avisando...'
-                            : 'Cerrar semana y avisar'}
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => void cargarSemanaBabyDesdeAimHarder()}
                           disabled={
                             babyAimHarderCargandoSemana ||
                             babyAimHarderFormularioCargando ||
                             Boolean(babyAimHarderSesionCargandoId) ||
                             !semanaAgendaActiva
                           }
-                          style={{
-                            ...botonPrincipal,
-                            minHeight: 36,
-                            padding: '8px 12px',
-                            whiteSpace: 'nowrap',
+                          onClick={() => {
+                            setMenuSemanaAgendaAbierto(false);
+                            void cargarSemanaBabyDesdeAimHarder();
                           }}
                         >
-                          {babyAimHarderCargandoSemana
-                            ? 'Cargando semana…'
-                            : 'Cargar semana Baby desde AimHarder'}
+                          📥 Cargar semana Baby desde AimHarder
+                          <small>Trae los listados de la semana</small>
+                        </button>
+                        <button
+                          type="button"
+                          disabled={cerrandoSemanaPushApp || !semanaAgendaActiva}
+                          onClick={() => {
+                            setMenuSemanaAgendaAbierto(false);
+                            void cerrarOrganizacionSemanalPushApp(semanaAgendaActiva);
+                          }}
+                        >
+                          ✅ Cerrar semana y avisar
+                          <small>Publica lo pendiente y avisa a los entrenadores</small>
                         </button>
                       </>
                     )}
+                    <label className="ag-cab-temp">
+                      Temporada
+                      <select
+                        value={anioInicioTemporadaAgenda}
+                        onChange={(e) => {
+                          const nuevoAnio = Number(e.target.value);
+                          setAnioInicioTemporadaAgenda(nuevoAnio);
+                          setMesAgenda(`${nuevoAnio}-09`);
+                          setSemanaAgendaInicio('');
+                          setAgendaDiaCompactoActivo('');
+                          setAgendaSesionActivaId('');
+                          setAgendaFormularioAbierto(false);
+                          setMenuSemanaAgendaAbierto(false);
+                        }}
+                      >
+                        {opcionesTemporadaAgenda.map((anio) => (
+                          <option key={anio} value={anio}>
+                            {nombreTemporadaAgenda(anio)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </div>
-                </div>
+                )}
+                {renderAyudaRapidaPantallaApp()}
+              </div>
+            </div>
 
-                {/* 11/11: «Avisos de la semana»: todo lo pendiente en un solo panel. */}
-                <div
-                  className="ag-avisos-semana"
-                  style={{ display: 'grid', gap: 8, padding: 10, borderRadius: 14, background: 'rgba(255,255,255,.97)', color: '#0f172a', minWidth: 0 }}
-                >
-                  <strong style={{ fontSize: 12, letterSpacing: '.08em', textTransform: 'uppercase', color: '#0f766e' }}>
-                    Avisos de la semana
-                  </strong>
+            <div className="ag-cab-avisos">
                     <div
                       className={`ag-pendientes${pendientesTablero.total === 0 ? ' is-al-dia' : ''}`}
                       aria-label="Lo que falta esta semana"
@@ -1470,8 +1414,6 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                   )}
                   </div>
                 )}
-                </div>
-
                 {esCoordinadorApp && altasPaco && (
                   <PacoAltasAviso
                     aviso={altasPaco}
@@ -1480,77 +1422,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                     onCerrar={() => setAltasPaco(null)}
                   />
                 )}
-              </div>
             </div>
-
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))',
-                gap: 10,
-                paddingTop: 4,
-              }}
-            >
-              <label style={{ ...labelCampo, color: '#e2e8f0' }}>
-                Temporada
-                <select
-                  value={anioInicioTemporadaAgenda}
-                  style={{ ...selectCampoAgenda, width: '100%', color: '#0f172a', background: '#ffffff' }}
-                  onChange={(e) => {
-                    const nuevoAnio = Number(e.target.value);
-                    setAnioInicioTemporadaAgenda(nuevoAnio);
-                    setMesAgenda(`${nuevoAnio}-09`);
-                    setSemanaAgendaInicio('');
-                    setAgendaDiaCompactoActivo('');
-                    setAgendaSesionActivaId('');
-                    setAgendaFormularioAbierto(false);
-                  }}
-                >
-                  {opcionesTemporadaAgenda.map((anio) => (
-                    <option key={anio} value={anio}>
-                      {nombreTemporadaAgenda(anio)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label style={{ ...labelCampo, color: '#e2e8f0' }}>
-                Mes
-                <select
-                  value={mesAgendaActivo}
-                  style={{ ...selectCampoAgenda, width: '100%', color: '#0f172a', background: '#ffffff' }}
-                  onChange={(e) => {
-                    setMesAgenda(e.target.value);
-                    setSemanaAgendaInicio('');
-                    setAgendaDiaCompactoActivo('');
-                    setAgendaSesionActivaId('');
-                    setAgendaFormularioAbierto(false);
-                  }}
-                >
-                  {mesesAgenda.map((clave) => (
-                    <option key={clave} value={clave}>
-                      {nombreMesAgendaDesdeClave(clave)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label style={{ ...labelCampo, color: '#e2e8f0' }}>
-                Semana
-                <select
-                  value={semanaAgendaActiva}
-                  style={{ ...selectCampoAgenda, width: '100%', color: '#0f172a', background: '#ffffff' }}
-                  onChange={(e) => cambiarSemanaTrabajoApp(e.target.value)}
-                >
-                  {semanasAgenda.map((semana) => (
-                    <option key={semana} value={semana}>
-                      Semana {rangoSemanaAgenda(semana)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
           </article>
 
           <section
