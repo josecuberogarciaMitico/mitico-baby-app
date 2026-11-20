@@ -575,7 +575,6 @@ import { SUPABASE_ANON_KEY, SUPABASE_URL } from './config/supabase';
 import { createSupabaseRestClient } from './services/supabase/restClient';
 import { StudentRecordsScreen } from './features/students/StudentRecordsScreen';
 import { StudentFichaSheet } from './features/students/StudentFichaSheet';
-import type { TestAltaAlumnoApp } from './features/students/StudentLevelTestPanel';
 import { CoordinationAlerts } from './features/reports/CoordinationAlerts';
 import { abrirFichaAlumno } from './features/students/studentFichaStore';
 import { ReportsScreen } from './features/reports/ReportsScreen';
@@ -20164,7 +20163,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
     >
       {esCoordinadorApp && !esAdministracionApp && <CoordinationAlerts onNivelCambiado={() => void cargarAlumnos()} soloLectura={esSoloConsultaUsuarioApp} />}
       {esCoordinadorApp && (
-        <StudentFichaSheet alumnos={alumnos} ocioAlumnos={ocioAlumnos} historialPorAlumno={historialReportesFichaPorAlumno} cargandoHistorialId={historialReportesFichaCargandoId} cargarHistorial={cargarHistorialReportesAlumnoFichaApp} formatDate={formatearFecha} cargarAlumnos={cargarAlumnos} cargarTestAlta={(id) => ejecutarFuncionConRespuesta<TestAltaAlumnoApp>('obtener_test_alta_alumno_app', { p_alumno_id: id })} detallePreguntaTest={detallePreguntaTestNivelApp} />
+        <StudentFichaSheet alumnos={alumnos} ocioAlumnos={ocioAlumnos} historialPorAlumno={historialReportesFichaPorAlumno} cargandoHistorialId={historialReportesFichaCargandoId} cargarHistorial={cargarHistorialReportesAlumnoFichaApp} formatDate={formatearFecha} cargarAlumnos={cargarAlumnos} />
       )}
       <AltasRespondidasAviso
         aviso={avisoAltasRespondidas}
