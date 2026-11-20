@@ -86,6 +86,6 @@
 .gpi-hoja .gpi-hoja-cancelar { color: #64748b; }
 .gpi-hoja-nota { padding: 8px 12px; color: #64748b; font-size: 13px; font-weight: 700; }
 
-.gpi-vista { justify-self: end; display: inline-flex; border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; background: #fff; }
-.gpi-vista button { border: 0; background: #fff; padding: 6px 10px; font: inherit; font-size: 12px; font-weight: 800; color: #475569; cursor: pointer; min-height: 0; }
-.gpi-vista button.is-activa { background: #0f766e; color: #fff; }
+.gpi-vista { justify-self: end; display: inline-flex; gap: 2px; padding: 3px; border: 1px solid #e2e8f0; border-radius: 999px; background: #f1f5f9; }
+.gpi-vista button { border: 0; background: transparent; padding: 5px 12px; border-radius: 999px; font: inherit; font-size: 12px; font-weight: 800; color: #64748b; cursor: pointer; min-height: 0; }
+.gpi-vista button.is-activa { background: #fff; color: #0f766e; box-shadow: 0 1px 3px rgba(15, 23, 42, .12); }
