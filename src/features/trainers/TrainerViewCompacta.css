@@ -1,0 +1,106 @@
+/* Vista entrenador · cabecera compacta y colores (20/11/2026). Prefijo trainer-v2.
+   Verde azulado de Mítico (#0f766e) para botones y día elegido; rojo suave para lo pendiente.
+   La pestaña Disponibilidad no cambia. */
+
+/* Cabecera con la foto de siempre, más baja y sin explicación */
+.trainer-view.trainer-v2 .trainer-v2-hero { align-content: end; }
+.trainer-view.trainer-v2 .trainer-v2-hero .trainer-hero-chips { margin-top: 10px !important; gap: 6px !important; }
+.trainer-view.trainer-v2 .trainer-hero-chips > span {
+  padding: 6px 12px !important; border-radius: 999px !important; font-size: 13px; font-weight: 850;
+  border: 1px solid rgba(255, 255, 255, .2) !important; background: rgba(255, 255, 255, .1) !important; color: #e2e8f0 !important;
+}
+.trainer-view.trainer-v2 .trainer-hero-chips > .trainer-v2-chip--ok {
+  /* 20/11: el mismo verde de los botones (antes era otro verde distinto) */
+  background: #0f766e !important; border-color: #0f766e !important; color: #ffffff !important;
+}
+.trainer-view.trainer-v2 .trainer-hero-chips > .trainer-v2-chip--pendiente {
+  background: #ffffff !important; border-color: #ffffff !important; color: #065f46 !important; font-weight: 900;
+}
+.trainer-view.trainer-v2 .trainer-v2-hero > button {
+  min-height: 38px !important; height: auto; padding: 8px 13px !important; border-radius: 12px !important;
+  background: rgba(4, 39, 55, .55) !important; border: 1px solid rgba(255, 255, 255, .3) !important; backdrop-filter: blur(6px);
+  color: #ffffff !important; box-shadow: none !important; font-size: 13.5px; font-weight: 850;
+}
+.trainer-view.trainer-v2 .trainer-v2-hero > button:hover:not(:disabled) { background: rgba(4, 39, 55, .75) !important; }
+
+/* Pestañas tipo interruptor (siempre dos columnas) y número de pendientes */
+.trainer-view.trainer-v2 .trainer-tabs { grid-template-columns: 1fr 1fr !important; gap: 4px !important; }
+.trainer-view.trainer-v2 .trainer-tabs button {
+  min-height: 42px !important; display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  white-space: nowrap !important; font-size: 14px !important;
+}
+.trainer-v2-tab-badge {
+  font-style: normal; font-size: 11px; font-weight: 900; line-height: 1.5; padding: 0 7px;
+  border-radius: 999px; background: #0f766e; color: #ffffff;
+}
+
+/* La tarjeta del propio entrenador no repite «ENTRENADOR · su nombre · N grupos» */
+.trainer-view.trainer-v2 .trainer-v2-propio > .trainer-entrenador-summary { display: none !important; }
+
+/* «Tareas por cerrar» en rojo suave */
+.trainer-view.trainer-v2 .trainer-v2-tareas {
+  background: #fef2f2 !important; border: 1px solid #fecaca !important; border-radius: 16px !important; box-shadow: none !important;
+}
+.trainer-view.trainer-v2 .trainer-v2-tareas > div:first-child strong { color: #b91c1c !important; }
+.trainer-view.trainer-v2 .trainer-v2-tareas > div:first-child > span {
+  background: #fee2e2 !important; border-color: #fecaca !important; color: #b91c1c !important;
+}
+
+/* Mis días: sin caja verde; día elegido en verde azulado; punto de pendiente en ámbar */
+.trainer-view.trainer-v2 .trainer-days-box { border: 0; background: transparent; padding: 0; }
+.trainer-view.trainer-v2 .trainer-days-box-title { color: #475569; font-size: 12px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+.trainer-view.trainer-v2 .trainer-day-chip.is-active { background: #0f766e; border-color: #0f766e; box-shadow: 0 6px 14px rgba(15, 118, 110, .22); }
+.trainer-view.trainer-v2 .trainer-day-chip.is-active small { color: #ccfbf1; }
+.trainer-view.trainer-v2 .trainer-day-chip-dot { background: #fbbf24; }
+
+/* «Abrir grupo» en verde azulado lleno (móvil y ordenador) */
+.trainer-view.trainer-v2 .trainer-group-card:not(.is-sheet-open) .trainer-open-group-button {
+  background: #0f766e !important; border-color: #0f766e !important; color: #ffffff !important;
+  box-shadow: 0 6px 14px rgba(15, 118, 110, .2) !important;
+}
+
+@media (max-width: 600px) {
+  .trainer-view.trainer-v2 .trainer-hero-chips {
+    display: flex !important; flex-wrap: wrap !important; grid-template-columns: none !important;
+  }
+  .trainer-view.trainer-v2 .trainer-hero-chips > span { width: auto !important; display: inline-flex !important; }
+  .trainer-view.trainer-v2 .trainer-v2-hero > button { width: auto !important; align-self: flex-start; }
+}
+
+/* Aviso único de lo pendiente (rojo suave) */
+.trainer-view.trainer-v2 .trainer-v2-tareas { padding: 12px 14px !important; }
+.trainer-v2-aviso { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.trainer-v2-aviso-ic { flex: none; width: 42px; height: 42px; border-radius: 12px; background: #fee2e2; display: grid; place-items: center; font-size: 20px; }
+.trainer-v2-aviso-tx { flex: 1 1 160px; min-width: 0; display: grid; gap: 2px; }
+.trainer-v2-aviso-tx b { font-size: 16px; font-weight: 900; color: #b91c1c; }
+.trainer-v2-aviso-tx span { font-size: 13px; font-weight: 700; color: #991b1b; opacity: .85; }
+.trainer-view.trainer-v2 .trainer-v2-aviso-btn {
+  min-height: 0 !important; border: 0; border-radius: 12px; padding: 10px 14px; background: #0f766e; color: #fff;
+  font: inherit; font-size: 14px; font-weight: 900; cursor: pointer; white-space: nowrap;
+}
+.trainer-view.trainer-v2 .trainer-v2-aviso-ver {
+  min-height: 0 !important; border: 0; background: none; padding: 4px 2px; font: inherit; font-size: 12.5px; font-weight: 800;
+  color: #991b1b; text-decoration: underline; cursor: pointer;
+}
+
+/* Tarjeta del grupo (cerrada): título, hora · pista · con quién, punto y etiquetas */
+.trainer-v2-top { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.trainer-v2-top > div:first-child { flex: 1; }
+.trainer-v2-top h3 { margin: 0 0 2px; font-size: 16px; font-weight: 900; color: #0f172a; line-height: 1.2; }
+.trainer-v2-top p { margin: 0; font-size: 13px; font-weight: 750; color: #475569; }
+.trainer-v2-punto { flex: none; background: #0f172a; color: #fff; border-radius: 11px; padding: 5px 10px; text-align: center; font-weight: 900; font-size: 18px; line-height: 1; }
+.trainer-v2-punto small { display: block; font-size: 8.5px; letter-spacing: .08em; color: #94a3b8; margin-bottom: 2px; }
+.trainer-v2-etiquetas { display: flex; gap: 6px; flex-wrap: wrap; }
+.trainer-v2-etiquetas span { font-size: 12px; font-weight: 900; padding: 3px 9px; border-radius: 999px; background: #f1f5f9; color: #475569; }
+.trainer-v2-etiquetas span.is-rep { background: #dbeafe; color: #1d4ed8; }
+.trainer-v2-etiquetas span.is-aviso { background: #ffedd5; color: #c2410c; }
+.trainer-v2-etiquetas span.is-pendiente { background: #fee2e2; color: #b91c1c; }
+/* Cerrada: el equipo y el estado ya van en la línea y las etiquetas */
+.trainer-view.trainer-v2 .trainer-group-card:not(.is-sheet-open) > .trainer-team-line,
+.trainer-view.trainer-v2 .trainer-group-card:not(.is-sheet-open) > .trainer-group-action-status { display: none !important; }
+.trainer-view.trainer-v2 .trainer-group-card { gap: 9px !important; }
+
+/* 20/11 (Jose): un solo verde. La tarjeta del grupo cerrada va en blanco (sin fondo ni borde verde claro). */
+.trainer-view.trainer-v2 .trainer-group-card:not(.is-sheet-open) {
+  background: #ffffff !important; border: 1px solid #e2e8f0 !important; box-shadow: 0 6px 16px rgba(15, 23, 42, .06) !important;
+}

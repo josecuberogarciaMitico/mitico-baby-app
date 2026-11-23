@@ -9925,7 +9925,7 @@ Gracias!`;
       return;
     }
     const confirmar = window.confirm(
-      `¿Volcar ${listado.names.length} alumno(s) en ${intensivo.intensivo}? Los que no tengan ficha quedarán pendientes de Alta/Test.`
+      `¿Volcar ${listado.names.length} alumno(s) en ${intensivo.intensivo}? Los que ya están inscritos no se duplican; los que no tengan ficha quedarán pendientes de Alta/Test.`
     );
 
     if (!confirmar) return;
@@ -9943,7 +9943,9 @@ Gracias!`;
           }
         );
 
-      setResultadoVolcadoIntensivo(resultado);
+      // 20/11: marca los que ya estaban inscritos (el servidor no los duplica).
+      const yaInscritos = new Set(intensivoAlumnos.filter((r) => r.intensivo_id === intensivo.intensivo_id).map((r) => r.alumno_id));
+      setResultadoVolcadoIntensivo(resultado.map((r) => ({ ...r, ya_estaba: r.resultado === 'EXISTENTE' && yaInscritos.has(r.alumno_id) })));
       const sinLeer = intensiveRosterNamesNotRead(listado.names, resultado);
       if (sinLeer.length > 0) {
         setError(`No se han podido volcar (revisa cómo están escritos o usa «Añadir alumno existente»): ${sinLeer.join(', ')}.`);

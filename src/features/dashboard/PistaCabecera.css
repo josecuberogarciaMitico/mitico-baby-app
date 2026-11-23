@@ -23,3 +23,28 @@
   .pc-buscar { max-width: none; flex-basis: 100%; }
   .pc-buscar input { font-size: 16px; }
 }
+
+/* FF / Corporate para Xanadú (23/11/2026). Prefijo pc-ff-. */
+.pc-ff { display: grid; gap: 8px; min-width: 0; }
+.pc-ff .pc-ff-boton {
+  justify-self: start; min-height: 0; padding: 7px 13px; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .25);
+  background: rgba(255, 255, 255, .1); color: #fff; font: inherit; font-size: 13.5px; font-weight: 850; cursor: pointer;
+}
+.pc-ff .pc-ff-boton.is-on, .pc-ff .pc-ff-boton:hover { background: rgba(255, 255, 255, .2); }
+.pc-ff-panel { background: #fff; color: #0f172a; border-radius: 14px; padding: 12px; display: grid; gap: 8px; min-width: 0; }
+.pc-ff-vacio { margin: 0; color: #64748b; font-size: 13.5px; font-weight: 700; }
+.pc-ff-tabla { width: 100%; border-collapse: collapse; font-size: 14px; }
+.pc-ff-tabla th { text-align: left; font-size: 12px; font-weight: 900; color: #475569; padding: 4px 6px; border-bottom: 1px solid #e2e8f0; }
+.pc-ff-tabla th small, .pc-ff-tabla td small { display: block; font-size: 11px; font-weight: 700; color: #94a3b8; }
+.pc-ff-tabla td { padding: 7px 6px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+.pc-ff-tabla td b { font-size: 16px; font-weight: 900; }
+.pc-ff-total td { background: #f8fafc; }
+.pc-ff-nota { margin: 0; font-size: 12px; color: #64748b; font-weight: 700; }
+.pc-ff-aviso { margin: 0; font-size: 12.5px; color: #92400e; background: #fef3c7; border-radius: 9px; padding: 6px 9px; font-weight: 800; }
+.pc-ff-acciones { display: flex; gap: 8px; flex-wrap: wrap; }
+.pc-ff-acciones .pc-ff-wa, .pc-ff-acciones .pc-ff-copiar {
+  display: inline-flex; align-items: center; min-height: 0; padding: 9px 13px; border-radius: 11px; font: inherit; font-size: 13.5px;
+  font-weight: 900; cursor: pointer; text-decoration: none;
+}
+.pc-ff-acciones .pc-ff-wa { background: #0f766e; color: #fff; border: 1px solid #0f766e; }
+.pc-ff-acciones .pc-ff-copiar { background: #fff; color: #0f172a; border: 1px solid #e2e8f0; }

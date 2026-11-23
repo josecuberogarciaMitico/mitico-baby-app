@@ -85,6 +85,8 @@ export type VolcadoAlumnoIntensivoApp = {
   pista_resumen: string | null;
   estado_ficha: string;
   observacion_visible_entrenador: string | null;
+  /** 20/11: true si el niño ya estaba inscrito antes de pegar el listado (no se vuelve a añadir). */
+  ya_estaba?: boolean;
 };
 
 export type IntensivoDiaApp = {

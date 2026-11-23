@@ -20,6 +20,7 @@
     "src/features/trainers/trainerDayNav.ts",
     "src/features/trainers/asistenciaRapida.ts",
     "src/features/dashboard/notificacionesLogic.ts",
+    "src/features/dashboard/forfaitsDiaLogic.ts",
     "src/features/trainers/bloqueoDisponibilidad.ts",
     "src/features/trainers/mensajesEntrenadorLogic.ts",
     "src/features/pacoAcciones/pacoAccionesLogic.ts",

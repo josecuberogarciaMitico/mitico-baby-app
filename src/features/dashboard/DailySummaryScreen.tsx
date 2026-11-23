@@ -9,6 +9,8 @@ import { useAsistenciaPista } from './useAsistenciaPista';
 import { resumirAsistencia, textoResumenAsistencia, type EstadoAsistencia } from './asistenciaPistaLogic';
 import { GruposPistaTurno, nombreCortoPista, type GrupoPista } from './GruposPista';
 import './PistaCabecera.css';
+import { ForfaitsXanadu } from './ForfaitsXanadu';
+import type { TurnoForfaitEntrada } from './forfaitsDiaLogic';
 
 // Botón pequeño común de Trabajo en pista (WhatsApp, Llamar, Camiseta, Chaqueta).
 const pildoraPista: React.CSSProperties = {
@@ -57,15 +59,9 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
   // camiseta de los niños. Cambia el dato de su ficha (Entrenadores).
   const [guardandoChaquetaId, setGuardandoChaquetaId] = React.useState('');
   // 19/11 (Jose): vista nueva de los grupos en pista (uno abierto cada vez).
-  // «Ver como antes» vuelve a la de siempre; se recuerda en este navegador.
-  const [vistaPistaNueva, setVistaPistaNueva] = React.useState<boolean>(() => {
-    try { return localStorage.getItem('mitico_pista_vista_v1') !== 'antes'; } catch { return true; }
-  });
+  // 20/11 (Jose): se quita «Ver como antes»: siempre la vista nueva.
+  const vistaPistaNueva = true;
   const [grupoPistaAbierto, setGrupoPistaAbierto] = React.useState('');
-  function cambiarVistaPista(nueva: boolean) {
-    setVistaPistaNueva(nueva);
-    try { localStorage.setItem('mitico_pista_vista_v1', nueva ? 'nueva' : 'antes'); } catch { /* sin almacenamiento */ }
-  }
   const {
     abrirAjustePistaSesion,
     abrirResultadoAlumnoResumenDia,
@@ -155,6 +151,22 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
       .filter((estado: EstadoAsistencia | null): estado is EstadoAsistencia => estado !== null);
   }
   const resumenAsistenciaDia = resumirAsistencia(gruposPublicadosDia.flatMap(estadosAsistenciaGrupo));
+  // 23/11: FF / Corporate para Xanadú (previsto y real por turno; solo Baby e Intensivos).
+  const entradasForfaits: TurnoForfaitEntrada[] = (sesionesResumenDia || []).map((sesion: any) => ({
+    horaInicio: String(sesion.hora_inicio || ''),
+    horaFin: String(sesion.hora_fin || ''),
+    modalidad: sesion.origen === 'intensivo' ? 'intensivo' : String(sesion.modalidad || ''),
+    grupos: gruposPublicadosSesionResumenDia(sesion).map((grupo: any) => {
+      const r = resumirAsistencia(estadosAsistenciaGrupo(grupo));
+      const previstos = alumnosGrupoResumenDia(grupo).length;
+      return {
+        pista: grupo.pista,
+        previstos,
+        presentes: r.presentes,
+        sinMarcar: Math.max(0, previstos - r.presentes - r.ausentes),
+      };
+    }),
+  }));
 
   // Al buscar un niño, su grupo se abre en la vista nueva para poder verlo.
   React.useEffect(() => {
@@ -406,6 +418,8 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                 />
               </label>
             </div>
+
+            <ForfaitsXanadu fecha={String(fechaResumenDiaActiva || '')} entradas={entradasForfaits} />
 
             {textoBusquedaAlumnoResumenDia && (
               <div style={{ display: 'grid', gap: 8 }}>
@@ -1090,10 +1104,6 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                           </div>
                         ) : vistaPistaNueva ? (
                           <>
-                            <div className="gpi-vista" role="group" aria-label="Forma de ver los grupos" style={{ gridColumn: '1 / -1' }}>
-                              <button type="button" className="is-activa" onClick={() => cambiarVistaPista(true)}>Vista nueva</button>
-                              <button type="button" onClick={() => cambiarVistaPista(false)}>Ver como antes</button>
-                            </div>
                             <GruposPistaTurno
                               grupos={datosGruposPista(
                                 sesion,
@@ -1111,10 +1121,6 @@ export function DailySummaryScreen({ ctx }: DailySummaryScreenProps) {
                           </>
                         ) : (
                           <>
-                          <div className="gpi-vista" role="group" aria-label="Forma de ver los grupos" style={{ gridColumn: '1 / -1' }}>
-                            <button type="button" onClick={() => cambiarVistaPista(true)}>Vista nueva</button>
-                            <button type="button" className="is-activa" onClick={() => cambiarVistaPista(false)}>Ver como antes</button>
-                          </div>
                           {gruposPublicados.map((grupo: any, indice: number) => {
                             const alumnosGrupo = alumnosGrupoResumenDia(grupo);
                             return (

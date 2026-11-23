@@ -31,7 +31,9 @@ export function tituloDiaCortoEntrenador(fecha: string) {
   const dia = fechaDia
     .toLocaleDateString('es-ES', { weekday: 'short' })
     .replace('.', '');
-  return `${dia.charAt(0).toUpperCase()}${dia.slice(1)} ${fechaDia.getDate()}`;
+  // 20/11 (Jose): con el mes, para que se lea como fecha («Mié 18 nov»).
+  const mes = fechaDia.toLocaleDateString('es-ES', { month: 'short' }).replace('.', '');
+  return `${dia.charAt(0).toUpperCase()}${dia.slice(1)} ${fechaDia.getDate()} ${mes}`;
 }
 
 function plural(cantidad: number, singular: string, varios: string) {
