@@ -25,12 +25,10 @@ export type EstadoAvisosPush =
   | 'no_soportado' // navegador sin push (en iPhone: falta instalar la app)
   | 'error'; // no se pudo comprobar (se muestra el motivo y un boton Reintentar)
 
-async function llamar(payload: Record<string, unknown>) {
-  await comprobarAccesoPaco();
+function peticion(payload: Record<string, unknown>) {
   const token = tokenSesionPacoActual();
-  if (!token) throw new Error('Tu sesión ha caducado. Vuelve a entrar.');
-
-  const respuesta = await fetch(ENDPOINT, {
+  if (!token) return Promise.resolve(null);
+  return fetch(ENDPOINT, {
     method: 'POST',
     headers: {
       apikey: SUPABASE_ANON_KEY,
@@ -39,6 +37,19 @@ async function llamar(payload: Record<string, unknown>) {
     },
     body: JSON.stringify(payload),
   });
+}
+
+async function llamar(payload: Record<string, unknown>) {
+  // 25/11: antes se comprobaba el acceso con una llamada aparte en CADA aviso
+  // (una ida y vuelta de más a la base de datos). Ahora se llama directamente y
+  // solo si la sesión ha caducado (401) se renueva y se repite una vez,
+  // igual que en respuestasClient.
+  let respuesta = await peticion(payload);
+  if (!respuesta || respuesta.status === 401) {
+    await comprobarAccesoPaco();
+    respuesta = await peticion(payload);
+  }
+  if (!respuesta) throw new Error('Tu sesión ha caducado. Vuelve a entrar.');
 
   const texto = await respuesta.text();
   let datos: any = null;

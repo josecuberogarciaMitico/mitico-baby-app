@@ -74,19 +74,10 @@ function crearErrorSecretaria(mensaje: string, status?: number) {
   return error;
 }
 
-async function obtenerTokenSecretaria() {
-  await comprobarAccesoPaco();
+function enviarSecretaria(ruta: string, init: RequestInit) {
   const token = tokenSesionPacoActual();
-  if (!token) throw crearErrorSecretaria('NO_SESSION', 401);
-  return token;
-}
-
-async function peticionSecretaria<T>(
-  ruta: string,
-  init: RequestInit = {}
-): Promise<T> {
-  const token = await obtenerTokenSecretaria();
-  const respuesta = await fetch(`${SUPABASE_URL}${ruta}`, {
+  if (!token) return Promise.resolve(null);
+  return fetch(`${SUPABASE_URL}${ruta}`, {
     ...init,
     headers: {
       apikey: SUPABASE_ANON_KEY,
@@ -95,6 +86,22 @@ async function peticionSecretaria<T>(
       ...(init.headers || {}),
     },
   });
+}
+
+async function peticionSecretaria<T>(
+  ruta: string,
+  init: RequestInit = {}
+): Promise<T> {
+  // 25/11: antes cada petición comprobaba el acceso con una llamada aparte (una
+  // ida y vuelta de más). Ahora va directa y solo si la sesión ha caducado
+  // (401) se renueva y se repite una vez. Los permisos los sigue imponiendo la
+  // base de datos (403 → «Acceso restringido a coordinador jefe.»).
+  let respuesta = await enviarSecretaria(ruta, init);
+  if (!respuesta || respuesta.status === 401) {
+    await comprobarAccesoPaco();
+    respuesta = await enviarSecretaria(ruta, init);
+  }
+  if (!respuesta) throw crearErrorSecretaria('NO_SESSION', 401);
 
   const texto = await respuesta.text();
   let datos: any = null;

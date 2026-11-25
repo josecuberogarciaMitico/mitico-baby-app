@@ -218,7 +218,7 @@ import {
 import { PantallaIntensivos } from './screens/IntensivosScreen';
 import { OcioGroupsScreen } from './features/ocio/OcioGroupsScreen';
 import { closeWeekPublishingGroups } from './features/agenda/agendaWeekClosing';
-import { guardarBorradorPropuestaIntensivo, leerBorradorPropuestaIntensivo } from './features/intensivos/intensiveProposalDraft';
+import { guardarBorradorPropuestaIntensivo, leerBorradorPropuestaIntensivo, intensivosRecientes, marcarIntensivosCargados } from './features/intensivos/intensiveProposalDraft';
 import {
   ocioLevelRange,
   type OcioWeeklyGroup,
@@ -9560,14 +9560,10 @@ Gracias!`;
           'v_resumen_final_intensivo_app',
           'select=*&order=intensivo.asc,alumno.asc'
         ),
+        // 25/11: la vista «adaptativo» da siempre «permission denied» (cerrada en el endurecimiento de 16/09); se pide directamente la que funciona.
         consultarSupabase<ReporteDetalleIntensivoApp>(
-          'v_reportes_adaptativo_detalle_intensivo_app',
+          'v_reportes_detalle_intensivo_app',
           'select=*&order=intensivo.asc,alumno.asc,fecha.asc,hora_inicio.asc'
-        ).catch(() =>
-          consultarSupabase<ReporteDetalleIntensivoApp>(
-            'v_reportes_detalle_intensivo_app',
-            'select=*&order=intensivo.asc,alumno.asc,fecha.asc,hora_inicio.asc'
-          )
         ),
         consultarSupabase<PanelControlIntensivoApp>(
           'v_panel_control_intensivo_app',
@@ -9593,7 +9589,7 @@ Gracias!`;
       setResumenFinalIntensivo(resumenFinalIntensivoData);
       setReportesDetalleIntensivo(reportesDetalleIntensivoData);
       setPanelControlIntensivo(panelControlIntensivoData);
-      setEntrenadores(entrenadoresData);
+      setEntrenadores(entrenadoresData); marcarIntensivosCargados();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error desconocido');
       setIntensivos([]);
@@ -16559,7 +16555,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
     if (pantalla === 'agenda') {
       // 20/11: los intensivos (15 consultas) esperan a que llegue la agenda,
       // para que los días y grupos de Entrenamientos salgan antes.
-      void cargarAgendaOperativaDirecta().finally(() => void cargarIntensivos());
+      void cargarAgendaOperativaDirecta().finally(() => { if (!intensivosRecientes()) void cargarIntensivos(); });
       cargarWhatsappGruposApp();
       cargarPlanning();
       cargarListados();
@@ -16568,7 +16564,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
     }
     if (pantalla === 'resumenDia') {
       cargarAgendaOperativaDirecta();
-      cargarIntensivos();
+      if (!intensivosRecientes()) cargarIntensivos();
       cargarPlanning();
       cargarListados();
       cargarReportesPendientes();
@@ -16583,12 +16579,12 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
     }
     if (pantalla === 'alumnos') {
       cargarAlumnos();
-      cargarIntensivos();
+      if (!intensivosRecientes()) cargarIntensivos();
     }
     if (pantalla === 'ocioAlumnos') {
       cargarOcioAlumnos();
       cargarOcioGrupos();
-      cargarIntensivos();
+      if (!intensivosRecientes()) cargarIntensivos();
       cargarAlumnos();
     }
     if (pantalla === 'ocioGrupos') {
@@ -16646,7 +16642,7 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
       puedeVerDireccionUsuarioApp
     ) {
       cargarAgendaOperativaDirecta();
-      cargarIntensivos();
+      if (!intensivosRecientes()) cargarIntensivos();
       cargarPlanning();
       cargarListados();
       cargarReportesPendientes();

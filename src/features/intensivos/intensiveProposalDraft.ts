@@ -63,3 +63,6 @@ export function leerBorradorPropuestaIntensivo<R>(
     return null;
   }
 }
+
+// 25/11: reexportado aquí para no añadir otra línea de import a App.tsx (límite de líneas).
+export { intensivosRecientes, marcarIntensivosCargados } from './cargaIntensivosReciente';
