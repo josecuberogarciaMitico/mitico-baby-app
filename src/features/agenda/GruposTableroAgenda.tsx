@@ -167,7 +167,6 @@ export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, o
                       draggable={false}
                     >
                       {n.nombre}
-                      <span className="gt-wa-ic" aria-hidden="true">●</span>
                     </a>
                   ) : (
                     n.nombre
