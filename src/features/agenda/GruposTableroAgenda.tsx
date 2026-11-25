@@ -49,15 +49,64 @@ type Props = {
   onTrabajo: (grupoId: string) => void;
   /** Grupo cuya tarjeta completa está abierta debajo (se resalta). */
   grupoAbierto?: string | null;
-  /** 25/11: entrenadores con disponibilidad en este turno y libres para este grupo. */
-  entrenadoresGrupo?: (grupoId: string) => Array<{ id: string; nombre: string }>;
-  /** 25/11: asignar entrenador desde «Sin entrenador» (mismo flujo que en Ajustes). */
-  onAsignarEntrenador?: (grupoId: string, entrenadorId: string) => void;
+  /**
+   * 25/11: lo que antes estaba en «⚙ Ajustes» se hace en la propia tarjeta:
+   * entrenador, segundo entrenador, punto, particular y borrar. Los cambios
+   * pasan por las mismas funciones de siempre (con sus confirmaciones).
+   */
+  controlesGrupo?: (grupoId: string) => ControlesGrupoTablero | null;
+  onAccionGrupo?: (grupoId: string, accion: AccionGrupoTablero, valor?: string) => void;
 };
 
-type Menu = { grupoId: string; nino: NinoTablero; top: number; left: number; arriba: number; abajo: number };
+export type OpcionSelectTablero = { valor: string; texto: string };
+export type SelectTablero = {
+  /** Texto que se ve en la tarjeta (nombre actual, «Sin entrenador ▾», «Punto 9 ▾»…). */
+  texto: string;
+  falta?: boolean;
+  grupos: Array<{ etiqueta?: string; opciones: OpcionSelectTablero[] }>;
+};
+export type ControlesGrupoTablero = {
+  entrenador: SelectTablero;
+  segundo: SelectTablero | null;
+  punto: SelectTablero | null;
+  particular: 'hacer' | 'quitar' | null;
+  /** Tercer entrenador / reparto de reportes: siguen en la ventana de detalle. */
+  masOpciones: boolean;
+  soloConsulta: boolean;
+};
+export type AccionGrupoTablero = 'entrenador' | 'segundo' | 'punto' | 'particular' | 'borrar' | 'mas';
 
-export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, onGrupoNuevo, onQuitar, onNoViene, onAjustes, onTrabajo, entrenadoresGrupo, onAsignarEntrenador }: Props) {
+function SelectChip({ sel, clase, disabled, etiqueta, onElegir }: {
+  sel: SelectTablero; clase: string; disabled: boolean; etiqueta: string; onElegir: (valor: string) => void;
+}) {
+  const hayOpciones = sel.grupos.some((gr) => gr.opciones.length > 0);
+  return (
+    <select
+      className={`gt-sel ${clase}${sel.falta ? ' is-falta' : ''}`}
+      value=""
+      disabled={disabled}
+      title={etiqueta}
+      aria-label={etiqueta}
+      onChange={(e) => { if (e.target.value) onElegir(e.target.value); }}
+    >
+      <option value="">{sel.texto}</option>
+      {!hayOpciones && <option value="" disabled>Nadie libre en este turno</option>}
+      {sel.grupos.map((gr, i) =>
+        !gr.opciones.length ? null : gr.etiqueta ? (
+          <optgroup key={i} label={gr.etiqueta}>
+            {gr.opciones.map((o) => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
+          </optgroup>
+        ) : (
+          gr.opciones.map((o) => <option key={o.valor} value={o.valor}>{o.texto}</option>)
+        )
+      )}
+    </select>
+  );
+}
+
+type Menu = { grupoId: string; nino?: NinoTablero; top: number; left: number; arriba: number; abajo: number };
+
+export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, onGrupoNuevo, onQuitar, onNoViene, onAjustes, onTrabajo, controlesGrupo, onAccionGrupo }: Props) {
   const [menu, setMenu] = useState<Menu | null>(null);
   const [arrastre, setArrastre] = useState<{ grupoId: string; alumnoId: string } | null>(null);
   const [sobre, setSobre] = useState<string | null>(null);
@@ -85,7 +134,7 @@ export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, o
     };
   }, [menu]);
 
-  function abrirMenu(e: React.MouseEvent<HTMLButtonElement>, grupoId: string, nino: NinoTablero) {
+  function abrirMenu(e: React.MouseEvent<HTMLButtonElement>, grupoId: string, nino?: NinoTablero) {
     e.stopPropagation();
     const r = e.currentTarget.getBoundingClientRect();
     const ancho = 250;
@@ -100,6 +149,8 @@ export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, o
   }
 
   const grupoMenu = menu ? grupos.find((g) => g.id === menu.grupoId) : null;
+  const ninoMenu = menu?.nino ?? null;
+  const controlesMenu = menu && !menu.nino && controlesGrupo ? controlesGrupo(menu.grupoId) : null;
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   // Si no cabe debajo del botón, se abre hacia arriba (niños al final de la pantalla).
@@ -139,43 +190,39 @@ export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, o
               <b>{g.titulo}</b>
               <span className="gt-niveles">{g.niveles}</span>
               <span className="gt-num">{g.ninos.length} {g.ninos.length === 1 ? 'niño' : 'niños'}</span>
+              {controlesGrupo && onAccionGrupo && (
+                <button type="button" className="gt-mas gt-mas-grupo" aria-label={`Opciones de ${g.titulo}`} disabled={cargando} onClick={(e) => abrirMenu(e, g.id)}>
+                  ⋯
+                </button>
+              )}
             </div>
             <div className="gt-meta">
               <span className="gt-pista">{g.pistaTexto}</span>
-              <span>{g.punto}</span>
-              {g.sinEntrenador && entrenadoresGrupo && onAsignarEntrenador ? (
-                <span className="gt-falta">
-                  ·{' '}
-                  <select
-                    className="gt-ent-sel"
-                    value=""
-                    disabled={cargando}
-                    title="Elegir entrenador con disponibilidad en este turno"
-                    aria-label={`Asignar entrenador a ${g.titulo}`}
-                    onChange={(e) => {
-                      if (e.target.value) onAsignarEntrenador(g.id, e.target.value);
-                    }}
-                  >
-                    <option value="">Sin entrenador ▾</option>
-                    {(() => {
-                      const lista = entrenadoresGrupo(g.id);
-                      return lista.length ? (
-                        lista.map((ent) => (
-                          <option key={ent.id} value={ent.id}>
-                            {ent.nombre}
-                          </option>
-                        ))
-                      ) : (
-                        <option value="" disabled>
-                          Nadie libre en este turno
-                        </option>
-                      );
-                    })()}
-                  </select>
-                </span>
-              ) : (
-                <span className={g.sinEntrenador ? 'gt-falta' : ''}>· {g.entrenadores}</span>
-              )}
+              {(() => {
+                const c = controlesGrupo && onAccionGrupo ? controlesGrupo(g.id) : null;
+                if (!c || !onAccionGrupo) {
+                  return (
+                    <>
+                      <span>{g.punto}</span>
+                      <span className={g.sinEntrenador ? 'gt-falta' : ''}>· {g.entrenadores}</span>
+                    </>
+                  );
+                }
+                const off = cargando || c.soloConsulta;
+                return (
+                  <>
+                    {c.punto ? (
+                      <SelectChip sel={c.punto} clase="gt-sel-punto" disabled={off} etiqueta={`Punto de encuentro de ${g.titulo}`} onElegir={(v) => onAccionGrupo(g.id, 'punto', v)} />
+                    ) : (
+                      <span>{g.punto}</span>
+                    )}
+                    <SelectChip sel={c.entrenador} clase="gt-sel-ent" disabled={off} etiqueta={`Entrenador de ${g.titulo}`} onElegir={(v) => onAccionGrupo(g.id, 'entrenador', v)} />
+                    {c.segundo && (
+                      <SelectChip sel={c.segundo} clase="gt-sel-seg" disabled={off} etiqueta={`Segundo entrenador de ${g.titulo}`} onElegir={(v) => onAccionGrupo(g.id, 'segundo', v)} />
+                    )}
+                  </>
+                );
+              })()}
               <span className={`gt-estado${g.publicado ? ' is-pub' : ''}`}>{g.publicado ? `✓ ${g.estado}` : g.estado}</span>
             </div>
           </header>
@@ -221,15 +268,15 @@ export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, o
             {g.ninos.length === 0 && <li className="gt-vacio">Sin niños</li>}
           </ul>
           <footer className="gt-pie">
-            <button type="button" onClick={() => onAjustes(g.id)}>⚙ Ajustes</button>
+            {!(controlesGrupo && onAccionGrupo) && <button type="button" onClick={() => onAjustes(g.id)}>⚙ Ajustes</button>}
             <button type="button" onClick={() => onTrabajo(g.id)}>Trabajo y obs.</button>
           </footer>
         </section>
       ))}
 
-      {menu && grupoMenu && menu.nino.alumnoId && createPortal(
+      {menu && grupoMenu && ninoMenu && ninoMenu.alumnoId && createPortal(
         <div ref={menuRef} className="gt-menu" style={{ top: menu.top, left: menu.left }} onClick={(e) => e.stopPropagation()}>
-          <div className="gt-menu-nombre">{menu.nino.nombre}</div>
+          <div className="gt-menu-nombre">{ninoMenu.nombre}</div>
           {grupos.some((d) => d.id !== menu.grupoId) && <div className="gt-menu-lbl">Mover a</div>}
           {grupos
             .filter((d) => d.id !== menu.grupoId)
@@ -237,32 +284,51 @@ export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, o
               <button
                 key={d.id}
                 type="button"
-                onClick={() => { setMenu(null); onMover(menu.grupoId, menu.nino.alumnoId as string, d.id); }}
+                onClick={() => { setMenu(null); onMover(menu.grupoId, ninoMenu.alumnoId as string, d.id); }}
               >
                 {d.titulo} · {d.niveles} · {d.ninos.length}
               </button>
             ))}
           {grupoMenu.puedeGrupoNuevo && (
-            <button type="button" onClick={() => { setMenu(null); onGrupoNuevo(menu.grupoId, menu.nino.alumnoId as string); }}>
+            <button type="button" onClick={() => { setMenu(null); onGrupoNuevo(menu.grupoId, ninoMenu.alumnoId as string); }}>
               ➕ Grupo nuevo con este niño
             </button>
           )}
           <div className="gt-menu-lbl">Más</div>
           {grupoMenu.intensivo ? (
-            menu.nino.puedeMarcarNoViene && (
+            ninoMenu.puedeMarcarNoViene && (
               <button
                 type="button"
-                className={menu.nino.noViene ? '' : 'is-peligro'}
-                onClick={() => { setMenu(null); onNoViene(menu.grupoId, menu.nino.alumnoId as string, Boolean(menu.nino.noViene)); }}
+                className={ninoMenu.noViene ? '' : 'is-peligro'}
+                onClick={() => { setMenu(null); onNoViene(menu.grupoId, ninoMenu.alumnoId as string, Boolean(ninoMenu.noViene)); }}
               >
-                {menu.nino.noViene ? 'Vuelve a venir' : 'No viene'}
+                {ninoMenu.noViene ? 'Vuelve a venir' : 'No viene'}
               </button>
             )
           ) : (
-            <button type="button" className="is-peligro" onClick={() => { setMenu(null); onQuitar(menu.grupoId, menu.nino.alumnoId as string); }}>
+            <button type="button" className="is-peligro" onClick={() => { setMenu(null); onQuitar(menu.grupoId, ninoMenu.alumnoId as string); }}>
               Quitar de esta sesión
             </button>
           )}
+        </div>,
+        document.body
+      )}
+      {menu && grupoMenu && !ninoMenu && controlesMenu && onAccionGrupo && createPortal(
+        <div ref={menuRef} className="gt-menu" style={{ top: menu.top, left: menu.left }} onClick={(e) => e.stopPropagation()}>
+          <div className="gt-menu-nombre">{grupoMenu.titulo} · {grupoMenu.niveles}</div>
+          {controlesMenu.particular && (
+            <button type="button" disabled={controlesMenu.soloConsulta} onClick={() => { setMenu(null); onAccionGrupo(menu.grupoId, 'particular'); }}>
+              {controlesMenu.particular === 'quitar' ? 'Quitar particular' : 'Hacer particular'}
+            </button>
+          )}
+          {controlesMenu.masOpciones && (
+            <button type="button" onClick={() => { setMenu(null); onAccionGrupo(menu.grupoId, 'mas'); }}>
+              Tercer entrenador y reparto de reportes…
+            </button>
+          )}
+          <button type="button" className="is-peligro" disabled={controlesMenu.soloConsulta} onClick={() => { setMenu(null); onAccionGrupo(menu.grupoId, 'borrar'); }}>
+            Borrar grupo
+          </button>
         </div>,
         document.body
       )}

@@ -44,7 +44,7 @@ import { ReportSplitPanel } from '../dashboard/ReportSplitPanel';
 import { CanceladosAimHarderAviso } from './CanceladosAimHarderAviso';
 import { RepetidosSemanaAviso } from './RepetidosSemanaAviso';
 import { avisoRatioGrupoBaby, nivelesDe } from './dividirGrupoLogic';
-import { CifrasSesionAgenda, GruposTableroAgenda, PublicarListaAgenda, VentanaAjustesTablero, nombreTablero, type GrupoPublicarFila, type GrupoTablero } from './GruposTableroAgenda';
+import { CifrasSesionAgenda, GruposTableroAgenda, PublicarListaAgenda, VentanaAjustesTablero, nombreTablero, type GrupoPublicarFila, type GrupoTablero, type ControlesGrupoTablero, type SelectTablero, type AccionGrupoTablero } from './GruposTableroAgenda';
 import { PreparadosGrandeAviso } from './PreparadosGrandeAviso';
 import { PacoAimHarderResumen } from './PacoAimHarderResumen';
 import { avisoCompartirPunto, opcionesPuntoEncuentro, textoOpcionPunto } from './puntosEncuentroLogic';
@@ -936,6 +936,97 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
       const el = document.getElementById(`agenda-trabajo-grupo-${grupoId}`) as HTMLDetailsElement | null;
       if (el) { el.open = true; el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
     }, 60);
+  }
+
+  // 25/11 (Jose): lo de «⚙ Ajustes» se hace en la propia tarjeta del tablero.
+  // Mismas listas y mismas funciones que la tarjeta antigua (con sus avisos).
+  function nombreEntrenadorAgenda(id?: string | null, porDefecto?: string | null) {
+    return String(entrenadores.find((e: EntrenadorResumen) => e.entrenador_id === id)?.nombre_completo || porDefecto || '');
+  }
+
+  function controlesGrupoTableroAgenda(grupoId: string): ControlesGrupoTablero | null {
+    const grupo = agendaGruposSesion.find((g: AgendaGrupoSesionApp) => g.grupo_id === grupoId);
+    if (!grupo) return null;
+    const principal = grupo.entrenador_id || null;
+    const apoyo = grupo.entrenador_apoyo_id || null;
+    const tercero = grupo.entrenador_tercero_id || null;
+    const aOpcion = (e: EntrenadorResumen, prefijo = '') => ({ valor: prefijo + e.entrenador_id, texto: String(e.nombre_completo || '') });
+    const disponibles = (entrenadoresDisponiblesCambioGrupoAgenda(grupo.grupo_id, principal, apoyo) as EntrenadorResumen[])
+      .filter((e) => e.entrenador_id !== principal && e.entrenador_id !== tercero);
+    const idsDisponibles = new Set(disponibles.map((e) => e.entrenador_id));
+    const excepcionales = (entrenadoresExcepcionalesCambioGrupoAgenda(grupo.grupo_id, principal, apoyo) as EntrenadorResumen[])
+      .filter((e) => e.entrenador_id !== principal && e.entrenador_id !== tercero && !idsDisponibles.has(e.entrenador_id));
+    const entrenador: SelectTablero = {
+      texto: principal ? `${nombreEntrenadorAgenda(principal, grupo.entrenador)} ▾` : 'Sin entrenador ▾',
+      falta: !principal,
+      grupos: [
+        { etiqueta: excepcionales.length ? 'Con disponibilidad' : undefined, opciones: disponibles.map((e) => aOpcion(e)) },
+        { etiqueta: 'Otros (asignación excepcional)', opciones: excepcionales.map((e) => aOpcion(e, 'x:')) },
+        { opciones: principal ? [{ valor: '__quitar', texto: 'Quitar entrenador' }] : [] },
+      ],
+    };
+    const segundo: SelectTablero | null = principal
+      ? {
+          texto: apoyo
+            ? `+ ${nombreEntrenadorAgenda(apoyo)}${tercero ? ` + ${nombreEntrenadorAgenda(tercero)}` : ''} ▾`
+            : '+ 2º ▾',
+          grupos: [
+            {
+              opciones: (entrenadoresDisponiblesCambioGrupoAgenda(grupo.grupo_id, apoyo, principal) as EntrenadorResumen[])
+                .filter((e) => e.entrenador_id !== apoyo && e.entrenador_id !== tercero && e.entrenador_id !== principal)
+                .map((e) => aOpcion(e)),
+            },
+            { opciones: apoyo ? [{ valor: '__quitar', texto: 'Quitar segundo entrenador' }] : [] },
+          ],
+        }
+      : null;
+    const particular = esNombreGrupoParticularApp(grupo.nombre_grupo);
+    const punto: SelectTablero | null = particular
+      ? null
+      : {
+          texto: grupo.punto_encuentro ? `Punto ${grupo.punto_encuentro} ▾` : 'Sin punto ▾',
+          falta: !grupo.punto_encuentro,
+          grupos: [
+            {
+              opciones: opcionesPuntoEncuentro(puntosEncuentroAgenda, grupo.grupo_id, gruposRecursosTurnoAgenda(), grupo.punto_encuentro)
+                .filter((o) => o.punto !== grupo.punto_encuentro)
+                .map((o) => ({ valor: o.punto, texto: textoOpcionPunto(o) })),
+            },
+          ],
+        };
+    const total = Number(grupo.total_alumnos || 0);
+    return {
+      entrenador,
+      segundo,
+      punto,
+      particular: particular ? 'quitar' : total >= 1 && total <= 2 ? 'hacer' : null,
+      masOpciones: Boolean(principal && apoyo),
+      soloConsulta: Boolean(ctx.esSoloConsultaUsuarioApp),
+    };
+  }
+
+  function accionGrupoTableroAgenda(grupoId: string, accion: AccionGrupoTablero, valor = '') {
+    const grupo = agendaGruposSesion.find((g: AgendaGrupoSesionApp) => g.grupo_id === grupoId);
+    if (!grupo) return;
+    if (accion === 'entrenador') {
+      if (valor === '__quitar') void cambiarEntrenadorGrupoAgenda(grupo, '', false);
+      else if (valor.startsWith('x:')) void cambiarEntrenadorGrupoAgenda(grupo, valor.slice(2), true);
+      else void cambiarEntrenadorGrupoAgenda(grupo, valor, false);
+    } else if (accion === 'segundo') {
+      void cambiarSegundoEntrenadorGrupoAgenda(grupo, valor === '__quitar' ? '' : valor);
+    } else if (accion === 'punto') {
+      const aviso = avisoCompartirPunto(
+        opcionesPuntoEncuentro(puntosEncuentroAgenda, grupo.grupo_id, gruposRecursosTurnoAgenda(), grupo.punto_encuentro).find((o) => o.punto === valor)
+      );
+      if (aviso && !window.confirm(aviso)) return;
+      void cambiarPuntoGrupoAgenda(grupo, valor);
+    } else if (accion === 'particular') {
+      void marcarGrupoParticular(grupo);
+    } else if (accion === 'borrar') {
+      void borrarGrupoAgenda(grupo);
+    } else if (accion === 'mas') {
+      setGrupoAjustesTablero(grupoId);
+    }
   }
 
   function puedeGrupoNuevoAgenda(grupo: AgendaGrupoSesionApp, contextoIntensivo: unknown) {
@@ -3754,17 +3845,8 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                           }}
                           onAjustes={(grupoId) => setGrupoAjustesTablero(grupoId)}
                           onTrabajo={abrirTrabajoTableroAgenda}
-                          entrenadoresGrupo={(grupoId) => {
-                            const grupo = agendaGruposSesion.find((g: AgendaGrupoSesionApp) => g.grupo_id === grupoId);
-                            if (!grupo) return [];
-                            return entrenadoresDisponiblesCambioGrupoAgenda(grupo.grupo_id, grupo.entrenador_id, grupo.entrenador_apoyo_id)
-                              .filter((e: EntrenadorResumen) => e.entrenador_id !== grupo.entrenador_tercero_id)
-                              .map((e: EntrenadorResumen) => ({ id: e.entrenador_id, nombre: String(e.nombre_completo || '') }));
-                          }}
-                          onAsignarEntrenador={(grupoId, entrenadorId) => {
-                            const grupo = agendaGruposSesion.find((g: AgendaGrupoSesionApp) => g.grupo_id === grupoId);
-                            if (grupo) void cambiarEntrenadorGrupoAgenda(grupo, entrenadorId, false);
-                          }}
+                          controlesGrupo={controlesGrupoTableroAgenda}
+                          onAccionGrupo={accionGrupoTableroAgenda}
                         />
                       )}
                       {listaPublicarActiva && (
@@ -3839,7 +3921,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                             )}
                             {/* Clase particular de 1 o 2 niños (p. ej. dos hermanas): no se le
                                 proponen más niños y no necesita punto de encuentro. */}
-                            {!ctx.esSoloConsultaUsuarioApp &&
+                            {!tableroAgendaActivo && !ctx.esSoloConsultaUsuarioApp &&
                               (esNombreGrupoParticularApp(grupo.nombre_grupo) ||
                                 (Number(grupo.total_alumnos || 0) >= 1 && Number(grupo.total_alumnos || 0) <= 2)) && (
                                 <button
@@ -3860,7 +3942,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                     : 'Hacer particular'}
                                 </button>
                               )}
-                            {grupo.alumnos_lista && (
+                            {!tableroAgendaActivo && grupo.alumnos_lista && (
                               <div
                                 style={{
                                   display:
@@ -4378,6 +4460,8 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
 
                               {agendaPestanaProceso === 'organizar' && (
                                 <>
+                              {/* 25/11: en el tablero, entrenador y segundo se cambian en la propia tarjeta. */}
+                              {!tableroAgendaActivo && (<>
                               <label style={labelCampo}>
                                 Entrenador
                                 <select
@@ -4564,6 +4648,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                     ))}
                                 </select>
                               </label>
+                              </>)}
 
                               {/* 06/11: tercer entrenador (con principal y segundo puestos). */}
                               {grupo.entrenador_id && grupo.entrenador_apoyo_id && (
@@ -4703,6 +4788,8 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                   </details>
                                 )}
 
+                              {/* 25/11: en el tablero, punto y borrar se hacen en la propia tarjeta. */}
+                              {!tableroAgendaActivo && (<>
                               <label style={labelCampo}>
                                 Punto de encuentro
                                 <select
@@ -4751,6 +4838,7 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                               >
                                 Borrar grupo
                               </button>
+                              </>)}
                                 </>
                               )}
                             </div>
