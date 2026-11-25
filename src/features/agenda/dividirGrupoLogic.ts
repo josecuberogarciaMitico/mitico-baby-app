@@ -28,7 +28,14 @@ export function avisoRatioGrupoBaby(g: {
     || (!/[BCD]/.test(nivel) && nivel.includes('A'));
   const entrenadores = new Set([g.entrenador_id, g.entrenador_apoyo_id, g.entrenador_tercero_id].filter(Boolean)).size;
   if (total <= 1) return `Grupo de ${total} niño${total === 1 ? '' : 's'}: muévelo a otro grupo o hazlo particular.`;
-  if (total >= 8) return `${total} niños: con 8 o más hay que dividirlo en 2 grupos.`;
+  // 25/11 (Jose): con 8 o más vale si hay 2 entrenadores (se dividen en pista y cada uno
+  // hace sus reportes): hasta 4 por entrenador en iniciación / pista pequeña, 7 en el resto.
+  if (total >= 8) {
+    if (entrenadores < 2) return `${total} niños: con 8 o más hace falta 2.º entrenador o dividirlo en 2 grupos.`;
+    const maximo = (bajo ? 4 : 7) * entrenadores;
+    if (total > maximo) return `${total} niños con ${entrenadores} entrenadores: el máximo es ${maximo}.`;
+    return null;
+  }
   if (bajo && total >= 5 && entrenadores < 2) return `${total} niños en grupo de iniciación / pista pequeña: falta 2.º entrenador.`;
   return null;
 }

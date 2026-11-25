@@ -20,4 +20,10 @@ test('ratio: aviso en vez de bloqueo (misma regla que Supabase)', () => {
   equal(avisoRatioGrupoBaby({ nombre_grupo: 'Grupo 6 · Nivel B', nivel_grupo: 'B', pista: 'Pista grande', entrenador_id: 'e1', total_alumnos: 7 }), null, '7 en grande: bien');
   equal(Boolean(avisoRatioGrupoBaby({ nombre_grupo: 'Grupo 6 · Nivel B', nivel_grupo: 'B', pista: 'Pista grande', entrenador_id: 'e1', total_alumnos: 8 })), true, '8: dividir');
   equal(Boolean(avisoRatioGrupoBaby({ nombre_grupo: 'G', nivel_grupo: 'A', pista: 'Pista grande', entrenador_id: 'e1', total_alumnos: 5 })), true, 'solo A cuenta como bajo');
+  const grande = { nombre_grupo: 'Grupo 4 · Nivel A+ / B', nivel_grupo: 'A+ / B', pista: 'Pista grande', entrenador_id: 'e1' };
+  equal(avisoRatioGrupoBaby({ ...grande, total_alumnos: 8, entrenador_apoyo_id: 'e2' }), null, '8 con 2 entrenadores: bien');
+  equal(avisoRatioGrupoBaby({ ...grande, total_alumnos: 14, entrenador_apoyo_id: 'e2' }), null, '14 con 2 en grande: bien');
+  equal(Boolean(avisoRatioGrupoBaby({ ...grande, total_alumnos: 15, entrenador_apoyo_id: 'e2' })), true, '15 con 2: demasiados');
+  equal(avisoRatioGrupoBaby({ ...base, total_alumnos: 8, entrenador_apoyo_id: 'e2' }), null, '8 en iniciación con 2: bien');
+  equal(Boolean(avisoRatioGrupoBaby({ ...base, total_alumnos: 9, entrenador_apoyo_id: 'e2' })), true, '9 en iniciación con 2: demasiados');
 });
