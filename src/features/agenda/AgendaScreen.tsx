@@ -995,10 +995,16 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
           ],
         };
     const total = Number(grupo.total_alumnos || 0);
+    const pistaActual = String(grupo.pista || '');
+    const pista: SelectTablero = {
+      texto: pistaActual || 'Sin pista',
+      grupos: [{ opciones: ['Pequeña', 'Grande', 'Pequeña/Grande'].filter((p) => p !== pistaActual).map((p) => ({ valor: p, texto: p })) }],
+    };
     return {
       entrenador,
       segundo,
       punto,
+      pista,
       particular: particular ? 'quitar' : total >= 1 && total <= 2 ? 'hacer' : null,
       masOpciones: Boolean(principal && apoyo),
       soloConsulta: Boolean(ctx.esSoloConsultaUsuarioApp),
@@ -1020,6 +1026,18 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
       );
       if (aviso && !window.confirm(aviso)) return;
       void cambiarPuntoGrupoAgenda(grupo, valor);
+    } else if (accion === 'pista') {
+      // 25/11: corrección manual de la pista (se vuelve a calcular sola si cambian sus niños).
+      void (async () => {
+        try {
+          setError('');
+          await ejecutarFuncionAuthJson('cambiar_pista_grupo_app', { p_grupo_id: grupo.grupo_id, p_pista: valor });
+          if (agendaSesionActivaId) await cargarDetalleSesionAgenda(agendaSesionActivaId);
+          await cargarAgendaOperativaDirecta();
+        } catch (err) {
+          setError(err instanceof Error ? err.message : 'No se pudo cambiar la pista.');
+        }
+      })();
     } else if (accion === 'particular') {
       void marcarGrupoParticular(grupo);
     } else if (accion === 'borrar') {

@@ -27,6 +27,11 @@
 .gt-chip.is-fantasma { background: transparent; border-style: dashed; color: #64748b; padding: 0 9px; }
 .gt-chip.is-fijo { cursor: default; }
 .gt-chip:disabled { cursor: default; opacity: .65; }
+.gt-pista-btn { display: inline-flex; align-items: center; gap: 2px; border: 0; cursor: pointer; font-family: inherit; line-height: inherit; } /* 25/11: pista corregible a mano */
+.gt-pista-btn svg { width: 11px; height: 11px; opacity: .55; }
+.gt-pista-btn:hover:not(:disabled) svg { opacity: 1; }
+.gt-pista-btn:disabled { cursor: default; }
+#agenda-sesion-trabajo .gt-pista-btn { min-height: 0 !important; padding-top: 2px !important; padding-bottom: 2px !important; border-radius: 6px !important; font-weight: 900 !important; }
 .gt-menu-vacio { padding: 6px 10px 8px; font-size: 12px; font-weight: 700; color: #94a3b8; }
 .gt-mas-grupo { margin-left: 2px; }
 .gt-estado { margin-left: auto; font-size: 11px; font-weight: 900; color: #b45309; white-space: nowrap; }

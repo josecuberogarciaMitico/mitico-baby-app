@@ -69,14 +69,16 @@ export type ControlesGrupoTablero = {
   entrenador: SelectTablero;
   segundo: SelectTablero | null;
   punto: SelectTablero | null;
+  /** 25/11: pista (se calcula sola por niveles; aquí se puede corregir a mano). */
+  pista?: SelectTablero | null;
   particular: 'hacer' | 'quitar' | null;
   /** Tercer entrenador / reparto de reportes: siguen en la ventana de detalle. */
   masOpciones: boolean;
   soloConsulta: boolean;
 };
-export type AccionGrupoTablero = 'entrenador' | 'segundo' | 'punto' | 'particular' | 'borrar' | 'mas';
+export type AccionGrupoTablero = 'entrenador' | 'segundo' | 'punto' | 'pista' | 'particular' | 'borrar' | 'mas';
 
-type CampoChip = 'entrenador' | 'segundo' | 'punto';
+type CampoChip = 'entrenador' | 'segundo' | 'punto' | 'pista';
 
 const IconoPersona = () => (
   <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.2" r="2.7" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="M2.8 13.6c.6-2.6 2.7-4 5.2-4s4.6 1.4 5.2 4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
@@ -186,7 +188,17 @@ export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, o
               )}
             </div>
             <div className="gt-meta">
-              <span className="gt-pista">{g.pistaTexto}</span>
+              {(() => {
+                const c = controlesGrupo && onAccionGrupo ? controlesGrupo(g.id) : null;
+                // 25/11: la etiqueta de pista se pulsa (sutil) para corregirla a mano.
+                return c?.pista ? (
+                  <button type="button" className="gt-pista gt-pista-btn" disabled={cargando || c.soloConsulta} title="Cambiar pista" onClick={(e) => abrirMenu(e, g.id, undefined, 'pista')}>
+                    {g.pistaTexto}<IconoFlecha />
+                  </button>
+                ) : (
+                  <span className="gt-pista">{g.pistaTexto}</span>
+                );
+              })()}
               {!(controlesGrupo && onAccionGrupo) && (
                 <>
                   <span>{g.punto}</span>
@@ -313,7 +325,7 @@ export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, o
       {menu && grupoMenu && !ninoMenu && menu.campo && selMenu && onAccionGrupo && createPortal(
         <div ref={menuRef} className="gt-menu" style={{ top: menu.top, left: menu.left }} onClick={(e) => e.stopPropagation()}>
           <div className="gt-menu-nombre">
-            {menu.campo === 'punto' ? 'Punto de encuentro' : menu.campo === 'segundo' ? 'Segundo entrenador' : 'Entrenador'} · {grupoMenu.titulo}
+            {menu.campo === 'punto' ? 'Punto de encuentro' : menu.campo === 'pista' ? 'Pista' : menu.campo === 'segundo' ? 'Segundo entrenador' : 'Entrenador'} · {grupoMenu.titulo}
           </div>
           {!selMenu.grupos.some((gr) => gr.opciones.length) && <div className="gt-menu-vacio">Nadie libre en este turno</div>}
           {selMenu.grupos.map((gr, i) =>
@@ -327,7 +339,7 @@ export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, o
                     className={o.valor === '__quitar' ? 'is-peligro' : ''}
                     onClick={() => { const campo = menu.campo as CampoChip; setMenu(null); onAccionGrupo(menu.grupoId, campo, o.valor); }}
                   >
-                    {menu.campo !== 'punto' && o.valor !== '__quitar' ? nombreTablero(o.texto) : o.texto}
+                    {menu.campo !== 'punto' && menu.campo !== 'pista' && o.valor !== '__quitar' ? nombreTablero(o.texto) : o.texto}
                   </button>
                 ))}
               </React.Fragment>
