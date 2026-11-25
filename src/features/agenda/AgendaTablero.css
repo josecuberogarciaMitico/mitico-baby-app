@@ -133,6 +133,10 @@
   animation: none; font-family: 'SF Pro Rounded', 'Aptos', 'Inter', 'Segoe UI', system-ui, sans-serif; color: #172033;
   background: #f8fafc; padding: 0 12px 24px; box-sizing: border-box;
   -webkit-overflow-scrolling: touch;
+  /* 25/11: en iPhone (app instalada) el panel a veces se quedaba más bajo que la
+     pantalla (p. ej. tras cerrar el teclado) y asomaba la lista de días por
+     debajo. Alto explícito = pantalla visible real. */
+  height: 100vh; height: 100dvh; min-height: -webkit-fill-available;
 }
 .ag-trabajo-cabecera {
   position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 10px;
