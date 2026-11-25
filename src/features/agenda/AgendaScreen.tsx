@@ -2511,6 +2511,9 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                         const opcionesRevisionTurnoActual = opcionesTurnoActual.filter(
                           (opcion) => opcion.estado === 'REVISAR'
                         );
+                        const opcionesNoEncajaTurnoActual = opcionesTurnoActual.filter(
+                          (opcion) => opcion.estado === 'NO_ENCAJA'
+                        );
 
                         // Fuera del turno actual solo enseñamos alternativas que
                         // realmente ENCAJAN. Los NO_ENCAJA y REVISAR no aportan
@@ -2540,9 +2543,15 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                               border:
                                 opcion.estado === 'RECOMENDADO'
                                   ? '1px solid #86efac'
+                                  : opcion.estado === 'NO_ENCAJA'
+                                  ? '1px solid #fca5a5'
                                   : '1px solid #fdba74',
                               background:
-                                opcion.estado === 'RECOMENDADO' ? '#f0fdf4' : '#fff7ed',
+                                opcion.estado === 'RECOMENDADO'
+                                  ? '#f0fdf4'
+                                  : opcion.estado === 'NO_ENCAJA'
+                                  ? '#fef2f2'
+                                  : '#fff7ed',
                             }}
                           >
                             <div style={agendaGrupoLinea}>
@@ -2561,7 +2570,11 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                   whiteSpace: 'nowrap',
                                 }}
                               >
-                                {opcion.estado === 'RECOMENDADO' ? 'ENCAJA' : 'REVISAR'}
+                                {opcion.estado === 'RECOMENDADO'
+                                  ? 'ENCAJA'
+                                  : opcion.estado === 'NO_ENCAJA'
+                                  ? 'NO ENCAJA'
+                                  : 'REVISAR'}
                               </span>
                             </div>
                             <p style={{ margin: '8px 0 0' }}>
@@ -2579,7 +2592,8 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                               consultarSupabase={consultarSupabase}
                             />
 
-                            {opcion.estado !== 'NO_ENCAJA' && (
+                            {/* 25/11 (Jose): en el turno donde se apuntó, se puede meter igualmente aunque no encaje. */}
+                            {(opcion.estado !== 'NO_ENCAJA' || opcion.es_sesion_actual) && (
                               <button
                                 type="button"
                                 style={{
@@ -2591,6 +2605,12 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                         background: '#fff7ed',
                                         color: '#9a3412',
                                         border: '1px solid #fdba74',
+                                      }
+                                    : opcion.estado === 'NO_ENCAJA'
+                                    ? {
+                                        background: '#ffffff',
+                                        color: '#b91c1c',
+                                        border: '1px solid #fca5a5',
                                       }
                                     : {}),
                                 }}
@@ -2612,6 +2632,8 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                                   ? 'Añadiendo…'
                                   : !opcion.es_sesion_actual
                                   ? 'Añadir a este turno'
+                                  : opcion.estado === 'NO_ENCAJA'
+                                  ? 'Meter igualmente en este grupo'
                                   : opcion.estado === 'REVISAR'
                                   ? 'Añadir con revisión manual'
                                   : 'Añadir a este grupo'}
@@ -2654,6 +2676,21 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
 
                             {opcionesRevisionTurnoActual.map((opcion) =>
                               renderOpcionFueraPlazo(opcion, 'Este turno · revisar')
+                            )}
+
+                            {/* 25/11 (Jose): los grupos del turno que no encajan también se enseñan,
+                                para poder meter al niño igualmente si coordinación lo decide. */}
+                            {opcionesNoEncajaTurnoActual.length > 0 && (
+                              <details open={!encajaEnTurnoActual && !requiereRevisionTurnoActual}>
+                                <summary style={{ cursor: 'pointer', fontWeight: 800 }}>
+                                  Grupos de este turno que no encajan ({opcionesNoEncajaTurnoActual.length}) · meter igualmente
+                                </summary>
+                                <div style={{ display: 'grid', gap: 10, marginTop: 10 }}>
+                                  {opcionesNoEncajaTurnoActual.map((opcion) =>
+                                    renderOpcionFueraPlazo(opcion, 'Este turno · no encaja')
+                                  )}
+                                </div>
+                              </details>
                             )}
 
                             {alternativasValidas.length > 0 && (

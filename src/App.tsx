@@ -13588,13 +13588,13 @@ async function abrirGestionOperativaIntensivoDia(
       return;
     }
     const nivel = nivelValidado.level;
-    const requiereRevision = opcion.estado === 'REVISAR';
+    const requiereRevision = opcion.estado !== 'RECOMENDADO'; // 25/11: también NO_ENCAJA (meter igualmente)
     const esOtroTurno = !opcion.es_sesion_actual;
     const fechaHora = `${formatearFecha(opcion.fecha)} · ${opcion.hora_inicio?.slice(0, 5)}–${opcion.hora_fin?.slice(0, 5)}`;
     const mensaje = esOtroTurno
       ? `Vas a añadir a ${nombre} · ${nivel} en OTRO TURNO:\n\n${fechaHora}\n${opcion.grupo} · ${opcion.total_actual} → ${opcion.total_final} niños\n${opcion.entrenador || 'Sin entrenador'} · Punto ${opcion.punto}\n\nHazlo solo cuando los padres hayan confirmado el cambio de horario. ¿Continuar?`
       : requiereRevision
-      ? `Este encaje requiere revisión manual.\n\n${nombre} · ${nivel}\n${opcion.grupo} · ${opcion.total_actual} → ${opcion.total_final} niños\n\n¿Quieres añadirlo igualmente a este grupo?`
+      ? `${opcion.estado === 'NO_ENCAJA' ? `NO ENCAJA: ${opcion.motivo}` : 'Este encaje requiere revisión manual.'}\n\n${nombre} · ${nivel}\n${opcion.grupo} · ${opcion.total_actual} → ${opcion.total_final} niños\n\n¿Quieres añadirlo igualmente a este grupo?`
       : `${nombre} · ${nivel}\n${opcion.grupo} · ${opcion.total_actual} → ${opcion.total_final} niños\n${opcion.entrenador || 'Sin entrenador'} · Punto ${opcion.punto}\n\n¿Confirmas que quieres añadirlo a este grupo?`;
 
     if (!window.confirm(mensaje)) return;
