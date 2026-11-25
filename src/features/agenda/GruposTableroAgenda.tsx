@@ -160,8 +160,14 @@ export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, o
               >
                 <span className="gt-nombre" title={n.whatsapp ? `WhatsApp a la familia de ${n.nombre}` : n.nombre}>
                   {n.whatsapp ? (
-                    <a className="gt-wa" href={n.whatsapp} target="_blank" rel="noreferrer" draggable={false}>
+                    <a
+                      className="gt-wa"
+                      href={whatsappDirecto(n.whatsapp)}
+                      {...(esMovil() ? { target: '_blank', rel: 'noreferrer' } : {})}
+                      draggable={false}
+                    >
                       {n.nombre}
+                      <span className="gt-wa-ic" aria-hidden="true">●</span>
                     </a>
                   ) : (
                     n.nombre
@@ -230,6 +236,19 @@ export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, o
 }
 
 /** «SOFIA ESCARIO ARES» → «Sofia Escario Ares» (más fácil de leer en columnas estrechas). */
+// 25/11 (Jose): pinchar el nombre abre el WhatsApp de la familia DIRECTAMENTE.
+// En el móvil, wa.me ya abre la app. En el ordenador, wa.me abre una web que pide
+// otro clic, así que se usa whatsapp://send, que abre la app de WhatsApp instalada.
+export function esMovil(): boolean {
+  return typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+}
+
+export function whatsappDirecto(url: string, movil: boolean = esMovil()): string {
+  const m = /^https:\/\/wa\.me\/(\d+)(?:\?text=(.*))?$/.exec(url || '');
+  if (movil || !m) return url;
+  return `whatsapp://send?phone=${m[1]}${m[2] ? `&text=${m[2]}` : ''}`;
+}
+
 export function nombreTablero(nombre: string): string {
   return String(nombre || '')
     .trim()

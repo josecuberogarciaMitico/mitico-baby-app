@@ -24,7 +24,8 @@
 .gt-nino:hover { background: #f8fafc; }
 .gt-nino.is-noviene .gt-nombre { color: #b91c1c; text-decoration: line-through; }
 .gt-nombre { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gt-wa { color: inherit; text-decoration: none; cursor: pointer; }
+.gt-wa { color: inherit; text-decoration: underline; text-decoration-color: #bbf7d0; text-underline-offset: 3px; cursor: pointer; }
+.gt-wa-ic { display: inline-block; margin-left: 5px; font-size: 8px; vertical-align: 2px; color: #22c55e; } /* 25/11: se ve que lleva WhatsApp */
 .gt-wa:hover { color: #15803d; text-decoration: underline; text-decoration-color: #86efac; text-underline-offset: 3px; }
 .gt-asis { display: block; font-size: 10.5px; font-weight: 800; color: #64748b; text-decoration: none; }
 .gt-nivel { font-size: 11px; font-weight: 900; padding: 1px 6px; border-radius: 6px; background: #eef2ff; color: #3730a3; min-width: 30px; text-align: center; flex: none; }
