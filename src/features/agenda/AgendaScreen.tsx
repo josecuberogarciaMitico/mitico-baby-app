@@ -3754,6 +3754,17 @@ export function AgendaScreen({ ctx }: AgendaScreenProps) {
                           }}
                           onAjustes={(grupoId) => setGrupoAjustesTablero(grupoId)}
                           onTrabajo={abrirTrabajoTableroAgenda}
+                          entrenadoresGrupo={(grupoId) => {
+                            const grupo = agendaGruposSesion.find((g: AgendaGrupoSesionApp) => g.grupo_id === grupoId);
+                            if (!grupo) return [];
+                            return entrenadoresDisponiblesCambioGrupoAgenda(grupo.grupo_id, grupo.entrenador_id, grupo.entrenador_apoyo_id)
+                              .filter((e: EntrenadorResumen) => e.entrenador_id !== grupo.entrenador_tercero_id)
+                              .map((e: EntrenadorResumen) => ({ id: e.entrenador_id, nombre: String(e.nombre_completo || '') }));
+                          }}
+                          onAsignarEntrenador={(grupoId, entrenadorId) => {
+                            const grupo = agendaGruposSesion.find((g: AgendaGrupoSesionApp) => g.grupo_id === grupoId);
+                            if (grupo) void cambiarEntrenadorGrupoAgenda(grupo, entrenadorId, false);
+                          }}
                         />
                       )}
                       {listaPublicarActiva && (
