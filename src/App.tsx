@@ -9376,6 +9376,7 @@ Gracias!`;
         <p>${escaparHtml(nombreMes(mesCobros))} ${anioCobros}</p>
         <p><strong>Total dirección:</strong> ${formatearEuros(totalGeneral)}</p>
         <p><strong>Entrenadores:</strong> ${cobrosFiltrados.length}</p>
+        <div class="resumen"><div><strong>Total mes</strong><br>${formatearEuros(totalGeneral)}</div><div><strong>Turnos</strong><br>${resumenCobrosMes.turnos}</div><div><strong>Baby</strong><br>${resumenCobrosMes.baby} turnos</div><div><strong>Intensivos</strong><br>${resumenCobrosMes.intensivos} turnos</div><div><strong>Ocio</strong><br>${resumenCobrosMes.ocio} turnos</div></div>
       </section>
       ${cobrosFiltrados.map((cobro) => htmlCobroEntrenador(cobro)).join('')}
       ${htmlPreparacionEfectivoCobrosApp(cobrosFiltrados)}
