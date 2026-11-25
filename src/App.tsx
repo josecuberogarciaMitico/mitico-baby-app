@@ -461,7 +461,7 @@ import {
   turnosTrabajoDiaAgenda,
 } from './features/agenda/agendaCalendar';
 import { AgendaScreen } from './features/agenda/AgendaScreen';
-import { buildAgendaOperationalSessions } from './features/agenda/agendaSessions';
+import { buildAgendaOperationalSessions, ordenarGruposPorNivel } from './features/agenda/agendaSessions';
 import type {
   AgendaAlumnoSesionApp,
   AgendaFormState,
@@ -12988,8 +12988,8 @@ async function abrirGestionOperativaIntensivoDia(
       }
 
       setAgendaAlumnosSesion(alumnosData);
-      setAgendaGruposSesion(gruposData);
-      setAgendaGruposRecursosTurno(gruposData);
+      setAgendaGruposSesion(ordenarGruposPorNivel(gruposData)); // 25/11: orden fijo por nivel
+      setAgendaGruposRecursosTurno(ordenarGruposPorNivel(gruposData));
       void cargarRecursosCompartidosTurnoAgenda(sesionId, gruposData);
       setTrabajoGrupoCreadoEditando(
         Object.fromEntries(
@@ -16851,20 +16851,20 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
 
   function gruposPublicadosSesionResumenDia(sesion: any) {
     if (sesion.origen === 'intensivo') {
-      return (sesion.grupos || []).filter(
+      return ordenarGruposPorNivel((sesion.grupos || []).filter(
         (grupo: any) => grupo.grupo_id && grupo.publicado
-      );
+      ));
     }
 
     const sesionIdOperativo = sesion.agendaDirecta?.sesion_id;
     if (sesionIdOperativo) {
       const gruposOperativos = gruposOperativosResumenDia[sesionIdOperativo] || [];
       if (gruposOperativos.length > 0) {
-        return gruposOperativos.filter((grupo) => grupo.publicado);
+        return ordenarGruposPorNivel(gruposOperativos.filter((grupo) => grupo.publicado));
       }
     }
 
-    return (sesion.planningGrupos || []).filter((grupo: any) => grupo.publicado);
+    return ordenarGruposPorNivel((sesion.planningGrupos || []).filter((grupo: any) => grupo.publicado));
   }
 
   function nivelAlumnoResumenDia(nombre: string) {
