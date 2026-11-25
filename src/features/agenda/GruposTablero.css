@@ -15,12 +15,19 @@
 .gt-col--grande .gt-pista { background: #eff6ff; color: #2563eb; }
 .gt-col--pequena .gt-pista { background: #f0fdf4; color: #16a34a; }
 .gt-falta { color: #b45309; font-weight: 800; }
-.gt-sel { appearance: none; -webkit-appearance: none; border: 0; background: transparent; padding: 0; margin: 0; font: inherit; font-weight: 800; color: #475569; cursor: pointer; field-sizing: content; max-width: 100%; border-radius: 6px; } /* 25/11: entrenador, 2º y punto se cambian en la propia tarjeta */
-.gt-sel:hover { color: #0f172a; background: #f1f5f9; }
-.gt-sel.is-falta { color: #b45309; }
-.gt-sel.is-falta:hover { color: #92400e; background: #fff7ed; }
-.gt-sel-seg { color: #64748b; font-weight: 700; }
-.gt-sel:disabled { cursor: default; opacity: .6; background: transparent; }
+.gt-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; min-width: 0; } /* 25/11: entrenador, 2º y punto en pastillas */
+.gt-chip { display: inline-flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%; height: 26px; padding: 0 8px 0 9px; border: 1px solid #e2e8f0; border-radius: 999px; background: #f8fafc; font: inherit; font-size: 12px; font-weight: 800; color: #334155; cursor: pointer; white-space: nowrap; transition: background .12s, border-color .12s; }
+.gt-chip > span { overflow: hidden; text-overflow: ellipsis; }
+.gt-chip svg { flex: none; width: 13px; height: 13px; color: #64748b; }
+.gt-chip .gt-chip-flecha { width: 12px; height: 12px; color: #94a3b8; margin-left: -1px; }
+.gt-chip:hover:not(:disabled) { background: #fff; border-color: #94a3b8; }
+.gt-chip.is-falta { background: #fff7ed; border-color: #fed7aa; color: #c2410c; }
+.gt-chip.is-falta svg { color: #ea580c; }
+.gt-chip.is-falta:hover:not(:disabled) { background: #ffedd5; border-color: #fdba74; }
+.gt-chip.is-fantasma { background: transparent; border-style: dashed; color: #64748b; padding: 0 9px; }
+.gt-chip.is-fijo { cursor: default; }
+.gt-chip:disabled { cursor: default; opacity: .65; }
+.gt-menu-vacio { padding: 6px 10px 8px; font-size: 12px; font-weight: 700; color: #94a3b8; }
 .gt-mas-grupo { margin-left: 2px; }
 .gt-estado { margin-left: auto; font-size: 11px; font-weight: 900; color: #b45309; white-space: nowrap; }
 .gt-estado.is-pub { color: #166534; }
@@ -69,6 +76,7 @@
 #agenda-sesion-trabajo .gt-menu button { min-height: 0; padding-top: 7px !important; padding-bottom: 7px !important; }
 #agenda-sesion-trabajo .gt-vista button { min-height: 0; padding-top: 6px !important; padding-bottom: 6px !important; }
 #agenda-sesion-trabajo .gt-pie button { min-height: 0; padding-top: 6px !important; padding-bottom: 6px !important; }
+#agenda-sesion-trabajo .gt-chip { min-height: 0 !important; height: 28px; padding-top: 0 !important; padding-bottom: 0 !important; border-radius: 999px !important; font-weight: 800 !important; }
 
 /* ---------- 19/11: cabecera de cifras, pasos y Paso 3 en lista ---------- */
 .gs-cifras { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
