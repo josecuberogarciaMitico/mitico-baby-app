@@ -49,11 +49,15 @@ type Props = {
   onTrabajo: (grupoId: string) => void;
   /** Grupo cuya tarjeta completa está abierta debajo (se resalta). */
   grupoAbierto?: string | null;
+  /** 25/11: entrenadores con disponibilidad en este turno y libres para este grupo. */
+  entrenadoresGrupo?: (grupoId: string) => Array<{ id: string; nombre: string }>;
+  /** 25/11: asignar entrenador desde «Sin entrenador» (mismo flujo que en Ajustes). */
+  onAsignarEntrenador?: (grupoId: string, entrenadorId: string) => void;
 };
 
 type Menu = { grupoId: string; nino: NinoTablero; top: number; left: number; arriba: number; abajo: number };
 
-export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, onGrupoNuevo, onQuitar, onNoViene, onAjustes, onTrabajo }: Props) {
+export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, onGrupoNuevo, onQuitar, onNoViene, onAjustes, onTrabajo, entrenadoresGrupo, onAsignarEntrenador }: Props) {
   const [menu, setMenu] = useState<Menu | null>(null);
   const [arrastre, setArrastre] = useState<{ grupoId: string; alumnoId: string } | null>(null);
   const [sobre, setSobre] = useState<string | null>(null);
@@ -139,7 +143,39 @@ export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, o
             <div className="gt-meta">
               <span className="gt-pista">{g.pistaTexto}</span>
               <span>{g.punto}</span>
-              <span className={g.sinEntrenador ? 'gt-falta' : ''}>· {g.entrenadores}</span>
+              {g.sinEntrenador && entrenadoresGrupo && onAsignarEntrenador ? (
+                <span className="gt-falta">
+                  ·{' '}
+                  <select
+                    className="gt-ent-sel"
+                    value=""
+                    disabled={cargando}
+                    title="Elegir entrenador con disponibilidad en este turno"
+                    aria-label={`Asignar entrenador a ${g.titulo}`}
+                    onChange={(e) => {
+                      if (e.target.value) onAsignarEntrenador(g.id, e.target.value);
+                    }}
+                  >
+                    <option value="">Sin entrenador ▾</option>
+                    {(() => {
+                      const lista = entrenadoresGrupo(g.id);
+                      return lista.length ? (
+                        lista.map((ent) => (
+                          <option key={ent.id} value={ent.id}>
+                            {ent.nombre}
+                          </option>
+                        ))
+                      ) : (
+                        <option value="" disabled>
+                          Nadie libre en este turno
+                        </option>
+                      );
+                    })()}
+                  </select>
+                </span>
+              ) : (
+                <span className={g.sinEntrenador ? 'gt-falta' : ''}>· {g.entrenadores}</span>
+              )}
               <span className={`gt-estado${g.publicado ? ' is-pub' : ''}`}>{g.publicado ? `✓ ${g.estado}` : g.estado}</span>
             </div>
           </header>
