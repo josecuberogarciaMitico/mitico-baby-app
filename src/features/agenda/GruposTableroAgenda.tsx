@@ -76,35 +76,19 @@ export type ControlesGrupoTablero = {
 };
 export type AccionGrupoTablero = 'entrenador' | 'segundo' | 'punto' | 'particular' | 'borrar' | 'mas';
 
-function SelectChip({ sel, clase, disabled, etiqueta, onElegir }: {
-  sel: SelectTablero; clase: string; disabled: boolean; etiqueta: string; onElegir: (valor: string) => void;
-}) {
-  const hayOpciones = sel.grupos.some((gr) => gr.opciones.length > 0);
-  return (
-    <select
-      className={`gt-sel ${clase}${sel.falta ? ' is-falta' : ''}`}
-      value=""
-      disabled={disabled}
-      title={etiqueta}
-      aria-label={etiqueta}
-      onChange={(e) => { if (e.target.value) onElegir(e.target.value); }}
-    >
-      <option value="">{sel.texto}</option>
-      {!hayOpciones && <option value="" disabled>Nadie libre en este turno</option>}
-      {sel.grupos.map((gr, i) =>
-        !gr.opciones.length ? null : gr.etiqueta ? (
-          <optgroup key={i} label={gr.etiqueta}>
-            {gr.opciones.map((o) => <option key={o.valor} value={o.valor}>{o.texto}</option>)}
-          </optgroup>
-        ) : (
-          gr.opciones.map((o) => <option key={o.valor} value={o.valor}>{o.texto}</option>)
-        )
-      )}
-    </select>
-  );
-}
+type CampoChip = 'entrenador' | 'segundo' | 'punto';
 
-type Menu = { grupoId: string; nino?: NinoTablero; top: number; left: number; arriba: number; abajo: number };
+const IconoPersona = () => (
+  <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="5.2" r="2.7" fill="none" stroke="currentColor" strokeWidth="1.6" /><path d="M2.8 13.6c.6-2.6 2.7-4 5.2-4s4.6 1.4 5.2 4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+);
+const IconoPunto = () => (
+  <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 14.5s4.6-4.3 4.6-8A4.6 4.6 0 0 0 3.4 6.5c0 3.7 4.6 8 4.6 8z" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" /><circle cx="8" cy="6.4" r="1.6" fill="currentColor" /></svg>
+);
+const IconoFlecha = () => (
+  <svg className="gt-chip-flecha" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 6.5 8 10l3.5-3.5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>
+);
+
+type Menu = { grupoId: string; nino?: NinoTablero; campo?: CampoChip; top: number; left: number; arriba: number; abajo: number };
 
 export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, onGrupoNuevo, onQuitar, onNoViene, onAjustes, onTrabajo, controlesGrupo, onAccionGrupo }: Props) {
   const [menu, setMenu] = useState<Menu | null>(null);
@@ -134,15 +118,17 @@ export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, o
     };
   }, [menu]);
 
-  function abrirMenu(e: React.MouseEvent<HTMLButtonElement>, grupoId: string, nino?: NinoTablero) {
+  function abrirMenu(e: React.MouseEvent<HTMLButtonElement>, grupoId: string, nino?: NinoTablero, campo?: CampoChip) {
     e.stopPropagation();
     const r = e.currentTarget.getBoundingClientRect();
     const ancho = 250;
     setMenu({
       grupoId,
       nino,
+      campo,
       top: r.bottom + 4,
-      left: Math.max(8, Math.min(window.innerWidth - ancho - 8, r.right - ancho)),
+      // Las pastillas abren el menú alineado a su izquierda; los «⋯», a su derecha.
+      left: Math.max(8, Math.min(window.innerWidth - ancho - 8, campo ? r.left : r.right - ancho)),
       arriba: r.top,
       abajo: r.bottom,
     });
@@ -151,6 +137,9 @@ export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, o
   const grupoMenu = menu ? grupos.find((g) => g.id === menu.grupoId) : null;
   const ninoMenu = menu?.nino ?? null;
   const controlesMenu = menu && !menu.nino && controlesGrupo ? controlesGrupo(menu.grupoId) : null;
+  const campoMenu: CampoChip | undefined = menu?.campo;
+  const selMenu: SelectTablero | null = controlesMenu && campoMenu ? controlesMenu[campoMenu] : null;
+  const sinFlecha = (t: string) => t.replace(/\s*▾\s*$/, '');
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   // Si no cabe debajo del botón, se abre hacia arriba (niños al final de la pantalla).
@@ -198,33 +187,41 @@ export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, o
             </div>
             <div className="gt-meta">
               <span className="gt-pista">{g.pistaTexto}</span>
-              {(() => {
-                const c = controlesGrupo && onAccionGrupo ? controlesGrupo(g.id) : null;
-                if (!c || !onAccionGrupo) {
-                  return (
-                    <>
-                      <span>{g.punto}</span>
-                      <span className={g.sinEntrenador ? 'gt-falta' : ''}>· {g.entrenadores}</span>
-                    </>
-                  );
-                }
-                const off = cargando || c.soloConsulta;
-                return (
-                  <>
-                    {c.punto ? (
-                      <SelectChip sel={c.punto} clase="gt-sel-punto" disabled={off} etiqueta={`Punto de encuentro de ${g.titulo}`} onElegir={(v) => onAccionGrupo(g.id, 'punto', v)} />
-                    ) : (
-                      <span>{g.punto}</span>
-                    )}
-                    <SelectChip sel={c.entrenador} clase="gt-sel-ent" disabled={off} etiqueta={`Entrenador de ${g.titulo}`} onElegir={(v) => onAccionGrupo(g.id, 'entrenador', v)} />
-                    {c.segundo && (
-                      <SelectChip sel={c.segundo} clase="gt-sel-seg" disabled={off} etiqueta={`Segundo entrenador de ${g.titulo}`} onElegir={(v) => onAccionGrupo(g.id, 'segundo', v)} />
-                    )}
-                  </>
-                );
-              })()}
+              {!(controlesGrupo && onAccionGrupo) && (
+                <>
+                  <span>{g.punto}</span>
+                  <span className={g.sinEntrenador ? 'gt-falta' : ''}>· {g.entrenadores}</span>
+                </>
+              )}
               <span className={`gt-estado${g.publicado ? ' is-pub' : ''}`}>{g.publicado ? `✓ ${g.estado}` : g.estado}</span>
             </div>
+            {(() => {
+              const c = controlesGrupo && onAccionGrupo ? controlesGrupo(g.id) : null;
+              if (!c) return null;
+              const off = cargando || c.soloConsulta;
+              const seg = c.segundo;
+              const segVacio = seg ? /^\+ 2º/.test(seg.texto) : false;
+              return (
+                // 25/11: entrenador, 2º y punto como pastillas; al pulsar, el mismo menú que «⋯».
+                <div className="gt-chips">
+                  <button type="button" className={`gt-chip${c.entrenador.falta ? ' is-falta' : ''}`} disabled={off} title="Cambiar entrenador" onClick={(e) => abrirMenu(e, g.id, undefined, 'entrenador')}>
+                    <IconoPersona /><span>{c.entrenador.falta ? sinFlecha(c.entrenador.texto) : nombreTablero(sinFlecha(c.entrenador.texto))}</span><IconoFlecha />
+                  </button>
+                  {seg && (
+                    <button type="button" className={`gt-chip${segVacio ? ' is-fantasma' : ''}`} disabled={off} title="Segundo entrenador" onClick={(e) => abrirMenu(e, g.id, undefined, 'segundo')}>
+                      <span>{segVacio ? '+ 2º' : nombreTablero(sinFlecha(seg.texto))}</span>
+                    </button>
+                  )}
+                  {c.punto ? (
+                    <button type="button" className={`gt-chip${c.punto.falta ? ' is-falta' : ''}`} disabled={off} title="Cambiar punto de encuentro" onClick={(e) => abrirMenu(e, g.id, undefined, 'punto')}>
+                      <IconoPunto /><span>{sinFlecha(c.punto.texto)}</span><IconoFlecha />
+                    </button>
+                  ) : (
+                    <span className="gt-chip is-fijo"><IconoPunto /><span>{g.punto.replace(/^Particular · /, '')}</span></span>
+                  )}
+                </div>
+              );
+            })()}
           </header>
           {g.aviso && <div className="gt-aviso">⚠️ {g.aviso}</div>}
           <ul className="gt-ninos">
@@ -313,7 +310,34 @@ export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, o
         </div>,
         document.body
       )}
-      {menu && grupoMenu && !ninoMenu && controlesMenu && onAccionGrupo && createPortal(
+      {menu && grupoMenu && !ninoMenu && menu.campo && selMenu && onAccionGrupo && createPortal(
+        <div ref={menuRef} className="gt-menu" style={{ top: menu.top, left: menu.left }} onClick={(e) => e.stopPropagation()}>
+          <div className="gt-menu-nombre">
+            {menu.campo === 'punto' ? 'Punto de encuentro' : menu.campo === 'segundo' ? 'Segundo entrenador' : 'Entrenador'} · {grupoMenu.titulo}
+          </div>
+          {!selMenu.grupos.some((gr) => gr.opciones.length) && <div className="gt-menu-vacio">Nadie libre en este turno</div>}
+          {selMenu.grupos.map((gr, i) =>
+            !gr.opciones.length ? null : (
+              <React.Fragment key={i}>
+                {gr.etiqueta && <div className="gt-menu-lbl">{gr.etiqueta}</div>}
+                {gr.opciones.map((o) => (
+                  <button
+                    key={o.valor}
+                    type="button"
+                    className={o.valor === '__quitar' ? 'is-peligro' : ''}
+                    onClick={() => { const campo = menu.campo as CampoChip; setMenu(null); onAccionGrupo(menu.grupoId, campo, o.valor); }}
+                  >
+                    {menu.campo !== 'punto' && o.valor !== '__quitar' ? nombreTablero(o.texto) : o.texto}
+                  </button>
+                ))}
+              </React.Fragment>
+            )
+          )}
+        </div>,
+        document.body
+      )}
+
+      {menu && grupoMenu && !ninoMenu && !menu.campo && controlesMenu && onAccionGrupo && createPortal(
         <div ref={menuRef} className="gt-menu" style={{ top: menu.top, left: menu.left }} onClick={(e) => e.stopPropagation()}>
           <div className="gt-menu-nombre">{grupoMenu.titulo} · {grupoMenu.niveles}</div>
           {controlesMenu.particular && (
