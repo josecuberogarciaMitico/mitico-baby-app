@@ -140,7 +140,7 @@ export function GruposTableroAgenda({ grupos, cargando, grupoAbierto, onMover, o
   const ninoMenu = menu?.nino ?? null;
   const controlesMenu = menu && !menu.nino && controlesGrupo ? controlesGrupo(menu.grupoId) : null;
   const campoMenu: CampoChip | undefined = menu?.campo;
-  const selMenu: SelectTablero | null = controlesMenu && campoMenu ? controlesMenu[campoMenu] : null;
+  const selMenu: SelectTablero | null = (controlesMenu && campoMenu ? controlesMenu[campoMenu] : null) ?? null;
   const sinFlecha = (t: string) => t.replace(/\s*▾\s*$/, '');
   const menuRef = useRef<HTMLDivElement | null>(null);
 
