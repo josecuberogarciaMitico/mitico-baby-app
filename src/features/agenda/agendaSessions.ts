@@ -103,3 +103,4 @@ export function buildAgendaOperationalSessions(input: {
   }
   return [...sessions.values()].sort((a, b) => `${a.fecha} ${a.hora_inicio}`.localeCompare(`${b.fecha} ${b.hora_inicio}`));
 }
+export { ordenarGruposPorNivel } from './ordenGruposNivel';
