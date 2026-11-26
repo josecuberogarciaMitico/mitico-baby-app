@@ -57,7 +57,7 @@ export function SelectorDiaPista({ fecha, hoy, onCambiar }: Props) {
         </button>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: 6 }}>
-        {diasEntrenoSemana(fecha).map((d) => {
+        {diasEntrenoSemana(fecha, cuenta).map((d) => {
           const activo = d.fecha === fecha;
           const hay = (cuenta[d.fecha] || 0) > 0;
           return (

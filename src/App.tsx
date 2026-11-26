@@ -6543,7 +6543,7 @@ function AppContenido({ perfilUsuario, onLogout }: AppContenidoProps = {}) {
       : semanasAgenda[0] || '';
 
   const diasSemanaAgenda = semanaAgendaActiva
-    ? diasTrabajoSemanaAgenda(semanaAgendaActiva)
+    ? diasTrabajoSemanaAgenda(semanaAgendaActiva, [...agendaSesionesDirectas, ...intensivoDias].map((x) => String(x.fecha || '').slice(0, 10)))
     : [];
 
   function cambiarSemanaTrabajoApp(nuevaSemana: string) {
@@ -17654,12 +17654,8 @@ El grupo sigue en preparación: este cambio todavía no enviará ningún Push.${
   const disponibilidadSemanalEntrenador = agruparDisponibilidadSemanal(
     disponibilidadFiltrada
   );
-  const disponibilidadPorTurno = agruparDisponibilidadPorTurno(
-    disponibilidadFiltrada
-  ).filter((turno) => {
-    const diaSemana = new Date(`${turno.fecha}T12:00:00`).getDay();
-    return diaSemana !== 1 && diaSemana !== 2;
-  });
+  // 26/11: lunes y martes ya no se esconden (puentes); solo existen si se publican.
+  const disponibilidadPorTurno = agruparDisponibilidadPorTurno(disponibilidadFiltrada);
 
   const sesionAgendaActiva = agendaSesionesDirectas.find(
     (sesion) => sesion.sesion_id === agendaSesionActivaId

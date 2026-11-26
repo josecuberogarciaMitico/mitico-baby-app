@@ -207,7 +207,7 @@ test('cambiar modalidades de un turno o de todo el día', () => {
 
 test('«solo sábado y domingo», activar un día y lunes/martes', () => {
   const s = aplicarOps(plantilla(), [op({ op: 'solo_dias', dias: [6, 7] })], AHORA);
-  equal(s.borrador.dias.map((d) => d.activo), [false, false, false, true, true], 'solo fin de semana');
+  equal(s.borrador.dias.map((d) => d.activo), [false, false, false, false, false, true, true], 'solo fin de semana (lunes y martes siempre apagados)');
   const reactivar = aplicarOps(s.borrador, [op({ op: 'activar_dia', dia: 5 })], AHORA);
   equal(dia(reactivar.borrador, 'viernes').turnos.map((t) => t.hora_inicio), ['18:00'], 'viernes con su turno habitual');
   const lunes = aplicarOps(plantilla(), [op({ op: 'quitar_dia', dia: 1 })], AHORA);

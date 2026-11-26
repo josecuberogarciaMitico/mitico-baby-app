@@ -46,11 +46,20 @@ test('calendario usa fecha local ISO y lunes como inicio semanal', () => {
     '2026-09-16,2026-09-17,2026-09-18,2026-09-19,2026-09-20', 'días de trabajo');
 });
 
+test('días de la semana: lunes y martes solo si hay algo ese día (puentes)', () => {
+  equal(diasTrabajoSemanaAgenda('2026-12-07').length, 5, 'semana normal: miércoles a domingo');
+  equal(diasTrabajoSemanaAgenda('2026-12-07', ['2026-12-12']).length, 5, 'actividad en sábado no añade nada');
+  const puente = diasTrabajoSemanaAgenda('2026-12-07', ['2026-12-07', '2026-12-08']);
+  equal(puente.length, 7, 'con lunes y martes');
+  equal(puente[0].fecha, '2026-12-07', 'lunes primero');
+});
+
 test('turnos oficiales distinguen laborable, sábado y domingo', () => {
   equal(turnosTrabajoDiaAgenda('2026-09-16').length, 1, 'miércoles');
   equal(turnosTrabajoDiaAgenda('2026-09-19').length, 3, 'sábado');
   equal(turnosTrabajoDiaAgenda('2026-09-20').length, 2, 'domingo');
-  equal(turnosTrabajoDiaAgenda('2026-09-15').length, 0, 'martes');
+  // 26/11: lunes y martes (solo se ven si hay algo ese día) tienen turno de 12:00 a 14:00.
+  equal(turnosTrabajoDiaAgenda('2026-09-15').length, 1, 'martes');
 });
 
 test('temporada cambia en julio y contiene diez meses', () => {

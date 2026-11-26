@@ -55,9 +55,19 @@ export function rangoEntrenosSemanaAgenda(startIso: string): string {
   return `${fechaAgendaDiaCorta(claveFechaAgenda(first))} – ${fechaAgendaDiaCorta(claveFechaAgenda(last))}`;
 }
 
-export function diasTrabajoSemanaAgenda(startIso: string) {
+/**
+ * Miércoles a domingo. 26/11: lunes y martes solo se añaden si ese día hay algo
+ * (sesión o turno de disponibilidad), p. ej. un intensivo de puente; así las
+ * semanas normales se ven exactamente igual.
+ */
+export function diasTrabajoSemanaAgenda(startIso: string, fechasConActividad?: Iterable<string> | null) {
   const start = crearFechaAgenda(startIso);
-  return [2, 3, 4, 5, 6].map((offset) => {
+  const activas = new Set(fechasConActividad || []);
+  const offsets = [0, 1].filter((offset) => {
+    const date = new Date(start); date.setDate(start.getDate() + offset);
+    return activas.has(claveFechaAgenda(date));
+  });
+  return [...offsets, 2, 3, 4, 5, 6].map((offset) => {
     const date = new Date(start); date.setDate(start.getDate() + offset);
     return {
       fecha: claveFechaAgenda(date),
@@ -70,6 +80,8 @@ export function diasTrabajoSemanaAgenda(startIso: string) {
 
 export function turnosTrabajoDiaAgenda(fechaIso: string) {
   const weekday = crearFechaAgenda(fechaIso).getDay();
+  // 26/11: lunes y martes (puentes / intensivos), turno de mañana.
+  if (weekday === 1 || weekday === 2) return [{ etiqueta: '12:00–14:00', inicio: '12:00', fin: '14:00' }];
   if ([3, 4, 5].includes(weekday)) return [{ etiqueta: '18:00–20:00', inicio: '18:00', fin: '20:00' }];
   if (weekday === 6) return [
     { etiqueta: '09:45–11:45', inicio: '09:45', fin: '11:45' },

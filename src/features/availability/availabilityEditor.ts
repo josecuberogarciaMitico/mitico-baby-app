@@ -127,6 +127,9 @@ export function turnoInicialDisponibilidadEditor(
   if (dia === 'sábado' || dia === 'domingo') {
     return turnoEditor('09:45', '11:45', ['Baby', 'Ocio']);
   }
+  if (dia === 'lunes' || dia === 'martes') {
+    return turnoEditor('12:00', '14:00', ['Intensivos']);
+  }
   return turnoEditor('18:00', '20:00', ['Baby']);
 }
 
@@ -137,7 +140,21 @@ export function crearBorradorDisponibilidadEditor(
     nombre: string;
     offset: number;
     turnos: TurnoDisponibilidadEditor[];
+    /** 26/11: lunes y martes existen (p. ej. puentes) pero salen apagados. */
+    activo?: boolean;
   }> = [
+    {
+      nombre: 'lunes',
+      offset: 0,
+      turnos: [turnoEditor('12:00', '14:00', ['Intensivos'])],
+      activo: false,
+    },
+    {
+      nombre: 'martes',
+      offset: 1,
+      turnos: [turnoEditor('12:00', '14:00', ['Intensivos'])],
+      activo: false,
+    },
     {
       nombre: 'miércoles',
       offset: 2,
@@ -182,7 +199,7 @@ export function crearBorradorDisponibilidadEditor(
     dias: diasConfigurados.map((dia) => ({
       fecha: sumarDiasEditor(semanaInicio, dia.offset),
       nombre: dia.nombre,
-      activo: true,
+      activo: dia.activo !== false,
       turnos: dia.turnos,
     })),
   };
@@ -295,5 +312,15 @@ export function validarBorradorDisponibilidadEditor(
     }
   }
   if (!borrador.fecha_limite) return 'La fecha límite para responder es obligatoria.';
+  // 26/11: con lunes o martes activos, la fecha límite (por defecto el martes)
+  // tiene que caer antes del primer día con clases.
+  const limite = String(borrador.fecha_limite).replace(' ', 'T').slice(0, 16);
+  const primerTurno = diasActivos
+    .flatMap((dia) => dia.turnos.map((turno) => `${dia.fecha}T${String(turno.hora_inicio).slice(0, 5)}`))
+    .sort()[0];
+  if (primerTurno && limite >= primerTurno) {
+    const f = (x: string) => `${x.slice(8, 10)}/${x.slice(5, 7)} ${x.slice(11, 16)}`;
+    return `La fecha límite para responder (${f(limite)}) tiene que ser antes del primer turno (${f(primerTurno)}). Cámbiala.`;
+  }
   return null;
 }
