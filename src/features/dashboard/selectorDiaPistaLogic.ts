@@ -13,10 +13,17 @@ export function lunesDe(iso: string) {
 
 const NOMBRES = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
 
-/** Miércoles a domingo de la semana de esa fecha. */
-export function diasEntrenoSemana(iso: string) {
+/**
+ * Miércoles a domingo de la semana de esa fecha. 26/11: lunes y martes solo si
+ * ese día hay sesiones (p. ej. intensivo de puente).
+ */
+export function diasEntrenoSemana(iso: string, cuenta?: Record<string, number> | null) {
   const lunes = lunesDe(iso);
-  return [2, 3, 4, 5, 6].map((n) => {
+  const extra = [0, 1].filter((n) => {
+    const fecha = sumarDiasIso(lunes, n);
+    return ((cuenta && cuenta[fecha]) || 0) > 0;
+  });
+  return [...extra, 2, 3, 4, 5, 6].map((n) => {
     const fecha = sumarDiasIso(lunes, n);
     const d = new Date(`${fecha}T12:00:00Z`);
     return { fecha, nombre: NOMBRES[d.getUTCDay()], dia: String(d.getUTCDate()) };
@@ -32,6 +39,6 @@ export function etiquetaSemana(iso: string) {
 
 /** Al cambiar de semana: el primer día con sesiones; si no hay, el miércoles. */
 export function diaAlCambiarSemana(iso: string, cuenta: Record<string, number>) {
-  const dias = diasEntrenoSemana(iso);
+  const dias = diasEntrenoSemana(iso, cuenta);
   return (dias.find((d) => (cuenta[d.fecha] || 0) > 0) || dias[0]).fecha;
 }

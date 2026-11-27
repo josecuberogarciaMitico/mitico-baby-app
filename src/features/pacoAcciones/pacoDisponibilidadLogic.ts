@@ -585,7 +585,8 @@ export function mismoResumen(a: ResumenComparable, b: ResumenComparable) {
 // ---------- Texto de la tarjeta -----------------------------------------------------------------
 
 export function textoSemana(borrador: BorradorDisponibilidadEditor) {
-  const lineas = borrador.dias.map((dia) => {
+  // 26/11: lunes y martes solo se nombran si están activos (casi nunca hay clase).
+  const lineas = borrador.dias.filter((dia) => dia.activo || !['lunes', 'martes'].includes(dia.nombre)).map((dia) => {
     const etiqueta = nombreDiaLargo(dia.fecha);
     if (!dia.activo || dia.turnos.length === 0) return `· ${etiqueta}: sin clases`;
     return `· ${etiqueta}: ${dia.turnos.map(textoTurno).join('  |  ')}`;

@@ -903,7 +903,7 @@ export function AvailabilityScreen({ ctx }: AvailabilityScreenProps) {
                         <h4>Semana {rangoSemanaAgenda(semana.inicio)}</h4>
 
                         <div className="availability-trainer-day-list">
-                          {diasTrabajoSemanaAgenda(semana.inicio).map((dia) => {
+                          {diasTrabajoSemanaAgenda(semana.inicio, semana.turnos.map((turno) => turno.fecha)).map((dia) => {
                             const turnosDia = semana.turnos.filter(
                               (turno) => turno.fecha === dia.fecha
                             );
